@@ -104,8 +104,8 @@ Herime Academie est une plateforme d'apprentissage en ligne complète inspirée 
 
 1. **Cloner le projet**
 ```bash
-git clone [url-du-repo]
-cd academie-herime
+git clone https://github.com/heritiermulume/herime-academie.git
+cd herime-academie
 ```
 
 2. **Installer les dépendances**
@@ -136,6 +136,20 @@ php artisan storage:link
 ```bash
 php artisan serve
 ```
+
+## 🌐 Déploiement sur O2Switch
+
+Pour héberger ce site sur O2Switch, consultez le guide complet :
+
+📄 **[Guide d'hébergement O2Switch](DEPLOY_O2SWITCH.md)**
+
+Le guide inclut :
+- Configuration du serveur
+- Upload des fichiers
+- Configuration de la base de données
+- Variables d'environnement
+- Optimisation de performance
+- Checklist de déploiement
 
 ## 👥 Rôles Utilisateurs
 
