@@ -1,0 +1,283 @@
+@extends('layouts.app')
+
+@section('title', 'Tableau de bord étudiant - Herime Academie')
+
+@section('content')
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 fw-bold mb-1">Bonjour, {{ auth()->user()->name }} !</h1>
+                    <p class="text-muted mb-0">Bienvenue sur votre tableau de bord étudiant</p>
+                </div>
+                <div>
+                    <a href="{{ route('courses.index') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Découvrir des cours
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-book text-primary fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Cours inscrits</h6>
+                            <h3 class="mb-0 fw-bold">{{ $stats['total_courses'] }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-success bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-check-circle text-success fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Cours terminés</h6>
+                            <h3 class="mb-0 fw-bold">{{ $stats['completed_courses'] }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-warning bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-certificate text-warning fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Certificats</h6>
+                            <h3 class="mb-0 fw-bold">{{ $stats['certificates_earned'] }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-clock text-info fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Heures d'apprentissage</h6>
+                            <h3 class="mb-0 fw-bold">{{ $stats['learning_hours'] }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Recent Enrollments -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">Mes cours récents</h5>
+                        <a href="{{ route('student.courses') }}" class="btn btn-outline-primary btn-sm">
+                            Voir tous <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    @if($enrollments->count() > 0)
+                        <div class="list-group list-group-flush">
+                            @foreach($enrollments as $enrollment)
+                            <div class="list-group-item border-0 py-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2">
+                                        <img src="{{ $enrollment->course->thumbnail ? Storage::url($enrollment->course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&h=60&fit=crop' }}" 
+                                             alt="{{ $enrollment->course->title }}" class="img-fluid rounded" style="height: 60px; object-fit: cover;">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="mb-1 fw-bold">
+                                            <a href="{{ route('courses.show', $enrollment->course->slug) }}" class="text-decoration-none text-dark">
+                                                {{ $enrollment->course->title }}
+                                            </a>
+                                        </h6>
+                                        <p class="text-muted small mb-1">{{ $enrollment->course->instructor->name }}</p>
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-primary me-2">{{ $enrollment->course->category->name }}</span>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>{{ $enrollment->course->duration }} min
+                                            </small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" role="progressbar" 
+                                                 style="width: {{ $enrollment->progress }}%" 
+                                                 aria-valuenow="{{ $enrollment->progress }}" 
+                                                 aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small class="text-muted">{{ $enrollment->progress }}% terminé</small>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <a href="{{ route('student.courses.learn', $enrollment->course->slug) }}" 
+                                           class="btn btn-primary btn-sm">
+                                            <i class="fas fa-play me-1"></i>Continuer
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-5">
+                            <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Aucun cours inscrit</h5>
+                            <p class="text-muted">Commencez votre parcours d'apprentissage dès maintenant</p>
+                            <a href="{{ route('courses.index') }}" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Découvrir des cours
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Recent Courses -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold">Cours populaires</h5>
+                </div>
+                <div class="card-body p-0">
+                    @if($recent_courses->count() > 0)
+                        <div class="list-group list-group-flush">
+                            @foreach($recent_courses as $course)
+                            <div class="list-group-item border-0 py-3">
+                                <div class="d-flex align-items-start">
+                                    <img src="{{ $course->thumbnail ? Storage::url($course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=60&h=40&fit=crop' }}" 
+                                         alt="{{ $course->title }}" class="rounded me-3" style="width: 60px; height: 40px; object-fit: cover;">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            <a href="{{ route('courses.show', $course->slug) }}" class="text-decoration-none text-dark">
+                                                {{ Str::limit($course->title, 40) }}
+                                            </a>
+                                        </h6>
+                                        <p class="text-muted small mb-1">{{ $course->instructor->name }}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge bg-primary">{{ $course->category->name }}</span>
+                                            <small class="text-muted">
+                                                <i class="fas fa-users me-1"></i>{{ $course->students_count }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <i class="fas fa-graduation-cap fa-2x text-muted mb-2"></i>
+                            <p class="text-muted small">Aucun cours disponible</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Certificates -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">Mes certificats</h5>
+                        <a href="{{ route('student.certificates') }}" class="btn btn-outline-primary btn-sm">
+                            Voir tous
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    @if($certificates->count() > 0)
+                        <div class="list-group list-group-flush">
+                            @foreach($certificates as $certificate)
+                            <div class="list-group-item border-0 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-certificate text-warning fa-2x"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">{{ $certificate->course->title }}</h6>
+                                        <small class="text-muted">
+                                            Obtenu le {{ $certificate->issue_date->format('d/m/Y') }}
+                                        </small>
+                                    </div>
+                                    <div>
+                                        <a href="{{ Storage::url($certificate->certificate_url) }}" 
+                                           target="_blank" class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <i class="fas fa-certificate fa-2x text-muted mb-2"></i>
+                            <p class="text-muted small">Aucun certificat obtenu</p>
+                            <p class="text-muted small">Terminez un cours pour obtenir votre premier certificat</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('styles')
+<style>
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.progress {
+    border-radius: 4px;
+}
+
+.progress-bar {
+    border-radius: 4px;
+}
+
+.bg-opacity-10 {
+    background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+}
+</style>
+@endpush
