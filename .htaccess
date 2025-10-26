@@ -1,16 +1,13 @@
-# Redirection vers le dossier public pour Laravel
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Rediriger tout vers le dossier public sauf si le fichier existe déjà dans la racine
+    # Rediriger tout vers le dossier public
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ public/$1 [L]
+    
+    # Forcer la redirection pour les requêtes à la racine
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
-
-# Empêcher l'accès direct aux fichiers sensibles
-<FilesMatch "^\.">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
 
