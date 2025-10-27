@@ -33,8 +33,8 @@ return new class extends Migration
             $table->string('email');
             
             // Relations
-            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('order_id')->nullable()->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->unsignedBigInteger('order_id')->nullable();
             
             // Réponses MOKO
             $table->json('moko_response')->nullable(); // Réponse initiale de MOKO

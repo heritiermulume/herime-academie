@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('enrollments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('course_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_id');
             $table->unsignedBigInteger('order_id')->nullable();
             $table->enum('status', ['active', 'completed', 'suspended', 'cancelled'])->default('active');
             $table->decimal('progress', 5, 2)->default(0); // pourcentage

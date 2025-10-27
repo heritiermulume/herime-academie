@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('course_lessons', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->foreignId('section_id')->constrained('course_sections')->onDelete('cascade');
+            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('section_id');
             $table->string('title');
             $table->text('description')->nullable();
             $table->enum('type', ['video', 'text', 'pdf', 'quiz', 'assignment'])->default('video');

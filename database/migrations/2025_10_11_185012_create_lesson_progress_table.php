@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('lesson_progress', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->foreignId('lesson_id')->constrained('course_lessons')->onDelete('cascade');
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('lesson_id');
             $table->boolean('is_completed')->default(false);
             $table->integer('time_watched')->default(0); // en secondes
             $table->timestamp('started_at')->nullable();
