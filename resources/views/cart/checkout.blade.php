@@ -21,7 +21,7 @@
             </div>
         </div>
 
-    <div class="checkout-wrapper" style="padding: 24px 0;">
+    <div class="checkout-wrapper">
         <div class="row">
             <!-- Main Content -->
             <div class="col-lg-8">
@@ -422,6 +422,10 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 0 24px;
 }
 
+.checkout-page .checkout-wrapper {
+    padding: 24px;
+}
+
 .checkout-title-section {
     flex: 1;
 }
@@ -689,9 +693,9 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 13px;
     }
     
-    /* Réduire le padding du wrapper principal */
+    /* Réduire drastiquement le padding du wrapper principal */
     .checkout-page .checkout-wrapper {
-        padding: 16px 20px !important;
+        padding: 5px 20px !important;
     }
     
     /* Progress section padding sur tablette */
@@ -717,9 +721,9 @@ document.addEventListener('DOMContentLoaded', function() {
         max-width: 100%;
     }
     
-    /* Réduire le padding du wrapper principal */
+    /* Réduire drastiquement le padding du wrapper principal */
     .checkout-page .checkout-wrapper {
-        padding: 12px 16px !important;
+        padding: 5px 16px !important;
     }
     
     /* Header responsive */
@@ -1039,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /* Réduire encore plus le padding du wrapper principal */
     .checkout-page .checkout-wrapper {
-        padding: 8px 12px !important;
+        padding: 3px 12px !important;
     }
     
     .checkout-header {
