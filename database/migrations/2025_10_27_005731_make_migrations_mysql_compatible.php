@@ -11,7 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        //
+        // Ajouter la colonne content si elle n'existe pas (pour compatibilité MySQL)
+        Schema::table('course_lessons', function (Blueprint $table) {
+            if (!Schema::hasColumn('course_lessons', 'content')) {
+                $table->text('content')->nullable()->after('content_text');
+            }
+        });
     }
 
     /**
@@ -19,6 +24,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::table('course_lessons', function (Blueprint $table) {
+            if (Schema::hasColumn('course_lessons', 'content')) {
+                $table->dropColumn('content');
+            }
+        });
     }
 };
