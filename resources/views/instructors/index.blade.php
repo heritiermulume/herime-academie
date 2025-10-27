@@ -32,7 +32,7 @@
                     <div class="card instructor-card h-100">
                         <div class="card-body text-center">
                             <div class="instructor-avatar mb-3">
-                                <img src="{{ $instructor->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($instructor->name) . '&background=003366&color=fff&size=120' }}" 
+                                <img src="{{ $instructor->avatar ? $instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($instructor->name) . '&background=003366&color=fff&size=120' }}" 
                                      alt="{{ $instructor->name }}" class="rounded-circle">
                             </div>
                             <h5 class="card-title">{{ $instructor->name }}</h5>
