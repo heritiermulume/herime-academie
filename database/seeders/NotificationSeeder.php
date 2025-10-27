@@ -34,25 +34,30 @@ class NotificationSeeder extends Seeder
             return;
         }
 
-        // Créer des notifications pour l'admin
-        $admin->notify(new \App\Notifications\CourseEnrolled($courses->first()));
-        $admin->notify(new \App\Notifications\PaymentReceived(50000, 'Stripe'));
-        $admin->notify(new \App\Notifications\CoursePublished($instructor, $courses->first()));
+        // Créer des notifications pour l'admin (sans envoyer d'email)
+        try {
+            $admin->notify(new \App\Notifications\CourseEnrolled($courses->first()));
+            $admin->notify(new \App\Notifications\PaymentReceived(50000, 'Stripe'));
+            $admin->notify(new \App\Notifications\CoursePublished($instructor, $courses->first()));
 
-        // Créer des notifications pour l'instructeur
-        $instructor->notify(new \App\Notifications\CourseEnrolled($courses->first()));
-        $instructor->notify(new \App\Notifications\PaymentReceived(25000, 'PayPal'));
-        $instructor->notify(new \App\Notifications\NewMessage($admin, 'Bienvenue sur la plateforme !'));
+            // Créer des notifications pour l'instructeur
+            $instructor->notify(new \App\Notifications\CourseEnrolled($courses->first()));
+            $instructor->notify(new \App\Notifications\PaymentReceived(25000, 'PayPal'));
+            $instructor->notify(new \App\Notifications\NewMessage($admin, 'Bienvenue sur la plateforme !'));
 
-        // Créer des notifications pour l'étudiant
-        $student->notify(new \App\Notifications\CourseEnrolled($courses->first()));
-        $student->notify(new \App\Notifications\CourseCompleted($courses->first()));
-        $student->notify(new \App\Notifications\NewMessage($instructor, 'Merci de vous être inscrit à mon cours !'));
+            // Créer des notifications pour l'étudiant
+            $student->notify(new \App\Notifications\CourseEnrolled($courses->first()));
+            $student->notify(new \App\Notifications\CourseCompleted($courses->first()));
+            $student->notify(new \App\Notifications\NewMessage($instructor, 'Merci de vous être inscrit à mon cours !'));
 
-        // Créer quelques notifications non lues
-        $student->notify(new \App\Notifications\CourseEnrolled($courses->skip(1)->first()));
-        $student->notify(new \App\Notifications\PaymentReceived(15000, 'Mobile Money'));
+            // Créer quelques notifications non lues
+            $student->notify(new \App\Notifications\CourseEnrolled($courses->skip(1)->first()));
+            $student->notify(new \App\Notifications\PaymentReceived(15000, 'Mobile Money'));
 
-        $this->command->info('Notifications de test créées avec succès !');
+            $this->command->info('Notifications de test créées avec succès !');
+        } catch (\Exception $e) {
+            $this->command->warn('Erreur lors de la création des notifications : ' . $e->getMessage());
+            $this->command->info('Les notifications peuvent être créées plus tard.');
+        }
     }
 }
