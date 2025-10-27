@@ -962,12 +962,12 @@
         /* More Modal Styles */
         .more-modal .modal-dialog-bottom {
             position: fixed;
-            bottom: 60px;
-            left: 0;
-            right: 0;
+            bottom: 70px;
+            left: 8px;
+            right: 8px;
             margin: 0;
-            max-width: 100%;
-            max-height: 50vh;
+            max-width: calc(100% - 16px);
+            max-height: 35vh;
             transform: translateY(100%);
             transition: transform 0.3s ease-out;
         }
@@ -978,19 +978,20 @@
         }
 
         .more-modal .modal-content {
-            border-radius: 20px 20px 0 0;
+            border-radius: 16px 16px 0 0;
             border: none;
             margin: 0;
-            max-height: 50vh;
+            max-height: 35vh;
             overflow-y: auto;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
         }
 
         .more-modal .modal-header {
             background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
             color: white;
             border-bottom: none;
-            border-radius: 20px 20px 0 0;
-            padding: 20px 24px;
+            border-radius: 16px 16px 0 0;
+            padding: 16px 20px;
             position: sticky;
             top: 0;
             z-index: 10;
@@ -1001,7 +1002,7 @@
         }
 
         .more-modal .modal-body {
-            max-height: calc(50vh - 70px);
+            max-height: calc(35vh - 60px);
             overflow-y: auto;
         }
 
@@ -1029,7 +1030,7 @@
         .more-modal .list-group-item {
             border: none;
             border-bottom: 1px solid #f1f5f9;
-            padding: 0.75rem 1.5rem;
+            padding: 0.625rem 1.25rem;
             transition: all 0.3s ease;
         }
 
