@@ -155,8 +155,7 @@ class CourseController extends Controller
 
         // Calculer les statistiques du cours (simplifiées)
         $courseStats = [
-            'recent_announcements' => \App\Models\Announcement::where('course_id', $course->id)
-                ->where('is_published', true)
+            'recent_announcements' => \App\Models\Announcement::where('is_active', true)
                 ->latest()
                 ->limit(5)
                 ->get()
