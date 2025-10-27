@@ -16,8 +16,8 @@ return new class extends Migration
             $table->id();
             $table->string('order_number');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('affiliate_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('coupon_id')->nullable()->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('affiliate_id')->nullable();
+            $table->unsignedBigInteger('coupon_id')->nullable();
             $table->decimal('subtotal', 10, 2);
             $table->decimal('discount', 10, 2)->default(0);
             $table->decimal('tax', 10, 2)->default(0);
@@ -78,8 +78,8 @@ return new class extends Migration
             $table->id();
             $table->string('order_number');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('affiliate_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('coupon_id')->nullable()->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('affiliate_id')->nullable();
+            $table->unsignedBigInteger('coupon_id')->nullable();
             $table->decimal('subtotal', 10, 2);
             $table->decimal('discount', 10, 2)->default(0);
             $table->decimal('tax', 10, 2)->default(0);
