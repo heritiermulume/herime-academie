@@ -145,12 +145,15 @@ class CourseSeeder extends Seeder
         ];
 
         foreach ($courses as $index => $courseData) {
-            $course = \App\Models\Course::create(array_merge($courseData, [
-                'instructor_id' => $instructors->random()->id,
-                'category_id' => $categories->random()->id,
-                'slug' => \Illuminate\Support\Str::slug($courseData['title']),
-                'thumbnail' => "courses/thumbnails/course-" . ($index + 1) . ".jpg",
-            ]));
+            $slug = \Illuminate\Support\Str::slug($courseData['title']);
+            $course = \App\Models\Course::updateOrCreate(
+                ['slug' => $slug],
+                array_merge($courseData, [
+                    'instructor_id' => $instructors->random()->id,
+                    'category_id' => $categories->random()->id,
+                    'thumbnail' => "courses/thumbnails/course-" . ($index + 1) . ".jpg",
+                ])
+            );
 
             // Créer quelques sections et leçons pour chaque cours
             $sections = [
@@ -161,26 +164,34 @@ class CourseSeeder extends Seeder
             ];
 
             foreach ($sections as $index => $sectionData) {
-                $section = \App\Models\CourseSection::create([
-                    'course_id' => $course->id,
-                    'title' => $sectionData['title'],
-                    'description' => $sectionData['description'],
-                    'sort_order' => $index + 1,
-                ]);
+                $section = \App\Models\CourseSection::updateOrCreate(
+                    [
+                        'course_id' => $course->id,
+                        'sort_order' => $index + 1,
+                    ],
+                    [
+                        'title' => $sectionData['title'],
+                        'description' => $sectionData['description'],
+                    ]
+                );
 
                 // Créer quelques leçons pour chaque section
                 $lessonsCount = rand(3, 8);
                 for ($i = 1; $i <= $lessonsCount; $i++) {
-                    \App\Models\CourseLesson::create([
-                        'course_id' => $course->id,
-                        'section_id' => $section->id,
-                        'title' => "Leçon {$i}: " . $faker->sentence(4),
-                        'description' => $faker->paragraph(),
-                        'type' => $faker->randomElement(['video', 'text', 'pdf']),
-                        'duration' => rand(5, 45),
-                        'sort_order' => $i,
-                        'is_preview' => $i === 1, // Première leçon en aperçu
-                    ]);
+                    \App\Models\CourseLesson::updateOrCreate(
+                        [
+                            'course_id' => $course->id,
+                            'section_id' => $section->id,
+                            'sort_order' => $i,
+                        ],
+                        [
+                            'title' => "Leçon {$i}: " . fake()->sentence(4),
+                            'description' => fake()->paragraph(),
+                            'type' => fake()->randomElement(['video', 'text', 'pdf']),
+                            'duration' => rand(5, 45),
+                            'is_preview' => $i === 1, // Première leçon en aperçu
+                        ]
+                    );
                 }
             }
 
