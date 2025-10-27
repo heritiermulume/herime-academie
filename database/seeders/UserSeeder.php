@@ -22,6 +22,7 @@ class UserSeeder extends Seeder
                 'is_verified' => true,
                 'bio' => 'Administrateur de la plateforme Herime Academie',
                 'phone' => '+243824449218',
+                'avatar' => 'https://i.pravatar.cc/300?img=68',
             ]
         );
 
@@ -37,6 +38,7 @@ class UserSeeder extends Seeder
                 'phone' => '+243999888777',
                 'website' => 'https://jpmbuyi.dev',
                 'linkedin' => 'https://linkedin.com/in/jpmbuyi',
+                'avatar' => 'https://i.pravatar.cc/300?img=5',
             ],
             [
                 'name' => 'Marie Kabila',
@@ -48,6 +50,7 @@ class UserSeeder extends Seeder
                 'phone' => '+243888777666',
                 'website' => 'https://designstudiokinshasa.com',
                 'linkedin' => 'https://linkedin.com/in/mariekabila',
+                'avatar' => 'https://i.pravatar.cc/300?img=47',
             ],
             [
                 'name' => 'Dr. Patrick Lumumba',
@@ -58,6 +61,7 @@ class UserSeeder extends Seeder
                 'bio' => 'Expert en business et entrepreneuriat. Coach certifié et consultant en stratégie d\'entreprise.',
                 'phone' => '+243777666555',
                 'linkedin' => 'https://linkedin.com/in/plumumba',
+                'avatar' => 'https://i.pravatar.cc/300?img=23',
             ],
         ];
 
@@ -80,6 +84,7 @@ class UserSeeder extends Seeder
                     'is_verified' => true,
                     'bio' => 'Étudiant passionné d\'apprentissage en ligne',
                     'phone' => '+243' . rand(800000000, 999999999),
+                    'avatar' => 'https://i.pravatar.cc/300?img=' . ($i % 70), // Images différentes pour chaque étudiant
                 ]
             );
         }
@@ -96,6 +101,7 @@ class UserSeeder extends Seeder
                     'is_verified' => true,
                     'bio' => 'Partenaire affilié de Herime Academie',
                     'phone' => '+243' . rand(800000000, 999999999),
+                    'avatar' => 'https://i.pravatar.cc/300?img=' . ($i + 20),
                 ]
             );
         }
