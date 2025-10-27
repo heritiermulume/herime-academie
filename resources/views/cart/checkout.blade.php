@@ -688,6 +688,18 @@ document.addEventListener('DOMContentLoaded', function() {
     .continue-shopping-btn {
         font-size: 13px;
     }
+    
+    /* Progress section padding sur tablette */
+    .checkout-progress {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 15px 0;
+    }
+    
+    .progress-steps {
+        padding: 0 10px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -725,13 +737,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /* Progress responsive */
     .checkout-progress {
-        padding: 15px 0;
-        margin-bottom: 20px !important;
+        margin: 20px 0 !important;
+        background: white;
+        border-radius: 8px;
+        padding: 20px 15px;
     }
     
     .progress-steps {
         min-width: 100%;
         gap: 5px;
+        padding: 0 10px;
     }
     
     .step {
@@ -1021,7 +1036,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .checkout-progress {
-        padding: 10px 0;
+        margin: 15px 0 !important;
+        padding: 15px 12px;
+    }
+    
+    .progress-steps {
+        padding: 0 5px;
     }
     
     .step {
