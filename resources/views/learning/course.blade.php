@@ -823,7 +823,7 @@
                                                         <div class="d-flex">
                                                             <div class="course-thumbnail">
                                                                 @if($recommendedCourse->thumbnail)
-                                                                    <img src="{{ Storage::url($recommendedCourse->thumbnail) }}" alt="{{ $recommendedCourse->title }}" class="img-fluid">
+                                                                    <img src="{{ $recommendedCourse->thumbnail }}" alt="{{ $recommendedCourse->title }}" class="img-fluid">
                                                                 @else
                                                                     <div class="bg-primary d-flex align-items-center justify-content-center">
                                                                         <i class="fas fa-play text-white"></i>
@@ -1107,7 +1107,7 @@
                                                 <div class="d-flex">
                                                     <div class="course-thumbnail">
                                                         @if($recommendedCourse->thumbnail)
-                                                            <img src="{{ Storage::url($recommendedCourse->thumbnail) }}" alt="{{ $recommendedCourse->title }}" class="img-fluid">
+                                                            <img src="{{ $recommendedCourse->thumbnail }}" alt="{{ $recommendedCourse->title }}" class="img-fluid">
                                                         @else
                                                             <div class="bg-primary d-flex align-items-center justify-content-center">
                                                                 <i class="fas fa-play text-white"></i>

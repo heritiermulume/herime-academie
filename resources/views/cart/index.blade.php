@@ -36,7 +36,7 @@
                         <div class="cart-item-content">
                             <!-- Course Image -->
                             <div class="cart-item-image-container">
-                                <img src="{{ $item['course']->thumbnail ? Storage::url($item['course']->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
+                                <img src="{{ $item['course']->thumbnail ? $item['course']->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
                                      alt="{{ $item['course']->title }}" 
                                      class="cart-item-image">
                                 @if($item['course']->is_featured || $item['course']->is_free || $item['course']->sale_price)
@@ -193,7 +193,7 @@
                 <div class="col-lg-3 col-md-4 col-sm-6">
                     <div class="card border-0 shadow-sm h-100 course-card">
                         <div class="position-relative">
-                            <img src="{{ $course->thumbnail ? Storage::url($course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
+                            <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
                                  alt="{{ $course->title }}" 
                                  class="card-img-top" 
                                  style="height: 150px; object-fit: cover;">
@@ -313,7 +313,7 @@
                 <div class="col-lg-3 col-md-4 col-sm-6">
                     <div class="card border-0 shadow-sm h-100 course-card">
                         <div class="position-relative">
-                            <img src="{{ $course->thumbnail ? Storage::url($course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
+                            <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
                                  alt="{{ $course->title }}" 
                                  class="card-img-top" 
                                  style="height: 150px; object-fit: cover;">

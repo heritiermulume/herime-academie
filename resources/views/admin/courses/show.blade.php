@@ -34,7 +34,7 @@
                                     <h2 class="text-primary mb-3">{{ $course->title }}</h2>
                                     
                                     @if($course->thumbnail)
-                                        <img src="{{ Storage::url($course->thumbnail) }}" 
+                                        <img src="{{ $course->thumbnail }}" 
                                              alt="{{ $course->title }}" 
                                              class="img-fluid rounded mb-3" 
                                              style="max-height: 300px; width: 100%; object-fit: cover;">
@@ -203,7 +203,7 @@
                                         <li class="mb-2">
                                             <strong>Instructeur:</strong><br>
                                             <div class="d-flex align-items-center mt-1">
-                                                <img src="{{ $course->instructor->avatar ? $instructor->avatar : asset('images/default-avatar.svg') }}" 
+                                                <img src="{{ $course->instructor->avatar ? $course->instructor->avatar : asset('images/default-avatar.svg') }}" 
                                                      alt="{{ $course->instructor->name }}" 
                                                      class="rounded-circle me-2" 
                                                      width="30" 

@@ -158,7 +158,7 @@
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-3">
-                            <img src="{{ $message->course->thumbnail ? Storage::url($message->course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=150&h=100&fit=crop' }}" 
+                            <img src="{{ $message->course->thumbnail ? $message->course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=150&h=100&fit=crop' }}" 
                                  alt="{{ $message->course->title }}" class="img-fluid rounded">
                         </div>
                         <div class="col-md-9">

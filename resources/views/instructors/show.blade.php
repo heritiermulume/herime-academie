@@ -88,7 +88,7 @@ use Illuminate\Support\Facades\Storage;
                 @foreach($courses as $course)
                 <div class="col-lg-4 col-md-6 col-sm-6" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                     <div class="course-card">
-                        <div class="course-thumbnail" style="background-image: url('{{ $course->thumbnail ? Storage::url($course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80' }}')">
+                        <div class="course-thumbnail" style="background-image: url('{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80' }}')">
                             @if($course->is_featured)
                             <span class="course-badge">En vedette</span>
                             @endif

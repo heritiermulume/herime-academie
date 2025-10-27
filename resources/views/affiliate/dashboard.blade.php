@@ -219,7 +219,7 @@
                             @foreach($popularCourses as $course)
                             <div class="list-group-item border-0 py-3">
                                 <div class="d-flex align-items-start">
-                                    <img src="{{ $course->thumbnail ? Storage::url($course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=60&h=40&fit=crop' }}" 
+                                    <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=60&h=40&fit=crop' }}" 
                                          alt="{{ $course->title }}" class="rounded me-3" style="width: 60px; height: 40px; object-fit: cover;">
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1 fw-bold">

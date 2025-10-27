@@ -22,7 +22,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 shadow-sm border-0 hover-shadow">
                         <a href="{{ route('student.courses.learn', $enrollment->course->slug) }}" class="text-decoration-none">
-                            <img src="{{ $enrollment->course->thumbnail ? Storage::url($enrollment->course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
+                            <img src="{{ $enrollment->course->thumbnail ? $enrollment->course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
                                  alt="{{ $enrollment->course->title }}" 
                                  class="card-img-top" 
                                  style="height: 180px; object-fit: cover;">

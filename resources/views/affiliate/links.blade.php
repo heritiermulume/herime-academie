@@ -112,7 +112,7 @@
             <div class="col-lg-4 col-md-6 mb-4">
                 <div class="card border-0 shadow-sm h-100 hover-lift">
                     <div class="position-relative">
-                        <img src="{{ $course->thumbnail ? Storage::url($course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
+                        <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                              class="card-img-top" alt="{{ $course->title }}" style="height: 200px; object-fit: cover;">
                         @if($course->is_featured)
                         <span class="badge bg-warning position-absolute top-0 start-0 m-3">En vedette</span>

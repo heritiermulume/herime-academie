@@ -5,7 +5,7 @@
         <div class="course-card">
             <div class="card border-0 shadow-sm h-100 hover-lift">
                 <div class="position-relative">
-                    <img src="{{ $course->thumbnail ? Storage::url($course->thumbnail) : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
+                    <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
                          class="card-img-top" alt="{{ $course->title }}" style="height: 150px; object-fit: cover;">
                     <span class="badge bg-primary position-absolute top-0 start-0 m-2">{{ $course->category->name }}</span>
                     @if($course->sale_price)

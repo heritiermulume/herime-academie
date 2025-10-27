@@ -123,7 +123,7 @@
                                 <label for="thumbnail" class="form-label">Cover Image</label>
                                 @if($course->thumbnail)
                                     <div class="mb-2">
-                                        <img src="{{ Storage::url($course->thumbnail) }}" alt="Image actuelle" class="img-thumbnail" style="max-width: 200px; max-height: 150px;">
+                                        <img src="{{ $course->thumbnail }}" alt="Image actuelle" class="img-thumbnail" style="max-width: 200px; max-height: 150px;">
                                         <p class="text-muted small">Image actuelle</p>
                                     </div>
                                 @endif
