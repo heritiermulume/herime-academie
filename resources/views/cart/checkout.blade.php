@@ -666,9 +666,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
+@media (max-width: 991.98px) {
+    .checkout-page {
+        padding-bottom: 70px;
+    }
+    
+    /* Colonnes s'empilent sur tablette */
+    .row > .col-lg-8,
+    .row > .col-lg-4 {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+    }
+    
+    .order-summary-card {
+        position: relative;
+        margin-top: 30px;
+        top: 0;
+    }
+    
+    .continue-shopping-btn {
+        font-size: 13px;
+    }
+}
+
 @media (max-width: 768px) {
     .checkout-wrapper {
         padding: 0 16px;
+        max-width: 100%;
     }
     
     .checkout-header {
@@ -678,6 +703,10 @@ document.addEventListener('DOMContentLoaded', function() {
     .checkout-header .checkout-wrapper {
         flex-direction: column;
         gap: 15px;
+    }
+    
+    .checkout-title-section {
+        width: 100%;
     }
     
     .checkout-title {
@@ -700,36 +729,79 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .progress-steps {
         min-width: 100%;
+        gap: 5px;
     }
     
     .step {
-        min-width: 90px;
+        min-width: 80px;
+        flex: 0 0 auto;
     }
     
     .step-circle {
-        width: 45px;
-        height: 45px;
+        width: 40px;
+        height: 40px;
     }
     
     .step-number {
-        font-size: 15px;
+        font-size: 14px;
     }
     
     .step-label {
-        font-size: 12px;
+        font-size: 11px;
+        margin-top: 6px;
+    }
+    
+    .step-line {
+        margin: -15px 5px;
+    }
+    
+    /* Colonnes en plein largeur sur mobile */
+    .row > .col-lg-8,
+    .row > .col-lg-4 {
+        width: 100%;
+        max-width: 100%;
+        flex: 0 0 100%;
+    }
+    
+    .payment-section {
+        padding: 15px 0;
+    }
+    
+    .section-title {
+        font-size: 16px;
+        margin-bottom: 20px;
     }
     
     .payment-option {
         margin-bottom: 15px;
         padding: 15px;
+        width: 100%;
+    }
+    
+    .payment-option .row .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 15px;
+    }
+    
+    .payment-label {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .payment-info {
+        text-align: center;
     }
     
     .payment-info h6 {
         font-size: 15px;
+        margin-bottom: 4px;
     }
     
     .payment-info p {
-        font-size: 13px;
+        font-size: 12px;
+        margin: 0;
     }
     
     .payment-icon {
@@ -740,10 +812,89 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 16px;
     }
     
+    .form-section {
+        padding: 15px 0;
+    }
+    
+    .form-label {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+    
+    .form-control,
+    .form-select {
+        font-size: 14px;
+        padding: 10px 12px;
+    }
+    
+    .billing-section {
+        margin-top: 20px;
+    }
+    
+    .terms-section {
+        margin-top: 20px;
+    }
+    
+    .terms-section .form-check-label {
+        font-size: 13px;
+        line-height: 1.4;
+    }
+    
+    .payment-actions {
+        margin-top: 20px;
+    }
+    
+    .btn-lg {
+        padding: 12px 20px;
+        font-size: 15px;
+    }
+    
     .order-summary-card {
         position: relative;
         margin-top: 30px;
         padding: 16px;
+        border-radius: 8px;
+    }
+    
+    .summary-title {
+        font-size: 16px;
+    }
+    
+    .order-items {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .order-item {
+        padding: 12px 0;
+        font-size: 14px;
+    }
+    
+    .item-title {
+        font-size: 13px;
+        line-height: 1.3;
+    }
+    
+    .item-instructor {
+        font-size: 11px;
+    }
+    
+    .item-price {
+        font-size: 14px;
+    }
+    
+    .order-total {
+        font-size: 18px;
+        padding-top: 12px;
+    }
+    
+    .alert {
+        padding: 12px 15px;
+        font-size: 14px;
+    }
+    
+    .alert i {
+        font-size: 14px;
     }
 }
 
@@ -764,63 +915,134 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 13px;
     }
     
+    .continue-shopping-btn {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+    
     .checkout-progress {
         padding: 10px 0;
     }
     
     .step {
-        min-width: 70px;
+        min-width: 65px;
     }
     
     .step-circle {
-        width: 40px;
-        height: 40px;
+        width: 35px;
+        height: 35px;
     }
     
     .step-number {
-        font-size: 14px;
+        font-size: 13px;
     }
     
     .step-label {
-        font-size: 11px;
+        font-size: 10px;
+        margin-top: 4px;
     }
     
-.payment-option {
+    .step-line {
+        margin: -12px 3px;
+        height: 2px;
+    }
+    
+    .payment-option {
         padding: 12px;
         margin-bottom: 12px;
-}
-
-.payment-info h6 {
-        font-size: 14px;
-}
-
-.payment-info p {
-        font-size: 12px;
+    }
+    
+    .payment-label {
+        padding: 8px;
+    }
+    
+    .payment-info h6 {
+        font-size: 13px;
+    }
+    
+    .payment-info p {
+        font-size: 11px;
     }
     
     .payment-icon {
         font-size: 1.5rem;
     }
     
+    .section-title {
+        font-size: 14px;
+    }
+    
+    .section-title i {
+        font-size: 14px;
+    }
+    
+    .form-title {
+        font-size: 14px;
+    }
+    
+    .form-label {
+        font-size: 13px;
+    }
+    
+    .form-control,
+    .form-select {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+    
+    .alert {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+    
+    .alert i {
+        font-size: 13px;
+    }
+    
     .order-summary-card {
         padding: 12px;
     }
     
+    .summary-title {
+        font-size: 14px;
+    }
+    
+    .order-item {
+        padding: 10px 0;
+        flex-wrap: wrap;
+    }
+    
     .item-title {
+        font-size: 12px;
+        margin-bottom: 3px;
+    }
+    
+    .item-instructor {
+        font-size: 10px;
+    }
+    
+    .item-price {
         font-size: 13px;
-}
-
-.item-price {
-        font-size: 13px;
-}
-
-.order-total {
+        margin-top: 5px;
+    }
+    
+    .order-total {
         font-size: 16px;
+        padding-top: 10px;
+    }
+    
+    .terms-section .form-check-label {
+        font-size: 12px;
     }
     
     #payButton {
-        font-size: 15px;
-        padding: 12px 16px;
+        font-size: 14px;
+        padding: 14px 16px;
+    }
+    
+    .btn-primary.btn-lg {
+        font-size: 14px;
+        padding: 14px 16px;
     }
 }
 </style>
