@@ -11,11 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('course_lessons', function (Blueprint $table) {
-            if (!Schema::hasColumn('course_lessons', 'file_path')) {
-                $table->string('file_path')->nullable();
-            }
-        });
+        //
     }
 
     /**
@@ -23,8 +19,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('course_lessons', function (Blueprint $table) {
-            $table->dropColumn('file_path');
-        });
+        //
     }
 };
