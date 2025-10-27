@@ -185,9 +185,9 @@ class CourseSeeder extends Seeder
                             'sort_order' => $i,
                         ],
                         [
-                            'title' => "Leçon {$i}: " . fake()->sentence(4),
-                            'description' => fake()->paragraph(),
-                            'type' => fake()->randomElement(['video', 'text', 'pdf']),
+                            'title' => "Leçon {$i}: " . \fake()->sentence(4),
+                            'description' => \fake()->paragraph(),
+                            'type' => \fake()->randomElement(['video', 'text', 'pdf']),
                             'duration' => rand(5, 45),
                             'is_preview' => $i === 1, // Première leçon en aperçu
                         ]
