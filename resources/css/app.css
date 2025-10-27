@@ -3,6 +3,8 @@
 @import 'responsive-overrides.css';
 @import 'admin-styles.css';
 @import 'cart-checkout-styles.css';
+@import 'profile-dashboard-styles.css';
+@import 'legal-pages-styles.css';
 
 @tailwind base;
 @tailwind components;

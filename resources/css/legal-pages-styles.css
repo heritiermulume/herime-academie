@@ -1,0 +1,260 @@
+/* ==========================================
+   LEGAL PAGES STYLES (Terms, Privacy, About, Contact)
+   ========================================== */
+
+/* Mobile padding for legal pages */
+@media (max-width: 767.98px) {
+    /* Container padding */
+    .legal-container,
+    .legal-page,
+    .about-page,
+    .contact-page {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    /* Page headers */
+    .legal-header,
+    .page-header {
+        padding: 1.5rem 0 !important;
+        margin-bottom: 2rem !important;
+        text-align: center;
+    }
+    
+    .legal-header h1,
+    .page-header h1 {
+        font-size: 1.75rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .legal-header p,
+    .page-header p {
+        font-size: 0.9375rem !important;
+    }
+    
+    /* Content sections */
+    .legal-content,
+    .page-content,
+    .about-content,
+    .contact-content {
+        padding: 0 !important;
+        margin-bottom: 2rem !important;
+    }
+    
+    /* Section spacing */
+    .legal-section,
+    .content-section {
+        margin-bottom: 2rem !important;
+        padding: 1.5rem !important;
+    }
+    
+    .legal-section h2,
+    .content-section h2 {
+        font-size: 1.25rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .legal-section h3,
+    .content-section h3 {
+        font-size: 1.125rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .legal-section p,
+    .content-section p {
+        font-size: 0.9375rem !important;
+        line-height: 1.6;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Lists */
+    .legal-section ul,
+    .legal-section ol,
+    .content-section ul,
+    .content-section ol {
+        margin-left: 1.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .legal-section li,
+    .content-section li {
+        font-size: 0.9375rem !important;
+        margin-bottom: 0.5rem !important;
+        line-height: 1.6;
+    }
+    
+    /* Cards */
+    .legal-card,
+    .content-card {
+        margin-left: 0.5rem !important;
+        margin-right: 0.5rem !important;
+        margin-bottom: 1.5rem !important;
+        padding: 1.5rem !important;
+    }
+    
+    /* Contact form */
+    .contact-form,
+    .form {
+        padding: 1rem !important;
+    }
+    
+    .form-group {
+        margin-bottom: 1.25rem !important;
+    }
+    
+    .form-control,
+    .form-select,
+    textarea {
+        font-size: 16px !important; /* Prevent iOS zoom */
+        padding: 0.875rem !important;
+        width: 100%;
+    }
+    
+    textarea {
+        min-height: 120px;
+    }
+    
+    .form-label {
+        font-size: 0.9375rem !important;
+        margin-bottom: 0.5rem !important;
+        font-weight: 600;
+    }
+    
+    /* Buttons */
+    .btn,
+    button,
+    input[type="submit"] {
+        min-height: 44px;
+        width: 100%;
+        padding: 0.875rem 1.5rem !important;
+        font-size: 1rem !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Contact info cards */
+    .contact-info-grid {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .contact-info-card {
+        width: 100%;
+        padding: 1.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .contact-info-icon {
+        font-size: 2rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    /* Info boxes */
+    .info-box,
+    .alert {
+        padding: 1rem !important;
+        margin-bottom: 1rem !important;
+        border-radius: 8px;
+    }
+    
+    /* Tables */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -0.5rem;
+        padding: 0 0.5rem;
+    }
+    
+    .table {
+        font-size: 0.875rem;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 575.98px) {
+    .legal-header h1,
+    .page-header h1 {
+        font-size: 1.5rem !important;
+    }
+    
+    .legal-header p,
+    .page-header p {
+        font-size: 0.875rem !important;
+    }
+    
+    .legal-section,
+    .content-section {
+        padding: 1rem !important;
+    }
+    
+    .legal-section h2,
+    .content-section h2 {
+        font-size: 1.125rem !important;
+    }
+    
+    .legal-section h3,
+    .content-section h3 {
+        font-size: 1rem !important;
+    }
+    
+    .legal-section p,
+    .content-section p {
+        font-size: 0.875rem !important;
+    }
+    
+    .legal-card,
+    .content-card,
+    .contact-info-card {
+        padding: 1rem !important;
+    }
+    
+    .contact-info-icon {
+        font-size: 1.75rem !important;
+    }
+}
+
+/* Prevent elements touching edges */
+@media (max-width: 767.98px) {
+    .legal-content,
+    .page-content,
+    .about-content,
+    .contact-content,
+    .legal-section,
+    .content-section {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+}
+
+/* Better spacing between sections */
+@media (max-width: 767.98px) {
+    .legal-section + .legal-section,
+    .content-section + .content-section {
+        margin-top: 2rem !important;
+    }
+}
+
+/* Images responsive */
+@media (max-width: 767.98px) {
+    .legal-section img,
+    .content-section img {
+        max-width: 100%;
+        height: auto;
+        margin: 1rem 0;
+    }
+}
+
+/* Print styles */
+@media print {
+    .btn,
+    button,
+    .navbar,
+    .footer {
+        display: none !important;
+    }
+    
+    .legal-content,
+    .page-content {
+        padding: 0 !important;
+    }
+}
+
