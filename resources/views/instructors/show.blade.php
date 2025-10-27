@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
         <div class="row align-items-center">
             <div class="col-lg-4 text-center mb-4 mb-lg-0" data-aos="fade-right">
                 <div class="instructor-avatar-large">
-                    <img src="{{ $instructor->avatar ? Storage::url($instructor->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($instructor->name) . '&background=003366&color=fff&size=200' }}" 
+                    <img src="{{ $instructor->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($instructor->name) . '&background=003366&color=fff&size=200' }}" 
                          alt="{{ $instructor->name }}" class="rounded-circle">
                 </div>
             </div>

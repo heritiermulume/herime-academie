@@ -138,7 +138,7 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div class="author-info">
                                                 <div class="d-flex align-items-center">
-                                                    <img src="{{ $post->author->avatar ? Storage::url($post->author->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($post->author->name) . '&background=003366&color=fff' }}" 
+                                                    <img src="{{ $post->author->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($post->author->name) . '&background=003366&color=fff' }}" 
                                                          alt="{{ $post->author->name }}" class="rounded-circle me-2" width="30" height="30">
                                                     <div>
                                                         <small class="text-muted">{{ $post->author->name }}</small>

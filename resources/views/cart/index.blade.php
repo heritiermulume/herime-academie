@@ -225,7 +225,7 @@
                             
                             <div class="mb-3">
                                 <div class="d-flex align-items-center mb-2">
-                                    <img src="{{ $course->instructor->avatar ? Storage::url($course->instructor->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
+                                    <img src="{{ $course->instructor->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
                                          alt="{{ $course->instructor->name }}" 
                                          class="rounded-circle me-2" 
                                          style="width: 24px; height: 24px; object-fit: cover;">
@@ -342,7 +342,7 @@
                             
                             <div class="mb-3">
                                 <div class="d-flex align-items-center mb-2">
-                                    <img src="{{ $course->instructor->avatar ? Storage::url($course->instructor->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
+                                    <img src="{{ $course->instructor->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
                                          alt="{{ $course->instructor->name }}" 
                                          class="rounded-circle me-2" 
                                          style="width: 24px; height: 24px; object-fit: cover;">

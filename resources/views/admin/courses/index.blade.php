@@ -230,7 +230,7 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <img src="{{ $course->instructor->avatar ? Storage::url($course->instructor->avatar) : asset('images/default-avatar.svg') }}" 
+                                            <img src="{{ $course->instructor->avatar ? $1->avatar : asset('images/default-avatar.svg') }}" 
                                                  alt="{{ $course->instructor->name }}" 
                                                  class="rounded-circle me-2" 
                                                  width="30" 

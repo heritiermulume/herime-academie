@@ -156,7 +156,7 @@
                                     <div class="mb-3">
                                         <h6 class="fw-bold">Formateur</h6>
                                         <div class="d-flex align-items-center">
-                                            <img src="{{ $course->instructor->avatar ? Storage::url($course->instructor->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
+                                            <img src="{{ $course->instructor->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
                                                  alt="{{ $course->instructor->name }}" class="rounded-circle me-2" width="30" height="30">
                                             <span>{{ $course->instructor->name }}</span>
                                         </div>

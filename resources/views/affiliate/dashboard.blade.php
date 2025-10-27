@@ -127,7 +127,7 @@
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <img src="{{ $order->user->avatar ? Storage::url($order->user->avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($order->user->name) . '&background=003366&color=fff' }}" 
+                                                <img src="{{ $order->user->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($order->user->name) . '&background=003366&color=fff' }}" 
                                                      alt="{{ $order->user->name }}" class="rounded-circle me-2" width="30" height="30">
                                                 <span>{{ $order->user->name }}</span>
                                             </div>

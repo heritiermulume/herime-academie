@@ -163,7 +163,7 @@
                                 <div class="card-body text-center">
                                     <div class="mb-3">
                                         @if(auth()->user()->avatar)
-                                            <img src="{{ Storage::url(auth()->user()->avatar) }}" 
+                                            <img src="{{ auth()->user()->avatar }}" 
                                                  alt="Photo de profil" class="rounded-circle" 
                                                  style="width: 150px; height: 150px; object-fit: cover;">
                                         @else

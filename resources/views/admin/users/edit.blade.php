@@ -33,7 +33,7 @@
                                 <label class="form-label">Photo de profil</label>
                                 <div class="d-flex align-items-center">
                                     <div class="me-3">
-                                        <img src="{{ $user->avatar ? Storage::url($user->avatar) : asset('images/default-avatar.svg') }}" 
+                                        <img src="{{ $user->avatar ? $1->avatar : asset('images/default-avatar.svg') }}" 
                                              alt="Avatar" class="img-fluid rounded-circle" 
                                              style="width: 80px; height: 80px; object-fit: cover;" id="avatar-preview">
                                     </div>
