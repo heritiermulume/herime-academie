@@ -4,7 +4,7 @@
 @section('description', 'Contactez l\'équipe Herime Académie pour toute question. Email, téléphone, WhatsApp ou formulaire de contact.')
 
 @section('content')
-<div class="legal-page">
+<div class="legal-page page-contact">
     <div class="legal-header">
         <div class="legal-wrapper">
             <h1 class="legal-title">Contactez-nous</h1>
@@ -19,8 +19,8 @@
                     <i class="fas fa-info-circle"></i>
                     Comment nous contacter ?
                 </h2>
-                <p>L'équipe de <strong>Herime Académie</strong> est à votre disposition pour répondre à toutes vos questions concernant nos formations, le processus d'inscription, le paiement ou toute autre demande.</p>
-                <p><strong>Herime Académie</strong> appartient à l'entreprise <strong>Herime</strong> (<a href="https://www.herime.com" target="_blank">www.herime.com</a>).</p>
+                <p class="text-center">L'équipe de <strong>Herime Académie</strong> est à votre disposition pour répondre à toutes vos questions concernant nos formations, le processus d'inscription, le paiement ou toute autre demande.</p>
+                <p class="text-center"><strong>Herime Académie</strong> appartient à l'entreprise <strong>Herime</strong> (<a href="https://www.herime.com" target="_blank">www.herime.com</a>).</p>
             </section>
 
             <section class="legal-section">
@@ -40,7 +40,7 @@
                         </a>
                     </div>
                 </div>
-                <p class="mt-3"><strong>Réponse sous 24h ouvrées</strong></p>
+                <p class="mt-3 text-center"><strong>Réponse sous 24h ouvrées</strong></p>
             </section>
 
             <section class="legal-section">
@@ -60,7 +60,7 @@
                         </a>
                     </div>
                 </div>
-                <p class="mt-3"><strong>Disponible du lundi au vendredi, de 9h à 18h</strong></p>
+                <p class="mt-3 text-center"><strong>Disponible du lundi au vendredi, de 9h à 18h</strong></p>
             </section>
 
             <section class="legal-section">
@@ -80,7 +80,7 @@
                         </a>
                     </div>
                 </div>
-                <p class="mt-3"><strong>Service client WhatsApp disponible 24/7</strong></p>
+                <p class="mt-3 text-center"><strong>Service client WhatsApp disponible 24/7</strong></p>
             </section>
 
             <section class="legal-section">
@@ -107,7 +107,7 @@
                     <i class="fas fa-comment-dots"></i>
                     Formulaire de Contact
                 </h2>
-                <p>Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais :</p>
+                <p class="text-center">Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais :</p>
                 
                 <form class="contact-form">
                     @csrf
@@ -174,16 +174,33 @@
 
 @push('styles')
 <style>
+/* Isolation de la navbar pour éviter les conflits sur la page Contact */
+.page-contact .navbar .d-flex.d-lg-none {
+    justify-content: space-between !important;
+}
+
+.page-contact .navbar .d-flex.d-lg-none > a:first-child {
+    flex-shrink: 0 !important;
+    margin-right: auto !important;
+}
+
+.page-contact .navbar .d-flex.d-lg-none > div:last-child {
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+}
+
 .legal-page {
     background-color: #f7f9fa;
     min-height: 100vh;
 }
 
 .legal-header {
-    background-color: #003366;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
     color: white;
-    padding: 60px 0;
+    padding: 80px 0 60px;
     margin-bottom: 50px;
+    text-align: center;
+    position: relative;
 }
 
 .legal-wrapper {
@@ -196,12 +213,14 @@
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 10px;
+    text-align: center;
 }
 
 .legal-subtitle {
     font-size: 1rem;
     opacity: 0.9;
     margin: 0;
+    text-align: center;
 }
 
 .legal-content {
@@ -238,25 +257,28 @@
 
 .contact-method {
     display: flex;
-    align-items: flex-start;
-    gap: 20px;
-    padding: 20px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px 20px;
     background: #f8f9fa;
     border-radius: 12px;
     border-left: 4px solid #003366;
     margin-bottom: 15px;
+    text-align: center;
 }
 
 .contact-icon {
     background: #003366;
     color: white;
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     flex-shrink: 0;
 }
 
@@ -266,6 +288,10 @@
 
 .contact-details {
     flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .contact-details h3 {
@@ -279,6 +305,10 @@
     color: #6c757d;
     margin-bottom: 12px;
     font-size: 1.1rem;
+}
+
+.contact-details .btn {
+    min-width: 200px;
 }
 
 .contact-form .form-label {
@@ -331,59 +361,216 @@
     color: #dc3545 !important;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .legal-title {
-        font-size: 2rem;
-    }
-    
-    .legal-content {
-        padding: 25px;
-    }
-    
-    .section-title {
-        font-size: 1.25rem;
-    }
-    
-    .contact-method {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .contact-icon {
-        margin: 0 auto;
-    }
+/* Boutons avec texte blanc */
+.btn-primary {
+    color: white !important;
 }
 
-@media (max-width: 480px) {
+.btn-success {
+    color: white !important;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    color: white !important;
+}
+
+.btn-outline-primary:disabled,
+.btn-outline-primary:disabled:hover {
+    background-color: transparent;
+    border-color: #ccc;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.btn-outline-primary:disabled:hover {
+    color: #999 !important;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
     .legal-header {
-        padding: 40px 0;
+        padding: 60px 0 50px;
     }
     
     .legal-title {
         font-size: 1.75rem;
     }
     
+    .legal-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    /* Ajouter padding pour la navigation mobile en bas */
     .legal-content {
-        padding: 20px;
+        padding-bottom: 60px;
+    }
+}
+
+@media (max-width: 768px) {
+    .legal-header {
+        padding: 50px 0 40px;
+    }
+    
+    .legal-title {
+        font-size: 1.5rem;
+    }
+    
+    .legal-subtitle {
+        font-size: 0.875rem;
+    }
+    
+    .legal-content {
+        padding: 25px 20px;
+        border-radius: 8px;
     }
     
     .section-title {
-        font-size: 1.1rem;
+        font-size: 1.125rem;
+        padding-bottom: 12px;
+        margin-bottom: 16px;
+    }
+    
+    .section-title i {
+        font-size: 1rem;
+    }
+    
+    .contact-method {
+        flex-direction: column;
+        text-align: center;
+        padding: 20px 16px;
+        gap: 16px;
+    }
+    
+    .contact-details {
+        align-items: center;
+    }
+    
+    .contact-details .btn {
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    .contact-icon {
+        margin: 0 auto;
+        width: 55px;
+        height: 55px;
+        font-size: 1.3rem;
+    }
+    
+    .contact-details {
+        text-align: center;
+    }
+    
+    .contact-details h3 {
+        font-size: 1rem;
+        margin-bottom: 8px;
+    }
+    
+    .contact-details p {
+        font-size: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Formulaire adapté mobile */
+    .contact-form .row {
+        margin: 0;
+    }
+    
+    .contact-form .row .col-md-6 {
+        padding: 0;
+        margin-bottom: 1rem;
+    }
+    
+    textarea.form-control {
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .legal-header {
+        padding: 40px 0 35px;
+    }
+    
+    .legal-title {
+        font-size: 1.375rem;
+    }
+    
+    .legal-subtitle {
+        font-size: 0.8125rem;
+    }
+    
+    .legal-content {
+        padding: 20px 15px;
+    }
+    
+    .legal-section {
+        margin-bottom: 30px;
+    }
+    
+    .section-title {
+        font-size: 1rem;
+        padding-bottom: 10px;
+        margin-bottom: 12px;
+    }
+    
+    .section-title i {
+        font-size: 0.9rem;
+    }
+    
+    .contact-method {
+        padding: 12px;
+        gap: 12px;
     }
     
     .contact-icon {
         width: 50px;
         height: 50px;
-        font-size: 1.3rem;
+        font-size: 1.2rem;
     }
     
     .contact-details h3 {
-        font-size: 1.1rem;
+        font-size: 0.9375rem;
+        margin-bottom: 6px;
+    }
+    
+    .contact-details p {
+        font-size: 0.9375rem;
+        margin-bottom: 10px;
     }
     
     .btn {
-        width: 100%;
+        padding: 0.625rem 1rem;
+        font-size: 0.8125rem;
+    }
+    
+    .contact-form .form-control,
+    .contact-form .form-select {
+        padding: 8px 12px;
+        font-size: 0.875rem;
+    }
+    
+    .contact-form .form-label {
+        font-size: 0.875rem;
+    }
+    
+    .schedule-info {
+        padding: 15px;
+    }
+    
+    .schedule-info p {
+        font-size: 0.875rem;
+        margin-bottom: 8px;
     }
 }
 </style>

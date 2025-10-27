@@ -796,6 +796,12 @@
                 width: 20px;
                 text-align: center;
             }
+
+            /* Make contact button more compact on mobile */
+            .btn-sm.btn-primary {
+                padding: 0.375rem 0.75rem;
+                font-size: 0.875rem;
+            }
         }
         
         /* Ensure no duplication */
@@ -891,6 +897,184 @@
             }
         }
 
+        /* Mobile Bottom Navigation */
+        .mobile-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, var(--primary-color) 0%, var(--primary-color) 100%);
+            border-top: 2px solid var(--secondary-color);
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+            height: 60px;
+        }
+
+        @media (max-width: 991.98px) {
+            .mobile-bottom-nav {
+                display: flex;
+            }
+            
+            /* Add padding to main content to prevent overlap with bottom nav */
+            main {
+                padding-bottom: 60px;
+            }
+
+            /* Add margin to footer on mobile to prevent overlap with bottom nav */
+            .footer {
+                margin-bottom: 60px;
+            }
+        }
+
+        .mobile-bottom-nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 0.25rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+        .mobile-bottom-nav-item:hover,
+        .mobile-bottom-nav-item.active {
+            color: var(--secondary-color);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .mobile-bottom-nav-item i {
+            font-size: 1.1rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .mobile-bottom-nav-item span {
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        /* More Modal Styles */
+        .more-modal .modal-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
+            color: white;
+            border-bottom: none;
+        }
+
+        .more-modal .modal-header .btn-close {
+            filter: brightness(0) invert(1);
+        }
+
+        .more-modal .list-group-item {
+            border: none;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .more-modal .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+        .more-modal .list-group-item:hover {
+            background-color: #f8f9fa;
+            padding-left: 2rem;
+        }
+
+        .more-modal .list-group-item a {
+            color: var(--text-dark);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .more-modal .list-group-item i {
+            width: 24px;
+            text-align: center;
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+        }
+
+        .more-modal .list-group-item button.btn-logout {
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: var(--text-dark);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            text-align: left;
+            transition: all 0.3s ease;
+        }
+
+        .more-modal .list-group-item button.btn-logout:hover {
+            padding-left: 0.5rem;
+        }
+
+        .more-modal .list-group-item button.btn-logout i {
+            margin-right: 0.75rem;
+            width: 24px;
+            text-align: center;
+            color: var(--primary-color);
+        }
+
+        /* Dropdown for categories on mobile bottom nav */
+        .mobile-bottom-nav .dropdown {
+            flex: 1;
+        }
+
+        .mobile-bottom-nav .dropdown > button {
+            border: none;
+            background: transparent;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .mobile-bottom-nav .dropdown > button:focus {
+            box-shadow: none;
+        }
+
+        .mobile-bottom-nav .dropdown-menu {
+            bottom: 100%;
+            top: auto;
+            margin-bottom: 0.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e9ecef;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .mobile-bottom-nav .dropdown-item {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mobile-bottom-nav .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .mobile-bottom-nav .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .mobile-bottom-nav .dropdown-item i {
+            margin-right: 0.5rem;
+        }
+
         /* Cart count synchronization */
         #cart-count-mobile {
             font-size: 0.7rem;
@@ -909,19 +1093,20 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
         <div class="container">
             <!-- Mobile Layout -->
-            <div class="d-flex d-lg-none w-100 align-items-center justify-content-between">
-                <!-- Left: Menu Button -->
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                    <i class="fas fa-bars fa-lg"></i>
-                </button>
+            <div class="d-flex d-lg-none w-100 align-items-center position-relative">
+                <!-- Left: Nous contacter -->
+                <a href="{{ route('contact') }}" class="btn btn-sm btn-link flex-shrink-0" style="z-index: 10; border: none; background: transparent; color: var(--primary-color); text-decoration: none;">
+                    <i class="fas fa-envelope fa-lg" style="color: var(--primary-color);"></i>
+                    <span class="d-none d-sm-inline ms-1">Contact</span>
+                </a>
                 
-                <!-- Center: Logo -->
-                <a class="navbar-brand mx-auto" href="{{ route('home') }}">
+                <!-- Center: Logo (absolute centered) -->
+                <a class="navbar-brand position-absolute start-50 translate-middle-x" href="{{ route('home') }}" style="z-index: 1;">
                     <img src="{{ asset('images/logo-herime-academie.png') }}" alt="Herime Academie" class="navbar-logo-mobile">
                 </a>
                 
                 <!-- Right: Notifications and Cart -->
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center ms-auto flex-shrink-0" style="z-index: 10;">
                     @auth
                         <!-- Notifications -->
                         <div class="dropdown me-2">
@@ -1060,8 +1245,8 @@
                 </div>
             </div>
             
-            <!-- Mobile Menu (Collapsed) - Only visible on mobile -->
-            <div class="collapse navbar-collapse d-lg-none" id="navbarNav" aria-expanded="false">
+            <!-- Mobile Menu (Collapsed) - Hidden on mobile as we use bottom nav now -->
+            <div class="collapse navbar-collapse d-lg-none" id="navbarNav" aria-expanded="false" style="display: none !important;">
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('home') }}">
@@ -1147,6 +1332,141 @@
     <main>
         @yield('content')
     </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-bottom-nav">
+        <a href="{{ route('home') }}" class="mobile-bottom-nav-item" data-page="home">
+            <i class="fas fa-home"></i>
+            <span>Accueil</span>
+        </a>
+        <a href="{{ route('courses.index') }}" class="mobile-bottom-nav-item" data-page="courses">
+            <i class="fas fa-book"></i>
+            <span>Cours</span>
+        </a>
+        <div class="dropdown">
+            <button class="mobile-bottom-nav-item" type="button" data-bs-toggle="dropdown">
+                <i class="fas fa-th-large"></i>
+                <span>Catégories</span>
+            </button>
+            <ul class="dropdown-menu">
+                @foreach(\App\Models\Category::active()->ordered()->limit(6)->get() as $category)
+                    <li><a class="dropdown-item" href="{{ route('courses.category', $category->slug) }}">{{ $category->name }}</a></li>
+                @endforeach
+            </ul>
+        </div>
+        <button class="mobile-bottom-nav-item" type="button" data-bs-toggle="modal" data-bs-target="#moreModal">
+            <i class="fas fa-ellipsis-h"></i>
+            <span>Plus</span>
+        </button>
+    </nav>
+
+    <!-- More Modal -->
+    <div class="modal fade more-modal" id="moreModal" tabindex="-1" aria-labelledby="moreModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="moreModalLabel">
+                        <i class="fas fa-ellipsis-h me-2"></i>Plus d'options
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="list-group list-group-flush">
+                        @auth
+                            <div class="list-group-item">
+                                <a href="{{ route('dashboard') }}">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    Tableau de bord
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('profile') }}">
+                                    <i class="fas fa-user"></i>
+                                    Profil
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('orders.index') }}">
+                                    <i class="fas fa-shopping-bag"></i>
+                                    Mes commandes
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('contact') }}">
+                                    <i class="fas fa-envelope"></i>
+                                    Contact
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('about') }}">
+                                    <i class="fas fa-info-circle"></i>
+                                    À propos
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('messages.index') }}">
+                                    <i class="fas fa-envelope"></i>
+                                    Messages
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('notifications.index') }}">
+                                    <i class="fas fa-bell"></i>
+                                    Notifications
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('instructors.index') }}">
+                                    <i class="fas fa-chalkboard-teacher"></i>
+                                    Formateurs
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <form method="POST" action="{{ route('logout') }}" class="w-100">
+                                    @csrf
+                                    <button type="submit" class="btn-logout">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                        <span>Déconnexion</span>
+                                    </button>
+                                </form>
+                            </div>
+                        @else
+                            <div class="list-group-item">
+                                <a href="{{ route('instructors.index') }}">
+                                    <i class="fas fa-chalkboard-teacher"></i>
+                                    Formateurs
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('contact') }}">
+                                    <i class="fas fa-envelope"></i>
+                                    Contact
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('about') }}">
+                                    <i class="fas fa-info-circle"></i>
+                                    À propos
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('login') }}">
+                                    <i class="fas fa-sign-in-alt"></i>
+                                    Connexion
+                                </a>
+                            </div>
+                            <div class="list-group-item">
+                                <a href="{{ route('register') }}">
+                                    <i class="fas fa-user-plus"></i>
+                                    S'inscrire
+                                </a>
+                            </div>
+                        @endauth
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <x-footer />
@@ -1263,11 +1583,34 @@
             }
         }
 
+        // Mobile bottom navigation active state
+        function setActiveBottomNav() {
+            const currentPath = window.location.pathname;
+            const navItems = document.querySelectorAll('.mobile-bottom-nav-item');
+            
+            navItems.forEach(item => {
+                const link = item.closest('a');
+                if (link) {
+                    const href = link.getAttribute('href');
+                    
+                    // Check if current path matches
+                    if (currentPath === href || currentPath === '/') {
+                        if (currentPath === '/' && href.includes('home')) {
+                            item.classList.add('active');
+                        } else if (href && href !== '/' && currentPath.startsWith(href)) {
+                            item.classList.add('active');
+                        }
+                    }
+                }
+            });
+        }
+
         // Load notifications on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadNotifications();
             loadCartCount();
             controlMobileMenu();
+            setActiveBottomNav();
             
             // Refresh notifications every 30 seconds
             setInterval(loadNotifications, 30000);
