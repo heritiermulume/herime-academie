@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Faker\Generator;
 
 class CourseSeeder extends Seeder
 {
@@ -12,6 +13,7 @@ class CourseSeeder extends Seeder
      */
     public function run(): void
     {
+        $faker = \Faker\Factory::create('fr_FR');
         $instructors = \App\Models\User::instructors()->get();
         $categories = \App\Models\Category::all();
 
@@ -185,9 +187,9 @@ class CourseSeeder extends Seeder
                             'sort_order' => $i,
                         ],
                         [
-                            'title' => "Leçon {$i}: " . \fake()->sentence(4),
-                            'description' => \fake()->paragraph(),
-                            'type' => \fake()->randomElement(['video', 'text', 'pdf']),
+                            'title' => "Leçon {$i}: " . $faker->sentence(4),
+                            'description' => $faker->paragraph(),
+                            'type' => $faker->randomElement(['video', 'text', 'pdf']),
                             'duration' => rand(5, 45),
                             'is_preview' => $i === 1, // Première leçon en aperçu
                         ]
