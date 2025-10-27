@@ -962,12 +962,12 @@
         /* More Modal Styles */
         .more-modal .modal-dialog-bottom {
             position: fixed;
-            bottom: 0;
+            bottom: 60px;
             left: 0;
             right: 0;
             margin: 0;
             max-width: 100%;
-            max-height: 85vh;
+            max-height: 50vh;
             transform: translateY(100%);
             transition: transform 0.3s ease-out;
         }
@@ -981,7 +981,7 @@
             border-radius: 20px 20px 0 0;
             border: none;
             margin: 0;
-            max-height: 85vh;
+            max-height: 50vh;
             overflow-y: auto;
         }
 
@@ -1001,7 +1001,7 @@
         }
 
         .more-modal .modal-body {
-            max-height: calc(85vh - 70px);
+            max-height: calc(50vh - 70px);
             overflow-y: auto;
         }
 
