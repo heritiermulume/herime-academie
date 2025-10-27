@@ -967,7 +967,7 @@
             right: 16px;
             margin: 0;
             max-width: calc(100% - 32px);
-            max-height: 70vh;
+            max-height: 75vh;
             transform: translateY(100%);
             transition: transform 0.3s ease-out;
         }
@@ -981,7 +981,7 @@
             border-radius: 16px 16px 0 0;
             border: none;
             margin: 0;
-            max-height: 70vh;
+            max-height: 75vh;
             overflow-y: auto;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
         }
@@ -1002,7 +1002,7 @@
         }
 
         .more-modal .modal-body {
-            max-height: calc(70vh - 60px);
+            max-height: calc(75vh - 60px);
             overflow-y: auto;
         }
 
