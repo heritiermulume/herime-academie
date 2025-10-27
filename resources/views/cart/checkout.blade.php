@@ -696,6 +696,7 @@ document.addEventListener('DOMContentLoaded', function() {
         max-width: 100%;
     }
     
+    /* Header responsive */
     .checkout-header {
         padding: 20px 0;
     }
@@ -722,9 +723,10 @@ document.addEventListener('DOMContentLoaded', function() {
         justify-content: center;
     }
     
+    /* Progress responsive */
     .checkout-progress {
         padding: 15px 0;
-        overflow-x: auto;
+        margin-bottom: 20px !important;
     }
     
     .progress-steps {
@@ -733,38 +735,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .step {
-        min-width: 80px;
+        min-width: 70px;
         flex: 0 0 auto;
     }
     
     .step-circle {
-        width: 40px;
-        height: 40px;
+        width: 35px;
+        height: 35px;
     }
     
     .step-number {
+        font-size: 13px;
+    }
+    
+    .step-check {
         font-size: 14px;
     }
     
     .step-label {
-        font-size: 11px;
-        margin-top: 6px;
+        font-size: 10px;
+        margin-top: 5px;
     }
     
     .step-line {
-        margin: -15px 5px;
+        margin: -15px 3px;
+        height: 2px;
     }
     
-    /* Colonnes en plein largeur sur mobile */
+    /* Colonnes responsive */
+    .row {
+        margin: 0;
+    }
+    
     .row > .col-lg-8,
     .row > .col-lg-4 {
-        width: 100%;
-        max-width: 100%;
-        flex: 0 0 100%;
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
     
+    /* Payment section responsive */
     .payment-section {
         padding: 15px 0;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
     }
     
     .section-title {
@@ -772,16 +790,30 @@ document.addEventListener('DOMContentLoaded', function() {
         margin-bottom: 20px;
     }
     
-    .payment-option {
-        margin-bottom: 15px;
-        padding: 15px;
-        width: 100%;
+    .payment-methods {
+        margin-bottom: 20px !important;
     }
     
-    .payment-option .row .col-md-6 {
-        flex: 0 0 100%;
-        max-width: 100%;
-        margin-bottom: 15px;
+    .payment-methods .row {
+        margin: 0;
+    }
+    
+    .payment-methods .row > .col-md-6 {
+        padding: 0;
+        margin-bottom: 12px;
+    }
+    
+    .payment-option {
+        margin-bottom: 0;
+        padding: 15px;
+        width: 100%;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+    }
+    
+    .payment-option:hover {
+        border-color: #003366;
+        background-color: #f8f9fa;
     }
     
     .payment-label {
@@ -808,60 +840,125 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 1.8rem;
     }
     
-    .form-title {
-        font-size: 16px;
+    /* Form responsive */
+    .payment-forms {
+        margin-bottom: 20px;
+    }
+    
+    .maxicash-form,
+    .whatsapp-form {
+        width: 100%;
     }
     
     .form-section {
-        padding: 15px 0;
+        padding: 0;
+    }
+    
+    .form-title {
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    
+    .form-section .row {
+        margin: 0;
+    }
+    
+    .form-section .row > .col-md-6 {
+        padding: 0;
+        margin-bottom: 15px;
     }
     
     .form-label {
         font-size: 14px;
         margin-bottom: 6px;
+        display: block;
     }
     
     .form-control,
     .form-select {
         font-size: 14px;
         padding: 10px 12px;
+        width: 100%;
+        max-width: 100%;
     }
     
+    .form-text {
+        font-size: 12px;
+    }
+    
+    .alert {
+        padding: 12px 15px;
+        font-size: 13px;
+        margin-bottom: 15px !important;
+    }
+    
+    .alert i {
+        font-size: 14px;
+    }
+    
+    /* Billing section responsive */
     .billing-section {
         margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
     }
     
+    .billing-section .row {
+        margin: 0;
+    }
+    
+    .billing-section .row > div {
+        padding: 0;
+        margin-bottom: 15px;
+    }
+    
+    /* Terms section responsive */
     .terms-section {
         margin-top: 20px;
+    }
+    
+    .terms-section .form-check {
+        padding-left: 0;
     }
     
     .terms-section .form-check-label {
         font-size: 13px;
         line-height: 1.4;
+        padding-left: 25px;
     }
     
+    /* Payment actions responsive */
     .payment-actions {
         margin-top: 20px;
     }
     
-    .btn-lg {
-        padding: 12px 20px;
-        font-size: 15px;
+    .payment-actions .row {
+        margin: 0;
     }
     
+    .btn-lg {
+        padding: 14px 20px;
+        font-size: 15px;
+        width: 100%;
+    }
+    
+    /* Order summary responsive */
     .order-summary-card {
-        position: relative;
+        position: relative !important;
         margin-top: 30px;
         padding: 16px;
         border-radius: 8px;
+        top: 0 !important;
     }
     
     .summary-title {
         font-size: 16px;
+        margin-bottom: 15px !important;
     }
     
     .order-items {
-        max-height: 300px;
+        max-height: 250px;
         overflow-y: auto;
     }
     
@@ -870,9 +967,15 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 14px;
     }
     
+    .item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
     .item-title {
         font-size: 13px;
         line-height: 1.3;
+        word-wrap: break-word;
     }
     
     .item-instructor {
@@ -881,20 +984,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .item-price {
         font-size: 14px;
+        flex-shrink: 0;
     }
     
     .order-total {
         font-size: 18px;
         padding-top: 12px;
+        border-top: 2px solid #003366;
     }
     
-    .alert {
-        padding: 12px 15px;
-        font-size: 14px;
-    }
-    
-    .alert i {
-        font-size: 14px;
+    .order-total .d-flex {
+        font-size: 18px;
     }
 }
 
