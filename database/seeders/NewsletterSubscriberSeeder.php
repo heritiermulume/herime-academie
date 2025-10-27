@@ -61,7 +61,10 @@ class NewsletterSubscriberSeeder extends Seeder
         ];
 
         foreach ($subscribers as $subscriber) {
-            NewsletterSubscriber::create($subscriber);
+            NewsletterSubscriber::updateOrCreate(
+                ['email' => $subscriber['email']],
+                $subscriber
+            );
         }
     }
 }

@@ -153,7 +153,10 @@ class BlogPostSeeder extends Seeder
         ];
 
         foreach ($posts as $post) {
-            BlogPost::create($post);
+            BlogPost::updateOrCreate(
+                ['slug' => $post['slug']],
+                $post
+            );
         }
     }
 }

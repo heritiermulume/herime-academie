@@ -40,7 +40,10 @@ class AnnouncementSeeder extends Seeder
         ];
 
         foreach ($announcements as $announcement) {
-            \App\Models\Announcement::create($announcement);
+            \App\Models\Announcement::updateOrCreate(
+                ['title' => $announcement['title']],
+                $announcement
+            );
         }
     }
 }

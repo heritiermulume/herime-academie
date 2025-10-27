@@ -48,7 +48,10 @@ class PartnerSeeder extends Seeder
         ];
 
         foreach ($partners as $partner) {
-            \App\Models\Partner::create($partner);
+            \App\Models\Partner::updateOrCreate(
+                ['website' => $partner['website']],
+                $partner
+            );
         }
     }
 }
