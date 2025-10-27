@@ -26,11 +26,7 @@ return new class extends Migration
             $table->integer('views')->default(0);
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
-        });
-        
-        // Ajouter la contrainte de clé étrangère dans une migration séparée
-        Schema::table('blog_posts', function (Blueprint $table) {
-            $table->foreign('category_id')->references('id')->on('blog_categories')->onDelete('cascade');
+            // La contrainte category_id sera ajoutée dans une migration séparée
         });
     }
 
