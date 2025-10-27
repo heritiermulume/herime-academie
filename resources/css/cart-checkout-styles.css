@@ -1,0 +1,305 @@
+/* ==========================================
+   CART & CHECKOUT RESPONSIVE STYLES
+   ========================================== */
+
+/* Cart & Checkout Mobile Padding */
+@media (max-width: 767.98px) {
+    .udemy-cart-container,
+    .checkout-page,
+    .cart-wrapper,
+    .checkout-wrapper {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    /* Cart header spacing */
+    .cart-header,
+    .checkout-header {
+        padding: 1rem 0 !important;
+        margin-bottom: 1rem !important;
+        gap: 1rem;
+    }
+    
+    /* Cart title - reduce size */
+    .cart-title,
+    .checkout-title {
+        font-size: 1.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .cart-subtitle,
+    .checkout-subtitle {
+        font-size: 0.875rem !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Cart actions buttons */
+    .continue-shopping-btn,
+    .checkout-actions {
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+    
+    /* Cart items - reduce spacing */
+    .cart-item-content {
+        padding: 1rem !important;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    /* Cart item image */
+    .cart-item-image-container {
+        width: 100%;
+        margin-right: 0 !important;
+    }
+    
+    .cart-item-image {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+    }
+    
+    /* Cart item details */
+    .cart-item-details h3 {
+        font-size: 1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .cart-item-meta {
+        margin-bottom: 0.75rem !important;
+        gap: 0.5rem !important;
+        flex-direction: column;
+    }
+    
+    /* Cart item actions */
+    .cart-item-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .cart-item-actions .btn {
+        width: 100%;
+        padding: 0.625rem 1rem !important;
+    }
+    
+    /* Cart summary sidebar */
+    .cart-summary,
+    .checkout-summary {
+        margin-top: 2rem;
+        padding: 1rem !important;
+    }
+    
+    /* Checkout progress steps */
+    .checkout-progress {
+        margin-bottom: 2rem !important;
+        padding: 0 !important;
+    }
+    
+    .progress-steps {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .step {
+        flex: 1 1 auto;
+        min-width: calc(33.33% - 1rem);
+    }
+    
+    .step-circle {
+        width: 40px;
+        height: 40px;
+        font-size: 0.875rem;
+    }
+    
+    .step-label {
+        font-size: 0.75rem;
+    }
+    
+    /* Payment methods */
+    .payment-section {
+        padding: 1rem 0 !important;
+    }
+    
+    .section-title {
+        font-size: 1.125rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .payment-methods .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    
+    .payment-methods .col-md-6 {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .payment-option {
+        margin-bottom: 1rem;
+    }
+    
+    /* Payment forms */
+    .payment-form-section {
+        padding: 1.5rem !important;
+    }
+    
+    .payment-form-section h5 {
+        font-size: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem !important;
+    }
+    
+    .form-control,
+    .form-select {
+        font-size: 16px !important; /* Prevent iOS zoom */
+        padding: 0.875rem !important;
+    }
+    
+    /* Billing info */
+    .billing-info {
+        padding: 1rem !important;
+        margin-top: 1.5rem !important;
+    }
+    
+    /* Action buttons */
+    .checkout-actions-btn {
+        width: 100%;
+        padding: 0.875rem 1.5rem !important;
+        font-size: 1rem !important;
+        margin-top: 1rem;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 575.98px) {
+    .cart-title,
+    .checkout-title {
+        font-size: 1.25rem !important;
+    }
+    
+    .cart-subtitle,
+    .checkout-subtitle {
+        font-size: 0.8125rem !important;
+    }
+    
+    .step-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+    
+    .step-label {
+        font-size: 0.6875rem;
+    }
+    
+    .payment-option {
+        padding: 1rem !important;
+    }
+    
+    .payment-icon {
+        font-size: 1.5rem !important;
+    }
+    
+    .payment-info h6 {
+        font-size: 0.9375rem !important;
+    }
+    
+    .payment-info p {
+        font-size: 0.8125rem !important;
+    }
+    
+    .checkout-summary {
+        padding: 1rem !important;
+    }
+}
+
+/* Prevent elements touching edges */
+@media (max-width: 767.98px) {
+    .udemy-cart-item,
+    .cart-item-content,
+    .payment-option,
+    .payment-form-section,
+    .billing-info {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+}
+
+/* Better spacing between elements */
+@media (max-width: 767.98px) {
+    .cart-items-section,
+    .cart-summary,
+    .payment-section,
+    .checkout-summary {
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .cart-item-content + .cart-item-content {
+        margin-top: 1rem;
+    }
+}
+
+/* Touch-friendly buttons */
+@media (max-width: 767.98px) {
+    .btn,
+    button,
+    .remove-btn,
+    .view-btn,
+    .continue-shopping-btn {
+        min-height: 44px;
+        padding: 0.625rem 1rem !important;
+    }
+}
+
+/* Cart summary card mobile */
+@media (max-width: 767.98px) {
+    .cart-summary,
+    .checkout-summary {
+        position: relative !important;
+        margin-top: 2rem !important;
+        margin-bottom: 2rem;
+    }
+    
+    .summary-header {
+        padding: 1rem !important;
+    }
+    
+    .summary-items {
+        padding: 1rem !important;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .summary-total {
+        padding: 1rem !important;
+    }
+    
+    .summary-actions {
+        padding: 1rem !important;
+    }
+}
+
+/* Ensure no horizontal scroll */
+@media (max-width: 767.98px) {
+    body,
+    html {
+        overflow-x: hidden;
+    }
+    
+    .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    
+    [class*="col-"] {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+}
+
