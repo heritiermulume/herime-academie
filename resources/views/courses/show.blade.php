@@ -1244,7 +1244,7 @@
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="card-body p-3">
                                     <div class="d-flex align-items-center mb-2">
-                                    <img src="{{ $review->user->avatar ? $instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($review->user->name) . '&background=003366&color=fff' }}" 
+                                    <img src="{{ $review->user->avatar ? $review->user->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($review->user->name) . '&background=003366&color=fff' }}" 
                                              alt="{{ $review->user->name }}" class="rounded-circle me-2" width="32" height="32">
                                         <div class="flex-grow-1">
                                             <h6 class="mb-0 fw-bold" style="font-size: 0.9rem;">{{ $review->user->name }}</h6>
