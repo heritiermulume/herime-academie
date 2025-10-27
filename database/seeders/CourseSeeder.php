@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Faker\Factory as Faker;
 
 class CourseSeeder extends Seeder
 {
@@ -13,7 +12,6 @@ class CourseSeeder extends Seeder
      */
     public function run(): void
     {
-        $faker = Faker::create('fr_FR');
         $instructors = \App\Models\User::instructors()->get();
         $categories = \App\Models\Category::all();
 
