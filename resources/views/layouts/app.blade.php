@@ -963,11 +963,11 @@
         .more-modal .modal-dialog-bottom {
             position: fixed;
             bottom: 70px;
-            left: 8px;
-            right: 8px;
+            left: 16px;
+            right: 16px;
             margin: 0;
-            max-width: calc(100% - 16px);
-            max-height: 35vh;
+            max-width: calc(100% - 32px);
+            max-height: 50vh;
             transform: translateY(100%);
             transition: transform 0.3s ease-out;
         }
@@ -981,7 +981,7 @@
             border-radius: 16px 16px 0 0;
             border: none;
             margin: 0;
-            max-height: 35vh;
+            max-height: 50vh;
             overflow-y: auto;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
         }
@@ -1002,7 +1002,7 @@
         }
 
         .more-modal .modal-body {
-            max-height: calc(35vh - 60px);
+            max-height: calc(50vh - 60px);
             overflow-y: auto;
         }
 
@@ -1030,7 +1030,7 @@
         .more-modal .list-group-item {
             border: none;
             border-bottom: 1px solid #f1f5f9;
-            padding: 0.625rem 1.25rem;
+            padding: 0.75rem 1.5rem;
             transition: all 0.3s ease;
         }
 
