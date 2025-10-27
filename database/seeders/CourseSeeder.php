@@ -167,6 +167,20 @@ class CourseSeeder extends Seeder
             ]
         ];
 
+        // URLs d'images de placeholder pour les cours
+        $courseImages = [
+            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1485856407642-7f9ba0268b51?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1517732306149-e8f829eb588a?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=800&h=600&fit=crop',
+            'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=800&h=600&fit=crop',
+        ];
+        
         foreach ($courses as $index => $courseData) {
             $slug = \Illuminate\Support\Str::slug($courseData['title']);
             $course = \App\Models\Course::updateOrCreate(
@@ -174,7 +188,7 @@ class CourseSeeder extends Seeder
                 array_merge($courseData, [
                     'instructor_id' => $instructors->random()->id,
                     'category_id' => $categories->random()->id,
-                    'thumbnail' => "courses/thumbnails/course-" . ($index + 1) . ".jpg",
+                    'thumbnail' => $courseImages[$index % count($courseImages)],
                 ])
             );
 
