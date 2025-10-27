@@ -13,15 +13,17 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Admin user
-        \App\Models\User::create([
-            'name' => 'Admin Herime',
-            'email' => 'admin@herimeacademie.com',
-            'password' => bcrypt('password'),
-            'role' => 'admin',
-            'is_verified' => true,
-            'bio' => 'Administrateur de la plateforme Herime Academie',
-            'phone' => '+243824449218',
-        ]);
+        \App\Models\User::updateOrCreate(
+            ['email' => 'admin@herimeacademie.com'],
+            [
+                'name' => 'Admin Herime',
+                'password' => bcrypt('password'),
+                'role' => 'admin',
+                'is_verified' => true,
+                'bio' => 'Administrateur de la plateforme Herime Academie',
+                'phone' => '+243824449218',
+            ]
+        );
 
         // Instructors
         $instructors = [
@@ -60,33 +62,42 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($instructors as $instructor) {
-            \App\Models\User::create($instructor);
+            \App\Models\User::updateOrCreate(
+                ['email' => $instructor['email']],
+                $instructor
+            );
         }
 
         // Students
         for ($i = 1; $i <= 20; $i++) {
-            \App\Models\User::create([
-                'name' => 'Étudiant ' . $i,
-                'email' => 'etudiant' . $i . '@example.com',
-                'password' => bcrypt('password'),
-                'role' => 'student',
-                'is_verified' => true,
-                'bio' => 'Étudiant passionné d\'apprentissage en ligne',
-                'phone' => '+243' . rand(800000000, 999999999),
-            ]);
+            $email = 'etudiant' . $i . '@example.com';
+            \App\Models\User::updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => 'Étudiant ' . $i,
+                    'password' => bcrypt('password'),
+                    'role' => 'student',
+                    'is_verified' => true,
+                    'bio' => 'Étudiant passionné d\'apprentissage en ligne',
+                    'phone' => '+243' . rand(800000000, 999999999),
+                ]
+            );
         }
 
         // Affiliates
         for ($i = 1; $i <= 5; $i++) {
-            \App\Models\User::create([
-                'name' => 'Affilié ' . $i,
-                'email' => 'affilie' . $i . '@example.com',
-                'password' => bcrypt('password'),
-                'role' => 'affiliate',
-                'is_verified' => true,
-                'bio' => 'Partenaire affilié de Herime Academie',
-                'phone' => '+243' . rand(800000000, 999999999),
-            ]);
+            $email = 'affilie' . $i . '@example.com';
+            \App\Models\User::updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => 'Affilié ' . $i,
+                    'password' => bcrypt('password'),
+                    'role' => 'affiliate',
+                    'is_verified' => true,
+                    'bio' => 'Partenaire affilié de Herime Academie',
+                    'phone' => '+243' . rand(800000000, 999999999),
+                ]
+            );
         }
     }
 }
