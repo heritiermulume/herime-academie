@@ -350,7 +350,7 @@ class LearningController extends Controller
         if (auth()->check()) {
             $userEnrollments = auth()->user()->enrollments()
                 ->whereIn('status', ['active', 'completed'])
-                
+                ->whereNull('deleted_at')
                 ->pluck('course_id')
                 ->toArray();
             $excludedCourseIds = array_merge($excludedCourseIds, $userEnrollments);
@@ -489,7 +489,7 @@ class LearningController extends Controller
                     ->enrollments()
                     ->where('course_id', $course->id)
                     ->whereIn('status', ['active', 'completed'])
-                    
+                    ->whereNull('deleted_at')
                     ->exists();
                 
                 if ($isPurchased) {

@@ -328,7 +328,7 @@ class CartController extends Controller
                     ->enrollments()
                     ->where('course_id', $course->id)
                     ->whereIn('status', ['active', 'completed'])
-                    
+                    ->whereNull('deleted_at')
                     ->exists();
                 
                 if ($isPurchased) {
@@ -390,7 +390,7 @@ class CartController extends Controller
                         ->enrollments()
                         ->where('course_id', $course->id)
                         ->whereIn('status', ['active', 'completed'])
-                        
+                        ->whereNull('deleted_at')
                         ->exists();
                     
                     if ($isPurchased) {
@@ -557,7 +557,7 @@ class CartController extends Controller
                     ->enrollments()
                     ->where('course_id', $course->id)
                     ->whereIn('status', ['active', 'completed'])
-                    
+                    ->whereNull('deleted_at')
                     ->exists();
                 
                 if ($isPurchased) {

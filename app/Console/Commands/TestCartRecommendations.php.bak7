@@ -80,7 +80,7 @@ class TestCartRecommendations extends Command
         if (auth()->check()) {
             $enrolledCourses = auth()->user()->enrollments()
                 ->whereIn('status', ['active', 'completed'])
-                
+                ->whereNull('deleted_at')
                 ->with('course')
                 ->get();
             
