@@ -22,11 +22,7 @@ return new class extends Migration
             $table->timestamps();
             
             $table->unique(['user_id', 'course_id']);
-        });
-        
-        // Ajouter la contrainte de clé étrangère après la création de la table orders
-        Schema::table('enrollments', function (Blueprint $table) {
-            $table->foreign('order_id')->references('id')->on('orders')->onDelete('set null');
+            // La contrainte order_id sera ajoutée dans une migration séparée
         });
     }
 
