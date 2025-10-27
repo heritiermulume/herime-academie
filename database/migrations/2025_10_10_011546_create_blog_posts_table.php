@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('blog_posts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('author_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('category_id')->constrained('blog_categories')->onDelete('cascade');
+            $table->unsignedBigInteger('category_id');
             $table->string('title');
             $table->string('slug')->unique();
             $table->text('excerpt')->nullable();
@@ -26,6 +26,11 @@ return new class extends Migration
             $table->integer('views')->default(0);
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
+        });
+        
+        // Ajouter la contrainte de clé étrangère dans une migration séparée
+        Schema::table('blog_posts', function (Blueprint $table) {
+            $table->foreign('category_id')->references('id')->on('blog_categories')->onDelete('cascade');
         });
     }
 
