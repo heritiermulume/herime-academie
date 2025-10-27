@@ -1130,7 +1130,7 @@
                     <div class="card-body p-4">
                         <div class="row align-items-center">
                             <div class="col-md-3 text-center mb-3 mb-md-0">
-                                <img src="{{ $course->instructor->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
+                                <img src="{{ $course->instructor->avatar ? $course->instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
                                      alt="{{ $course->instructor->name }}" class="rounded-circle" width="100" height="100">
                             </div>
                             <div class="col-md-9">
@@ -1244,7 +1244,7 @@
                             <div class="card border-0 shadow-sm h-100">
                                 <div class="card-body p-3">
                                     <div class="d-flex align-items-center mb-2">
-                                    <img src="{{ $review->user->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($review->user->name) . '&background=003366&color=fff' }}" 
+                                    <img src="{{ $review->user->avatar ? $instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($review->user->name) . '&background=003366&color=fff' }}" 
                                              alt="{{ $review->user->name }}" class="rounded-circle me-2" width="32" height="32">
                                         <div class="flex-grow-1">
                                             <h6 class="mb-0 fw-bold" style="font-size: 0.9rem;">{{ $review->user->name }}</h6>
@@ -1316,7 +1316,7 @@
                                 <div class="mb-2">
                                     <div class="d-flex align-items-center justify-content-between mb-1">
                                         <div class="d-flex align-items-center">
-                                            <img src="{{ $relatedCourse->instructor->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($relatedCourse->instructor->name) . '&background=003366&color=fff' }}" 
+                                            <img src="{{ $relatedCourse->instructor->avatar ? $instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($relatedCourse->instructor->name) . '&background=003366&color=fff' }}" 
                                                  alt="{{ $relatedCourse->instructor->name }}" 
                                                  class="rounded-circle me-1" 
                                                  style="width: 20px; height: 20px; object-fit: cover;">
@@ -2043,7 +2043,7 @@ function showAllReviews() {
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body p-3">
                                         <div class="d-flex align-items-center mb-2">
-                                            <img src="{{ $review->user->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($review->user->name) . '&background=003366&color=fff' }}" 
+                                            <img src="{{ $review->user->avatar ? $instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($review->user->name) . '&background=003366&color=fff' }}" 
                                                  alt="{{ $review->user->name }}" class="rounded-circle me-3" width="40" height="40">
                                             <div class="flex-grow-1">
                                                 <h6 class="mb-0 fw-bold">{{ $review->user->name }}</h6>

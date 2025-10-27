@@ -43,7 +43,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-8">
                             <div class="d-flex align-items-center">
-                                <img src="{{ $message->sender->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($message->sender->name) . '&background=003366&color=fff' }}" 
+                                <img src="{{ $message->sender->avatar ? $message->sender->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($message->sender->name) . '&background=003366&color=fff' }}" 
                                      alt="{{ $message->sender->name }}" class="rounded-circle me-3" width="50" height="50">
                                 <div>
                                     <h6 class="mb-0 fw-bold">{{ $message->sender->name }}</h6>

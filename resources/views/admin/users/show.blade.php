@@ -23,7 +23,7 @@
         <div class="col-md-4">
             <div class="card">
                 <div class="card-body text-center">
-                    <img src="{{ $user->avatar ? $1->avatar : asset('images/default-avatar.svg') }}" alt="Avatar" class="rounded-circle mb-3" width="120" height="120">
+                    <img src="{{ $user->avatar ? $instructor->avatar : asset('images/default-avatar.svg') }}" alt="Avatar" class="rounded-circle mb-3" width="120" height="120">
                     
                     <h5 class="card-title">{{ $user->name }}</h5>
                     <p class="text-muted">{{ $user->email }}</p>

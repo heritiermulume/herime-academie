@@ -203,7 +203,7 @@
                                         <li class="mb-2">
                                             <strong>Instructeur:</strong><br>
                                             <div class="d-flex align-items-center mt-1">
-                                                <img src="{{ $course->instructor->avatar ? $1->avatar : asset('images/default-avatar.svg') }}" 
+                                                <img src="{{ $course->instructor->avatar ? $instructor->avatar : asset('images/default-avatar.svg') }}" 
                                                      alt="{{ $course->instructor->name }}" 
                                                      class="rounded-circle me-2" 
                                                      width="30" 

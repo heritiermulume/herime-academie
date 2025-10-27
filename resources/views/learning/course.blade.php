@@ -787,7 +787,7 @@
                                         <div class="d-flex align-items-center">
                                             <div class="instructor-avatar me-3">
                                                 @if($course->instructor->avatar)
-                                                <img src="{{ $1->avatar }}" 
+                                                <img src="{{ $instructor->avatar }}" 
                                                      alt="{{ $course->instructor->name }}" 
                                                      class="rounded-circle" 
                                                      style="width: 60px; height: 60px; object-fit: cover;">
@@ -908,7 +908,7 @@
                                                     <div class="d-flex align-items-start">
                                                         <div class="reviewer-avatar me-3">
                                                             @if($review->user->avatar)
-                                                            <img src="{{ $1->avatar }}" 
+                                                            <img src="{{ $instructor->avatar }}" 
                                                                  alt="{{ $review->user->name }}" 
                                                                  class="rounded-circle" 
                                                                  style="width: 40px; height: 40px; object-fit: cover;">
@@ -1186,7 +1186,7 @@
                                         <div class="d-flex align-items-start">
                                             <div class="reviewer-avatar me-3">
                                                 @if($review->user->avatar)
-                                                <img src="{{ $1->avatar }}" 
+                                                <img src="{{ $instructor->avatar }}" 
                                                      alt="{{ $review->user->name }}" 
                                                      class="rounded-circle" 
                                                      style="width: 40px; height: 40px; object-fit: cover;">

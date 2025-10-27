@@ -31,7 +31,7 @@
                 <div class="d-flex flex-wrap align-items-center gap-4 mb-4">
                     <div class="author-info">
                         <div class="d-flex align-items-center">
-                            <img src="{{ $post->author->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($post->author->name) . '&background=003366&color=fff' }}" 
+                            <img src="{{ $post->author->avatar ? $post->author->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($post->author->name) . '&background=003366&color=fff' }}" 
                                  alt="{{ $post->author->name }}" class="rounded-circle me-3" width="50" height="50">
                             <div>
                                 <h6 class="mb-0 fw-bold">{{ $post->author->name }}</h6>
@@ -112,7 +112,7 @@
                     <div class="card-body p-4">
                         <div class="row align-items-center">
                             <div class="col-md-3 text-center mb-3 mb-md-0">
-                                <img src="{{ $post->author->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($post->author->name) . '&background=003366&color=fff' }}" 
+                                <img src="{{ $post->author->avatar ? $post->author->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($post->author->name) . '&background=003366&color=fff' }}" 
                                      alt="{{ $post->author->name }}" class="rounded-circle" width="100" height="100">
                             </div>
                             <div class="col-md-9">

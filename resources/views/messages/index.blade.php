@@ -55,7 +55,7 @@
                                                 @endif
                                             </div>
                                             <div class="col-md-2">
-                                                <img src="{{ $message->sender->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($message->sender->name) . '&background=003366&color=fff' }}" 
+                                                <img src="{{ $message->sender->avatar ? $message->sender->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($message->sender->name) . '&background=003366&color=fff' }}" 
                                                      alt="{{ $message->sender->name }}" class="rounded-circle" width="40" height="40">
                                             </div>
                                             <div class="col-md-6">
@@ -128,7 +128,7 @@
                                     <div class="list-group-item border-0 py-3">
                                         <div class="row align-items-center">
                                             <div class="col-md-2">
-                                                <img src="{{ $message->receiver->avatar ? $1->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($message->receiver->name) . '&background=003366&color=fff' }}" 
+                                                <img src="{{ $message->receiver->avatar ? $instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($message->receiver->name) . '&background=003366&color=fff' }}" 
                                                      alt="{{ $message->receiver->name }}" class="rounded-circle" width="40" height="40">
                                             </div>
                                             <div class="col-md-6">
