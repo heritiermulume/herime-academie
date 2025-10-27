@@ -16,10 +16,10 @@ class NotificationSeeder extends Seeder
      */
     public function run(): void
     {
-        // Récupérer les utilisateurs
-        $admin = User::where('email', 'admin@herimeacademie.com')->first();
-        $instructor = User::where('email', 'instructor@herimeacademie.com')->first();
-        $student = User::where('email', 'student@herimeacademie.com')->first();
+        // Récupérer les utilisateurs (premier admin, premier instructeur, premier étudiant)
+        $admin = User::where('role', 'admin')->first();
+        $instructor = User::where('role', 'instructor')->first();
+        $student = User::where('role', 'student')->first();
         
         if (!$admin || !$instructor || !$student) {
             $this->command->warn('Utilisateurs de test non trouvés. Veuillez d\'abord exécuter UserSeeder.');
