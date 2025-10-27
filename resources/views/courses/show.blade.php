@@ -919,7 +919,7 @@
                         <!-- Image preview cliquable -->
                         <div class="video-preview-thumbnail" data-bs-toggle="modal" data-bs-target="#coursePreviewModal" style="cursor: pointer;">
                             <div class="ratio ratio-16x9 position-relative">
-                                <img src="{{ $course->thumbnail ? Storage::url($course->thumbnail) : 'https://ui-avatars.com/api/?name=' . urlencode($course->title) . '&background=003366&color=fff&size=800' }}" 
+                                <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://ui-avatars.com/api/?name=' . urlencode($course->title) . '&background=003366&color=fff&size=800' }}" 
                                      alt="{{ $course->title }}" class="img-fluid rounded" style="height: 100%; width: 100%; object-fit: cover;">
                                 <div class="video-play-overlay position-absolute top-50 start-50 translate-middle" style="pointer-events: none;">
                                     <div class="play-button">
@@ -931,7 +931,7 @@
                         </div>
                     </div>
                     @elseif($course->thumbnail)
-                    <img src="{{ Storage::url($course->thumbnail) }}" alt="{{ $course->title }}" 
+                    <img src="{{ $course->thumbnail }}" alt="{{ $course->title }}" 
                          class="img-fluid rounded shadow" style="height: 400px; width: 100%; object-fit: cover;">
                     @else
                     <div class="bg-light rounded shadow d-flex align-items-center justify-content-center" 
@@ -1281,7 +1281,7 @@
                     <div class="col-lg-4 col-md-6 col-sm-6">
                         <div class="card border-0 shadow-sm h-100 course-card">
                                 <div class="position-relative">
-                                <img src="{{ $relatedCourse->thumbnail ? Storage::url($relatedCourse->thumbnail) : 'https://ui-avatars.com/api/?name=' . urlencode($relatedCourse->title) . '&background=003366&color=fff&size=400' }}" 
+                                <img src="{{ $relatedCourse->thumbnail ? $relatedCourse->thumbnail : 'https://ui-avatars.com/api/?name=' . urlencode($relatedCourse->title) . '&background=003366&color=fff&size=400' }}" 
                                      alt="{{ $relatedCourse->title }}" 
                                      class="card-img-top" 
                                      style="height: 120px; object-fit: cover;">
