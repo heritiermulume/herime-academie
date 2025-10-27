@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Faker\Generator;
 
 class CourseSeeder extends Seeder
 {
@@ -13,9 +12,31 @@ class CourseSeeder extends Seeder
      */
     public function run(): void
     {
-        $faker = \Faker\Factory::create('fr_FR');
         $instructors = \App\Models\User::instructors()->get();
         $categories = \App\Models\Category::all();
+        
+        // Phrases fixes pour les leçons au lieu de Faker
+        $lessonTitles = [
+            'Introduction au concept',
+            'Les bases fondamentales',
+            'Pratique interactive',
+            'Exercices avancés',
+            'Cas d\'étude réel',
+            'Optimisation et amélioration',
+            'Mise en pratique complète',
+            'Résumé et conclusion'
+        ];
+        
+        $lessonDescriptions = [
+            'Découvrez les concepts clés de cette leçon',
+            'Apprenez les techniques essentielles',
+            'Mettez en pratique vos connaissances',
+            'Approfondissez vos compétences',
+            'Analysez des exemples concrets',
+            'Explorez les techniques avancées',
+            'Réalisez un projet complet',
+            'Consolidez vos acquis'
+        ];
 
         $courses = [
             [
@@ -179,7 +200,13 @@ class CourseSeeder extends Seeder
 
                 // Créer quelques leçons pour chaque section
                 $lessonsCount = rand(3, 8);
+                $types = ['video', 'text', 'pdf'];
+                
                 for ($i = 1; $i <= $lessonsCount; $i++) {
+                    $titleIndex = ($i - 1) % count($lessonTitles);
+                    $descIndex = ($i - 1) % count($lessonDescriptions);
+                    $typeIndex = array_rand($types);
+                    
                     \App\Models\CourseLesson::updateOrCreate(
                         [
                             'course_id' => $course->id,
@@ -187,9 +214,9 @@ class CourseSeeder extends Seeder
                             'sort_order' => $i,
                         ],
                         [
-                            'title' => "Leçon {$i}: " . $faker->sentence(4),
-                            'description' => $faker->paragraph(),
-                            'type' => $faker->randomElement(['video', 'text', 'pdf']),
+                            'title' => "Leçon {$i}: " . $lessonTitles[$titleIndex],
+                            'description' => $lessonDescriptions[$descIndex],
+                            'type' => $types[$typeIndex],
                             'duration' => rand(5, 45),
                             'is_preview' => $i === 1, // Première leçon en aperçu
                         ]
