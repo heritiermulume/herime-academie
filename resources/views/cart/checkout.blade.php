@@ -697,6 +697,10 @@ document.addEventListener('DOMContentLoaded', function() {
         margin: 0 0 15px 0;
     }
     
+    .checkout-progress.mb-5 {
+        margin-bottom: 15px !important;
+    }
+    
     .progress-steps {
         padding: 0 10px;
     }
@@ -741,6 +745,11 @@ document.addEventListener('DOMContentLoaded', function() {
         background: white;
         border-radius: 8px;
         padding: 15px;
+    }
+    
+    /* Désactiver le margin-bottom Bootstrap sur mobile */
+    .checkout-progress.mb-5 {
+        margin-bottom: 15px !important;
     }
     
     .progress-steps {
@@ -1038,6 +1047,10 @@ document.addEventListener('DOMContentLoaded', function() {
     .checkout-progress {
         margin: 0 0 12px 0 !important;
         padding: 12px;
+    }
+    
+    .checkout-progress.mb-5 {
+        margin-bottom: 12px !important;
     }
     
     .progress-steps {
