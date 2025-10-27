@@ -694,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
         background: white;
         border-radius: 8px;
         padding: 15px;
-        margin: 0 0 20px 0;
+        margin: 0 0 15px 0;
     }
     
     .progress-steps {
@@ -737,10 +737,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /* Progress responsive */
     .checkout-progress {
-        margin: 0 0 20px 0 !important;
+        margin: 0 0 15px 0 !important;
         background: white;
         border-radius: 8px;
-        padding: 20px 15px;
+        padding: 15px;
     }
     
     .progress-steps {
@@ -1036,8 +1036,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .checkout-progress {
-        margin: 0 0 15px 0 !important;
-        padding: 15px 12px;
+        margin: 0 0 12px 0 !important;
+        padding: 12px;
     }
     
     .progress-steps {
