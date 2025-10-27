@@ -689,6 +689,11 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 13px;
     }
     
+    /* Réduire le padding du wrapper principal */
+    .checkout-page .checkout-wrapper {
+        padding: 16px 20px !important;
+    }
+    
     /* Progress section padding sur tablette */
     .checkout-progress {
         background: white;
@@ -708,8 +713,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @media (max-width: 768px) {
     .checkout-wrapper {
-        padding: 0 16px;
+        padding: 0 16px !important;
         max-width: 100%;
+    }
+    
+    /* Réduire le padding du wrapper principal */
+    .checkout-page .checkout-wrapper {
+        padding: 12px 16px !important;
     }
     
     /* Header responsive */
@@ -1024,7 +1034,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @media (max-width: 480px) {
     .checkout-wrapper {
-        padding: 0 12px;
+        padding: 0 12px !important;
+    }
+    
+    /* Réduire encore plus le padding du wrapper principal */
+    .checkout-page .checkout-wrapper {
+        padding: 8px 12px !important;
     }
     
     .checkout-header {
