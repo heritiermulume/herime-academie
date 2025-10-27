@@ -14,28 +14,28 @@ return new class extends Migration
         Schema::table('orders', function (Blueprint $table) {
             // Champs supplémentaires utilisés par les commandes WhatsApp
             if (!Schema::hasColumn('orders', 'total_amount')) {
-                $table->decimal('total_amount', 10, 2)->nullable()->after('total');
+                $table->decimal('total_amount', 10, 2)->nullable();
             }
             if (!Schema::hasColumn('orders', 'currency')) {
-                $table->string('currency', 3)->default('USD')->after('total_amount');
+                $table->string('currency', 3)->default('USD');
             }
             if (!Schema::hasColumn('orders', 'payment_reference')) {
-                $table->string('payment_reference')->nullable()->after('payment_id');
+                $table->string('payment_reference')->nullable();
             }
             if (!Schema::hasColumn('orders', 'billing_info')) {
-                $table->json('billing_info')->nullable()->after('billing_address');
+                $table->json('billing_info')->nullable();
             }
             if (!Schema::hasColumn('orders', 'order_items')) {
-                $table->json('order_items')->nullable()->after('billing_info');
+                $table->json('order_items')->nullable();
             }
             if (!Schema::hasColumn('orders', 'confirmed_at')) {
-                $table->timestamp('confirmed_at')->nullable()->after('notes');
+                $table->timestamp('confirmed_at')->nullable();
             }
             if (!Schema::hasColumn('orders', 'paid_at')) {
-                $table->timestamp('paid_at')->nullable()->after('confirmed_at');
+                $table->timestamp('paid_at')->nullable();
             }
             if (!Schema::hasColumn('orders', 'completed_at')) {
-                $table->timestamp('completed_at')->nullable()->after('paid_at');
+                $table->timestamp('completed_at')->nullable();
             }
         });
     }

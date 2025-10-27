@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (!Schema::hasColumn('orders', 'payment_method')) {
             Schema::table('orders', function (Blueprint $table) {
-                $table->string('payment_method')->nullable()->after('status');
+                $table->string('payment_method')->nullable();
             });
         }
     }

@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('courses', function (Blueprint $table) {
-            $table->boolean('use_external_payment')->default(false)->after('is_free');
-            $table->string('external_payment_url')->nullable()->after('use_external_payment');
-            $table->string('external_payment_text')->nullable()->after('external_payment_url');
+            $table->boolean('use_external_payment')->default(false);
+            $table->string('external_payment_url')->nullable();
+            $table->string('external_payment_text')->nullable();
         });
     }
 

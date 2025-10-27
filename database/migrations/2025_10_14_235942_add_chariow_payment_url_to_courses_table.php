@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('courses', function (Blueprint $table) {
-            $table->string('chariow_payment_url')->nullable()->after('meta_keywords');
+            $table->string('chariow_payment_url')->nullable();
         });
     }
 

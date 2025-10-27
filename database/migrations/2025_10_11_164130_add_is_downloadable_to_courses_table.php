@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('courses', function (Blueprint $table) {
-            $table->boolean('is_downloadable')->default(false)->after('is_featured');
+            $table->boolean('is_downloadable')->default(false);
         });
     }
 
