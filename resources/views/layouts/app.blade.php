@@ -960,14 +960,70 @@
         }
 
         /* More Modal Styles */
+        .more-modal .modal-dialog-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            margin: 0;
+            max-width: 100%;
+            max-height: 85vh;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-out;
+        }
+
+        .more-modal.show .modal-dialog-bottom,
+        .more-modal.showing .modal-dialog-bottom {
+            transform: translateY(0);
+        }
+
+        .more-modal .modal-content {
+            border-radius: 20px 20px 0 0;
+            border: none;
+            margin: 0;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
         .more-modal .modal-header {
             background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
             color: white;
             border-bottom: none;
+            border-radius: 20px 20px 0 0;
+            padding: 20px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .more-modal .modal-header .btn-close {
             filter: brightness(0) invert(1);
+        }
+
+        .more-modal .modal-body {
+            max-height: calc(85vh - 70px);
+            overflow-y: auto;
+        }
+
+        /* Backdrop pour le modal mobile */
+        .more-modal.modal-backdrop {
+            z-index: 1040;
+        }
+
+        .more-modal.show {
+            display: block;
+        }
+
+        /* Assurer que le modal est au-dessus de la navigation mobile */
+        .more-modal .modal-dialog-bottom {
+            z-index: 1055;
+        }
+
+        /* Cacher le modal sur desktop */
+        @media (min-width: 992px) {
+            .more-modal {
+                display: none !important;
+            }
         }
 
         .more-modal .list-group-item {
@@ -1362,7 +1418,7 @@
 
     <!-- More Modal -->
     <div class="modal fade more-modal" id="moreModal" tabindex="-1" aria-labelledby="moreModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-bottom">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="moreModalLabel">
@@ -1611,6 +1667,28 @@
             loadCartCount();
             controlMobileMenu();
             setActiveBottomNav();
+            
+            // Gestion du modal "Plus" qui s'anime depuis le bas
+            const moreModal = document.getElementById('moreModal');
+            if (moreModal) {
+                // Lorsque le modal s'affiche
+                moreModal.addEventListener('show.bs.modal', function() {
+                    const modalDialog = this.querySelector('.modal-dialog-bottom');
+                    if (modalDialog) {
+                        setTimeout(() => {
+                            modalDialog.style.transform = 'translateY(0)';
+                        }, 10);
+                    }
+                });
+                
+                // Lorsque le modal se cache
+                moreModal.addEventListener('hide.bs.modal', function() {
+                    const modalDialog = this.querySelector('.modal-dialog-bottom');
+                    if (modalDialog) {
+                        modalDialog.style.transform = 'translateY(100%)';
+                    }
+                });
+            }
             
             // Refresh notifications every 30 seconds
             setInterval(loadNotifications, 30000);
