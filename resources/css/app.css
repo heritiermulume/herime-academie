@@ -1,6 +1,7 @@
 /* Global Font Consistency */
 @import url('https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap');
 @import 'responsive-overrides.css';
+@import 'admin-styles.css';
 
 @tailwind base;
 @tailwind components;

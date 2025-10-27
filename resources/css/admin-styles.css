@@ -436,6 +436,78 @@
 }
 
 /* Print Styles */
+/* Mobile Container Padding - Prevent edge touching */
+@media (max-width: 767.98px) {
+    .container-fluid {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    
+    /* Admin cards spacing */
+    .admin-card {
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Stats cards spacing */
+    .admin-stats-card {
+        margin-left: 0.5rem !important;
+        margin-right: 0.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Tables wrapper padding */
+    .admin-table-wrapper {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+        margin-left: 0.5rem !important;
+        margin-right: 0.5rem !important;
+    }
+    
+    /* Admin section spacing */
+    .admin-section {
+        padding: 0.5rem !important;
+    }
+    
+    /* Page header spacing */
+    .admin-header {
+        padding: 0 0.5rem;
+        margin-bottom: 1rem !important;
+    }
+}
+
+/* Extra small screens - More padding */
+@media (max-width: 575.98px) {
+    .container-fluid {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+    
+    .admin-card,
+    .admin-stats-card {
+        margin-left: 0.25rem !important;
+        margin-right: 0.25rem !important;
+    }
+    
+    .admin-table-wrapper {
+        margin-left: 0.25rem !important;
+        margin-right: 0.25rem !important;
+    }
+}
+
+/* Cards spacing between on mobile */
+@media (max-width: 767.98px) {
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .card + .card {
+        margin-top: 0;
+    }
+}
+
+/* Print Styles */
 @media print {
     .admin-table-wrapper {
         overflow: visible;
