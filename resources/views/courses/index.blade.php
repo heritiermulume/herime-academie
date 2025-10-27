@@ -84,6 +84,9 @@
                     <div class="col-lg-4 col-md-6 col-sm-6 course-item">
                         <div class="course-card">
                             <div class="card">
+                                <!-- Invisible link to make entire card clickable -->
+                                <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
+                                
                                 <div class="position-relative">
                                     <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                          class="card-img-top" alt="{{ $course->title }}">

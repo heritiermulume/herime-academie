@@ -348,17 +348,72 @@ small { font-size: var(--font-size-sm); }
 }
 
 /* Course Cards - Optimized */
+.course-card .card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.course-card .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
 .course-card .card-title {
     font-size: 1rem;
-    line-height: 1.4;
+    line-height: 1.3;
     height: auto;
-    max-height: 2.8rem;
+    max-height: 2.4rem;
     overflow: hidden;
+    margin-bottom: 0.25rem;
 }
 
 .course-card .card-text {
     font-size: 0.875rem;
     color: #64748b;
+    margin-bottom: 0.5rem;
+    height: auto;
+    max-height: 2.625rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* Make entire card clickable with invisible link */
+.course-card .course-card-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 1;
+    text-decoration: none;
+}
+
+.course-card .card-body {
+    position: relative;
+    z-index: 2;
+}
+
+.course-card .card-body > * {
+    pointer-events: auto;
+}
+
+.course-card .card-body .btn {
+    pointer-events: auto;
+    z-index: 10;
+    position: relative;
+}
+
+/* Hide the existing link color to avoid confusion */
+.course-card .card-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.course-card .card-title a:hover {
+    color: #003366;
 }
 
 /* Force 2 columns on mobile for course cards - ULTRA AGGRESSIVE */
