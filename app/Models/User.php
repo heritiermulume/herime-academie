@@ -49,6 +49,24 @@ class User extends Authenticatable
     ];
 
     /**
+     * Get the avatar URL
+     */
+    public function getAvatarUrlAttribute()
+    {
+        if (!$this->avatar) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&background=003366&color=fff&size=300';
+        }
+        
+        // Si c'est déjà une URL complète, la retourner telle quelle
+        if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
+            return $this->avatar;
+        }
+        
+        // Sinon, utiliser Storage::url()
+        return \Storage::url($this->avatar);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
