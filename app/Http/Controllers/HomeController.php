@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\Category;
 use App\Models\Announcement;
+use App\Models\Banner;
 use App\Models\Partner;
 use App\Models\Testimonial;
 use App\Models\User;
@@ -16,6 +17,9 @@ class HomeController extends Controller
     use CourseStatistics;
     public function index()
     {
+        // Récupérer les bannières actives pour le carousel
+        $banners = Banner::active()->ordered()->get();
+
         // Récupérer les données pour la page d'accueil
         $featuredCourses = Course::published()
             ->featured()
@@ -107,6 +111,7 @@ class HomeController extends Controller
         $trendingCourses = $this->addCourseStatistics($trendingCourses);
 
         return view('home', compact(
+            'banners',
             'featuredCourses',
             'popularCourses',
             'latestCourses',

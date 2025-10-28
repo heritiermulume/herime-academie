@@ -6,6 +6,7 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\InstructorController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\MessageController;
@@ -240,6 +241,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/testimonials/{testimonial}/edit', [AdminController::class, 'editTestimonial'])->name('testimonials.edit');
         Route::put('/testimonials/{testimonial}', [AdminController::class, 'updateTestimonial'])->name('testimonials.update');
         Route::delete('/testimonials/{testimonial}', [AdminController::class, 'destroyTestimonial'])->name('testimonials.destroy');
+        
+        // Banners management
+        Route::resource('banners', BannerController::class);
+        Route::post('/banners/{banner}/toggle-active', [BannerController::class, 'toggleActive'])->name('banners.toggle-active');
         
         // Orders management
         Route::get('/orders', [App\Http\Controllers\OrderController::class, 'adminIndex'])->name('orders.index');

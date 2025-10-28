@@ -327,40 +327,117 @@
 
 </style>
 
-<!-- Hero Section -->
+<!-- Hero Section - Dynamic Banner Carousel -->
 <section class="hero-section-modern text-white">
-    <div class="hero-container">
-        <div class="hero-image-bg">
-            <img src="{{ asset('images/hero/hero-student.jpg') }}" 
-                 alt="Apprentissage en ligne" class="hero-bg-image">
-        </div>
-        
-        <div class="hero-content-overlay">
-            <div class="container">
-                <div class="row align-items-center min-vh-80">
-                    <div class="col-lg-7 col-xl-6">
-                        <div class="hero-text-content">
-                            <h1 class="display-4 fw-bold mb-4">
-                                Apprenez sans limites avec 
-                                <span class="text-warning">Herime Académie</span>
-                            </h1>
-                            <p class="lead mb-4">
-                                Découvrez des milliers de cours en ligne de qualité, créés par des experts. 
-                                Développez vos compétences et boostez votre carrière.
-                            </p>
-                            <div class="d-flex flex-column flex-sm-row gap-3">
-                                <button class="btn btn-warning btn-lg px-4" onclick="goToCourses()" id="start-learning-btn">
-                                    <i class="fas fa-play me-2"></i>Commencer à apprendre
-                                </button>
-                                <button class="btn btn-outline-light btn-lg px-4" onclick="scrollToCategories()" id="explore-btn">
-                                    <i class="fas fa-search me-2"></i>Explorer les catégories
-                                </button>
+    <div class="hero-carousel-container" id="heroCarousel">
+        @if($banners && $banners->count() > 0)
+            @foreach($banners as $index => $banner)
+            <div class="hero-slide {{ $index === 0 ? 'active' : '' }}" data-slide="{{ $index }}">
+                <div class="hero-container">
+                    <div class="hero-image-bg">
+                        <picture>
+                            @if($banner->mobile_image)
+                                <source media="(max-width: 768px)" srcset="{{ asset($banner->mobile_image) }}">
+                            @endif
+                            <img src="{{ asset($banner->image) }}" 
+                                 alt="{{ $banner->title }}" 
+                                 class="hero-bg-image"
+                                 loading="{{ $index === 0 ? 'eager' : 'lazy' }}">
+                        </picture>
+                    </div>
+                    
+                    <div class="hero-content-overlay">
+                        <div class="container">
+                            <div class="row align-items-center min-vh-80">
+                                <div class="col-lg-7 col-xl-6">
+                                    <div class="hero-text-content">
+                                        <h1 class="display-4 fw-bold mb-4">
+                                            {!! $banner->title !!}
+                                        </h1>
+                                        @if($banner->subtitle)
+                                        <p class="lead mb-4">
+                                            {{ $banner->subtitle }}
+                                        </p>
+                                        @endif
+                                        <div class="d-flex flex-column flex-sm-row gap-3">
+                                            @if($banner->button1_text && $banner->button1_url)
+                                            <a href="{{ $banner->button1_url }}" 
+                                               class="btn btn-{{ $banner->button1_style ?? 'warning' }} btn-lg px-4">
+                                                <i class="fas fa-play me-2"></i>{{ $banner->button1_text }}
+                                            </a>
+                                            @endif
+                                            @if($banner->button2_text && $banner->button2_url)
+                                            <a href="{{ $banner->button2_url }}" 
+                                               class="btn btn-{{ $banner->button2_style ?? 'outline-light' }} btn-lg px-4">
+                                                <i class="fas fa-search me-2"></i>{{ $banner->button2_text }}
+                                            </a>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+            @endforeach
+            
+            @if($banners->count() > 1)
+            <!-- Navigation Arrows -->
+            <button class="hero-nav hero-nav-prev" id="heroPrev" aria-label="Précédent">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="hero-nav hero-nav-next" id="heroNext" aria-label="Suivant">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <!-- Dots Navigation -->
+            <div class="hero-dots">
+                @foreach($banners as $index => $banner)
+                <button class="hero-dot {{ $index === 0 ? 'active' : '' }}" 
+                        data-slide="{{ $index }}"
+                        aria-label="Aller à la bannière {{ $index + 1 }}"></button>
+                @endforeach
+            </div>
+            @endif
+        @else
+            <!-- Fallback if no banners -->
+            <div class="hero-slide active">
+                <div class="hero-container">
+                    <div class="hero-image-bg">
+                        <img src="{{ asset('images/hero/hero-student.jpg') }}" 
+                             alt="Apprentissage en ligne" class="hero-bg-image">
+                    </div>
+                    
+                    <div class="hero-content-overlay">
+                        <div class="container">
+                            <div class="row align-items-center min-vh-80">
+                                <div class="col-lg-7 col-xl-6">
+                                    <div class="hero-text-content">
+                                        <h1 class="display-4 fw-bold mb-4">
+                                            Apprenez sans limites avec 
+                                            <span class="text-warning">Herime Académie</span>
+                                        </h1>
+                                        <p class="lead mb-4">
+                                            Découvrez des milliers de cours en ligne de qualité, créés par des experts. 
+                                            Développez vos compétences et boostez votre carrière.
+                                        </p>
+                                        <div class="d-flex flex-column flex-sm-row gap-3">
+                                            <a href="{{ route('courses.index') }}" class="btn btn-warning btn-lg px-4">
+                                                <i class="fas fa-play me-2"></i>Commencer à apprendre
+                                            </a>
+                                            <a href="#categories" class="btn btn-outline-light btn-lg px-4">
+                                                <i class="fas fa-search me-2"></i>Explorer les catégories
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 </section>
 
@@ -369,8 +446,8 @@
     <div class="container">
         <div class="row mb-4">
             <div class="col-lg-8 mx-auto text-center">
-                <h2 class="display-5 fw-bold mb-3">Explorez nos catégories</h2>
-                <p class="lead text-muted">
+                <h2 class="h3 fw-bold mb-2">Explorez nos catégories</h2>
+                <p class="text-muted" style="font-size: 0.95rem;">
                     Trouvez le cours parfait dans nos catégories spécialisées
                 </p>
             </div>
@@ -823,6 +900,130 @@ function scrollToCategories() {
     }
 }
 
+// Hero Banner Carousel
+document.addEventListener('DOMContentLoaded', function() {
+    const heroSlides = document.querySelectorAll('.hero-slide');
+    const heroDots = document.querySelectorAll('.hero-dot');
+    const prevBtn = document.getElementById('heroPrev');
+    const nextBtn = document.getElementById('heroNext');
+    
+    if (heroSlides.length <= 1) return; // No carousel needed for single slide
+    
+    let currentSlide = 0;
+    let autoSlideInterval;
+    const autoSlideDelay = 4500; // 4.5 seconds
+    
+    function showSlide(index) {
+        // Remove active class from all slides and dots
+        heroSlides.forEach(slide => slide.classList.remove('active'));
+        heroDots.forEach(dot => dot.classList.remove('active'));
+        
+        // Add active class to current slide and dot
+        heroSlides[index].classList.add('active');
+        heroDots[index].classList.add('active');
+        
+        currentSlide = index;
+    }
+    
+    function nextSlide() {
+        const next = (currentSlide + 1) % heroSlides.length;
+        showSlide(next);
+    }
+    
+    function prevSlide() {
+        const prev = currentSlide === 0 ? heroSlides.length - 1 : currentSlide - 1;
+        showSlide(prev);
+    }
+    
+    function startAutoSlide() {
+        stopAutoSlide();
+        autoSlideInterval = setInterval(nextSlide, autoSlideDelay);
+    }
+    
+    function stopAutoSlide() {
+        if (autoSlideInterval) {
+            clearInterval(autoSlideInterval);
+        }
+    }
+    
+    // Navigation buttons
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            stopAutoSlide();
+            prevSlide();
+            startAutoSlide();
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            stopAutoSlide();
+            nextSlide();
+            startAutoSlide();
+        });
+    }
+    
+    // Dot navigation
+    heroDots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+            stopAutoSlide();
+            showSlide(index);
+            startAutoSlide();
+        });
+    });
+    
+    // Pause on hover
+    const heroCarousel = document.getElementById('heroCarousel');
+    if (heroCarousel) {
+        heroCarousel.addEventListener('mouseenter', stopAutoSlide);
+        heroCarousel.addEventListener('mouseleave', startAutoSlide);
+    }
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+            stopAutoSlide();
+            prevSlide();
+            startAutoSlide();
+        } else if (e.key === 'ArrowRight') {
+            stopAutoSlide();
+            nextSlide();
+            startAutoSlide();
+        }
+    });
+    
+    // Touch/swipe support
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    if (heroCarousel) {
+        heroCarousel.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+        
+        heroCarousel.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+    }
+    
+    function handleSwipe() {
+        if (touchEndX < touchStartX - 50) { // Swipe left
+            stopAutoSlide();
+            nextSlide();
+            startAutoSlide();
+        }
+        if (touchEndX > touchStartX + 50) { // Swipe right
+            stopAutoSlide();
+            prevSlide();
+            startAutoSlide();
+        }
+    }
+    
+    // Start auto-sliding
+    startAutoSlide();
+});
+
 // La fonction showNotification est maintenant définie globalement dans app.blade.php
 
 // Test des boutons au chargement de la page
@@ -956,18 +1157,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @push('styles')
 <style>
-/* Modern Hero Section with Overlay Text */
+/* Modern Hero Section with Carousel */
 .hero-section-modern {
     position: relative;
     min-height: 100vh;
     overflow: hidden;
 }
 
-.hero-container {
+.hero-carousel-container {
     position: relative;
     width: 100%;
     height: 100vh;
     min-height: 600px;
+}
+
+.hero-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.8s ease-in-out, visibility 0.8s ease-in-out;
+}
+
+.hero-slide.active {
+    opacity: 1;
+    visibility: visible;
+    z-index: 1;
+}
+
+.hero-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
 }
 
 /* Background Image */
@@ -1025,7 +1249,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .hero-text-content p {
     text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
-    font-size: 1.25rem; /* text-xl */
+    font-size: 1.25rem;
     line-height: 1.6;
 }
 
@@ -1037,6 +1261,74 @@ document.addEventListener('DOMContentLoaded', function() {
 .hero-text-content .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Navigation Arrows */
+.hero-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.hero-nav:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.hero-nav-prev {
+    left: 20px;
+}
+
+.hero-nav-next {
+    right: 20px;
+}
+
+/* Dots Navigation */
+.hero-dots {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 12px;
+}
+
+.hero-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.hero-dot:hover {
+    background: rgba(255, 255, 255, 0.7);
+    transform: scale(1.2);
+}
+
+.hero-dot.active {
+    background: white;
+    width: 40px;
+    border-radius: 6px;
 }
 
 /* Mobile Responsive */
@@ -1086,141 +1378,203 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @media (max-width: 767.98px) {
     .hero-section-modern {
-        min-height: 100vh;
         position: relative;
+        min-height: auto;
+        height: auto;
+    }
+    
+    .hero-carousel-container {
+        position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: 56.25%; /* 16:9 ratio pour le conteneur */
+        min-height: 0;
+        overflow: hidden;
+    }
+    
+    .hero-slide {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+    }
+    
+    .hero-slide.active {
+        z-index: 1;
     }
     
     .hero-container {
-        height: 100vh;
-        min-height: 100vh;
+        /* Format 16:9 pour mobile (Full HD) */
+        position: relative;
+        width: 100%;
+        height: 100%;
+        padding-bottom: 0;
+        min-height: 0;
+    }
+    
+    .hero-image-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .hero-bg-image {
+        object-fit: cover;
+        object-position: center center;
+        width: 100%;
+        height: 100%;
     }
     
     .hero-content-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         background: linear-gradient(
-            180deg,
-            rgba(0, 51, 102, 0.3) 0%,
-            rgba(0, 51, 102, 0.2) 20%,
-            rgba(0, 51, 102, 0.1) 40%,
-            rgba(0, 51, 102, 0.05) 60%,
-            rgba(0, 51, 102, 0.02) 80%,
+            90deg,
+            rgba(0, 51, 102, 0.85) 0%,
+            rgba(0, 51, 102, 0.75) 30%,
+            rgba(0, 51, 102, 0.6) 50%,
+            rgba(0, 51, 102, 0.4) 70%,
+            rgba(0, 51, 102, 0.2) 85%,
             transparent 100%
         );
     }
     
-    .hero-bg-image {
-        object-position: center center;
-    }
-    
     .min-vh-80 {
-        min-height: 100vh;
+        min-height: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
+        padding: 2rem 1rem 1rem 1rem;
     }
     
     .hero-text-content {
-        padding: 2rem 1rem;
-        text-align: center;
-        background: rgba(0, 51, 102, 0.7);
-        border-radius: 15px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        max-width: 90%;
-        margin: 0 auto;
+        padding: 0;
+        text-align: left;
+        background: transparent;
+        border-radius: 0;
+        backdrop-filter: none;
+        box-shadow: none;
+        max-width: 100%;
+        margin: 0;
     }
     
     .hero-text-content h1 {
-        font-size: 2.25rem; /* text-4xl */
-        text-align: center;
-        margin-bottom: 1rem;
-        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+        font-size: 1.4rem;
+        text-align: left;
+        margin-bottom: 0.4rem;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9);
+        line-height: 1.25;
+        font-weight: 700;
     }
     
     .hero-text-content p {
-        font-size: 1.125rem; /* text-lg */
-        text-align: center;
-        margin-bottom: 1.5rem;
-        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
+        font-size: 0.9rem;
+        text-align: left;
+        margin-bottom: 0.75rem;
+        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.9);
+        line-height: 1.4;
     }
     
     .hero-text-content .d-flex {
-        justify-content: center;
+        justify-content: flex-start;
+        gap: 0.5rem !important;
+        flex-wrap: wrap;
     }
     
-    /* Gradient fade to next section - Enhanced */
-    .hero-section-modern::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 150px;
-        background: linear-gradient(
-            180deg,
-            transparent 0%,
-            rgba(248, 249, 250, 0.05) 10%,
-            rgba(248, 249, 250, 0.15) 25%,
-            rgba(248, 249, 250, 0.3) 40%,
-            rgba(248, 249, 250, 0.5) 55%,
-            rgba(248, 249, 250, 0.7) 70%,
-            rgba(248, 249, 250, 0.85) 85%,
-            rgba(248, 249, 250, 0.95) 95%,
-            rgba(248, 249, 250, 1) 100%
-        );
-        z-index: 4;
+    .hero-text-content .btn {
+        font-size: 0.8rem;
+        padding: 0.5rem 0.9rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        white-space: nowrap;
+        flex: 0 0 auto;
+        max-width: fit-content;
     }
     
-    /* Additional smooth transition */
+    .hero-text-content .btn i {
+        font-size: 0.75rem;
+        margin-right: 0.25rem;
+    }
+    
+    /* Navigation arrows on mobile */
+    .hero-nav {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .hero-nav-prev {
+        left: 10px;
+    }
+    
+    .hero-nav-next {
+        right: 10px;
+    }
+    
+    /* Dots navigation on mobile */
+    .hero-dots {
+        bottom: 15px;
+        gap: 8px;
+    }
+    
+    .hero-dot {
+        width: 8px;
+        height: 8px;
+    }
+    
+    .hero-dot.active {
+        width: 24px;
+    }
+    
+    /* Pas de dégradé en bas sur mobile */
+    .hero-section-modern::after,
     .hero-section-modern::before {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 0;
-        right: 0;
-        height: 200px;
-        background: linear-gradient(
-            180deg,
-            rgba(248, 249, 250, 0.02) 0%,
-            rgba(248, 249, 250, 0.08) 20%,
-            rgba(248, 249, 250, 0.2) 40%,
-            rgba(248, 249, 250, 0.4) 60%,
-            rgba(248, 249, 250, 0.6) 80%,
-            rgba(248, 249, 250, 0.8) 90%,
-            rgba(248, 249, 250, 0.95) 95%,
-            rgba(248, 249, 250, 1) 100%
-        );
-        z-index: 3;
+        display: none;
     }
 }
 
 @media (max-width: 575.98px) {
-    .hero-container {
-        height: 100vh;
-        min-height: 100vh;
+    .hero-carousel-container {
+        padding-bottom: 56.25%; /* Maintenir le format 16:9 */
     }
     
     .min-vh-80 {
-        min-height: 100vh;
+        min-height: 100%;
+        height: 100%;
+        padding: 1.5rem 0.75rem 1rem 0.75rem;
     }
     
     .hero-text-content {
-        padding: 1.5rem 1rem;
-        max-width: 95%;
+        padding: 0;
+        max-width: 100%;
     }
     
     .hero-text-content h1 {
-        font-size: 1.875rem; /* text-3xl */
-        margin-bottom: 0.75rem;
+        font-size: 1.2rem;
+        margin-bottom: 0.35rem;
+        line-height: 1.2;
     }
     
     .hero-text-content p {
-        font-size: 1rem; /* text-base */
-        margin-bottom: 1rem;
+        font-size: 0.8rem;
+        margin-bottom: 0.6rem;
+        line-height: 1.35;
     }
     
     .hero-text-content .btn {
-        font-size: 0.875rem; /* text-sm */
-        padding: 0.75rem 1.5rem;
+        font-size: 0.75rem;
+        padding: 0.45rem 0.8rem;
+    }
+    
+    .hero-text-content .btn i {
+        font-size: 0.7rem;
     }
 }
 
@@ -1386,6 +1740,46 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .testimonial-text p {
         font-size: 1rem; /* text-base */
+    }
+    
+    /* Titres de sections plus petits sur mobile */
+    section h2.display-5,
+    section h2.h3 {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    section .lead,
+    section p.lead {
+        font-size: 0.875rem !important;
+    }
+    
+    .categories-section h2 {
+        font-size: 1.15rem !important;
+    }
+    
+    .categories-section p {
+        font-size: 0.85rem !important;
+    }
+    
+    /* Section catégories visible en bas de la bannière */
+    .categories-section {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
+    
+    .categories-section .row.mb-4 {
+        margin-bottom: 1rem !important;
+    }
+    
+    .categories-section h2 {
+        font-size: 1.1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .categories-section p {
+        font-size: 0.8rem !important;
+        margin-bottom: 0.5rem !important;
     }
 }
 
