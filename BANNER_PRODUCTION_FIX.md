@@ -3,7 +3,16 @@
 ## Problème
 Les images des bannières ne s'enregistrent pas lors de la création ou modification en production.
 
-## Causes possibles
+## Erreurs courantes
+
+### 1. PostTooLargeException
+**Erreur** : `Illuminate\Http\Exceptions\PostTooLargeException - Les données POST sont trop volumineuses`
+
+**Cause** : La taille des données envoyées (images + formulaire) dépasse les limites PHP configurées.
+
+**Solution** : Augmenter les valeurs dans `php.ini` ou `.user.ini` (selon l'hébergeur)
+
+### 2. Autres causes possibles
 1. Le lien symbolique `public/storage` n'existe pas ou est cassé
 2. Les permissions sur le dossier `storage/app/public` ne sont pas correctes
 3. Le dossier `storage/app/public/banners` n'existe pas
@@ -103,13 +112,60 @@ chown -R www-data:www-data bootstrap/cache
 
 ## En cas de problème persistant
 
-### Vérifier l'upload max size
-Éditez `php.ini` et vérifiez :
-```ini
-upload_max_filesize = 10M
-post_max_size = 12M
-memory_limit = 256M
+### Configurer les limites PHP (IMPORTANT)
+
+#### Pour O2Switch et hébergements mutualisés
+
+1. **Créer ou modifier le fichier `.user.ini` à la racine du site** :
+```bash
+nano .user.ini
 ```
+
+2. **Ajouter ces configurations** :
+```ini
+upload_max_filesize = 20M
+post_max_size = 30M
+memory_limit = 512M
+max_execution_time = 300
+max_input_time = 300
+```
+
+3. **Important** : Le fichier `.user.ini` peut prendre 5 minutes pour être pris en compte
+
+#### Pour serveurs dédiés/VPS (php.ini)
+
+Éditez le fichier `php.ini` :
+```ini
+upload_max_filesize = 20M
+post_max_size = 30M
+memory_limit = 512M
+max_execution_time = 300
+```
+
+Puis redémarrez le serveur web :
+```bash
+# Apache
+sudo service apache2 restart
+
+# Nginx avec PHP-FPM
+sudo service php8.2-fpm restart
+sudo service nginx restart
+```
+
+#### Vérifier la configuration actuelle
+
+```bash
+php -r "echo 'upload_max_filesize: ' . ini_get('upload_max_filesize') . PHP_EOL;"
+php -r "echo 'post_max_size: ' . ini_get('post_max_size') . PHP_EOL;"
+php -r "echo 'memory_limit: ' . ini_get('memory_limit') . PHP_EOL;"
+```
+
+#### Pourquoi ces valeurs ?
+
+- `upload_max_filesize = 20M` : Taille max par fichier (image desktop ou mobile)
+- `post_max_size = 30M` : Taille totale du formulaire (2 images + données)
+- `memory_limit = 512M` : Mémoire pour traiter les images
+- **post_max_size doit TOUJOURS être > upload_max_filesize**
 
 ### Vérifier les droits du serveur web
 ```bash

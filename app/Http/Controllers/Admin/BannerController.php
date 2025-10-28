@@ -34,8 +34,8 @@ class BannerController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'subtitle' => 'nullable|string',
-            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
-            'mobile_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:20480',
+            'mobile_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:20480',
             'button1_text' => 'nullable|string|max:100',
             'button1_url' => 'nullable|string|max:500',
             'button1_style' => 'nullable|string|max:50',
@@ -45,6 +45,9 @@ class BannerController extends Controller
             'button2_style' => 'nullable|string|max:50',
             'button2_target' => 'nullable|string|in:_self,_blank',
             'sort_order' => 'nullable|integer',
+        ], [
+            'image.max' => 'L\'image ne doit pas dépasser 20 Mo.',
+            'mobile_image.max' => 'L\'image mobile ne doit pas dépasser 20 Mo.',
         ]);
 
         try {
@@ -125,8 +128,8 @@ class BannerController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'subtitle' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
-            'mobile_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:20480',
+            'mobile_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:20480',
             'button1_text' => 'nullable|string|max:100',
             'button1_url' => 'nullable|string|max:500',
             'button1_style' => 'nullable|string|max:50',
@@ -136,6 +139,9 @@ class BannerController extends Controller
             'button2_style' => 'nullable|string|max:50',
             'button2_target' => 'nullable|string|in:_self,_blank',
             'sort_order' => 'nullable|integer',
+        ], [
+            'image.max' => 'L\'image ne doit pas dépasser 20 Mo.',
+            'mobile_image.max' => 'L\'image mobile ne doit pas dépasser 20 Mo.',
         ]);
 
         // Upload nouvelle image principale si fournie - Stockage dans le système de fichiers
