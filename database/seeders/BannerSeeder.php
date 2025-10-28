@@ -13,11 +13,23 @@ class BannerSeeder extends Seeder
      */
     public function run(): void
     {
+        // Convertir les images en base64 si elles existent dans public/images/hero
+        $getImageBase64 = function($imagePath) {
+            $fullPath = public_path($imagePath);
+            if (file_exists($fullPath)) {
+                $imageData = file_get_contents($fullPath);
+                $mimeType = mime_content_type($fullPath);
+                return 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
+            }
+            // Si l'image n'existe pas, télécharger depuis Unsplash
+            return null;
+        };
+
         $banners = [
             [
                 'title' => 'Apprenez sans limites avec Herime Académie',
                 'subtitle' => 'Découvrez des milliers de cours en ligne de qualité, créés par des experts.',
-                'image' => 'images/hero/banner-1.jpg',
+                'image' => $getImageBase64('images/hero/banner-1.jpg'),
                 'mobile_image' => null,
                 'button1_text' => 'Commencer',
                 'button1_url' => '/courses',
@@ -31,7 +43,7 @@ class BannerSeeder extends Seeder
             [
                 'title' => 'Développez vos compétences professionnelles',
                 'subtitle' => 'Formations professionnelles certifiantes à votre rythme.',
-                'image' => 'images/hero/banner-2.jpg',
+                'image' => $getImageBase64('images/hero/banner-2.jpg'),
                 'mobile_image' => null,
                 'button1_text' => 'Voir les cours',
                 'button1_url' => '/courses',
@@ -45,7 +57,7 @@ class BannerSeeder extends Seeder
             [
                 'title' => 'Formez-vous avec les meilleurs',
                 'subtitle' => 'Des cours pratiques et concrets pour votre réussite.',
-                'image' => 'images/hero/banner-3.jpg',
+                'image' => $getImageBase64('images/hero/banner-3.jpg'),
                 'mobile_image' => null,
                 'button1_text' => 'Nos instructeurs',
                 'button1_url' => '/instructors',
@@ -59,7 +71,9 @@ class BannerSeeder extends Seeder
         ];
 
         foreach ($banners as $banner) {
-            Banner::create($banner);
+            if ($banner['image']) { // Créer uniquement si l'image existe
+                Banner::create($banner);
+            }
         }
     }
 }

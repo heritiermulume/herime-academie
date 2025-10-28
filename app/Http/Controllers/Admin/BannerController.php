@@ -45,20 +45,20 @@ class BannerController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        // Upload image principale
+        // Upload image principale - Stockage en base64
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('images/hero'), $filename);
-            $validated['image'] = 'images/hero/' . $filename;
+            $imageData = base64_encode(file_get_contents($file->getRealPath()));
+            $mimeType = $file->getMimeType();
+            $validated['image'] = 'data:' . $mimeType . ';base64,' . $imageData;
         }
 
-        // Upload image mobile
+        // Upload image mobile - Stockage en base64
         if ($request->hasFile('mobile_image')) {
             $file = $request->file('mobile_image');
-            $filename = 'mobile_' . time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('images/hero'), $filename);
-            $validated['mobile_image'] = 'images/hero/' . $filename;
+            $imageData = base64_encode(file_get_contents($file->getRealPath()));
+            $mimeType = $file->getMimeType();
+            $validated['mobile_image'] = 'data:' . $mimeType . ';base64,' . $imageData;
         }
 
         $validated['is_active'] = $request->has('is_active');
@@ -105,28 +105,20 @@ class BannerController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        // Upload nouvelle image principale si fournie
+        // Upload nouvelle image principale si fournie - Stockage en base64
         if ($request->hasFile('image')) {
-            // Supprimer l'ancienne image
-            if ($banner->image && file_exists(public_path($banner->image))) {
-                unlink(public_path($banner->image));
-            }
             $file = $request->file('image');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('images/hero'), $filename);
-            $validated['image'] = 'images/hero/' . $filename;
+            $imageData = base64_encode(file_get_contents($file->getRealPath()));
+            $mimeType = $file->getMimeType();
+            $validated['image'] = 'data:' . $mimeType . ';base64,' . $imageData;
         }
 
-        // Upload nouvelle image mobile si fournie
+        // Upload nouvelle image mobile si fournie - Stockage en base64
         if ($request->hasFile('mobile_image')) {
-            // Supprimer l'ancienne image mobile
-            if ($banner->mobile_image && file_exists(public_path($banner->mobile_image))) {
-                unlink(public_path($banner->mobile_image));
-            }
             $file = $request->file('mobile_image');
-            $filename = 'mobile_' . time() . '_' . $file->getClientOriginalName();
-            $file->move(public_path('images/hero'), $filename);
-            $validated['mobile_image'] = 'images/hero/' . $filename;
+            $imageData = base64_encode(file_get_contents($file->getRealPath()));
+            $mimeType = $file->getMimeType();
+            $validated['mobile_image'] = 'data:' . $mimeType . ';base64,' . $imageData;
         }
 
         $validated['is_active'] = $request->has('is_active');
@@ -142,14 +134,7 @@ class BannerController extends Controller
      */
     public function destroy(Banner $banner)
     {
-        // Supprimer les images associées
-        if ($banner->image && file_exists(public_path($banner->image))) {
-            unlink(public_path($banner->image));
-        }
-        if ($banner->mobile_image && file_exists(public_path($banner->mobile_image))) {
-            unlink(public_path($banner->mobile_image));
-        }
-
+        // Les images sont stockées en base de données, pas besoin de suppression physique
         $banner->delete();
 
         return redirect()->route('admin.banners.index')

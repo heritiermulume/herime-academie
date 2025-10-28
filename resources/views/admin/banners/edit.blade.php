@@ -48,7 +48,7 @@
                                 <label for="image" class="form-label">Image principale</label>
                                 @if($banner->image)
                                 <div class="mb-2">
-                                    <img src="{{ asset($banner->image) }}" 
+                                    <img src="{{ $banner->image }}" 
                                          alt="Image actuelle" 
                                          class="img-thumbnail" 
                                          style="max-width: 300px;">
@@ -68,7 +68,7 @@
                                 <label for="mobile_image" class="form-label">Image mobile (16:9)</label>
                                 @if($banner->mobile_image)
                                 <div class="mb-2">
-                                    <img src="{{ asset($banner->mobile_image) }}" 
+                                    <img src="{{ $banner->mobile_image }}" 
                                          alt="Image mobile actuelle" 
                                          class="img-thumbnail" 
                                          style="max-width: 300px;">

@@ -44,7 +44,7 @@
                                 <tr>
                                     <td>{{ $banner->id }}</td>
                                     <td>
-                                        <img src="{{ asset($banner->image) }}" 
+                                        <img src="{{ $banner->image }}" 
                                              alt="{{ $banner->title }}" 
                                              class="img-thumbnail"
                                              style="width: 80px; height: 50px; object-fit: cover;">
