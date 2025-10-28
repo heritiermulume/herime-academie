@@ -4,44 +4,54 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow-lg">
-                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap">
-                        <div>
-                            <h4 class="mb-1">
-                                <i class="fas fa-edit me-2"></i>Modifier le cours
-                            </h4>
-                            <small class="opacity-75">
-                                <i class="fas fa-graduation-cap me-1"></i>{{ $course->title }}
-                            </small>
-                        </div>
-                        <div class="d-flex gap-2 mt-2 mt-md-0">
-                            <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-info btn-sm">
-                                <i class="fas fa-eye me-1"></i>Voir
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="card border-0 shadow mb-4">
+                <div class="card-header text-white" style="background-color: #003366;">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
+                                <i class="fas fa-tachometer-alt"></i>
                             </a>
-                            <a href="{{ route('admin.courses') }}" class="btn btn-light btn-sm">
-                                <i class="fas fa-arrow-left me-1"></i>Retour
+                            <a href="{{ route('admin.courses') }}" class="btn btn-outline-light btn-sm" title="Liste des cours">
+                                <i class="fas fa-th-list"></i>
                             </a>
+                            <div>
+                                <h4 class="mb-1">
+                                    <i class="fas fa-edit me-2"></i>Modifier le cours
+                                </h4>
+                                <p class="mb-0 text-description small">{{ $course->title }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <form action="{{ route('admin.courses.update', $course) }}" method="POST" id="courseForm" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
-                        
-                        <!-- Informations de base -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-gradient-primary text-white">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-info-circle me-2"></i>Informations de base
-                                </h5>
-                            </div>
-                            <div class="card-body">
+            </div>
 
-                        <div class="row">
+            <!-- Affichage des erreurs -->
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation</h5>
+                    <ul class="mb-0">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            <form action="{{ route('admin.courses.update', $course) }}" method="POST" id="courseForm" enctype="multipart/form-data">
+                @csrf
+                @method('PUT')
+                
+                <!-- Informations de base -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations de base</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
                             <div class="col-md-8 mb-3">
                                 <label for="title" class="form-label">Titre du cours <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control @error('title') is-invalid @enderror" 
@@ -121,18 +131,16 @@
                                 @enderror
                             </div>
                         </div>
-                            </div>
-                        </div>
+                    </div>
+                </div>
 
-                        <!-- Médias (Image et Vidéo) -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-gradient-success text-white">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-photo-video me-2"></i>Médias
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                        <div class="row">
+                <!-- Médias (Image et Vidéo) -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-gradient-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-photo-video me-2"></i>Médias du cours</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
                             <div class="col-md-6 mb-3">
                                 <label for="thumbnail" class="form-label fw-bold">Image de couverture</label>
                                 
@@ -244,20 +252,16 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                            </div>
-                        </div>
-
-                        <!-- Prix et statut -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-gradient-warning text-white">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-dollar-sign me-2"></i>Prix et statut
-                                </h5>
-                            </div>
-                            <div class="card-body">
-
-                        <div class="row">
+                <!-- Prix et statut -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-gradient-warning text-white">
+                        <h5 class="mb-0"><i class="fas fa-dollar-sign me-2"></i>Prix et statut</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
                             <div class="col-md-3 mb-3">
                                 <label for="price" class="form-label">Prix (FCFA) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control @error('price') is-invalid @enderror" 
@@ -353,21 +357,16 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-
-                            </div>
-                        </div>
-
-                        <!-- Prérequis et objectifs -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-gradient-info text-white">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-target me-2"></i>Prérequis et objectifs
-                                </h5>
-                            </div>
-                            <div class="card-body">
-
-                        <div class="row">
+                <!-- Prérequis et objectifs -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-gradient-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-target me-2"></i>Prérequis et objectifs</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
                             <div class="col-md-6 mb-3">
                                 <label for="requirements" class="form-label">Prérequis</label>
                                 <div id="requirements-container">
@@ -422,20 +421,16 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                            </div>
-                        </div>
-
-                        <!-- SEO -->
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-gradient-secondary text-white">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-search me-2"></i>Optimisation SEO
-                                </h5>
-                            </div>
-                            <div class="card-body">
-
-                        <div class="row">
+                <!-- SEO -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-gradient-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-search me-2"></i>Optimisation SEO</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
                             <div class="col-md-6 mb-3">
                                 <label for="meta_description" class="form-label">Description SEO</label>
                                 <textarea class="form-control @error('meta_description') is-invalid @enderror" 
@@ -468,117 +463,114 @@
                                 @enderror
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Sections et leçons existantes -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="text-primary mb-3">
-                                    <i class="fas fa-list me-2"></i>Contenu du cours
-                                </h5>
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Note :</strong> Pour modifier les sections et leçons, veuillez utiliser la page de détail du cours.
-                                    <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-sm btn-outline-primary ms-2">
-                                        <i class="fas fa-external-link-alt me-1"></i>Gérer le contenu
-                                    </a>
-                                </div>
-                                
-                                @if($course->sections->count() > 0)
-                                    <div class="accordion" id="courseAccordion">
-                                        @foreach($course->sections as $sectionIndex => $section)
-                                            <div class="accordion-item">
-                                                <h2 class="accordion-header" id="heading{{ $sectionIndex }}">
-                                                    <button class="accordion-button {{ $sectionIndex > 0 ? 'collapsed' : '' }}" 
-                                                            type="button" 
-                                                            data-bs-toggle="collapse" 
-                                                            data-bs-target="#collapse{{ $sectionIndex }}" 
-                                                            aria-expanded="{{ $sectionIndex === 0 ? 'true' : 'false' }}" 
-                                                            aria-controls="collapse{{ $sectionIndex }}">
-                                                        <div class="d-flex justify-content-between w-100 me-3">
-                                                            <span>{{ $section->title }}</span>
-                                                            <span class="badge bg-primary">{{ $section->lessons->count() }} leçons</span>
-                                                        </div>
-                                                    </button>
-                                                </h2>
-                                                <div id="collapse{{ $sectionIndex }}" 
-                                                     class="accordion-collapse collapse {{ $sectionIndex === 0 ? 'show' : '' }}" 
-                                                     aria-labelledby="heading{{ $sectionIndex }}" 
-                                                     data-bs-parent="#courseAccordion">
-                                                <div class="accordion-body p-0">
-                                                        @if($section->description)
-                                                            <div class="p-3 border-bottom">
-                                                                <p class="text-muted mb-0">{{ $section->description }}</p>
-                                                            </div>
-                                                        @endif
-
-                                                        @if($section->lessons->count() > 0)
-                                                            <div class="list-group list-group-flush">
-                                                                @foreach($section->lessons as $lesson)
-                                                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                                                        <div class="d-flex align-items-center">
-                                                                            <i class="fas fa-{{ $lesson->type === 'video' ? 'play-circle' : ($lesson->type === 'quiz' ? 'question-circle' : 'file-text') }} me-3 text-primary"></i>
-                                                                            <div>
-                                                                                <h6 class="mb-1">{{ $lesson->title }}</h6>
-                                                                                @if($lesson->description)
-                                                                                    <small class="text-muted">{{ $lesson->description }}</small>
-                                                                                @endif
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="d-flex align-items-center">
-                                                                            @if($lesson->is_preview)
-                                                                                <span class="badge bg-success me-2">Aperçu</span>
-                                                                            @endif
-                                                                            @if($lesson->duration > 0)
-                                                                                <small class="text-muted me-2">{{ $lesson->duration }} min</small>
-                                                                            @endif
-                                                                            <span class="badge bg-{{ $lesson->type === 'video' ? 'primary' : ($lesson->type === 'quiz' ? 'warning' : 'info') }}">
-                                                                                {{ ucfirst($lesson->type) }}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                @endforeach
-                                                            </div>
-                                                        @else
-                                                            <p class="text-muted">Aucune leçon dans cette section.</p>
-                                                        @endif
-                                                    </div>
+                <!-- Contenu du cours -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contenu du cours</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Note :</strong> Pour modifier les sections et leçons, veuillez utiliser la page de détail du cours.
+                            <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="fas fa-external-link-alt me-1"></i>Gérer le contenu
+                            </a>
+                        </div>
+                        
+                        @if($course->sections->count() > 0)
+                            <div class="accordion" id="courseAccordion">
+                                @foreach($course->sections as $sectionIndex => $section)
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="heading{{ $sectionIndex }}">
+                                            <button class="accordion-button {{ $sectionIndex > 0 ? 'collapsed' : '' }}" 
+                                                    type="button" 
+                                                    data-bs-toggle="collapse" 
+                                                    data-bs-target="#collapse{{ $sectionIndex }}" 
+                                                    aria-expanded="{{ $sectionIndex === 0 ? 'true' : 'false' }}" 
+                                                    aria-controls="collapse{{ $sectionIndex }}">
+                                                <div class="d-flex justify-content-between w-100 me-3">
+                                                    <span>{{ $section->title }}</span>
+                                                    <span class="badge bg-primary">{{ $section->lessons->count() }} leçons</span>
                                                 </div>
+                                            </button>
+                                        </h2>
+                                        <div id="collapse{{ $sectionIndex }}" 
+                                             class="accordion-collapse collapse {{ $sectionIndex === 0 ? 'show' : '' }}" 
+                                             aria-labelledby="heading{{ $sectionIndex }}" 
+                                             data-bs-parent="#courseAccordion">
+                                            <div class="accordion-body p-0">
+                                                @if($section->description)
+                                                    <div class="p-3 border-bottom">
+                                                        <p class="text-muted mb-0">{{ $section->description }}</p>
+                                                    </div>
+                                                @endif
+
+                                                @if($section->lessons->count() > 0)
+                                                    <div class="list-group list-group-flush">
+                                                        @foreach($section->lessons as $lesson)
+                                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                                <div class="d-flex align-items-center">
+                                                                    <i class="fas fa-{{ $lesson->type === 'video' ? 'play-circle' : ($lesson->type === 'quiz' ? 'question-circle' : 'file-text') }} me-3 text-primary"></i>
+                                                                    <div>
+                                                                        <h6 class="mb-1">{{ $lesson->title }}</h6>
+                                                                        @if($lesson->description)
+                                                                            <small class="text-muted">{{ $lesson->description }}</small>
+                                                                        @endif
+                                                                    </div>
+                                                                </div>
+                                                                <div class="d-flex align-items-center">
+                                                                    @if($lesson->is_preview)
+                                                                        <span class="badge bg-success me-2">Aperçu</span>
+                                                                    @endif
+                                                                    @if($lesson->duration > 0)
+                                                                        <small class="text-muted me-2">{{ $lesson->duration }} min</small>
+                                                                    @endif
+                                                                    <span class="badge bg-{{ $lesson->type === 'video' ? 'primary' : ($lesson->type === 'quiz' ? 'warning' : 'info') }}">
+                                                                        {{ ucfirst($lesson->type) }}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <p class="text-muted p-3">Aucune leçon dans cette section.</p>
+                                                @endif
                                             </div>
-                                        @endforeach
+                                        </div>
                                     </div>
-                                @else
-                                    <div class="alert alert-warning">
-                                        <i class="fas fa-exclamation-triangle me-2"></i>
-                                        Aucune section définie pour ce cours.
-                                    </div>
-                                @endif
+                                @endforeach
                             </div>
-                        </div>
-
+                        @else
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Aucune section définie pour ce cours.
                             </div>
-                        </div>
+                        @endif
+                    </div>
+                </div>
 
-                        <!-- Boutons d'action -->
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                    <a href="{{ route('admin.courses') }}" class="btn btn-secondary">
-                                        <i class="fas fa-times me-1"></i>Annuler
-                                    </a>
-                                    <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-primary me-2" onclick="saveDraft()">
+                <!-- Actions -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <a href="{{ route('admin.courses') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Annuler
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-outline-primary" onclick="saveDraft()">
                                     <i class="fas fa-save me-1"></i>Enregistrer comme brouillon
                                 </button>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-check me-1"></i>Mettre à jour
-                                        </button>
-                                    </div>
-                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-check me-1"></i>Mettre à jour
+                                </button>
                             </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>
@@ -790,13 +782,85 @@ function toggleExternalPaymentFields() {
 
 @push('styles')
 <style>
+/* En-tête */
+.text-description {
+    opacity: 0.9;
+}
+
+/* Gradients pour les headers */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #003366 0%, #004080 100%) !important;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%) !important;
+}
+
+.bg-gradient-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+}
+
+/* Cards */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+    border-bottom: none;
+}
+
+.card-header h5 {
+    font-weight: 600;
+}
+
 .card-header h6 {
     color: #003366;
 }
 
+/* Form controls */
 .form-label {
     font-weight: 600;
     color: #333;
+}
+
+.form-label.fw-bold {
+    color: #003366;
+}
+
+.form-control-lg {
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #003366;
+    box-shadow: 0 0 0 0.2rem rgba(0, 51, 102, 0.25);
+}
+
+/* Buttons */
+.btn {
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .btn-outline-primary {
@@ -807,6 +871,7 @@ function toggleExternalPaymentFields() {
 .btn-outline-primary:hover {
     background-color: #003366;
     border-color: #003366;
+    color: white;
 }
 
 .text-primary {
@@ -853,7 +918,7 @@ function toggleExternalPaymentFields() {
 }
 
 .upload-zone:hover {
-    border-color: #17a2b8;
+    border-color: #003366;
     background-color: #e9ecef;
 }
 
@@ -863,7 +928,7 @@ function toggleExternalPaymentFields() {
 }
 
 .upload-placeholder:hover {
-    background-color: rgba(23, 162, 184, 0.05);
+    background-color: rgba(0, 51, 102, 0.05);
 }
 
 .upload-placeholder:hover i {
@@ -902,3 +967,4 @@ function toggleExternalPaymentFields() {
 </style>
 @endpush
 @endsection
+

@@ -4,19 +4,31 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">
-                            <i class="fas fa-plus me-2"></i>Créer une nouvelle leçon
-                        </h4>
-                        <a href="{{ route('admin.courses.lessons', $course) }}" class="btn btn-light">
-                            <i class="fas fa-arrow-left me-1"></i>Retour
-                        </a>
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="card border-0 shadow mb-4">
+                <div class="card-header text-white" style="background-color: #003366;">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </a>
+                            <a href="{{ route('admin.courses.lessons', $course) }}" class="btn btn-outline-light btn-sm" title="Liste des leçons">
+                                <i class="fas fa-th-list"></i>
+                            </a>
+                            <div>
+                                <h4 class="mb-1">
+                                    <i class="fas fa-plus-circle me-2"></i>Créer une nouvelle leçon
+                                </h4>
+                                <p class="mb-0 text-description small">Cours: {{ $course->title }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="card border-0 shadow">
                 <div class="card-body">
                     <form action="{{ route('admin.courses.lessons.store', $course) }}" method="POST" id="lessonForm" enctype="multipart/form-data">
                         @csrf
@@ -410,6 +422,11 @@
 
 @push('styles')
 <style>
+/* En-tête */
+.text-description {
+    opacity: 0.9;
+}
+
 /* Zone d'upload moderne */
 .upload-zone {
     border: 2px dashed #dee2e6;
