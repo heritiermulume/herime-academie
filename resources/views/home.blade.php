@@ -337,9 +337,9 @@
                     <div class="hero-image-bg">
                         <picture>
                             @if($banner->mobile_image)
-                                <source media="(max-width: 768px)" srcset="{{ $banner->mobile_image }}">
+                                <source media="(max-width: 768px)" srcset="{{ str_starts_with($banner->mobile_image, 'http') ? $banner->mobile_image : asset($banner->mobile_image) }}">
                             @endif
-                            <img src="{{ $banner->image }}" 
+                            <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : asset($banner->image) }}" 
                                  alt="{{ $banner->title }}" 
                                  class="hero-bg-image"
                                  loading="{{ $index === 0 ? 'eager' : 'lazy' }}">

@@ -51,13 +51,15 @@ class BannerController extends Controller
             // Upload image principale - Stockage dans le système de fichiers
             if ($request->hasFile('image')) {
                 $path = $request->file('image')->store('banners', 'public');
-                $validated['image'] = asset('storage/' . $path);
+                // Stocker seulement le chemin relatif, pas l'URL complète
+                $validated['image'] = 'storage/' . $path;
             }
 
             // Upload image mobile - Stockage dans le système de fichiers
             if ($request->hasFile('mobile_image')) {
                 $path = $request->file('mobile_image')->store('banners', 'public');
-                $validated['mobile_image'] = asset('storage/' . $path);
+                // Stocker seulement le chemin relatif, pas l'URL complète
+                $validated['mobile_image'] = 'storage/' . $path;
             }
 
             $validated['is_active'] = $request->has('is_active');
@@ -68,6 +70,7 @@ class BannerController extends Controller
                 ->with('success', 'Bannière créée avec succès.');
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la création de la bannière: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
             return back()->withErrors(['error' => 'Erreur lors de la création de la bannière: ' . $e->getMessage()])->withInput();
         }
     }
@@ -139,28 +142,30 @@ class BannerController extends Controller
         if ($request->hasFile('image')) {
             // Supprimer l'ancienne image si elle existe et n'est pas en base64
             if ($banner->image && !str_starts_with($banner->image, 'data:')) {
-                $oldPath = str_replace(url('storage/'), '', $banner->image);
-                if (file_exists(storage_path('app/public/' . $oldPath))) {
+                $oldPath = str_replace('storage/', '', $banner->image);
+                if (Storage::disk('public')->exists($oldPath)) {
                     Storage::disk('public')->delete($oldPath);
                 }
             }
             
             $path = $request->file('image')->store('banners', 'public');
-            $validated['image'] = asset('storage/' . $path);
+            // Stocker seulement le chemin relatif, pas l'URL complète
+            $validated['image'] = 'storage/' . $path;
         }
 
         // Upload nouvelle image mobile si fournie - Stockage dans le système de fichiers
         if ($request->hasFile('mobile_image')) {
             // Supprimer l'ancienne image si elle existe et n'est pas en base64
             if ($banner->mobile_image && !str_starts_with($banner->mobile_image, 'data:')) {
-                $oldPath = str_replace(url('storage/'), '', $banner->mobile_image);
-                if (file_exists(storage_path('app/public/' . $oldPath))) {
+                $oldPath = str_replace('storage/', '', $banner->mobile_image);
+                if (Storage::disk('public')->exists($oldPath)) {
                     Storage::disk('public')->delete($oldPath);
                 }
             }
             
             $path = $request->file('mobile_image')->store('banners', 'public');
-            $validated['mobile_image'] = asset('storage/' . $path);
+            // Stocker seulement le chemin relatif, pas l'URL complète
+            $validated['mobile_image'] = 'storage/' . $path;
         }
 
         $validated['is_active'] = $request->has('is_active');
@@ -178,16 +183,16 @@ class BannerController extends Controller
     {
         // Supprimer les fichiers images si ce ne sont pas des images base64
         if ($banner->image && !str_starts_with($banner->image, 'data:')) {
-            $imagePath = str_replace(url('storage/'), '', $banner->image);
-            if (file_exists(storage_path('app/public/' . $imagePath))) {
-                \Storage::disk('public')->delete($imagePath);
+            $imagePath = str_replace('storage/', '', $banner->image);
+            if (Storage::disk('public')->exists($imagePath)) {
+                Storage::disk('public')->delete($imagePath);
             }
         }
         
         if ($banner->mobile_image && !str_starts_with($banner->mobile_image, 'data:')) {
-            $mobileImagePath = str_replace(url('storage/'), '', $banner->mobile_image);
-            if (file_exists(storage_path('app/public/' . $mobileImagePath))) {
-                \Storage::disk('public')->delete($mobileImagePath);
+            $mobileImagePath = str_replace('storage/', '', $banner->mobile_image);
+            if (Storage::disk('public')->exists($mobileImagePath)) {
+                Storage::disk('public')->delete($mobileImagePath);
             }
         }
         

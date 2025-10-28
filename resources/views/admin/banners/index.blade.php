@@ -51,7 +51,7 @@
                                         <span class="badge bg-primary">{{ $banner->id }}</span>
                                     </td>
                                     <td>
-                                        <img src="{{ $banner->image }}" 
+                                        <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : asset($banner->image) }}" 
                                              alt="{{ $banner->title }}" 
                                              class="img-thumbnail rounded"
                                              style="width: 100px; height: 60px; object-fit: cover;">
@@ -154,7 +154,7 @@
                             <!-- Info principale -->
                             <div class="banner-info">
                                 <div class="d-flex align-items-center mb-2">
-                                    <img src="{{ $banner->image }}" 
+                                    <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : asset($banner->image) }}" 
                                          alt="{{ $banner->title }}" 
                                          class="banner-thumb me-2">
                                     <div class="flex-grow-1">
