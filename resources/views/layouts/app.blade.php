@@ -246,16 +246,35 @@
         }
 
         .course-card .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
-            border-color: var(--primary-color);
-            color: white;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%) !important;
+            border-color: var(--primary-color) !important;
+            color: white !important;
         }
 
-        .course-card .btn-primary:hover {
-            background: linear-gradient(135deg, #002244 0%, var(--primary-color) 100%);
-            border-color: #002244;
+        .course-card .btn-primary:hover,
+        .course-card .btn-primary:focus,
+        .course-card .btn-primary:active {
+            background: linear-gradient(135deg, #002244 0%, var(--primary-color) 100%) !important;
+            border-color: #002244 !important;
+            color: white !important;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 51, 102, 0.4);
+        }
+
+        .course-card .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+            border-color: #28a745 !important;
+            color: white !important;
+        }
+
+        .course-card .btn-success:hover,
+        .course-card .btn-success:focus,
+        .course-card .btn-success:active {
+            background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%) !important;
+            border-color: #1e7e34 !important;
+            color: white !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
         }
 
         .course-card .badge {
@@ -475,19 +494,38 @@
         }
 
         .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+            color: white !important;
             font-weight: 500;
             padding: 0.75rem 1.5rem;
             border-radius: 0.5rem;
             transition: all 0.3s ease;
         }
 
-        .btn-primary:hover {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
+        .btn-primary:hover,
+        .btn-primary:focus,
+        .btn-primary:active {
+            background-color: #004080 !important;
+            border-color: #004080 !important;
+            color: white !important;
             transform: translateY(-2px);
             box-shadow: var(--shadow-lg);
+        }
+
+        /* Bouton S'inscrire dans la navbar */
+        .navbar .btn-primary {
+            background-color: var(--primary-color) !important;
+            border-color: var(--primary-color) !important;
+            color: white !important;
+        }
+
+        .navbar .btn-primary:hover,
+        .navbar .btn-primary:focus,
+        .navbar .btn-primary:active {
+            background-color: #004080 !important;
+            border-color: #004080 !important;
+            color: white !important;
         }
 
         .btn-secondary {

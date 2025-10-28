@@ -13,6 +13,9 @@
                     <p class="text-muted mb-0">Gérez votre plateforme d'apprentissage en ligne</p>
                 </div>
                 <div>
+                    <a href="{{ route('admin.banners.index') }}" class="btn btn-warning me-2">
+                        <i class="fas fa-image me-2"></i>Gérer les bannières
+                    </a>
                     <a href="{{ route('admin.orders.index') }}" class="btn btn-danger me-2">
                         <i class="fas fa-shopping-bag me-2"></i>Gérer les commandes
                     </a>

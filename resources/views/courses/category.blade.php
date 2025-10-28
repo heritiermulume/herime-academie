@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 <section class="py-5" style="background: linear-gradient(135deg, {{ $category->color }} 0%, {{ $category->color }}CC 100%); color: white;">
     <div class="container">
         <div class="row align-items-center">
-            <div class="col-lg-8" data-aos="fade-right">
+            <div class="col-lg-12" data-aos="fade-up">
                 <nav aria-label="breadcrumb" class="mb-3">
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="{{ route('home') }}" class="text-white">Accueil</a></li>
@@ -35,15 +35,6 @@ use Illuminate\Support\Facades\Storage;
                 @if($category->description)
                 <p class="lead">{{ $category->description }}</p>
                 @endif
-            </div>
-            <div class="col-lg-4 text-lg-end" data-aos="fade-left">
-                <div class="bg-white bg-opacity-20 rounded-3 p-4" style="backdrop-filter: blur(10px);">
-                    <h5 class="mb-3 text-white fw-bold">Statistiques</h5>
-                    <div class="text-center">
-                        <div class="h2 fw-bold text-white mb-2">{{ $courses->total() }}</div>
-                        <small class="text-white-50 fs-5">Cours disponibles</small>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -154,7 +145,6 @@ use Illuminate\Support\Facades\Storage;
                             <i class="{{ $otherCategory->icon ?: 'fas fa-book' }}"></i>
                         </div>
                         <h6 class="mb-1">{{ $otherCategory->name }}</h6>
-                        <small class="text-muted">{{ $otherCategory->courses_count }} cours</small>
                     </div>
                 </a>
             </div>
@@ -188,16 +178,16 @@ use Illuminate\Support\Facades\Storage;
 .course-card .btn-primary:focus,
 .course-card .btn-primary:active,
 .course-card .btn-primary:visited {
-    background-color: #003366 !important;
+    background: linear-gradient(135deg, #003366 0%, #004080 100%) !important;
     border-color: #003366 !important;
     color: white !important;
     box-shadow: none !important;
 }
 
 .course-card .btn-primary:hover {
-    background-color: #ffcc33 !important;
-    border-color: #ffcc33 !important;
-    color: #003366 !important;
+    background: linear-gradient(135deg, #002244 0%, #003366 100%) !important;
+    border-color: #002244 !important;
+    color: white !important;
     box-shadow: 0 4px 8px rgba(0, 51, 102, 0.3) !important;
 }
 
@@ -525,9 +515,8 @@ use Illuminate\Support\Facades\Storage;
     
     /* Styles très spécifiques pour forcer l'application des couleurs */
     .course-card .card .card-body .card-actions .btn-primary {
-        background: #003366 !important;
+        background: linear-gradient(135deg, #003366 0%, #004080 100%) !important;
         background-color: #003366 !important;
-        background-image: none !important;
         border-color: #003366 !important;
         color: white !important;
     }
@@ -535,10 +524,9 @@ use Illuminate\Support\Facades\Storage;
     .course-card .card .card-body .card-actions .btn-primary:hover,
     .course-card .card .card-body .card-actions .btn-primary:focus,
     .course-card .card .card-body .card-actions .btn-primary:active {
-        background: #004080 !important;
-        background-color: #004080 !important;
-        background-image: none !important;
-        border-color: #004080 !important;
+        background: linear-gradient(135deg, #002244 0%, #003366 100%) !important;
+        background-color: #002244 !important;
+        border-color: #002244 !important;
         color: white !important;
     }
     
@@ -612,35 +600,31 @@ use Illuminate\Support\Facades\Storage;
     }
     
     .course-card .btn-primary {
-        background: #003366 !important;
+        background: linear-gradient(135deg, #003366 0%, #004080 100%) !important;
         background-color: #003366 !important;
-        background-image: none !important;
         border-color: #003366 !important;
         color: white !important;
     }
     
     .course-card .btn-primary:hover {
-        background: #004080 !important;
-        background-color: #004080 !important;
-        background-image: none !important;
-        border-color: #004080 !important;
+        background: linear-gradient(135deg, #002244 0%, #003366 100%) !important;
+        background-color: #002244 !important;
+        border-color: #002244 !important;
         color: white !important;
     }
     
     /* Styles plus spécifiques pour forcer l'application */
     .course-card .card-actions .btn-primary {
-        background: #003366 !important;
+        background: linear-gradient(135deg, #003366 0%, #004080 100%) !important;
         background-color: #003366 !important;
-        background-image: none !important;
         border-color: #003366 !important;
         color: white !important;
     }
     
     .course-card .card-actions .btn-primary:hover {
-        background: #004080 !important;
-        background-color: #004080 !important;
-        background-image: none !important;
-        border-color: #004080 !important;
+        background: linear-gradient(135deg, #002244 0%, #003366 100%) !important;
+        background-color: #002244 !important;
+        border-color: #002244 !important;
         color: white !important;
     }
     
@@ -658,6 +642,22 @@ use Illuminate\Support\Facades\Storage;
     
     .text-primary {
         color: #003366 !important;
+    }
+
+    /* Bouton "Voir tous les cours" quand aucun cours n'est disponible */
+    .text-center .btn-primary {
+        background-color: #003366 !important;
+        border-color: #003366 !important;
+        color: white !important;
+        font-weight: 600;
+    }
+
+    .text-center .btn-primary:hover,
+    .text-center .btn-primary:focus,
+    .text-center .btn-primary:active {
+        background-color: #004080 !important;
+        border-color: #004080 !important;
+        color: white !important;
     }
 </style>
 @endpush

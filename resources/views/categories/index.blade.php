@@ -22,7 +22,7 @@
 
 .hover-lift:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.25) !important;
 }
 
 .category-card .card:hover {
@@ -46,7 +46,7 @@
     
     .category-card .card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        box-shadow: 0 12px 35px rgba(0,0,0,0.25);
     }
     
     .category-card .card-body {
@@ -111,7 +111,7 @@
     
     .category-card .card:hover {
         transform: translateY(-6px);
-        box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.25);
         border-color: var(--accent-color) !important;
     }
     
@@ -195,7 +195,7 @@
         <div class="col-6 col-md-4 col-lg-3 category-item">
             <div class="category-card h-100">
                 <a href="{{ route('courses.category', $category->slug) }}" class="text-decoration-none">
-                    <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card border-0 shadow h-100 hover-lift">
                         <div class="card-body text-center p-3 p-md-4">
                             @if($category->icon)
                             <div class="category-icon mb-2 mb-md-3">
@@ -204,7 +204,6 @@
                             @endif
                             <h6 class="card-title fw-bold mb-2">{{ Str::limit($category->name, 20) }}</h6>
                             <p class="card-text small mb-2" style="height: 2.5rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ Str::limit($category->description, 60) }}</p>
-                            <span class="badge small" style="background-color: #003366; color: white;">{{ $category->courses_count ?? 0 }} cours</span>
                         </div>
                     </div>
                 </a>

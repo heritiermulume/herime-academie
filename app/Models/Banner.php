@@ -14,9 +14,11 @@ class Banner extends Model
         'button1_text',
         'button1_url',
         'button1_style',
+        'button1_target',
         'button2_text',
         'button2_url',
         'button2_style',
+        'button2_target',
         'sort_order',
         'is_active',
     ];

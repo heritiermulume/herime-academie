@@ -45,6 +45,9 @@
                                 <x-dropdown-link :href="route('admin.categories.index')">
                                     <i class="fas fa-tags me-2"></i>Gérer les catégories
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.banners.index')">
+                                    <i class="fas fa-image me-2"></i>Gérer les bannières
+                                </x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
                     @endif
@@ -130,6 +133,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.categories.index')">
                     <i class="fas fa-tags me-2"></i>Gérer les catégories
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.banners.index')">
+                    <i class="fas fa-image me-2"></i>Gérer les bannières
                 </x-responsive-nav-link>
             @endif
         </div>

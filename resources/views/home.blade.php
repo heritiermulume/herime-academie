@@ -67,7 +67,7 @@
 
 .category-item-scroll .category-card .card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.25);
 }
 
 .category-item-scroll .category-card .card-body {
@@ -361,13 +361,35 @@
                                         @endif
                                         <div class="d-flex flex-column flex-sm-row gap-3">
                                             @if($banner->button1_text && $banner->button1_url)
-                                            <a href="{{ $banner->button1_url }}" 
+                                            @php
+                                                $btn1_url = $banner->button1_url;
+                                                // Si l'URL ne commence pas par http:// ou https://, c'est un lien interne
+                                                if (!str_starts_with($btn1_url, 'http://') && !str_starts_with($btn1_url, 'https://')) {
+                                                    // Si ça commence par /, c'est un chemin absolu, sinon on ajoute /
+                                                    $btn1_url = str_starts_with($btn1_url, '/') ? $btn1_url : '/' . $btn1_url;
+                                                    $btn1_url = url($btn1_url);
+                                                }
+                                            @endphp
+                                            <a href="{{ $btn1_url }}" 
+                                               target="{{ $banner->button1_target ?? '_self' }}"
+                                               {{ ($banner->button1_target ?? '_self') == '_blank' ? 'rel="noopener noreferrer"' : '' }}
                                                class="btn btn-{{ $banner->button1_style ?? 'warning' }} btn-lg px-4">
                                                 <i class="fas fa-play me-2"></i>{{ $banner->button1_text }}
                                             </a>
                                             @endif
                                             @if($banner->button2_text && $banner->button2_url)
-                                            <a href="{{ $banner->button2_url }}" 
+                                            @php
+                                                $btn2_url = $banner->button2_url;
+                                                // Si l'URL ne commence pas par http:// ou https://, c'est un lien interne
+                                                if (!str_starts_with($btn2_url, 'http://') && !str_starts_with($btn2_url, 'https://')) {
+                                                    // Si ça commence par /, c'est un chemin absolu, sinon on ajoute /
+                                                    $btn2_url = str_starts_with($btn2_url, '/') ? $btn2_url : '/' . $btn2_url;
+                                                    $btn2_url = url($btn2_url);
+                                                }
+                                            @endphp
+                                            <a href="{{ $btn2_url }}" 
+                                               target="{{ $banner->button2_target ?? '_self' }}"
+                                               {{ ($banner->button2_target ?? '_self') == '_blank' ? 'rel="noopener noreferrer"' : '' }}
                                                class="btn btn-{{ $banner->button2_style ?? 'outline-light' }} btn-lg px-4">
                                                 <i class="fas fa-search me-2"></i>{{ $banner->button2_text }}
                                             </a>
@@ -459,7 +481,7 @@
                 <div class="category-item-scroll">
                     <div class="category-card h-100">
                         <a href="{{ route('courses.category', $category->slug) }}" class="text-decoration-none">
-                            <div class="card border-0 shadow-sm h-100 hover-lift">
+                            <div class="card border-0 shadow h-100 hover-lift">
                                 <div class="card-body text-center p-3">
                                     @if($category->icon)
                                     <div class="category-icon mb-2">
@@ -468,7 +490,6 @@
                                     @endif
                                     <h6 class="card-title fw-bold mb-2">{{ Str::limit($category->name, 15) }}</h6>
                                     <p class="card-text text-muted small mb-2" style="height: 2rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ Str::limit($category->description, 40) }}</p>
-                                    <span class="badge small" style="background-color: #003366; color: white;">{{ $category->courses_count ?? 0 }} cours</span>
                                 </div>
                             </div>
                         </a>
