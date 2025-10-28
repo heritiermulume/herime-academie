@@ -5,21 +5,17 @@
 @section('content')
 <div class="container-fluid py-4">
     <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
+    <div class="card border-0 shadow mb-4" style="border-radius: 15px; overflow: hidden;">
+        <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); border-radius: 15px 15px 0 0;">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <h1 class="h3 fw-bold mb-1">Tableau de bord administrateur</h1>
-                    <p class="text-muted mb-0">Gérez votre plateforme d'apprentissage en ligne</p>
+                    <h4 class="mb-1">
+                        <i class="fas fa-tachometer-alt me-2"></i>Tableau de bord administrateur
+                    </h4>
+                    <p class="mb-0 text-description small opacity-75">Gérez votre plateforme d'apprentissage en ligne</p>
                 </div>
                 <div>
-                    <a href="{{ route('admin.banners.index') }}" class="btn btn-warning me-2">
-                        <i class="fas fa-image me-2"></i>Gérer les bannières
-                    </a>
-                    <a href="{{ route('admin.orders.index') }}" class="btn btn-danger me-2">
-                        <i class="fas fa-shopping-bag me-2"></i>Gérer les commandes
-                    </a>
-                    <a href="{{ route('admin.analytics') }}" class="btn btn-primary">
+                    <a href="{{ route('admin.analytics') }}" class="btn btn-light btn-sm">
                         <i class="fas fa-chart-line me-2"></i>Analytics détaillées
                     </a>
                 </div>
@@ -30,7 +26,7 @@
     <!-- Stats Cards -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm stats-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
@@ -47,7 +43,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm stats-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
@@ -64,7 +60,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm stats-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
@@ -81,7 +77,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm stats-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
@@ -102,7 +98,7 @@
     <!-- Revenue and Orders Stats -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm stats-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
@@ -119,7 +115,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm stats-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
@@ -140,7 +136,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm stats-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
@@ -157,7 +153,7 @@
             </div>
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-0 shadow-sm">
+            <div class="card border-0 shadow-sm stats-card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
@@ -179,8 +175,8 @@
         <!-- Revenue Chart -->
         <div class="col-lg-8 mb-4">
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">Évolution des revenus (6 derniers mois)</h5>
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                    <h5 class="mb-0"><i class="fas fa-chart-area me-2"></i>Évolution des revenus (6 derniers mois)</h5>
                 </div>
                 <div class="card-body">
                     @if($revenueByMonth->count() > 0)
@@ -198,25 +194,28 @@
         <!-- Quick Actions -->
         <div class="col-lg-4 mb-4">
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">Actions rapides</h5>
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Actions rapides</h5>
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-danger">
-                            <i class="fas fa-shopping-bag me-2"></i>Gérer les commandes
-                        </a>
-                        <a href="{{ route('admin.users') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-users me-2"></i>Gérer les utilisateurs
-                        </a>
                         <a href="{{ route('admin.courses') }}" class="btn btn-outline-success">
                             <i class="fas fa-book me-2"></i>Gérer les cours
                         </a>
                         <a href="{{ route('admin.categories') }}" class="btn btn-outline-warning">
                             <i class="fas fa-tags me-2"></i>Gérer les catégories
                         </a>
+                        <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-danger">
+                            <i class="fas fa-shopping-bag me-2"></i>Gérer les commandes
+                        </a>
+                        <a href="{{ route('admin.users') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-users me-2"></i>Gérer les utilisateurs
+                        </a>
                         <a href="{{ route('admin.announcements') }}" class="btn btn-outline-info">
                             <i class="fas fa-bullhorn me-2"></i>Gérer les annonces
+                        </a>
+                        <a href="{{ route('admin.banners.index') }}" class="btn btn-outline-warning">
+                            <i class="fas fa-image me-2"></i>Gérer les bannières
                         </a>
                         <a href="{{ route('admin.partners') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-handshake me-2"></i>Gérer les partenaires
@@ -234,8 +233,8 @@
         <!-- Popular Courses -->
         <div class="col-lg-6 mb-4">
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">Cours les plus populaires</h5>
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                    <h5 class="mb-0"><i class="fas fa-fire me-2"></i>Cours les plus populaires</h5>
                 </div>
                 <div class="card-body p-0">
                     @if($popularCourses->count() > 0)
@@ -278,8 +277,8 @@
         <!-- Recent Enrollments -->
         <div class="col-lg-6 mb-4">
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">Inscriptions récentes</h5>
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                    <h5 class="mb-0"><i class="fas fa-user-graduate me-2"></i>Inscriptions récentes</h5>
                 </div>
                 <div class="card-body p-0">
                     @if($recentEnrollments->count() > 0)
@@ -318,9 +317,9 @@
     <div class="row">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">Commandes récentes</h5>
-                    <a href="{{ route('admin.orders.index') }}" class="btn btn-sm btn-outline-primary">
+                <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Commandes récentes</h5>
+                    <a href="{{ route('admin.orders.index') }}" class="btn btn-sm btn-light">
                         <i class="fas fa-eye me-1"></i>Voir toutes
                     </a>
                 </div>
@@ -448,21 +447,54 @@ const revenueChart = new Chart(ctx, {
 
 @push('styles')
 <style>
-.card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+/* Gradients pour les en-têtes de cartes */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%);
 }
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+}
+
+.bg-gradient-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+}
+
+/* Animations des cartes */
+.card {
+    transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 51, 102, 0.15) !important;
+}
+
+.card-header {
+    transition: all 0.3s ease;
 }
 
 .list-group-item:hover {
     background-color: #f8f9fa;
+    transform: translateX(5px);
+    transition: all 0.2s ease;
+}
+
+.table-hover tbody tr {
+    transition: all 0.2s ease;
 }
 
 .table-hover tbody tr:hover {
     background-color: #f8f9fa;
+    transform: scale(1.01);
 }
 
 .bg-opacity-10 {
@@ -471,6 +503,30 @@ const revenueChart = new Chart(ctx, {
 
 #revenueChart {
     max-height: 300px;
+}
+
+/* Boutons dans Actions Rapides */
+.btn-outline-warning:hover,
+.btn-outline-danger:hover,
+.btn-outline-primary:hover,
+.btn-outline-success:hover,
+.btn-outline-info:hover,
+.btn-outline-secondary:hover,
+.btn-outline-dark:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .card-header h4 {
+        font-size: 1.2rem;
+    }
+    
+    .stats-card .card-body h3 {
+        font-size: 1.5rem;
+    }
 }
 </style>
 @endpush

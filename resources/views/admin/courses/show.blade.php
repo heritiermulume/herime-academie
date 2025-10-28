@@ -6,20 +6,25 @@
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">
-            <div class="card border-0 shadow">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">
-                            <i class="fas fa-graduation-cap me-2"></i>Détails du cours
-                        </h4>
+            <div class="card border-0 shadow-lg">
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
                         <div>
-                            <a href="{{ route('admin.courses.lessons', $course) }}" class="btn btn-info me-2">
-                                <i class="fas fa-list me-1"></i>Gérer les leçons
+                            <h4 class="mb-1">
+                                <i class="fas fa-graduation-cap me-2"></i>{{ $course->title }}
+                            </h4>
+                            <small class="opacity-75">
+                                <i class="fas fa-clock me-1"></i>Créé le {{ $course->created_at->format('d/m/Y') }}
+                            </small>
+                        </div>
+                        <div class="d-flex gap-2 mt-2 mt-md-0">
+                            <a href="{{ route('admin.courses.lessons', $course) }}" class="btn btn-outline-light btn-sm">
+                                <i class="fas fa-list me-1"></i>Leçons
                             </a>
-                            <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-warning me-2">
+                            <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-warning btn-sm">
                                 <i class="fas fa-edit me-1"></i>Modifier
                             </a>
-                            <a href="{{ route('admin.courses') }}" class="btn btn-light">
+                            <a href="{{ route('admin.courses') }}" class="btn btn-light btn-sm">
                                 <i class="fas fa-arrow-left me-1"></i>Retour
                             </a>
                         </div>
@@ -29,26 +34,39 @@
                     <div class="row">
                         <!-- Informations principales -->
                         <div class="col-md-8">
-                            <div class="row mb-4">
-                                <div class="col-12">
-                                    <h2 class="text-primary mb-3">{{ $course->title }}</h2>
+                            <!-- Image de couverture -->
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-primary text-white">
+                                    <h5 class="mb-0"><i class="fas fa-image me-2"></i>Image de couverture</h5>
+                                </div>
+                                <div class="card-body">
                                     
                                     @if($course->thumbnail)
-                                        <img src="{{ $course->thumbnail }}" 
-                                             alt="{{ $course->title }}" 
-                                             class="img-fluid rounded mb-3" 
-                                             style="max-height: 300px; width: 100%; object-fit: cover;">
+                                        <div class="text-center">
+                                            <img src="{{ $course->thumbnail }}" 
+                                                 alt="{{ $course->title }}" 
+                                                 class="img-fluid rounded course-thumbnail" 
+                                                 style="max-height: 400px; width: 100%; object-fit: cover; border: 3px solid #28a745;">
+                                        </div>
                                     @else
-                                        <div class="bg-light rounded mb-3 d-flex align-items-center justify-content-center" 
-                                             style="height: 200px;">
+                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                             style="height: 250px;">
                                             <div class="text-center text-muted">
-                                                <i class="fas fa-image fa-3x mb-2"></i>
-                                                <p>Aucune image de couverture</p>
+                                                <i class="fas fa-image fa-4x mb-3 opacity-50"></i>
+                                                <p class="mb-0">Aucune image de couverture</p>
                                             </div>
                                         </div>
                                     @endif
-                                    
-                                    <div class="mb-3">
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-info text-white">
+                                    <h5 class="mb-0"><i class="fas fa-align-left me-2"></i>Description</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="course-description">
                                         {!! nl2br(e($course->description)) !!}
                                     </div>
                                     
@@ -74,9 +92,10 @@
                                         }
                                     @endphp
                                     @if(!empty($tagsList))
-                                        <div class="mb-3">
+                                        <div class="mt-3">
+                                            <strong class="d-block mb-2"><i class="fas fa-tags me-2 text-primary"></i>Tags :</strong>
                                             @foreach($tagsList as $tag)
-                                                <span class="badge bg-secondary me-1">{{ $tag }}</span>
+                                                <span class="badge bg-secondary me-1 mb-1 px-3 py-2">{{ $tag }}</span>
                                             @endforeach
                                         </div>
                                     @endif
@@ -84,11 +103,13 @@
                             </div>
 
                             <!-- Sections et leçons -->
-                            <div class="row">
-                                <div class="col-12">
-                                    <h4 class="text-primary mb-3">
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-success text-white">
+                                    <h5 class="mb-0">
                                         <i class="fas fa-list me-2"></i>Contenu du cours
-                                    </h4>
+                                    </h5>
+                                </div>
+                                <div class="card-body">
                                     
                                     @if($course->sections->count() > 0)
                                         <div class="accordion" id="courseAccordion">
@@ -164,29 +185,39 @@
                         <!-- Informations secondaires -->
                         <div class="col-md-4">
                             <!-- Statut et actions -->
-                            <div class="card mb-3">
-                                <div class="card-header">
-                                    <h6 class="mb-0">Statut et actions</h6>
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-warning text-white">
+                                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Statut et actions</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div class="d-grid gap-2">
+                                    <div class="d-flex flex-column gap-2">
                                         @if($course->is_published)
-                                            <span class="badge bg-success mb-2">Publié</span>
+                                            <span class="badge bg-success py-2 px-3">
+                                                <i class="fas fa-check-circle me-1"></i>Publié
+                                            </span>
                                         @else
-                                            <span class="badge bg-warning mb-2">Brouillon</span>
+                                            <span class="badge bg-warning py-2 px-3">
+                                                <i class="fas fa-clock me-1"></i>Brouillon
+                                            </span>
                                         @endif
                                         
                                         @if($course->is_featured)
-                                            <span class="badge bg-info mb-2">En vedette</span>
+                                            <span class="badge bg-info py-2 px-3">
+                                                <i class="fas fa-star me-1"></i>En vedette
+                                            </span>
                                         @endif
                                         
                                         @if($course->is_free)
-                                            <span class="badge bg-success mb-2">Gratuit</span>
+                                            <span class="badge bg-success py-2 px-3">
+                                                <i class="fas fa-gift me-1"></i>Gratuit
+                                            </span>
                                         @else
-                                            <span class="badge bg-primary mb-2">Payant</span>
+                                            <span class="badge bg-primary py-2 px-3">
+                                                <i class="fas fa-dollar-sign me-1"></i>Payant
+                                            </span>
                                         @endif
                                         
-                                        <a href="{{ route('courses.show', $course) }}" class="btn btn-outline-primary" target="_blank">
+                                        <a href="{{ route('courses.show', $course) }}" class="btn btn-primary mt-2" target="_blank">
                                             <i class="fas fa-external-link-alt me-1"></i>Voir le cours
                                         </a>
                                     </div>
@@ -194,9 +225,9 @@
                             </div>
 
                             <!-- Informations du cours -->
-                            <div class="card mb-3">
-                                <div class="card-header">
-                                    <h6 class="mb-0">Informations</h6>
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-info text-white">
+                                    <h6 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Informations</h6>
                                 </div>
                                 <div class="card-body">
                                     <ul class="list-unstyled mb-0">
@@ -252,9 +283,9 @@
                             </div>
 
                             <!-- Prix -->
-                            <div class="card mb-3">
-                                <div class="card-header">
-                                    <h6 class="mb-0">Prix</h6>
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-success text-white">
+                                    <h6 class="mb-0"><i class="fas fa-dollar-sign me-2"></i>Prix</h6>
                                 </div>
                                 <div class="card-body">
                                     @if($course->is_free)
@@ -277,9 +308,9 @@
                             <!-- Prérequis -->
                             @php $requirements = $course->getRequirementsArray(); @endphp
                             @if(count($requirements) > 0)
-                            <div class="card mb-3">
-                                <div class="card-header">
-                                    <h6 class="mb-0">Prérequis</h6>
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-warning text-white">
+                                    <h6 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Prérequis</h6>
                                 </div>
                                 <div class="card-body">
                                     <ul class="mb-0">
@@ -294,9 +325,9 @@
                             <!-- Objectifs -->
                             @php $learnings = $course->getWhatYouWillLearnArray(); @endphp
                             @if(count($learnings) > 0)
-                            <div class="card mb-3">
-                                <div class="card-header">
-                                    <h6 class="mb-0">Ce que vous apprendrez</h6>
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-primary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Ce que vous apprendrez</h6>
                                 </div>
                                 <div class="card-body">
                                     <ul class="mb-0">
@@ -310,9 +341,9 @@
 
                             <!-- SEO -->
                             @if($course->meta_description || $course->meta_keywords)
-                            <div class="card mb-3">
-                                <div class="card-header">
-                                    <h6 class="mb-0">SEO</h6>
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-gradient-secondary text-white">
+                                    <h6 class="mb-0"><i class="fas fa-search me-2"></i>SEO</h6>
                                 </div>
                                 <div class="card-body">
                                     @if($course->meta_description)
@@ -359,33 +390,140 @@
 
 @push('styles')
 <style>
+/* Couleurs principales */
 .text-primary {
     color: #003366 !important;
 }
 
-.card-header h6 {
-    color: #003366;
+/* Headers avec gradient */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #003366 0%, #004080 100%) !important;
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%) !important;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+}
+
+.bg-gradient-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+}
+
+/* Cards */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.card-header {
+    font-weight: 600;
+    border-bottom: none;
+}
+
+.card-header h5, .card-header h6 {
     font-weight: 600;
 }
 
+/* Thumbnail du cours */
+.course-thumbnail {
+    transition: transform 0.3s ease;
+}
+
+.course-thumbnail:hover {
+    transform: scale(1.02);
+}
+
+/* Description */
+.course-description {
+    line-height: 1.8;
+    color: #495057;
+}
+
+/* Badges */
+.badge {
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+    transition: transform 0.2s ease;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+}
+
+/* Accordion */
 .accordion-button {
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .accordion-button:not(.collapsed) {
-    background-color: #e3f2fd;
+    background: linear-gradient(135deg, #e3f2fd 0%, #f0f9ff 100%);
     color: #003366;
 }
 
+.accordion-button:hover {
+    background-color: #e9ecef;
+}
+
+.accordion-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem !important;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+/* List group */
 .list-group-item {
     border: 1px solid #dee2e6;
     border-radius: 0.375rem !important;
     margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
 }
 
-.badge {
-    font-size: 0.75em;
+.list-group-item:hover {
+    background-color: #f8f9fa;
+    transform: translateX(5px);
+}
+
+/* Buttons */
+.btn {
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .card-header h4 {
+        font-size: 1.1rem;
+    }
+    
+    .card-header small {
+        font-size: 0.8rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
 }
 </style>
 @endpush

@@ -174,17 +174,39 @@
                                         @endif
                                     </div>
                                     
-                                    <form method="POST" action="{{ route('profile.avatar') }}" enctype="multipart/form-data">
+                                    <form method="POST" action="{{ route('profile.avatar') }}" enctype="multipart/form-data" id="avatarForm">
                                         @csrf
                                         <div class="mb-3">
-                                            <input type="file" class="form-control @error('avatar') is-invalid @enderror" 
-                                                   id="avatar" name="avatar" accept="image/*">
+                                            <div class="upload-zone" id="avatarUploadZone">
+                                                <input type="file" 
+                                                       class="form-control d-none @error('avatar') is-invalid @enderror" 
+                                                       id="avatar" 
+                                                       name="avatar" 
+                                                       accept="image/jpeg,image/png,image/jpg,image/webp"
+                                                       onchange="handleAvatarUpload(this)">
+                                                <div class="upload-placeholder text-center p-3" onclick="document.getElementById('avatar').click()">
+                                                    <i class="fas fa-camera fa-2x text-primary mb-2"></i>
+                                                    <p class="mb-1 small"><strong>Cliquez pour changer la photo</strong></p>
+                                                    <p class="text-muted small mb-0">Format : JPG, PNG, WEBP | Max : 5MB</p>
+                                                </div>
+                                                <div class="upload-preview d-none">
+                                                    <img src="" alt="Preview" class="img-fluid rounded-circle mx-auto d-block" style="max-width: 150px; max-height: 150px; border: 3px solid #17a2b8;">
+                                                    <div class="upload-info mt-2 text-center">
+                                                        <span class="badge bg-primary file-name"></span>
+                                                        <span class="badge bg-info file-size"></span>
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-danger mt-2" onclick="clearAvatar()">
+                                                        <i class="fas fa-times me-1"></i>Annuler
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="invalid-feedback d-block" id="avatarError"></div>
                                             @error('avatar')
-                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
                                             @enderror
                                         </div>
-                                        <button type="submit" class="btn btn-outline-primary btn-sm">
-                                            <i class="fas fa-upload me-1"></i>Changer
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-save me-1"></i>Enregistrer
                                         </button>
                                     </form>
                                 </div>
@@ -388,29 +410,151 @@
         font-size: 1.1rem !important;
     }
 }
+
+/* Zone d'upload moderne */
+.upload-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.upload-zone:hover {
+    border-color: #003366;
+    background-color: #e9ecef;
+}
+
+.upload-placeholder {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-placeholder:hover {
+    background-color: rgba(0, 51, 102, 0.05);
+}
+
+.upload-placeholder:hover i {
+    transform: scale(1.1);
+}
+
+.upload-placeholder i {
+    transition: transform 0.2s ease;
+}
+
+.upload-preview {
+    padding: 1.5rem;
+}
+
+.upload-preview img {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.upload-preview img:hover {
+    transform: scale(1.05);
+}
+
+.upload-info {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.upload-info .badge {
+    font-size: 0.75rem;
+    padding: 0.3em 0.6em;
+}
 </style>
 @endpush
 
 @push('scripts')
 <script>
-// Aperçu de l'image avant upload
-document.getElementById('avatar').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
+// Constantes de validation
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+// Gestion de l'upload d'avatar
+function handleAvatarUpload(input) {
+    const zone = document.getElementById('avatarUploadZone');
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    const errorDiv = document.getElementById('avatarError');
+    
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        if (!VALID_IMAGE_TYPES.includes(file.type)) {
+            showError(errorDiv, '❌ Format invalide. Utilisez JPG, PNG ou WEBP.');
+            input.value = '';
+            return;
+        }
+        
+        if (file.size > MAX_IMAGE_SIZE) {
+            showError(errorDiv, '❌ Le fichier est trop volumineux. Maximum 5MB.');
+            input.value = '';
+            return;
+        }
+        
         const reader = new FileReader();
         reader.onload = function(e) {
-            const img = document.querySelector('.rounded-circle img');
-            if (img) {
-                img.src = e.target.result;
+            const img = preview.querySelector('img');
+            img.src = e.target.result;
+            preview.querySelector('.file-name').textContent = file.name;
+            preview.querySelector('.file-size').textContent = formatFileSize(file.size);
+            placeholder.classList.add('d-none');
+            preview.classList.remove('d-none');
+            
+            // Mettre à jour l'image du profil principal
+            const mainImg = document.querySelector('.card-body .rounded-circle img');
+            if (mainImg) {
+                mainImg.src = e.target.result;
             } else {
-                // Créer une nouvelle image si elle n'existe pas
-                const container = document.querySelector('.rounded-circle');
-                container.innerHTML = `<img src="${e.target.result}" alt="Photo de profil" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">`;
+                // Créer une nouvelle image si elle n'existe pas (cas sans avatar)
+                const iconDiv = document.querySelector('.rounded-circle.bg-primary');
+                if (iconDiv) {
+                    iconDiv.innerHTML = `<img src="${e.target.result}" alt="Photo de profil" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">`;
+                    iconDiv.classList.remove('bg-primary', 'd-flex', 'align-items-center', 'justify-content-center', 'mx-auto');
+                }
             }
         };
         reader.readAsDataURL(file);
     }
-});
+}
+
+function clearAvatar() {
+    const zone = document.getElementById('avatarUploadZone');
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    const input = document.getElementById('avatar');
+    const errorDiv = document.getElementById('avatarError');
+    
+    input.value = '';
+    preview.querySelector('img').src = '';
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    preview.classList.add('d-none');
+    placeholder.classList.remove('d-none');
+}
+
+function showError(errorDiv, message) {
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
 
 // Validation du mot de passe
 document.getElementById('password').addEventListener('input', function() {

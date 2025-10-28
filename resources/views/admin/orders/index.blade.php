@@ -8,10 +8,15 @@
         <div class="col-12">
             <div class="card border-0 shadow">
                 <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">
-                            <i class="fas fa-shopping-bag me-2"></i>Gestion des Commandes
-                        </h4>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </a>
+                            <h4 class="mb-0">
+                                <i class="fas fa-shopping-bag me-2"></i>Gestion des Commandes
+                            </h4>
+                        </div>
                         <div>
                             <button class="btn btn-light" onclick="exportOrders()">
                                 <i class="fas fa-download me-1"></i>Exporter
@@ -474,27 +479,53 @@ function exportOrders() {
 
 @push('styles')
 <style>
+/* Design moderne pour la page de gestion des commandes */
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #003366 0%, #004080 100%);
+    border: none;
+    padding: 1.5rem;
+}
+
+.table {
+    margin-bottom: 0;
+}
+
 .table th {
     border-top: none;
     font-weight: 600;
     color: #003366;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateX(3px);
 }
 
 .badge {
-    font-size: 0.75em;
+    font-size: 0.85rem;
+    padding: 0.4em 0.8em;
+    font-weight: 500;
 }
 
 .btn-group .btn {
     border-radius: 0.375rem;
     margin-right: 2px;
+    transition: all 0.2s ease;
 }
 
-.card-header {
-    background: linear-gradient(135deg, #003366 0%, #004080 100%);
-}
-
-.table-hover tbody tr:hover {
-    background-color: rgba(0, 51, 102, 0.05);
+.btn-group .btn:hover {
+    transform: translateY(-2px);
 }
 
 .form-check-input:checked {
@@ -561,6 +592,62 @@ function exportOrders() {
 
 .pagination .page-link i {
     font-size: 0.75rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
+    .card-header {
+        padding: 0.75rem;
+    }
+    
+    .card-header h4 {
+        font-size: 1rem;
+    }
+    
+    .card-header .btn-outline-light.btn-sm {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+    
+    .card-header .btn-light {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
+    
+    .table {
+        font-size: 0.85rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .card-header .d-flex {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch !important;
+    }
+    
+    .card-header .btn-light:not(.btn-sm) {
+        width: 100%;
+    }
 }
 </style>
 @endpush

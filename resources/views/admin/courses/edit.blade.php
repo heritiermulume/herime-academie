@@ -6,17 +6,22 @@
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">
-            <div class="card border-0 shadow">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">
-                            <i class="fas fa-edit me-2"></i>Modifier le cours
-                        </h4>
+            <div class="card border-0 shadow-lg">
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
                         <div>
-                            <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-info me-2">
+                            <h4 class="mb-1">
+                                <i class="fas fa-edit me-2"></i>Modifier le cours
+                            </h4>
+                            <small class="opacity-75">
+                                <i class="fas fa-graduation-cap me-1"></i>{{ $course->title }}
+                            </small>
+                        </div>
+                        <div class="d-flex gap-2 mt-2 mt-md-0">
+                            <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-info btn-sm">
                                 <i class="fas fa-eye me-1"></i>Voir
                             </a>
-                            <a href="{{ route('admin.courses') }}" class="btn btn-light">
+                            <a href="{{ route('admin.courses') }}" class="btn btn-light btn-sm">
                                 <i class="fas fa-arrow-left me-1"></i>Retour
                             </a>
                         </div>
@@ -28,13 +33,13 @@
                         @method('PUT')
                         
                         <!-- Informations de base -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="text-primary mb-3">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-gradient-primary text-white">
+                                <h5 class="mb-0">
                                     <i class="fas fa-info-circle me-2"></i>Informations de base
                                 </h5>
                             </div>
-                        </div>
+                            <div class="card-body">
 
                         <div class="row">
                             <div class="col-md-8 mb-3">
@@ -116,54 +121,141 @@
                                 @enderror
                             </div>
                         </div>
+                            </div>
+                        </div>
 
-                        <!-- Image de couverture -->
+                        <!-- Médias (Image et Vidéo) -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-gradient-success text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-photo-video me-2"></i>Médias
+                                </h5>
+                            </div>
+                            <div class="card-body">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="thumbnail" class="form-label">Cover Image</label>
+                                <label for="thumbnail" class="form-label fw-bold">Image de couverture</label>
+                                
+                                <!-- Image actuelle -->
                                 @if($course->thumbnail)
-                                    <div class="mb-2">
-                                        <img src="{{ $course->thumbnail }}" alt="Image actuelle" class="img-thumbnail" style="max-width: 200px; max-height: 150px;">
-                                        <p class="text-muted small">Image actuelle</p>
+                                    <div class="current-thumbnail mb-3 text-center">
+                                        <p class="fw-bold mb-2 text-success">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            Image actuelle :
+                                        </p>
+                                        <img src="{{ $course->thumbnail }}" alt="Image actuelle" class="img-thumbnail rounded" style="max-width: 300px; max-height: 200px; border: 4px solid #28a745;">
                                     </div>
                                 @endif
-                                <input type="file" class="form-control @error('thumbnail') is-invalid @enderror" 
-                                       id="thumbnail" name="thumbnail" accept="image/*">
-                                <small class="text-muted">Formats acceptés: JPEG, PNG, JPG, GIF, WebP. Taille max: 5MB</small>
+                                
+                                <!-- Zone d'upload pour nouveau -->
+                                <div class="upload-zone" id="thumbnailUploadZone">
+                                    <input type="file" 
+                                           class="form-control d-none @error('thumbnail') is-invalid @enderror" 
+                                           id="thumbnail" 
+                                           name="thumbnail" 
+                                           accept="image/jpeg,image/png,image/jpg,image/webp"
+                                           onchange="handleThumbnailUpload(this)">
+                                    <div class="upload-placeholder text-center p-4" onclick="document.getElementById('thumbnail').click()">
+                                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                        <p class="mb-2"><strong>Cliquez pour changer l'image</strong></p>
+                                        <p class="text-muted small mb-0">Format : JPG, PNG, WEBP | Max : 5MB</p>
+                                        <p class="text-muted small">Laissez vide pour conserver l'image actuelle</p>
+                                    </div>
+                                    <div class="upload-preview d-none">
+                                        <p class="fw-bold text-info text-center mb-2">
+                                            <i class="fas fa-eye me-1"></i>Nouvelle image :
+                                        </p>
+                                        <img src="" alt="Preview" class="img-fluid rounded mx-auto d-block" style="max-width: 100%; max-height: 300px; border: 3px solid #17a2b8;">
+                                        <div class="upload-info mt-2 text-center">
+                                            <span class="badge bg-primary file-name"></span>
+                                            <span class="badge bg-info file-size"></span>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-danger mt-2 d-block mx-auto" onclick="clearThumbnail()">
+                                            <i class="fas fa-trash me-1"></i>Annuler le changement
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="invalid-feedback d-block" id="thumbnailError"></div>
                                 @error('thumbnail')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label for="video_preview" class="form-label">Vidéo de prévisualisation</label>
-                                <div class="mb-2">
+                                <label for="video_preview" class="form-label fw-bold">Vidéo de prévisualisation</label>
+                                
+                                <!-- Vidéo actuelle -->
+                                @if($course->video_preview)
+                                    <div class="current-video mb-3 text-center">
+                                        <p class="fw-bold mb-2 text-success">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            Vidéo actuelle :
+                                        </p>
+                                        <video controls class="w-100 rounded" style="max-height: 200px; border: 4px solid #28a745;">
+                                            <source src="{{ $course->video_preview }}" type="video/mp4">
+                                        </video>
+                                    </div>
+                                @endif
+                                
+                                <!-- Option 1: Lien vidéo -->
+                                <div class="mb-3">
+                                    <label class="form-label small">Option 1: Lien vidéo</label>
                                     <input type="url" class="form-control @error('video_preview') is-invalid @enderror" 
                                            id="video_preview" name="video_preview" value="{{ old('video_preview', $course->video_preview) }}" 
-                                           placeholder="Lien (https://...)">
+                                           placeholder="https://...">
                                     @error('video_preview')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
+                                
+                                <!-- Option 2: Upload fichier -->
                                 <div>
-                                    <input type="file" class="form-control @error('video_preview_file') is-invalid @enderror" 
-                                           id="video_preview_file" name="video_preview_file" accept="video/*">
-                                    <small class="text-muted">Optionnel: téléverser un fichier vidéo à la place du lien</small>
+                                    <label class="form-label small">Option 2: Téléverser un fichier</label>
+                                    <div class="upload-zone" id="videoUploadZone">
+                                        <input type="file" 
+                                               class="form-control d-none @error('video_preview_file') is-invalid @enderror" 
+                                               id="video_preview_file" 
+                                               name="video_preview_file" 
+                                               accept="video/mp4,video/webm,video/ogg"
+                                               onchange="handleVideoUpload(this)">
+                                        <div class="upload-placeholder text-center p-3" onclick="document.getElementById('video_preview_file').click()">
+                                            <i class="fas fa-video fa-2x text-success mb-2"></i>
+                                            <p class="mb-1 small"><strong>Cliquez pour changer la vidéo</strong></p>
+                                            <p class="text-muted small mb-0">Format : MP4, WEBM | Max : 100MB</p>
+                                        </div>
+                                        <div class="upload-preview d-none">
+                                            <p class="fw-bold text-info text-center mb-2">
+                                                <i class="fas fa-eye me-1"></i>Nouvelle vidéo :
+                                            </p>
+                                            <video controls class="w-100 rounded" style="max-height: 200px; border: 3px solid #17a2b8;"></video>
+                                            <div class="upload-info mt-2 text-center">
+                                                <span class="badge bg-primary file-name"></span>
+                                                <span class="badge bg-info file-size"></span>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-danger mt-2 d-block mx-auto" onclick="clearVideo()">
+                                                <i class="fas fa-trash me-1"></i>Annuler le changement
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="invalid-feedback d-block" id="videoError"></div>
                                     @error('video_preview_file')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
                         </div>
 
+                            </div>
+                        </div>
+
                         <!-- Prix et statut -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="text-primary mb-3">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-gradient-warning text-white">
+                                <h5 class="mb-0">
                                     <i class="fas fa-dollar-sign me-2"></i>Prix et statut
                                 </h5>
                             </div>
-                        </div>
+                            <div class="card-body">
 
                         <div class="row">
                             <div class="col-md-3 mb-3">
@@ -263,14 +355,17 @@
                         </div>
 
 
+                            </div>
+                        </div>
+
                         <!-- Prérequis et objectifs -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="text-primary mb-3">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-gradient-info text-white">
+                                <h5 class="mb-0">
                                     <i class="fas fa-target me-2"></i>Prérequis et objectifs
                                 </h5>
                             </div>
-                        </div>
+                            <div class="card-body">
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -328,14 +423,17 @@
                             </div>
                         </div>
 
+                            </div>
+                        </div>
+
                         <!-- SEO -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h5 class="text-primary mb-3">
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-gradient-secondary text-white">
+                                <h5 class="mb-0">
                                     <i class="fas fa-search me-2"></i>Optimisation SEO
                                 </h5>
                             </div>
-                        </div>
+                            <div class="card-body">
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -457,18 +555,25 @@
                             </div>
                         </div>
 
+                            </div>
+                        </div>
+
                         <!-- Boutons d'action -->
-                        <div class="d-flex justify-content-between mt-4">
-                            <a href="{{ route('admin.courses') }}" class="btn btn-secondary">
-                                <i class="fas fa-times me-1"></i>Annuler
-                            </a>
-                            <div>
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <a href="{{ route('admin.courses') }}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-1"></i>Annuler
+                                    </a>
+                                    <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-outline-primary me-2" onclick="saveDraft()">
                                     <i class="fas fa-save me-1"></i>Enregistrer comme brouillon
                                 </button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-check me-1"></i>Mettre à jour
-                                </button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-check me-1"></i>Mettre à jour
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -480,6 +585,132 @@
 
 @push('scripts')
 <script>
+// Constantes de validation
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const VALID_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
+
+// Gestion de l'upload d'image de couverture
+function handleThumbnailUpload(input) {
+    const zone = document.getElementById('thumbnailUploadZone');
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    const errorDiv = document.getElementById('thumbnailError');
+    
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        if (!VALID_IMAGE_TYPES.includes(file.type)) {
+            showError(errorDiv, '❌ Format invalide. Utilisez JPG, PNG ou WEBP.');
+            input.value = '';
+            return;
+        }
+        
+        if (file.size > MAX_IMAGE_SIZE) {
+            showError(errorDiv, '❌ Le fichier est trop volumineux. Maximum 5MB.');
+            input.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = preview.querySelector('img');
+            img.src = e.target.result;
+            preview.querySelector('.file-name').textContent = file.name;
+            preview.querySelector('.file-size').textContent = formatFileSize(file.size);
+            placeholder.classList.add('d-none');
+            preview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function clearThumbnail() {
+    const zone = document.getElementById('thumbnailUploadZone');
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    const input = document.getElementById('thumbnail');
+    const errorDiv = document.getElementById('thumbnailError');
+    
+    input.value = '';
+    preview.querySelector('img').src = '';
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    preview.classList.add('d-none');
+    placeholder.classList.remove('d-none');
+}
+
+// Gestion de l'upload de vidéo
+function handleVideoUpload(input) {
+    const zone = document.getElementById('videoUploadZone');
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    const errorDiv = document.getElementById('videoError');
+    
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        if (!VALID_VIDEO_TYPES.includes(file.type)) {
+            showError(errorDiv, '❌ Format invalide. Utilisez MP4 ou WEBM.');
+            input.value = '';
+            return;
+        }
+        
+        if (file.size > MAX_VIDEO_SIZE) {
+            showError(errorDiv, '❌ Le fichier est trop volumineux. Maximum 100MB.');
+            input.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const video = preview.querySelector('video');
+            video.src = e.target.result;
+            preview.querySelector('.file-name').textContent = file.name;
+            preview.querySelector('.file-size').textContent = formatFileSize(file.size);
+            placeholder.classList.add('d-none');
+            preview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function clearVideo() {
+    const zone = document.getElementById('videoUploadZone');
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    const input = document.getElementById('video_preview_file');
+    const errorDiv = document.getElementById('videoError');
+    
+    input.value = '';
+    preview.querySelector('video').src = '';
+    errorDiv.textContent = '';
+    errorDiv.style.display = 'none';
+    preview.classList.add('d-none');
+    placeholder.classList.remove('d-none');
+}
+
+// Fonctions utilitaires
+function showError(errorDiv, message) {
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
 // Gestion des prérequis
 function addRequirement() {
     const container = document.getElementById('requirements-container');
@@ -600,6 +831,73 @@ function toggleExternalPaymentFields() {
 
 .badge {
     font-size: 0.75em;
+}
+
+/* Images/Vidéos actuelles */
+.current-thumbnail img,
+.current-video video {
+    transition: transform 0.2s ease;
+}
+
+.current-thumbnail img:hover {
+    transform: scale(1.05);
+}
+
+/* Zone d'upload moderne */
+.upload-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.upload-zone:hover {
+    border-color: #17a2b8;
+    background-color: #e9ecef;
+}
+
+.upload-placeholder {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-placeholder:hover {
+    background-color: rgba(23, 162, 184, 0.05);
+}
+
+.upload-placeholder:hover i {
+    transform: scale(1.1);
+}
+
+.upload-placeholder i {
+    transition: transform 0.2s ease;
+}
+
+.upload-preview {
+    padding: 1.5rem;
+}
+
+.upload-preview img,
+.upload-preview video {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.upload-preview img:hover {
+    transform: scale(1.02);
+}
+
+.upload-info {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.upload-info .badge {
+    font-size: 0.85rem;
+    padding: 0.4em 0.8em;
 }
 </style>
 @endpush

@@ -12,6 +12,7 @@ use App\Models\Announcement;
 use App\Models\Partner;
 use App\Models\Testimonial;
 use App\Models\Payment;
+use App\Models\Review;
 use App\Traits\DatabaseCompatibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

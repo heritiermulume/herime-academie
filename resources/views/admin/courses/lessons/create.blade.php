@@ -100,15 +100,36 @@
                                             @enderror
                                         </div>
                                         <div>
-                                            <input type="file" class="form-control @error('content_file') is-invalid @enderror" 
-                                                   id="content_file" name="content_file" accept="video/*,application/pdf" onchange="uploadLessonFile(this)">
-                                            <small class="text-muted">Optionnel: téléverser un fichier (vidéo ou PDF)</small>
-                                            <div class="progress mt-2" style="height: 6px; display:none;" id="uploadProgress">
-                                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                            <label class="form-label small">Ou téléverser un fichier</label>
+                                            <div class="upload-zone" id="contentUploadZone">
+                                                <input type="file" 
+                                                       class="form-control d-none @error('content_file') is-invalid @enderror" 
+                                                       id="content_file" 
+                                                       name="content_file" 
+                                                       accept="video/mp4,video/webm,application/pdf"
+                                                       onchange="handleContentUpload(this)">
+                                                <div class="upload-placeholder text-center p-3" onclick="document.getElementById('content_file').click()">
+                                                    <i class="fas fa-file-upload fa-2x text-success mb-2"></i>
+                                                    <p class="mb-1 small"><strong>Cliquez pour sélectionner un fichier</strong></p>
+                                                    <p class="text-muted small mb-0">Vidéo : MP4, WEBM (Max 100MB) | Document : PDF (Max 10MB)</p>
+                                                </div>
+                                                <div class="upload-preview d-none">
+                                                    <div class="preview-content"></div>
+                                                    <div class="upload-info mt-2 text-center">
+                                                        <span class="badge bg-primary file-name"></span>
+                                                        <span class="badge bg-info file-size"></span>
+                                                    </div>
+                                                    <div class="progress mt-2" style="height: 6px; display:none;" id="uploadProgress">
+                                                        <div class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-danger mt-2 d-block mx-auto" onclick="clearContent()">
+                                                        <i class="fas fa-trash me-1"></i>Supprimer
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div class="mt-2 d-none" id="filePreview"></div>
+                                            <div class="invalid-feedback d-block" id="contentError"></div>
                                             @error('content_file')
-                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                <div class="invalid-feedback d-block">{{ $message }}</div>
                                             @enderror
                                         </div>
                                     </div>
@@ -194,6 +215,97 @@
 
 @push('scripts')
 <script>
+    // Constantes de validation
+    const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+    const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10MB
+    const VALID_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
+    const VALID_PDF_TYPES = ['application/pdf'];
+
+    // Gestion de l'upload de contenu (vidéo ou PDF)
+    function handleContentUpload(input) {
+        const zone = document.getElementById('contentUploadZone');
+        const placeholder = zone.querySelector('.upload-placeholder');
+        const preview = zone.querySelector('.upload-preview');
+        const errorDiv = document.getElementById('contentError');
+        const previewContent = preview.querySelector('.preview-content');
+        
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+        
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            
+            // Validation du type et de la taille
+            if (VALID_VIDEO_TYPES.includes(file.type)) {
+                if (file.size > MAX_VIDEO_SIZE) {
+                    showError(errorDiv, '❌ La vidéo est trop volumineuse. Maximum 100MB.');
+                    input.value = '';
+                    return;
+                }
+            } else if (VALID_PDF_TYPES.includes(file.type)) {
+                if (file.size > MAX_PDF_SIZE) {
+                    showError(errorDiv, '❌ Le PDF est trop volumineux. Maximum 10MB.');
+                    input.value = '';
+                    return;
+                }
+            } else {
+                showError(errorDiv, '❌ Format invalide. Utilisez MP4, WEBM ou PDF.');
+                input.value = '';
+                return;
+            }
+            
+            // Afficher les infos
+            preview.querySelector('.file-name').textContent = file.name;
+            preview.querySelector('.file-size').textContent = formatFileSize(file.size);
+            
+            // Preview selon le type
+            if (VALID_VIDEO_TYPES.includes(file.type)) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewContent.innerHTML = `<video controls class="w-100 rounded" style="max-height: 200px; border: 3px solid #28a745;"><source src="${e.target.result}"></video>`;
+                    placeholder.classList.add('d-none');
+                    preview.classList.remove('d-none');
+                };
+                reader.readAsDataURL(file);
+            } else if (VALID_PDF_TYPES.includes(file.type)) {
+                previewContent.innerHTML = `<div class="alert alert-success text-center mb-0"><i class="fas fa-file-pdf fa-3x mb-2"></i><p class="mb-0">PDF sélectionné</p></div>`;
+                placeholder.classList.add('d-none');
+                preview.classList.remove('d-none');
+            }
+            
+            // Upload AJAX optionnel
+            uploadLessonFile(input);
+        }
+    }
+
+    function clearContent() {
+        const zone = document.getElementById('contentUploadZone');
+        const placeholder = zone.querySelector('.upload-placeholder');
+        const preview = zone.querySelector('.upload-preview');
+        const input = document.getElementById('content_file');
+        const errorDiv = document.getElementById('contentError');
+        
+        input.value = '';
+        preview.querySelector('.preview-content').innerHTML = '';
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+        preview.classList.add('d-none');
+        placeholder.classList.remove('d-none');
+    }
+
+    function showError(errorDiv, message) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const typeSelect = document.getElementById('type');
         const contentUrlField = document.getElementById('content-url-field');
@@ -245,26 +357,27 @@
         updateContentFields();
     });
 
+    // Upload AJAX optionnel
     function uploadLessonFile(input) {
-        const file = input.files && input.files[0];
-        if (!file) return;
+        // Upload AJAX désactivé - l'upload se fera via le formulaire normal
+        // Pour activer, créez la route 'uploads.lesson-file' dans routes/web.php
+        return;
+        
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!token) return;
 
-        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const urlInput = document.getElementById('content_url');
         const progressWrapper = document.getElementById('uploadProgress');
         const progressBar = progressWrapper.querySelector('.progress-bar');
-        const preview = document.getElementById('filePreview');
 
         progressWrapper.style.display = 'block';
         progressBar.style.width = '0%';
-        preview.classList.add('d-none');
-        preview.innerHTML = '';
 
         const formData = new FormData();
         formData.append('file', file);
 
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', '{{ route('uploads.lesson-file') }}', true);
+        xhr.open('POST', uploadRoute, true);
         xhr.setRequestHeader('X-CSRF-TOKEN', token);
 
         xhr.upload.onprogress = function(e) {
@@ -276,26 +389,16 @@
 
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
+                progressWrapper.style.display = 'none';
                 if (xhr.status >= 200 && xhr.status < 300) {
                     try {
                         const resp = JSON.parse(xhr.responseText);
-                        if (resp.success) {
-                            urlInput.value = resp.path; // stocker le chemin pour sauvegarde
-                            // Aperçu
-                            preview.classList.remove('d-none');
-                            if (file.type.startsWith('video/')) {
-                                preview.innerHTML = `<video src="${resp.url}" controls style="max-width:100%; height:120px; border-radius:6px;"></video>`;
-                            } else {
-                                preview.innerHTML = `<div class="alert alert-success py-2 mb-0"><i class="fas fa-file-pdf me-2"></i>Fichier téléchargé</div>`;
-                            }
-                        } else {
-                            alert('Échec du téléversement');
+                        if (resp.success && resp.path) {
+                            urlInput.value = resp.path;
                         }
-                    } catch (_) {
-                        alert('Réponse invalide du serveur.');
+                    } catch (e) {
+                        console.error('Erreur de parsing de la réponse', e);
                     }
-                } else {
-                    alert('Erreur lors du téléversement (HTTP ' + xhr.status + ').');
                 }
             }
         };
@@ -303,5 +406,60 @@
         xhr.send(formData);
     }
 </script>
+@endpush
+
+@push('styles')
+<style>
+/* Zone d'upload moderne */
+.upload-zone {
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.upload-zone:hover {
+    border-color: #28a745;
+    background-color: #e9ecef;
+}
+
+.upload-placeholder {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-placeholder:hover {
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.upload-placeholder:hover i {
+    transform: scale(1.1);
+}
+
+.upload-placeholder i {
+    transition: transform 0.2s ease;
+}
+
+.upload-preview {
+    padding: 1.5rem;
+}
+
+.upload-preview video {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.upload-info {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.upload-info .badge {
+    font-size: 0.85rem;
+    padding: 0.4em 0.8em;
+}
+</style>
 @endpush
 @endsection
