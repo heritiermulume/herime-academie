@@ -11,15 +11,49 @@ Quand vous uploadez 2 images de bannières (desktop + mobile), le total des donn
 
 ## Solution rapide pour O2Switch
 
-### 1. Créer/modifier le fichier `.user.ini` à la racine
+### ⚠️ IMPORTANT : Le fichier `.htaccess` prend le dessus !
+
+Sur O2Switch (et la plupart des hébergements Apache), le fichier `public/.htaccess` a la priorité sur `.user.ini`. 
+Il faut donc modifier le `.htaccess` en premier lieu.
+
+### 1. Modifier le fichier `.htaccess`
 
 ```bash
 cd /homepages/XX/dXXXXXXX/htdocs/herime-academie/
+git pull origin main
+```
+
+Le fichier `public/.htaccess` devrait maintenant contenir :
+
+```apache
+# Augmenter les limites PHP pour les uploads (bannières avec 2 images)
+php_value upload_max_filesize 20M
+php_value post_max_size 30M
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value memory_limit 512M
+```
+
+### 2. Vérifier que les modifications sont actives (IMMÉDIAT)
+
+⚡ Contrairement à `.user.ini`, les modifications du `.htaccess` sont **immédiates** !
+
+Créez une URL de test :
+```
+https://votre-site.com/check-php-limits.php?key=herime2024
+```
+
+Cette page vous montrera les limites actuelles.
+
+### 3. Alternative : Modifier `.user.ini` (si .htaccess ne fonctionne pas)
+
+Si les directives `php_value` dans `.htaccess` causent une erreur 500, utilisez `.user.ini` :
+
+```bash
 nano .user.ini
 ```
 
-### 2. Ajouter cette configuration
-
+Ajoutez :
 ```ini
 upload_max_filesize = 20M
 post_max_size = 30M
@@ -29,26 +63,9 @@ max_input_time = 300
 max_input_vars = 3000
 ```
 
-### 3. Sauvegarder et attendre 5 minutes
+⏰ Puis attendez 5-10 minutes pour que `.user.ini` soit pris en compte.
 
-⏰ **Important** : Les modifications dans `.user.ini` prennent 5 minutes pour être actives sur O2Switch.
-
-### 4. Vérifier que c'est actif
-
-Créez un fichier `phpinfo.php` temporaire :
-
-```php
-<?php phpinfo(); ?>
-```
-
-Accédez à `https://votre-site.com/phpinfo.php` et vérifiez :
-- `upload_max_filesize` = 20M
-- `post_max_size` = 30M
-- `memory_limit` = 512M
-
-**N'oubliez pas de supprimer `phpinfo.php` après vérification pour la sécurité !**
-
-### 5. Tester l'upload de bannières
+### 4. Tester l'upload de bannières
 
 Retournez dans l'admin et créez une nouvelle bannière avec 2 images.
 
