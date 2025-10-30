@@ -7,13 +7,13 @@
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center bg-primary text-white rounded-3 p-3">
                 <div>
-                    <h1 class="h3 fw-bold mb-1">Bonjour, {{ auth()->user()->name }} !</h1>
-                    <p class="text-muted mb-0">Bienvenue sur votre tableau de bord étudiant</p>
+                    <h1 class="h3 fw-bold mb-1 text-white">Bonjour, {{ auth()->user()->name }} !</h1>
+                    <p class="mb-0 text-white-50">Bienvenue sur votre tableau de bord étudiant</p>
                 </div>
                 <div>
-                    <a href="{{ route('courses.index') }}" class="btn btn-primary">
+                    <a href="{{ route('courses.index') }}" class="btn btn-light">
                         <i class="fas fa-plus me-2"></i>Découvrir des cours
                     </a>
                 </div>

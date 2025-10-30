@@ -5,17 +5,17 @@
 @section('content')
 <div class="container py-5">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 bg-primary text-white rounded-3 p-3">
         <div class="d-flex align-items-center">
-            <a href="{{ route('student.dashboard') }}" class="btn btn-outline-secondary me-3" title="Tableau de bord">
+            <a href="{{ route('student.dashboard') }}" class="btn btn-outline-light me-3" title="Tableau de bord">
                 <i class="fas fa-tachometer-alt"></i>
             </a>
             <div>
-                <h1 class="h3 mb-1">
+                <h1 class="h3 mb-1 text-white">
                     <i class="fas fa-certificate text-warning me-2"></i>
                     Mes Certificats
                 </h1>
-                <p class="text-muted mb-0">Tous les certificats que vous avez obtenus</p>
+                <p class="mb-0 text-white-50">Tous les certificats que vous avez obtenus</p>
             </div>
         </div>
     </div>

@@ -5,11 +5,11 @@
 @section('content')
 <div class="container-fluid py-0">
     <!-- Top Bar with Back to Dashboard -->
-    <div class="bg-white border-bottom px-3 py-2 d-flex align-items-center">
-        <a href="{{ route('student.dashboard') }}" class="btn btn-outline-secondary btn-sm" title="Tableau de bord">
+    <div class="bg-primary text-white px-3 py-2 d-flex align-items-center rounded-3 mb-2">
+        <a href="{{ route('student.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
             <i class="fas fa-tachometer-alt"></i>
         </a>
-        <span class="ms-3 text-muted small">Retour au tableau de bord</span>
+        <span class="ms-3 small text-white-50">Retour au tableau de bord</span>
     </div>
     <div class="row">
         <!-- Sidebar -->
