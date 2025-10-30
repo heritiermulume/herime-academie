@@ -414,7 +414,17 @@ const revenueChart = new Chart(ctx, {
     data: {
         labels: [
             @foreach($revenueByMonth as $month)
-                '{{ \Carbon\Carbon::createFromFormat('Y-m', $month->month)->format('M Y') }}',
+                @php
+                    $label = $month->month;
+                    if (is_string($month->month) && preg_match('/^\d{4}-\d{2}$/', $month->month)) {
+                        try {
+                            $label = \Carbon\Carbon::createFromFormat('Y-m', $month->month)->format('M Y');
+                        } catch (\Throwable $e) {
+                            $label = $month->month; // fallback brut si format invalide
+                        }
+                    }
+                @endphp
+                '{{ $label }}',
             @endforeach
         ],
         datasets: [{
