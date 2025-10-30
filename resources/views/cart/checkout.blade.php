@@ -648,6 +648,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 console.log('pawaPay status:', status, 'nextStep:', nextStep, 'full data:', data);
                 
+                // Gérer le cas NOT_FOUND
+                if (status === 'NOT_FOUND') {
+                    stopped = true;
+                    paymentNotice.className = 'alert alert-danger mt-3';
+                    paymentNotice.innerHTML = `
+                        <strong>Transaction introuvable</strong><br>
+                        La transaction n'a pas été trouvée dans le système pawaPay.
+                        Veuillez contacter le support si vous avez approuvé le paiement.
+                    `;
+                    payButton.disabled = false;
+                    payButtonText.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Problème détecté';
+                    return;
+                }
+                
                 // Détecter si le statut a changé
                 if (status !== lastStatus) {
                     lastStatus = status;

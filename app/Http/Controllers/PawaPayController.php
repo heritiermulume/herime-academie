@@ -291,15 +291,46 @@ class PawaPayController extends Controller
 
         $statusData = $response->json();
         
-        // Logger le statut réel reçu de pawaPay pour debugging
-        \Log::info('pawaPay status check', [
-            'depositId' => $depositId,
-            'status' => $statusData['status'] ?? null,
-            'nextStep' => $statusData['nextStep'] ?? null,
-            'full_response' => $statusData,
-        ]);
+        // Selon la documentation pawaPay, la réponse peut avoir deux formats:
+        // 1. Format simple: { "status": "COMPLETED", ... }
+        // 2. Format wrapper: { "status": "FOUND", "data": { "status": "COMPLETED", ... } }
+        
+        // Vérifier si c'est le format wrapper
+        if (isset($statusData['status']) && isset($statusData['data'])) {
+            // Format wrapper: extraire le data
+            $actualData = $statusData['data'];
+            $metaStatus = $statusData['status']; // "FOUND" ou "NOT_FOUND"
+            
+            // Si NOT_FOUND, retourner une réponse appropriée
+            if ($metaStatus === 'NOT_FOUND') {
+                \Log::warning('pawaPay deposit not found', ['depositId' => $depositId]);
+                return response()->json([
+                    'status' => 'NOT_FOUND',
+                    'message' => 'Deposit not found',
+                ], $response->status());
+            }
+            
+            \Log::info('pawaPay status check (wrapper format)', [
+                'depositId' => $depositId,
+                'meta_status' => $metaStatus,
+                'deposit_status' => $actualData['status'] ?? null,
+                'nextStep' => $actualData['nextStep'] ?? null,
+                'full_response' => $statusData,
+            ]);
+            
+            // Retourner le format flat pour compatibilité avec le frontend
+            return response()->json($actualData, $response->status());
+        } else {
+            // Format simple: retourner tel quel
+            \Log::info('pawaPay status check (simple format)', [
+                'depositId' => $depositId,
+                'status' => $statusData['status'] ?? null,
+                'nextStep' => $statusData['nextStep'] ?? null,
+                'full_response' => $statusData,
+            ]);
 
-        return response()->json($statusData, $response->status());
+            return response()->json($statusData, $response->status());
+        }
     }
 
     public function webhook(Request $request)
