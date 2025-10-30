@@ -8,6 +8,11 @@
     <title>@yield('title', 'Herime Academie - Plateforme d\'apprentissage en ligne')</title>
     <meta name="description" content="@yield('description', 'Découvrez des milliers de cours en ligne de qualité avec Herime Academie. Formations professionnelles, certifications et expertise garanties.')">
 
+        <!-- Favicon / PWA Icons -->
+        <link rel="icon" type="image/png" href="{{ asset('images/icon-herime.png') }}">
+        <link rel="shortcut icon" type="image/png" href="{{ asset('images/icon-herime.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('images/icon-herime.png') }}">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap" rel="stylesheet" />
