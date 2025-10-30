@@ -128,9 +128,9 @@ Route::middleware('auth')->group(function () {
 
 // Order management routes
 Route::middleware('auth')->group(function () {
-    // Student order routes
-    Route::get('/orders', [App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
-    Route::get('/orders/{order}', [App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
+    // Student order routes (moved under /students/ordres)
+    Route::get('/students/ordres', [App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
+    Route::get('/students/ordres/{order}', [App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
 });
 
 // Authentication routes
