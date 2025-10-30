@@ -5,7 +5,7 @@
 @section('content')
 <div class="container-fluid py-0">
     <!-- Top Bar with Back to Dashboard -->
-    <div class="bg-primary text-white px-3 py-2 d-flex align-items-center rounded-3 mb-2">
+    <div class="text-white px-3 py-2 d-flex align-items-center rounded-3 mb-2" style="background-color:#003366;">
         <a href="{{ route('student.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
             <i class="fas fa-tachometer-alt"></i>
         </a>

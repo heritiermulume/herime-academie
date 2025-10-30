@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center bg-primary text-white rounded-3 p-3">
+            <div class="d-flex justify-content-between align-items-center text-white rounded-3 p-3" style="background-color:#003366;">
                 <div>
                     <h1 class="h3 fw-bold mb-1 text-white">Bonjour, {{ auth()->user()->name }} !</h1>
                     <p class="mb-0 text-white-50">Bienvenue sur votre tableau de bord étudiant</p>
