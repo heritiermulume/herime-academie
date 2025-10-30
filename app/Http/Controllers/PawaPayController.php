@@ -454,7 +454,7 @@ class PawaPayController extends Controller
             // Mapper le statut pawaPay vers le statut local
             $mapped = match ($status) {
                 'COMPLETED' => 'completed',
-                'FAILED' => 'failed',
+                'FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT' => 'failed',
                 'ACCEPTED' => 'pending',
                 'PROCESSING' => 'pending',
                 'IN_RECONCILIATION' => 'pending', // Géré automatiquement par pawaPay, on attend
@@ -500,7 +500,7 @@ class PawaPayController extends Controller
                     'order_id' => $payment->order->id,
                     'depositId' => $depositId,
                 ]);
-            } elseif ($status === 'FAILED' && $payment->order) {
+            } elseif (in_array($status, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT']) && $payment->order) {
                 // Échec : enregistrer la raison et annuler la commande
                 $failureReason = $payload['statusReason'] ?? $payload['message'] ?? ($payload['reason'] ?? 'Paiement échoué');
                 $payment->update(['failure_reason' => $failureReason]);
@@ -917,7 +917,7 @@ class PawaPayController extends Controller
                         $order = $payment->order->fresh();
                         return view('payments.pawapay.success', compact('order'));
                         
-                    } elseif ($status === 'FAILED') {
+                    } elseif (in_array($status, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT'])) {
                         // Échec : rediriger vers la page d'échec
                         $failureReason = $statusData['statusReason'] ?? $statusData['message'] ?? ($statusData['reason'] ?? 'Paiement échoué');
                         $payment->update([
@@ -989,6 +989,37 @@ class PawaPayController extends Controller
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
+        // Si pawaPay redirige avec un depositId, synchroniser l'état local
+        $depositId = $request->query('depositId');
+        if ($depositId) {
+            $payment = Payment::where('payment_method', 'pawapay')
+                ->where('payment_id', $depositId)
+                ->with('order')
+                ->first();
+
+            if ($payment && $payment->order) {
+                // Marquer le paiement comme échoué si encore en attente
+                if ($payment->status === 'pending') {
+                    $payment->update(['status' => 'failed', 'failure_reason' => 'Annulation par l’utilisateur (redirect)']);
+                }
+
+                // Annuler la commande si elle n'est pas déjà payée/terminée
+                if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                    $payment->order->update(['status' => 'cancelled']);
+                }
+
+                \Log::info('pawaPay: Order/payment marked cancelled/failed on failed redirect', [
+                    'depositId' => $depositId,
+                    'payment_id' => $payment->id,
+                    'order_id' => $payment->order->id,
+                ]);
+            } else {
+                \Log::warning('pawaPay: Failed redirect with unknown depositId', [
+                    'depositId' => $depositId,
+                ]);
+            }
+        }
+
         return view('payments.pawapay.failed');
     }
 
