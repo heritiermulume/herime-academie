@@ -549,15 +549,16 @@ class PawaPayController extends Controller
     private function finalizeOrderAfterPayment(Order $order): void
     {
         DB::transaction(function () use ($order) {
-            // Rafraîchir l'order pour avoir les dernières données
+            // Rafraîchir l'order pour avoir les dernières données + charger les relations
             $order->refresh();
+            $order->load('orderItems', 'user');
             
             \Log::info('pawaPay: Starting finalization', [
                 'order_id' => $order->id,
                 'current_status' => $order->status,
                 'order_total' => $order->total,
                 'order_currency' => $order->currency,
-                'order_items_count' => $order->orderItems->count(),
+                'user_id' => $order->user_id,
             ]);
             
             // Vérifier si déjà finalisée (idempotence)
@@ -566,6 +567,37 @@ class PawaPayController extends Controller
                     'order_id' => $order->id,
                     'status' => $order->status,
                 ]);
+                return;
+            }
+
+            // CRITIQUE: Charger les OrderItems directement depuis la DB si la relation est vide
+            $orderItems = $order->orderItems;
+            
+            // Si la collection est vide, charger directement depuis la DB
+            if ($orderItems->isEmpty()) {
+                $orderItems = OrderItem::where('order_id', $order->id)->get();
+                \Log::info('pawaPay: OrderItems loaded directly from DB', [
+                    'order_id' => $order->id,
+                    'items_count' => $orderItems->count(),
+                ]);
+            }
+            
+            \Log::info('pawaPay: OrderItems loaded', [
+                'order_id' => $order->id,
+                'order_items_count' => $orderItems->count(),
+                'items_data' => $orderItems->map(fn($item) => [
+                    'id' => $item->id,
+                    'course_id' => $item->course_id,
+                    'price' => $item->price,
+                ])->toArray(),
+            ]);
+            
+            if ($orderItems->isEmpty()) {
+                \Log::error('pawaPay: No order items found for enrollment - CRITICAL', [
+                    'order_id' => $order->id,
+                    'message' => 'Cannot finalize order without items. Check initiate() method.',
+                ]);
+                // Ne pas faire échouer la transaction, juste logger l'erreur
                 return;
             }
 
@@ -583,15 +615,8 @@ class PawaPayController extends Controller
 
             // Créer les Enrollments pour chaque cours
             $enrollmentsCreated = 0;
-            $orderItemsCount = $order->orderItems->count();
             
-            if ($orderItemsCount === 0) {
-                \Log::error('pawaPay: No order items found for enrollment', [
-                    'order_id' => $order->id,
-                ]);
-            }
-            
-            foreach ($order->orderItems as $orderItem) {
+            foreach ($orderItems as $orderItem) {
                 \Log::info('pawaPay: Processing order item', [
                     'order_id' => $order->id,
                     'order_item_id' => $orderItem->id,
@@ -631,7 +656,7 @@ class PawaPayController extends Controller
             \Log::info('pawaPay: Enrollments created', [
                 'order_id' => $order->id,
                 'enrollments_created' => $enrollmentsCreated,
-                'total_order_items' => $orderItemsCount,
+                'total_order_items' => $orderItems->count(),
             ]);
 
             // Vider le panier de l'utilisateur
