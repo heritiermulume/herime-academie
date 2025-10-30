@@ -557,8 +557,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.depositId) {
             paymentNotice.style.display = 'block';
             paymentNotice.className = 'alert alert-info mt-3';
-            paymentNotice.textContent = 'Paiement en cours de traitement… Veuillez approuver le paiement sur votre téléphone.';
-            pollStatus(data.depositId, 30000);
+            paymentNotice.textContent = 'Paiement en cours de traitement… Veuillez approuver le paiement sur votre téléphone. Cela peut prendre jusqu\'à 2 minutes.';
+            // Augmenter le timeout à 120 secondes (2 minutes) pour laisser le temps à l'utilisateur d'approuver
+            pollStatus(data.depositId, 120000);
         }
     }
 
@@ -609,17 +610,36 @@ document.addEventListener('DOMContentLoaded', function() {
             // Vérifier le délai
             if (Date.now() - start > abortAfterMs) {
                 stopped = true;
-                paymentNotice.className = 'alert alert-warning mt-3';
-                paymentNotice.textContent = 'Délai dépassé lors du traitement du paiement. La transaction a été annulée.';
-                // Annuler côté serveur
-                try { 
-                    await fetch(`{{ url('/pawapay/cancel') }}/${depositId}`, { 
-                        method: 'POST', 
-                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } 
-                    }); 
-                } catch(e) {
-                    console.error('Error cancelling payment:', e);
+                
+                // Dernière vérification du statut avant d'annuler
+                const lastCheckRes = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
+                if (lastCheckRes.ok) {
+                    const lastCheckData = await lastCheckRes.json();
+                    // Si le statut est PROCESSING, ACCEPTED ou IN_RECONCILIATION, ne pas annuler
+                    if (['PROCESSING', 'ACCEPTED', 'IN_RECONCILIATION'].includes(lastCheckData.status)) {
+                        paymentNotice.className = 'alert alert-info mt-3';
+                        paymentNotice.textContent = 'Votre paiement est toujours en cours de traitement. Vous pouvez quitter cette page et vérifier plus tard dans vos commandes.';
+                        payButton.disabled = false;
+                        payButtonText.innerHTML = '<i class="fas fa-check me-2"></i>Paiement en cours';
+                        return;
+                    }
                 }
+                
+                paymentNotice.className = 'alert alert-warning mt-3';
+                paymentNotice.innerHTML = `
+                    <strong>Délai dépassé</strong><br>
+                    Si vous avez approuvé le paiement sur votre téléphone, ne vous inquiétez pas ! 
+                    Le paiement peut prendre quelques minutes à se confirmer. 
+                    <br><br>
+                    <strong>Que faire maintenant ?</strong><br>
+                    <a href="{{ route('orders.index') }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-list me-1"></i>Vérifier mes commandes
+                    </a>
+                    <a href="javascript:location.reload();" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-sync me-1"></i>Rafraîchir cette page
+                    </a>
+                `;
+                // NE PAS annuler côté serveur - laisser le webhook gérer
                 payButton.disabled = false;
                 payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
                 return;
