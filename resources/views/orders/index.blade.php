@@ -56,7 +56,7 @@
                                             </div>
                                             <div class="col-6">
                                                 <i class="fas fa-dollar-sign me-1"></i>
-                                                ${{ number_format($order->total_amount, 2) }}
+                                                {{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount) }}
                                             </div>
                                         </div>
                                     </div>
@@ -73,7 +73,7 @@
                                                         </div>
                                                     </div>
                                                     <div class="item-price">
-                                                        ${{ number_format($item['price'] ?? 0, 2) }}
+                                                        {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['price'] ?? 0) }}
                                                     </div>
                                                 </div>
                                             @endforeach

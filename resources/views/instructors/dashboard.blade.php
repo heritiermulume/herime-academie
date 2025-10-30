@@ -85,7 +85,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="text-muted mb-1">Revenus totaux</h6>
-                            <h3 class="mb-0 fw-bold">${{ number_format($stats['total_earnings'], 2) }}</h3>
+                            <h3 class="mb-0 fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_earnings'] ?? 0) }}</h3>
                         </div>
                     </div>
                 </div>

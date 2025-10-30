@@ -134,7 +134,7 @@
                                             </div>
                                             <div class="col-md-2 text-end">
                                                 <div class="fw-bold text-success">
-                                                    ${{ number_format($item['price'] ?? 0, 2) }}
+                                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['price'] ?? 0) }}
                                                 </div>
                                             </div>
                                         </div>
@@ -197,20 +197,20 @@
                         <div class="card-body">
                             <div class="summary-item d-flex justify-content-between mb-2">
                                 <span>Sous-total</span>
-                                <span>${{ number_format($order->subtotal ?? $order->total_amount, 2) }}</span>
+                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->subtotal ?? $order->total_amount) }}</span>
                             </div>
                             <div class="summary-item d-flex justify-content-between mb-2">
                                 <span>Remise</span>
-                                <span>${{ number_format($order->discount ?? 0, 2) }}</span>
+                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->discount ?? 0) }}</span>
                             </div>
                             <div class="summary-item d-flex justify-content-between mb-2">
                                 <span>Taxes</span>
-                                <span>${{ number_format($order->tax ?? 0, 2) }}</span>
+                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->tax ?? 0) }}</span>
                             </div>
                             <hr>
                             <div class="summary-item d-flex justify-content-between fw-bold fs-5">
                                 <span>Total</span>
-                                <span class="text-success">${{ number_format($order->total_amount, 2) }}</span>
+                                <span class="text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount) }}</span>
                             </div>
                         </div>
                     </div>

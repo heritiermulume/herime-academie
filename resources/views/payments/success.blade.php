@@ -37,7 +37,7 @@
                     <div class="row mb-3">
                         <div class="col-sm-4 fw-bold">Montant total :</div>
                         <div class="col-sm-8">
-                            <span class="h5 text-success fw-bold">${{ number_format($order->total, 2) }}</span>
+                            <span class="h5 text-success fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total) }}</span>
                         </div>
                     </div>
                     <div class="row mb-3">
@@ -69,7 +69,7 @@
                                 <span class="badge bg-primary">{{ $item->course->category->name }}</span>
                             </div>
                             <div class="col-md-3 text-end">
-                                <div class="fw-bold">${{ number_format($item->total, 2) }}</div>
+                                <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total) }}</div>
                                 <a href="{{ route('student.courses.learn', $item->course->slug) }}" 
                                    class="btn btn-primary btn-sm mt-2">
                                     <i class="fas fa-play me-1"></i>Commencer

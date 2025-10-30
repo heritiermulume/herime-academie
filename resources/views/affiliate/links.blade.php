@@ -174,12 +174,12 @@
                                 @if($course->is_free)
                                     <span class="h6 text-success fw-bold">Gratuit</span>
                                 @else
-                                    <span class="h6 text-primary fw-bold">${{ number_format($course->current_price, 2) }}</span>
+                                    <span class="h6 text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->current_price) }}</span>
                                 @endif
                             </div>
                             <div class="commission">
                                 <small class="text-success fw-bold">
-                                    Commission: ${{ number_format(($course->current_price * $affiliate->commission_rate) / 100, 2) }}
+                                    Commission: {{ \App\Helpers\CurrencyHelper::formatWithSymbol(($course->current_price * ($affiliate->commission_rate ?? 0)) / 100) }}
                                 </small>
                             </div>
                         </div>

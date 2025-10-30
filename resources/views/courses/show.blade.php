@@ -1894,35 +1894,8 @@ function proceedToCheckout() {
 // Payment form handling
 document.getElementById('paymentForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
-    
-    const formData = new FormData(this);
-    formData.append('course_id', {{ $course->id }});
-    
-    fetch('{{ route("payments.process") }}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            if (data.client_secret) {
-                // Handle Stripe payment
-                // This would integrate with Stripe.js
-                alert('Redirection vers Stripe...');
-            } else {
-                alert('Paiement en cours de traitement...');
-            }
-        } else {
-            alert('Erreur: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Une erreur est survenue lors du paiement.');
-    });
+    // Rediriger vers le checkout (pawaPay) unique du site
+    window.location.href = '{{ route('cart.checkout') }}';
 });
 
 // Gestion des modals d'aperçu vidéo

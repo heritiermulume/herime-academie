@@ -64,7 +64,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="mb-1">${{ number_format(auth()->user()->orders()->sum('total_amount'), 2) }}</h4>
+                            <h4 class="mb-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol(auth()->user()->orders()->sum('total_amount')) }}</h4>
                             <p class="mb-0">Total dépensé</p>
                         </div>
                         <div class="align-self-center">
@@ -113,7 +113,7 @@
                                             </td>
                                             <td>
                                                 <span class="fw-bold text-success">
-                                                    ${{ number_format($order->total_amount, 2) }}
+                                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount) }}
                                                 </span>
                                             </td>
                                             <td>

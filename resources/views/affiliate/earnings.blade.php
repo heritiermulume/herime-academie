@@ -42,7 +42,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="text-muted mb-1">Gains totaux</h6>
-                            <h3 class="mb-0 fw-bold">${{ number_format($affiliate->total_earnings, 2) }}</h3>
+                            <h3 class="mb-0 fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($affiliate->total_earnings ?? 0) }}</h3>
                         </div>
                     </div>
                 </div>
@@ -59,7 +59,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="text-muted mb-1">En attente</h6>
-                            <h3 class="mb-0 fw-bold">${{ number_format($affiliate->pending_earnings, 2) }}</h3>
+                            <h3 class="mb-0 fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($affiliate->pending_earnings ?? 0) }}</h3>
                         </div>
                     </div>
                 </div>
@@ -76,7 +76,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="text-muted mb-1">Payés</h6>
-                            <h3 class="mb-0 fw-bold">${{ number_format($affiliate->paid_earnings, 2) }}</h3>
+                            <h3 class="mb-0 fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($affiliate->paid_earnings ?? 0) }}</h3>
                         </div>
                     </div>
                 </div>
@@ -166,10 +166,10 @@
                                             @endforeach
                                         </td>
                                         <td>
-                                            <span class="fw-bold">${{ number_format($order->total, 2) }}</span>
+                                            <span class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total) }}</span>
                                         </td>
                                         <td>
-                                            <span class="fw-bold text-success">${{ number_format(($order->total * $affiliate->commission_rate) / 100, 2) }}</span>
+                                            <span class="fw-bold text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol(($order->total * ($affiliate->commission_rate ?? 0)) / 100) }}</span>
                                         </td>
                                         <td>
                                             @switch($order->status)
