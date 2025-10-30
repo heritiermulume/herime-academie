@@ -27,10 +27,17 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100 shadow-sm border-0 hover-shadow">
                         <a href="{{ route('student.courses.learn', $enrollment->course->slug) }}" class="text-decoration-none">
-                            <img src="{{ $enrollment->course->thumbnail ? $enrollment->course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
-                                 alt="{{ $enrollment->course->title }}" 
-                                 class="card-img-top" 
-                                 style="height: 180px; object-fit: cover;">
+                            @if($enrollment->course->thumbnail)
+                                <img src="{{ $enrollment->course->thumbnail }}" 
+                                     alt="{{ $enrollment->course->title }}" 
+                                     class="card-img-top" 
+                                     style="height: 180px; object-fit: cover;">
+                            @else
+                                @php $ci = collect(explode(' ', trim($enrollment->course->title)))->take(2)->map(fn($w)=>mb_substr($w,0,1))->implode(''); @endphp
+                                <div class="card-img-top d-flex align-items-center justify-content-center" style="height:180px;background:#e9eef6;color:#003366;font-weight:700;font-size:2rem;">
+                                    {{ $ci }}
+                                </div>
+                            @endif
                         </a>
                         
                         <div class="card-body d-flex flex-column">

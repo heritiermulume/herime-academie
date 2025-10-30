@@ -22,6 +22,7 @@ class StudentController extends Controller
         $recent_courses = Course::published()
             ->whereIn('id', $enrollments->pluck('course_id'))
             ->with(['instructor', 'category'])
+            ->withCount('enrollments')
             ->latest()
             ->limit(4)
             ->get();

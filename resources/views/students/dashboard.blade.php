@@ -130,8 +130,15 @@
                             <div class="list-group-item border-0 py-3">
                                 <div class="row align-items-center">
                                     <div class="col-md-2">
-                                        <img src="{{ $enrollment->course->thumbnail ? $enrollment->course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&h=60&fit=crop' }}" 
-                                             alt="{{ $enrollment->course->title }}" class="img-fluid rounded" style="height: 60px; object-fit: cover;">
+                                        @if($enrollment->course->thumbnail)
+                                            <img src="{{ $enrollment->course->thumbnail }}" 
+                                                 alt="{{ $enrollment->course->title }}" class="img-fluid rounded" style="height: 60px; object-fit: cover;">
+                                        @else
+                                            @php $initials = collect(explode(' ', trim($enrollment->course->title)))->take(2)->map(fn($w)=>mb_substr($w,0,1))->implode(''); @endphp
+                                            <div class="d-flex align-items-center justify-content-center rounded" style="height:60px; background:#e9eef6; color:#003366; font-weight:700;">
+                                                {{ $initials }}
+                                            </div>
+                                        @endif
                                     </div>
                                     <div class="col-md-6">
                                         <h6 class="mb-1 fw-bold">
@@ -246,16 +253,16 @@
                         <a href="{{ route('student.courses') }}" class="btn btn-primary">
                             <i class="fas fa-graduation-cap me-2"></i>Mes cours
                         </a>
-                        <a href="{{ route('orders.index') }}" class="btn btn-outline-primary">
+                        <a href="{{ route('orders.index') }}" class="btn btn-primary">
                             <i class="fas fa-shopping-bag me-2"></i>Mes commandes
                         </a>
                         @php $lastEnrollment = $enrollments->first(); @endphp
                         @if($lastEnrollment)
-                        <a href="{{ route('student.courses.learn', $lastEnrollment->course->slug) }}" class="btn btn-success">
+                        <a href="{{ route('student.courses.learn', $lastEnrollment->course->slug) }}" class="btn btn-primary">
                             <i class="fas fa-play me-2"></i>Continuer l'apprentissage
                         </a>
                         @endif
-                        <a href="{{ route('courses.index') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('courses.index') }}" class="btn btn-primary">
                             <i class="fas fa-search me-2"></i>Découvrir des cours
                         </a>
                     </div>
@@ -272,8 +279,15 @@
                             @foreach($recent_courses as $course)
                             <div class="list-group-item border-0 py-3">
                                 <div class="d-flex align-items-start">
-                                    <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=60&h=40&fit=crop' }}" 
-                                         alt="{{ $course->title }}" class="rounded me-3" style="width: 60px; height: 40px; object-fit: cover;">
+                                    @if($course->thumbnail)
+                                        <img src="{{ $course->thumbnail }}" 
+                                             alt="{{ $course->title }}" class="rounded me-3" style="width: 60px; height: 40px; object-fit: cover;">
+                                    @else
+                                        @php $ci = collect(explode(' ', trim($course->title)))->take(2)->map(fn($w)=>mb_substr($w,0,1))->implode(''); @endphp
+                                        <div class="rounded me-3 d-flex align-items-center justify-content-center" style="width:60px;height:40px;background:#e9eef6;color:#003366;font-weight:700;">
+                                            {{ $ci }}
+                                        </div>
+                                    @endif
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1">
                                             <a href="{{ route('courses.show', $course->slug) }}" class="text-decoration-none text-dark">
@@ -284,7 +298,7 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="badge bg-primary">{{ $course->category->name }}</span>
                                             <small class="text-muted">
-                                                <i class="fas fa-users me-1"></i>{{ $course->students_count }}
+                                                <i class="fas fa-users me-1"></i>{{ $course->enrollments_count }}
                                             </small>
                                         </div>
                                     </div>
