@@ -37,17 +37,32 @@ class PaymentReceived extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $order = $this->order;
+        // Sécuriser le formatage de la date au cas où paid_at serait null ou mal formaté
+        $paidAtText = null;
+        try {
+            if (!empty($order->paid_at)) {
+                $paidAtText = $order->paid_at->timezone(config('app.timezone'))
+                    ->format('d/m/Y à H:i');
+            }
+        } catch (\Throwable $e) {
+            $paidAtText = null; // on masque la date si invalide
+        }
         
-        return (new MailMessage)
+        $mail = (new MailMessage)
             ->subject('Paiement confirmé - ' . config('app.name'))
             ->greeting('Bonjour ' . $notifiable->name . ' !')
             ->line('Nous sommes heureux de vous confirmer que votre paiement a bien été reçu.')
             ->line('**Numéro de commande :** ' . $order->order_number)
             ->line('**Montant :** ' . number_format($order->total, 2) . ' ' . $order->currency)
-            ->line('**Date :** ' . $order->paid_at->format('d/m/Y à H:i'))
             ->action('Voir mes commandes', url('/orders'))
             ->line('Vous avez maintenant accès à tous les cours que vous avez achetés.')
             ->line('Merci de votre confiance !');
+
+        if ($paidAtText) {
+            $mail->line('**Date :** ' . $paidAtText);
+        }
+
+        return $mail;
     }
 
     /**
