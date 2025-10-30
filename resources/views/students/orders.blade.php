@@ -11,9 +11,12 @@
                     <a href="{{ route('student.dashboard') }}" class="btn btn-outline-light me-3" title="Tableau de bord">
                         <i class="fas fa-tachometer-alt"></i>
                     </a>
-                    <h2 class="mb-0 text-white">
-                        <i class="fas fa-shopping-bag me-2"></i>Mes Commandes
-                    </h2>
+                    <div>
+                        <h2 class="mb-1 text-white">
+                            <i class="fas fa-shopping-bag me-2"></i>Mes Commandes
+                        </h2>
+                        <p class="mb-0 text-white-50 small">Consultez l'historique de vos commandes et accédez rapidement à vos cours.</p>
+                    </div>
                 </div>
                 <a href="{{ route('courses.index') }}" class="btn btn-outline-light">
                     <i class="fas fa-plus me-2"></i>Nouvelle commande
