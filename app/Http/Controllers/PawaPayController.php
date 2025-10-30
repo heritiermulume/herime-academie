@@ -248,6 +248,30 @@ class PawaPayController extends Controller
     }
 
     /**
+     * Annuler la dernière commande en attente de l'utilisateur (si l'init échoue côté client)
+     */
+    public function cancelLatestPending(Request $request)
+    {
+        if (!auth()->check()) {
+            return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
+        }
+        $userId = auth()->id();
+        $order = Order::where('user_id', $userId)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Aucune commande en attente'], 404);
+        }
+        // Optionnel: ne pas annuler des commandes trop anciennes (>10 min)
+        if ($order->created_at->lt(now()->subMinutes(10))) {
+            return response()->json(['success' => false, 'message' => 'Commande trop ancienne pour annulation automatique'], 422);
+        }
+        $order->update(['status' => 'cancelled']);
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Finaliser la commande après paiement réussi
      */
     private function finalizeOrderAfterPayment(Order $order): void

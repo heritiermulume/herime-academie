@@ -368,6 +368,7 @@ Route::prefix('pawapay')->name('pawapay.')->middleware('auth')->group(function (
     Route::post('/initiate', [PawaPayController::class, 'initiate'])->name('initiate');
     Route::get('/status/{depositId}', [PawaPayController::class, 'status'])->name('status');
         Route::post('/cancel/{depositId}', [PawaPayController::class, 'cancel'])->name('cancel');
+        Route::post('/cancel-latest', [PawaPayController::class, 'cancelLatestPending'])->name('cancel-latest');
     Route::get('/success', [PawaPayController::class, 'successfulRedirect'])->name('success');
     Route::get('/failed', [PawaPayController::class, 'failedRedirect'])->name('failed');
 

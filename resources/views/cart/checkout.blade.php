@@ -106,7 +106,7 @@
                                 <label class="form-check-label" for="terms">
                                         J'accepte les <a href="{{ route('legal.terms') }}" target="_blank" class="text-primary">conditions générales</a> et la <a href="{{ route('legal.privacy') }}" target="_blank" class="text-primary">politique de confidentialité</a>
                                 </label>
-                                    <div class="invalid-feedback" style="display:block;" id="termsError"></div>
+                                    <div class="invalid-feedback" style="display:none;" id="termsError"></div>
                             </div>
                         </div>
 
@@ -510,8 +510,10 @@ document.addEventListener('DOMContentLoaded', function() {
             payButton.disabled = false;
             payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
             paymentNotice.className = 'alert alert-warning mt-2';
-            paymentNotice.innerText = 'Temps dépassé lors de l\'initialisation du paiement. Veuillez réessayer.';
+            paymentNotice.innerText = 'Temps dépassé lors de l\'initialisation du paiement. La commande a été annulée.';
             paymentNotice.style.display = 'block';
+            // Annuler la dernière commande en attente côté serveur
+            try { await fetch(`{{ url('/pawapay/cancel-latest') }}`, { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }); } catch(e){}
             return;
         } finally {
             clearTimeout(timeoutId);
@@ -1326,6 +1328,10 @@ document.addEventListener('DOMContentLoaded', function() {
     white-space: normal; /* autoriser le retour à la ligne */
     word-break: break-word;
     margin: 0; /* supprimer toute marge par défaut */
+}
+.terms-section .invalid-feedback {
+    grid-column: 1 / -1; /* occupe toute la largeur sous la ligne */
+    margin-top: 4px;
 }
 .terms-section .form-check-label a {
     white-space: normal;
