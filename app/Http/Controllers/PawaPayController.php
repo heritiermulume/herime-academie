@@ -142,11 +142,27 @@ class PawaPayController extends Controller
                 ->post($this->baseUrl() . '/deposits', $payload);
 
             if (!$response->successful()) {
-                // Ne pas annuler automatiquement; remonter l'erreur au client
+                // Réponse d'échec: annuler la commande et marquer paiement failed
+                $error = $response->json();
+                Payment::create([
+                    'order_id' => $order->id,
+                    'payment_method' => 'pawapay',
+                    'provider' => $data['provider'] ?? null,
+                    'payment_id' => $depositId,
+                    'amount' => $paymentAmount,
+                    'currency' => $paymentCurrency,
+                    'status' => 'failed',
+                    'failure_reason' => $error['message'] ?? 'Échec de l\'initialisation fournisseur',
+                    'payment_data' => [
+                        'request' => $payload,
+                        'response' => $error,
+                    ],
+                ]);
+                $order->update(['status' => 'cancelled']);
                 return response()->json([
                     'success' => false,
                     'message' => 'Échec de l\'initialisation du paiement.',
-                    'error' => $response->json(),
+                    'error' => $error,
                 ], $response->status());
             }
 
@@ -174,14 +190,28 @@ class PawaPayController extends Controller
                 ...$responseData
             ]);
         } catch (\Throwable $e) {
-            // Ne pas annuler sur erreur réseau; laisser le provider/webhook trancher
+            // Erreur technique: annuler et marquer failed
+            Payment::create([
+                'order_id' => $order->id,
+                'payment_method' => 'pawapay',
+                'provider' => $data['provider'] ?? null,
+                'payment_id' => $depositId,
+                'amount' => $paymentAmount,
+                'currency' => $paymentCurrency,
+                'status' => 'failed',
+                'failure_reason' => 'Erreur technique lors de l\'initialisation',
+                'payment_data' => [
+                    'request' => $payload,
+                    'exception' => [
+                        'type' => get_class($e),
+                        'message' => $e->getMessage(),
+                    ],
+                ],
+            ]);
+            $order->update(['status' => 'cancelled']);
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur de communication avec le fournisseur. Réessayez.',
-                'error' => [
-                    'type' => get_class($e),
-                    'message' => $e->getMessage(),
-                ],
+                'message' => 'Erreur de communication avec le fournisseur. La commande a été annulée.',
             ], 502);
         }
     }
