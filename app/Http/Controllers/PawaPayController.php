@@ -31,6 +31,10 @@ class PawaPayController extends Controller
 
     public function activeConf(Request $request)
     {
+        // Annuler côté backend les commandes trop anciennes sans cron/queue
+        if (auth()->check()) {
+            $this->autoCancelStale(auth()->id());
+        }
         $operationType = 'DEPOSIT';
 
         $query = ['operationType' => $operationType];
@@ -53,6 +57,9 @@ class PawaPayController extends Controller
                 'message' => 'Vous devez être connecté pour procéder au paiement.'
             ], 401);
         }
+
+        // Sécurité: annuler d'éventuelles anciennes commandes en attente pour cet utilisateur
+        $this->autoCancelStale(auth()->id());
 
         $data = $request->validate([
             'amount' => 'required|numeric|min:1',
@@ -175,6 +182,9 @@ class PawaPayController extends Controller
 
     public function status(string $depositId)
     {
+        if (auth()->check()) {
+            $this->autoCancelStale(auth()->id());
+        }
         $response = Http::withHeaders($this->authHeaders())
             ->get($this->baseUrl() . "/deposits/{$depositId}");
 
@@ -317,6 +327,9 @@ class PawaPayController extends Controller
 
     public function successfulRedirect(Request $request)
     {
+        if (auth()->check()) {
+            $this->autoCancelStale(auth()->id());
+        }
         $depositId = $request->query('depositId');
         
         if ($depositId) {
@@ -350,7 +363,29 @@ class PawaPayController extends Controller
 
     public function failedRedirect(Request $request)
     {
+        if (auth()->check()) {
+            $this->autoCancelStale(auth()->id());
+        }
         return view('payments.pawapay.failed');
+    }
+
+    private function autoCancelStale(int $userId): void
+    {
+        $timeoutMinutes = (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30));
+        $threshold = now()->subMinutes($timeoutMinutes);
+        $orders = Order::where('user_id', $userId)
+            ->where('status', 'pending')
+            ->where('created_at', '<', $threshold)
+            ->get();
+        foreach ($orders as $order) {
+            $order->update(['status' => 'cancelled']);
+            Payment::where('order_id', $order->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'failed',
+                    'failure_reason' => 'Annulation automatique après délai',
+                ]);
+        }
     }
 }
 
