@@ -137,40 +137,22 @@ class PawaPayController extends Controller
         ];
 
         try {
+            // Pas de timeout côté app; on laisse le fournisseur gérer le délai
             $response = Http::withHeaders($this->authHeaders())
-                ->timeout(90) // 1 min 30 s
-                ->connectTimeout(15)
                 ->post($this->baseUrl() . '/deposits', $payload);
 
             if (!$response->successful()) {
-                // Annulation immédiate en cas d'erreur fournisseur
-                $error = $response->json();
-                Payment::create([
-                    'order_id' => $order->id,
-                    'payment_method' => 'pawapay',
-                    'provider' => $data['provider'] ?? null,
-                    'payment_id' => $depositId,
-                    'amount' => $paymentAmount,
-                    'currency' => $paymentCurrency,
-                    'status' => 'failed',
-                    'failure_reason' => $error['message'] ?? 'Erreur du fournisseur lors de l\'initialisation',
-                    'payment_data' => [
-                        'request' => $payload,
-                        'response' => $error,
-                    ],
-                ]);
-                $order->update(['status' => 'cancelled']);
-
+                // Ne pas annuler automatiquement; remonter l'erreur au client
                 return response()->json([
                     'success' => false,
                     'message' => 'Échec de l\'initialisation du paiement.',
-                    'error' => $error,
+                    'error' => $response->json(),
                 ], $response->status());
             }
 
             $responseData = $response->json();
 
-            // Créer un Payment en attente si succès d'initiation
+            // Créer un Payment en attente uniquement en cas de succès d'initiation
             Payment::create([
                 'order_id' => $order->id,
                 'payment_method' => 'pawapay',
@@ -192,30 +174,15 @@ class PawaPayController extends Controller
                 ...$responseData
             ]);
         } catch (\Throwable $e) {
-            // Timeout/erreur réseau: annuler immédiatement
-            Payment::create([
-                'order_id' => $order->id,
-                'payment_method' => 'pawapay',
-                'provider' => $data['provider'] ?? null,
-                'payment_id' => $depositId,
-                'amount' => $paymentAmount,
-                'currency' => $paymentCurrency,
-                'status' => 'failed',
-                'failure_reason' => 'Timeout ou erreur réseau lors de l\'initialisation',
-                'payment_data' => [
-                    'request' => $payload,
-                    'exception' => [
-                        'type' => get_class($e),
-                        'message' => $e->getMessage(),
-                    ],
-                ],
-            ]);
-            $order->update(['status' => 'cancelled']);
-
+            // Ne pas annuler sur erreur réseau; laisser le provider/webhook trancher
             return response()->json([
                 'success' => false,
-                'message' => 'Délai dépassé lors de l\'initialisation du paiement. La commande a été annulée.',
-            ], 504);
+                'message' => 'Erreur de communication avec le fournisseur. Réessayez.',
+                'error' => [
+                    'type' => get_class($e),
+                    'message' => $e->getMessage(),
+                ],
+            ], 502);
         }
     }
 
