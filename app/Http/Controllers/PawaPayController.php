@@ -603,6 +603,22 @@ class PawaPayController extends Controller
                 'user_id' => $order->user_id,
                 'cart_items_deleted' => $cartItemsDeleted,
             ]);
+            
+            // Envoyer une notification de paiement confirmé à l'utilisateur
+            try {
+                $order->user->notify(new \App\Notifications\PaymentReceived($order));
+                \Log::info('pawaPay: Payment confirmation notification sent', [
+                    'user_id' => $order->user_id,
+                    'order_id' => $order->id,
+                ]);
+            } catch (\Throwable $e) {
+                // Logger l'erreur mais ne pas faire échouer la finalisation
+                \Log::error('pawaPay: Failed to send payment notification', [
+                    'user_id' => $order->user_id,
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         });
     }
 
