@@ -380,6 +380,32 @@ class PawaPayController extends Controller
                 'nextStep' => $actualData['nextStep'] ?? null,
                 'full_response' => $statusData,
             ]);
+            // Synchroniser l'état local si le statut provider est terminal (échec/annulation)
+            try {
+                $providerStatus = $actualData['status'] ?? null;
+                if (in_array($providerStatus, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT'])) {
+                    $payment = Payment::where('payment_method', 'pawapay')
+                        ->where('payment_id', $depositId)
+                        ->with('order')
+                        ->first();
+                    if ($payment) {
+                        if ($payment->status === 'pending') {
+                            $payment->update([
+                                'status' => 'failed',
+                                'failure_reason' => $actualData['statusReason'] ?? ($actualData['message'] ?? 'Paiement échoué'),
+                            ]);
+                        }
+                        if ($payment->order && !in_array($payment->order->status, ['paid', 'completed'])) {
+                            $payment->order->update(['status' => 'cancelled']);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('pawaPay status sync (wrapper) failed', [
+                    'depositId' => $depositId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
             
             // Retourner le format flat pour compatibilité avec le frontend
             return response()->json($actualData, $response->status());
@@ -391,7 +417,32 @@ class PawaPayController extends Controller
                 'nextStep' => $statusData['nextStep'] ?? null,
                 'full_response' => $statusData,
             ]);
-
+            // Synchroniser l'état local si statut terminal (échec/annulation)
+            try {
+                $providerStatus = $statusData['status'] ?? null;
+                if (in_array($providerStatus, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT'])) {
+                    $payment = Payment::where('payment_method', 'pawapay')
+                        ->where('payment_id', $depositId)
+                        ->with('order')
+                        ->first();
+                    if ($payment) {
+                        if ($payment->status === 'pending') {
+                            $payment->update([
+                                'status' => 'failed',
+                                'failure_reason' => $statusData['statusReason'] ?? ($statusData['message'] ?? 'Paiement échoué'),
+                            ]);
+                        }
+                        if ($payment->order && !in_array($payment->order->status, ['paid', 'completed'])) {
+                            $payment->order->update(['status' => 'cancelled']);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('pawaPay status sync (simple) failed', [
+                    'depositId' => $depositId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
             return response()->json($statusData, $response->status());
         }
     }
