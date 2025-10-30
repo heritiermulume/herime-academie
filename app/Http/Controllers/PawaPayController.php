@@ -67,6 +67,31 @@ class PawaPayController extends Controller
         ];
     }
 
+    /**
+     * Valider la signature d'un webhook pawaPay
+     * 
+     * Selon la documentation: https://docs.pawapay.io/using_the_api
+     * Les webhooks incluent un header X-PawaPay-Signature avec une signature HMAC-SHA256
+     */
+    private function validateWebhookSignature(string $payload, ?string $signature): bool
+    {
+        // Si pas de signature dans la config, ne pas valider (sandbox/local dev)
+        $webhookSecret = config('services.pawapay.webhook_secret');
+        if (!$webhookSecret || !$signature) {
+            \Log::warning('pawaPay webhook: No webhook secret or signature configured', [
+                'has_secret' => (bool) $webhookSecret,
+                'has_signature' => (bool) $signature,
+            ]);
+            return true; // Autoriser en développement
+        }
+
+        // Calculer la signature attendue
+        $expectedSignature = hash_hmac('sha256', $payload, $webhookSecret);
+
+        // Comparaison sécurisée (évite timing attacks)
+        return hash_equals($expectedSignature, $signature);
+    }
+
     public function activeConf(Request $request)
     {
         // Annuler côté backend les commandes trop anciennes sans cron/queue
@@ -279,6 +304,19 @@ class PawaPayController extends Controller
 
     public function webhook(Request $request)
     {
+        // IMPORTANT: Valider la signature du webhook pour sécurité
+        // Selon la documentation pawaPay: https://docs.pawapay.io/using_the_api
+        $signature = $request->header('X-PawaPay-Signature');
+        $payloadContent = $request->getContent();
+        
+        if ($signature && !$this->validateWebhookSignature($payloadContent, $signature)) {
+            \Log::warning('pawaPay webhook: Invalid signature', [
+                'depositId' => $request->input('depositId'),
+                'ip' => $request->ip(),
+            ]);
+            return response()->json(['error' => 'Invalid signature'], 401);
+        }
+
         $payload = $request->all();
         $depositId = $payload['depositId'] ?? null;
         $status = $payload['status'] ?? null;

@@ -40,6 +40,7 @@ return [
     'pawapay' => [
         'base_url' => env('PAWAPAY_BASE_URL', 'https://api.sandbox.pawapay.io/v2'),
         'api_key' => env('PAWAPAY_API_KEY'),
+        'webhook_secret' => env('PAWAPAY_WEBHOOK_SECRET'), // Secret pour valider les signatures webhook
         'default_country' => env('PAWAPAY_DEFAULT_COUNTRY', 'COD'),
         'default_currency' => env('PAWAPAY_DEFAULT_CURRENCY', 'CDF'),
         // Public URLs where the provider can redirect after auth (Wave, etc.)
