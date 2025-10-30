@@ -62,20 +62,20 @@
 
                     <form id="pawapayForm" method="POST" onsubmit="return false;">
                         @csrf
-
-                        <div class="form-section">
+                        
+                                <div class="form-section">
                             <div class="row g-3 mb-3">
-                                <div class="col-md-6">
+                                            <div class="col-md-6">
                                     <label class="form-label"><i class="fas fa-flag me-1"></i>Pays</label>
                                     <select id="country" class="form-select"></select>
-                                </div>
-                                <div class="col-md-6">
+                                            </div>
+                                                    <div class="col-md-6">
                                     <div class="d-flex align-items-center justify-content-between">
                                         <label class="form-label mb-0"><i class="fas fa-coins me-1"></i>Montant</label>
                                         <div style="min-width: 140px;">
                                             <select id="currencySelect" class="form-select form-select-sm"></select>
-                                        </div>
-                                    </div>
+                                                </div>
+                                            </div>
                                     {{-- Montant initial dans la devise de base du site (configurée dans /admin/settings) --}}
                                     <input type="text" id="amount" class="form-control mt-2" value="{{ number_format($total, 2, '.', '') }}" readonly>
                                     <div class="invalid-feedback" id="amountError"></div>
@@ -85,30 +85,30 @@
                             <div class="mb-3">
                                 <label class="form-label"><i class="fas fa-network-wired me-1"></i>Fournisseur</label>
                                 <div id="providers" class="d-flex flex-wrap gap-2"></div>
-                                <small class="form-text text-muted">Sélectionnez votre opérateur (liste dynamique depuis pawaPay).</small>
-                            </div>
-
+                                <small class="form-text text-muted">Sélectionnez votre opérateur.</small>
+                                    </div>
+                                    
                             <div class="row g-3 mb-2">
                                 <div class="col-md-4">
                                     <label class="form-label"><i class="fas fa-phone me-1"></i>Indicatif</label>
                                     <input type="text" id="prefix" class="form-control" value="243" readonly>
-                                </div>
+                                    </div>
                                 <div class="col-md-8">
                                     <label class="form-label"><i class="fas fa-phone me-1"></i>Numéro (sans indicatif)</label>
                                     <input type="tel" id="phoneNumber" class="form-control" placeholder="783 456 789" required>
                                     <div class="invalid-feedback" id="phoneError">Veuillez saisir un numéro de téléphone valide.</div>
-                                </div>
                             </div>
+                        </div>
 
                             <div class="terms-section mt-3">
-                                <div class="form-check">
+                            <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="terms" required>
-                                    <label class="form-check-label" for="terms">
+                                <label class="form-check-label" for="terms">
                                         J'accepte les <a href="{{ route('legal.terms') }}" target="_blank" class="text-primary">conditions générales</a> et la <a href="{{ route('legal.privacy') }}" target="_blank" class="text-primary">politique de confidentialité</a>
-                                    </label>
+                                </label>
                                     <div class="invalid-feedback" style="display:block;" id="termsError"></div>
-                                </div>
                             </div>
+                        </div>
 
                             <input type="hidden" id="currency" value="{{ config('services.pawapay.default_currency') }}">
                         </div>
@@ -116,7 +116,7 @@
                         <div class="payment-actions mt-3">
                             <button type="button" id="payButton" class="btn btn-primary btn-lg w-100">
                                 <span id="payButtonText">Payer maintenant</span>
-                            </button>
+                                    </button>
                         </div>
 
                         <div id="paymentNotice" class="alert alert-info mt-3" style="display:none;"></div>
@@ -231,9 +231,9 @@ document.addEventListener('DOMContentLoaded', function() {
             currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
             selectedProvider = null;
             updatePayButtonState();
-            return;
-        }
-        
+                return;
+            }
+            
         providers.forEach((p, index) => {
             const card = document.createElement('div');
             card.className = 'provider-card';
@@ -265,9 +265,9 @@ document.addEventListener('DOMContentLoaded', function() {
             currencyInput.value = '';
             amountInput.value = baseAmount.toFixed(2);
             updatePayButtonState();
-            return;
-        }
-        
+                return;
+            }
+            
         const currencies = (provider.currencies || []).filter(c => !!c.currency);
         let html = '';
         
@@ -311,17 +311,17 @@ document.addEventListener('DOMContentLoaded', function() {
             amountInput.value = baseAmount.toFixed(2);
             validateAmount();
             updatePayButtonState();
-            return;
-        }
+                    return;
+                }
         
         // Si la devise cible est la même que la devise de base du site, pas de conversion nécessaire
         if (targetCurrency === baseCurrency) {
             amountInput.value = baseAmount.toFixed(2);
             validateAmount();
             updatePayButtonState();
-            return;
-        }
-        
+                    return;
+                }
+                
         // Récupérer le taux de change depuis la devise de base du site vers la devise cible sélectionnée
         // Exemple: Si baseCurrency = 'USD' et targetCurrency = 'CDF', on convertit USD -> CDF
         try {
@@ -493,17 +493,47 @@ document.addEventListener('DOMContentLoaded', function() {
             _token: '{{ csrf_token() }}'
         };
 
-        const res = await fetch(`{{ route('pawapay.initiate') }}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-            alert(data.message || 'Échec de l\'initialisation du paiement.');
+        // Ajout d'un timeout pour éviter l'attente infinie
+        const controller = new AbortController();
+        const timeoutMs = 30000; // 30 secondes
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        let res;
+        try {
+            res = await fetch(`{{ route('pawapay.initiate') }}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+        } catch (err) {
+            clearTimeout(timeoutId);
             payButton.disabled = false;
-            payButtonText.textContent = 'Payer maintenant';
+            payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
+            paymentNotice.className = 'alert alert-warning mt-2';
+            paymentNotice.innerText = 'Temps dépassé lors de l\'initialisation du paiement. Veuillez réessayer.';
+            paymentNotice.style.display = 'block';
+            return;
+        } finally {
+            clearTimeout(timeoutId);
+        }
+
+        let data;
+        try {
+            data = await res.json();
+        } catch (e) {
+            payButton.disabled = false;
+            payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
+            paymentNotice.className = 'alert alert-danger mt-2';
+            paymentNotice.innerText = 'Réponse invalide du serveur. Veuillez réessayer.';
+            paymentNotice.style.display = 'block';
+            return;
+        }
+        if (!res.ok || data.success === false) {
+            payButton.disabled = false;
+            payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
+            paymentNotice.className = 'alert alert-danger mt-2';
+            paymentNotice.innerText = (data && data.message) ? data.message : 'Échec de l\'initialisation du paiement. Veuillez réessayer.';
+            paymentNotice.style.display = 'block';
             return;
         }
 
@@ -518,12 +548,23 @@ document.addEventListener('DOMContentLoaded', function() {
             paymentNotice.style.display = 'block';
             paymentNotice.className = 'alert alert-info mt-3';
             paymentNotice.textContent = 'Paiement en cours de traitement…';
-            pollStatus(data.depositId);
+            pollStatus(data.depositId, 30000); // arrêter au-delà de 30s
         }
     }
 
-    async function pollStatus(depositId) {
+    async function pollStatus(depositId, abortAfterMs = 30000) {
+        const start = Date.now();
+        let stopped = false;
         const poll = async () => {
+            if (stopped) return;
+            if (Date.now() - start > abortAfterMs) {
+                stopped = true;
+                paymentNotice.className = 'alert alert-warning mt-3';
+                paymentNotice.textContent = 'Délai dépassé lors du traitement du paiement. Veuillez réessayer.';
+                payButton.disabled = false;
+                payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
+                return;
+            }
             const res = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
             if (!res.ok) return;
             const data = await res.json();
@@ -1202,14 +1243,17 @@ document.addEventListener('DOMContentLoaded', function() {
 .provider-card {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
     border: 2px solid #e0e0e0;
-    border-radius: 8px;
+    border-radius: 10px;
     background: #fff;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
-    margin: 0 8px 8px 0;
+    margin: 0 10px 10px 0;
+    min-height: 72px; /* taille uniforme */
+    min-width: 240px; /* largeur minimale pour cohérence */
 }
 .provider-card:hover {
     border-color: #003366;
@@ -1221,7 +1265,7 @@ document.addEventListener('DOMContentLoaded', function() {
     background: #eaf2ff;
 }
 .provider-card .provider-logo img {
-    height: 22px;
+    height: 44px; /* logo plus grand */
     width: auto;
 }
 .provider-card .provider-name {
