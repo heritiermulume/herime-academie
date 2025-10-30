@@ -226,6 +226,28 @@ class PawaPayController extends Controller
     }
 
     /**
+     * Annuler une commande par depositId (timeout ou annulation utilisateur)
+     */
+    public function cancel(string $depositId)
+    {
+        $payment = Payment::where('payment_id', $depositId)->with('order')->first();
+        if (!$payment) {
+            return response()->json(['success' => false, 'message' => 'Transaction introuvable'], 404);
+        }
+
+        $payment->update([
+            'status' => 'failed',
+            'failure_reason' => $payment->failure_reason ?: 'Annulation par l’utilisateur ou délai dépassé',
+        ]);
+
+        if ($payment->order && !in_array($payment->order->status, ['paid', 'completed'])) {
+            $payment->order->update(['status' => 'cancelled']);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Finaliser la commande après paiement réussi
      */
     private function finalizeOrderAfterPayment(Order $order): void

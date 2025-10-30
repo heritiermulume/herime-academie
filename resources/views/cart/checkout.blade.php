@@ -83,7 +83,7 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-network-wired me-1"></i>Fournisseur</label>
+                                <label class="form-label"><i class="fas fa-network-wired me-1"></i>Opérateur</label>
                                 <div id="providers" class="d-flex flex-wrap gap-2"></div>
                                 <small class="form-text text-muted">Sélectionnez votre opérateur.</small>
                                     </div>
@@ -560,7 +560,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (Date.now() - start > abortAfterMs) {
                 stopped = true;
                 paymentNotice.className = 'alert alert-warning mt-3';
-                paymentNotice.textContent = 'Délai dépassé lors du traitement du paiement. Veuillez réessayer.';
+                paymentNotice.textContent = 'Délai dépassé lors du traitement du paiement. La transaction a été annulée.';
+                // Demander l'annulation côté serveur pour marquer la commande annulée
+                // Utiliser url() pour éviter l'erreur de génération de route côté Blade
+                try { await fetch(`{{ url('/pawapay/cancel') }}/${depositId}`, { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }); } catch(e){}
                 payButton.disabled = false;
                 payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
                 return;
@@ -1240,6 +1243,12 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 /* Cartes fournisseurs - charte graphique du site */
+.providers-grid-init #providers,
+#providers {
+    display: grid !important; /* forcer sur .d-flex */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
 .provider-card {
     display: flex;
     align-items: center;
@@ -1251,9 +1260,9 @@ document.addEventListener('DOMContentLoaded', function() {
     background: #fff;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
-    margin: 0 10px 10px 0;
+    margin: 0; /* géré par grid gap */
     min-height: 72px; /* taille uniforme */
-    min-width: 240px; /* largeur minimale pour cohérence */
+    width: 100%;
 }
 .provider-card:hover {
     border-color: #003366;
@@ -1267,6 +1276,82 @@ document.addEventListener('DOMContentLoaded', function() {
 .provider-card .provider-logo img {
     height: 44px; /* logo plus grand */
     width: auto;
+}
+
+/* Optimisations mobile pour la liste des opérateurs */
+@media (max-width: 576px) {
+    /* Deux colonnes compactes sur mobile standard */
+    #providers {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px !important;
+    }
+    .provider-card {
+        width: 100%;
+        min-width: unset;
+        min-height: 80px;
+        padding: 12px;
+        border-radius: 10px;
+    }
+    .provider-card .provider-logo img {
+        height: 48px;
+    }
+    .provider-card .provider-name {
+        font-size: 13px;
+        line-height: 1.2;
+    }
+}
+
+@media (max-width: 380px) {
+    /* Une colonne pleine largeur pour très petits écrans */
+    .provider-card {
+        flex: 0 0 100%;
+        min-height: 84px;
+    }
+}
+
+/* Améliorations responsives de la case à cocher des conditions */
+.terms-section .form-check {
+    display: grid; /* placer la case et le label sur une même ligne */
+    grid-template-columns: auto 1fr; /* checkbox + label prend tout l'espace restant */
+    column-gap: 10px;
+    align-items: start;
+}
+.terms-section .form-check-input {
+    margin-top: 2px;
+    flex: 0 0 auto; /* ne pas s'étirer */
+}
+.terms-section .form-check-label {
+    flex: 1; /* occuper toute la largeur disponible */
+    white-space: normal; /* autoriser le retour à la ligne */
+    word-break: break-word;
+    margin: 0; /* supprimer toute marge par défaut */
+}
+.terms-section .form-check-label a {
+    white-space: normal;
+}
+@media (max-width: 576px) {
+    .terms-section .form-check-label {
+        font-size: 14px;
+        line-height: 1.35;
+    }
+    .terms-section .form-check-input {
+        transform: scale(1.05);
+    }
+    /* Éviter que la checkbox touche les bords de l'écran */
+    .terms-section {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    /* Harmoniser l'alignement avec les autres contrôles */
+    .terms-section .form-check {
+        grid-template-columns: auto 1fr; /* largeur auto selon la checkbox */
+        column-gap: 4px; /* réduire encore l'espace */
+    }
+    .terms-section .form-check-input {
+        margin-left: 0;
+        margin-right: 0;
+    }
 }
 .provider-card .provider-name {
     font-weight: 600;
