@@ -111,10 +111,10 @@ use Illuminate\Support\Facades\Storage;
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     @if($course->sale_price)
-                                        <span class="course-price">${{ number_format($course->sale_price, 0) }}</span>
-                                        <span class="course-price-old ms-2">${{ number_format($course->price, 0) }}</span>
+                                        <span class="course-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                                        <span class="course-price-old ms-2">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                     @else
-                                        <span class="course-price">{{ $course->is_free ? 'Gratuit' : '$' . number_format($course->price, 0) }}</span>
+                                        <span class="course-price">{{ $course->is_free ? 'Gratuit' : \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                     @endif
                                 </div>
                                 <small class="text-muted">

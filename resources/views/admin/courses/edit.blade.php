@@ -263,7 +263,7 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-3 mb-3">
-                                <label for="price" class="form-label">Prix (FCFA) <span class="text-danger">*</span></label>
+                                <label for="price" class="form-label">Prix ({{ $baseCurrency ?? 'USD' }}) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control @error('price') is-invalid @enderror" 
                                        id="price" name="price" value="{{ old('price', $course->price) }}" min="0" required>
                                 @error('price')
@@ -272,7 +272,7 @@
                             </div>
                             
                             <div class="col-md-3 mb-3">
-                                <label for="sale_price" class="form-label">Prix de vente (FCFA)</label>
+                                <label for="sale_price" class="form-label">Prix de vente ({{ $baseCurrency ?? 'USD' }})</label>
                                 <input type="number" class="form-control @error('sale_price') is-invalid @enderror" 
                                        id="sale_price" name="sale_price" value="{{ old('sale_price', $course->sale_price) }}" min="0">
                                 @error('sale_price')

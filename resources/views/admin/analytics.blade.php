@@ -54,7 +54,7 @@
                         <div class="col-md-3">
                             <div class="card bg-info text-white">
                                 <div class="card-body text-center">
-                                    <h3 class="card-title">{{ number_format($stats['total_revenue'] ?? 0, 0, ',', ' ') }} FCFA</h3>
+                                    <h3 class="card-title">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}</h3>
                                     <p class="card-text mb-0">Revenus</p>
                                 </div>
                             </div>
@@ -92,7 +92,7 @@
                         </div>
                     </div>
 
-                    <!-- Statistiques par catégorie -->
+                    <!-- Statistiques par catégorie et paiements -->
                     <div class="row">
                         <div class="col-md-6 mb-4">
                             <div class="card">
@@ -107,6 +107,23 @@
                             </div>
                         </div>
 
+                        <!-- Paiements par méthode -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-wallet me-2"></i>Paiements par méthode
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="paymentsMethodChart" width="400" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cours populaires et répartition des statuts de paiements -->
+                    <div class="row">
                         <!-- Cours les plus populaires -->
                         <div class="col-md-6 mb-4">
                             <div class="card">
@@ -124,12 +141,7 @@
                                                 <small class="text-muted">{{ $course->instructor->name }}</small>
                                             </div>
                                             <div class="text-end">
-                                                <span class="badge bg-primary me-2">{{ $course->students_count }} étudiants</span>
-                                                <div class="text-warning">
-                                                    @for($i = 1; $i <= 5; $i++)
-                                                        <i class="fas fa-star{{ $i <= $course->rating ? '' : '-o' }}"></i>
-                                                    @endfor
-                                                </div>
+                                                <span class="badge bg-primary me-2">{{ $course->enrollments_count }} inscrits</span>
                                             </div>
                                         </div>
                                         @empty
@@ -138,6 +150,19 @@
                                         </div>
                                         @endforelse
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Paiements par statut -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header text-white">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-chart-pie me-2"></i>Paiements par statut
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="paymentsStatusChart" width="400" height="200"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -263,6 +288,8 @@
 const revenueData = @json($revenueByMonth ?? []);
 const userGrowthData = @json($userGrowth ?? []);
 const categoryStats = @json($categoryStats ?? []);
+const paymentsByMethod = @json($paymentsByMethod ?? []);
+const paymentsByStatus = @json($paymentsByStatus ?? []);
 
 // Graphique des revenus
 const revenueCtx = document.getElementById('revenueChart').getContext('2d');
@@ -271,7 +298,7 @@ new Chart(revenueCtx, {
     data: {
         labels: revenueData.map(item => item.month),
         datasets: [{
-            label: 'Revenus (FCFA)',
+            label: 'Revenus ({{ $baseCurrency ?? "USD" }})',
             data: revenueData.map(item => item.revenue),
             borderColor: '#003366',
             backgroundColor: 'rgba(0, 51, 102, 0.1)',
@@ -291,7 +318,7 @@ new Chart(revenueCtx, {
                 beginAtZero: true,
                 ticks: {
                     callback: function(value) {
-                        return new Intl.NumberFormat('fr-FR').format(value) + ' FCFA';
+                        return new Intl.NumberFormat('fr-FR').format(value);
                     }
                 }
             }
@@ -356,6 +383,34 @@ new Chart(categoriesCtx, {
             }
         }
     }
+});
+
+// Paiements par méthode
+const methodCtx = document.getElementById('paymentsMethodChart').getContext('2d');
+new Chart(methodCtx, {
+    type: 'doughnut',
+    data: {
+        labels: paymentsByMethod.map(p => (p.payment_method || 'inconnu').toUpperCase()),
+        datasets: [{
+            data: paymentsByMethod.map(p => p.count),
+            backgroundColor: ['#003366','#ffcc33','#28a745','#dc3545','#17a2b8','#6f42c1']
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+
+// Paiements par statut
+const statusCtx = document.getElementById('paymentsStatusChart').getContext('2d');
+new Chart(statusCtx, {
+    type: 'pie',
+    data: {
+        labels: paymentsByStatus.map(p => (p.status || 'inconnu').toUpperCase()),
+        datasets: [{
+            data: paymentsByStatus.map(p => p.count),
+            backgroundColor: ['#28a745','#ffc107','#dc3545','#6c757d']
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
 });
 </script>
 @endpush

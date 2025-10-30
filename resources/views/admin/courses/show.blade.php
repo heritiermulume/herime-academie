@@ -291,10 +291,10 @@
                                     @if($course->is_free)
                                         <h4 class="text-success mb-0">Gratuit</h4>
                                     @else
-                                        <h4 class="text-primary mb-0">{{ number_format($course->current_price) }} FCFA</h4>
+                                        <h4 class="text-primary mb-0">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->current_price) }}</h4>
                                         @if($course->sale_price && $course->sale_price < $course->price)
                                             <small class="text-muted">
-                                                <s>{{ number_format($course->price) }} FCFA</s>
+                                                <s>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</s>
                                             </small>
                                             <br>
                                             <span class="badge bg-danger">

@@ -13,6 +13,7 @@ use App\Models\Partner;
 use App\Models\Testimonial;
 use App\Models\Payment;
 use App\Models\Review;
+use App\Models\Setting;
 use App\Traits\DatabaseCompatibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,12 +68,14 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
 
+        $baseCurrency = Setting::getBaseCurrency();
         return view('admin.dashboard', compact(
             'stats', 
             'revenueByMonth', 
             'popularCourses', 
             'recentEnrollments', 
-            'recentOrders'
+            'recentOrders',
+            'baseCurrency'
         ));
     }
 
@@ -135,6 +138,18 @@ class AdminController extends Controller
             ->limit(5)
             ->get();
 
+        // Paiements: répartition par statut et par méthode
+        $paymentsByStatus = Payment::select('status')
+            ->selectRaw('COUNT(*) as count, SUM(amount) as total')
+            ->groupBy('status')
+            ->get();
+
+        $paymentsByMethod = Payment::select('payment_method')
+            ->selectRaw('COUNT(*) as count, SUM(amount) as total')
+            ->groupBy('payment_method')
+            ->get();
+
+        $baseCurrency = Setting::getBaseCurrency();
         return view('admin.analytics', compact(
             'stats',
             'revenueByMonth',
@@ -142,7 +157,10 @@ class AdminController extends Controller
             'userGrowth',
             'categoryStats',
             'instructorStats',
-            'popularCourses'
+            'popularCourses',
+            'paymentsByStatus',
+            'paymentsByMethod',
+            'baseCurrency'
         ));
     }
 
@@ -362,15 +380,17 @@ class AdminController extends Controller
             'free' => Course::where('is_free', true)->count(),
             'paid' => Course::where('is_free', false)->count(),
         ];
-
-        return view('admin.courses.index', compact('courses', 'categories', 'instructors', 'stats'));
+        
+        $baseCurrency = Setting::getBaseCurrency();
+        return view('admin.courses.index', compact('courses', 'categories', 'instructors', 'stats', 'baseCurrency'));
     }
 
     public function createCourse()
     {
         $categories = Category::active()->ordered()->get();
         $instructors = User::instructors()->get();
-        return view('admin.courses.create', compact('categories', 'instructors'));
+        $baseCurrency = Setting::getBaseCurrency();
+        return view('admin.courses.create', compact('categories', 'instructors', 'baseCurrency'));
     }
 
     public function storeCourse(Request $request)
@@ -506,7 +526,8 @@ class AdminController extends Controller
     {
         $categories = Category::active()->ordered()->get();
         $instructors = User::instructors()->get();
-        return view('admin.courses.edit', compact('course', 'categories', 'instructors'));
+        $baseCurrency = Setting::getBaseCurrency();
+        return view('admin.courses.edit', compact('course', 'categories', 'instructors', 'baseCurrency'));
     }
 
     public function updateCourse(Request $request, Course $course)
@@ -579,7 +600,8 @@ class AdminController extends Controller
     public function showCourse(Course $course)
     {
         $course->load(['instructor', 'category', 'sections.lessons']);
-        return view('admin.courses.show', compact('course'));
+        $baseCurrency = Setting::getBaseCurrency();
+        return view('admin.courses.show', compact('course', 'baseCurrency'));
     }
 
     public function destroyCourse(Course $course)
@@ -1109,5 +1131,81 @@ class AdminController extends Controller
                 'message' => 'Erreur lors du recalcul: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Liste des paiements/transactions (réussis/échoués)
+     */
+    public function payments(Request $request)
+    {
+        $query = Payment::with(['order.user'])
+            ->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status')->toString());
+        }
+        if ($request->filled('method')) {
+            $query->where('payment_method', $request->string('method')->toString());
+        }
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+            $query->whereHas('order.user', function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                  ->orWhere('email', 'like', "%$search%");
+            });
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date('date_to'));
+        }
+
+        $payments = $query->paginate(20)->withQueryString();
+        $baseCurrency = Setting::getBaseCurrency();
+
+        return view('admin.payments.index', compact('payments', 'baseCurrency'));
+    }
+
+    /**
+     * Afficher la page de paramètres
+     */
+    public function settings()
+    {
+        $settings = Setting::all()->keyBy('key');
+        $baseCurrency = Setting::getBaseCurrency();
+        
+        // Liste des devises courantes
+        $currencies = [
+            'USD' => 'USD - Dollar américain',
+            'EUR' => 'EUR - Euro',
+            'CDF' => 'CDF - Franc congolais',
+            'XOF' => 'XOF - Franc CFA (BCEAO)',
+            'XAF' => 'XAF - Franc CFA (BEAC)',
+            'RWF' => 'RWF - Franc rwandais',
+            'KES' => 'KES - Shilling kenyan',
+            'UGX' => 'UGX - Shilling ougandais',
+            'TZS' => 'TZS - Shilling tanzanien',
+            'GHS' => 'GHS - Cedi ghanéen',
+            'NGN' => 'NGN - Naira nigérian',
+            'ZAR' => 'ZAR - Rand sud-africain',
+        ];
+        
+        return view('admin.settings.index', compact('baseCurrency', 'currencies', 'settings'));
+    }
+
+    /**
+     * Mettre à jour les paramètres
+     */
+    public function updateSettings(Request $request)
+    {
+        $request->validate([
+            'base_currency' => 'required|string|size:3|uppercase',
+        ]);
+
+        Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
+
+        return redirect()->route('admin.settings')
+            ->with('success', 'Paramètres mis à jour avec succès.');
     }
 }

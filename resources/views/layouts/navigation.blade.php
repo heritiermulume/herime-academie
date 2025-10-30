@@ -48,6 +48,12 @@
                                 <x-dropdown-link :href="route('admin.banners.index')">
                                     <i class="fas fa-image me-2"></i>Gérer les bannières
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.payments')">
+                                    <i class="fas fa-receipt me-2"></i>Transactions
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.settings')">
+                                    <i class="fas fa-cog me-2"></i>Paramètres
+                                </x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
                     @endif
@@ -136,6 +142,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.banners.index')">
                     <i class="fas fa-image me-2"></i>Gérer les bannières
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.settings')">
+                    <i class="fas fa-cog me-2"></i>Paramètres
                 </x-responsive-nav-link>
             @endif
         </div>

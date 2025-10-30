@@ -585,10 +585,10 @@
                                         <span class="text-success fw-bold">Gratuit</span>
                                     @else
                                         @if($course->sale_price)
-                                            <span class="text-primary fw-bold">${{ number_format($course->sale_price, 2) }}</span>
-                                            <small class="text-muted text-decoration-line-through ms-1">${{ number_format($course->price, 2) }}</small>
+                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                                            <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
                                         @else
-                                            <span class="text-primary fw-bold">${{ number_format($course->price, 2) }}</span>
+                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                         @endif
                                     @endif
                                 </div>
@@ -674,10 +674,10 @@
                                         <span class="text-success fw-bold">Gratuit</span>
                                     @else
                                         @if($course->sale_price)
-                                            <span class="text-primary fw-bold">${{ number_format($course->sale_price, 2) }}</span>
-                                            <small class="text-muted text-decoration-line-through ms-1">${{ number_format($course->price, 2) }}</small>
+                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                                            <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
                                         @else
-                                            <span class="text-primary fw-bold">${{ number_format($course->price, 2) }}</span>
+                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                         @endif
                                     @endif
                                 </div>
@@ -839,10 +839,10 @@
                                         <span class="text-success fw-bold">Gratuit</span>
                                     @else
                                         @if($course->sale_price)
-                                            <span class="text-primary fw-bold">${{ number_format($course->sale_price, 2) }}</span>
-                                            <small class="text-muted text-decoration-line-through ms-1">${{ number_format($course->price, 2) }}</small>
+                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                                            <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
                                         @else
-                                            <span class="text-primary fw-bold">${{ number_format($course->price, 2) }}</span>
+                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                         @endif
                                     @endif
                                 </div>

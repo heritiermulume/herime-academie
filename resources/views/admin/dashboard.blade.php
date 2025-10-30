@@ -27,7 +27,7 @@
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm stats-card">
-                <div class="card-body">
+                <div class="card-body stats-card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-primary bg-opacity-10 rounded-3 p-3">
@@ -44,7 +44,7 @@
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm stats-card">
-                <div class="card-body">
+                <div class="card-body stats-card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-success bg-opacity-10 rounded-3 p-3">
@@ -61,7 +61,7 @@
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm stats-card">
-                <div class="card-body">
+                <div class="card-body stats-card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-warning bg-opacity-10 rounded-3 p-3">
@@ -78,7 +78,7 @@
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm stats-card">
-                <div class="card-body">
+                <div class="card-body stats-card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-info bg-opacity-10 rounded-3 p-3">
@@ -99,7 +99,7 @@
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm stats-card">
-                <div class="card-body">
+                <div class="card-body stats-card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-success bg-opacity-10 rounded-3 p-3">
@@ -108,7 +108,7 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="text-muted mb-1">Revenus totaux</h6>
-                            <h3 class="mb-0 fw-bold">${{ number_format($stats['total_revenue'], 2) }}</h3>
+                            <h3 class="mb-0 fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}</h3>
                         </div>
                     </div>
                 </div>
@@ -116,7 +116,7 @@
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm stats-card">
-                <div class="card-body">
+                <div class="card-body stats-card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-primary bg-opacity-10 rounded-3 p-3">
@@ -137,7 +137,7 @@
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm stats-card">
-                <div class="card-body">
+                <div class="card-body stats-card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-warning bg-opacity-10 rounded-3 p-3">
@@ -154,7 +154,7 @@
         </div>
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-0 shadow-sm stats-card">
-                <div class="card-body">
+                <div class="card-body stats-card-body">
                     <div class="d-flex align-items-center">
                         <div class="flex-shrink-0">
                             <div class="bg-info bg-opacity-10 rounded-3 p-3">
@@ -199,29 +199,32 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{{ route('admin.courses') }}" class="btn btn-outline-success">
+                        <a href="{{ route('admin.courses') }}" class="btn btn-outline-primary">
                             <i class="fas fa-book me-2"></i>Gérer les cours
                         </a>
-                        <a href="{{ route('admin.categories') }}" class="btn btn-outline-warning">
+                        <a href="{{ route('admin.categories') }}" class="btn btn-outline-primary">
                             <i class="fas fa-tags me-2"></i>Gérer les catégories
                         </a>
-                        <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-danger">
+                        <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-primary">
                             <i class="fas fa-shopping-bag me-2"></i>Gérer les commandes
                         </a>
                         <a href="{{ route('admin.users') }}" class="btn btn-outline-primary">
                             <i class="fas fa-users me-2"></i>Gérer les utilisateurs
                         </a>
-                        <a href="{{ route('admin.announcements') }}" class="btn btn-outline-info">
+                        <a href="{{ route('admin.announcements') }}" class="btn btn-outline-primary">
                             <i class="fas fa-bullhorn me-2"></i>Gérer les annonces
                         </a>
-                        <a href="{{ route('admin.banners.index') }}" class="btn btn-outline-warning">
+                        <a href="{{ route('admin.banners.index') }}" class="btn btn-outline-primary">
                             <i class="fas fa-image me-2"></i>Gérer les bannières
                         </a>
-                        <a href="{{ route('admin.partners') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('admin.partners') }}" class="btn btn-outline-primary">
                             <i class="fas fa-handshake me-2"></i>Gérer les partenaires
                         </a>
-                        <a href="{{ route('admin.testimonials') }}" class="btn btn-outline-dark">
+                        <a href="{{ route('admin.testimonials') }}" class="btn btn-outline-primary">
                             <i class="fas fa-quote-left me-2"></i>Gérer les témoignages
+                        </a>
+                        <a href="{{ route('admin.settings') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-cog me-2"></i>Paramètres
                         </a>
                     </div>
                 </div>
@@ -233,8 +236,11 @@
         <!-- Popular Courses -->
         <div class="col-lg-6 mb-4">
             <div class="card border-0 shadow-sm">
-                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
                     <h5 class="mb-0"><i class="fas fa-fire me-2"></i>Cours les plus populaires</h5>
+                    <a href="{{ route('admin.courses') }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-eye me-1"></i>Voir tous
+                    </a>
                 </div>
                 <div class="card-body p-0">
                     @if($popularCourses->count() > 0)
@@ -277,8 +283,11 @@
         <!-- Recent Enrollments -->
         <div class="col-lg-6 mb-4">
             <div class="card border-0 shadow-sm">
-                <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
                     <h5 class="mb-0"><i class="fas fa-user-graduate me-2"></i>Inscriptions récentes</h5>
+                    <a href="{{ route('admin.users') }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-eye me-1"></i>Voir tous
+                    </a>
                 </div>
                 <div class="card-body p-0">
                     @if($recentEnrollments->count() > 0)
@@ -356,7 +365,7 @@
                                             @endforeach
                                         </td>
                                         <td>
-                                            <span class="fw-bold">${{ number_format($order->total, 2) }}</span>
+                                            <span class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total, $order->currency ?? $baseCurrency) }}</span>
                                         </td>
                                         <td>
                                             @switch($order->status)
@@ -409,7 +418,7 @@ const revenueChart = new Chart(ctx, {
             @endforeach
         ],
         datasets: [{
-            label: 'Revenus ($)',
+            label: 'Revenus ({{ $baseCurrency ?? "USD" }})',
             data: [
                 @foreach($revenueByMonth as $month)
                     {{ $month->revenue }},
@@ -516,6 +525,25 @@ const revenueChart = new Chart(ctx, {
     transform: translateX(5px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     transition: all 0.2s ease;
+}
+
+/* Harmonisation de la hauteur des cartes stats */
+.stats-card-body {
+    min-height: 110px;
+    display: flex;
+    align-items: center;
+}
+
+/* Forcer la teinte bleu foncé pour les boutons outline primary */
+.btn-outline-primary {
+    color: #003366;
+    border-color: #003366;
+}
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+    background: #003366;
+    color: #fff;
+    border-color: #003366;
 }
 
 /* Responsive */

@@ -260,10 +260,10 @@
                                             <span class="badge bg-success">Gratuit</span>
                                         @else
                                             <div>
-                                                <strong>{{ number_format($course->current_price) }} FCFA</strong>
+                                                <strong>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->current_price) }}</strong>
                                                 @if($course->sale_price && $course->sale_price < $course->price)
                                                     <br><small class="text-muted">
-                                                        <s>{{ number_format($course->price) }} FCFA</s>
+                                                        <s>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</s>
                                                     </small>
                                                 @endif
                                             </div>

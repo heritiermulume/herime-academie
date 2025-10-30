@@ -54,147 +54,72 @@
                     </div>
                 </div>
 
-                <!-- Payment Methods -->
+                <!-- pawaPay Payment -->
                 <div class="payment-section">
                     <h4 class="section-title mb-4">
-                        <i class="fas fa-credit-card me-2"></i>Choisissez votre mode de paiement
+                        <i class="fas fa-mobile-alt me-2"></i>Paiement Mobile Money
                     </h4>
 
-                    <form id="paymentForm" method="POST" action="{{ route('maxicash.process') }}">
+                    <form id="pawapayForm" method="POST" onsubmit="return false;">
                         @csrf
-                        
-                        <!-- Payment Method Selection -->
-                        <div class="payment-methods mb-4">
-                            <div class="row g-3">
-                                <!-- MaxiCash Payment -->
+
+                        <div class="form-section">
+                            <div class="row g-3 mb-3">
                                 <div class="col-md-6">
-                                    <div class="payment-option" data-method="maxicash">
-                                        <input type="radio" name="payment_method" value="maxicash" id="maxicash" class="payment-radio" checked>
-                                        <label for="maxicash" class="payment-label">
-                                            <div class="payment-icon">
-                                                <i class="fas fa-wallet"></i>
-                                            </div>
-                                            <div class="payment-info">
-                                                <h6>MaxiCash</h6>
-                                                <p>Paiement sécurisé par portefeuille numérique</p>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- WhatsApp Order -->
-                                <div class="col-md-6">
-                                    <div class="payment-option" data-method="whatsapp">
-                                        <input type="radio" name="payment_method" value="whatsapp" id="whatsapp" class="payment-radio">
-                                        <label for="whatsapp" class="payment-label">
-                                            <div class="payment-icon">
-                                                <i class="fab fa-whatsapp"></i>
-                                            </div>
-                                            <div class="payment-info">
-                                                <h6>Commande WhatsApp</h6>
-                                                <p>Envoyer votre commande via WhatsApp</p>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Payment Forms -->
-                        <div class="payment-forms">
-                            <!-- MaxiCash Payment Form -->
-                            <div id="maxicashForm" class="maxicash-form" style="display: block;">
-                                <div class="form-section">
-                                    <h5 class="form-title">Paiement avec MaxiCash</h5>
-                                        
-                                        <div class="row g-3 mb-4">
-                                            <div class="col-md-6">
-                                            <label for="maxicash_phone" class="form-label">
-                                                    <i class="fas fa-phone me-1"></i>Numéro de téléphone
-                                                </label>
-                                            <input type="tel" class="form-control" id="maxicash_phone" name="maxicash_phone" 
-                                                       placeholder="+243 00 000 0000" required>
-                                            <small class="form-text text-muted">Pour les paiements Mobile Money</small>
-                                            </div>
-                                                    <div class="col-md-6">
-                                            <label for="maxicash_email" class="form-label">
-                                                <i class="fas fa-envelope me-1"></i>Email (recommandé)
-                                            </label>
-                                            <input type="email" class="form-control" id="maxicash_email" name="maxicash_email" 
-                                                               placeholder="votre@email.com">
-                                            <small class="form-text text-muted">Pour recevoir la confirmation de paiement</small>
-                                                </div>
-                                            </div>
-
-                                        <div class="alert alert-success">
-                                        <i class="fas fa-shield-alt me-2"></i>
-                                        <strong>Paiement sécurisé SSL :</strong> Votre transaction est protégée par un chiffrement SSL de niveau bancaire.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- WhatsApp Form -->
-                            <div id="whatsappForm" class="whatsapp-form" style="display: none;">
-                                <div class="form-section">
-                                    <div class="alert alert-info">
-                                        <i class="fab fa-whatsapp me-2"></i>
-                                        <strong>Commande WhatsApp</strong><br>
-                                        Envoyez votre commande directement sur WhatsApp. Notre équipe vous contactera pour confirmer votre achat.
-                                    </div>
-                                    
-                                    <div class="alert alert-warning">
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        <strong>Important :</strong> Votre commande sera traitée manuellement. Vous recevrez un email de confirmation une fois le paiement validé par notre équipe.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Billing Information - Only for WhatsApp -->
-                        <div class="billing-section mt-4" id="billingSection" style="display: none;">
-                            <h5 class="form-title">Informations de facturation</h5>
-                            <p class="text-muted mb-3">Pour finaliser votre commande WhatsApp, veuillez remplir vos informations</p>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label for="billing_first_name" class="form-label">Prénom</label>
-                                    <input type="text" class="form-control" id="billing_first_name" name="billing_first_name" value="{{ auth()->user()->first_name ?? '' }}">
+                                    <label class="form-label"><i class="fas fa-flag me-1"></i>Pays</label>
+                                    <select id="country" class="form-select"></select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="billing_last_name" class="form-label">Nom</label>
-                                    <input type="text" class="form-control" id="billing_last_name" name="billing_last_name" value="{{ auth()->user()->last_name ?? '' }}">
-                                </div>
-                                <div class="col-12">
-                                    <label for="billing_email" class="form-label">Email</label>
-                                    <input type="email" class="form-control" id="billing_email" name="billing_email" value="{{ auth()->user()->email ?? '' }}">
-                                </div>
-                                <div class="col-12">
-                                    <label for="billing_address" class="form-label">Adresse</label>
-                                    <textarea class="form-control" id="billing_address" name="billing_address" rows="3" placeholder="Votre adresse complète"></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Terms and Conditions -->
-                        <div class="terms-section mt-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
-                                <label class="form-check-label" for="terms">
-                                    J'accepte les <a href="{{ route('legal.terms') }}" target="_blank" class="text-primary">conditions générales de vente</a> et la <a href="{{ route('legal.privacy') }}" target="_blank" class="text-primary">politique de confidentialité</a>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <div class="payment-actions mt-4">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary btn-lg w-100" id="payButton">
-                                        <span id="payButtonText">Payer avec MaxiCash ${{ number_format($total, 2) }}</span>
-                                    </button>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <label class="form-label mb-0"><i class="fas fa-coins me-1"></i>Montant</label>
+                                        <div style="min-width: 140px;">
+                                            <select id="currencySelect" class="form-select form-select-sm"></select>
+                                        </div>
+                                    </div>
+                                    {{-- Montant initial dans la devise de base du site (configurée dans /admin/settings) --}}
+                                    <input type="text" id="amount" class="form-control mt-2" value="{{ number_format($total, 2, '.', '') }}" readonly>
+                                    <div class="invalid-feedback" id="amountError"></div>
                                 </div>
                             </div>
+
+                            <div class="mb-3">
+                                <label class="form-label"><i class="fas fa-network-wired me-1"></i>Fournisseur</label>
+                                <div id="providers" class="d-flex flex-wrap gap-2"></div>
+                                <small class="form-text text-muted">Sélectionnez votre opérateur (liste dynamique depuis pawaPay).</small>
+                            </div>
+
+                            <div class="row g-3 mb-2">
+                                <div class="col-md-4">
+                                    <label class="form-label"><i class="fas fa-phone me-1"></i>Indicatif</label>
+                                    <input type="text" id="prefix" class="form-control" value="243" readonly>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label"><i class="fas fa-phone me-1"></i>Numéro (sans indicatif)</label>
+                                    <input type="tel" id="phoneNumber" class="form-control" placeholder="783 456 789" required>
+                                    <div class="invalid-feedback" id="phoneError">Veuillez saisir un numéro de téléphone valide.</div>
+                                </div>
+                            </div>
+
+                            <div class="terms-section mt-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="terms" required>
+                                    <label class="form-check-label" for="terms">
+                                        J'accepte les <a href="{{ route('legal.terms') }}" target="_blank" class="text-primary">conditions générales</a> et la <a href="{{ route('legal.privacy') }}" target="_blank" class="text-primary">politique de confidentialité</a>
+                                    </label>
+                                    <div class="invalid-feedback" style="display:block;" id="termsError"></div>
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="currency" value="{{ config('services.pawapay.default_currency') }}">
                         </div>
 
+                        <div class="payment-actions mt-3">
+                            <button type="button" id="payButton" class="btn btn-primary btn-lg w-100">
+                                <span id="payButtonText">Payer maintenant</span>
+                            </button>
+                        </div>
+
+                        <div id="paymentNotice" class="alert alert-info mt-3" style="display:none;"></div>
                     </form>
                 </div>
             </div>
@@ -211,7 +136,7 @@
                                 <p class="item-instructor text-muted">Par {{ $item['course']->instructor->name ?? '' }}</p>
                             </div>
                             <div class="item-price">
-                                ${{ number_format($item['subtotal'], 2) }}
+                                {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}
                             </div>
                         </div>
                         @endforeach
@@ -219,7 +144,7 @@
                     <div class="order-total mt-3">
                         <div class="d-flex justify-content-between">
                             <strong>Total :</strong>
-                            <strong class="text-primary fs-4">${{ number_format($total, 2) }}</strong>
+                            <strong class="text-primary fs-4">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($total) }}</strong>
                         </div>
                         </div>
                         </div>
@@ -231,166 +156,403 @@
 
 @push('scripts')
 <script>
-// Simple and direct payment method switching
 document.addEventListener('DOMContentLoaded', function() {
-    const maxicashRadio = document.getElementById('maxicash');
-    const whatsappRadio = document.getElementById('whatsapp');
-    const maxicashForm = document.getElementById('maxicashForm');
-    const whatsappForm = document.getElementById('whatsappForm');
+    const providersContainer = document.getElementById('providers');
+    const countrySelect = document.getElementById('country');
+    const prefixInput = document.getElementById('prefix');
+    const phoneNumberInput = document.getElementById('phoneNumber');
+    const amountInput = document.getElementById('amount');
+    const currencyInput = document.getElementById('currency');
+    const currencySelect = document.getElementById('currencySelect');
+    const payButton = document.getElementById('payButton');
     const payButtonText = document.getElementById('payButtonText');
-    const billingSection = document.getElementById('billingSection');
+    const paymentNotice = document.getElementById('paymentNotice');
+    const termsCheckbox = document.getElementById('terms');
+    let selectedProvider = null;
+    let cachedActiveConf = null;
+    let currentProviderRules = null; // min/max/decimals
     
-    // MaxiCash handler
-    if (maxicashRadio) {
-        maxicashRadio.addEventListener('change', function() {
-            maxicashForm.style.display = 'block';
-            whatsappForm.style.display = 'none';
-            if (billingSection) billingSection.style.display = 'none';
-            if (payButtonText) {
-                payButtonText.textContent = 'Payer avec MaxiCash ${{ number_format($total, 2) }}';
-            }
-        });
-    }
+    // IMPORTANT: Le montant de base est dans la devise de base du site (configurée dynamiquement dans /admin/settings)
+    // Ce montant provient des prix des cours stockés dans la base de données (dans la devise de base)
+    let baseAmount = parseFloat(amountInput.value) || 0; // Montant original dans la devise de base du site
+    const baseCurrency = '{{ $baseCurrency ?? "USD" }}'; // Devise de base configurée dynamiquement dans l'admin
     
-    // WhatsApp handler  
-    if (whatsappRadio) {
-        whatsappRadio.addEventListener('change', function() {
-            whatsappForm.style.display = 'block';
-            maxicashForm.style.display = 'none';
-            if (billingSection) billingSection.style.display = 'block';
-            if (payButtonText) {
-                payButtonText.textContent = 'Envoyer la commande WhatsApp';
-            }
-            setTimeout(() => {
-                if (billingSection) billingSection.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
+    let exchangeRates = {}; // Cache des taux de change
+
+    async function loadCountries() {
+        // Récupère toute la configuration active (sans filtre pays)
+        const res = await fetch(`{{ route('pawapay.active-conf') }}`);
+        if (!res.ok) {
+            countrySelect.innerHTML = '<option>Chargement impossible</option>';
+            return;
+        }
+        const data = await res.json();
+        cachedActiveConf = data;
+        const countries = data.countries || [];
+        // Construire la liste des pays disponibles
+        let html = '';
+        countries.forEach(c => {
+            const selected = c.country === `{{ config('services.pawapay.default_country') }}` ? 'selected' : '';
+            const label = (c.displayName && (c.displayName.fr || c.displayName.en)) || c.country;
+            html += `<option value="${c.country}" ${selected}>${label}</option>`;
         });
+        // Si aucun pays dans la conf, fallback sur défaut
+        if (!html) {
+            html = `<option value="{{ config('services.pawapay.default_country') }}" selected>{{ config('services.pawapay.default_country') }}</option>`;
+        }
+        countrySelect.innerHTML = html;
+        // Déclencher chargement des fournisseurs pour le pays sélectionné
+        onCountryChange();
     }
 
-    // Form submission
-    const paymentForm = document.getElementById('paymentForm');
-    if (paymentForm) {
-        paymentForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const selectedMethod = document.querySelector('input[name="payment_method"]:checked');
-            if (!selectedMethod) {
-                alert('Veuillez sélectionner un mode de paiement.');
-                return;
-            }
-            
-            const paymentMethod = selectedMethod.value;
-            const terms = document.getElementById('terms');
-            
-            if (!terms || !terms.checked) {
-                alert('Veuillez accepter les conditions générales de vente.');
-                return;
-            }
-            
-            if (paymentMethod === 'maxicash') {
-                const phone = document.getElementById('maxicash_phone').value;
-                if (!phone) {
-                    alert('Veuillez saisir votre numéro de téléphone.');
-                    return;
-                }
-                handleMaxiCashPayment();
-            } else if (paymentMethod === 'whatsapp') {
-                // Validation des champs de facturation
-                const firstName = document.getElementById('billing_first_name').value.trim();
-                const lastName = document.getElementById('billing_last_name').value.trim();
-                const email = document.getElementById('billing_email').value.trim();
-                
-                if (!firstName || !lastName || !email) {
-                    alert('Veuillez remplir toutes les informations de facturation (Prénom, Nom et Email).');
-                    return;
-                }
-                
-                handleWhatsAppPayment();
-            }
-        });
-    }
-
-    function handleMaxiCashPayment() {
-        const phone = document.getElementById('maxicash_phone').value;
-        const email = document.getElementById('maxicash_email').value;
-        const user = @json(auth()->user() ?? null);
+    function onCountryChange() {
+        providersContainer.innerHTML = '<div class="text-muted">Chargement des fournisseurs…</div>';
+        currencySelect.innerHTML = '<option value="">Chargement...</option>';
+        selectedProvider = null;
         
-        if (!phone) {
-            alert('Veuillez saisir votre numéro de téléphone.');
+        const data = cachedActiveConf || { countries: [] };
+        const country = (data.countries || []).find(c => c.country === countrySelect.value) || null;
+        if (!country) {
+            providersContainer.innerHTML = '<div class="text-danger">Aucun fournisseur disponible.</div>';
+            currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
+            selectedProvider = null;
+            updatePayButtonState();
+            return;
+        }
+        prefixInput.value = country.prefix || prefixInput.value;
+        const providers = country.providers || [];
+        renderProviders(providers);
+    }
+
+    function renderProviders(providers) {
+        providersContainer.innerHTML = '';
+        if (providers.length === 0) {
+            providersContainer.innerHTML = '<div class="text-danger">Aucun fournisseur disponible.</div>';
+            currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
+            selectedProvider = null;
+            updatePayButtonState();
             return;
         }
         
-        payButton.disabled = true;
-        payButtonText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Redirection vers MaxiCash...';
-        
-        // Récupérer les données du panier
-        const cartItems = @json($cartItems ?? []);
-        const total = {{ $total ?? 0 }};
-        
-        // Générer une référence unique
-        const reference = 'MAXI-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-        
-        // Préparer les données de paiement
-        const paymentData = {
-            phone: phone,
-            email: email || (user ? user.email : ''),
-            total: total,
-            cart_items: cartItems,
-            reference: reference,
-            _token: '{{ csrf_token() }}'
-        };
-        
-        // Créer et soumettre le formulaire
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ route("maxicash.process") }}';
-        form.style.display = 'none';
-        
-        for (const key in paymentData) {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = key;
-            input.value = typeof paymentData[key] === 'object' ? JSON.stringify(paymentData[key]) : paymentData[key];
-            form.appendChild(input);
-        }
-        
-        document.body.appendChild(form);
-        form.submit();
+        providers.forEach((p, index) => {
+            const card = document.createElement('div');
+            card.className = 'provider-card';
+            card.innerHTML = `
+                <div class="provider-logo"><img src="${p.logo}" alt="${p.displayName || p.provider}"></div>
+                <div class="provider-name">${p.displayName || p.provider}</div>
+            `;
+            
+            // Sélectionner automatiquement le premier fournisseur
+            if (index === 0) {
+                selectedProvider = p.provider;
+                card.classList.add('active');
+                setupCurrenciesForProvider(p);
+            }
+            
+            card.addEventListener('click', () => {
+                selectedProvider = p.provider;
+                [...providersContainer.children].forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                setupCurrenciesForProvider(p);
+            });
+            providersContainer.appendChild(card);
+        });
     }
 
-    function handleWhatsAppPayment() {
-        // Récupérer les informations de facturation
-        const firstName = document.getElementById('billing_first_name').value.trim();
-        const lastName = document.getElementById('billing_last_name').value.trim();
-        const email = document.getElementById('billing_email').value.trim();
-        const address = document.getElementById('billing_address').value.trim();
-        
-        // Construire le message WhatsApp
-        let message = '*🛒 COMMANDE - HERIME ACADÉMIE*\n\n';
-        message += '*Informations Client:*\n';
-        message += 'Nom: ' + firstName + ' ' + lastName + '\n';
-        message += 'Email: ' + email + '\n';
-        if (address) {
-            message += 'Adresse: ' + address + '\n';
+    function setupCurrenciesForProvider(provider) {
+        if (!provider) {
+            currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
+            currencyInput.value = '';
+            amountInput.value = baseAmount.toFixed(2);
+            updatePayButtonState();
+            return;
         }
-        message += '\n*Articles Commandés:*\n';
         
-        // Ajouter les cours
-        let courses = '';
-        @foreach($cartItems as $item)
-            courses += '{{ $loop->iteration }}. {{ $item['course']->title ?? 'Cours' }} - ${{ number_format($item['subtotal'] ?? 0, 2) }}\n';
-        @endforeach
-        message += courses;
+        const currencies = (provider.currencies || []).filter(c => !!c.currency);
+        let html = '';
         
-        message += '\n*💰 TOTAL: ${{ number_format($total, 2) }}*\n';
-        message += '\n📅 Date: ' + new Date().toLocaleDateString('fr-FR') + ' ' + new Date().toLocaleTimeString('fr-FR');
-        message += '\n\n✅ Merci pour votre commande!';
-        
-        // Encoder et ouvrir WhatsApp
-        const whatsappNumber = '243850478400';
-        const whatsappUrl = 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(message);
-        window.open(whatsappUrl, '_blank');
+        if (currencies.length === 0) {
+            // Aucune devise dans la config, utiliser la devise par défaut
+            const defaultCurrency = '{{ config('services.pawapay.default_currency') }}';
+            html = `<option value="${defaultCurrency}" selected>${defaultCurrency}</option>`;
+            currencySelect.innerHTML = html;
+            currencyInput.value = defaultCurrency;
+            convertAmount(defaultCurrency);
+        } else {
+            currencies.forEach((c, index) => {
+                const code = c.currency;
+                const selected = index === 0 ? 'selected' : '';
+                html += `<option value="${code}" ${selected}>${code}</option>`;
+            });
+            currencySelect.innerHTML = html;
+            // Définir règles min/max/decimals pour DEPOSIT si fournies
+            const selectedCurrency = currencies[0]; // Première devise par défaut
+            const opTypes = selectedCurrency && selectedCurrency.operationTypes ? selectedCurrency.operationTypes : null;
+            const deposit = opTypes && opTypes.DEPOSIT ? opTypes.DEPOSIT : null;
+            currentProviderRules = deposit ? {
+                minAmount: deposit.minAmount ? parseFloat(deposit.minAmount) : null,
+                maxAmount: deposit.maxAmount ? parseFloat(deposit.maxAmount) : null,
+                decimalsInAmount: deposit.decimalsInAmount || 'TWO_PLACES',
+            } : null;
+            
+            currencyInput.value = selectedCurrency.currency;
+            convertAmount(selectedCurrency.currency);
+        }
+        updatePayButtonState();
     }
+
+    /**
+     * Convertir le montant de la devise de base du site vers la devise sélectionnée par l'utilisateur
+     * @param {string} targetCurrency - La devise cible sélectionnée (ex: CDF, XOF, etc.)
+     */
+    async function convertAmount(targetCurrency) {
+        if (!targetCurrency || !selectedProvider) {
+            // Pas de devise sélectionnée, afficher le montant dans la devise de base
+            amountInput.value = baseAmount.toFixed(2);
+            validateAmount();
+            updatePayButtonState();
+            return;
+        }
+        
+        // Si la devise cible est la même que la devise de base du site, pas de conversion nécessaire
+        if (targetCurrency === baseCurrency) {
+            amountInput.value = baseAmount.toFixed(2);
+            validateAmount();
+            updatePayButtonState();
+            return;
+        }
+        
+        // Récupérer le taux de change depuis la devise de base du site vers la devise cible sélectionnée
+        // Exemple: Si baseCurrency = 'USD' et targetCurrency = 'CDF', on convertit USD -> CDF
+        try {
+            const rate = await getExchangeRate(baseCurrency, targetCurrency);
+            const convertedAmount = baseAmount * rate;
+            
+            // Formater selon les règles du fournisseur
+            const decimals = currentProviderRules?.decimalsInAmount === 'NONE' ? 0 : 2;
+            amountInput.value = convertedAmount.toFixed(decimals);
+            
+            validateAmount();
+            updatePayButtonState();
+        } catch (error) {
+            console.error('Erreur conversion:', error);
+            // En cas d'erreur, garder le montant original
+            amountInput.value = baseAmount.toFixed(2);
+            validateAmount();
+            updatePayButtonState();
+        }
+    }
+    
+    /**
+     * Récupérer le taux de change entre deux devises
+     * @param {string} from - Devise source (doit être la devise de base du site : baseCurrency)
+     * @param {string} to - Devise cible (devise sélectionnée par l'utilisateur)
+     * @returns {Promise<number>} Taux de change
+     */
+    async function getExchangeRate(from, to) {
+        const cacheKey = `${from}_${to}`;
+        
+        // Utiliser le cache s'il est encore valide (5 minutes)
+        if (exchangeRates[cacheKey] && (Date.now() - exchangeRates[cacheKey].timestamp) < 300000) {
+            return exchangeRates[cacheKey].rate;
+        }
+        
+        // Utiliser exchangerate-api.com pour récupérer les taux de change
+        // from = devise de base du site (baseCurrency), to = devise cible sélectionnée
+        try {
+            const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${from}`);
+            if (!response.ok) throw new Error('Erreur API taux de change');
+            
+            const data = await response.json();
+            const rate = data.rates[to];
+            
+            if (!rate) {
+                throw new Error(`Taux non trouvé pour ${to}`);
+            }
+            
+            // Mettre en cache
+            exchangeRates[cacheKey] = {
+                rate: rate,
+                timestamp: Date.now()
+            };
+            
+            return rate;
+        } catch (error) {
+            console.error('Erreur récupération taux:', error);
+            throw error;
+        }
+    }
+    
+    function currencyChanged() {
+        if (!selectedProvider) {
+            currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
+            return;
+        }
+        
+        currencyInput.value = currencySelect.value;
+        
+        // Mettre à jour les règles si nécessaire
+        const provider = findProviderByCode(selectedProvider);
+        if (provider) {
+            const currencies = (provider.currencies || []).filter(c => !!c.currency);
+            const selectedCurrency = currencies.find(c => c.currency === currencySelect.value);
+            if (selectedCurrency) {
+                const opTypes = selectedCurrency.operationTypes || {};
+                const deposit = opTypes.DEPOSIT || {};
+                currentProviderRules = {
+                    minAmount: deposit.minAmount ? parseFloat(deposit.minAmount) : null,
+                    maxAmount: deposit.maxAmount ? parseFloat(deposit.maxAmount) : null,
+                    decimalsInAmount: deposit.decimalsInAmount || 'TWO_PLACES',
+                };
+            }
+        }
+        
+        convertAmount(currencySelect.value);
+    }
+    
+    function findProviderByCode(providerCode) {
+        if (!cachedActiveConf) return null;
+        const countries = cachedActiveConf.countries || [];
+        for (const country of countries) {
+            const provider = (country.providers || []).find(p => p.provider === providerCode);
+            if (provider) return provider;
+        }
+        return null;
+    }
+
+    function setInvalid(el, msgEl, message) {
+        el.classList.add('is-invalid');
+        if (msgEl) { msgEl.textContent = message || ''; }
+    }
+
+    function clearInvalid(el, msgEl) {
+        el.classList.remove('is-invalid');
+        if (msgEl) { msgEl.textContent = ''; }
+    }
+
+    function validatePhone() {
+        const digits = phoneNumberInput.value.replace(/\D/g,'');
+        const valid = digits.length >= 7; // règle simple; peut être affinée par pays
+        if (!valid) setInvalid(phoneNumberInput, document.getElementById('phoneError'), 'Numéro invalide.');
+        else clearInvalid(phoneNumberInput, document.getElementById('phoneError'));
+        return valid;
+    }
+
+    function validateTerms() {
+        const ok = !!termsCheckbox.checked;
+        if (!ok) setInvalid(termsCheckbox, document.getElementById('termsError'), 'Veuillez accepter les conditions.');
+        else clearInvalid(termsCheckbox, document.getElementById('termsError'));
+        return ok;
+    }
+
+    function validateAmount() {
+        const val = parseFloat(amountInput.value);
+        let ok = true;
+        let msg = '';
+        if (Number.isNaN(val)) { ok = false; msg = 'Montant invalide.'; }
+        if (ok && currentProviderRules) {
+            if (currentProviderRules.minAmount !== null && val < currentProviderRules.minAmount) { ok = false; msg = `Montant minimum: ${currentProviderRules.minAmount}`; }
+            if (currentProviderRules.maxAmount !== null && val > currentProviderRules.maxAmount) { ok = false; msg = `Montant maximum: ${currentProviderRules.maxAmount}`; }
+        }
+        if (!ok) setInvalid(amountInput, document.getElementById('amountError'), msg);
+        else clearInvalid(amountInput, document.getElementById('amountError'));
+        return ok;
+    }
+
+    function updatePayButtonState() {
+        // Le fournisseur doit être sélectionné
+        if (!selectedProvider) {
+            payButton.disabled = true;
+            return;
+        }
+        
+        const ready = validatePhone() && validateTerms() && validateAmount();
+        payButton.disabled = !ready;
+    }
+
+    async function initiateDeposit() {
+        if (!validateTerms() | !validatePhone() | !selectedProvider | !validateAmount()) {
+            updatePayButtonState();
+            return;
+        }
+        // S'assurer que la devise est synchronisée
+        currencyInput.value = currencySelect.value;
+        
+        const fullPhone = `${prefixInput.value}${phoneNumberInput.value.replace(/\D/g,'')}`;
+        payButton.disabled = true;
+        payButtonText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Initialisation…';
+        paymentNotice.style.display = 'none';
+
+        // Payload avec montant converti et devise sélectionnée pour l'opérateur
+        const payload = {
+            amount: parseFloat(amountInput.value), // Montant converti dans la devise sélectionnée
+            currency: currencySelect.value, // Devise sélectionnée (assurée d'être à jour)
+            phoneNumber: fullPhone,
+            provider: selectedProvider,
+            country: countrySelect.value,
+            _token: '{{ csrf_token() }}'
+        };
+
+        const res = await fetch(`{{ route('pawapay.initiate') }}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.message || 'Échec de l\'initialisation du paiement.');
+            payButton.disabled = false;
+            payButtonText.textContent = 'Payer maintenant';
+            return;
+        }
+
+        // Redirect-based flows
+        if (data.nextStep === 'REDIRECT_TO_AUTH_URL' && data.authorizationUrl) {
+            window.location.href = data.authorizationUrl;
+            return;
+        }
+
+        // Otherwise poll for final status
+        if (data.depositId) {
+            paymentNotice.style.display = 'block';
+            paymentNotice.className = 'alert alert-info mt-3';
+            paymentNotice.textContent = 'Paiement en cours de traitement…';
+            pollStatus(data.depositId);
+        }
+    }
+
+    async function pollStatus(depositId) {
+        const poll = async () => {
+            const res = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const status = data.status;
+            if (status === 'COMPLETED') {
+                paymentNotice.className = 'alert alert-success mt-3';
+                paymentNotice.textContent = 'Paiement réussi. Activation en cours…';
+                payButtonText.textContent = 'Payé';
+                // Optionally reload or redirect to success
+                setTimeout(() => window.location.href = '{{ route('pawapay.success') }}', 800);
+            } else if (status === 'FAILED') {
+                paymentNotice.className = 'alert alert-danger mt-3';
+                paymentNotice.textContent = 'Le paiement a échoué. Veuillez réessayer.';
+                payButton.disabled = false;
+                payButtonText.textContent = 'Payer maintenant';
+            } else {
+                setTimeout(poll, 1500);
+            }
+        };
+        poll();
+    }
+
+    countrySelect.addEventListener('change', onCountryChange);
+    payButton.addEventListener('click', initiateDeposit);
+    phoneNumberInput.addEventListener('input', () => { validatePhone(); updatePayButtonState(); });
+    termsCheckbox.addEventListener('change', () => { validateTerms(); updatePayButtonState(); });
+    currencySelect.addEventListener('change', currencyChanged);
+    loadCountries();
+    updatePayButtonState();
 });
 </script>
 
@@ -1034,6 +1196,37 @@ document.addEventListener('DOMContentLoaded', function() {
     .order-total .d-flex {
         font-size: 18px;
     }
+}
+
+/* Cartes fournisseurs - charte graphique du site */
+.provider-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    margin: 0 8px 8px 0;
+}
+.provider-card:hover {
+    border-color: #003366;
+    background: #f3f8ff;
+}
+.provider-card.active {
+    border-color: #003366;
+    box-shadow: 0 0 0 3px rgba(0,51,102,0.1);
+    background: #eaf2ff;
+}
+.provider-card .provider-logo img {
+    height: 22px;
+    width: auto;
+}
+.provider-card .provider-name {
+    font-weight: 600;
+    color: #003366;
 }
 
 @media (max-width: 480px) {

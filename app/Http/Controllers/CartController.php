@@ -200,8 +200,11 @@ class CartController extends Controller
             return redirect()->route('cart.index')->with('error', 'Votre panier est vide.');
         }
 
+        // Calculer le total dans la devise de base du site
+        // Les prix des cours sont stockés dans la devise de base configurée dans /admin/settings
         $total = collect($cartItems)->sum('subtotal');
 
+        // $baseCurrency est automatiquement partagé avec toutes les vues via AppServiceProvider
         return view('cart.checkout', compact('cartItems', 'total'));
     }
 

@@ -35,36 +35,16 @@ return [
         ],
     ],
 
-    'stripe' => [
-        'key' => env('STRIPE_KEY'),
-        'secret' => env('STRIPE_SECRET'),
-        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
-    ],
+    // Paiements: nous utilisons exclusivement pawaPay. Les autres intégrations sont désactivées.
 
-    'paypal' => [
-        'client_id' => env('PAYPAL_CLIENT_ID'),
-        'client_secret' => env('PAYPAL_CLIENT_SECRET'),
-        'mode' => env('PAYPAL_MODE', 'sandbox'), // sandbox or live
-    ],
-
-    'mobile_money' => [
-        'orange_money' => [
-            'api_key' => env('ORANGE_MONEY_API_KEY'),
-            'merchant_id' => env('ORANGE_MONEY_MERCHANT_ID'),
-        ],
-        'mpesa' => [
-            'consumer_key' => env('MPESA_CONSUMER_KEY'),
-            'consumer_secret' => env('MPESA_CONSUMER_SECRET'),
-            'business_short_code' => env('MPESA_BUSINESS_SHORT_CODE'),
-        ],
-    ],
-
-    'maxicash' => [
-        'merchant_id' => env('MAXICASH_MERCHANT_ID'),
-        'merchant_password' => env('MAXICASH_MERCHANT_PASSWORD'),
-        'api_url' => env('MAXICASH_API_URL', 'https://api.maxicashapp.com'),
-        'gateway_url' => env('MAXICASH_GATEWAY_URL', 'https://api.maxicashapp.com/PayEntryPost'),
-        'sandbox' => env('MAXICASH_SANDBOX', true),
+    'pawapay' => [
+        'base_url' => env('PAWAPAY_BASE_URL', 'https://api.sandbox.pawapay.io/v2'),
+        'api_key' => env('PAWAPAY_API_KEY'),
+        'default_country' => env('PAWAPAY_DEFAULT_COUNTRY', 'COD'),
+        'default_currency' => env('PAWAPAY_DEFAULT_CURRENCY', 'CDF'),
+        // Public URLs where the provider can redirect after auth (Wave, etc.)
+        'successful_url' => env('PAWAPAY_SUCCESSFUL_URL', env('APP_URL') . '/payments/pawapay/success'),
+        'failed_url' => env('PAWAPAY_FAILED_URL', env('APP_URL') . '/payments/pawapay/failed'),
     ],
 
 ];

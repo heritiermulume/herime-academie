@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\View;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +20,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Partager la devise de base avec toutes les vues
+        try {
+            View::share('baseCurrency', \App\Models\Setting::getBaseCurrency());
+        } catch (\Exception $e) {
+            // Si la table settings n'existe pas encore, utiliser USD par défaut
+            View::share('baseCurrency', 'USD');
+        }
     }
 }

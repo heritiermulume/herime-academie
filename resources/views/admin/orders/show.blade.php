@@ -6,37 +6,42 @@
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="fas fa-receipt me-2"></i>Commande {{ $order->order_number }}
-                    </h2>
-                    <p class="text-muted mb-0">
-                        Passée le {{ $order->created_at->format('d/m/Y à H:i') }}
-                    </p>
-                </div>
-                <div class="d-flex gap-2">
-                    <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-2"></i>Retour
-                    </a>
-                    
-                    @if($order->status === 'pending')
-                        <button class="btn btn-success" onclick="confirmOrder({{ $order->id }})">
-                            <i class="fas fa-check me-2"></i>Confirmer
-                        </button>
-                        <button class="btn btn-danger" onclick="cancelOrder({{ $order->id }})">
-                            <i class="fas fa-times me-2"></i>Annuler
-                        </button>
-                    @elseif($order->status === 'confirmed')
-                        <button class="btn btn-info" onclick="markAsPaid({{ $order->id }})">
-                            <i class="fas fa-credit-card me-2"></i>Marquer comme payé
-                        </button>
-                    @elseif($order->status === 'paid')
-                        <button class="btn btn-purple" onclick="markAsCompleted({{ $order->id }})">
-                            <i class="fas fa-check-double me-2"></i>Marquer comme terminé
-                        </button>
-                    @endif
+            <!-- Header modernisé -->
+            <div class="card border-0 shadow mb-4" style="border-radius: 15px; overflow: hidden;">
+                <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </a>
+                        <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-light btn-sm" title="Liste des commandes">
+                            <i class="fas fa-th-list"></i>
+                        </a>
+                        <div>
+                            <h4 class="mb-1">
+                                <i class="fas fa-receipt me-2"></i>Commande {{ $order->order_number }}
+                            </h4>
+                            <p class="mb-0 opacity-75 small">Passée le {{ $order->created_at->format('d/m/Y à H:i') }}</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        
+                        @if($order->status === 'pending')
+                            <button class="btn btn-outline-light btn-sm" onclick="confirmOrder({{ $order->id }})">
+                                <i class="fas fa-check me-2"></i>Confirmer
+                            </button>
+                            <button class="btn btn-outline-light btn-sm" onclick="cancelOrder({{ $order->id }})">
+                                <i class="fas fa-times me-2"></i>Annuler
+                            </button>
+                        @elseif($order->status === 'confirmed')
+                            <button class="btn btn-outline-light btn-sm" onclick="markAsPaid({{ $order->id }})">
+                                <i class="fas fa-credit-card me-2"></i>Marquer comme payé
+                            </button>
+                        @elseif($order->status === 'paid')
+                            <button class="btn btn-outline-light btn-sm" onclick="markAsCompleted({{ $order->id }})">
+                                <i class="fas fa-check-double me-2"></i>Marquer comme terminé
+                            </button>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -44,8 +49,8 @@
                 <!-- Order Details -->
                 <div class="col-lg-8">
                     <!-- Order Information -->
-                    <div class="card mb-4">
-                        <div class="card-header">
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+                        <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
                             <h5 class="mb-0">
                                 <i class="fas fa-info-circle me-2"></i>Informations de la commande
                             </h5>
@@ -69,6 +74,12 @@
                                             </span>
                                         </div>
                                     </div>
+                                    @if($order->payment_provider)
+                                    <div class="info-item mb-3">
+                                        <label class="text-muted small">Fournisseur</label>
+                                        <div class="fw-bold text-uppercase">{{ $order->payment_provider }}</div>
+                                    </div>
+                                    @endif
                                 </div>
                                 <div class="col-md-6">
                                     <div class="info-item mb-3">
@@ -115,14 +126,21 @@
                                             <div>{{ $order->paid_at ? $order->paid_at->format('d/m/Y à H:i') : 'Non payée' }}</div>
                                         </div>
                                     @endif
+                                    @php($lastPayment = $order->payments()->latest()->first())
+                                    @if($lastPayment && $lastPayment->failure_reason)
+                                        <div class="info-item mb-3">
+                                            <label class="text-muted small">Raison de l'échec</label>
+                                            <div class="text-danger small">{{ $lastPayment->failure_reason }}</div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Customer Information -->
-                    <div class="card mb-4">
-                        <div class="card-header">
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+                        <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
                             <h5 class="mb-0">
                                 <i class="fas fa-user me-2"></i>Informations client
                             </h5>
@@ -189,8 +207,8 @@
                     </div>
 
                     <!-- Order Items -->
-                    <div class="card mb-4">
-                        <div class="card-header">
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+                        <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
                             <h5 class="mb-0">
                                 <i class="fas fa-shopping-cart me-2"></i>Cours commandés
                             </h5>
@@ -220,7 +238,7 @@
                                             </div>
                                             <div class="col-md-2 text-end">
                                                 <div class="fw-bold text-success">
-                                                    ${{ number_format($item['price'] ?? 0, 2) }}
+                                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['price'] ?? 0, $order->currency) }}
                                                 </div>
                                             </div>
                                         </div>
@@ -274,8 +292,8 @@
 
                 <!-- Order Summary -->
                 <div class="col-lg-4">
-                    <div class="card">
-                        <div class="card-header">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
                             <h5 class="mb-0">
                                 <i class="fas fa-calculator me-2"></i>Résumé financier
                             </h5>
@@ -283,27 +301,27 @@
                         <div class="card-body">
                             <div class="summary-item d-flex justify-content-between mb-2">
                                 <span>Sous-total</span>
-                                <span>${{ number_format($order->subtotal ?? $order->total_amount, 2) }}</span>
+                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->subtotal ?? $order->total_amount, $order->currency) }}</span>
                             </div>
                             <div class="summary-item d-flex justify-content-between mb-2">
                                 <span>Remise</span>
-                                <span>${{ number_format($order->discount ?? 0, 2) }}</span>
+                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->discount ?? 0, $order->currency) }}</span>
                             </div>
                             <div class="summary-item d-flex justify-content-between mb-2">
                                 <span>Taxes</span>
-                                <span>${{ number_format($order->tax ?? 0, 2) }}</span>
+                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->tax ?? 0, $order->currency) }}</span>
                             </div>
                             <hr>
                             <div class="summary-item d-flex justify-content-between fw-bold fs-5">
                                 <span>Total</span>
-                                <span class="text-success">${{ number_format($order->total_amount, 2) }}</span>
+                                <span class="text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount, $order->currency) }}</span>
                             </div>
                         </div>
                     </div>
 
                     @if($order->notes)
                         <div class="card mt-4">
-                            <div class="card-header">
+                        <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
                                 <h6 class="mb-0">
                                     <i class="fas fa-sticky-note me-2"></i>Notes
                                 </h6>
@@ -315,8 +333,8 @@
                     @endif
 
                     <!-- Timeline -->
-                    <div class="card mt-4">
-                        <div class="card-header">
+                    <div class="card mt-4 border-0 shadow-sm">
+                        <div class="card-header text-white" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
                             <h6 class="mb-0">
                                 <i class="fas fa-history me-2"></i>Historique
                             </h6>

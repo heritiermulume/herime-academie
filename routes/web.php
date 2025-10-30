@@ -7,7 +7,7 @@ use App\Http\Controllers\InstructorController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\BannerController;
-use App\Http\Controllers\PaymentController;
+// use App\Http\Controllers\PaymentController; // désactivé
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
@@ -19,8 +19,9 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\LearningController;
 use App\Http\Controllers\WhatsAppOrderController;
 use App\Http\Controllers\FilterController;
-use App\Http\Controllers\MokoController;
-use App\Http\Controllers\MaxiCashController;
+// use App\Http\Controllers\MokoController; // désactivé
+// use App\Http\Controllers\MaxiCashController; // désactivé
+use App\Http\Controllers\PawaPayController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -253,12 +254,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/orders/{order}/mark-paid', [App\Http\Controllers\OrderController::class, 'markAsPaid'])->name('orders.mark-paid');
         Route::post('/orders/{order}/mark-completed', [App\Http\Controllers\OrderController::class, 'markAsCompleted'])->name('orders.mark-completed');
 
+        // Payments (transactions) management
+        Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
+
         // Uploads (AJAX) for admin
         Route::post('/uploads/lesson-file', [AdminController::class, 'uploadLessonFile'])->name('uploads.lesson-file');
         Route::post('/uploads/video-preview', [AdminController::class, 'uploadVideoPreview'])->name('uploads.video-preview');
         Route::post('/orders/{order}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
         Route::get('/orders/filter', [App\Http\Controllers\OrderController::class, 'filter'])->name('orders.filter');
         Route::get('/orders/export', [App\Http\Controllers\OrderController::class, 'export'])->name('orders.export');
+        
+        // Settings management
+        Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+        Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
     });
 
     // Profile routes
@@ -276,13 +284,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/earnings', [AffiliateController::class, 'earnings'])->name('earnings');
     });
 
-    // Payment routes
-    Route::prefix('payments')->name('payments.')->group(function () {
-        Route::post('/process', [PaymentController::class, 'process'])->name('process');
-        Route::get('/success', [PaymentController::class, 'success'])->name('success');
-        Route::get('/cancel', [PaymentController::class, 'cancel'])->name('cancel');
-        Route::post('/webhook/stripe', [PaymentController::class, 'webhook'])->name('webhook.stripe');
-    });
+    // Payment routes (désactivées - nous utilisons uniquement pawaPay)
+    // Route::prefix('payments')->name('payments.')->group(function () {
+    //     Route::post('/process', [PaymentController::class, 'process'])->name('process');
+    //     Route::get('/success', [PaymentController::class, 'success'])->name('success');
+    //     Route::get('/cancel', [PaymentController::class, 'cancel'])->name('cancel');
+    //     Route::post('/webhook/stripe', [PaymentController::class, 'webhook'])->name('webhook.stripe');
+    // });
 
     // Video streaming routes
     Route::get('/video/{lessonId}/stream', [VideoStreamController::class, 'stream'])->name('video.stream');
@@ -335,31 +343,36 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Profile routes (handled above)
 });
 
-// MOKO Afrika Payment Routes
-Route::prefix('moko')->name('moko.')->group(function () {
-    // Public routes
-    Route::get('/payment', [MokoController::class, 'showPaymentForm'])->name('payment');
-    Route::post('/initiate', [MokoController::class, 'initiatePayment'])->name('initiate');
-    Route::get('/status/{reference}', [MokoController::class, 'checkStatus'])->name('status');
-    Route::get('/success', [MokoController::class, 'success'])->name('success');
-    Route::get('/failure', [MokoController::class, 'failure'])->name('failure');
-    
-    // Callback route (no CSRF protection needed)
-    Route::post('/callback', [MokoController::class, 'handleCallback'])
-        ->name('callback')
-        ->withoutMiddleware(['web']);
-});
+// MOKO Afrika Payment Routes (désactivées)
+// Route::prefix('moko')->name('moko.')->group(function () {
+//     Route::get('/payment', [MokoController::class, 'showPaymentForm'])->name('payment');
+//     Route::post('/initiate', [MokoController::class, 'initiatePayment'])->name('initiate');
+//     Route::get('/status/{reference}', [MokoController::class, 'checkStatus'])->name('status');
+//     Route::get('/success', [MokoController::class, 'success'])->name('success');
+//     Route::get('/failure', [MokoController::class, 'failure'])->name('failure');
+//     Route::post('/callback', [MokoController::class, 'handleCallback'])->name('callback')->withoutMiddleware(['web']);
+// });
 
-// MaxiCash payment routes
-Route::prefix('maxicash')->name('maxicash.')->middleware('auth')->group(function () {
-    Route::post('/process', [MaxiCashController::class, 'process'])->name('process');
-    Route::get('/success', [MaxiCashController::class, 'success'])->name('success');
-    Route::get('/cancel', [MaxiCashController::class, 'cancel'])->name('cancel');
-    Route::get('/failure', [MaxiCashController::class, 'failure'])->name('failure');
-    
-    // Notification route (no CSRF protection needed)
-    Route::post('/notify', [MaxiCashController::class, 'notify'])
-        ->name('notify')
+// MaxiCash payment routes (désactivées)
+// Route::prefix('maxicash')->name('maxicash.')->middleware('auth')->group(function () {
+//     Route::post('/process', [MaxiCashController::class, 'process'])->name('process');
+//     Route::get('/success', [MaxiCashController::class, 'success'])->name('success');
+//     Route::get('/cancel', [MaxiCashController::class, 'cancel'])->name('cancel');
+//     Route::get('/failure', [MaxiCashController::class, 'failure'])->name('failure');
+//     Route::post('/notify', [MaxiCashController::class, 'notify'])->name('notify')->withoutMiddleware(['web']);
+// });
+
+// pawaPay routes
+Route::prefix('pawapay')->name('pawapay.')->middleware('auth')->group(function () {
+    Route::get('/active-conf', [PawaPayController::class, 'activeConf'])->name('active-conf');
+    Route::post('/initiate', [PawaPayController::class, 'initiate'])->name('initiate');
+    Route::get('/status/{depositId}', [PawaPayController::class, 'status'])->name('status');
+    Route::get('/success', [PawaPayController::class, 'successfulRedirect'])->name('success');
+    Route::get('/failed', [PawaPayController::class, 'failedRedirect'])->name('failed');
+
+    // Webhook callback from pawaPay (no CSRF)
+    Route::post('/webhook', [PawaPayController::class, 'webhook'])
+        ->name('webhook')
         ->withoutMiddleware(['web']);
 });
 

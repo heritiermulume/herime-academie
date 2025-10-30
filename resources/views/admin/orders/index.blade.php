@@ -84,7 +84,7 @@
                                 <div class="card-body text-center">
                                     <h4 class="mb-0 text-white">
                                         <i class="fas fa-dollar-sign me-2"></i>
-                                        Revenus totaux: ${{ number_format($stats['total_revenue'] ?? 0, 2) }}
+                                        Revenus totaux: {{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}
                                     </h4>
                                 </div>
                             </div>
@@ -228,7 +228,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <strong class="text-success">${{ number_format($order->total_amount, 2) }}</strong>
+                                        <strong class="text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount, $order->currency) }}</strong>
                                     </td>
                                     <td>
                                         <span class="badge order-status-{{ $order->status }}">

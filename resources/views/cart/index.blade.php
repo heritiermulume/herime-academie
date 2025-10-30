@@ -102,9 +102,9 @@
                             <!-- Price -->
                             <div class="cart-item-price">
                                 <div class="price-container">
-                                    <span class="current-price">${{ number_format($item['subtotal'], 2) }}</span>
+                                    <span class="current-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}</span>
                                     @if($item['course']->sale_price)
-                                    <span class="original-price">${{ number_format($item['course']->price, 2) }}</span>
+                                    <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['course']->price) }}</span>
                                     @endif
                                 </div>
                             </div>
@@ -136,19 +136,19 @@
                         <div class="summary-details">
                             <div class="summary-row">
                                 <span class="summary-label">Sous-total (<span id="cart-items-count">{{ count($cartItems) }}</span> cours)</span>
-                                <span class="summary-value" id="cart-subtotal">${{ number_format($subtotal, 2) }}</span>
+                                <span class="summary-value" id="cart-subtotal">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($subtotal) }}</span>
                             </div>
                             
                             <div class="summary-row">
                                 <span class="summary-label">Taxes</span>
-                                <span class="summary-value">${{ number_format($tax, 2) }}</span>
+                                <span class="summary-value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($tax) }}</span>
                             </div>
                             
                             <div class="summary-divider"></div>
                             
                             <div class="summary-row total-row">
                                 <span class="summary-label">Total</span>
-                                <span class="summary-value total-price" id="cart-total">${{ number_format($total, 2) }}</span>
+                                <span class="summary-value total-price" id="cart-total">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($total) }}</span>
                             </div>
                         </div>
                         
@@ -261,9 +261,9 @@
                                         <span class="h6 fw-bold text-success mb-0">Gratuit</span>
                                         @else
                                         <div>
-                                            <span class="h6 fw-bold text-primary mb-0">${{ number_format($course->sale_price ?? $course->price, 2) }}</span>
+                                            <span class="h6 fw-bold text-primary mb-0">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price ?? $course->price) }}</span>
                                             @if($course->sale_price)
-                                            <small class="text-muted text-decoration-line-through d-block">${{ number_format($course->price, 2) }}</small>
+                                            <small class="text-muted text-decoration-line-through d-block">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
                                             @endif
                                         </div>
                                         @endif
@@ -374,9 +374,9 @@
                             <div class="mt-auto">
                                 <div class="d-flex align-items-center justify-content-between mb-3">
                                         <div>
-                                            <span class="h6 fw-bold text-primary mb-0">${{ number_format($course->sale_price ?? $course->price, 2) }}</span>
+                                            <span class="h6 fw-bold text-primary mb-0">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price ?? $course->price) }}</span>
                                             @if($course->sale_price)
-                                            <small class="text-muted text-decoration-line-through d-block">${{ number_format($course->price, 2) }}</small>
+                                            <small class="text-muted text-decoration-line-through d-block">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
                                         @endif
                                     </div>
                                 </div>

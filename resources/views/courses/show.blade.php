@@ -1346,9 +1346,9 @@
                                             <span class="fw-bold text-success" style="font-size: 0.9rem;">Gratuit</span>
                                             @else
                                             <div>
-                                                <span class="fw-bold text-primary" style="font-size: 0.9rem;">${{ number_format($relatedCourse->sale_price ?? $relatedCourse->price, 2) }}</span>
+                                                <span class="fw-bold text-primary" style="font-size: 0.9rem;">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->sale_price ?? $relatedCourse->price) }}</span>
                                                 @if($relatedCourse->sale_price)
-                                                <small class="text-muted text-decoration-line-through d-block" style="font-size: 0.7rem;">${{ number_format($relatedCourse->price, 2) }}</small>
+                                                <small class="text-muted text-decoration-line-through d-block" style="font-size: 0.7rem;">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->price) }}</small>
                                             @endif
                                         </div>
                                             @endif
@@ -1379,13 +1379,13 @@
                                 <div class="h2 text-success fw-bold">Gratuit</div>
                             @else
                                 @if($course->sale_price)
-                                    <div class="h2 text-primary fw-bold">${{ number_format($course->sale_price, 2) }}</div>
-                                    <div class="text-muted text-decoration-line-through">${{ number_format($course->price, 2) }}</div>
+                                    <div class="h2 text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</div>
+                                    <div class="text-muted text-decoration-line-through">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
                                     <div class="badge bg-danger">
                                         -{{ round((($course->price - $course->sale_price) / $course->price) * 100) }}% de réduction
                                     </div>
                                 @else
-                                    <div class="h2 text-primary fw-bold">${{ number_format($course->price, 2) }}</div>
+                                    <div class="h2 text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
                                 @endif
                             @endif
                         </div>
@@ -1648,12 +1648,12 @@
                         <h6 class="fw-bold mb-3">Résumé de la commande</h6>
                         <div class="d-flex justify-content-between mb-2">
                             <span>{{ $course->title }}</span>
-                            <span>${{ number_format($course->current_price, 2) }}</span>
+<｜place▁holder▁no▁390｜>
                         </div>
                         <hr>
                         <div class="d-flex justify-content-between fw-bold">
                             <span>Total</span>
-                            <span>${{ number_format($course->current_price, 2) }}</span>
+<｜place▁holder▁no▁390｜>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -1685,7 +1685,7 @@
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-credit-card me-2"></i>Payer ${{ number_format($course->current_price, 2) }}
+                                <i class="fas fa-credit-card me-2"></i>Payer {{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->current_price) }}
                             </button>
                         </form>
                     </div>
