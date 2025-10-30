@@ -553,13 +553,24 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Flux standard : polling pour le statut final
+        // SELON LA DOCUMENTATION PAWAPAY:
+        // "We recommend not polling for the final status. Instead, rely on the webhook."
+        // Le webhook est la source de vérité. On affiche simplement un message et on redirige.
         if (data.depositId) {
             paymentNotice.style.display = 'block';
-            paymentNotice.className = 'alert alert-info mt-3';
-            paymentNotice.textContent = 'Paiement en cours de traitement… Veuillez approuver le paiement sur votre téléphone. Cela peut prendre jusqu\'à 2 minutes.';
-            // Augmenter le timeout à 120 secondes (2 minutes) pour laisser le temps à l'utilisateur d'approuver
-            pollStatus(data.depositId, 120000);
+            paymentNotice.className = 'alert alert-success mt-3';
+            paymentNotice.innerHTML = `
+                <strong><i class="fas fa-check-circle me-2"></i>Paiement initié avec succès !</strong><br>
+                Veuillez approuver le paiement sur votre téléphone. Vous recevrez une confirmation par email dès que le paiement sera validé.<br>
+                <small class="text-muted">Vous pouvez fermer cette page. Le système vous notifiera automatiquement.</small>
+            `;
+            payButton.disabled = false;
+            payButtonText.innerHTML = '<i class="fas fa-check me-2"></i>Paiement initié';
+            
+            // Rediriger vers la page de commandes après un court délai
+            setTimeout(() => {
+                window.location.href = '{{ route("orders.index") }}';
+            }, 3000);
         }
     }
 
@@ -599,105 +610,9 @@ document.addEventListener('DOMContentLoaded', function() {
         poll();
     }
 
-    // Polling pour le statut final du paiement
-    async function pollStatus(depositId, abortAfterMs = 30000) {
-        const start = Date.now();
-        let stopped = false;
-        
-        const poll = async () => {
-            if (stopped) return;
-            
-            // Vérifier le délai
-            if (Date.now() - start > abortAfterMs) {
-                stopped = true;
-                
-                // Dernière vérification du statut avant d'annuler
-                const lastCheckRes = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
-                if (lastCheckRes.ok) {
-                    const lastCheckData = await lastCheckRes.json();
-                    // Si le statut est PROCESSING, ACCEPTED ou IN_RECONCILIATION, ne pas annuler
-                    if (['PROCESSING', 'ACCEPTED', 'IN_RECONCILIATION'].includes(lastCheckData.status)) {
-                        paymentNotice.className = 'alert alert-info mt-3';
-                        paymentNotice.textContent = 'Votre paiement est toujours en cours de traitement. Vous pouvez quitter cette page et vérifier plus tard dans vos commandes.';
-                        payButton.disabled = false;
-                        payButtonText.innerHTML = '<i class="fas fa-check me-2"></i>Paiement en cours';
-                        return;
-                    }
-                }
-                
-                paymentNotice.className = 'alert alert-warning mt-3';
-                paymentNotice.innerHTML = `
-                    <strong>Délai dépassé</strong><br>
-                    Si vous avez approuvé le paiement sur votre téléphone, ne vous inquiétez pas ! 
-                    Le paiement peut prendre quelques minutes à se confirmer. 
-                    <br><br>
-                    <strong>Que faire maintenant ?</strong><br>
-                    <a href="{{ route('orders.index') }}" class="btn btn-sm btn-primary">
-                        <i class="fas fa-list me-1"></i>Vérifier mes commandes
-                    </a>
-                    <a href="javascript:location.reload();" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-sync me-1"></i>Rafraîchir cette page
-                    </a>
-                `;
-                // NE PAS annuler côté serveur - laisser le webhook gérer
-                payButton.disabled = false;
-                payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
-                return;
-            }
-            
-            // Vérifier le statut
-            const res = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
-            if (!res.ok) {
-                setTimeout(poll, 1500);
-                return;
-            }
-            
-            const data = await res.json();
-            const status = data.status;
-            const nextStep = data.nextStep;
-            
-            // Gérer tous les statuts possibles selon la documentation
-            if (status === 'COMPLETED') {
-                stopped = true;
-                paymentNotice.className = 'alert alert-success mt-3';
-                paymentNotice.textContent = 'Paiement réussi ! Redirection…';
-                payButtonText.textContent = 'Paiement réussi';
-                
-                // Rediriger vers la page de succès après un court délai
-                setTimeout(() => {
-                    window.location.href = `{{ route('pawapay.success') }}?depositId=${depositId}`;
-                }, 1000);
-                
-            } else if (status === 'FAILED') {
-                stopped = true;
-                paymentNotice.className = 'alert alert-danger mt-3';
-                paymentNotice.textContent = 'Le paiement a échoué. Veuillez réessayer.';
-                payButton.disabled = false;
-                payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
-                
-                // Rediriger vers la page d'échec
-                setTimeout(() => {
-                    window.location.href = `{{ route('pawapay.failed') }}?depositId=${depositId}`;
-                }, 2000);
-                
-            } else if (status === 'IN_RECONCILIATION') {
-                // En réconciliation : informer l'utilisateur et continuer à poller
-                paymentNotice.className = 'alert alert-warning mt-3';
-                paymentNotice.textContent = 'Paiement en cours de validation (réconciliation en cours)…';
-                setTimeout(poll, 2000);
-                
-            } else if (status === 'PROCESSING' || status === 'ACCEPTED') {
-                // En cours de traitement : continuer à poller
-                setTimeout(poll, 1500);
-                
-            } else {
-                // Autre statut : continuer à poller
-                setTimeout(poll, 1500);
-            }
-        };
-        
-        poll();
-    }
+    // Fonction pollStatus supprimée selon les recommandations pawaPay
+    // La documentation recommande de ne PAS poller mais de s'appuyer sur le webhook
+    // Voir: https://docs.pawapay.io/v2/docs/deposits
 
     countrySelect.addEventListener('change', onCountryChange);
     payButton.addEventListener('click', initiateDeposit);

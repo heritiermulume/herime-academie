@@ -30,8 +30,26 @@ use Illuminate\Support\Str;
  * - GET_AUTH_URL: Attente de l'URL d'autorisation
  * - REDIRECT_TO_AUTH_URL: Redirection vers l'URL d'autorisation (Wave, etc.)
  * 
- * IMPORTANT: Le webhook est la source de vérité pour le statut final.
- * Les redirections (successful/failed URLs) vérifient également le statut auprès de pawaPay.
+ * PRINCIPES IMPORTANTS (selon la documentation officielle):
+ * 
+ * 1. Le webhook est la source de vérité pour le statut final
+ *    - Ne PAS poller pour le statut final côté frontend
+ *    - S'appuyer uniquement sur le webhook pour les mises à jour
+ * 
+ * 2. La réconciliation est automatique
+ *    - Tous les paiements sont réconciliés automatiquement par pawaPay
+ *    - IN_RECONCILIATION ne nécessite aucune action
+ *    - Les paiements réussis sont réconciliés plus rapidement
+ * 
+ * 3. Les redirections (successful/failed URLs) servent uniquement à vérifier le statut
+ *    - Utilisées uniquement pour afficher le bon message à l'utilisateur
+ *    - Le webhook reste la source de vérité
+ * 
+ * 4. Stocker le depositId avant l'initiation pour pouvoir réconciliés en cas de problème
+ * 
+ * 5. Ne JAMAIS annuler automatiquement les paiements en cours de traitement
+ *    - Laisser pawaPay gérer les timeouts
+ *    - La réconciliation résoudra automatiquement tous les cas
  */
 class PawaPayController extends Controller
 {
@@ -343,10 +361,11 @@ class PawaPayController extends Controller
     }
 
     /**
-     * Annuler une commande par depositId (timeout ou annulation utilisateur)
+     * Annuler une commande par depositId (annulation manuelle uniquement)
      * 
-     * IMPORTANT: Vérifie le statut réel auprès de pawaPay avant d'annuler
-     * pour éviter d'annuler des paiements qui sont en cours de traitement
+     * Selon la documentation pawaPay, la réconciliation est automatique.
+     * Cette fonction est uniquement pour les annulations explicites par l'utilisateur.
+     * Elle ne devrait PAS être appelée automatiquement (pas de timeout cancellation).
      */
     public function cancel(string $depositId)
     {
@@ -355,54 +374,32 @@ class PawaPayController extends Controller
             return response()->json(['success' => false, 'message' => 'Transaction introuvable'], 404);
         }
 
-        // IMPORTANT: Vérifier le statut réel auprès de pawaPay avant d'annuler
-        try {
-            $statusResponse = Http::withHeaders($this->authHeaders())
-                ->get($this->baseUrl() . "/deposits/{$depositId}");
-
-            if ($statusResponse->successful()) {
-                $statusData = $statusResponse->json();
-                $status = $statusData['status'] ?? null;
-
-                \Log::info('pawaPay cancel: Status check', [
-                    'depositId' => $depositId,
-                    'status' => $status,
-                ]);
-
-                // Ne pas annuler si le paiement est en cours de traitement, complété ou en réconciliation
-                if (in_array($status, ['COMPLETED', 'PROCESSING', 'ACCEPTED', 'IN_RECONCILIATION'])) {
-                    \Log::warning('pawaPay cancel: Cannot cancel - payment still processing or completed', [
-                        'depositId' => $depositId,
-                        'status' => $status,
-                    ]);
-                    
-                    return response()->json([
-                        'success' => false, 
-                        'message' => 'Impossible d\'annuler : le paiement est en cours de traitement ou déjà complété',
-                        'current_status' => $status,
-                    ], 422);
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('pawaPay cancel: Error checking status', [
+        // Vérifier que le paiement n'est pas déjà complété
+        if ($payment->status === 'completed' || in_array($payment->order?->status ?? null, ['paid', 'completed'])) {
+            \Log::warning('pawaPay cancel: Cannot cancel - payment already completed', [
                 'depositId' => $depositId,
-                'error' => $e->getMessage(),
+                'payment_status' => $payment->status,
+                'order_status' => $payment->order?->status,
             ]);
-            // En cas d'erreur, continuer quand même l'annulation mais logger l'erreur
+            
+            return response()->json([
+                'success' => false, 
+                'message' => 'Impossible d\'annuler : le paiement est déjà complété',
+            ], 422);
         }
 
-        // Annuler seulement si le statut n'est pas déjà complété ou en cours
-        if ($payment->status !== 'completed' && !in_array($payment->order?->status ?? null, ['paid', 'completed'])) {
+        // Annuler uniquement si le statut est encore pending
+        if ($payment->status === 'pending') {
             $payment->update([
                 'status' => 'failed',
-                'failure_reason' => $payment->failure_reason ?: 'Annulation par l\'utilisateur ou délai dépassé',
+                'failure_reason' => 'Annulation par l\'utilisateur',
             ]);
 
             if ($payment->order) {
                 $payment->order->update(['status' => 'cancelled']);
             }
             
-            \Log::info('pawaPay: Payment cancelled', [
+            \Log::info('pawaPay: Payment cancelled by user', [
                 'depositId' => $depositId,
                 'payment_id' => $payment->id,
             ]);
