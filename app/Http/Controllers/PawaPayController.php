@@ -367,7 +367,7 @@ class PawaPayController extends Controller
 
         $payment = Payment::where('payment_method', 'pawapay')
             ->where('payment_id', $depositId)
-            ->with('order')
+            ->with(['order.orderItems', 'order.user'])
             ->first();
 
         if (!$payment) {
@@ -552,6 +552,14 @@ class PawaPayController extends Controller
             // Rafraîchir l'order pour avoir les dernières données
             $order->refresh();
             
+            \Log::info('pawaPay: Starting finalization', [
+                'order_id' => $order->id,
+                'current_status' => $order->status,
+                'order_total' => $order->total,
+                'order_currency' => $order->currency,
+                'order_items_count' => $order->orderItems->count(),
+            ]);
+            
             // Vérifier si déjà finalisée (idempotence)
             if (in_array($order->status, ['paid', 'completed'])) {
                 \Log::info('pawaPay: Order already finalized', [
@@ -562,45 +570,77 @@ class PawaPayController extends Controller
             }
 
             // Mettre à jour l'Order
-            $order->update([
+            $updated = $order->update([
                 'status' => 'paid',
                 'paid_at' => now(),
             ]);
 
             \Log::info('pawaPay: Order marked as paid', [
                 'order_id' => $order->id,
+                'update_successful' => $updated,
+                'new_status' => $order->fresh()->status,
             ]);
 
             // Créer les Enrollments pour chaque cours
             $enrollmentsCreated = 0;
+            $orderItemsCount = $order->orderItems->count();
+            
+            if ($orderItemsCount === 0) {
+                \Log::error('pawaPay: No order items found for enrollment', [
+                    'order_id' => $order->id,
+                ]);
+            }
+            
             foreach ($order->orderItems as $orderItem) {
+                \Log::info('pawaPay: Processing order item', [
+                    'order_id' => $order->id,
+                    'order_item_id' => $orderItem->id,
+                    'course_id' => $orderItem->course_id,
+                    'user_id' => $order->user_id,
+                ]);
+                
                 // Vérifier si l'utilisateur n'est pas déjà inscrit
                 $existingEnrollment = Enrollment::where('user_id', $order->user_id)
                     ->where('course_id', $orderItem->course_id)
                     ->first();
 
                 if (!$existingEnrollment) {
-                    Enrollment::create([
+                    $enrollment = Enrollment::create([
                         'user_id' => $order->user_id,
                         'course_id' => $orderItem->course_id,
                         'order_id' => $order->id,
                         'status' => 'active',
                     ]);
                     $enrollmentsCreated++;
+                    
+                    \Log::info('pawaPay: Enrollment created', [
+                        'enrollment_id' => $enrollment->id,
+                        'order_id' => $order->id,
+                        'course_id' => $orderItem->course_id,
+                        'user_id' => $order->user_id,
+                    ]);
+                } else {
+                    \Log::info('pawaPay: Enrollment already exists', [
+                        'order_id' => $order->id,
+                        'course_id' => $orderItem->course_id,
+                        'existing_enrollment_id' => $existingEnrollment->id,
+                    ]);
                 }
             }
 
             \Log::info('pawaPay: Enrollments created', [
                 'order_id' => $order->id,
                 'enrollments_created' => $enrollmentsCreated,
-                'total_order_items' => $order->orderItems->count(),
+                'total_order_items' => $orderItemsCount,
             ]);
 
             // Vider le panier de l'utilisateur
+            $cartItemsBeforeDelete = CartItem::where('user_id', $order->user_id)->count();
             $cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
             
             \Log::info('pawaPay: Cart emptied', [
                 'user_id' => $order->user_id,
+                'cart_items_before' => $cartItemsBeforeDelete,
                 'cart_items_deleted' => $cartItemsDeleted,
             ]);
             
@@ -617,8 +657,14 @@ class PawaPayController extends Controller
                     'user_id' => $order->user_id,
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
+            
+            \Log::info('pawaPay: Finalization completed successfully', [
+                'order_id' => $order->id,
+                'final_status' => $order->fresh()->status,
+            ]);
         });
     }
 
