@@ -91,6 +91,24 @@
                 </div>
             </div>
         </div>
+        <!-- Total dépensé -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-warning bg-opacity-10 rounded-3 p-3">
+                                <i class="fas fa-wallet text-warning fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total dépensé</h6>
+                            <h3 class="mb-0 fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol(auth()->user()->orders()->sum('total_amount')) }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row">
@@ -160,10 +178,89 @@
                     @endif
                 </div>
             </div>
+
+            <!-- Commandes récentes -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">Commandes récentes</h5>
+                    <a href="{{ route('orders.index') }}" class="btn btn-outline-primary btn-sm">Voir toutes</a>
+                </div>
+                <div class="card-body">
+                    @php $recentOrders = auth()->user()->orders()->latest()->limit(5)->get(); @endphp
+                    @if($recentOrders->count())
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Commande</th>
+                                        <th>Montant</th>
+                                        <th>Statut</th>
+                                        <th>Date</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($recentOrders as $order)
+                                        <tr>
+                                            <td class="fw-semibold">{{ $order->order_number }}</td>
+                                            <td class="text-success fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount) }}</td>
+                                            <td>
+                                                <span class="badge order-status-{{ $order->status }}">
+                                                    @switch($order->status)
+                                                        @case('pending')<i class="fas fa-clock me-1"></i>En attente @break
+                                                        @case('confirmed')<i class="fas fa-check-circle me-1"></i>Confirmée @break
+                                                        @case('paid')<i class="fas fa-credit-card me-1"></i>Payée @break
+                                                        @case('completed')<i class="fas fa-check-double me-1"></i>Terminée @break
+                                                        @case('cancelled')<i class="fas fa-times-circle me-1"></i>Annulée @break
+                                                        @default {{ ucfirst($order->status) }}
+                                                    @endswitch
+                                                </span>
+                                            </td>
+                                            <td>{{ $order->created_at->format('d/m/Y') }}</td>
+                                            <td class="text-end">
+                                                <a href="{{ route('orders.show', $order) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="text-center py-4 text-muted">Aucune commande récente</div>
+                    @endif
+                </div>
+            </div>
         </div>
 
         <!-- Sidebar -->
         <div class="col-lg-4">
+            <!-- Accès rapide -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold">Accès rapide</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('student.courses') }}" class="btn btn-primary">
+                            <i class="fas fa-graduation-cap me-2"></i>Mes cours
+                        </a>
+                        <a href="{{ route('orders.index') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-shopping-bag me-2"></i>Mes commandes
+                        </a>
+                        @php $lastEnrollment = $enrollments->first(); @endphp
+                        @if($lastEnrollment)
+                        <a href="{{ route('student.courses.learn', $lastEnrollment->course->slug) }}" class="btn btn-success">
+                            <i class="fas fa-play me-2"></i>Continuer l'apprentissage
+                        </a>
+                        @endif
+                        <a href="{{ route('courses.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-search me-2"></i>Découvrir des cours
+                        </a>
+                    </div>
+                </div>
+            </div>
             <!-- Recent Courses -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 py-3">
