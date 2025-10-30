@@ -363,12 +363,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // });
 
 // pawaPay routes
-Route::prefix('pawapay')->name('pawapay.')->middleware('auth')->group(function () {
-    Route::get('/active-conf', [PawaPayController::class, 'activeConf'])->name('active-conf');
-    Route::post('/initiate', [PawaPayController::class, 'initiate'])->name('initiate');
-    Route::get('/status/{depositId}', [PawaPayController::class, 'status'])->name('status');
+Route::prefix('pawapay')->name('pawapay.')->group(function () {
+    // Endpoints nécessitant l'auth (depuis le checkout)
+    Route::middleware('auth')->group(function () {
+        Route::get('/active-conf', [PawaPayController::class, 'activeConf'])->name('active-conf');
+        Route::post('/initiate', [PawaPayController::class, 'initiate'])->name('initiate');
+        Route::get('/status/{depositId}', [PawaPayController::class, 'status'])->name('status');
         Route::post('/cancel/{depositId}', [PawaPayController::class, 'cancel'])->name('cancel');
         Route::post('/cancel-latest', [PawaPayController::class, 'cancelLatestPending'])->name('cancel-latest');
+    });
+
+    // Redirections de succès/échec (publiques car pawaPay peut rappeler sans session)
     Route::get('/success', [PawaPayController::class, 'successfulRedirect'])->name('success');
     Route::get('/failed', [PawaPayController::class, 'failedRedirect'])->name('failed');
 
