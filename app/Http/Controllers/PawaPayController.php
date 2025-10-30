@@ -260,10 +260,21 @@ class PawaPayController extends Controller
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
+        
         $response = Http::withHeaders($this->authHeaders())
             ->get($this->baseUrl() . "/deposits/{$depositId}");
 
-        return response()->json($response->json(), $response->status());
+        $statusData = $response->json();
+        
+        // Logger le statut réel reçu de pawaPay pour debugging
+        \Log::info('pawaPay status check', [
+            'depositId' => $depositId,
+            'status' => $statusData['status'] ?? null,
+            'nextStep' => $statusData['nextStep'] ?? null,
+            'full_response' => $statusData,
+        ]);
+
+        return response()->json($statusData, $response->status());
     }
 
     public function webhook(Request $request)
