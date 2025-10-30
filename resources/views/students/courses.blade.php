@@ -6,12 +6,17 @@
 <div class="container py-5">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1">
-                <i class="fas fa-book-open text-primary me-2"></i>
-                Mes Cours
-            </h1>
-            <p class="text-muted mb-0">Retrouvez tous vos cours inscrits</p>
+        <div class="d-flex align-items-center">
+            <a href="{{ route('student.dashboard') }}" class="btn btn-outline-secondary me-3" title="Tableau de bord">
+                <i class="fas fa-tachometer-alt"></i>
+            </a>
+            <div>
+                <h1 class="h3 mb-1">
+                    <i class="fas fa-book-open text-primary me-2"></i>
+                    Mes Cours
+                </h1>
+                <p class="text-muted mb-0">Retrouvez tous vos cours inscrits</p>
+            </div>
         </div>
     </div>
 

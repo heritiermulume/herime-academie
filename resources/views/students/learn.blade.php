@@ -4,6 +4,13 @@
 
 @section('content')
 <div class="container-fluid py-0">
+    <!-- Top Bar with Back to Dashboard -->
+    <div class="bg-white border-bottom px-3 py-2 d-flex align-items-center">
+        <a href="{{ route('student.dashboard') }}" class="btn btn-outline-secondary btn-sm" title="Tableau de bord">
+            <i class="fas fa-tachometer-alt"></i>
+        </a>
+        <span class="ms-3 text-muted small">Retour au tableau de bord</span>
+    </div>
     <div class="row">
         <!-- Sidebar -->
         <div class="col-lg-3 col-md-4">
