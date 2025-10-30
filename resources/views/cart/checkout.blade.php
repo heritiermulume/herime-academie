@@ -539,56 +539,143 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Redirect-based flows
+        // Gestion du nextStep selon la documentation pawaPay
         if (data.nextStep === 'REDIRECT_TO_AUTH_URL' && data.authorizationUrl) {
+            // Rediriger vers l'URL d'autorisation (pour flux Wave, etc.)
             window.location.href = data.authorizationUrl;
+            return;
+        } else if (data.nextStep === 'GET_AUTH_URL') {
+            // L'URL d'autorisation n'est pas encore disponible, on doit poller
+            paymentNotice.style.display = 'block';
+            paymentNotice.className = 'alert alert-info mt-3';
+            paymentNotice.textContent = 'Attente de l\'URL d\'autorisation…';
+            pollForAuthUrl(depositId);
             return;
         }
 
-        // Otherwise poll for final status
+        // Flux standard : polling pour le statut final
         if (data.depositId) {
             paymentNotice.style.display = 'block';
             paymentNotice.className = 'alert alert-info mt-3';
-            paymentNotice.textContent = 'Paiement en cours de traitement…';
-            pollStatus(data.depositId, 30000); // arrêter au-delà de 30s
+            paymentNotice.textContent = 'Paiement en cours de traitement… Veuillez approuver le paiement sur votre téléphone.';
+            pollStatus(data.depositId, 30000);
         }
     }
 
-    async function pollStatus(depositId, abortAfterMs = 30000) {
-        const start = Date.now();
-        let stopped = false;
+    // Polling pour obtenir l'URL d'autorisation (cas Wave, etc.)
+    async function pollForAuthUrl(depositId) {
+        const maxAttempts = 10; // 10 tentatives maximum
+        let attempts = 0;
+        
         const poll = async () => {
-            if (stopped) return;
-            if (Date.now() - start > abortAfterMs) {
-                stopped = true;
+            if (attempts >= maxAttempts) {
                 paymentNotice.className = 'alert alert-warning mt-3';
-                paymentNotice.textContent = 'Délai dépassé lors du traitement du paiement. La transaction a été annulée.';
-                // Demander l'annulation côté serveur pour marquer la commande annulée
-                // Utiliser url() pour éviter l'erreur de génération de route côté Blade
-                try { await fetch(`{{ url('/pawapay/cancel') }}/${depositId}`, { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }); } catch(e){}
+                paymentNotice.textContent = 'Délai dépassé lors de l\'obtention de l\'URL d\'autorisation.';
                 payButton.disabled = false;
                 payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
                 return;
             }
+            
+            attempts++;
             const res = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
-            if (!res.ok) return;
+            if (!res.ok) {
+                setTimeout(poll, 1000);
+                return;
+            }
+            
+            const data = await res.json();
+            
+            if (data.nextStep === 'REDIRECT_TO_AUTH_URL' && data.authorizationUrl) {
+                // URL d'autorisation disponible, rediriger
+                paymentNotice.textContent = 'Redirection en cours…';
+                setTimeout(() => window.location.href = data.authorizationUrl, 500);
+            } else {
+                // Continuer à poller
+                setTimeout(poll, 1000);
+            }
+        };
+        
+        poll();
+    }
+
+    // Polling pour le statut final du paiement
+    async function pollStatus(depositId, abortAfterMs = 30000) {
+        const start = Date.now();
+        let stopped = false;
+        
+        const poll = async () => {
+            if (stopped) return;
+            
+            // Vérifier le délai
+            if (Date.now() - start > abortAfterMs) {
+                stopped = true;
+                paymentNotice.className = 'alert alert-warning mt-3';
+                paymentNotice.textContent = 'Délai dépassé lors du traitement du paiement. La transaction a été annulée.';
+                // Annuler côté serveur
+                try { 
+                    await fetch(`{{ url('/pawapay/cancel') }}/${depositId}`, { 
+                        method: 'POST', 
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } 
+                    }); 
+                } catch(e) {
+                    console.error('Error cancelling payment:', e);
+                }
+                payButton.disabled = false;
+                payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
+                return;
+            }
+            
+            // Vérifier le statut
+            const res = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
+            if (!res.ok) {
+                setTimeout(poll, 1500);
+                return;
+            }
+            
             const data = await res.json();
             const status = data.status;
+            const nextStep = data.nextStep;
+            
+            // Gérer tous les statuts possibles selon la documentation
             if (status === 'COMPLETED') {
+                stopped = true;
                 paymentNotice.className = 'alert alert-success mt-3';
-                paymentNotice.textContent = 'Paiement réussi. Activation en cours…';
-                payButtonText.textContent = 'Payé';
-                // Optionally reload or redirect to success
-                setTimeout(() => window.location.href = '{{ route('pawapay.success') }}', 800);
+                paymentNotice.textContent = 'Paiement réussi ! Redirection…';
+                payButtonText.textContent = 'Paiement réussi';
+                
+                // Rediriger vers la page de succès après un court délai
+                setTimeout(() => {
+                    window.location.href = `{{ route('pawapay.success') }}?depositId=${depositId}`;
+                }, 1000);
+                
             } else if (status === 'FAILED') {
+                stopped = true;
                 paymentNotice.className = 'alert alert-danger mt-3';
                 paymentNotice.textContent = 'Le paiement a échoué. Veuillez réessayer.';
                 payButton.disabled = false;
-                payButtonText.textContent = 'Payer maintenant';
+                payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
+                
+                // Rediriger vers la page d'échec
+                setTimeout(() => {
+                    window.location.href = `{{ route('pawapay.failed') }}?depositId=${depositId}`;
+                }, 2000);
+                
+            } else if (status === 'IN_RECONCILIATION') {
+                // En réconciliation : informer l'utilisateur et continuer à poller
+                paymentNotice.className = 'alert alert-warning mt-3';
+                paymentNotice.textContent = 'Paiement en cours de validation (réconciliation en cours)…';
+                setTimeout(poll, 2000);
+                
+            } else if (status === 'PROCESSING' || status === 'ACCEPTED') {
+                // En cours de traitement : continuer à poller
+                setTimeout(poll, 1500);
+                
             } else {
+                // Autre statut : continuer à poller
                 setTimeout(poll, 1500);
             }
         };
+        
         poll();
     }
 

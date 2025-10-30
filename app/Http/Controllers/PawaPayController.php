@@ -12,6 +12,27 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+/**
+ * Controller pour gérer les paiements pawaPay
+ * 
+ * Gestion conforme à la documentation pawaPay v2:
+ * - https://docs.pawapay.io/v2/docs/deposits
+ * 
+ * Statuts gérés:
+ * - ACCEPTED: Paiement accepté pour traitement
+ * - PROCESSING: En cours de traitement
+ * - COMPLETED: Paiement réussi
+ * - FAILED: Paiement échoué
+ * - IN_RECONCILIATION: En réconciliation (géré automatiquement par pawaPay)
+ * 
+ * Flux nextStep:
+ * - FINAL_STATUS: Flux standard (PIN prompt)
+ * - GET_AUTH_URL: Attente de l'URL d'autorisation
+ * - REDIRECT_TO_AUTH_URL: Redirection vers l'URL d'autorisation (Wave, etc.)
+ * 
+ * IMPORTANT: Le webhook est la source de vérité pour le statut final.
+ * Les redirections (successful/failed URLs) vérifient également le statut auprès de pawaPay.
+ */
 class PawaPayController extends Controller
 {
     private function baseUrl(): string
@@ -232,8 +253,10 @@ class PawaPayController extends Controller
         $payload = $request->all();
         $depositId = $payload['depositId'] ?? null;
         $status = $payload['status'] ?? null;
+        $nextStep = $payload['nextStep'] ?? null;
 
         if (!$depositId) {
+            \Log::warning('pawaPay webhook: depositId missing', ['payload' => $payload]);
             return response()->json(['received' => false, 'message' => 'depositId missing'], 400);
         }
 
@@ -247,30 +270,73 @@ class PawaPayController extends Controller
             return response()->json(['received' => false, 'message' => 'Payment not found'], 404);
         }
 
+        // Log de tous les callbacks reçus pour traçabilité
+        \Log::info('pawaPay webhook received', [
+            'depositId' => $depositId,
+            'status' => $status,
+            'nextStep' => $nextStep,
+            'current_order_status' => $payment->order?->status,
+        ]);
+
+        // Mapper le statut pawaPay vers le statut local
         $mapped = match ($status) {
             'COMPLETED' => 'completed',
             'FAILED' => 'failed',
-            'IN_RECONCILIATION' => 'pending',
+            'ACCEPTED' => 'pending',
+            'PROCESSING' => 'pending',
+            'IN_RECONCILIATION' => 'pending', // Géré automatiquement par pawaPay, on attend
             default => 'pending',
         };
 
-        // Mettre à jour le Payment
-        $payment->update([
-            'status' => $mapped,
-            'payment_data' => array_merge($payment->payment_data ?? [], [
-                'callback' => $payload,
-            ]),
-            'processed_at' => $mapped === 'completed' ? now() : null,
+        // Mettre à jour le Payment avec toutes les informations du callback
+        $paymentData = array_merge($payment->payment_data ?? [], [
+            'callback' => $payload,
+            'last_callback_at' => now()->toIso8601String(),
         ]);
 
-        // Si le paiement est complété, finaliser la commande
+        $payment->update([
+            'status' => $mapped,
+            'payment_data' => $paymentData,
+            'processed_at' => ($status === 'COMPLETED') ? now() : null,
+        ]);
+
+        // Traiter selon le statut final
         if ($status === 'COMPLETED' && $payment->order) {
+            // Paiement réussi : finaliser la commande et créer les inscriptions
             $this->finalizeOrderAfterPayment($payment->order);
+            \Log::info('pawaPay: Order finalized after successful payment', [
+                'order_id' => $payment->order->id,
+                'depositId' => $depositId,
+            ]);
         } elseif ($status === 'FAILED' && $payment->order) {
-            // Enregistrer la raison d'échec si disponible
-            $failureReason = $payload['statusReason'] ?? $payload['message'] ?? ($payload['reason'] ?? null);
+            // Échec : enregistrer la raison et annuler la commande
+            $failureReason = $payload['statusReason'] ?? $payload['message'] ?? ($payload['reason'] ?? 'Paiement échoué');
             $payment->update(['failure_reason' => $failureReason]);
-            $payment->order->update(['status' => 'cancelled']);
+            
+            // Annuler la commande seulement si elle n'est pas déjà payée (éviter doublon)
+            if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                $payment->order->update(['status' => 'cancelled']);
+            }
+            
+            \Log::info('pawaPay: Order cancelled after failed payment', [
+                'order_id' => $payment->order->id,
+                'depositId' => $depositId,
+                'reason' => $failureReason,
+            ]);
+        } elseif ($status === 'IN_RECONCILIATION' && $payment->order) {
+            // En réconciliation : attendre le statut final
+            // Ne rien faire, pawaPay va automatiquement résoudre et renvoyer un callback
+            \Log::info('pawaPay: Payment in reconciliation', [
+                'order_id' => $payment->order->id,
+                'depositId' => $depositId,
+            ]);
+        } elseif ($status === 'ACCEPTED' || $status === 'PROCESSING') {
+            // En attente de traitement ou traitement en cours
+            \Log::info('pawaPay: Payment accepted/processing', [
+                'order_id' => $payment->order?->id,
+                'depositId' => $depositId,
+                'status' => $status,
+            ]);
         }
 
         return response()->json(['received' => true]);
@@ -324,12 +390,21 @@ class PawaPayController extends Controller
 
     /**
      * Finaliser la commande après paiement réussi
+     * 
+     * Cette méthode est idempotente : elle peut être appelée plusieurs fois sans problème
      */
     private function finalizeOrderAfterPayment(Order $order): void
     {
         DB::transaction(function () use ($order) {
-            // Vérifier si déjà finalisée
-            if ($order->status === 'paid' || $order->status === 'completed') {
+            // Rafraîchir l'order pour avoir les dernières données
+            $order->refresh();
+            
+            // Vérifier si déjà finalisée (idempotence)
+            if (in_array($order->status, ['paid', 'completed'])) {
+                \Log::info('pawaPay: Order already finalized', [
+                    'order_id' => $order->id,
+                    'status' => $order->status,
+                ]);
                 return;
             }
 
@@ -339,7 +414,12 @@ class PawaPayController extends Controller
                 'paid_at' => now(),
             ]);
 
+            \Log::info('pawaPay: Order marked as paid', [
+                'order_id' => $order->id,
+            ]);
+
             // Créer les Enrollments pour chaque cours
+            $enrollmentsCreated = 0;
             foreach ($order->orderItems as $orderItem) {
                 // Vérifier si l'utilisateur n'est pas déjà inscrit
                 $existingEnrollment = Enrollment::where('user_id', $order->user_id)
@@ -353,11 +433,23 @@ class PawaPayController extends Controller
                         'order_id' => $order->id,
                         'status' => 'active',
                     ]);
+                    $enrollmentsCreated++;
                 }
             }
 
+            \Log::info('pawaPay: Enrollments created', [
+                'order_id' => $order->id,
+                'enrollments_created' => $enrollmentsCreated,
+                'total_order_items' => $order->orderItems->count(),
+            ]);
+
             // Vider le panier de l'utilisateur
-            CartItem::where('user_id', $order->user_id)->delete();
+            $cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
+            
+            \Log::info('pawaPay: Cart emptied', [
+                'user_id' => $order->user_id,
+                'cart_items_deleted' => $cartItemsDeleted,
+            ]);
         });
     }
 
@@ -375,17 +467,27 @@ class PawaPayController extends Controller
                 ->first();
 
             if ($payment && $payment->order) {
-                // Vérifier le statut auprès de pawaPay
+                // VALIDATION RECOMMANDÉE : Vérifier le statut auprès de pawaPay
+                // comme recommandé dans la documentation pour garantir la cohérence
                 $statusResponse = Http::withHeaders($this->authHeaders())
                     ->get($this->baseUrl() . "/deposits/{$depositId}");
 
                 if ($statusResponse->successful()) {
                     $statusData = $statusResponse->json();
                     $status = $statusData['status'] ?? null;
+                    $nextStep = $statusData['nextStep'] ?? null;
 
-                    // Si le paiement est complété mais pas encore finalisé localement
+                    \Log::info('pawaPay: Status check on successful redirect', [
+                        'depositId' => $depositId,
+                        'status' => $status,
+                        'nextStep' => $nextStep,
+                        'local_payment_status' => $payment->status,
+                        'order_status' => $payment->order->status,
+                    ]);
+
+                    // Traiter tous les statuts possibles
                     if ($status === 'COMPLETED') {
-                        // Marquer le payment comme completed si besoin
+                        // Paiement complété : s'assurer que tout est finalisé
                         if ($payment->status !== 'completed') {
                             $payment->update([
                                 'status' => 'completed',
@@ -395,9 +497,18 @@ class PawaPayController extends Controller
                                 ]),
                             ]);
                         }
-                        $this->finalizeOrderAfterPayment($payment->order);
+                        
+                        // Finaliser la commande si pas déjà fait
+                        if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                            $this->finalizeOrderAfterPayment($payment->order);
+                        }
+                        
+                        $order = $payment->order->fresh();
+                        return view('payments.pawapay.success', compact('order'));
+                        
                     } elseif ($status === 'FAILED') {
-                        $failureReason = $statusData['statusReason'] ?? $statusData['message'] ?? ($statusData['reason'] ?? null);
+                        // Échec : rediriger vers la page d'échec
+                        $failureReason = $statusData['statusReason'] ?? $statusData['message'] ?? ($statusData['reason'] ?? 'Paiement échoué');
                         $payment->update([
                             'status' => 'failed',
                             'failure_reason' => $failureReason,
@@ -405,12 +516,56 @@ class PawaPayController extends Controller
                                 'redirect_check' => $statusData,
                             ]),
                         ]);
-                        $payment->order->update(['status' => 'cancelled']);
+                        
+                        if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                            $payment->order->update(['status' => 'cancelled']);
+                        }
+                        
+                        \Log::warning('pawaPay: Redirected to failed page', [
+                            'depositId' => $depositId,
+                            'reason' => $failureReason,
+                        ]);
+                        
                         return redirect()->route('pawapay.failed');
+                        
+                    } elseif ($status === 'IN_RECONCILIATION') {
+                        // En réconciliation : informer l'utilisateur que le paiement est en cours de validation
+                        \Log::info('pawaPay: Payment in reconciliation on redirect', ['depositId' => $depositId]);
+                        
+                        return view('payments.pawapay.success', [
+                            'order' => null,
+                            'reconciliation_warning' => true,
+                            'depositId' => $depositId,
+                        ]);
+                        
+                    } elseif ($status === 'PROCESSING' || $status === 'ACCEPTED') {
+                        // En cours de traitement : informer l'utilisateur
+                        \Log::info('pawaPay: Payment still processing on redirect', [
+                            'depositId' => $depositId,
+                            'status' => $status,
+                        ]);
+                        
+                        return view('payments.pawapay.success', [
+                            'order' => null,
+                            'processing_warning' => true,
+                            'depositId' => $depositId,
+                        ]);
+                    } else {
+                        // Statut inconnu : afficher quand même la page de succès
+                        \Log::warning('pawaPay: Unknown status on redirect', [
+                            'depositId' => $depositId,
+                            'status' => $status,
+                        ]);
+                        
+                        $order = $payment->order->fresh();
+                        return view('payments.pawapay.success', compact('order'));
                     }
-
-                    $order = $payment->order->fresh();
-                    return view('payments.pawapay.success', compact('order'));
+                } else {
+                    // Erreur lors de la vérification : continuer avec le statut local
+                    \Log::warning('pawaPay: Failed to check status on redirect', [
+                        'depositId' => $depositId,
+                        'response_status' => $statusResponse->status(),
+                    ]);
                 }
             }
         }
