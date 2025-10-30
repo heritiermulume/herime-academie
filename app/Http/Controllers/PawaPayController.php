@@ -138,8 +138,8 @@ class PawaPayController extends Controller
 
         try {
             $response = Http::withHeaders($this->authHeaders())
-                ->timeout(30)
-                ->connectTimeout(10)
+                ->timeout(90) // 1 min 30 s
+                ->connectTimeout(15)
                 ->post($this->baseUrl() . '/deposits', $payload);
 
             if (!$response->successful()) {
@@ -387,8 +387,29 @@ class PawaPayController extends Controller
                     $status = $statusData['status'] ?? null;
 
                     // Si le paiement est complété mais pas encore finalisé localement
-                    if ($status === 'COMPLETED' && $payment->status !== 'completed') {
+                    if ($status === 'COMPLETED') {
+                        // Marquer le payment comme completed si besoin
+                        if ($payment->status !== 'completed') {
+                            $payment->update([
+                                'status' => 'completed',
+                                'processed_at' => now(),
+                                'payment_data' => array_merge($payment->payment_data ?? [], [
+                                    'redirect_check' => $statusData,
+                                ]),
+                            ]);
+                        }
                         $this->finalizeOrderAfterPayment($payment->order);
+                    } elseif ($status === 'FAILED') {
+                        $failureReason = $statusData['statusReason'] ?? $statusData['message'] ?? ($statusData['reason'] ?? null);
+                        $payment->update([
+                            'status' => 'failed',
+                            'failure_reason' => $failureReason,
+                            'payment_data' => array_merge($payment->payment_data ?? [], [
+                                'redirect_check' => $statusData,
+                            ]),
+                        ]);
+                        $payment->order->update(['status' => 'cancelled']);
+                        return redirect()->route('pawapay.failed');
                     }
 
                     $order = $payment->order->fresh();
