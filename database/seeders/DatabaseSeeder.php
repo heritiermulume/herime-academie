@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             PartnerSeeder::class,
             TestimonialSeeder::class,
             NotificationSeeder::class,
+            BannerSeeder::class,
         ]);
     }
 }

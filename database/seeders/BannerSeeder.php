@@ -21,8 +21,9 @@ class BannerSeeder extends Seeder
                 $mimeType = mime_content_type($fullPath);
                 return 'data:' . $mimeType . ';base64,' . base64_encode($imageData);
             }
-            // Si l'image n'existe pas, télécharger depuis Unsplash
-            return null;
+            // Fallback: image SVG base64 (placeholder responsive 1200x600)
+            $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600"><rect width="100%" height="100%" fill="#003366"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="42" fill="#ffcc33" font-family="Arial, Helvetica, sans-serif">Herime Académie</text></svg>';
+            return 'data:image/svg+xml;base64,' . base64_encode($svg);
         };
 
         $banners = [
@@ -71,9 +72,7 @@ class BannerSeeder extends Seeder
         ];
 
         foreach ($banners as $banner) {
-            if ($banner['image']) { // Créer uniquement si l'image existe
-                Banner::create($banner);
-            }
+            Banner::create($banner);
         }
     }
 }
