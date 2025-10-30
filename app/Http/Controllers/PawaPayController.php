@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Session;
+use App\Notifications\PaymentReceived;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * Controller pour gérer les paiements pawaPay
@@ -121,7 +124,7 @@ class PawaPayController extends Controller
             ], 401);
         }
 
-        $data = $request->validate([
+        $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:1',
             'currency' => 'nullable|string',
             'phoneNumber' => 'required|string',
@@ -129,10 +132,24 @@ class PawaPayController extends Controller
             'country' => 'nullable|string',
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
         $user = auth()->user();
 
         // Récupérer les articles du panier
         $cartItems = $user->cartItems()->with('course')->get();
+        // Filtrer les items invalides (cours supprimés)
+        $cartItems = $cartItems->filter(function ($item) {
+            return $item->course !== null;
+        })->values();
         
         if ($cartItems->isEmpty()) {
             return response()->json([
@@ -146,24 +163,35 @@ class PawaPayController extends Controller
         
         // Calculer le total réel depuis le panier (dans la devise de base du site)
         $subtotal = $cartItems->sum(function($item) {
-            return $item->course->current_price ?? 0;
+            return optional($item->course)->current_price ?? optional($item->course)->sale_price ?? optional($item->course)->price ?? 0;
         });
         
         // IMPORTANT: Utiliser le montant converti et la devise envoyés par le frontend
         $paymentAmount = (float) $data['amount']; // Montant converti dans la devise sélectionnée
         $paymentCurrency = $data['currency'] ?? config('services.pawapay.default_currency'); // Devise sélectionnée
 
-        // Créer l'Order (montants dans la devise de base du site)
-        $order = Order::create([
+		// Calculer un taux de conversion approximatif (si possible)
+		$exchangeRate = $subtotal > 0 ? round($paymentAmount / (float) $subtotal, 8) : null;
+
+		// Créer l'Order (montants dans la devise de base du site) et conserver les métadonnées de paiement
+		$order = Order::create([
             'order_number' => 'PP-' . strtoupper(Str::random(8)) . '-' . time(),
             'user_id' => $user->id,
             'subtotal' => $subtotal,
             'discount' => 0,
-            'total' => $subtotal, // Total dans la devise de base du site
+			'total' => $subtotal, // Total dans la devise de base du site
+			'total_amount' => $subtotal, // Assurer l'affichage admin qui s'appuie sur total_amount
             'currency' => $baseCurrency, // Devise de la commande (devise de base du site)
+			'payment_currency' => $paymentCurrency,
+			'payment_amount' => $paymentAmount,
+			'exchange_rate' => $exchangeRate,
             'status' => 'pending',
             'payment_method' => 'pawapay',
             'payment_provider' => $data['provider'] ?? null,
+			'payer_phone' => $data['phoneNumber'],
+			'payer_country' => $data['country'] ?? config('services.pawapay.default_country'),
+			'customer_ip' => $request->ip(),
+			'user_agent' => $request->userAgent(),
             'billing_address' => [
                 'phone' => $data['phoneNumber'],
                 'country' => $data['country'] ?? config('services.pawapay.default_country'),
@@ -174,18 +202,25 @@ class PawaPayController extends Controller
 
         // Créer les OrderItems
         foreach ($cartItems as $cartItem) {
+            if (!$cartItem->course) { continue; }
+            $coursePrice = $cartItem->course->current_price ?? $cartItem->course->sale_price ?? $cartItem->course->price ?? 0;
             OrderItem::create([
                 'order_id' => $order->id,
                 'course_id' => $cartItem->course_id,
                 'price' => $cartItem->course->price ?? 0,
                 'sale_price' => $cartItem->course->sale_price ?? null,
-                'total' => $cartItem->course->current_price ?? 0,
+                'total' => $coursePrice,
             ]);
         }
 
-        $depositId = (string) Str::uuid();
+		$depositId = (string) Str::uuid();
+
+		// Sauvegarder la référence fournisseur sur la commande pour suivi centralisé
+		$order->update([
+			'payment_reference' => $depositId,
+		]);
         // CRITIQUE: Utiliser le montant converti et la devise sélectionnée pour pawaPay
-        $payload = [
+		$payload = [
             'depositId' => $depositId,
             'amount' => (string) $paymentAmount, // Montant converti dans la devise sélectionnée
             'currency' => $paymentCurrency, // Devise sélectionnée par l'utilisateur
@@ -230,7 +265,19 @@ class PawaPayController extends Controller
                 ], $response->status());
             }
 
+            // Tenter d'obtenir un tableau associatif fiable depuis la réponse fournisseur
             $responseData = $response->json();
+            if (!is_array($responseData)) {
+                $raw = $response->body();
+                $decoded = json_decode($raw, true);
+                $responseData = is_array($decoded) ? $decoded : ['raw' => $raw];
+            }
+
+            // Extraire des champs attendus par le frontend si présents
+            $flatStatus = $responseData['status'] ?? ($responseData['data']['status'] ?? null);
+            $flatNextStep = $responseData['nextStep'] ?? ($responseData['data']['nextStep'] ?? null);
+            $flatAuthUrl = $responseData['authUrl'] ?? ($responseData['authorizationUrl'] ?? ($responseData['data']['authUrl'] ?? null));
+            $flatRedirectUrl = $responseData['redirectUrl'] ?? ($responseData['data']['redirectUrl'] ?? null);
 
             // Créer un Payment en attente uniquement en cas de succès d'initiation
             Payment::create([
@@ -247,12 +294,28 @@ class PawaPayController extends Controller
                 ],
             ]);
 
-            return response()->json([
+            // Revenir au format exact initial: nos champs + payload fournisseur à la racine
+            if (!is_array($responseData)) {
+                $responseData = [];
+            }
+
+            // Dériver quelques champs attendus par le frontend (compat)
+            $flat = is_array($responseData) && isset($responseData['data']) && is_array($responseData['data'])
+                ? $responseData['data']
+                : (is_array($responseData) ? $responseData : []);
+            $derived = [
+                'status' => $flat['status'] ?? ($responseData['status'] ?? null),
+                'nextStep' => $flat['nextStep'] ?? ($responseData['nextStep'] ?? null),
+                'authUrl' => $flat['authUrl'] ?? ($flat['authorizationUrl'] ?? ($responseData['authUrl'] ?? ($responseData['authorizationUrl'] ?? null))),
+            ];
+
+            $out = array_merge([
                 'success' => true,
                 'depositId' => $depositId,
                 'order_id' => $order->id,
-                ...$responseData
-            ]);
+            ], $derived, (is_array($responseData) ? $responseData : []));
+
+            return response()->json($out, 200, ['Content-Type' => 'application/json; charset=utf-8']);
         } catch (\Throwable $e) {
             // Erreur technique: annuler et marquer failed
             Payment::create([
@@ -411,7 +474,26 @@ class PawaPayController extends Controller
             ]);
 
             // Traiter selon le statut final
-            if ($status === 'COMPLETED' && $payment->order) {
+			if ($status === 'COMPLETED' && $payment->order) {
+				// Mettre à jour la commande avec la référence et les frais si fournis
+				$feeAmount = $payload['feeAmount'] ?? ($payload['fees']['amount'] ?? null);
+				$feeCurrency = $payload['feeCurrency'] ?? ($payload['fees']['currency'] ?? null);
+				$updates = [
+					'payment_reference' => $payment->order->payment_reference ?: ($payload['depositId'] ?? null),
+				];
+				if ($feeAmount !== null) {
+					$updates['provider_fee'] = (float) $feeAmount; // interprété dans la devise de paiement
+					$updates['net_total'] = $payment->order->payment_amount !== null
+						? (float) $payment->order->payment_amount - (float) $feeAmount
+						: null; // même unité que payment_amount
+					if ($feeCurrency !== null) {
+						$updates['provider_fee_currency'] = (string) $feeCurrency;
+					}
+				}
+				$payment->order->update(array_merge($updates, [
+					'status' => 'paid',
+					'paid_at' => $payment->order->paid_at ?: now(),
+				]));
                 // Paiement réussi : finaliser la commande et créer les inscriptions
                 $this->finalizeOrderAfterPayment($payment->order);
                 \Log::info('pawaPay: Order finalized after successful payment', [
@@ -593,21 +675,18 @@ class PawaPayController extends Controller
             ]);
             
             if ($orderItems->isEmpty()) {
-                \Log::error('pawaPay: No order items found for enrollment - CRITICAL', [
+                \Log::warning('pawaPay: No order items found for enrollment - proceeding to mark order paid', [
                     'order_id' => $order->id,
-                    'message' => 'Cannot finalize order without items. Check initiate() method.',
                 ]);
-                // Ne pas faire échouer la transaction, juste logger l'erreur
-                return;
             }
 
-            // Mettre à jour l'Order
-            $updated = $order->update([
-                'status' => 'paid',
-                'paid_at' => now(),
-            ]);
+			// Mettre à jour l'Order : payé après confirmation du paiement
+			$updated = $order->update([
+				'status' => 'paid',
+				'paid_at' => $order->paid_at ?: now(),
+			]);
 
-            \Log::info('pawaPay: Order marked as paid', [
+			\Log::info('pawaPay: Order marked as paid', [
                 'order_id' => $order->id,
                 'update_successful' => $updated,
                 'new_status' => $order->fresh()->status,
@@ -659,23 +738,38 @@ class PawaPayController extends Controller
                 'total_order_items' => $orderItems->count(),
             ]);
 
-            // Vider le panier de l'utilisateur
-            $cartItemsBeforeDelete = CartItem::where('user_id', $order->user_id)->count();
-            $cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
+			// Vider le panier de l'utilisateur (DB + session par sécurité)
+			$cartItemsBeforeDelete = CartItem::where('user_id', $order->user_id)->count();
+			$cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
+			Session::forget('cart');
+			
+			\Log::info('pawaPay: Cart emptied', [
+				'user_id' => $order->user_id,
+				'cart_items_before' => $cartItemsBeforeDelete,
+				'cart_items_deleted' => $cartItemsDeleted,
+				'session_cart_cleared' => true,
+			]);
             
-            \Log::info('pawaPay: Cart emptied', [
-                'user_id' => $order->user_id,
-                'cart_items_before' => $cartItemsBeforeDelete,
-                'cart_items_deleted' => $cartItemsDeleted,
-            ]);
-            
-            // Envoyer une notification de paiement confirmé à l'utilisateur
+            // Envoyer une notification de paiement confirmé à l'utilisateur (éviter doublons)
             try {
-                $order->user->notify(new \App\Notifications\PaymentReceived($order));
-                \Log::info('pawaPay: Payment confirmation notification sent', [
-                    'user_id' => $order->user_id,
-                    'order_id' => $order->id,
-                ]);
+                $alreadyNotified = method_exists($order->user, 'notifications')
+                    ? $order->user->notifications()
+                        ->where('type', PaymentReceived::class)
+                        ->where('data->order_id', $order->id)
+                        ->exists()
+                    : false;
+                if (!$alreadyNotified) {
+                    $order->user->notify(new PaymentReceived($order));
+                    \Log::info('pawaPay: Payment confirmation notification sent', [
+                        'user_id' => $order->user_id,
+                        'order_id' => $order->id,
+                    ]);
+                } else {
+                    \Log::info('pawaPay: Payment confirmation notification skipped (already sent)', [
+                        'user_id' => $order->user_id,
+                        'order_id' => $order->id,
+                    ]);
+                }
             } catch (\Throwable $e) {
                 // Logger l'erreur mais ne pas faire échouer la finalisation
                 \Log::error('pawaPay: Failed to send payment notification', [
@@ -714,8 +808,17 @@ class PawaPayController extends Controller
 
                 if ($statusResponse->successful()) {
                     $statusData = $statusResponse->json();
-                    $status = $statusData['status'] ?? null;
-                    $nextStep = $statusData['nextStep'] ?? null;
+                    // Gérer le format wrapper: { status: "FOUND", data: { status: "COMPLETED", ... } }
+                    if (isset($statusData['status']) && isset($statusData['data']) && is_array($statusData['data'])) {
+                        $actualData = $statusData['data'];
+                        $status = $actualData['status'] ?? null;
+                        $nextStep = $actualData['nextStep'] ?? null;
+                        $authUrl = $actualData['authUrl'] ?? ($actualData['authorizationUrl'] ?? null);
+                    } else {
+                        $status = $statusData['status'] ?? null;
+                        $nextStep = $statusData['nextStep'] ?? null;
+                        $authUrl = $statusData['authUrl'] ?? ($statusData['authorizationUrl'] ?? null);
+                    }
 
                     \Log::info('pawaPay: Status check on successful redirect', [
                         'depositId' => $depositId,
@@ -724,6 +827,15 @@ class PawaPayController extends Controller
                         'local_payment_status' => $payment->status,
                         'order_status' => $payment->order->status,
                     ]);
+
+                    // Si localement le paiement est déjà complété, forcer la mise à jour de la commande
+                    if ($payment->status === 'completed' && !in_array($payment->order->status, ['paid', 'completed'])) {
+                        $payment->order->update([
+                            'status' => 'paid',
+                            'paid_at' => $payment->order->paid_at ?: now(),
+                        ]);
+                        $this->finalizeOrderAfterPayment($payment->order);
+                    }
 
                     // Traiter tous les statuts possibles
                     if ($status === 'COMPLETED') {
@@ -737,12 +849,71 @@ class PawaPayController extends Controller
                                 ]),
                             ]);
                         }
+
+                        // Marquer immédiatement la commande comme payée si besoin
+                        if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                            $payment->order->update([
+                                'status' => 'paid',
+                                'paid_at' => $payment->order->paid_at ?: now(),
+                            ]);
+                        }
+
+                        // Sauvegarder référence et frais si fournis
+                        $feeSource = isset($actualData) ? $actualData : $statusData;
+                        $feeAmount = $feeSource['feeAmount'] ?? ($feeSource['fees']['amount'] ?? null);
+                        $feeCurrency = $feeSource['feeCurrency'] ?? ($feeSource['fees']['currency'] ?? null);
+						$updates = [
+							'payment_reference' => $payment->order->payment_reference ?: ($depositId ?? null),
+						];
+						if ($feeAmount !== null) {
+							$updates['provider_fee'] = (float) $feeAmount;
+							$updates['net_total'] = $payment->order->payment_amount !== null
+								? (float) $payment->order->payment_amount - (float) $feeAmount
+								: null;
+							if ($feeCurrency !== null) {
+								$updates['provider_fee_currency'] = (string) $feeCurrency;
+							}
+						}
+						$payment->order->update($updates);
                         
                         // Finaliser la commande si pas déjà fait
                         if (!in_array($payment->order->status, ['paid', 'completed'])) {
                             $this->finalizeOrderAfterPayment($payment->order);
                         }
+
+                        // Sécuriser le vidage du panier côté session utilisateur (contexte redirection)
+                        if (auth()->check()) {
+                            try {
+                                // Supprimer éventuels reliquats (même si déjà vidé par webhook)
+                                auth()->user()->cartItems()->delete();
+                            } catch (\Throwable $e) {}
+                            \Session::forget('cart');
+                        }
                         
+                        // Assurer la notification en contexte redirection si non envoyée
+                        try {
+                            $orderFresh = $payment->order->fresh(['user']);
+                            $alreadyNotified = method_exists($orderFresh->user, 'notifications')
+                                ? $orderFresh->user->notifications()
+                                    ->where('type', PaymentReceived::class)
+                                    ->where('data->order_id', $orderFresh->id)
+                                    ->exists()
+                                : false;
+                            if (!$alreadyNotified) {
+                                $orderFresh->user->notify(new PaymentReceived($orderFresh));
+                                \Log::info('pawaPay: Payment confirmation notification sent on redirect', [
+                                    'user_id' => $orderFresh->user_id,
+                                    'order_id' => $orderFresh->id,
+                                ]);
+                            }
+                        } catch (\Throwable $e) {
+                            \Log::error('pawaPay: Failed to send payment notification on redirect', [
+                                'user_id' => $payment->order->user_id,
+                                'order_id' => $payment->order->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+
                         $order = $payment->order->fresh();
                         return view('payments.pawapay.success', compact('order'));
                         

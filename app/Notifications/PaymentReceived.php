@@ -48,13 +48,15 @@ class PaymentReceived extends Notification
             $paidAtText = null; // on masque la date si invalide
         }
         
+        $orderUrl = route('orders.show', $order);
+
         $mail = (new MailMessage)
             ->subject('Paiement confirmé - ' . config('app.name'))
             ->greeting('Bonjour ' . $notifiable->name . ' !')
             ->line('Nous sommes heureux de vous confirmer que votre paiement a bien été reçu.')
             ->line('**Numéro de commande :** ' . $order->order_number)
             ->line('**Montant :** ' . number_format($order->total, 2) . ' ' . $order->currency)
-            ->action('Voir mes commandes', url('/orders'))
+            ->action('Voir la commande', $orderUrl)
             ->line('Vous avez maintenant accès à tous les cours que vous avez achetés.')
             ->line('Merci de votre confiance !');
 
@@ -79,6 +81,7 @@ class PaymentReceived extends Notification
             'amount' => $this->order->total,
             'currency' => $this->order->currency,
             'message' => 'Votre paiement de ' . number_format($this->order->total, 2) . ' ' . $this->order->currency . ' a été confirmé.',
+            'url' => route('orders.show', $this->order),
         ];
     }
 }

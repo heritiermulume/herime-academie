@@ -76,14 +76,20 @@ class OrderController extends Controller
 
         $orders = $query->paginate(20);
 
+        // Statistiques dynamiques basées sur les filtres appliqués
+        $statsBase = clone $query;
         $stats = [
-            'total' => Order::count(),
-            'pending' => Order::where('status', 'pending')->count(),
-            'confirmed' => Order::where('status', 'confirmed')->count(),
-            'paid' => Order::where('status', 'paid')->count(),
-            'completed' => Order::where('status', 'completed')->count(),
-            'cancelled' => Order::where('status', 'cancelled')->count(),
-            'total_revenue' => Order::whereIn('status', ['paid', 'completed'])->sum('total_amount'),
+            'total' => (clone $statsBase)->count(),
+            'pending' => (clone $statsBase)->where('status', 'pending')->count(),
+            'confirmed' => (clone $statsBase)->where('status', 'confirmed')->count(),
+            'paid' => (clone $statsBase)->where('status', 'paid')->count(),
+            'completed' => (clone $statsBase)->where('status', 'completed')->count(),
+            'cancelled' => (clone $statsBase)->where('status', 'cancelled')->count(),
+            // Somme sur total_amount avec repli vers total si total_amount nul
+            'total_revenue' => (clone $statsBase)
+                ->whereIn('status', ['paid', 'completed'])
+                ->get()
+                ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; }),
         ];
 
         return view('admin.orders.index', compact('orders', 'stats'));
@@ -94,7 +100,7 @@ class OrderController extends Controller
      */
     public function adminShow(Order $order)
     {
-        $order->load(['user', 'enrollments.course']);
+        $order->load(['user', 'enrollments.course', 'orderItems.course']);
         
         return view('admin.orders.show', compact('order'));
     }

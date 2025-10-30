@@ -37,12 +37,18 @@ class NotificationSeeder extends Seeder
         // Créer des notifications pour l'admin (sans envoyer d'email)
         try {
             $admin->notify(new \App\Notifications\CourseEnrolled($courses->first()));
-            $admin->notify(new \App\Notifications\PaymentReceived(50000, 'Stripe'));
+            // Adapter PaymentReceived pour nécessiter un Order existant
+            $sampleOrder = Order::first();
+            if ($sampleOrder) {
+                $admin->notify(new \App\Notifications\PaymentReceived($sampleOrder));
+            }
             $admin->notify(new \App\Notifications\CoursePublished($instructor, $courses->first()));
 
             // Créer des notifications pour l'instructeur
             $instructor->notify(new \App\Notifications\CourseEnrolled($courses->first()));
-            $instructor->notify(new \App\Notifications\PaymentReceived(25000, 'PayPal'));
+            if ($sampleOrder) {
+                $instructor->notify(new \App\Notifications\PaymentReceived($sampleOrder));
+            }
             $instructor->notify(new \App\Notifications\NewMessage($admin, 'Bienvenue sur la plateforme !'));
 
             // Créer des notifications pour l'étudiant
@@ -52,7 +58,9 @@ class NotificationSeeder extends Seeder
 
             // Créer quelques notifications non lues
             $student->notify(new \App\Notifications\CourseEnrolled($courses->skip(1)->first()));
-            $student->notify(new \App\Notifications\PaymentReceived(15000, 'Mobile Money'));
+            if ($sampleOrder) {
+                $student->notify(new \App\Notifications\PaymentReceived($sampleOrder));
+            }
 
             $this->command->info('Notifications de test créées avec succès !');
         } catch (\Exception $e) {

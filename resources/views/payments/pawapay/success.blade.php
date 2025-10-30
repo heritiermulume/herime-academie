@@ -206,7 +206,17 @@
                 
                 <div class="detail-row">
                     <span class="detail-label">Statut :</span>
-                    <span class="status-badge">{{ ucfirst($order->status) }}</span>
+                    <span class="status-badge">
+                        @switch($order->status)
+                            @case('pending') En attente @break
+                            @case('confirmed') Confirmée @break
+                            @case('paid') Payée @break
+                            @case('completed') Terminée @break
+                            @case('cancelled') Annulée @break
+                            @case('failed') Échouée @break
+                            @default {{ ucfirst($order->status) }}
+                        @endswitch
+                    </span>
                 </div>
             </div>
 

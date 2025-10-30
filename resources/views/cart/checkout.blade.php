@@ -501,7 +501,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             res = await fetch(`{{ route('pawapay.initiate') }}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
                 body: JSON.stringify(payload),
                 signal: controller.signal
             });

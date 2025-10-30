@@ -186,8 +186,9 @@
                                         </a>
                                     </th>
                                     <th>Statut</th>
-                                    <th>Mode de paiement</th>
-                                    <th>
+                                    <th class="d-none d-sm-table-cell">Mode de paiement</th>
+                                    <th class="d-none d-md-table-cell">Devise paiement</th>
+                                    <th class="d-none d-md-table-cell">
                                         <a href="{{ request()->fullUrlWithQuery(['sort' => 'created_at', 'direction' => request('sort') == 'created_at' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" 
                                            class="text-decoration-none text-dark">
                                             Date
@@ -210,25 +211,33 @@
                                     <td>
                                         <div>
                                             <strong>{{ $order->order_number }}</strong>
-                                            @if($order->payment_reference)
-                                                <br><small class="text-muted">{{ $order->payment_reference }}</small>
-                                            @endif
                                         </div>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" 
                                                  style="width: 40px; height: 40px; font-size: 14px; font-weight: bold;">
                                                 {{ strtoupper(substr($order->user->name, 0, 2)) }}
                                             </div>
-                                            <div>
-                                                <h6 class="mb-0">{{ $order->user->name }}</h6>
-                                                <small class="text-muted">{{ $order->user->email }}</small>
+                                            <div class="min-w-0">
+                                                <h6 class="mb-0 text-truncate" style="max-width: 180px;">{{ $order->user->name }}</h6>
+                                                <small class="text-muted d-block text-truncate" style="max-width: 180px;">{{ $order->user->email }}</small>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <strong class="text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount, $order->currency) }}</strong>
+                                        <strong class="text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount ?? $order->total, $order->currency) }}</strong>
+                                        @if($order->payment_amount)
+                                            <div class="small text-muted">
+                                                {{ number_format((float)$order->payment_amount, 2) }} {{ $order->payment_currency }}
+                                                @if(!is_null($order->provider_fee))
+                                                    · frais {{ number_format((float)$order->provider_fee, 2) }} {{ $order->provider_fee_currency ?? $order->payment_currency }}
+                                                    @if(!is_null($order->net_total))
+                                                        · net {{ number_format((float)$order->net_total, 2) }} {{ $order->payment_currency }}
+                                                    @endif
+                                                @endif
+                                            </div>
+                                        @endif
                                     </td>
                                     <td>
                                         <span class="badge order-status-{{ $order->status }}">
@@ -253,7 +262,7 @@
                                             @endswitch
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="d-none d-sm-table-cell">
                                         <span class="badge bg-{{ $order->payment_method === 'card' ? 'primary' : ($order->payment_method === 'paypal' ? 'info' : ($order->payment_method === 'mobile' ? 'success' : ($order->payment_method === 'bank' ? 'warning' : 'secondary'))) }}">
                                             @switch($order->payment_method)
                                                 @case('card')
@@ -268,6 +277,9 @@
                                                 @case('bank')
                                                     Virement bancaire
                                                     @break
+                                                @case('pawapay')
+                                                    pawaPay
+                                                    @break
                                                 @case('whatsapp')
                                                     WhatsApp
                                                     @break
@@ -276,7 +288,16 @@
                                             @endswitch
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="d-none d-md-table-cell">
+                                        @php(
+                                            $displayPaymentCurrency = $order->payment_currency
+                                                ?? (is_array($order->billing_address) ? ($order->billing_address['payment_currency'] ?? null) : null)
+                                        )
+                                        <span class="badge bg-light text-dark">
+                                            {{ $displayPaymentCurrency ?? '-' }}
+                                        </span>
+                                    </td>
+                                    <td class="d-none d-md-table-cell">
                                         <small>{{ $order->created_at->format('d/m/Y H:i') }}</small>
                                     </td>
                                     <td>
@@ -648,6 +669,15 @@ function exportOrders() {
     .card-header .btn-light:not(.btn-sm) {
         width: 100%;
     }
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+    .table { font-size: 0.9rem; }
+    .table .text-truncate { max-width: 140px !important; }
+}
+@media (max-width: 576px) {
+    .btn-group .btn { padding: 0.35rem 0.5rem; }
 }
 </style>
 @endpush
