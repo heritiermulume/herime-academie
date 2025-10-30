@@ -13,7 +13,7 @@
                     <p class="mb-0 text-white-50">Bienvenue sur votre tableau de bord étudiant</p>
                 </div>
                 <div>
-                    <a href="{{ route('courses.index') }}" class="btn btn-light">
+                    <a href="{{ route('courses.index') }}" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>Découvrir des cours
                     </a>
                 </div>
@@ -118,7 +118,7 @@
                 <div class="card-header bg-white border-0 py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 fw-bold">Mes cours récents</h5>
-                        <a href="{{ route('student.courses') }}" class="btn btn-outline-primary btn-sm">
+                        <a href="{{ route('student.courses') }}" class="btn btn-primary btn-sm">
                             Voir tous <i class="fas fa-arrow-right ms-1"></i>
                         </a>
                     </div>
@@ -183,7 +183,7 @@
             <div class="card border-0 shadow-sm mt-4">
                 <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold">Commandes récentes</h5>
-                    <a href="{{ route('orders.index') }}" class="btn btn-outline-primary btn-sm">Voir toutes</a>
+                    <a href="{{ route('orders.index') }}" class="btn btn-primary btn-sm">Voir toutes</a>
                 </div>
                 <div class="card-body">
                     @php $recentOrders = auth()->user()->orders()->latest()->limit(5)->get(); @endphp
@@ -306,7 +306,7 @@
                 <div class="card-header bg-white border-0 py-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 fw-bold">Mes certificats</h5>
-                        <a href="{{ route('student.certificates') }}" class="btn btn-outline-primary btn-sm">
+                        <a href="{{ route('student.certificates') }}" class="btn btn-primary btn-sm">
                             Voir tous
                         </a>
                     </div>
@@ -352,6 +352,14 @@
 
 @push('styles')
 <style>
+.btn-primary {
+    background-color: #003366;
+    border-color: #003366;
+}
+.btn-primary:hover, .btn-primary:focus {
+    background-color: #004080;
+    border-color: #004080;
+}
 .card {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
