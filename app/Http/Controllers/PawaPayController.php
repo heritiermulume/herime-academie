@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Jobs\CancelOrderIfPending;
 
 class PawaPayController extends Controller
 {
@@ -159,6 +160,10 @@ class PawaPayController extends Controller
                 'response' => $responseData,
             ],
         ]);
+
+        // Planifier l'annulation automatique sans cron (via worker de file d'attente)
+        $timeoutMinutes = (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30));
+        CancelOrderIfPending::dispatch($order->id)->delay(now()->addMinutes($timeoutMinutes));
 
         return response()->json([
             'success' => true,

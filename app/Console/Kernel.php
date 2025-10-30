@@ -12,10 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Annulation automatique des commandes en attente trop anciennes
-        $schedule->command('orders:cancel-stale')
-            ->everyMinute()
-            ->withoutOverlapping();
+        // Intentionnellement vide: aucune dépendance au cron. L'annulation est gérée via jobs différés.
     }
 
     /**
