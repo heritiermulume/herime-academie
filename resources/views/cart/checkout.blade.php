@@ -605,8 +605,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Le webhook gérera le statut final, mais on poll pour donner un feedback immédiat
     async function pollStatus(depositId) {
         let attempts = 0;
-        const maxAttempts = 80; // 80 tentatives = ~2 minutes (1500ms * 80)
+        const maxAttempts = 300; // 300 tentatives = ~7.5 minutes (1500ms * 300)
         let stopped = false;
+        let lastStatus = null;
+        let statusChangeCount = 0;
         
         const poll = async () => {
             if (stopped) return;
@@ -614,19 +616,22 @@ document.addEventListener('DOMContentLoaded', function() {
             // Limiter le nombre de tentatives pour éviter le polling infini
             if (attempts >= maxAttempts) {
                 stopped = true;
-                paymentNotice.className = 'alert alert-warning mt-3';
+                paymentNotice.className = 'alert alert-info mt-3';
                 paymentNotice.innerHTML = `
-                    <strong>Paiement en cours...</strong><br>
-                    Le traitement prend plus de temps que prévu. Vous pouvez fermer cette page, 
-                    vous recevrez une notification dès que le paiement sera confirmé.
+                    <strong>Vérification en cours...</strong><br>
+                    Le paiement prend plus de temps que prévu pour se confirmer. 
+                    Selon pawaPay, cela peut arriver et la réconciliation se fera automatiquement.
+                    <br><br>
+                    <strong>Que faire maintenant ?</strong><br>
+                    <a href="{{ route('orders.index') }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-list me-1"></i>Voir mes commandes
+                    </a>
+                    <a href="javascript:location.reload();" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-sync me-1"></i>Rafraîchir
+                    </a>
                 `;
                 payButton.disabled = false;
-                payButtonText.innerHTML = '<i class="fas fa-clock me-2"></i>En attente';
-                
-                // Rediriger vers les commandes
-                setTimeout(() => {
-                    window.location.href = '{{ route("orders.index") }}';
-                }, 3000);
+                payButtonText.innerHTML = '<i class="fas fa-clock me-2"></i>En cours...';
                 return;
             }
             
@@ -643,6 +648,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await res.json();
                 const status = data.status;
                 const nextStep = data.nextStep;
+                
+                // Détecter si le statut a changé
+                if (status !== lastStatus) {
+                    lastStatus = status;
+                    statusChangeCount++;
+                    console.log('Status changed:', status);
+                }
                 
                 // Gérer tous les statuts possibles
                 if (status === 'COMPLETED') {
@@ -664,13 +676,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Réessayer';
                     
                 } else if (status === 'IN_RECONCILIATION') {
-                    // En réconciliation : continuer à poller mais afficher le message
-                    paymentNotice.className = 'alert alert-warning mt-3';
-                    paymentNotice.textContent = 'Paiement en cours de validation (réconciliation)...';
+                    // En réconciliation : continuer à poller avec un message informatif
+                    if (statusChangeCount === 1 || statusChangeCount % 10 === 0) {
+                        // Afficher le message seulement au changement ou toutes les 10 vérifications
+                        paymentNotice.className = 'alert alert-warning mt-3';
+                        paymentNotice.innerHTML = `
+                            <strong><i class="fas fa-clock me-1"></i>Réconciliation en cours</strong><br>
+                            Votre paiement est en cours de validation par pawaPay. 
+                            Cela peut prendre quelques minutes. Vous recevrez une confirmation automatique.
+                        `;
+                    }
                     setTimeout(poll, 2000);
                     
                 } else if (status === 'PROCESSING' || status === 'ACCEPTED') {
                     // En cours de traitement : continuer à poller
+                    if (statusChangeCount === 1 || statusChangeCount % 15 === 0) {
+                        paymentNotice.className = 'alert alert-info mt-3';
+                        paymentNotice.innerHTML = `
+                            <strong>Paiement en cours de traitement...</strong><br>
+                            Attente de confirmation de votre opérateur mobile money.
+                        `;
+                    }
                     setTimeout(poll, 1500);
                     
                 } else {
