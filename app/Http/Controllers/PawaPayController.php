@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Jobs\CancelOrderIfPending;
 
 class PawaPayController extends Controller
 {
@@ -57,9 +56,6 @@ class PawaPayController extends Controller
                 'message' => 'Vous devez être connecté pour procéder au paiement.'
             ], 401);
         }
-
-        // Sécurité: annuler d'éventuelles anciennes commandes en attente pour cet utilisateur
-        $this->autoCancelStale(auth()->id());
 
         $data = $request->validate([
             'amount' => 'required|numeric|min:1',
@@ -140,44 +136,87 @@ class PawaPayController extends Controller
             'failedUrl' => config('services.pawapay.failed_url') . '?depositId=' . $depositId,
         ];
 
-        $response = Http::withHeaders($this->authHeaders())
-            ->post($this->baseUrl() . '/deposits', $payload);
+        try {
+            $response = Http::withHeaders($this->authHeaders())
+                ->timeout(30)
+                ->connectTimeout(10)
+                ->post($this->baseUrl() . '/deposits', $payload);
 
-        if (!$response->successful()) {
+            if (!$response->successful()) {
+                // Annulation immédiate en cas d'erreur fournisseur
+                $error = $response->json();
+                Payment::create([
+                    'order_id' => $order->id,
+                    'payment_method' => 'pawapay',
+                    'provider' => $data['provider'] ?? null,
+                    'payment_id' => $depositId,
+                    'amount' => $paymentAmount,
+                    'currency' => $paymentCurrency,
+                    'status' => 'failed',
+                    'failure_reason' => $error['message'] ?? 'Erreur du fournisseur lors de l\'initialisation',
+                    'payment_data' => [
+                        'request' => $payload,
+                        'response' => $error,
+                    ],
+                ]);
+                $order->update(['status' => 'cancelled']);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Échec de l\'initialisation du paiement.',
+                    'error' => $error,
+                ], $response->status());
+            }
+
+            $responseData = $response->json();
+
+            // Créer un Payment en attente si succès d'initiation
+            Payment::create([
+                'order_id' => $order->id,
+                'payment_method' => 'pawapay',
+                'provider' => $data['provider'] ?? null,
+                'payment_id' => $depositId,
+                'amount' => $paymentAmount,
+                'currency' => $paymentCurrency,
+                'status' => 'pending',
+                'payment_data' => [
+                    'request' => $payload,
+                    'response' => $responseData,
+                ],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'depositId' => $depositId,
+                'order_id' => $order->id,
+                ...$responseData
+            ]);
+        } catch (\Throwable $e) {
+            // Timeout/erreur réseau: annuler immédiatement
+            Payment::create([
+                'order_id' => $order->id,
+                'payment_method' => 'pawapay',
+                'provider' => $data['provider'] ?? null,
+                'payment_id' => $depositId,
+                'amount' => $paymentAmount,
+                'currency' => $paymentCurrency,
+                'status' => 'failed',
+                'failure_reason' => 'Timeout ou erreur réseau lors de l\'initialisation',
+                'payment_data' => [
+                    'request' => $payload,
+                    'exception' => [
+                        'type' => get_class($e),
+                        'message' => $e->getMessage(),
+                    ],
+                ],
+            ]);
+            $order->update(['status' => 'cancelled']);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Échec de l\'initialisation du paiement.',
-                'error' => $response->json()
-            ], $response->status());
+                'message' => 'Délai dépassé lors de l\'initialisation du paiement. La commande a été annulée.',
+            ], 504);
         }
-
-        $responseData = $response->json();
-
-        // Créer un enregistrement Payment (avec le montant et la devise utilisés pour le paiement)
-        Payment::create([
-            'order_id' => $order->id,
-            'payment_method' => 'pawapay',
-            'provider' => $data['provider'] ?? null,
-            'payment_id' => $depositId,
-            'amount' => $paymentAmount, // Montant converti dans la devise de paiement
-            'currency' => $paymentCurrency, // Devise utilisée pour le paiement
-            'status' => 'pending',
-            'payment_data' => [
-                'request' => $payload,
-                'response' => $responseData,
-            ],
-        ]);
-
-        // Planifier l'annulation automatique sans cron (via worker de file d'attente)
-        $timeoutMinutes = (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30));
-        CancelOrderIfPending::dispatch($order->id)->delay(now()->addMinutes($timeoutMinutes));
-
-        return response()->json([
-            'success' => true,
-            'depositId' => $depositId,
-            'order_id' => $order->id,
-            ...$responseData
-        ]);
     }
 
     public function status(string $depositId)
