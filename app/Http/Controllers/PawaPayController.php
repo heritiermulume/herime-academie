@@ -304,17 +304,23 @@ class PawaPayController extends Controller
 
     public function webhook(Request $request)
     {
+        // IMPORTANT: Toujours retourner 200 OK si le webhook est reçu avec succès
+        // Selon la documentation pawaPay: https://docs.pawapay.io/v2/docs/what_to_know#callbacks
+        // "We expect you to return HTTP 200 OK response to consider the callback delivered"
+        // Si on retourne un code d'erreur, pawaPay réessaiera pendant 15 minutes
+        
         // IMPORTANT: Valider la signature du webhook pour sécurité
         // Selon la documentation pawaPay: https://docs.pawapay.io/using_the_api
         $signature = $request->header('X-PawaPay-Signature');
         $payloadContent = $request->getContent();
         
         if ($signature && !$this->validateWebhookSignature($payloadContent, $signature)) {
-            \Log::warning('pawaPay webhook: Invalid signature', [
+            \Log::error('pawaPay webhook: Invalid signature - potential security threat', [
                 'depositId' => $request->input('depositId'),
                 'ip' => $request->ip(),
             ]);
-            return response()->json(['error' => 'Invalid signature'], 401);
+            // CRITIQUE: Retourner 200 pour éviter les retry, mais logger comme erreur
+            return response()->json(['received' => false, 'error' => 'Invalid signature'], 200);
         }
 
         $payload = $request->all();
@@ -324,7 +330,8 @@ class PawaPayController extends Controller
 
         if (!$depositId) {
             \Log::warning('pawaPay webhook: depositId missing', ['payload' => $payload]);
-            return response()->json(['received' => false, 'message' => 'depositId missing'], 400);
+            // Retourner 200 OK même si depositId manquant (éviter retry)
+            return response()->json(['received' => false, 'message' => 'depositId missing'], 200);
         }
 
         $payment = Payment::where('payment_method', 'pawapay')
@@ -334,79 +341,101 @@ class PawaPayController extends Controller
 
         if (!$payment) {
             \Log::warning('pawaPay webhook: Payment not found', ['depositId' => $depositId]);
-            return response()->json(['received' => false, 'message' => 'Payment not found'], 404);
+            // Retourner 200 OK même si payment non trouvé (éviter retry sur transaction inexistante)
+            return response()->json(['received' => false, 'message' => 'Payment not found'], 200);
         }
 
-        // Log de tous les callbacks reçus pour traçabilité
-        \Log::info('pawaPay webhook received', [
-            'depositId' => $depositId,
-            'status' => $status,
-            'nextStep' => $nextStep,
-            'current_order_status' => $payment->order?->status,
-        ]);
-
-        // Mapper le statut pawaPay vers le statut local
-        $mapped = match ($status) {
-            'COMPLETED' => 'completed',
-            'FAILED' => 'failed',
-            'ACCEPTED' => 'pending',
-            'PROCESSING' => 'pending',
-            'IN_RECONCILIATION' => 'pending', // Géré automatiquement par pawaPay, on attend
-            default => 'pending',
-        };
-
-        // Mettre à jour le Payment avec toutes les informations du callback
-        $paymentData = array_merge($payment->payment_data ?? [], [
-            'callback' => $payload,
-            'last_callback_at' => now()->toIso8601String(),
-        ]);
-
-        $payment->update([
-            'status' => $mapped,
-            'payment_data' => $paymentData,
-            'processed_at' => ($status === 'COMPLETED') ? now() : null,
-        ]);
-
-        // Traiter selon le statut final
-        if ($status === 'COMPLETED' && $payment->order) {
-            // Paiement réussi : finaliser la commande et créer les inscriptions
-            $this->finalizeOrderAfterPayment($payment->order);
-            \Log::info('pawaPay: Order finalized after successful payment', [
-                'order_id' => $payment->order->id,
-                'depositId' => $depositId,
-            ]);
-        } elseif ($status === 'FAILED' && $payment->order) {
-            // Échec : enregistrer la raison et annuler la commande
-            $failureReason = $payload['statusReason'] ?? $payload['message'] ?? ($payload['reason'] ?? 'Paiement échoué');
-            $payment->update(['failure_reason' => $failureReason]);
-            
-            // Annuler la commande seulement si elle n'est pas déjà payée (éviter doublon)
-            if (!in_array($payment->order->status, ['paid', 'completed'])) {
-                $payment->order->update(['status' => 'cancelled']);
-            }
-            
-            \Log::info('pawaPay: Order cancelled after failed payment', [
-                'order_id' => $payment->order->id,
-                'depositId' => $depositId,
-                'reason' => $failureReason,
-            ]);
-        } elseif ($status === 'IN_RECONCILIATION' && $payment->order) {
-            // En réconciliation : attendre le statut final
-            // Ne rien faire, pawaPay va automatiquement résoudre et renvoyer un callback
-            \Log::info('pawaPay: Payment in reconciliation', [
-                'order_id' => $payment->order->id,
-                'depositId' => $depositId,
-            ]);
-        } elseif ($status === 'ACCEPTED' || $status === 'PROCESSING') {
-            // En attente de traitement ou traitement en cours
-            \Log::info('pawaPay: Payment accepted/processing', [
-                'order_id' => $payment->order?->id,
+        // CRITIQUE: Envelopper le traitement dans un try-catch pour toujours retourner 200 OK
+        // Selon la documentation, on DOIT retourner 200 OK même en cas d'erreur
+        // sinon pawaPay réessaiera pendant 15 minutes
+        try {
+            // Log de tous les callbacks reçus pour traçabilité
+            \Log::info('pawaPay webhook received', [
                 'depositId' => $depositId,
                 'status' => $status,
+                'nextStep' => $nextStep,
+                'current_order_status' => $payment->order?->status,
             ]);
-        }
 
-        return response()->json(['received' => true]);
+            // Mapper le statut pawaPay vers le statut local
+            $mapped = match ($status) {
+                'COMPLETED' => 'completed',
+                'FAILED' => 'failed',
+                'ACCEPTED' => 'pending',
+                'PROCESSING' => 'pending',
+                'IN_RECONCILIATION' => 'pending', // Géré automatiquement par pawaPay, on attend
+                default => 'pending',
+            };
+
+            // Mettre à jour le Payment avec toutes les informations du callback
+            $paymentData = array_merge($payment->payment_data ?? [], [
+                'callback' => $payload,
+                'last_callback_at' => now()->toIso8601String(),
+            ]);
+
+            $payment->update([
+                'status' => $mapped,
+                'payment_data' => $paymentData,
+                'processed_at' => ($status === 'COMPLETED') ? now() : null,
+            ]);
+
+            // Traiter selon le statut final
+            if ($status === 'COMPLETED' && $payment->order) {
+                // Paiement réussi : finaliser la commande et créer les inscriptions
+                $this->finalizeOrderAfterPayment($payment->order);
+                \Log::info('pawaPay: Order finalized after successful payment', [
+                    'order_id' => $payment->order->id,
+                    'depositId' => $depositId,
+                ]);
+            } elseif ($status === 'FAILED' && $payment->order) {
+                // Échec : enregistrer la raison et annuler la commande
+                $failureReason = $payload['statusReason'] ?? $payload['message'] ?? ($payload['reason'] ?? 'Paiement échoué');
+                $payment->update(['failure_reason' => $failureReason]);
+                
+                // Annuler la commande seulement si elle n'est pas déjà payée (éviter doublon)
+                if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                    $payment->order->update(['status' => 'cancelled']);
+                }
+                
+                \Log::info('pawaPay: Order cancelled after failed payment', [
+                    'order_id' => $payment->order->id,
+                    'depositId' => $depositId,
+                    'reason' => $failureReason,
+                ]);
+            } elseif ($status === 'IN_RECONCILIATION' && $payment->order) {
+                // En réconciliation : attendre le statut final
+                // Ne rien faire, pawaPay va automatiquement résoudre et renvoyer un callback
+                \Log::info('pawaPay: Payment in reconciliation', [
+                    'order_id' => $payment->order->id,
+                    'depositId' => $depositId,
+                ]);
+            } elseif ($status === 'ACCEPTED' || $status === 'PROCESSING') {
+                // En attente de traitement ou traitement en cours
+                \Log::info('pawaPay: Payment accepted/processing', [
+                    'order_id' => $payment->order?->id,
+                    'depositId' => $depositId,
+                    'status' => $status,
+                ]);
+            }
+
+            return response()->json(['received' => true]);
+            
+        } catch (\Throwable $e) {
+            // CRITIQUE: Logger l'erreur mais retourner 200 OK
+            // pawaPay ne réessaiera pas si on retourne 200
+            \Log::error('pawaPay webhook: Exception during processing', [
+                'depositId' => $depositId,
+                'status' => $status,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            // Retourner 200 OK avec indication d'erreur dans la réponse
+            return response()->json([
+                'received' => true, 
+                'error' => 'Error processing callback (logged)',
+            ], 200);
+        }
     }
 
     /**
