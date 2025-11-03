@@ -33,7 +33,7 @@ class LearningController extends Controller
                 $query->where('is_published', true)->orderBy('sort_order');
             },
             'instructor' => function($query) {
-                $query->select('id', 'name', 'email', 'bio', 'avatar', 'specialization', 'experience_years', 'created_at');
+                $query->select('id', 'name', 'email', 'bio', 'avatar', 'created_at');
             },
             'category',
             'reviews' => function($query) {
@@ -212,6 +212,63 @@ class LearningController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Leçon marquée comme terminée'
+        ]);
+    }
+
+    /**
+     * Soumettre un quiz
+     */
+    public function submitQuiz(Request $request, Course $course, CourseLesson $lesson)
+    {
+        if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
+            return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+        }
+
+        $request->validate([
+            'answers' => 'required|array'
+        ]);
+
+        // Vérifier que c'est bien un quiz
+        if ($lesson->type !== 'quiz') {
+            return response()->json(['success' => false, 'message' => 'Ce n\'est pas un quiz'], 400);
+        }
+
+        // Calculer le score
+        $quizData = json_decode($lesson->quiz_data, true);
+        $questions = $quizData['questions'] ?? [];
+        $totalQuestions = count($questions);
+        $score = 0;
+
+        foreach ($questions as $index => $question) {
+            $correctAnswer = $question['correct_answer'] ?? null;
+            $userAnswer = $request->answers[$index] ?? null;
+            
+            if ($userAnswer == $correctAnswer) {
+                $score++;
+            }
+        }
+
+        // Créer ou mettre à jour la progression
+        $progress = LessonProgress::firstOrCreate([
+            'user_id' => auth()->id(),
+            'course_id' => $course->id,
+            'lesson_id' => $lesson->id,
+        ]);
+
+        // Si le quiz est réussi (par exemple, au moins 70%), marquer comme terminé
+        if ($score >= ($totalQuestions * 0.7)) {
+            $progress->markAsCompleted();
+            $this->updateCourseProgress($course);
+        }
+
+        return response()->json([
+            'success' => true,
+            'results' => [
+                'score' => $score,
+                'total' => $totalQuestions,
+                'percentage' => round(($score / $totalQuestions) * 100, 2),
+                'passed' => $score >= ($totalQuestions * 0.7)
+            ]
         ]);
     }
 

@@ -1,0 +1,76 @@
+@props(['course'])
+
+<div class="course-card">
+    <div class="card">
+        <!-- Lien invisible pour rendre toute la carte cliquable -->
+        <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
+        <div class="position-relative">
+            <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
+                 class="card-img-top" alt="{{ $course->title }}">
+            <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
+                @if($course->is_featured)
+                <span class="badge bg-warning">En vedette</span>
+                @endif
+                @if($course->is_free)
+                <span class="badge bg-success">Gratuit</span>
+                @endif
+                @if($course->sale_price)
+                <span class="badge bg-danger">
+                    -{{ round((($course->price - $course->sale_price) / $course->price) * 100) }}%
+                </span>
+                @endif
+            </div>
+        </div>
+        <div class="card-body">
+            <h6 class="card-title">
+                <a href="{{ route('courses.show', $course->slug) }}">
+                    {{ Str::limit($course->title, 50) }}
+                </a>
+            </h6>
+            <p class="card-text">{{ Str::limit($course->short_description, 100) }}</p>
+            
+            <div class="instructor-info">
+                <small class="instructor-name">
+                    <i class="fas fa-user me-1"></i>{{ Str::limit($course->instructor->name, 20) }}
+                </small>
+                <div class="rating">
+                    <i class="fas fa-star"></i>
+                    <span>{{ number_format($course->stats['average_rating'] ?? 0, 1) }}</span>
+                    <span class="text-muted">({{ $course->stats['total_reviews'] ?? 0 }})</span>
+                </div>
+            </div>
+            
+            <div class="price-duration">
+                <div class="price">
+                    @if($course->is_free)
+                        <span class="text-success fw-bold">Gratuit</span>
+                    @else
+                        @if($course->sale_price)
+                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                            <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
+                        @else
+                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
+                        @endif
+                    @endif
+                </div>
+                @if($course->sale_price && $course->sale_end_at)
+                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                        <i class="fas fa-fire me-1 text-danger"></i>
+                        <span class="countdown-text">
+                            <span class="countdown-years">0</span>a 
+                            <span class="countdown-months">0</span>m 
+                            <span class="countdown-days">0</span>j 
+                            <span class="countdown-hours">0</span>h 
+                            <span class="countdown-minutes">0</span>min
+                        </span>
+                    </div>
+                @endif
+            </div>
+            
+            <div class="card-actions">
+                <x-course-button :course="$course" size="small" :show-cart="false" />
+            </div>
+        </div>
+    </div>
+</div>
+

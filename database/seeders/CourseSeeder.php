@@ -45,6 +45,7 @@ class CourseSeeder extends Seeder
                 'short_description' => 'Maîtrisez Laravel et créez des applications web professionnelles',
                 'price' => 99.99,
                 'sale_price' => 79.99,
+                'sale_end_at' => now()->addDays(7), // Promotion de 7 jours
                 'level' => 'intermediate',
                 'language' => 'fr',
                 'is_published' => true,
@@ -95,6 +96,7 @@ class CourseSeeder extends Seeder
                 'short_description' => 'Stratégies complètes de marketing digital',
                 'price' => 199.99,
                 'sale_price' => 149.99,
+                'sale_end_at' => now()->addDays(14), // Promotion de 14 jours
                 'level' => 'intermediate',
                 'language' => 'fr',
                 'is_published' => true,
@@ -163,6 +165,111 @@ class CourseSeeder extends Seeder
                     'Négociation et réunions',
                     'Correspondance commerciale',
                     'Vocabulaire spécialisé des affaires'
+                ]
+            ],
+            // Nouveaux cours en promotion
+            [
+                'title' => 'React JS Avancé - Hooks et Redux',
+                'description' => 'Maîtrisez React JS avec les hooks modernes et Redux pour créer des applications web interactives et performantes. Ce cours avancé vous apprendra les meilleures pratiques et patterns React.',
+                'short_description' => 'React JS avancé avec hooks et Redux',
+                'price' => 129.99,
+                'sale_price' => 89.99,
+                'sale_end_at' => now()->addDays(5), // Promotion de 5 jours
+                'level' => 'advanced',
+                'language' => 'fr',
+                'is_published' => true,
+                'is_featured' => true,
+                'is_downloadable' => true,
+                'tags' => ['React', 'JavaScript', 'Redux', 'Frontend'],
+                'requirements' => [
+                    'Connaissances de base en JavaScript',
+                    'Familiarité avec React (niveau débutant)',
+                    'Node.js installé sur votre machine'
+                ],
+                'what_you_will_learn' => [
+                    'Maîtriser les hooks React (useState, useEffect, etc.)',
+                    'Implémenter Redux pour la gestion d\'état',
+                    'Optimiser les performances de vos applications',
+                    'Créer des composants réutilisables',
+                    'Tests et déploiement d\'applications React'
+                ]
+            ],
+            [
+                'title' => 'Python pour la Data Science',
+                'description' => 'Découvrez Python pour l\'analyse de données et la science des données. Apprenez à manipuler des données, créer des visualisations et construire des modèles de machine learning.',
+                'short_description' => 'Python pour l\'analyse de données et le ML',
+                'price' => 179.99,
+                'sale_price' => 129.99,
+                'sale_end_at' => now()->addDays(10), // Promotion de 10 jours
+                'level' => 'intermediate',
+                'language' => 'fr',
+                'is_published' => true,
+                'is_featured' => false,
+                'is_downloadable' => true,
+                'tags' => ['Python', 'Data Science', 'Machine Learning', 'Pandas'],
+                'requirements' => [
+                    'Connaissances de base en programmation',
+                    'Python 3.x installé',
+                    'Jupyter Notebook (optionnel mais recommandé)'
+                ],
+                'what_you_will_learn' => [
+                    'Manipuler des données avec Pandas',
+                    'Créer des visualisations avec Matplotlib',
+                    'Construire des modèles de machine learning',
+                    'Nettoyer et préparer des données',
+                    'Analyser des données réelles avec des projets pratiques'
+                ]
+            ],
+            [
+                'title' => 'Adobe Photoshop Maîtrise Complète',
+                'description' => 'Devenez expert en retouche photo et design graphique avec Adobe Photoshop. Ce cours complet couvre toutes les techniques professionnelles de retouche, montage et création graphique.',
+                'short_description' => 'Maîtrise complète d\'Adobe Photoshop',
+                'price' => 89.99,
+                'sale_price' => 59.99,
+                'sale_end_at' => now()->addDays(3), // Promotion de 3 jours (urgence)
+                'level' => 'beginner',
+                'language' => 'fr',
+                'is_published' => true,
+                'is_featured' => true,
+                'is_downloadable' => false,
+                'tags' => ['Photoshop', 'Design', 'Retouche Photo', 'Graphisme'],
+                'requirements' => [
+                    'Adobe Photoshop installé',
+                    'Ordinateur avec au moins 8GB RAM',
+                    'Motivation pour apprendre'
+                ],
+                'what_you_will_learn' => [
+                    'Interface et outils de Photoshop',
+                    'Techniques de retouche professionnelle',
+                    'Montage photo avancé',
+                    'Création de designs graphiques',
+                    'Optimisation pour le web et l\'impression'
+                ]
+            ],
+            [
+                'title' => 'Développement Mobile Flutter',
+                'description' => 'Créez des applications mobiles natives pour iOS et Android avec Flutter et Dart. Développez une fois, déployez partout avec un seul codebase.',
+                'short_description' => 'Applications mobiles avec Flutter et Dart',
+                'price' => 149.99,
+                'sale_price' => 109.99,
+                'sale_end_at' => now()->addDays(21), // Promotion de 21 jours
+                'level' => 'intermediate',
+                'language' => 'fr',
+                'is_published' => true,
+                'is_featured' => false,
+                'is_downloadable' => true,
+                'tags' => ['Flutter', 'Dart', 'Mobile Development', 'iOS', 'Android'],
+                'requirements' => [
+                    'Connaissances de base en programmation',
+                    'Flutter SDK installé',
+                    'Android Studio ou Xcode'
+                ],
+                'what_you_will_learn' => [
+                    'Fondamentaux de Dart et Flutter',
+                    'Créer des interfaces utilisateur fluides',
+                    'Gérer l\'état avec Provider et Bloc',
+                    'Accéder aux APIs et bases de données',
+                    'Publier sur App Store et Google Play'
                 ]
             ]
         ];

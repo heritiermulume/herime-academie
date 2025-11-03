@@ -5,324 +5,274 @@
 
 @section('content')
 <style>
-/* Horizontal Scrollable Categories */
-.categories-scroll-container {
+/* Prévenir le débordement horizontal sur mobile */
+html {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+}
+
+body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+}
+
+/* Modern Categories Design - Horizontal Scroll */
+.modern-categories-container {
     position: relative;
     margin: 0 -15px;
     padding: 0 15px;
     overflow: hidden;
 }
 
-.categories-scroll-container::before,
-.categories-scroll-container::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 30px;
-    z-index: 5;
-    pointer-events: none;
-}
-
-.categories-scroll-container::before {
-    left: 0;
-    background: linear-gradient(to right, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
-}
-
-.categories-scroll-container::after {
-    right: 0;
-    background: linear-gradient(to left, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
-}
-
-.categories-scroll-wrapper {
+.modern-categories-wrapper {
     display: flex;
     overflow-x: auto;
     gap: 1rem;
     padding: 1rem 0;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     scroll-snap-type: x mandatory;
-    overscroll-behavior-x: contain;
 }
 
-.categories-scroll-wrapper::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+.modern-categories-wrapper::-webkit-scrollbar {
+    display: none;
 }
 
-.category-item-scroll {
+.modern-category-item {
     flex: 0 0 auto;
-    width: 200px;
-    min-width: 200px;
+    width: 280px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     scroll-snap-align: start;
 }
 
-.category-item-scroll .category-card .card {
-    height: 200px;
+.modern-category-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.1);
+    border-color: #003366;
+    text-decoration: none;
+}
+
+.modern-category-icon {
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
     border-radius: 12px;
-    transition: all 0.3s ease;
-    width: 100%;
-}
-
-.category-item-scroll .category-card .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 35px rgba(0,0,0,0.25);
-}
-
-.category-item-scroll .category-card .card-body {
-    padding: 1rem;
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.category-item-scroll .category-card .category-icon {
-    margin-bottom: 0.75rem;
+.modern-category-content {
+    flex: 1;
+    min-width: 0;
 }
 
-.category-item-scroll .category-card .category-icon i {
-    font-size: 1.75rem;
-}
-
-.category-item-scroll .category-card .card-title {
-    font-size: 0.9rem;
+.modern-category-name {
+    font-size: 1rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
-    line-height: 1.2;
-    height: 1.2rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    color: #003366;
+    margin: 0 0 0.25rem 0;
 }
 
-.category-item-scroll .category-card .card-text {
-    font-size: 0.75rem;
-    line-height: 1.3;
-    margin-bottom: 0.75rem;
-    height: 2rem;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+.modern-category-desc {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin: 0;
+    line-height: 1.4;
 }
 
-.category-item-scroll .category-card .badge {
-    font-size: 0.7rem;
-    padding: 0.25rem 0.5rem !important;
-    border-radius: 12px;
-    align-self: center;
+.modern-category-arrow {
+    color: #6c757d;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
 }
 
-/* Responsive adjustments */
+.modern-category-item:hover .modern-category-arrow {
+    color: #003366;
+    transform: translateX(4px);
+}
+
+/* Mobile optimizations */
 @media (max-width: 767.98px) {
-    .categories-scroll-container {
-        margin: 0 -10px;
-        padding: 0 10px;
+    .container {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
     }
     
-    .categories-scroll-wrapper {
+    section {
+        overflow-x: hidden;
+    }
+    
+    .modern-categories-container {
+        margin: 0 -0.75rem;
+        padding: 0 0.75rem;
+    }
+    
+    .modern-categories-wrapper {
         gap: 0.75rem;
         padding: 0.75rem 0;
     }
     
-    .category-item-scroll {
-        width: 180px;
-        min-width: 180px;
+    .modern-category-item {
+        width: 240px;
+        padding: 0.875rem;
+        gap: 0.875rem;
     }
     
-    .category-item-scroll .category-card .card {
-        height: 180px;
-        border-radius: 10px;
+    .modern-category-icon {
+        width: 45px;
+        height: 45px;
+        min-width: 45px;
+        font-size: 1.25rem;
     }
     
-    .category-item-scroll .category-card .card-body {
-        padding: 0.75rem;
+    .modern-category-name {
+        font-size: 0.95rem;
     }
     
-    .category-item-scroll .category-card .category-icon i {
-        font-size: 1.5rem;
-    }
-    
-    .category-item-scroll .category-card .card-title {
-        font-size: 0.85rem;
-        line-height: 1.1;
-    }
-    
-    .category-item-scroll .category-card .card-text {
-        font-size: 0.7rem;
-        height: 1.75rem;
-        line-height: 1.2;
-    }
-    
-    .category-item-scroll .category-card .badge {
-        font-size: 0.65rem;
-        padding: 0.2rem 0.4rem !important;
+    .modern-category-desc {
+        font-size: 0.8rem;
     }
 }
 
 @media (max-width: 575.98px) {
-    .categories-scroll-container {
-        margin: 0 -5px;
-        padding: 0 5px;
+    .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
     }
     
-    .categories-scroll-wrapper {
+    .modern-categories-container {
+        margin: 0 -0.75rem;
+        padding: 0 0.75rem;
+    }
+    
+    .modern-categories-wrapper {
         gap: 0.5rem;
         padding: 0.5rem 0;
     }
     
-    .category-item-scroll {
-        width: 160px;
-        min-width: 160px;
+    .modern-category-item {
+        width: 200px;
+        padding: 0.75rem;
+        gap: 0.75rem;
     }
     
-    .category-item-scroll .category-card .card {
-        height: 160px;
-        border-radius: 8px;
+    .modern-category-icon {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        font-size: 1.1rem;
     }
     
-    .category-item-scroll .category-card .card-body {
-        padding: 0.5rem;
+    .modern-category-name {
+        font-size: 0.9rem;
     }
     
-    .category-item-scroll .category-card .category-icon {
-        margin-bottom: 0.5rem;
-    }
-    
-    .category-item-scroll .category-card .category-icon i {
-        font-size: 1.25rem;
-    }
-    
-    .category-item-scroll .category-card .card-title {
-        font-size: 0.8rem;
-        margin-bottom: 0.25rem;
-        line-height: 1.1;
-    }
-    
-    .category-item-scroll .category-card .card-text {
-        font-size: 0.65rem;
-        height: 1.5rem;
-        margin-bottom: 0.5rem;
-        line-height: 1.1;
-    }
-    
-    .category-item-scroll .category-card .badge {
-        font-size: 0.6rem;
-        padding: 0.15rem 0.3rem !important;
+    .modern-category-desc {
+        font-size: 0.75rem;
     }
 }
 
-/* Scroll Indicators */
-.scroll-indicators {
+/* Modern Scroll Buttons */
+.modern-scroll-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    pointer-events: none;
     z-index: 10;
-}
-
-.scroll-btn {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     border: none;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    width: 45px;
+    height: 45px;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     cursor: pointer;
     transition: all 0.3s ease;
-    pointer-events: auto;
     color: #003366;
-    font-size: 0.9rem;
+    font-size: 1rem;
 }
 
-.scroll-btn:hover {
+.modern-scroll-btn:hover {
     background: #003366;
     color: white;
-    transform: scale(1.1);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 4px 15px rgba(0, 51, 102, 0.3);
 }
 
-.scroll-btn:active {
-    transform: scale(0.95);
+.modern-scroll-btn:active {
+    transform: translateY(-50%) scale(0.95);
 }
 
-.scroll-left {
+.modern-scroll-left {
     left: 10px;
 }
 
-.scroll-right {
+.modern-scroll-right {
     right: 10px;
 }
 
-/* Mobile optimizations */
 @media (max-width: 767.98px) {
-    .scroll-indicators {
-        display: none;
-    }
-    
-    /* Improve touch scrolling */
-    .categories-scroll-wrapper {
-        -webkit-overflow-scrolling: touch;
-        scroll-snap-type: x mandatory;
-        overscroll-behavior-x: contain;
-    }
-    
-    /* Add touch feedback */
-    .category-item-scroll .category-card .card:active {
-        transform: scale(0.98);
-        transition: transform 0.1s ease;
-    }
-    
-    /* Improve text readability on small screens */
-    .category-item-scroll .category-card .card-title {
-        font-weight: 700;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
-    
-    .category-item-scroll .category-card .badge {
-        font-weight: 600;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    .modern-scroll-btn {
+        display: none !important;
     }
 }
 
 /* Mobile Progress Indicator */
-.mobile-progress {
+.modern-mobile-progress {
     display: flex;
     justify-content: center;
     margin-top: 1rem;
     padding: 0 1rem;
 }
 
-.progress-dots {
+.modern-progress-dots {
     display: flex;
     gap: 0.5rem;
     align-items: center;
 }
 
-.progress-dot {
-    width: 8px;
-    height: 8px;
+.modern-progress-dot {
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background-color: #ddd;
+    background: rgba(0, 51, 102, 0.2);
     transition: all 0.3s ease;
     cursor: pointer;
 }
 
-.progress-dot.active {
-    background-color: #003366;
-    transform: scale(1.2);
+.modern-progress-dot.active {
+    background: #003366;
+    width: 20px;
+    border-radius: 3px;
 }
 
-.progress-dot:hover {
-    background-color: #004080;
+.modern-progress-dot:hover {
+    background: #004080;
     transform: scale(1.1);
+}
+
+@media (min-width: 768px) {
+    .modern-mobile-progress {
+        display: none;
+    }
 }
 
 </style>
@@ -337,9 +287,9 @@
                     <div class="hero-image-bg">
                         <picture>
                             @if($banner->mobile_image)
-                                <source media="(max-width: 768px)" srcset="{{ str_starts_with($banner->mobile_image, 'http') ? $banner->mobile_image : asset($banner->mobile_image) }}">
+                                <source media="(max-width: 768px)" srcset="{{ str_starts_with($banner->mobile_image, 'http') ? $banner->mobile_image : \App\Helpers\FileHelper::banner($banner->mobile_image) }}">
                             @endif
-                            <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : asset($banner->image) }}" 
+                            <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : \App\Helpers\FileHelper::banner($banner->image) }}" 
                                  alt="{{ $banner->title }}" 
                                  class="hero-bg-image"
                                  loading="{{ $index === 0 ? 'eager' : 'lazy' }}">
@@ -349,7 +299,7 @@
                     <div class="hero-content-overlay">
                         <div class="container">
                             <div class="row align-items-center min-vh-80">
-                                <div class="col-lg-7 col-xl-6">
+                                <div class="col-12 col-lg-7 col-xl-6">
                                     <div class="hero-text-content">
                                         <h1 class="display-4 fw-bold mb-4">
                                             {!! $banner->title !!}
@@ -405,7 +355,7 @@
             @endforeach
             
             @if($banners->count() > 1)
-            <!-- Navigation Arrows -->
+            <!-- Navigation Arrows (Desktop only) -->
             <button class="hero-nav hero-nav-prev" id="heroPrev" aria-label="Précédent">
                 <i class="fas fa-chevron-left"></i>
             </button>
@@ -413,12 +363,20 @@
                 <i class="fas fa-chevron-right"></i>
             </button>
             
-            <!-- Dots Navigation -->
+            <!-- Dots Navigation (Desktop only) -->
             <div class="hero-dots">
                 @foreach($banners as $index => $banner)
                 <button class="hero-dot {{ $index === 0 ? 'active' : '' }}" 
                         data-slide="{{ $index }}"
                         aria-label="Aller à la bannière {{ $index + 1 }}"></button>
+                @endforeach
+            </div>
+            
+            <!-- Modern Mobile Navigation Indicator -->
+            <div class="hero-mobile-indicator" aria-hidden="true">
+                @foreach($banners as $index => $banner)
+                <span class="slide-indicator {{ $index === 0 ? 'active' : '' }}" 
+                      data-slide="{{ $index }}"></span>
                 @endforeach
             </div>
             @endif
@@ -434,7 +392,7 @@
                     <div class="hero-content-overlay">
                         <div class="container">
                             <div class="row align-items-center min-vh-80">
-                                <div class="col-lg-7 col-xl-6">
+                                <div class="col-12 col-lg-7 col-xl-6">
                                     <div class="hero-text-content">
                                         <h1 class="display-4 fw-bold mb-4">
                                             Apprenez sans limites avec 
@@ -463,64 +421,62 @@
     </div>
 </section>
 
-<!-- Categories Section -->
+<!-- Categories Section - Modern Design -->
 <section id="categories" class="categories-section py-5">
     <div class="container">
         <div class="row mb-4">
-            <div class="col-lg-8 mx-auto text-center">
+            <div class="col-12 col-lg-8 mx-auto text-center">
                 <h2 class="h3 fw-bold mb-2">Explorez nos catégories</h2>
                 <p class="text-muted" style="font-size: 0.95rem;">
                     Trouvez le cours parfait dans nos catégories spécialisées
                 </p>
             </div>
         </div>
-        <!-- Horizontal Scrollable Categories -->
-        <div class="categories-scroll-container">
-            <div class="categories-scroll-wrapper" id="categoriesScroll">
+        
+        <!-- Modern Category Pills -->
+        <div class="modern-categories-container">
+            <div class="modern-categories-wrapper" id="categoriesScroll">
                 @foreach($categories as $category)
-                <div class="category-item-scroll">
-                    <div class="category-card h-100">
-                        <a href="{{ route('courses.category', $category->slug) }}" class="text-decoration-none">
-                            <div class="card border-0 shadow h-100 hover-lift">
-                                <div class="card-body text-center p-3">
-                                    @if($category->icon)
-                                    <div class="category-icon mb-2">
-                                        <i class="{{ $category->icon }} fa-2x" style="color: {{ $category->color }}"></i>
-                                    </div>
-                                    @endif
-                                    <h6 class="card-title fw-bold mb-2">{{ Str::limit($category->name, 15) }}</h6>
-                                    <p class="card-text text-muted small mb-2" style="height: 2rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ Str::limit($category->description, 40) }}</p>
-                                </div>
-                            </div>
-                        </a>
+                <a href="{{ route('courses.category', $category->slug) }}" class="modern-category-item">
+                    @if($category->icon)
+                    <div class="modern-category-icon" style="background: linear-gradient(135deg, {{ $category->color ?? '#003366' }}, {{ $category->color ?? '#004080' }});">
+                        <i class="{{ $category->icon }}"></i>
                     </div>
-                </div>
+                    @endif
+                    <div class="modern-category-content">
+                        <h6 class="modern-category-name">{{ Str::limit($category->name, 20) }}</h6>
+                        @if($category->description)
+                        <p class="modern-category-desc">{{ Str::limit($category->description, 30) }}</p>
+                        @endif
+                    </div>
+                    <i class="fas fa-chevron-right modern-category-arrow"></i>
+                </a>
                 @endforeach
             </div>
             
-            <!-- Scroll Indicators -->
-            <div class="scroll-indicators">
-                <button class="scroll-btn scroll-left" onclick="scrollCategories('left')" aria-label="Faire défiler vers la gauche">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <button class="scroll-btn scroll-right" onclick="scrollCategories('right')" aria-label="Faire défiler vers la droite">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
-            
-            <!-- Mobile Progress Indicator -->
-            <div class="mobile-progress d-md-none">
-                <div class="progress-dots" id="progressDots"></div>
-            </div>
+            <!-- Navigation Buttons -->
+            <button class="modern-scroll-btn modern-scroll-left" onclick="scrollModernCategories('left')" aria-label="Faire défiler vers la gauche">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="modern-scroll-btn modern-scroll-right" onclick="scrollModernCategories('right')" aria-label="Faire défiler vers la droite">
+                <i class="fas fa-chevron-right"></i>
+            </button>
         </div>
+        
+        <!-- Mobile Progress Indicator -->
+        <div class="modern-mobile-progress d-md-none">
+            <div class="modern-progress-dots" id="modernProgressDots"></div>
+        </div>
+        
         <div class="text-center mt-5">
             <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
-                <a href="{{ route('courses.index') }}" class="btn btn-outline-primary btn-lg">
+            <a href="{{ route('categories.index') }}" class="btn btn-primary btn-lg">
+                    Voir toutes les catégories <i class="fas fa-th-large ms-2"></i>
+                </a>    
+            <a href="{{ route('courses.index') }}" class="btn btn-outline-primary btn-lg">
                     Voir tous les cours <i class="fas fa-arrow-right ms-2"></i>
                 </a>
-                <a href="{{ route('categories.index') }}" class="btn btn-primary btn-lg">
-                    Voir toutes les catégories <i class="fas fa-th-large ms-2"></i>
-                </a>
+
             </div>
         </div>
     </div>
@@ -531,7 +487,7 @@
 <section class="featured-courses py-5 bg-light">
     <div class="container">
         <div class="row mb-5">
-            <div class="col-lg-8 mx-auto text-center">
+            <div class="col-12 col-lg-8 mx-auto text-center">
                 <h2 class="display-5 fw-bold mb-3">Cours en vedette</h2>
                 <p class="lead text-muted">
                     Découvrez nos cours les plus populaires et les mieux notés
@@ -540,9 +496,11 @@
         </div>
         <div class="row g-3">
             @foreach($featuredCourses as $course)
-            <div class="col-lg-4 col-md-6 col-sm-6">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-4">
                 <div class="course-card">
                     <div class="card">
+                        <!-- Lien invisible pour rendre toute la carte cliquable -->
+                        <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
                         <div class="position-relative">
                             <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                  class="card-img-top" alt="{{ $course->title }}">
@@ -592,9 +550,18 @@
                                         @endif
                                     @endif
                                 </div>
-                                <small class="duration">
-                                    <i class="fas fa-clock me-1"></i>{{ $course->stats['total_duration'] ?? 0 }} min
-                                </small>
+                                @if($course->sale_price && $course->sale_end_at)
+                                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                        <i class="fas fa-fire me-1 text-danger"></i>
+                                        <span class="countdown-text">
+                                            <span class="countdown-years">0</span>a 
+                                            <span class="countdown-months">0</span>m 
+                                            <span class="countdown-days">0</span>j 
+                                            <span class="countdown-hours">0</span>h 
+                                            <span class="countdown-minutes">0</span>min
+                                        </span>
+                                    </div>
+                                @endif
                             </div>
                             
                             <div class="card-actions">
@@ -620,7 +587,7 @@
 <section class="popular-courses py-5">
     <div class="container">
         <div class="row mb-5">
-            <div class="col-lg-8 mx-auto text-center">
+            <div class="col-12 col-lg-8 mx-auto text-center">
                 <h2 class="display-5 fw-bold mb-3">Cours populaires</h2>
                 <p class="lead text-muted">
                     Les cours les plus suivis par notre communauté
@@ -629,9 +596,11 @@
         </div>
         <div class="row g-3">
             @foreach($popularCourses as $course)
-            <div class="col-lg-3 col-md-6 col-sm-6">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                 <div class="course-card">
                     <div class="card">
+                        <!-- Lien invisible pour rendre toute la carte cliquable -->
+                        <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
                         <div class="position-relative">
                             <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                  class="card-img-top" alt="{{ $course->title }}">
@@ -681,9 +650,18 @@
                                         @endif
                                     @endif
                                 </div>
-                                <small class="duration">
-                                    <i class="fas fa-clock me-1"></i>{{ $course->stats['total_duration'] ?? 0 }} min
-                                </small>
+                                @if($course->sale_price && $course->sale_end_at)
+                                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                        <i class="fas fa-fire me-1 text-danger"></i>
+                                        <span class="countdown-text">
+                                            <span class="countdown-years">0</span>a 
+                                            <span class="countdown-months">0</span>m 
+                                            <span class="countdown-days">0</span>j 
+                                            <span class="countdown-hours">0</span>h 
+                                            <span class="countdown-minutes">0</span>min
+                                        </span>
+                                    </div>
+                                @endif
                             </div>
                             
                             <div class="card-actions">
@@ -704,12 +682,12 @@
 </section>
 @endif
 
-<!-- Testimonials Section -->
+<!-- Testimonials Section - Modern Design -->
 @if($testimonials->count() > 0)
 <section class="testimonials py-5" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
     <div class="container">
         <div class="row mb-5">
-            <div class="col-lg-8 mx-auto text-center">
+            <div class="col-12 col-lg-8 mx-auto text-center">
                 <h2 class="display-5 fw-bold mb-3 text-dark">Ce que disent nos étudiants</h2>
                 <p class="lead text-muted">
                     Découvrez les témoignages de notre communauté
@@ -717,45 +695,33 @@
             </div>
         </div>
         
-        <!-- Testimonials Grid -->
-        <div class="testimonials-grid">
-            <div class="testimonials-container">
-                @foreach($testimonials as $index => $testimonial)
-                <div class="testimonial-item {{ $index === 0 ? 'active' : '' }}" data-index="{{ $index }}">
-                    <div class="testimonial-card">
-                        <div class="card h-100 border-0 shadow-sm">
-                            <div class="card-body p-4">
-                                <!-- Quote Icon -->
-                                <div class="quote-icon mb-3">
-                                    <i class="fas fa-quote-left text-primary fs-1"></i>
-                                </div>
-                                
-                                <!-- Testimonial Text -->
-                                <blockquote class="testimonial-text mb-4">
-                                    <p class="mb-0 fst-italic">"{{ $testimonial->testimonial }}"</p>
-                                </blockquote>
-                                
-                                <!-- Rating -->
-                                <div class="rating mb-3">
-                                    @for($i = 1; $i <= 5; $i++)
-                                        <i class="fas fa-star {{ $i <= $testimonial->rating ? 'text-warning' : 'text-muted' }}"></i>
-                                    @endfor
-                                </div>
-                                
-                                <!-- Author Info -->
-                                <div class="author-info d-flex align-items-center">
-                                    <div class="author-avatar me-3">
-                                        <img src="{{ $testimonial->photo ? (str_starts_with($testimonial->photo, 'http') ? $testimonial->photo : Storage::url($testimonial->photo)) : 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->name) . '&background=003366&color=fff&size=60' }}" 
-                                             alt="{{ $testimonial->name }}" class="rounded-circle" width="50" height="50">
-                                    </div>
-                                    <div class="author-details">
-                                        <h6 class="mb-0 fw-bold text-dark">{{ $testimonial->name }}</h6>
-                                        <small class="text-muted">{{ $testimonial->title }}</small>
-                                        @if($testimonial->company)
-                                            <br><small class="text-muted">{{ $testimonial->company }}</small>
-                                        @endif
-                                    </div>
-                                </div>
+        <!-- Modern Testimonials Horizontal Scroll -->
+        <div class="modern-testimonials-container">
+            <div class="modern-testimonials-wrapper" id="testimonialsScroll">
+                @foreach($testimonials as $testimonial)
+                <div class="modern-testimonial-item">
+                    <div class="modern-testimonial-card">
+                        <!-- Rating -->
+                        <div class="modern-testimonial-rating">
+                            @for($i = 1; $i <= 5; $i++)
+                                <i class="fas fa-star {{ $i <= $testimonial->rating ? 'text-warning' : 'text-muted' }}"></i>
+                            @endfor
+                        </div>
+                        
+                        <!-- Testimonial Text -->
+                        <div class="modern-testimonial-text">
+                            <p>"{{ Str::limit($testimonial->testimonial, 150) }}"</p>
+                        </div>
+                        
+                        <!-- Author Info -->
+                        <div class="modern-testimonial-author">
+                            <div class="modern-testimonial-avatar">
+                                <img src="{{ $testimonial->photo ? (str_starts_with($testimonial->photo, 'http') ? $testimonial->photo : \App\Helpers\FileHelper::url($testimonial->photo)) : 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->name) . '&background=003366&color=fff&size=50' }}" 
+                                     alt="{{ $testimonial->name }}" class="rounded-circle">
+                            </div>
+                            <div class="modern-testimonial-info">
+                                <h6 class="modern-testimonial-name">{{ $testimonial->name }}</h6>
+                                <p class="modern-testimonial-title">{{ $testimonial->title }}</p>
                             </div>
                         </div>
                     </div>
@@ -763,20 +729,18 @@
                 @endforeach
             </div>
             
-            <!-- Navigation -->
-            <div class="testimonials-navigation text-center mt-4">
-                <button class="btn btn-outline-primary me-2" id="prevBtn">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <div class="dots-container d-inline-block">
-                    @foreach($testimonials as $index => $testimonial)
-                    <button class="dot {{ $index === 0 ? 'active' : '' }}" data-index="{{ $index }}"></button>
-                    @endforeach
-                </div>
-                <button class="btn btn-outline-primary ms-2" id="nextBtn">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
+            <!-- Navigation Buttons -->
+            <button class="modern-testimonial-scroll-btn modern-testimonial-scroll-left" onclick="scrollModernTestimonials('left')" aria-label="Faire défiler vers la gauche">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="modern-testimonial-scroll-btn modern-testimonial-scroll-right" onclick="scrollModernTestimonials('right')" aria-label="Faire défiler vers la droite">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        
+        <!-- Mobile Progress Indicator -->
+        <div class="modern-testimonial-mobile-progress d-md-none">
+            <div class="modern-testimonial-progress-dots" id="modernTestimonialProgressDots"></div>
         </div>
     </div>
 </section>
@@ -787,7 +751,7 @@
 <section class="trending-courses py-5 bg-light">
     <div class="container">
         <div class="row mb-5">
-            <div class="col-lg-8 mx-auto text-center">
+            <div class="col-12 col-lg-8 mx-auto text-center">
                 <h2 class="display-5 fw-bold mb-3">Cours tendance</h2>
                 <p class="lead text-muted">
                     Les cours les plus suivis cette semaine
@@ -796,9 +760,11 @@
         </div>
         <div class="row g-4">
             @foreach($trendingCourses as $course)
-            <div class="col-lg-3 col-md-6">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                 <div class="course-card">
                     <div class="card">
+                        <!-- Lien invisible pour rendre toute la carte cliquable -->
+                        <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
                         <div class="position-relative">
                             <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                  class="card-img-top" alt="{{ $course->title }}">
@@ -846,9 +812,18 @@
                                         @endif
                                     @endif
                                 </div>
-                                <small class="duration">
-                                    <i class="fas fa-clock me-1"></i>{{ $course->stats['total_duration'] ?? 0 }} min
-                                </small>
+                                @if($course->sale_price && $course->sale_end_at)
+                                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                        <i class="fas fa-fire me-1 text-danger"></i>
+                                        <span class="countdown-text">
+                                            <span class="countdown-years">0</span>a 
+                                            <span class="countdown-months">0</span>m 
+                                            <span class="countdown-days">0</span>j 
+                                            <span class="countdown-hours">0</span>h 
+                                            <span class="countdown-minutes">0</span>min
+                                        </span>
+                                    </div>
+                                @endif
                             </div>
                             
                             <div class="card-actions">
@@ -870,26 +845,26 @@
 @endif
 
 <!-- CTA Section -->
-<section class="cta-section py-5 bg-primary text-white">
+<section class="cta-section bg-primary text-white py-5">
     <div class="container">
         <div class="row align-items-center">
-            <div class="col-lg-8 text-center text-lg-start">
+            <div class="col-12 col-lg-8 text-center text-lg-start mb-4 mb-lg-0">
                 <h2 class="display-5 fw-bold mb-3">Prêt à commencer votre parcours d'apprentissage ?</h2>
                 <p class="lead mb-0">
                     Rejoignez des milliers d'étudiants qui transforment leur carrière avec Herime Academie.
                 </p>
             </div>
-            <div class="col-lg-4 text-center text-lg-end">
+            <div class="col-12 col-lg-4 text-center text-lg-end">
                 @auth
                     <a href="{{ route('courses.index') }}" class="btn btn-warning btn-lg px-4">
                         <i class="fas fa-play me-2"></i>Explorer les cours
                     </a>
                 @else
                     <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-end">
-                        <a href="{{ route('register') }}" class="btn btn-warning btn-lg px-4">
+                        <a href="{{ route('register') }}" class="btn btn-warning btn-lg px-4 w-100 w-sm-auto">
                             <i class="fas fa-user-plus me-2"></i>S'inscrire gratuitement
                         </a>
-                        <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg px-4">
+                        <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg px-4 w-100 w-sm-auto">
                             <i class="fas fa-sign-in-alt me-2"></i>Se connecter
                         </a>
                     </div>
@@ -925,6 +900,7 @@ function scrollToCategories() {
 document.addEventListener('DOMContentLoaded', function() {
     const heroSlides = document.querySelectorAll('.hero-slide');
     const heroDots = document.querySelectorAll('.hero-dot');
+    const mobileIndicators = document.querySelectorAll('.slide-indicator');
     const prevBtn = document.getElementById('heroPrev');
     const nextBtn = document.getElementById('heroNext');
     
@@ -935,13 +911,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const autoSlideDelay = 4500; // 4.5 seconds
     
     function showSlide(index) {
-        // Remove active class from all slides and dots
+        // Remove active class from all slides, dots and mobile indicators
         heroSlides.forEach(slide => slide.classList.remove('active'));
         heroDots.forEach(dot => dot.classList.remove('active'));
+        mobileIndicators.forEach(indicator => indicator.classList.remove('active'));
         
-        // Add active class to current slide and dot
+        // Add active class to current slide, dot and mobile indicator
         heroSlides[index].classList.add('active');
         heroDots[index].classList.add('active');
+        if (mobileIndicators[index]) {
+            mobileIndicators[index].classList.add('active');
+        }
         
         currentSlide = index;
     }
@@ -1081,96 +1061,324 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Les fonctions showNotification et updateCartCount sont maintenant définies globalement dans app.blade.php
 
-// Testimonials Carousel
+// Modern Testimonials Horizontal Scroll
+function scrollModernTestimonials(direction) {
+    const scrollContainer = document.getElementById('testimonialsScroll');
+    const scrollAmount = 300;
+    
+    if (scrollContainer) {
+        if (direction === 'left') {
+            scrollContainer.scrollBy({
+                left: -scrollAmount,
+                behavior: 'smooth'
+            });
+        } else {
+            scrollContainer.scrollBy({
+                left: scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    }
+}
+
+// Auto-hide testimonial scroll buttons and mobile progress with auto-scroll
 document.addEventListener('DOMContentLoaded', function() {
-    const testimonialItems = document.querySelectorAll('.testimonial-item');
-    const dots = document.querySelectorAll('.dot');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
+    const scrollContainer = document.getElementById('testimonialsScroll');
+    const leftBtn = document.querySelector('.modern-testimonial-scroll-left');
+    const rightBtn = document.querySelector('.modern-testimonial-scroll-right');
+    const progressDots = document.getElementById('modernTestimonialProgressDots');
+    const testimonialsContainer = document.querySelector('.modern-testimonials-container');
     
-    if (testimonialItems.length === 0) return;
+    if (!scrollContainer) return;
     
-    let currentIndex = 0;
-    let autoSlideInterval;
+    let autoScrollInterval;
+    let currentPage = 0;
+    let totalPages = 0;
+    let isUserInteracting = false;
     
-    function showTestimonial(index) {
-        // Remove active class from all items and dots
-        testimonialItems.forEach(item => item.classList.remove('active'));
-        dots.forEach(dot => dot.classList.remove('active'));
+    function createProgressDots() {
+        if (!progressDots) return;
         
-        // Add active class to current item and dot
-        testimonialItems[index].classList.add('active');
-        dots[index].classList.add('active');
+        const items = document.querySelectorAll('.modern-testimonial-item');
+        const totalItems = items.length;
+        const visibleItems = Math.ceil(scrollContainer.clientWidth / 320);
+        totalPages = Math.max(1, Math.ceil(totalItems / visibleItems));
         
-        currentIndex = index;
+        progressDots.innerHTML = '';
+        for (let i = 0; i < totalPages; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'modern-testimonial-progress-dot';
+            if (i === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => {
+                scrollToPage(i);
+                restartAutoScroll();
+            });
+            progressDots.appendChild(dot);
+        }
     }
     
-    function nextTestimonial() {
-        const nextIndex = (currentIndex + 1) % testimonialItems.length;
-        showTestimonial(nextIndex);
+    function scrollToPage(pageIndex) {
+        const items = document.querySelectorAll('.modern-testimonial-item');
+        const visibleItems = Math.ceil(scrollContainer.clientWidth / 320);
+        const targetIndex = pageIndex * visibleItems;
+        const targetItem = items[targetIndex];
+        
+        if (targetItem) {
+            // Use scrollBy instead of scrollIntoView to avoid page scrolling
+            const scrollAmount = targetItem.offsetLeft - scrollContainer.scrollLeft;
+            scrollContainer.scrollBy({
+                left: scrollAmount,
+                behavior: 'smooth'
+            });
+            currentPage = pageIndex;
+        }
     }
     
-    function prevTestimonial() {
-        const prevIndex = currentIndex === 0 ? testimonialItems.length - 1 : currentIndex - 1;
-        showTestimonial(prevIndex);
+    function nextPage() {
+        if (totalPages <= 1) return;
+        
+        const nextPageIndex = (currentPage + 1) % totalPages;
+        
+        // Use scrollBy instead of scrollIntoView to avoid page scrolling
+        const items = document.querySelectorAll('.modern-testimonial-item');
+        const visibleItems = Math.ceil(scrollContainer.clientWidth / 320);
+        const targetIndex = nextPageIndex * visibleItems;
+        const targetItem = items[targetIndex];
+        
+        if (targetItem) {
+            const scrollAmount = targetItem.offsetLeft - scrollContainer.scrollLeft;
+            scrollContainer.scrollBy({
+                left: scrollAmount,
+                behavior: 'smooth'
+            });
+            currentPage = nextPageIndex;
+        }
     }
     
-    function startAutoSlide() {
-        autoSlideInterval = setInterval(nextTestimonial, 4000); // Change every 4 seconds
+    function startAutoScroll() {
+        stopAutoScroll();
+        autoScrollInterval = setInterval(() => {
+            if (!isUserInteracting && totalPages > 1) {
+                nextPage();
+            }
+        }, 4500); // Change every 4.5 seconds
     }
     
-    function stopAutoSlide() {
-        clearInterval(autoSlideInterval);
+    function stopAutoScroll() {
+        if (autoScrollInterval) {
+            clearInterval(autoScrollInterval);
+        }
+    }
+    
+    function restartAutoScroll() {
+        stopAutoScroll();
+        startAutoScroll();
+    }
+    
+    function updateScrollButtons() {
+        const scrollLeft = scrollContainer.scrollLeft;
+        const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+        
+        if (leftBtn) {
+            if (scrollLeft <= 0) {
+                leftBtn.style.opacity = '0.5';
+                leftBtn.style.pointerEvents = 'none';
+            } else {
+                leftBtn.style.opacity = '1';
+                leftBtn.style.pointerEvents = 'auto';
+            }
+        }
+        
+        if (rightBtn) {
+            if (scrollLeft >= maxScroll - 10) {
+                rightBtn.style.opacity = '0.5';
+                rightBtn.style.pointerEvents = 'none';
+            } else {
+                rightBtn.style.opacity = '1';
+                rightBtn.style.pointerEvents = 'auto';
+            }
+        }
+    }
+    
+    function updateProgressDots() {
+        if (!progressDots) return;
+        
+        const scrollLeft = scrollContainer.scrollLeft;
+        const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+        const progress = Math.min(scrollLeft / maxScroll, 1);
+        
+        const dots = progressDots.querySelectorAll('.modern-testimonial-progress-dot');
+        const activeIndex = Math.round(progress * (dots.length - 1));
+        
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === activeIndex);
+        });
+        
+        currentPage = activeIndex;
     }
     
     // Initialize
-    showTestimonial(0);
-    startAutoSlide();
+    createProgressDots();
+    updateScrollButtons();
+    updateProgressDots();
+    startAutoScroll();
     
-    // Navigation buttons
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            stopAutoSlide();
-            nextTestimonial();
-            startAutoSlide();
+    // Pause on hover/interaction
+    if (testimonialsContainer) {
+        testimonialsContainer.addEventListener('mouseenter', () => {
+            isUserInteracting = true;
+            stopAutoScroll();
+        });
+        
+        testimonialsContainer.addEventListener('mouseleave', () => {
+            isUserInteracting = false;
+            startAutoScroll();
         });
     }
     
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-            stopAutoSlide();
-            prevTestimonial();
-            startAutoSlide();
-        });
-    }
-    
-    // Dot navigation
-    dots.forEach((dot, index) => {
-        dot.addEventListener('click', () => {
-            stopAutoSlide();
-            showTestimonial(index);
-            startAutoSlide();
-        });
+    // User scroll detection
+    let scrollTimeout;
+    scrollContainer.addEventListener('scroll', () => {
+        updateScrollButtons();
+        updateProgressDots();
+        
+        isUserInteracting = true;
+        clearTimeout(scrollTimeout);
+        
+        scrollTimeout = setTimeout(() => {
+            isUserInteracting = false;
+        }, 3000);
     });
     
-    // Pause on hover
-    const testimonialsGrid = document.querySelector('.testimonials-grid');
-    if (testimonialsGrid) {
-        testimonialsGrid.addEventListener('mouseenter', stopAutoSlide);
-        testimonialsGrid.addEventListener('mouseleave', startAutoSlide);
+    // Window resize
+    window.addEventListener('resize', () => {
+        createProgressDots();
+        updateScrollButtons();
+        updateProgressDots();
+        restartAutoScroll();
+    });
+});
+
+// Modern Categories Horizontal Scroll
+function scrollModernCategories(direction) {
+    const scrollContainer = document.getElementById('categoriesScroll');
+    const scrollAmount = 300; // Distance de scroll en pixels
+    
+    if (scrollContainer) {
+        if (direction === 'left') {
+            scrollContainer.scrollBy({
+                left: -scrollAmount,
+                behavior: 'smooth'
+            });
+        } else {
+            scrollContainer.scrollBy({
+                left: scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    }
+}
+
+// Auto-hide scroll buttons and mobile progress
+document.addEventListener('DOMContentLoaded', function() {
+    const scrollContainer = document.getElementById('categoriesScroll');
+    const leftBtn = document.querySelector('.modern-scroll-left');
+    const rightBtn = document.querySelector('.modern-scroll-right');
+    const progressDots = document.getElementById('modernProgressDots');
+    
+    if (!scrollContainer) return;
+    
+    // Create mobile progress dots
+    function createProgressDots() {
+        if (!progressDots) return;
+        
+        const items = document.querySelectorAll('.modern-category-item');
+        const totalItems = items.length;
+        const visibleItems = Math.ceil(scrollContainer.clientWidth / 280); // Approximate visible count
+        const totalPages = Math.ceil(totalItems / visibleItems);
+        
+        progressDots.innerHTML = '';
+        for (let i = 0; i < totalPages; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'modern-progress-dot';
+            if (i === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => scrollToPage(i));
+            progressDots.appendChild(dot);
+        }
     }
     
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') {
-            stopAutoSlide();
-            prevTestimonial();
-            startAutoSlide();
-        } else if (e.key === 'ArrowRight') {
-            stopAutoSlide();
-            nextTestimonial();
-            startAutoSlide();
+    // Scroll to specific page
+    function scrollToPage(pageIndex) {
+        const items = document.querySelectorAll('.modern-category-item');
+        const visibleItems = Math.ceil(scrollContainer.clientWidth / 280);
+        const targetIndex = pageIndex * visibleItems;
+        const targetItem = items[targetIndex];
+        
+        if (targetItem) {
+            targetItem.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'start'
+            });
         }
+    }
+    
+    function updateScrollButtons() {
+        const scrollLeft = scrollContainer.scrollLeft;
+        const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+        
+        if (leftBtn) {
+            if (scrollLeft <= 0) {
+                leftBtn.style.opacity = '0.5';
+                leftBtn.style.pointerEvents = 'none';
+            } else {
+                leftBtn.style.opacity = '1';
+                leftBtn.style.pointerEvents = 'auto';
+            }
+        }
+        
+        if (rightBtn) {
+            if (scrollLeft >= maxScroll - 10) {
+                rightBtn.style.opacity = '0.5';
+                rightBtn.style.pointerEvents = 'none';
+            } else {
+                rightBtn.style.opacity = '1';
+                rightBtn.style.pointerEvents = 'auto';
+            }
+        }
+    }
+    
+    function updateProgressDots() {
+        if (!progressDots) return;
+        
+        const scrollLeft = scrollContainer.scrollLeft;
+        const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+        const progress = Math.min(scrollLeft / maxScroll, 1);
+        
+        const dots = progressDots.querySelectorAll('.modern-progress-dot');
+        const activeIndex = Math.round(progress * (dots.length - 1));
+        
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === activeIndex);
+        });
+    }
+    
+    // Initial setup
+    createProgressDots();
+    updateScrollButtons();
+    updateProgressDots();
+    
+    // Update on scroll
+    scrollContainer.addEventListener('scroll', () => {
+        updateScrollButtons();
+        updateProgressDots();
+    });
+    
+    // Update on resize
+    window.addEventListener('resize', () => {
+        createProgressDots();
+        updateScrollButtons();
+        updateProgressDots();
     });
 });
 </script>
@@ -1178,11 +1386,89 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @push('styles')
 <style>
+/* CTA Section - No gap with footer */
+.cta-section {
+    margin-bottom: 0 !important;
+    padding-top: 5rem !important;
+    padding-bottom: 4rem !important;
+}
+
+/* Version web/desktop - Plus d'espace pour la section CTA */
+@media (min-width: 992px) {
+    .cta-section {
+        padding-top: 6rem !important;
+        padding-bottom: 5rem !important;
+    }
+    
+    .cta-section .container {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .cta-section {
+        padding-top: 7rem !important;
+        padding-bottom: 6rem !important;
+    }
+    
+    .cta-section .container {
+        padding-left: 3rem;
+        padding-right: 3rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .cta-section {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Centrer le logo du footer sur mobile */
+    .footer .col-lg-4:first-child {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center !important;
+    }
+    
+    .footer-logo {
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .cta-section {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Centrer le logo du footer sur mobile */
+    .footer .col-lg-4:first-child {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center !important;
+    }
+    
+    .footer-logo {
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
 /* Modern Hero Section with Carousel */
 .hero-section-modern {
     position: relative;
     min-height: 100vh;
     overflow: hidden;
+    margin-top: -70px;
+    padding-top: 80px;
 }
 
 .hero-carousel-container {
@@ -1327,6 +1613,8 @@ document.addEventListener('DOMContentLoaded', function() {
     transform: translateX(-50%);
     z-index: 10;
     display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 12px;
 }
 
@@ -1349,7 +1637,9 @@ document.addEventListener('DOMContentLoaded', function() {
 .hero-dot.active {
     background: white;
     width: 40px;
-    border-radius: 6px;
+    height: 4px;
+    border-radius: 2px;
+    border: none;
 }
 
 /* Mobile Responsive */
@@ -1366,7 +1656,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
+/* Desktop - Hero starts right after navbar */
+@media (min-width: 992px) {
+    .hero-section-modern {
+        margin-top: -70px;
+        padding-top: 80px;
+    }
+    
+    .hero-content-overlay .container {
+        padding-top: 20px;
+    }
+}
+
 @media (max-width: 991.98px) {
+    .hero-section-modern {
+        margin-top: -60px;
+        padding-top: 70px;
+    }
+    
     .hero-container {
         height: 80vh;
         min-height: 500px;
@@ -1383,25 +1690,25 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
     
+    .hero-content-overlay .container {
+        padding-top: 10px;
+    }
+    
     .hero-text-content {
         max-width: 100%;
         padding: 1.5rem 0;
     }
-    
-    .hero-text-content h1 {
-        font-size: 2.5rem; /* text-4xl */
-    }
-    
-    .hero-text-content p {
-        font-size: 1.125rem; /* text-lg */
-    }
 }
 
 @media (max-width: 767.98px) {
+    /* Hero section pleine largeur - sans !important pour ne pas casser Bootstrap */
     .hero-section-modern {
         position: relative;
         min-height: auto;
         height: auto;
+        width: 100%;
+        margin-top: -60px;
+        padding-top: 70px;
     }
     
     .hero-carousel-container {
@@ -1411,6 +1718,7 @@ document.addEventListener('DOMContentLoaded', function() {
         padding-bottom: 56.25%; /* 16:9 ratio pour le conteneur */
         min-height: 0;
         overflow: hidden;
+        margin: 0;
     }
     
     .hero-slide {
@@ -1420,6 +1728,8 @@ document.addEventListener('DOMContentLoaded', function() {
         width: 100%;
         height: 100%;
         z-index: 0;
+        margin: 0;
+        padding: 0;
     }
     
     .hero-slide.active {
@@ -1427,12 +1737,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .hero-container {
-        /* Format 16:9 pour mobile (Full HD) */
         position: relative;
         width: 100%;
         height: 100%;
         padding-bottom: 0;
         min-height: 0;
+        margin: 0;
     }
     
     .hero-image-bg {
@@ -1441,6 +1751,8 @@ document.addEventListener('DOMContentLoaded', function() {
         left: 0;
         width: 100%;
         height: 100%;
+        margin: 0;
+        padding: 0;
     }
     
     .hero-bg-image {
@@ -1456,6 +1768,8 @@ document.addEventListener('DOMContentLoaded', function() {
         left: 0;
         width: 100%;
         height: 100%;
+        margin: 0;
+        padding: 0;
         background: linear-gradient(
             90deg,
             rgba(0, 51, 102, 0.85) 0%,
@@ -1465,6 +1779,13 @@ document.addEventListener('DOMContentLoaded', function() {
             rgba(0, 51, 102, 0.2) 85%,
             transparent 100%
         );
+    }
+    
+    /* Container Bootstrap dans hero - ajuster seulement le padding */
+    .hero-content-overlay .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        padding-top: 10px;
     }
     
     .min-vh-80 {
@@ -1483,75 +1804,108 @@ document.addEventListener('DOMContentLoaded', function() {
         border-radius: 0;
         backdrop-filter: none;
         box-shadow: none;
-        max-width: 100%;
+        max-width: 65vw;
         margin: 0;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .hero-text-content h1 {
-        font-size: 1.4rem;
+        font-size: 1.6rem;
         text-align: left;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.75rem;
         text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9);
         line-height: 1.25;
         font-weight: 700;
+        max-width: 65vw;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .hero-text-content p {
-        font-size: 0.9rem;
+        font-size: 0.875rem;
         text-align: left;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.875rem;
         text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.9);
         line-height: 1.4;
+        max-width: 65vw;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .hero-text-content .d-flex {
         justify-content: flex-start;
-        gap: 0.5rem !important;
+        gap: 0.25rem !important;
         flex-wrap: wrap;
     }
     
-    .hero-text-content .btn {
-        font-size: 0.8rem;
-        padding: 0.5rem 0.9rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    .hero-text-content .d-flex.flex-column .btn {
+        width: auto !important;
+        align-self: flex-start;
+    }
+    
+    .hero-text-content .btn,
+    .hero-text-content .btn.btn-lg {
+        font-size: 0.875rem !important;
+        padding: 0.35rem 0.65rem !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         white-space: nowrap;
-        flex: 0 0 auto;
-        max-width: fit-content;
+        width: auto;
+        max-width: none;
+        line-height: 1.4 !important;
+        min-height: auto !important;
+        height: auto !important;
     }
     
-    .hero-text-content .btn i {
-        font-size: 0.75rem;
-        margin-right: 0.25rem;
+    .hero-text-content .btn.px-4 {
+        padding-left: 0.65rem !important;
+        padding-right: 0.65rem !important;
     }
     
-    /* Navigation arrows on mobile */
+    .hero-text-content .btn i,
+    .hero-text-content .btn.btn-lg i {
+        font-size: 0.875rem !important;
+        margin-right: 0.25rem !important;
+    }
+    
+    /* Modern Mobile Navigation - Hide old navigation */
     .hero-nav {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
+        display: none !important;
     }
     
-    .hero-nav-prev {
-        left: 10px;
-    }
-    
-    .hero-nav-next {
-        right: 10px;
-    }
-    
-    /* Dots navigation on mobile */
     .hero-dots {
+        display: none !important;
+    }
+    
+    /* Nouveau système de navigation moderne pour mobile */
+    .hero-mobile-indicator {
+        position: absolute;
         bottom: 15px;
-        gap: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        padding: 8px 12px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
     }
     
-    .hero-dot {
-        width: 8px;
-        height: 8px;
+    .hero-mobile-indicator .slide-indicator {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.4);
+        transition: all 0.3s ease;
     }
     
-    .hero-dot.active {
-        width: 24px;
+    .hero-mobile-indicator .slide-indicator.active {
+        width: 20px;
+        background: white;
+        border-radius: 3px;
     }
     
     /* Pas de dégradé en bas sur mobile */
@@ -1574,28 +1928,63 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .hero-text-content {
         padding: 0;
-        max-width: 100%;
+        max-width: 65vw;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .hero-text-content h1 {
-        font-size: 1.2rem;
-        margin-bottom: 0.35rem;
+        font-size: 1.4rem;
+        margin-bottom: 0.625rem;
         line-height: 1.2;
+        max-width: 65vw;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .hero-text-content p {
         font-size: 0.8rem;
-        margin-bottom: 0.6rem;
+        margin-bottom: 0.75rem;
         line-height: 1.35;
+        max-width: 65vw;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
-    .hero-text-content .btn {
-        font-size: 0.75rem;
-        padding: 0.45rem 0.8rem;
+    .hero-text-content .d-flex.flex-column .btn {
+        width: auto !important;
+        align-self: flex-start;
     }
     
-    .hero-text-content .btn i {
-        font-size: 0.7rem;
+    .hero-text-content .btn,
+    .hero-text-content .btn.btn-lg {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.55rem !important;
+        width: auto;
+        max-width: none;
+        line-height: 1.35 !important;
+        min-height: auto !important;
+        height: auto !important;
+    }
+    
+    .hero-text-content .btn.px-4 {
+        padding-left: 0.55rem !important;
+        padding-right: 0.55rem !important;
+    }
+    
+    .hero-text-content .btn i,
+    .hero-text-content .btn.btn-lg i {
+        font-size: 0.8rem !important;
+        margin-right: 0.2rem !important;
+    }
+    
+    /* Les styles pour très petits écrans sont déjà dans le media query mobile */
+    .hero-nav {
+        display: none !important;
+    }
+    
+    .hero-dots {
+        display: none !important;
     }
 }
 
@@ -1621,147 +2010,277 @@ document.addEventListener('DOMContentLoaded', function() {
     border-color: #003366 !important;
 }
 
-.course-card .card:hover {
-    border-color: #ffcc33 !important;
-}
+/* Styles harmonisés - utilisent les styles globaux de app.blade.php */
 
 .rating i {
     font-size: 0.9em; /* relative to parent */
 }
 
-.testimonial-card .card {
-    border-left: 4px solid #ffcc33 !important;
-}
-
-/* Testimonials Grid Styles */
-.testimonials-grid {
+/* Modern Testimonials Horizontal Scroll */
+.modern-testimonials-container {
     position: relative;
+    margin: 0 -15px;
+    padding: 0 15px;
+    overflow: hidden;
 }
 
-.testimonials-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
+.modern-testimonials-wrapper {
+    display: flex;
+    overflow-x: auto;
+    gap: 1rem;
+    padding: 1rem 0;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x mandatory;
 }
 
-.testimonial-item {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: all 0.6s ease-in-out;
+.modern-testimonials-wrapper::-webkit-scrollbar {
     display: none;
 }
 
-.testimonial-item.active {
-    opacity: 1;
-    transform: translateY(0);
-    display: block;
+.modern-testimonial-item {
+    flex: 0 0 auto;
+    width: 320px;
+    scroll-snap-align: start;
 }
 
-.testimonial-card {
+.modern-testimonial-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
 }
 
-.testimonial-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+.modern-testimonial-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 20px rgba(0, 51, 102, 0.15);
 }
 
-.quote-icon {
-    color: #003366;
-    opacity: 0.1;
+.modern-testimonial-rating {
+    margin-bottom: 1rem;
 }
 
-.testimonial-text p {
-    font-size: 1.125rem; /* text-lg */
-    line-height: 1.6;
-    color: #555;
-}
-
-.author-avatar img {
-    border: 3px solid #fff;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-}
-
-.author-avatar img:hover {
-    transform: scale(1.1);
-}
-
-.author-details h6 {
-    color: #003366;
-}
-
-.rating i {
-    font-size: 1.125rem; /* text-lg */
+.modern-testimonial-rating i {
+    font-size: 0.9rem;
     margin-right: 2px;
 }
 
-/* Navigation Styles */
-.testimonials-navigation {
+.modern-testimonial-text {
+    flex: 1;
+    margin-bottom: 1.5rem;
+}
+
+.modern-testimonial-text p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #555;
+    font-style: italic;
+    margin: 0;
+}
+
+.modern-testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modern-testimonial-avatar img {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.modern-testimonial-info {
+    flex: 1;
+}
+
+.modern-testimonial-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #003366;
+    margin: 0 0 0.25rem 0;
+}
+
+.modern-testimonial-title {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+/* Modern Testimonial Scroll Buttons */
+.modern-testimonial-scroll-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-}
-
-.dots-container {
-    display: flex;
-    gap: 8px;
-}
-
-.dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: none;
-    background-color: #ddd;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     cursor: pointer;
     transition: all 0.3s ease;
+    color: #003366;
+    font-size: 1rem;
 }
 
-.dot.active {
-    background-color: #003366;
-    transform: scale(1.3);
-}
-
-.dot:hover {
-    background-color: #004080;
-    transform: scale(1.1);
-}
-
-#prevBtn, #nextBtn {
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-
-#prevBtn:hover, #nextBtn:hover {
-    background-color: #003366;
+.modern-testimonial-scroll-btn:hover {
+    background: #003366;
     color: white;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 4px 15px rgba(0, 51, 102, 0.3);
+}
+
+.modern-testimonial-scroll-btn:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.modern-testimonial-scroll-left {
+    left: 10px;
+}
+
+.modern-testimonial-scroll-right {
+    right: 10px;
+}
+
+/* Testimonial Mobile Progress Indicator */
+.modern-testimonial-mobile-progress {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+    padding: 0 1rem;
+}
+
+.modern-testimonial-progress-dots {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.modern-testimonial-progress-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(0, 51, 102, 0.2);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.modern-testimonial-progress-dot.active {
+    background: #003366;
+    width: 20px;
+    border-radius: 3px;
+}
+
+.modern-testimonial-progress-dot:hover {
+    background: #004080;
     transform: scale(1.1);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .testimonials-container {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
+@media (min-width: 768px) {
+    .modern-testimonial-mobile-progress {
+        display: none;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .modern-testimonials-container {
+        margin: 0 -0.75rem;
+        padding: 0 0.75rem;
     }
     
-    .testimonials-navigation {
-        flex-direction: column;
-        gap: 1rem;
+    .modern-testimonials-wrapper {
+        gap: 0.75rem;
+        padding: 0.75rem 0;
     }
     
-    .testimonial-text p {
-        font-size: 1rem; /* text-base */
+    .modern-testimonial-item {
+        width: 280px;
     }
+    
+    .modern-testimonial-card {
+        padding: 1.25rem;
+    }
+    
+    .modern-testimonial-rating i {
+        font-size: 0.85rem;
+    }
+    
+    .modern-testimonial-text p {
+        font-size: 0.875rem;
+    }
+    
+    .modern-testimonial-avatar img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .modern-testimonial-name {
+        font-size: 0.9rem;
+    }
+    
+    .modern-testimonial-title {
+        font-size: 0.8rem;
+    }
+    
+    .modern-testimonial-scroll-btn {
+        display: none !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .modern-testimonials-container {
+        margin: 0 -0.75rem;
+        padding: 0 0.75rem;
+    }
+    
+    .modern-testimonials-wrapper {
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+    }
+    
+    .modern-testimonial-item {
+        width: 260px;
+    }
+    
+    .modern-testimonial-card {
+        padding: 1rem;
+    }
+    
+    .modern-testimonial-rating i {
+        font-size: 0.8rem;
+    }
+    
+    .modern-testimonial-text p {
+        font-size: 0.85rem;
+    }
+    
+    .modern-testimonial-avatar img {
+        width: 35px;
+        height: 35px;
+    }
+    
+    .modern-testimonial-name {
+        font-size: 0.875rem;
+    }
+    
+    .modern-testimonial-title {
+        font-size: 0.75rem;
+    }
+}
     
     /* Titres de sections plus petits sur mobile */
     section h2.display-5,
@@ -1802,145 +2321,212 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 0.8rem !important;
         margin-bottom: 0.5rem !important;
     }
+    
+    /* Amélioration de l'espacement des sections sur mobile */
+    section {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
+    
+    /* CTA section responsive */
+    .cta-section {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .cta-section h2 {
+        font-size: 1.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .cta-section .lead {
+        font-size: 0.95rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .cta-section .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .cta-section .btn:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* Boutons de navigation des sections */
+    .text-center .btn-lg {
+        font-size: 0.9rem !important;
+        padding: 0.6rem 1.2rem !important;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Espacement des cartes de cours - Bootstrap gère les largeurs */
+    .course-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* S'assurer que les cartes s'adaptent dans leurs colonnes Bootstrap */
+    .course-card .card {
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* Sections pleine largeur */
+    section {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
+    /* Laisser Bootstrap gérer les containers normalement */
+    section .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+    
+    /* Amélioration des titres */
+    section h2.display-5,
+    section h2.h3 {
+        font-size: 1.5rem !important;
+        margin-bottom: 0.75rem !important;
+        line-height: 1.3 !important;
+    }
+    
+    section .lead,
+    section p.lead {
+        font-size: 0.95rem !important;
+        line-height: 1.5 !important;
+    }
 }
 
-/* Animation pour l'apparition des témoignages */
-@keyframes slideInUp {
-    from {
-        opacity: 0;
-        transform: translateY(50px);
+/* Responsive pour très petits écrans */
+@media (max-width: 575.98px) {
+    /* Container Bootstrap avec padding réduit - ne pas forcer avec !important */
+    .container {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        max-width: 100%;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    
+    /* Sections avec moins d'espacement */
+    section {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+    
+    /* Exclure CTA section de l'espacement */
+    .cta-section {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Titres encore plus petits */
+    section h2.display-5,
+    section h2.h3 {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    section .lead,
+    section p.lead {
+        font-size: 0.875rem !important;
+    }
+    
+    /* Boutons plus compacts */
+    .btn-lg {
+        font-size: 0.85rem !important;
+        padding: 0.5rem 1rem !important;
+    }
+    
+    /* CTA section */
+    .cta-section {
+        padding: 0 !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .cta-section h2 {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .cta-section .lead {
+        font-size: 0.875rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Testimonials navigation sur très petits écrans */
+    .testimonials-navigation {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    #prevBtn, #nextBtn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+    
+    .dots-container {
+        order: 1;
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+    
+    /* Espacement entre les cartes */
+    .row.g-3,
+    .row.g-4 {
+        --bs-gutter-y: 1rem;
+        --bs-gutter-x: 0.75rem;
+    }
+    
+    /* Catégories scrollables plus compactes */
+    .categories-scroll-container {
+        margin: 0 -0.75rem;
+        padding: 0 0.75rem;
+    }
+    
+    /* Optimiser catégories sur très petits écrans */
+    .category-item-scroll {
+        width: 150px;
+        min-width: 150px;
+    }
+    
+    .category-item-scroll .category-card .card {
+        height: 150px;
+    }
+    
+    .category-item-scroll .category-card .card-body {
+        padding: 0.5rem;
+    }
+    
+    .category-item-scroll .category-card .category-icon i {
+        font-size: 1.1rem;
+    }
+    
+    .category-item-scroll .category-card .card-title {
+        font-size: 0.8rem;
+    }
+    
+    .category-item-scroll .category-card .card-text {
+        font-size: 0.7rem;
+        height: 1.5rem;
+    }
+    
+    /* S'assurer que les médias ne débordent pas */
+    img, video, iframe, object, embed {
+        max-width: 100%;
+        height: auto;
     }
 }
 
-.testimonial-item.active {
-    animation: slideInUp 0.8s ease-out;
-}
 </style>
 
-<script>
-// Categories horizontal scroll functionality
-function scrollCategories(direction) {
-    const scrollContainer = document.getElementById('categoriesScroll');
-    const scrollAmount = 250; // Distance de scroll en pixels
-    
-    if (direction === 'left') {
-        scrollContainer.scrollBy({
-            left: -scrollAmount,
-            behavior: 'smooth'
-        });
-    } else {
-        scrollContainer.scrollBy({
-            left: scrollAmount,
-            behavior: 'smooth'
-        });
-    }
-}
 
-// Auto-hide scroll buttons and update mobile progress
-document.addEventListener('DOMContentLoaded', function() {
-    const scrollContainer = document.getElementById('categoriesScroll');
-    const leftBtn = document.querySelector('.scroll-left');
-    const rightBtn = document.querySelector('.scroll-right');
-    const progressDots = document.getElementById('progressDots');
-    
-    // Create mobile progress dots
-    function createProgressDots() {
-        if (!progressDots) return;
-        
-        const categories = document.querySelectorAll('.category-item-scroll');
-        const totalCategories = categories.length;
-        const visibleCategories = Math.ceil(scrollContainer.clientWidth / 200); // Approximate visible count
-        const totalPages = Math.ceil(totalCategories / visibleCategories);
-        
-        progressDots.innerHTML = '';
-        for (let i = 0; i < totalPages; i++) {
-            const dot = document.createElement('div');
-            dot.className = 'progress-dot';
-            if (i === 0) dot.classList.add('active');
-            dot.addEventListener('click', () => scrollToPage(i));
-            progressDots.appendChild(dot);
-        }
-    }
-    
-    // Scroll to specific page
-    function scrollToPage(pageIndex) {
-        const categories = document.querySelectorAll('.category-item-scroll');
-        const visibleCategories = Math.ceil(scrollContainer.clientWidth / 200);
-        const targetIndex = pageIndex * visibleCategories;
-        const targetCategory = categories[targetIndex];
-        
-        if (targetCategory) {
-            targetCategory.scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest',
-                inline: 'start'
-            });
-        }
-    }
-    
-    function updateScrollButtons() {
-        const scrollLeft = scrollContainer.scrollLeft;
-        const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
-        
-        // Show/hide left button
-        if (leftBtn) {
-            if (scrollLeft <= 0) {
-                leftBtn.style.opacity = '0.5';
-                leftBtn.style.pointerEvents = 'none';
-            } else {
-                leftBtn.style.opacity = '1';
-                leftBtn.style.pointerEvents = 'auto';
-            }
-        }
-        
-        // Show/hide right button
-        if (rightBtn) {
-            if (scrollLeft >= maxScroll - 10) { // 10px tolerance
-                rightBtn.style.opacity = '0.5';
-                rightBtn.style.pointerEvents = 'none';
-            } else {
-                rightBtn.style.opacity = '1';
-                rightBtn.style.pointerEvents = 'auto';
-            }
-        }
-    }
-    
-    function updateProgressDots() {
-        if (!progressDots) return;
-        
-        const scrollLeft = scrollContainer.scrollLeft;
-        const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
-        const progress = Math.min(scrollLeft / maxScroll, 1);
-        
-        const dots = progressDots.querySelectorAll('.progress-dot');
-        const activeIndex = Math.round(progress * (dots.length - 1));
-        
-        dots.forEach((dot, index) => {
-            dot.classList.toggle('active', index === activeIndex);
-        });
-    }
-    
-    // Initial setup
-    createProgressDots();
-    updateScrollButtons();
-    updateProgressDots();
-    
-    // Update on scroll
-    scrollContainer.addEventListener('scroll', () => {
-        updateScrollButtons();
-        updateProgressDots();
-    });
-    
-    // Update on resize
-    window.addEventListener('resize', () => {
-        createProgressDots();
-        updateScrollButtons();
-        updateProgressDots();
-    });
-});
-</script>
 @endpush

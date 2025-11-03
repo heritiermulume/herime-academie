@@ -49,6 +49,8 @@ use Illuminate\Support\Facades\Storage;
                 <div class="col-lg-4 col-md-6 col-sm-6 course-item" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                     <div class="course-card">
                         <div class="card">
+                            <!-- Lien invisible pour rendre toute la carte cliquable -->
+                            <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
                             <div class="position-relative">
                                 <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                      class="card-img-top" alt="{{ $course->title }}">
@@ -85,23 +87,32 @@ use Illuminate\Support\Facades\Storage;
                                     </div>
                                 </div>
                                 
-                                <div class="price-duration">
-                                    <div class="price">
-                                        @if($course->is_free)
-                                            <span class="text-success fw-bold">Gratuit</span>
-                                        @else
-                                                @if($course->sale_price)
-                                                <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
-                                                <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
+                                    <div class="price-duration">
+                                        <div class="price">
+                                            @if($course->is_free)
+                                                <span class="text-success fw-bold">Gratuit</span>
                                             @else
-                                                <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
+                                                @if($course->sale_price)
+                                                    <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                                                    <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
+                                                @else
+                                                    <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
+                                                @endif
                                             @endif
+                                        </div>
+                                        @if($course->sale_price && $course->sale_end_at)
+                                            <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                                <i class="fas fa-fire me-1 text-danger"></i>
+                                                <span class="countdown-text">
+                                                    <span class="countdown-years">0</span>a 
+                                                    <span class="countdown-months">0</span>m 
+                                                    <span class="countdown-days">0</span>j 
+                                                    <span class="countdown-hours">0</span>h 
+                                                    <span class="countdown-minutes">0</span>min
+                                                </span>
+                                            </div>
                                         @endif
                                     </div>
-                                    <small class="duration">
-                                        <i class="fas fa-clock me-1"></i>{{ $course->stats['total_duration'] ?? 0 }} min
-                                    </small>
-                                </div>
                                 
                                 <div class="card-actions">
                                     <x-course-button :course="$course" size="small" :show-cart="false" />
@@ -165,47 +176,9 @@ use Illuminate\Support\Facades\Storage;
     box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
 }
 
-.course-card .card:hover {
-    border-color: #ffcc33 !important;
-}
-
+/* Styles harmonisés - utilisent les styles globaux de app.blade.php */
 .rating i {
     font-size: 0.9em; /* relative to parent */
-}
-
-/* Forcer la couleur bleue du site pour les boutons */
-.course-card .btn-primary,
-.course-card .btn-primary:focus,
-.course-card .btn-primary:active,
-.course-card .btn-primary:visited {
-    background: linear-gradient(135deg, #003366 0%, #004080 100%) !important;
-    border-color: #003366 !important;
-    color: white !important;
-    box-shadow: none !important;
-}
-
-.course-card .btn-primary:hover {
-    background: linear-gradient(135deg, #002244 0%, #003366 100%) !important;
-    border-color: #002244 !important;
-    color: white !important;
-    box-shadow: 0 4px 8px rgba(0, 51, 102, 0.3) !important;
-}
-
-.course-card .btn-outline-primary,
-.course-card .btn-outline-primary:focus,
-.course-card .btn-outline-primary:active,
-.course-card .btn-outline-primary:visited {
-    color: #003366 !important;
-    border-color: #003366 !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-}
-
-.course-card .btn-outline-primary:hover {
-    background-color: #003366 !important;
-    border-color: #003366 !important;
-    color: white !important;
-    box-shadow: 0 4px 8px rgba(0, 51, 102, 0.3) !important;
 }
     
     .course-thumbnail {

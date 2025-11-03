@@ -27,5 +27,7 @@ class AppServiceProvider extends ServiceProvider
             // Si la table settings n'existe pas encore, utiliser USD par défaut
             View::share('baseCurrency', 'USD');
         }
+
+        // Rien à faire - FileHelper est accessible directement dans les vues via \App\Helpers\FileHelper
     }
 }

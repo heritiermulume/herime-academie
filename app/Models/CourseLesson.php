@@ -22,6 +22,9 @@ class CourseLesson extends Model
         'is_published',
         'is_preview',
         'quiz_data',
+        'youtube_video_id',
+        'is_unlisted',
+        'youtube_embed_url',
     ];
 
     protected function casts(): array
@@ -29,6 +32,7 @@ class CourseLesson extends Model
         return [
             'is_published' => 'boolean',
             'is_preview' => 'boolean',
+            'is_unlisted' => 'boolean',
             'quiz_data' => 'array',
         ];
     }
@@ -66,5 +70,45 @@ class CourseLesson extends Model
     public function scopeByType($query, $type)
     {
         return $query->where('type', $type);
+    }
+
+    /**
+     * Vérifier si la leçon utilise YouTube
+     */
+    public function isYoutubeVideo(): bool
+    {
+        return !empty($this->youtube_video_id);
+    }
+
+    /**
+     * Obtenir l'URL d'embed YouTube sécurisée
+     */
+    public function getSecureYouTubeEmbedUrl(): ?string
+    {
+        if (!$this->isYoutubeVideo()) {
+            return null;
+        }
+
+        $videoId = $this->youtube_video_id;
+        $params = [
+            'rel' => 0, // Ne pas afficher de vidéos suggérées
+            'modestbranding' => 1, // Masquer le logo YouTube
+            'iv_load_policy' => 3, // Masquer les annotations vidéo
+            'origin' => config('video.youtube.embed_domain', request()->getHost()),
+        ];
+
+        return "https://www.youtube.com/embed/{$videoId}?" . http_build_query($params);
+    }
+
+    /**
+     * Obtenir l'URL YouTube complète
+     */
+    public function getYouTubeWatchUrl(): ?string
+    {
+        if (!$this->isYoutubeVideo()) {
+            return null;
+        }
+
+        return "https://www.youtube.com/watch?v={$this->youtube_video_id}";
     }
 }

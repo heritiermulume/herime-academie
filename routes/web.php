@@ -13,16 +13,22 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\NewsletterController;
-use App\Http\Controllers\VideoStreamController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\LearningController;
+use App\Http\Controllers\YouTubeAccessController;
 use App\Http\Controllers\WhatsAppOrderController;
 use App\Http\Controllers\FilterController;
 // use App\Http\Controllers\MokoController; // désactivé
 // use App\Http\Controllers\MaxiCashController; // désactivé
 use App\Http\Controllers\PawaPayController;
+use App\Http\Controllers\FileController;
 use Illuminate\Support\Facades\Route;
+
+// File serving routes (sécurisées)
+Route::get('/files/{type}/{path}', [FileController::class, 'serve'])
+    ->where('path', '.*')
+    ->name('files.serve');
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -103,6 +109,7 @@ Route::get('/test-categories-view', function() {
 });
 Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
 Route::get('/courses/{course:slug}', [CourseController::class, 'show'])->name('courses.show');
+Route::get('/courses/{course}/preview-data', [CourseController::class, 'previewData'])->name('courses.preview-data');
 Route::get('/courses/{course:slug}/lesson/{lesson}', [CourseController::class, 'lesson'])->name('courses.lesson');
 Route::get('/categories/{category:slug}', [CourseController::class, 'byCategory'])->name('courses.category');
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
@@ -167,9 +174,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
         Route::get('/courses', [StudentController::class, 'courses'])->name('courses');
         Route::get('/courses/{course:slug}/learn', [StudentController::class, 'learn'])->name('courses.learn');
-        Route::post('/courses/{course:slug}/enroll', [StudentController::class, 'enroll'])->name('courses.enroll');
         Route::get('/certificates', [StudentController::class, 'certificates'])->name('certificates');
     });
+    
+    // Enrollment route (accessible to all authenticated users)
+    Route::post('/student/courses/{course:slug}/enroll', [StudentController::class, 'enroll'])->name('student.courses.enroll');
 
     // Instructor routes
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
@@ -292,9 +301,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     //     Route::post('/webhook/stripe', [PaymentController::class, 'webhook'])->name('webhook.stripe');
     // });
 
-    // Video streaming routes
-    Route::get('/video/{lessonId}/stream', [VideoStreamController::class, 'stream'])->name('video.stream');
-    Route::get('/video/{lessonId}/download', [VideoStreamController::class, 'download'])->name('video.download');
+    // YouTube video access routes
+    Route::prefix('video')->name('video.')->group(function () {
+        Route::post('/lessons/{lesson}/access-token', [YouTubeAccessController::class, 'generateAccessToken'])->name('generate-access-token');
+        Route::post('/validate-token', [YouTubeAccessController::class, 'validateToken'])->name('validate-token');
+        Route::post('/cleanup-tokens', [YouTubeAccessController::class, 'cleanupExpiredTokens'])->name('cleanup-tokens');
+    });
 
     // Learning routes
     Route::get('/learning/courses/{course:slug}', [LearningController::class, 'learn'])->name('learning.course');
@@ -302,6 +314,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/learning/courses/{course:slug}/lessons/{lesson}/start', [LearningController::class, 'startLesson'])->name('learning.start-lesson');
     Route::post('/learning/courses/{course:slug}/lessons/{lesson}/progress', [LearningController::class, 'updateProgress'])->name('learning.update-progress');
     Route::post('/learning/courses/{course:slug}/lessons/{lesson}/complete', [LearningController::class, 'completeLesson'])->name('learning.complete-lesson');
+    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/submit', [LearningController::class, 'submitQuiz'])->name('learning.submit-quiz');
 
     // Download routes
     Route::get('/courses/{course:slug}/download', [DownloadController::class, 'course'])->name('courses.download');

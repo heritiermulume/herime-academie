@@ -4,22 +4,29 @@
 @section('description', 'Découvrez notre collection complète de cours en ligne. Formations professionnelles dans tous les domaines.')
 
 @section('content')
-<div class="container py-5">
-    <!-- Header -->
-    <div class="row mb-5">
-        <div class="col-lg-8 mx-auto text-center">
-            <h1 class="display-4 fw-bold mb-3">Tous les cours</h1>
-            <p class="lead text-muted">
-                Explorez notre collection de cours en ligne
-            </p>
+<!-- Page Header Section -->
+<section class="page-header-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1>Tous les cours</h1>
+                <p class="lead">
+                    Explorez notre collection de cours en ligne
+                </p>
+            </div>
         </div>
     </div>
+</section>
 
-    <!-- Filters -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4">
+<!-- Page Content Section -->
+<section class="page-content-section">
+    <div class="container">
+
+        <!-- Filters -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
                     <form method="GET" action="{{ route('courses.index') }}" class="row g-3">
                         <div class="col-md-3">
                             <label for="search" class="form-label">Rechercher</label>
@@ -70,15 +77,15 @@
                             </button>
                         </div>
                     </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Results -->
-    <div class="row">
-        <div class="col-12">
-            @if($courses->count() > 0)
+        <!-- Results -->
+        <div class="row">
+            <div class="col-12">
+                @if($courses->count() > 0)
                 <div id="courses-container" class="row g-3">
                     @foreach($courses as $course)
                     <div class="col-lg-4 col-md-6 col-sm-6 course-item">
@@ -136,9 +143,18 @@
                                                 @endif
                                             @endif
                                         </div>
-                                        <small class="duration">
-                                            <i class="fas fa-clock me-1"></i>{{ $course->stats['total_duration'] ?? 0 }} min
-                                        </small>
+                                        @if($course->sale_price && $course->sale_end_at)
+                                            <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                                <i class="fas fa-fire me-1 text-danger"></i>
+                                                <span class="countdown-text">
+                                                    <span class="countdown-years">0</span>a 
+                                                    <span class="countdown-months">0</span>m 
+                                                    <span class="countdown-days">0</span>j 
+                                                    <span class="countdown-hours">0</span>h 
+                                                    <span class="countdown-minutes">0</span>min
+                                                </span>
+                                            </div>
+                                        @endif
                                     </div>
                                     
                                     <div class="card-actions">
@@ -175,13 +191,35 @@
                     </a>
                 </div>
             @endif
+            </div>
         </div>
     </div>
-</div>
+</section>
 @endsection
 
 @push('styles')
 <style>
+/* Ensure page header is not hidden by fixed navbar */
+body {
+    padding-top: 40px;
+}
+
+.page-header-section {
+    margin-top: -40px;
+    padding-top: 50px;
+}
+
+@media (min-width: 992px) {
+    body {
+        padding-top: 40px;
+    }
+    
+    .page-header-section {
+        margin-top: -40px;
+        padding-top: 50px;
+    }
+}
+
 .hover-lift {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -257,6 +295,13 @@ function loadMoreCourses() {
                 container.appendChild(courseElement);
             });
             
+            // Réinitialiser les compteurs à rebours pour les nouveaux éléments
+            setTimeout(() => {
+                if (typeof window.initPromotionCountdowns === 'function') {
+                    window.initPromotionCountdowns();
+                }
+            }, 150);
+            
             hasMore = data.hasMore;
             if (!hasMore) {
                 document.getElementById('end-indicator').style.display = 'block';
@@ -327,9 +372,18 @@ function createCourseElement(course) {
                         <div class="price">
                             ${priceHtml}
                         </div>
-                        <small class="duration">
-                            <i class="fas fa-clock me-1"></i>${course.stats?.total_duration || 0} min
-                        </small>
+                        ${course.sale_price && course.sale_end_at ? 
+                            `<div class="promotion-countdown" data-sale-end="${course.sale_end_at}">
+                                <i class="fas fa-fire me-1 text-danger"></i>
+                                <span class="countdown-text">
+                                    <span class="countdown-years">0</span>a 
+                                    <span class="countdown-months">0</span>m 
+                                    <span class="countdown-days">0</span>j 
+                                    <span class="countdown-hours">0</span>h 
+                                    <span class="countdown-minutes">0</span>min
+                                </span>
+                            </div>` : ''
+                        }
                     </div>
                     
                     <div class="card-actions">

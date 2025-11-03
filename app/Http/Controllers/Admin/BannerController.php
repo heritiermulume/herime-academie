@@ -4,11 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Banner;
+use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class BannerController extends Controller
 {
+    protected $fileUploadService;
+
+    public function __construct(FileUploadService $fileUploadService)
+    {
+        $this->fileUploadService = $fileUploadService;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -53,16 +61,24 @@ class BannerController extends Controller
         try {
             // Upload image principale - Stockage dans le système de fichiers
             if ($request->hasFile('image')) {
-                $path = $request->file('image')->store('banners', 'public');
-                // Stocker seulement le chemin relatif, pas l'URL complète
-                $validated['image'] = 'storage/' . $path;
+                $result = $this->fileUploadService->uploadImage(
+                    $request->file('image'),
+                    'banners',
+                    null,
+                    1920 // Max 1920px width
+                );
+                $validated['image'] = $result['path'];
             }
 
             // Upload image mobile - Stockage dans le système de fichiers
             if ($request->hasFile('mobile_image')) {
-                $path = $request->file('mobile_image')->store('banners', 'public');
-                // Stocker seulement le chemin relatif, pas l'URL complète
-                $validated['mobile_image'] = 'storage/' . $path;
+                $result = $this->fileUploadService->uploadImage(
+                    $request->file('mobile_image'),
+                    'banners',
+                    null,
+                    1920 // Max 1920px width
+                );
+                $validated['mobile_image'] = $result['path'];
             }
 
             $validated['is_active'] = $request->has('is_active');
@@ -146,32 +162,38 @@ class BannerController extends Controller
 
         // Upload nouvelle image principale si fournie - Stockage dans le système de fichiers
         if ($request->hasFile('image')) {
-            // Supprimer l'ancienne image si elle existe et n'est pas en base64
+            // Déterminer l'ancien chemin (si ce n'est pas base64)
+            $oldPath = null;
             if ($banner->image && !str_starts_with($banner->image, 'data:')) {
                 $oldPath = str_replace('storage/', '', $banner->image);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
-                }
             }
             
-            $path = $request->file('image')->store('banners', 'public');
-            // Stocker seulement le chemin relatif, pas l'URL complète
-            $validated['image'] = 'storage/' . $path;
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('image'),
+                'banners',
+                $oldPath,
+                1920 // Max 1920px width
+            );
+            // Stocker le chemin relatif
+            $validated['image'] = $result['path'];
         }
 
         // Upload nouvelle image mobile si fournie - Stockage dans le système de fichiers
         if ($request->hasFile('mobile_image')) {
-            // Supprimer l'ancienne image si elle existe et n'est pas en base64
+            // Déterminer l'ancien chemin (si ce n'est pas base64)
+            $oldPath = null;
             if ($banner->mobile_image && !str_starts_with($banner->mobile_image, 'data:')) {
                 $oldPath = str_replace('storage/', '', $banner->mobile_image);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
-                }
             }
             
-            $path = $request->file('mobile_image')->store('banners', 'public');
-            // Stocker seulement le chemin relatif, pas l'URL complète
-            $validated['mobile_image'] = 'storage/' . $path;
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('mobile_image'),
+                'banners',
+                $oldPath,
+                1920 // Max 1920px width
+            );
+            // Stocker le chemin relatif
+            $validated['mobile_image'] = $result['path'];
         }
 
         $validated['is_active'] = $request->has('is_active');

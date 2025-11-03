@@ -28,15 +28,193 @@
     
     <!-- Custom CSS -->
     <style>
-        /* Global Font Styles */
-        * {
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        /* Prévenir le débordement horizontal global */
+        html {
+            overflow-x: hidden;
+            max-width: 100vw;
+            width: 100%;
+            margin: 0;
+            padding: 0;
         }
         
         body {
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             font-size: 1rem;
             line-height: 1.6;
+            overflow-x: hidden;
+            max-width: 100vw;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            position: relative;
+        }
+        
+        /* Global Font Styles - Appliquer seulement aux éléments de texte */
+        body, button, input, select, textarea, .btn, .form-control {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        /* Box-sizing pour tous les éléments (meilleure pratique) */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        
+        /* Surcharger Bootstrap pour utiliser toute la largeur sur desktop */
+        .container {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        
+        /* Padding latéral pour les grands écrans */
+        @media (min-width: 992px) {
+            .container {
+                padding-left: 2rem !important;
+                padding-right: 2rem !important;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .container {
+                padding-left: 3rem !important;
+                padding-right: 3rem !important;
+            }
+        }
+        
+        @media (min-width: 1400px) {
+            .container {
+                padding-left: 4rem !important;
+                padding-right: 4rem !important;
+            }
+        }
+        
+        /* Navbar et Footer utilisent toute la largeur */
+        .navbar {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+        }
+        
+        .navbar .container {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        
+        .footer {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+        }
+        
+        .footer .container {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        
+        /* Container-fluid utilise toute la largeur avec padding adaptatif */
+        .container-fluid {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        
+        @media (min-width: 576px) {
+            .container-fluid {
+                padding-left: 1.5rem;
+                padding-right: 1.5rem;
+            }
+        }
+        
+        @media (min-width: 992px) {
+            .container-fluid {
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .container-fluid {
+                padding-left: 3rem;
+                padding-right: 3rem;
+            }
+        }
+        
+        @media (min-width: 1400px) {
+            .container-fluid {
+                padding-left: 4rem;
+                padding-right: 4rem;
+            }
+        }
+        
+        /* Page d'accueil - sections pleine largeur */
+        .hero-section-modern,
+        section {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        
+        /* Boutons dans text-center ne doivent pas s'étirer - garder leur largeur naturelle */
+        .text-center .btn,
+        .text-center a.btn {
+            width: auto !important;
+            max-width: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex: 0 0 auto !important;
+        }
+        
+        /* Boutons dans d-flex avec justify-content-center ne doivent pas s'étirer */
+        .d-flex.justify-content-center .btn,
+        .d-flex.justify-content-center a.btn,
+        .text-center .d-flex.justify-content-center .btn,
+        .text-center .d-flex.justify-content-center a.btn {
+            width: auto !important;
+            max-width: none !important;
+            flex: 0 0 auto !important;
+        }
+        
+        /* S'assurer que les boutons dans flex-column/flex-sm-row ne s'étirent pas non plus */
+        .d-flex.flex-column .btn,
+        .d-flex.flex-column a.btn,
+        .d-flex.flex-sm-row .btn,
+        .d-flex.flex-sm-row a.btn {
+            width: auto !important;
+            max-width: none !important;
+            flex: 0 0 auto !important;
+        }
+        
+        /* Spécifiquement pour les sections de la page d'accueil */
+        .categories-section .text-center .btn,
+        .categories-section .text-center a.btn,
+        .featured-courses .text-center .btn,
+        .featured-courses .text-center a.btn,
+        .popular-courses .text-center .btn,
+        .popular-courses .text-center a.btn,
+        .trending-courses .text-center .btn,
+        .trending-courses .text-center a.btn {
+            width: auto !important;
+            max-width: none !important;
+            flex: 0 0 auto !important;
+            display: inline-flex !important;
+        }
+        
+        /* S'assurer que les conteneurs flex avec ces boutons ne les forcent pas à s'étirer */
+        .text-center .d-flex,
+        .text-center .d-flex.flex-column,
+        .text-center .d-flex.flex-sm-row {
+            justify-content: center !important;
+            align-items: center !important;
+        }
+        
+        .text-center .d-flex .btn,
+        .text-center .d-flex a.btn {
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
         }
         
         h1, h2, h3, h4, h5, h6 {
@@ -52,8 +230,8 @@
         }
         
         .navbar-logo-mobile {
-            height: 45px;
-            max-width: 180px;
+            height: 55px;
+            max-width: 200px;
             object-fit: contain;
         }
         
@@ -64,10 +242,25 @@
             margin-bottom: 1rem;
         }
         
+        /* Centrer le logo du footer sur mobile */
+        @media (max-width: 991.98px) {
+            .footer .col-lg-4:first-child {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center !important;
+            }
+            
+            .footer-logo {
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+        
         @media (max-width: 576px) {
             .navbar-logo-mobile {
-                height: 40px;
-                max-width: 160px;
+                height: 50px;
+                max-width: 180px;
             }
         }
         :root {
@@ -83,57 +276,67 @@
         }
 
         /* Modern Compact Course Card Design */
+        /* ========================================
+           CARTES DE COURS MODERNISÉES - DESIGN COMPACT
+           ======================================== */
         .course-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            height: 100%;
+            height: auto;
+            min-height: auto;
         }
 
         .course-card .card {
-            border-radius: 16px;
+            border-radius: 12px;
             overflow: hidden;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid #e2e8f0;
             background: #ffffff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
             height: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         .course-card .card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12), 0 6px 12px rgba(0, 0, 0, 0.08);
             border-color: var(--primary-color);
         }
 
         .course-card .card-img-top {
-            height: 160px;
             width: 100%;
+            aspect-ratio: 21 / 10;
             object-fit: cover;
             object-position: center;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            flex-shrink: 0;
         }
 
         .course-card .card:hover .card-img-top {
-            transform: scale(1.02);
+            transform: scale(1.03);
         }
 
         .course-card .card-body {
-            padding: 1.25rem;
+            padding: 0.5rem 0.5rem 0.75rem 0.5rem;
             display: flex;
             flex-direction: column;
-            height: calc(100% - 160px);
+            flex: 1;
+            min-height: 0;
         }
 
         .course-card .card-title {
-            font-size: 1rem;
+            font-size: 0.8125rem;
             font-weight: 600;
-            line-height: 1.4;
-            margin-bottom: 0.5rem;
-            height: 2.8rem;
+            line-height: 1.2;
+            margin-bottom: 0.1875rem;
+            min-height: 1.5rem;
+            max-height: 1.5rem;
             overflow: hidden;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
+            flex-shrink: 0;
         }
 
         .course-card .card-title a {
@@ -148,29 +351,32 @@
 
         .course-card .card-text {
             color: #64748b;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            margin-bottom: 0.75rem;
-            height: 2.625rem;
+            font-size: 0.65rem;
+            line-height: 1.25;
+            margin-bottom: 0.25rem;
+            min-height: 0.8125rem;
+            max-height: 0.8125rem;
             overflow: hidden;
             display: -webkit-box;
-            -webkit-line-clamp: 2;
+            -webkit-line-clamp: 1;
             -webkit-box-orient: vertical;
+            flex-shrink: 0;
         }
 
         .course-card .instructor-info {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
-            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.3125rem;
+            padding: 0.1875rem 0.375rem;
             background: #f8fafc;
-            border-radius: 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
         }
 
         .course-card .instructor-name {
             color: #475569;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 500;
             max-width: 60%;
             overflow: hidden;
@@ -181,16 +387,16 @@
         .course-card .rating {
             display: flex;
             align-items: center;
-            gap: 0.25rem;
+            gap: 0.2rem;
         }
 
         .course-card .rating i {
             color: #fbbf24;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
         }
 
         .course-card .rating span {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: #475569;
             font-weight: 500;
         }
@@ -199,10 +405,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
-            padding: 0.5rem 0.75rem;
+            margin-bottom: 0;
+            padding: 0.25rem 0.375rem;
             background: #f1f5f9;
-            border-radius: 8px;
+            border-radius: 6px;
+            flex-shrink: 0;
         }
 
         .course-card .price {
@@ -212,37 +419,412 @@
         }
 
         .course-card .price .text-muted {
-            font-size: 0.75rem;
+            font-size: 0.8125rem;
             text-decoration: line-through;
             color: #94a3b8;
         }
 
         .course-card .duration {
             color: #64748b;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 500;
         }
 
         .course-card .card-actions {
             margin-top: auto;
+            margin-bottom: 0;
+            padding-bottom: 0.5rem;
+            flex-shrink: 0;
+        }
+        
+        
+        .course-card .card-actions .btn:last-child,
+        .course-card .card-actions .d-grid:last-child .btn:last-child,
+        .course-card .card-actions form:last-child button,
+        .course-card .card-actions a:last-child,
+        .course-card .card-actions .d-grid:last-child {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        
+        .course-card .card-actions form,
+        .course-card .card-actions a.w-100 {
+            margin-bottom: 0 !important;
+        }
+        
+        /* Harmoniser les espacements et positions des boutons */
+        .course-card .card-actions {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        /* Réduire les espacements dans les boutons */
+        .course-card .card-actions .d-grid {
+            gap: 0.25rem !important;
+            margin-bottom: 0 !important;
+            width: 100%;
+        }
+        
+        .course-card .card-actions .mb-2,
+        .course-card .card-actions .w-100.mb-2,
+        .course-card .card-actions form,
+        .course-card .card-actions a.w-100 {
+            margin-bottom: 0 !important;
+            width: 100%;
+        }
+        
+        .course-card .card-actions .gap-2 {
+            gap: 0.25rem !important;
+        }
+        
+        .course-card .card-actions .gap-1 {
+            gap: 0.1875rem !important;
+        }
+        
+        /* Assurer que tous les boutons prennent toute la largeur - Taille augmentée */
+        .course-card .card-actions .btn,
+        .course-card .card-actions button,
+        .course-card .card-actions a.btn,
+        .course-card .card-actions form button,
+        .course-card .course-button-container .btn,
+        .course-card .course-button-container button {
+            width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+            line-height: 1.5 !important;
+            min-height: 2.25rem !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+        }
+        
+        /* Harmoniser le conteneur de boutons dynamiques */
+        .course-card .course-button-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+            margin-top: auto;
+            padding-bottom: 0.5rem;
+        }
+        
+        .course-card .course-button-container .btn {
+            margin-bottom: 0 !important;
+        }
+        
+        /* Styles pour le compteur à rebours de promotion */
+        .promotion-countdown {
+            color: #dc2626;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        
+        @media (min-width: 992px) {
+            .promotion-countdown {
+                font-size: 0.65rem;
+            }
+        }
+        
+        .promotion-countdown i {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        .promotion-countdown .countdown-text {
+            display: inline-flex;
+            gap: 0.125rem;
+        }
+        
+        .promotion-countdown .countdown-years,
+        .promotion-countdown .countdown-months,
+        .promotion-countdown .countdown-days,
+        .promotion-countdown .countdown-hours,
+        .promotion-countdown .countdown-minutes {
+            font-weight: 700;
+            color: #dc2626;
         }
 
-        .course-card .btn {
-            border-radius: 10px;
+        /* Harmoniser tous les boutons des cartes de cours - Taille augmentée */
+        .course-card .btn,
+        .course-card .btn-sm,
+        .course-card .btn-lg,
+        .course-card .btn-primary,
+        .course-card .btn-outline-primary,
+        .course-card .btn-success,
+        .course-card button.btn,
+        .course-card a.btn {
+            border-radius: 8px;
             font-weight: 600;
-            font-size: 0.875rem;
-            padding: 0.625rem 1rem;
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+            line-height: 1.5 !important;
+            min-height: 2.25rem !important;
             transition: all 0.2s ease;
             text-transform: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            flex-wrap: nowrap;
+        }
+        
+        /* Centrer les icônes et le texte dans les boutons */
+        .course-card .btn i,
+        .course-card .btn-sm i,
+        .course-card .btn-lg i,
+        .course-card .btn-primary i,
+        .course-card .btn-outline-primary i,
+        .course-card .btn-success i,
+        .course-card button.btn i,
+        .course-card a.btn i,
+        .course-card .card-actions .btn i,
+        .course-card .course-button-container .btn i {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin-right: 0.5rem !important;
+            vertical-align: middle !important;
+            line-height: 1 !important;
+        }
+        
+        .course-card .btn span,
+        .course-card .btn-sm span,
+        .course-card .btn-lg span,
+        .course-card .btn-primary span,
+        .course-card .btn-outline-primary span,
+        .course-card .btn-success span {
+            display: inline-block;
+            vertical-align: middle;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        /* Assurer le centrage du contenu des boutons */
+        .course-card .btn > *,
+        .course-card .btn-sm > *,
+        .course-card .btn-lg > * {
+            vertical-align: middle;
+        }
+        
+        /* Surcharger les styles Bootstrap pour les cartes de cours */
+        .course-card .btn-sm {
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+            min-height: 2.25rem !important;
+        }
+        
+        .course-card .btn-lg {
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+            min-height: 2.25rem !important;
+        }
+        
+        /* Version web - encore plus compact */
+        @media (min-width: 992px) {
+            .course-card .card-img-top {
+                aspect-ratio: 2.2 / 1;
+            }
+            
+            .course-card .card-body {
+                padding: 0.4375rem 0.4375rem 0.625rem 0.4375rem;
+            }
+            
+            .course-card .card-title {
+                font-size: 0.75rem;
+                margin-bottom: 0.1875rem;
+                min-height: 1.375rem;
+                max-height: 1.375rem;
+                line-height: 1.15;
+            }
+            
+            .course-card .card-text {
+                font-size: 0.6rem;
+                margin-bottom: 0.1875rem;
+                min-height: 0.75rem;
+                max-height: 0.75rem;
+                line-height: 1.2;
+                -webkit-line-clamp: 1;
+            }
+            
+            .course-card .instructor-info {
+                margin-bottom: 0.25rem;
+                padding: 0.125rem 0.3125rem;
+            }
+            
+            .course-card .instructor-name {
+                font-size: 0.6rem;
+            }
+            
+            .course-card .rating i {
+                font-size: 0.55rem;
+            }
+            
+            .course-card .rating span {
+                font-size: 0.6rem;
+            }
+            
+            .course-card .price-duration {
+                margin-bottom: 0;
+                padding: 0.1875rem 0.3125rem;
+            }
+            
+            .course-card .card-actions {
+                margin-top: auto;
+                margin-bottom: 0;
+                padding-bottom: 0.4375rem;
+            }
+            
+            /* Harmoniser les espacements sur desktop */
+            .course-card .card-actions {
+                gap: 0.1875rem;
+            }
+            
+            .course-card .card-actions .d-grid {
+                gap: 0.1875rem !important;
+                margin-bottom: 0 !important;
+                width: 100%;
+            }
+            
+            .course-card .card-actions .mb-2,
+            .course-card .card-actions .w-100.mb-2,
+            .course-card .card-actions form,
+            .course-card .card-actions a.w-100 {
+                margin-bottom: 0 !important;
+                width: 100%;
+            }
+            
+            .course-card .card-actions .gap-2 {
+                gap: 0.1875rem !important;
+            }
+            
+            .course-card .card-actions .gap-1 {
+                gap: 0.125rem !important;
+            }
+            
+            /* Assurer que tous les boutons prennent toute la largeur sur desktop - Taille augmentée */
+            .course-card .card-actions .btn,
+            .course-card .card-actions button,
+            .course-card .card-actions a.btn,
+            .course-card .card-actions form button,
+            .course-card .course-button-container .btn,
+            .course-card .course-button-container button {
+                width: 100% !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                font-size: 0.875rem !important;
+                padding: 0.5625rem 0.875rem !important;
+                min-height: 2.5rem !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+            }
+            
+            /* Harmoniser le conteneur de boutons dynamiques sur desktop */
+            .course-card .course-button-container {
+                gap: 0.4375rem;
+                margin-top: auto;
+                padding-bottom: 0.4375rem;
+            }
+            
+            .course-card .price {
+                font-size: 1.0625rem;
+            }
+            
+            .course-card .price .text-muted {
+                font-size: 0.875rem;
+            }
+            
+            .course-card .duration {
+                font-size: 0.6rem;
+            }
+            
+            /* Harmoniser tous les boutons sur desktop - Taille augmentée */
+            .course-card .btn,
+            .course-card .btn-sm,
+            .course-card .btn-lg,
+            .course-card .btn-primary,
+            .course-card .btn-outline-primary,
+            .course-card .btn-success,
+            .course-card button.btn,
+            .course-card a.btn {
+                font-size: 0.875rem !important;
+                padding: 0.5625rem 0.875rem !important;
+                line-height: 1.5 !important;
+                min-height: 2.5rem !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+            }
+            
+            /* Centrer les icônes et le texte sur desktop */
+            .course-card .btn i,
+            .course-card .btn-sm i,
+            .course-card .btn-lg i,
+            .course-card .btn-primary i,
+            .course-card .btn-outline-primary i,
+            .course-card .btn-success i {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin-right: 0.5rem;
+                vertical-align: middle;
+            }
+            
+            .course-card .btn-sm {
+                font-size: 0.875rem !important;
+                padding: 0.5625rem 0.875rem !important;
+                min-height: 2.5rem !important;
+            }
+            
+            .course-card .btn-lg {
+                font-size: 0.875rem !important;
+                padding: 0.5625rem 0.875rem !important;
+                min-height: 2.5rem !important;
+            }
         }
 
-        .course-card .btn-outline-primary {
+        /* Harmoniser tous les boutons outline-primary - Taille augmentée */
+        .course-card .btn-outline-primary,
+        .course-card .btn-outline-primary.btn-sm,
+        .course-card .btn-outline-primary.btn-lg {
             border-color: var(--primary-color);
             color: var(--primary-color);
             background: transparent;
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+            min-height: 2.25rem !important;
+            width: 100% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
         }
 
-        .course-card .btn-outline-primary:hover {
+        .course-card .btn-outline-primary:hover,
+        .course-card .btn-outline-primary.btn-sm:hover,
+        .course-card .btn-outline-primary.btn-lg:hover {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
             color: white;
@@ -250,15 +832,28 @@
             box-shadow: 0 4px 12px rgba(0, 51, 102, 0.3);
         }
 
-        .course-card .btn-primary {
+        /* Harmoniser tous les boutons primary - Taille augmentée */
+        .course-card .btn-primary,
+        .course-card .btn-primary.btn-sm,
+        .course-card .btn-primary.btn-lg {
             background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%) !important;
             border-color: var(--primary-color) !important;
             color: white !important;
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+            min-height: 2.25rem !important;
+            width: 100% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
         }
 
         .course-card .btn-primary:hover,
         .course-card .btn-primary:focus,
-        .course-card .btn-primary:active {
+        .course-card .btn-primary:active,
+        .course-card .btn-primary.btn-sm:hover,
+        .course-card .btn-primary.btn-lg:hover {
             background: linear-gradient(135deg, #002244 0%, var(--primary-color) 100%) !important;
             border-color: #002244 !important;
             color: white !important;
@@ -266,20 +861,50 @@
             box-shadow: 0 4px 12px rgba(0, 51, 102, 0.4);
         }
 
-        .course-card .btn-success {
+        /* Harmoniser tous les boutons success - Taille augmentée */
+        .course-card .btn-success,
+        .course-card .btn-success.btn-sm,
+        .course-card .btn-success.btn-lg {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
             border-color: #28a745 !important;
             color: white !important;
+            font-size: 0.8125rem !important;
+            padding: 0.5rem 0.75rem !important;
+            min-height: 2.25rem !important;
+            width: 100% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
         }
 
         .course-card .btn-success:hover,
         .course-card .btn-success:focus,
-        .course-card .btn-success:active {
+        .course-card .btn-success:active,
+        .course-card .btn-success.btn-sm:hover,
+        .course-card .btn-success.btn-lg:hover {
             background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%) !important;
             border-color: #1e7e34 !important;
             color: white !important;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        /* Styles desktop harmonisés - Taille augmentée */
+        @media (min-width: 992px) {
+            .course-card .btn-outline-primary,
+            .course-card .btn-outline-primary.btn-sm,
+            .course-card .btn-outline-primary.btn-lg,
+            .course-card .btn-primary,
+            .course-card .btn-primary.btn-sm,
+            .course-card .btn-primary.btn-lg,
+            .course-card .btn-success,
+            .course-card .btn-success.btn-sm,
+            .course-card .btn-success.btn-lg {
+                font-size: 0.875rem !important;
+                padding: 0.5625rem 0.875rem !important;
+                min-height: 2.5rem !important;
+            }
         }
 
         .course-card .badge {
@@ -309,139 +934,27 @@
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
             color: white;
         }
-
-        /* Mobile responsive */
-        @media (max-width: 767.98px) {
-            .course-card .card {
-                margin-bottom: 1rem;
-            }
-            
-            .course-card .card-body {
-                padding: 1rem;
-            }
-            
-            .course-card .card-img-top {
-                height: 140px;
-                width: 100%;
-                object-fit: cover;
-                object-position: center;
-            }
-            
-            .course-card .card-body {
-                height: calc(100% - 140px);
-            }
-            
-            .course-card .card-title {
-                font-size: 0.95rem;
-                height: 2.6rem;
-                line-height: 1.3;
-            }
-            
-            .course-card .card-text {
-                font-size: 0.8rem;
-                height: 2.4rem;
-                line-height: 1.4;
-            }
-            
-            .course-card .instructor-info {
-                padding: 0.5rem 0.75rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .course-card .instructor-name {
-                font-size: 0.75rem;
-            }
-            
-            .course-card .rating span {
-                font-size: 0.75rem;
-            }
-            
-            .course-card .price-duration {
-                padding: 0.5rem 0.75rem;
-                margin-bottom: 0.75rem;
-            }
-            
-            .course-card .price {
-                font-size: 0.95rem;
-            }
-            
-            .course-card .duration {
-                font-size: 0.75rem;
-            }
-            
-            .course-card .btn {
-                font-size: 0.8rem;
-                padding: 0.5rem 0.75rem;
-                margin-bottom: 0.25rem;
-            }
-            
-            .course-card .card-actions .btn:last-child {
-                margin-bottom: 0;
-            }
+        
+        /* Lien invisible pour rendre toute la carte cliquable */
+        .course-card-link {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+            text-decoration: none;
+        }
+        
+        /* S'assurer que les boutons restent cliquables au-dessus du lien */
+        .course-card .card-actions,
+        .course-card .btn,
+        .course-card .badge,
+        .course-card .position-absolute {
+            position: relative;
+            z-index: 2;
         }
 
-        /* Extra small screens */
-        @media (max-width: 575.98px) {
-            .course-card .card {
-                margin-bottom: 0.75rem;
-            }
-            
-            .course-card .card-img-top {
-                height: 120px;
-                width: 100%;
-                object-fit: cover;
-                object-position: center;
-            }
-            
-            .course-card .card-body {
-                height: calc(100% - 120px);
-                padding: 0.75rem;
-            }
-            
-            .course-card .card-title {
-                font-size: 0.9rem;
-                height: 2.4rem;
-                line-height: 1.2;
-            }
-            
-            .course-card .card-text {
-                font-size: 0.75rem;
-                height: 2.2rem;
-                line-height: 1.3;
-            }
-            
-            .course-card .instructor-info {
-                padding: 0.375rem 0.5rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .course-card .instructor-name {
-                font-size: 0.7rem;
-            }
-            
-            .course-card .rating span {
-                font-size: 0.7rem;
-            }
-            
-            .course-card .price-duration {
-                padding: 0.375rem 0.5rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .course-card .price {
-                font-size: 0.9rem;
-            }
-            
-            .course-card .duration {
-                font-size: 0.7rem;
-            }
-            
-            .course-card .btn {
-                font-size: 0.75rem;
-                padding: 0.4rem 0.6rem;
-                margin-bottom: 0.25rem;
-            }
-        }
 
         /* Mobile menu separators */
         .navbar-nav .nav-item:nth-child(4) .nav-link {
@@ -467,6 +980,30 @@
             font-weight: 700;
             font-size: 1.75rem;
             color: var(--primary-color) !important;
+        }
+        
+        /* Reduce navbar height on desktop */
+        @media (min-width: 992px) {
+            .navbar {
+                padding-top: 0.05rem !important;
+                padding-bottom: 0.05rem !important;
+                min-height: auto !important;
+            }
+            
+            .navbar .container {
+                padding-top: 0.05rem !important;
+                padding-bottom: 0.05rem !important;
+            }
+            
+            .navbar .navbar-brand {
+                padding-top: 0.05rem !important;
+                padding-bottom: 0.05rem !important;
+            }
+            
+            .navbar .navbar-nav .nav-link {
+                padding-top: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
+            }
         }
 
         /* Badge styles for menu counters */
@@ -719,6 +1256,11 @@
             padding: 3rem 0 1rem;
             position: relative;
             z-index: 10;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
         }
 
         .footer h5 {
@@ -737,7 +1279,10 @@
         }
 
         .navbar {
-            box-shadow: var(--shadow);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
         }
 
         .stats-card {
@@ -807,10 +1352,62 @@
 
         /* Mobile layout */
         @media (max-width: 991.98px) {
-            .navbar-brand.mx-auto {
-                position: absolute;
-                left: 50%;
-                transform: translateX(-50%);
+            /* Navbar pleine largeur sur mobile */
+            .navbar .container {
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+                padding-top: 0;
+                padding-bottom: 0;
+                height: 35px;
+            }
+            
+            /* Mobile header layout optimization */
+            .navbar .d-flex.d-lg-none {
+                height: 35px;
+                align-items: center;
+            }
+            
+            /* Mobile menu global - réduire icônes */
+            .navbar .d-flex.d-lg-none .nav-link,
+            .navbar .d-flex.d-lg-none > div > a {
+                padding: 0 !important;
+            }
+            
+            .navbar .d-flex.d-lg-none i.fa-lg {
+                font-size: 1rem !important;
+            }
+            
+            .navbar-logo-mobile {
+                height: 50px !important;
+                max-width: 220px !important;
+            }
+            
+            /* Responsive mobile menu widths - très petits écrans */
+            @media (max-width: 575.98px) {
+                .navbar-logo-mobile {
+                    max-width: 200px !important;
+                    height: 48px !important;
+                }
+            }
+            
+            /* Très très petits écrans */
+            @media (max-width: 360px) {
+                .navbar-logo-mobile {
+                    max-width: 180px !important;
+                    height: 45px !important;
+                }
+                
+                .navbar .d-flex.d-lg-none i.fa-lg {
+                    font-size: 0.9rem !important;
+                }
+                
+                .navbar .d-flex.d-lg-none > div:first-child {
+                    min-width: 40px;
+                }
+                
+                .navbar .d-flex.d-lg-none > div:last-child {
+                    min-width: 85px;
+                }
             }
             
             .navbar-toggler {
@@ -846,6 +1443,8 @@
                 font-size: 0.875rem;
             }
         }
+        
+        /* Laisser Bootstrap gérer le responsive normalement */
         
         /* Ensure no duplication */
         .navbar-nav {
@@ -952,6 +1551,15 @@
             display: none;
             box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
             height: 60px;
+            width: 100%;
+        }
+
+        /* Main content full width */
+        main {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         @media (max-width: 991.98px) {
@@ -959,15 +1567,1333 @@
                 display: flex;
             }
             
+            /* Add padding to body to prevent overlap with fixed navbar */
+            /* Le logo fait 50px + padding, donc on utilise 60px pour être sûr */
+            body {
+                padding-top: 60px !important;
+            }
+            
             /* Add padding to main content to prevent overlap with bottom nav */
             main {
                 padding-bottom: 60px;
             }
 
-            /* Add margin to footer on mobile to prevent overlap with bottom nav */
+            /* Footer doit commencer exactement là où s'arrête le menu mobile */
             .footer {
-                margin-bottom: 60px;
+                padding-bottom: 60px !important;
+                margin-bottom: 0 !important;
+                position: relative;
+                z-index: 5;
             }
+            
+            /* Assurer que le contenu du footer n'est pas masqué par le menu */
+            .footer::after {
+                content: '';
+                display: block;
+                height: 60px;
+                width: 100%;
+            }
+        }
+        
+        /* Desktop - padding for fixed navbar */
+        @media (min-width: 992px) {
+            body {
+                padding-top: 60px !important;
+            }
+        }
+        
+        /* Assurer que tous les éléments principaux occupent toute la largeur */
+        @media (max-width: 767.98px) {
+            html {
+                overflow-x: hidden;
+                width: 100%;
+            }
+            
+            body {
+                overflow-x: hidden;
+                width: 100%;
+                position: relative;
+                padding-top: 60px !important;
+            }
+            
+            .navbar,
+            .footer,
+            main {
+                width: 100%;
+            }
+            
+            /* Supprimer les outlines visibles indésirables sur mobile (mais garder le focus) */
+            *:not(:focus):not(:active) {
+                outline: none;
+            }
+            
+            /* Laisser Bootstrap gérer les containers normalement - ajuster seulement le padding */
+            .container {
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+            }
+        }
+
+        /* Styles harmonisés pour toutes les pages - Design cohérent avec l'accueil */
+        /* Page header section (première section de chaque page) */
+        .page-header-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
+            color: white;
+            padding: 3rem 0 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="white" opacity="0.1"><polygon points="0,0 1000,100 1000,0"/></svg>');
+            background-size: cover;
+        }
+
+        .page-header-section .container {
+            position: relative;
+            z-index: 2;
+        }
+
+        .page-header-section h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-header-section .lead {
+            font-size: 1.25rem;
+            opacity: 0.95;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Page content section - harmonisé avec les sections de l'accueil */
+        .page-content-section {
+            padding: 3rem 0;
+            background: #ffffff;
+        }
+
+        .page-content-section.bg-light {
+            background: #f8f9fa;
+        }
+
+        /* Section titles harmonisés */
+        .section-title-modern {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            position: relative;
+            padding-bottom: 0.75rem;
+        }
+
+        .section-title-modern::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 2px;
+        }
+
+        .section-title-modern.center::after {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Container avec padding harmonisé - Utilise toute la largeur sur web */
+        .content-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+        }
+        
+        @media (min-width: 992px) {
+            .content-container {
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
+        }
+        
+        @media (min-width: 1400px) {
+            .content-container {
+                padding-left: 3rem;
+                padding-right: 3rem;
+            }
+        }
+
+        /* Desktop responsive pour page header */
+        @media (min-width: 992px) {
+            .page-header-section {
+                margin-top: -40px;
+                padding-top: 50px;
+            }
+        }
+        
+        /* Mobile responsive pour page header */
+        @media (max-width: 991.98px) {
+            .page-header-section {
+                margin-top: -60px;
+                padding-top: 70px;
+                padding-bottom: 1.5rem;
+            }
+
+            .page-header-section h1 {
+                font-size: 2rem;
+            }
+
+            .page-header-section .lead {
+                font-size: 1.1rem;
+            }
+
+            .page-content-section {
+                padding: 2rem 0;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .page-header-section {
+                margin-top: -60px;
+                padding-top: 70px;
+                padding-bottom: 1.25rem;
+            }
+
+            .page-header-section h1 {
+                font-size: 1.75rem;
+            }
+
+            .page-header-section .lead {
+                font-size: 1rem;
+            }
+
+            .page-content-section {
+                padding: 1.5rem 0;
+            }
+
+            .section-title-modern {
+                font-size: 1.5rem;
+                margin-bottom: 0.75rem;
+            }
+        }
+
+        /* Harmonisation des espacements pour toutes les pages */
+        main > .container:first-child {
+            padding-top: 2rem;
+        }
+
+        @media (max-width: 767.98px) {
+            main > .container:first-child {
+                padding-top: 1.5rem;
+            }
+        }
+
+        /* Styles harmonisés pour toutes les pages légales - Utilisent maintenant page-header-section et page-content-section */
+        
+        /* Styles pour les cartes dans les pages légales */
+        .page-content-section .card {
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .page-content-section .card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .page-content-section .card-body {
+            padding: 2rem;
+        }
+
+        /* Section titles modernes avec icônes */
+        .section-title-modern {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            position: relative;
+            padding-bottom: 0.75rem;
+        }
+
+        .section-title-modern::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 2px;
+        }
+
+        .section-title-modern.center::after {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .section-title-modern i {
+            color: var(--primary-color);
+        }
+
+        /* Listes modernes */
+        .page-content-section ul:not(.list-unstyled) {
+            margin: 1rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .page-content-section li {
+            margin-bottom: 0.5rem;
+            line-height: 1.8;
+        }
+
+        .page-content-section .list-unstyled li {
+            line-height: 1.6;
+        }
+
+        /* S'assurer que tous les éléments ne dépassent pas */
+        .page-content-section * {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .page-content-section img,
+        .page-content-section video,
+        .page-content-section iframe,
+        .page-content-section table {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .page-content-section table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Responsive pour pages légales */
+        @media (max-width: 991.98px) {
+            .page-content-section .card-body {
+                padding: 1.5rem;
+            }
+
+            .section-title-modern {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .page-content-section .card-body {
+                padding: 1.25rem;
+            }
+
+            .section-title-modern {
+                font-size: 1.375rem;
+            }
+
+            .page-content-section ul:not(.list-unstyled) {
+                padding-left: 1.25rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-content-section .card-body {
+                padding: 1rem;
+            }
+
+            .section-title-modern {
+                font-size: 1.25rem;
+            }
+        }
+
+        /* ========================================
+           NOUVEAU DESIGN MODERNE - CHAMPS DE FORMULAIRE
+           ======================================== */
+        
+        /* Reset et base pour tous les champs */
+        .form-control,
+        .form-select,
+        textarea.form-control,
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="search"],
+        input[type="url"],
+        input[type="date"],
+        input[type="time"],
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 0.875rem 1.125rem;
+            font-size: 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #1f2937;
+            background-color: #ffffff;
+            background-clip: padding-box;
+            border: 1.5px solid #d1d5db;
+            border-radius: 12px;
+            transition: all 0.2s ease-in-out;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+        }
+
+        /* État par défaut avec ombre subtile */
+        .form-control,
+        .form-select,
+        textarea.form-control {
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        /* État hover - bordure légèrement plus foncée */
+        .form-control:hover:not(:disabled):not(:focus),
+        .form-select:hover:not(:disabled):not(:focus),
+        textarea.form-control:hover:not(:disabled):not(:focus) {
+            border-color: #9ca3af;
+            box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+        }
+
+        /* État focus - BLEU FONCÉ (#003366) */
+        .form-control:focus,
+        .form-select:focus,
+        textarea.form-control:focus,
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        input[type="tel"]:focus,
+        input[type="number"]:focus,
+        input[type="search"]:focus,
+        input[type="url"]:focus,
+        input[type="date"]:focus,
+        input[type="time"]:focus,
+        input[type="datetime-local"]:focus {
+            border-color: #003366;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1), 0 2px 8px 0 rgba(0, 51, 102, 0.15);
+            background-color: #ffffff;
+        }
+
+        /* Placeholder moderne */
+        .form-control::placeholder,
+        textarea.form-control::placeholder,
+        input::placeholder {
+            color: #9ca3af;
+            opacity: 1;
+            font-weight: 400;
+        }
+
+        /* Champs désactivés */
+        .form-control:disabled,
+        .form-select:disabled,
+        textarea.form-control:disabled {
+            background-color: #f9fafb;
+            border-color: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* Tailles - Large */
+        .form-control-lg,
+        .form-select-lg {
+            padding: 1rem 1.25rem;
+            font-size: 1.0625rem;
+            border-radius: 14px;
+            line-height: 1.5;
+        }
+
+        /* Tailles - Small */
+        .form-control-sm,
+        .form-select-sm {
+            padding: 0.625rem 0.875rem;
+            font-size: 0.875rem;
+            border-radius: 10px;
+            line-height: 1.5;
+        }
+
+        /* Textarea */
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        textarea.form-control.form-control-lg {
+            min-height: 140px;
+        }
+
+        textarea.form-control.form-control-sm {
+            min-height: 100px;
+        }
+
+        /* Labels modernes */
+        .form-label {
+            display: inline-block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .form-label i {
+            color: #003366;
+            font-size: 0.9375rem;
+            margin-right: 0.375rem;
+        }
+
+        /* Input groups - Pour les champs avec bouton (ex: mot de passe) */
+        .input-group {
+            position: relative;
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .input-group > .form-control,
+        .input-group > .form-select,
+        .input-group > input {
+            position: relative;
+            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
+            border-top-right-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        .input-group > .form-control-lg,
+        .input-group > .form-select-lg {
+            border-top-right-radius: 14px;
+            border-bottom-right-radius: 14px;
+        }
+
+        .input-group > .form-control-sm,
+        .input-group > .form-select-sm {
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+
+        /* Bouton toggle password dans input-group - Style strict */
+        .input-group .btn,
+        .input-group button.btn,
+        .input-group .btn-outline-secondary {
+            position: absolute !important;
+            right: 4px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 10 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            border: none !important;
+            background-color: transparent !important;
+            color: #6b7280 !important;
+            border-radius: 10px !important;
+            transition: all 0.2s ease-in-out !important;
+            cursor: pointer !important;
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        .input-group .btn:hover,
+        .input-group button.btn:hover,
+        .input-group .btn-outline-secondary:hover {
+            background-color: #f3f4f6 !important;
+            color: #003366 !important;
+            border: none !important;
+        }
+
+        .input-group .btn:active,
+        .input-group .btn:focus,
+        .input-group button.btn:active,
+        .input-group button.btn:focus,
+        .input-group .btn-outline-secondary:active,
+        .input-group .btn-outline-secondary:focus {
+            background-color: #e5e7eb !important;
+            color: #003366 !important;
+            outline: none !important;
+            border: none !important;
+            box-shadow: 0 0 0 2px rgba(0, 51, 102, 0.1) !important;
+        }
+
+        .input-group .btn i,
+        .input-group button.btn i,
+        .input-group .btn-outline-secondary i {
+            font-size: 1rem !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Empêcher Bootstrap d'appliquer ses styles par défaut - SEULEMENT pour les boutons dans input-group */
+        .input-group > .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+        .input-group > button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+        .input-group > button:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+            flex: 0 0 0 !important;
+            width: 0 !important;
+            position: absolute !important;
+            pointer-events: auto !important;
+        }
+
+        /* S'assurer que le champ input est bien cliquable et utilisable */
+        .input-group > .form-control,
+        .input-group > input[type="password"],
+        .input-group > input[type="text"] {
+            pointer-events: auto !important;
+            position: relative !important;
+            z-index: 1 !important;
+        }
+
+        /* Le bouton toggle password doit être au-dessus mais ne pas bloquer l'input */
+        .input-group .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+        .input-group button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+            pointer-events: auto !important;
+            z-index: 10 !important;
+        }
+
+        /* Forcer les styles Bootstrap à ne pas s'appliquer - SEULEMENT pour les boutons toggle */
+        .input-group .btn.btn-outline-secondary:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+        .input-group button.btn-outline-secondary:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+            border-width: 0 !important;
+            background-color: transparent !important;
+            background-image: none !important;
+        }
+
+        /* Padding pour éviter chevauchement texte/bouton */
+        .input-group .form-control {
+            padding-right: 3.5rem !important;
+        }
+
+        .input-group .form-control-lg {
+            padding-right: 4rem !important;
+        }
+
+        .input-group .form-control-sm {
+            padding-right: 3rem !important;
+        }
+
+        /* Empêcher Bootstrap de modifier la structure */
+        .input-group > :not(:first-child):not(.dropdown-menu):not(.valid-tooltip):not(.valid-feedback):not(.invalid-tooltip):not(.invalid-feedback) {
+            margin-left: 0;
+            border-left: none;
+        }
+
+        /* États d'erreur */
+        .form-control.is-invalid,
+        .form-select.is-invalid,
+        .was-validated .form-control:invalid,
+        .was-validated .form-select:invalid {
+            border-color: #ef4444;
+            padding-right: calc(1.5em + 0.75rem);
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23ef4444'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 3.6 .4.4.4-.4M6 8V6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+
+        .form-control.is-invalid:focus,
+        .form-select.is-invalid:focus,
+        .was-validated .form-control:invalid:focus,
+        .was-validated .form-select:invalid:focus {
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1), 0 2px 8px 0 rgba(239, 68, 68, 0.15);
+        }
+
+        .invalid-feedback {
+            display: block;
+            width: 100%;
+            margin-top: 0.375rem;
+            font-size: 0.875rem;
+            color: #ef4444;
+            font-weight: 500;
+        }
+
+        /* États valides */
+        .form-control.is-valid,
+        .form-select.is-valid,
+        .was-validated .form-control:valid,
+        .was-validated .form-select:valid {
+            border-color: #10b981;
+            padding-right: calc(1.5em + 0.75rem);
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2310b981' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+
+        .form-control.is-valid:focus,
+        .form-select.is-valid:focus,
+        .was-validated .form-control:valid:focus,
+        .was-validated .form-select:valid:focus {
+            border-color: #059669;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 2px 8px 0 rgba(16, 185, 129, 0.15);
+        }
+
+        /* Responsive mobile */
+        @media (max-width: 767.98px) {
+            .form-control,
+            .form-select,
+            textarea.form-control {
+                padding: 0.75rem 1rem;
+                font-size: 16px; /* Évite zoom auto sur iOS */
+                border-radius: 12px;
+            }
+
+            .form-control-lg,
+            .form-select-lg {
+                padding: 0.875rem 1.125rem;
+                font-size: 16px;
+                border-radius: 14px;
+            }
+
+            .form-control-sm,
+            .form-select-sm {
+                padding: 0.5625rem 0.75rem;
+                font-size: 16px;
+                border-radius: 10px;
+            }
+
+            .input-group {
+                width: 100%;
+                position: relative;
+                display: flex;
+                flex-wrap: nowrap;
+                align-items: stretch;
+            }
+
+            .input-group > .form-control,
+            .input-group > input[type="password"],
+            .input-group > input[type="text"] {
+                flex: 1 1 auto !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                position: relative !important;
+                padding-right: 3rem !important;
+                z-index: 1 !important;
+            }
+
+            .input-group > .form-control-lg,
+            .input-group > input[type="password"].form-control-lg {
+                padding-right: 3.5rem !important;
+            }
+
+            .input-group > .form-control-sm,
+            .input-group > input[type="password"].form-control-sm {
+                padding-right: 2.75rem !important;
+            }
+
+            /* Le bouton toggle ne doit pas prendre d'espace dans le flex - SEULEMENT les boutons toggle */
+            .input-group > .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group > button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group > button:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+                flex: 0 0 0 !important;
+                width: 0 !important;
+                min-width: 0 !important;
+                max-width: 0 !important;
+            }
+
+            .input-group .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group .btn-outline-secondary:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+                position: absolute !important;
+                right: 4px !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                width: 36px !important;
+                height: 36px !important;
+                min-width: 36px !important;
+                max-width: 36px !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
+                flex-shrink: 0 !important;
+                flex-grow: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                box-sizing: border-box !important;
+                overflow: visible !important;
+            }
+
+            .input-group .btn i,
+            .input-group button.btn i,
+            .input-group .btn-outline-secondary i {
+                font-size: 0.9375rem !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+            }
+
+            /* Empêcher le bouton toggle de prendre de l'espace dans le flex - SEULEMENT les boutons toggle */
+            .input-group > .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group > button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+                flex: 0 0 auto !important;
+                width: auto !important;
+                position: absolute !important;
+            }
+
+            /* S'assurer que le champ est bien utilisable */
+            .input-group > .form-control:focus {
+                padding-right: 3rem !important;
+                z-index: 1;
+            }
+
+            .input-group > .form-control-lg:focus {
+                padding-right: 3.5rem !important;
+                z-index: 1;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-control,
+            .form-select,
+            textarea.form-control {
+                padding: 0.6875rem 0.875rem;
+            }
+
+            .input-group > .form-control,
+            .input-group > input[type="password"],
+            .input-group > input[type="text"] {
+                width: 100% !important;
+                padding-right: 2.75rem !important;
+                z-index: 1 !important;
+            }
+
+            .input-group > .form-control-lg,
+            .input-group > input[type="password"].form-control-lg {
+                padding-right: 3.25rem !important;
+            }
+
+            .input-group > .form-control-sm,
+            .input-group > input[type="password"].form-control-sm {
+                padding-right: 2.5rem !important;
+            }
+
+            /* Le bouton toggle ne doit pas prendre d'espace dans le flex - SEULEMENT les boutons toggle */
+            .input-group > .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group > button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group > button:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+                flex: 0 0 0 !important;
+                width: 0 !important;
+                min-width: 0 !important;
+                max-width: 0 !important;
+            }
+
+            .input-group .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group .btn-outline-secondary:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+                position: absolute !important;
+                right: 3px !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+                width: 32px !important;
+                height: 32px !important;
+                min-width: 32px !important;
+                max-width: 32px !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
+                flex-shrink: 0 !important;
+                flex-grow: 0 !important;
+                box-sizing: border-box !important;
+                overflow: visible !important;
+            }
+
+            .input-group .btn i,
+            .input-group button.btn i,
+            .input-group .btn-outline-secondary i {
+                font-size: 0.875rem !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+            }
+
+            /* S'assurer que le champ est bien utilisable sur très petits écrans */
+            .input-group > .form-control:focus {
+                padding-right: 2.75rem !important;
+                z-index: 1;
+            }
+
+            .input-group > .form-control-lg:focus {
+                padding-right: 3.25rem !important;
+                z-index: 1;
+            }
+        }
+
+        /* Checkboxes et radios modernes */
+        .form-check-input {
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-top: 0.125rem;
+            vertical-align: top;
+            background-color: #ffffff;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            border: 1.5px solid #d1d5db;
+            border-radius: 6px;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .form-check-input:checked {
+            background-color: #003366;
+            border-color: #003366;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
+        }
+
+        .form-check-input:focus {
+            border-color: #003366;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+        }
+
+        .form-check-input:hover:not(:checked):not(:disabled) {
+            border-color: #9ca3af;
+        }
+
+        .form-check-input:disabled {
+            pointer-events: none;
+            filter: none;
+            opacity: 0.5;
+        }
+
+        .form-check-label {
+            color: #374151;
+            font-weight: 500;
+            cursor: pointer;
+            margin-left: 0.5rem;
+            line-height: 1.5;
+        }
+
+        /* Radio buttons modernes */
+        input[type="radio"].form-check-input {
+            border-radius: 50%;
+        }
+
+        input[type="radio"].form-check-input:checked {
+            background-color: #003366;
+            border-color: #003366;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23fff'/%3e%3c/svg%3e");
+        }
+
+        /* Boutons modernes globaux */
+        .btn {
+            border-radius: 12px;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            text-decoration: none;
+            line-height: 1.5;
+            min-width: auto;
+            max-width: none;
+            width: auto;
+            white-space: nowrap;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Permettre le retour à la ligne pour les boutons dans d-grid */
+        .d-grid .btn {
+            white-space: normal;
+            text-overflow: clip;
+            overflow: visible;
+        }
+        
+        /* Empêcher les boutons normaux d'être affectés par les styles des input-groups */
+        .btn:not(.input-group .btn) {
+            position: relative;
+            flex: none;
+        }
+
+        .btn:focus {
+            box-shadow: 0 0 0 4px rgba(0, 51, 102, 0.2);
+            outline: none;
+        }
+
+        /* Bouton primaire */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(0, 51, 102, 0.2);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #002244 0%, var(--primary-color) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 51, 102, 0.3);
+            border-color: #002244;
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0, 51, 102, 0.2);
+        }
+
+        /* Bouton outline primaire */
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+            background-color: transparent;
+        }
+
+        .btn-outline-primary:hover:not(:disabled) {
+            background-color: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 51, 102, 0.25);
+        }
+
+        /* Bouton secondaire */
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #e6b800 100%);
+            color: var(--text-dark);
+            border-color: var(--secondary-color);
+            box-shadow: 0 4px 12px rgba(255, 204, 51, 0.2);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: linear-gradient(135deg, #e6b800 0%, var(--secondary-color) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 204, 51, 0.3);
+        }
+
+        /* Bouton success */
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-color: #10b981;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Bouton danger */
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border-color: #ef4444;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Bouton warning */
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border-color: #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Bouton info */
+        .btn-info {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+            border-color: #06b6d4;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+        }
+
+        .btn-info:hover:not(:disabled) {
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.3);
+        }
+
+        /* Bouton light */
+        .btn-light {
+            background-color: #f8fafc;
+            color: var(--text-dark);
+            border-color: #e2e8f0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-light:hover:not(:disabled) {
+            background-color: #f1f5f9;
+            border-color: #cbd5e0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Bouton disabled */
+        .btn:disabled,
+        .btn.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Tailles de boutons */
+        .btn-lg {
+            padding: 1rem 2rem;
+            font-size: 1.125rem;
+            border-radius: 14px;
+            min-width: auto;
+            max-width: none;
+            width: auto;
+        }
+        
+        /* S'assurer que les boutons dans d-grid prennent toute la largeur sans dépasser */
+        .d-grid {
+            width: 100%;
+        }
+        
+        .d-grid .btn,
+        .d-grid button {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            white-space: normal;
+            word-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.4;
+            min-height: 3rem;
+            padding: 0.875rem 1.25rem;
+        }
+        
+        .d-grid .btn-lg,
+        .d-grid button.btn-lg {
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            border-radius: 10px;
+        }
+
+        /* Cards de formulaire modernes */
+        .card {
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+        
+        /* S'assurer que les formulaires dans les cartes ne dépassent pas */
+        .card form {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
+            color: white;
+            border-bottom: none;
+            padding: 1.5rem;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 2rem;
+            overflow-x: hidden;
+        }
+        
+        .card-body .d-grid,
+        .card-body form .d-grid {
+            width: 100%;
+            max-width: 100%;
+        }
+
+        /* Alerts modernes */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .alert-success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+
+        .alert-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .alert-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+
+        /* Responsive pour formulaires */
+        @media (max-width: 767.98px) {
+            .form-control,
+            .form-select,
+            textarea.form-control {
+                padding: 0.75rem 1rem;
+                font-size: 16px; /* Évite le zoom automatique sur iOS */
+            }
+
+            .form-control-lg,
+            .form-select-lg {
+                padding: 0.875rem 1.25rem;
+                font-size: 16px; /* Évite le zoom automatique sur iOS */
+            }
+
+            .btn {
+                padding: 0.75rem 1.25rem;
+                font-size: 0.95rem;
+            }
+
+            .btn-lg {
+                padding: 0.875rem 1.5rem;
+                font-size: 1rem;
+            }
+
+            .card-body {
+                padding: 1.5rem;
+            }
+
+            /* Assurer que les input groups sont bien gérés sur mobile */
+            .input-group {
+                width: 100%;
+                display: flex;
+                flex-wrap: nowrap;
+            }
+
+            .input-group > .form-control,
+            .input-group > .form-select {
+                flex: 1 1 auto;
+                width: 1%;
+                min-width: 0;
+                position: relative;
+            }
+        }
+
+        /* Styles pour pages admin - harmonisation */
+        .admin-page {
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        .admin-page .page-header-section,
+        .admin-page .card-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
+            color: white;
+        }
+
+        .admin-page .card {
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .admin-page .stats-card {
+            transition: all 0.3s ease;
+        }
+
+        .admin-page .stats-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Tables modernes pour admin */
+        .table {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table thead {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #004080 100%);
+            color: white;
+        }
+
+        .table thead th {
+            border: none;
+            font-weight: 600;
+            padding: 1rem;
+        }
+
+        .table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8fafc;
+            transform: scale(1.01);
+        }
+
+        .table tbody td {
+            padding: 1rem;
+            border-color: #e2e8f0;
+        }
+
+        /* Badges modernes pour admin */
+        .badge {
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75rem;
         }
 
         .mobile-bottom-nav-item {
@@ -1187,246 +3113,13 @@
     </style>
 
     @stack('styles')
+    
+    <!-- Vite Assets -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
-        <div class="container">
-            <!-- Mobile Layout -->
-            <div class="d-flex d-lg-none w-100 align-items-center position-relative">
-                <!-- Left: Nous contacter -->
-                <a href="{{ route('contact') }}" class="btn btn-sm btn-link flex-shrink-0" style="z-index: 10; border: none; background: transparent; color: var(--primary-color); text-decoration: none;">
-                    <i class="fas fa-envelope fa-lg" style="color: var(--primary-color);"></i>
-                    <span class="d-none d-sm-inline ms-1">Contact</span>
-                </a>
-                
-                <!-- Center: Logo (absolute centered) -->
-                <a class="navbar-brand position-absolute start-50 translate-middle-x" href="{{ route('home') }}" style="z-index: 1;">
-                    <img src="{{ asset('images/logo-herime-academie.png') }}" alt="Herime Academie" class="navbar-logo-mobile">
-                </a>
-                
-                <!-- Right: Notifications and Cart -->
-                <div class="d-flex align-items-center ms-auto flex-shrink-0" style="z-index: 10;">
-                    @auth
-                        <!-- Notifications -->
-                        <div class="dropdown me-2">
-                            <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" title="Notifications">
-                                <i class="fas fa-bell fa-lg"></i>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="notification-count-mobile" style="display: none; background-color: var(--primary-color); color: white;">
-                                    0
-                                </span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end notification-dropdown" style="width: 350px;">
-                                <li class="dropdown-header d-flex justify-content-between align-items-center">
-                                    <span>Notifications</span>
-                                    <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <div id="notifications-list-mobile">
-                                    <li class="dropdown-item text-center py-3">
-                                        <i class="fas fa-spinner fa-spin"></i> Chargement...
-                                    </li>
-                                </div>
-                            </ul>
-                        </div>
-                    @endauth
-                    
-                    <!-- Cart -->
-                    <a class="nav-link position-relative" href="{{ route('cart.index') }}" title="Panier">
-                        <i class="fas fa-shopping-cart fa-lg"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="cart-count-mobile" style="background-color: var(--primary-color); color: white;">
-                            0
-                        </span>
-                    </a>
-                </div>
-            </div>
-            
-            <!-- Desktop Layout -->
-            <div class="d-none d-lg-flex w-100 align-items-center">
-                <!-- Logo -->
-                <a class="navbar-brand" href="{{ route('home') }}">
-                    <img src="{{ asset('images/logo-herime-academie.png') }}" alt="Herime Academie" class="navbar-logo">
-                </a>
-                
-                <!-- Navigation Menu -->
-                <div class="navbar-nav me-auto">
-                    <a class="nav-link" href="{{ route('courses.index') }}">Cours</a>
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            Catégories
-                        </a>
-                        <ul class="dropdown-menu">
-                            @foreach(\App\Models\Category::active()->ordered()->limit(6)->get() as $category)
-                                <li><a class="dropdown-item" href="{{ route('courses.category', $category->slug) }}">{{ $category->name }}</a></li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    <a class="nav-link" href="{{ route('instructors.index') }}">Formateurs</a>
-                    <a class="nav-link" href="{{ route('about') }}">À propos</a>
-                    <a class="nav-link" href="{{ route('contact') }}">Contact</a>
-                </div>
-                
-                <!-- Right Side Actions -->
-                <div class="navbar-nav">
-                    <!-- Cart -->
-                    <a class="nav-link position-relative me-3" href="{{ route('cart.index') }}" title="Panier">
-                        <i class="fas fa-shopping-cart fa-lg"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="cart-count" style="background-color: var(--primary-color); color: white;">
-                            0
-                        </span>
-                    </a>
-                    
-                    @auth
-                        <!-- Notifications -->
-                        <div class="nav-item dropdown me-3">
-                            <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" title="Notifications">
-                                <i class="fas fa-bell fa-lg"></i>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="notification-count" style="display: none; background-color: var(--primary-color); color: white;">
-                                    0
-                                </span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end notification-dropdown" style="width: 350px;">
-                                <li class="dropdown-header d-flex justify-content-between align-items-center">
-                                    <span>Notifications</span>
-                                    <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <div id="notifications-list">
-                                    <li class="dropdown-item text-center py-3">
-                                        <i class="fas fa-spinner fa-spin"></i> Chargement...
-                                    </li>
-                                </div>
-                            </ul>
-                        </div>
-
-                        <!-- Messages -->
-                        <a class="nav-link position-relative me-3" href="{{ route('messages.index') }}" title="Messages">
-                            <i class="fas fa-envelope fa-lg"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="message-count" style="display: none; background-color: var(--primary-color); color: white;">
-                                0
-                            </span>
-                        </a>
-
-                        <!-- User Menu -->
-                        <div class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" title="Mon compte">
-                                @if(Auth::user()->avatar)
-                                    <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="rounded-circle" width="32" height="32">
-                                @else
-                                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                        <i class="fas fa-user text-white"></i>
-                                    </div>
-                                @endif
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="{{ route('dashboard') }}">Tableau de bord</a></li>
-                                <li><a class="dropdown-item" href="{{ route('profile') }}">Profil</a></li>
-                                <li><a class="dropdown-item" href="{{ route('messages.index') }}">Messages</a></li>
-                                <li><a class="dropdown-item" href="{{ route('notifications.index') }}">Notifications</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form method="POST" action="{{ route('logout') }}">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item">Déconnexion</button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </div>
-                    @else
-                        <a class="nav-link me-3" href="{{ route('login') }}" title="Connexion">
-                            <i class="fas fa-sign-in-alt fa-lg"></i>
-                            <span class="d-none d-lg-inline ms-1">Connexion</span>
-                        </a>
-                        <a class="btn btn-primary" href="{{ route('register') }}" title="S'inscrire">
-                            <i class="fas fa-user-plus me-1"></i>
-                            <span class="d-none d-lg-inline">S'inscrire</span>
-                        </a>
-                    @endauth
-                </div>
-            </div>
-            
-            <!-- Mobile Menu (Collapsed) - Hidden on mobile as we use bottom nav now -->
-            <div class="collapse navbar-collapse d-lg-none" id="navbarNav" aria-expanded="false" style="display: none !important;">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('home') }}">
-                            <i class="fas fa-home me-2"></i>Accueil
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('courses.index') }}">
-                            <i class="fas fa-book me-2"></i>Cours
-                        </a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-th-large me-2"></i>Catégories
-                        </a>
-                        <ul class="dropdown-menu">
-                            @foreach(\App\Models\Category::active()->ordered()->limit(6)->get() as $category)
-                                <li><a class="dropdown-item" href="{{ route('courses.category', $category->slug) }}">{{ $category->name }}</a></li>
-                            @endforeach
-                        </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('instructors.index') }}">
-                            <i class="fas fa-chalkboard-teacher me-2"></i>Formateurs
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('about') }}">
-                            <i class="fas fa-info-circle me-2"></i>À propos
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('contact') }}">
-                            <i class="fas fa-envelope me-2"></i>Contact
-                        </a>
-                    </li>
-                    
-                    @auth
-                        <li class="nav-item">
-                            <a class="nav-link position-relative" href="{{ route('messages.index') }}">
-                                <i class="fas fa-envelope me-2"></i>Messages
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="message-count-mobile" style="display: none; background-color: var(--primary-color); color: white;">
-                                    0
-                                </span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('dashboard') }}">
-                                <i class="fas fa-tachometer-alt me-2"></i>Tableau de bord
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('profile') }}">
-                                <i class="fas fa-user me-2"></i>Profil
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="nav-link btn btn-link text-start w-100">
-                                    <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
-                                </button>
-                            </form>
-                        </li>
-                    @else
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('login') }}">
-                                <i class="fas fa-sign-in-alt me-2"></i>Connexion
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('register') }}">
-                                <i class="fas fa-user-plus me-2"></i>S'inscrire
-                            </a>
-                        </li>
-                    @endauth
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <x-navbar />
 
     <!-- Main Content -->
     <main>
@@ -2075,6 +3768,121 @@
                 notification.remove();
             }, 3000);
         }
+        
+        /* Compteur à rebours pour les promotions */
+        function initPromotionCountdowns() {
+            const countdowns = document.querySelectorAll('.promotion-countdown[data-sale-end]');
+            
+            countdowns.forEach((countdown, index) => {
+                // Ne pas initialiser plusieurs fois le même compteur
+                if (countdown.dataset.initialized === 'true') {
+                    return;
+                }
+                countdown.dataset.initialized = 'true';
+                
+                const saleEndString = countdown.getAttribute('data-sale-end');
+                if (!saleEndString) {
+                    return;
+                }
+                
+                const saleEndDate = new Date(saleEndString);
+                
+                // Vérifier que la date est valide
+                if (isNaN(saleEndDate.getTime())) {
+                    console.error('Date de fin de promotion invalide:', saleEndString);
+                    countdown.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i><span>Date invalide</span>';
+                    return;
+                }
+                
+                // Mise à jour immédiate
+                updateCountdown(countdown, saleEndDate);
+                
+                // Mettre à jour toutes les secondes
+                const intervalId = setInterval(() => {
+                    updateCountdown(countdown, saleEndDate);
+                }, 1000);
+                
+                // Stocker l'ID de l'intervalle pour pouvoir le nettoyer si nécessaire
+                countdown.dataset.intervalId = intervalId;
+            });
+        }
+        
+        function updateCountdown(element, endDate) {
+            const now = new Date();
+            const diff = endDate - now;
+            
+            if (diff <= 0) {
+                // La promotion est terminée
+                element.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i><span>Promotion terminée</span>';
+                return;
+            }
+            
+            // Calculer les années
+            let years = endDate.getFullYear() - now.getFullYear();
+            let months = endDate.getMonth() - now.getMonth();
+            let days = endDate.getDate() - now.getDate();
+            let hours = endDate.getHours() - now.getHours();
+            let minutes = endDate.getMinutes() - now.getMinutes();
+            let seconds = endDate.getSeconds() - now.getSeconds();
+            
+            // Ajuster les valeurs négatives
+            if (seconds < 0) {
+                seconds += 60;
+                minutes--;
+            }
+            if (minutes < 0) {
+                minutes += 60;
+                hours--;
+            }
+            if (hours < 0) {
+                hours += 24;
+                days--;
+            }
+            if (days < 0) {
+                const daysInPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+                days += daysInPreviousMonth;
+                months--;
+            }
+            if (months < 0) {
+                months += 12;
+                years--;
+            }
+            
+            // Mettre à jour les éléments
+            const yearsEl = element.querySelector('.countdown-years');
+            const monthsEl = element.querySelector('.countdown-months');
+            const daysEl = element.querySelector('.countdown-days');
+            const hoursEl = element.querySelector('.countdown-hours');
+            const minutesEl = element.querySelector('.countdown-minutes');
+            
+            if (yearsEl) yearsEl.textContent = years;
+            if (monthsEl) monthsEl.textContent = months;
+            if (daysEl) daysEl.textContent = days;
+            if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+            if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
+            
+            // Masquer les unités à zéro (sauf minutes)
+            if (yearsEl && yearsEl.parentElement) {
+                yearsEl.parentElement.style.display = years > 0 ? 'inline' : 'none';
+            }
+            if (monthsEl && monthsEl.parentElement) {
+                monthsEl.parentElement.style.display = months > 0 || years > 0 ? 'inline' : 'none';
+            }
+            if (daysEl && daysEl.parentElement) {
+                daysEl.parentElement.style.display = days > 0 || months > 0 || years > 0 ? 'inline' : 'none';
+            }
+            if (hoursEl && hoursEl.parentElement) {
+                hoursEl.parentElement.style.display = hours > 0 || days > 0 || months > 0 || years > 0 ? 'inline' : 'none';
+            }
+        }
+        
+        // Initialiser les compteurs au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            initPromotionCountdowns();
+        });
+        
+        // Exposer la fonction globalement pour qu'elle soit accessible depuis d'autres scripts
+        window.initPromotionCountdowns = initPromotionCountdowns;
     </script>
 
     @stack('scripts')

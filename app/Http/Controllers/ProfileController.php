@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Services\FileUploadService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
@@ -13,6 +14,13 @@ use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
+    protected $fileUploadService;
+
+    public function __construct(FileUploadService $fileUploadService)
+    {
+        $this->fileUploadService = $fileUploadService;
+    }
+
     /**
      * Display the user's profile form.
      */
@@ -68,14 +76,14 @@ class ProfileController extends Controller
 
         $user = auth()->user();
 
-        // Supprimer l'ancien avatar s'il existe
-        if ($user->avatar) {
-            Storage::delete($user->avatar);
-        }
-
-        // Stocker le nouvel avatar
-        $path = $request->file('avatar')->store('avatars', 'public');
-        $user->avatar = $path;
+        // Uploader le nouvel avatar (le service supprime l'ancien automatiquement)
+        $result = $this->fileUploadService->uploadImage(
+            $request->file('avatar'),
+            'avatars',
+            $user->avatar,
+            300 // Max 300px width
+        );
+        $user->avatar = $result['path'];
         $user->save();
 
         return redirect()->route('profile')->with('success', 'Photo de profil mise à jour avec succès !');

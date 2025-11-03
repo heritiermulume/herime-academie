@@ -102,11 +102,41 @@
                                     <!-- URL du contenu (pour vidéos, quiz, devoirs) -->
                                     <div class="mb-3" id="content-url-field">
                                         <label for="content_url" class="form-label">Contenu de la leçon</label>
+                                        
+                                        {{-- Champ YouTube (recommandé pour vidéos sécurisées) --}}
+                                        <div class="alert alert-info mb-3">
+                                            <i class="fas fa-info-circle"></i> <strong>Recommandé:</strong> Utilisez YouTube pour un hébergement sécurisé.
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="youtube_video_id" class="form-label">
+                                                <i class="fab fa-youtube text-danger"></i> URL YouTube (Mode Non Répertorié)
+                                            </label>
+                                            <input type="text" class="form-control @error('youtube_video_id') is-invalid @enderror" 
+                                                   id="youtube_video_id" name="youtube_video_id" value="{{ old('youtube_video_id') }}" 
+                                                   placeholder="https://www.youtube.com/watch?v=xxx ou youtu.be/xxx">
+                                            <small class="text-muted">Collez l'URL complète ou juste l'ID de la vidéo YouTube</small>
+                                            @error('youtube_video_id')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="is_unlisted" name="is_unlisted" value="1" {{ old('is_unlisted') ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="is_unlisted">
+                                                    Vidéo en mode "Non répertorié" sur YouTube
+                                                </label>
+                                            </div>
+                                            <small class="text-muted">Cochez cette case si votre vidéo YouTube est en mode non répertorié (recommandé pour plus de sécurité)</small>
+                                        </div>
+                                        
                                         <div class="mb-2">
+                                            <label for="content_url" class="form-label">Ou URL directe (Vimeo, autres)</label>
                                             <input type="url" class="form-control @error('content_url') is-invalid @enderror" 
                                                    id="content_url" name="content_url" value="{{ old('content_url') }}" 
-                                                   placeholder="Lien (https://youtube.com/watch?v=... ou https://vimeo.com/...)">
-                                            <small class="text-muted">Optionnel: lien vers le contenu</small>
+                                                   placeholder="Lien (https://vimeo.com/...)">
+                                            <small class="text-muted">Pour Vimeo ou autres plateformes</small>
                                             @error('content_url')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror

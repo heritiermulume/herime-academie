@@ -13,6 +13,17 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // Intentionnellement vide: aucune dépendance au cron. L'annulation est gérée via jobs différés.
+        
+        // Nettoyage des tokens d'accès YouTube expirés (toutes les heures)
+        $schedule->call(function() {
+            \App\Models\VideoAccessToken::cleanupExpired();
+        })->hourly()->name('youtube-cleanup-tokens');
+        
+        // Surveillance des activités suspectes (toutes les 6 heures)
+        $schedule->call(function() {
+            $securityService = app(\App\Services\VideoSecurityService::class);
+            $securityService->monitorSuspiciousActivity();
+        })->everySixHours()->name('youtube-monitor-activity');
     }
 
     /**

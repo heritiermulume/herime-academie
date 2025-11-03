@@ -147,13 +147,39 @@
                                             </a>
                                         </h6>
                                         <p class="text-muted small mb-1">{{ $enrollment->course->instructor->name }}</p>
-                                        <div class="d-flex align-items-center">
+                                        <div class="d-flex align-items-center flex-wrap gap-2">
                                             <span class="badge bg-primary me-2">{{ $enrollment->course->category->name }}</span>
                                             <small class="text-muted">
                                                 <i class="fas fa-clock me-1"></i>{{ $enrollment->course->duration }} min
                                             </small>
+                                            @if($enrollment->course->is_downloadable && isset($enrollment->course->user_downloads_count))
+                                                <small class="text-info">
+                                                    <i class="fas fa-download me-1"></i>{{ $enrollment->course->user_downloads_count }} téléchargement(s)
+                                                </small>
+                                            @endif
                                         </div>
                                     </div>
+                                    @php
+                                        $course = $enrollment->course;
+                                        $isDownloadableAndPurchased = false;
+                                        if ($course->is_downloadable) {
+                                            $hasPurchased = false;
+                                            if (!$course->is_free && $enrollment->order_id) {
+                                                $hasPurchased = $enrollment->order && $enrollment->order->status === 'paid';
+                                            } elseif ($course->is_free) {
+                                                $hasPurchased = true;
+                                            } else {
+                                                $hasPurchased = \App\Models\Order::where('user_id', auth()->id())
+                                                    ->where('status', 'paid')
+                                                    ->whereHas('orderItems', function($query) use ($course) {
+                                                        $query->where('course_id', $course->id);
+                                                    })
+                                                    ->exists();
+                                            }
+                                            $isDownloadableAndPurchased = $hasPurchased;
+                                        }
+                                    @endphp
+                                    @if(!$isDownloadableAndPurchased)
                                     <div class="col-md-2">
                                         <div class="progress" style="height: 8px;">
                                             <div class="progress-bar bg-primary" role="progressbar" 
@@ -163,11 +189,52 @@
                                         </div>
                                         <small class="text-muted">{{ $enrollment->progress }}% terminé</small>
                                     </div>
+                                    @else
+                                    <div class="col-md-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-download me-1"></i>Cours téléchargeable
+                                        </small>
+                                    </div>
+                                    @endif
                                     <div class="col-md-2 text-end">
-                                        <a href="{{ route('student.courses.learn', $enrollment->course->slug) }}" 
-                                           class="btn btn-primary btn-sm">
-                                            <i class="fas fa-play me-1"></i>Continuer
-                                        </a>
+                                        @php
+                                            $course = $enrollment->course;
+                                            $hasPurchased = false;
+                                            
+                                            // Vérifier si l'utilisateur a payé (pour les cours payants)
+                                            if (!$course->is_free && $enrollment->order_id) {
+                                                $hasPurchased = $enrollment->order && $enrollment->order->status === 'paid';
+                                            } elseif ($course->is_free) {
+                                                // Pour les cours gratuits, considérer comme "payé" si inscrit
+                                                $hasPurchased = true;
+                                            } else {
+                                                // Vérifier via les commandes
+                                                $hasPurchased = \App\Models\Order::where('user_id', auth()->id())
+                                                    ->where('status', 'paid')
+                                                    ->whereHas('orderItems', function($query) use ($course) {
+                                                        $query->where('course_id', $course->id);
+                                                    })
+                                                    ->exists();
+                                            }
+                                            
+                                            // Si cours téléchargeable ET acheté, afficher uniquement le bouton télécharger
+                                            $isDownloadableAndPurchased = $course->is_downloadable && $hasPurchased;
+                                            
+                                            // Déterminer le texte du bouton selon la progression
+                                            $buttonText = $enrollment->progress > 0 ? 'Continuer' : 'Commencer';
+                                        @endphp
+                                        
+                                        @if($isDownloadableAndPurchased)
+                                            <a href="{{ route('courses.download', $course->slug) }}" 
+                                               class="btn btn-success btn-sm">
+                                                <i class="fas fa-download me-1"></i>Télécharger
+                                            </a>
+                                        @else
+                                            <a href="{{ route('student.courses.learn', $course->slug) }}" 
+                                               class="btn btn-primary btn-sm">
+                                                <i class="fas fa-play me-1"></i>{{ $buttonText }} l'apprentissage
+                                            </a>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -341,7 +408,7 @@
                                         </small>
                                     </div>
                                     <div>
-                                        <a href="{{ Storage::url($certificate->certificate_url) }}" 
+                                        <a href="{{ \App\Helpers\FileHelper::url($certificate->certificate_url) }}" 
                                            target="_blank" class="btn btn-outline-primary btn-sm">
                                             <i class="fas fa-download"></i>
                                         </a>

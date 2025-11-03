@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\CourseLesson;
+use App\Models\CourseDownload;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,11 @@ class DownloadController extends Controller
             return redirect()->route('login')->with('error', 'Vous devez être connecté pour télécharger ce cours.');
         }
 
+        // Vérifier que le cours est téléchargeable
+        if (!$course->is_downloadable) {
+            return back()->with('error', 'Ce cours n\'est pas disponible en téléchargement.');
+        }
+
         // Vérifier l'accès au cours selon le type (gratuit/payant)
         if (!$this->hasAccessToCourse($course, Auth::id())) {
             if ($course->is_free) {
@@ -30,10 +36,153 @@ class DownloadController extends Controller
             }
         }
 
-        // Récupérer toutes les leçons du cours avec leurs sections
-        $course->load(['sections.lessons' => function($query) {
-            $query->orderBy('sort_order');
-        }]);
+        // Si un fichier de téléchargement spécifique est défini, le télécharger directement
+        if ($course->download_file_path) {
+            // Enregistrer le téléchargement AVANT de télécharger
+            $this->recordDownload($course, 'file');
+            return $this->downloadSpecificFile($course);
+        }
+
+        // Sinon, créer un ZIP avec tout le contenu du cours
+        // Enregistrer le téléchargement AVANT de créer le ZIP
+        $this->recordDownload($course, 'zip');
+        return $this->downloadCourseAsZip($course);
+    }
+
+    /**
+     * Enregistrer un téléchargement
+     */
+    private function recordDownload(Course $course, $downloadType = 'zip')
+    {
+        try {
+            $ipAddress = request()->ip();
+            $userAgent = request()->userAgent();
+            
+            // Obtenir les informations géographiques depuis l'IP
+            $geoInfo = $this->getGeoInfoFromIp($ipAddress);
+            
+            CourseDownload::create([
+                'course_id' => $course->id,
+                'user_id' => Auth::id(),
+                'ip_address' => $ipAddress,
+                'user_agent' => $userAgent,
+                'country' => $geoInfo['country'] ?? null,
+                'country_name' => $geoInfo['country_name'] ?? null,
+                'city' => $geoInfo['city'] ?? null,
+                'region' => $geoInfo['region'] ?? null,
+                'download_type' => $downloadType,
+            ]);
+        } catch (\Exception $e) {
+            // Log l'erreur mais ne pas bloquer le téléchargement
+            \Log::warning('Erreur lors de l\'enregistrement du téléchargement: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtenir les informations géographiques depuis une adresse IP
+     */
+    private function getGeoInfoFromIp($ipAddress)
+    {
+        // Pour les IPs locales, retourner null
+        if (in_array($ipAddress, ['127.0.0.1', '::1']) || str_starts_with($ipAddress, '192.168.') || str_starts_with($ipAddress, '10.') || str_starts_with($ipAddress, '172.')) {
+            return [];
+        }
+
+        try {
+            // Essayer d'utiliser un service gratuit comme ipapi.co ou ip-api.com
+            // Utilisons ip-api.com (gratuit, limite 45 requêtes/min)
+            $response = @file_get_contents("http://ip-api.com/json/{$ipAddress}?fields=status,country,countryCode,city,regionName", false, stream_context_create([
+                'http' => [
+                    'timeout' => 2, // Timeout de 2 secondes
+                ]
+            ]));
+
+            if ($response) {
+                $data = json_decode($response, true);
+                if (isset($data['status']) && $data['status'] === 'success') {
+                    return [
+                        'country' => $data['countryCode'] ?? null,
+                        'country_name' => $data['country'] ?? null,
+                        'city' => $data['city'] ?? null,
+                        'region' => $data['regionName'] ?? null,
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Erreur lors de la récupération des informations géographiques: ' . $e->getMessage());
+        }
+
+        return [];
+    }
+
+    /**
+     * Télécharger un fichier spécifique défini pour le cours
+     */
+    private function downloadSpecificFile(Course $course)
+    {
+        $filePath = null;
+        $fileName = null;
+        
+        // Vérifier si c'est un chemin local ou une URL
+        if (!filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+            // C'est un chemin local - utiliser le disque privé
+            $disk = Storage::disk('local');
+            
+            // Nettoyer le chemin (supprimer storage/ si présent)
+            $cleanPath = str_replace('storage/', '', $course->download_file_path);
+            
+            // Vérifier si le fichier existe dans le stockage privé
+            if ($disk->exists($cleanPath)) {
+                $filePath = $disk->path($cleanPath);
+                $fileName = basename($cleanPath);
+            } else {
+                // Essayer aussi avec le chemin tel quel
+                if ($disk->exists($course->download_file_path)) {
+                    $filePath = $disk->path($course->download_file_path);
+                    $fileName = basename($course->download_file_path);
+                } else {
+                    // Essayer dans l'ancien emplacement public (rétrocompatibilité)
+                    $publicDisk = Storage::disk('public');
+                    if ($publicDisk->exists($cleanPath)) {
+                        $filePath = $publicDisk->path($cleanPath);
+                        $fileName = basename($cleanPath);
+                    }
+                }
+            }
+        } else {
+            // C'est une URL externe - rediriger vers cette URL
+            return redirect($course->download_file_path);
+        }
+        
+        if (!$filePath || !file_exists($filePath)) {
+            return back()->with('error', 'Le fichier de téléchargement n\'existe plus sur le serveur.');
+        }
+        
+        // Si pas de nom de fichier spécifique, utiliser un nom par défaut
+        if (!$fileName) {
+            $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+            $fileName = $this->sanitizeFileName($course->title) . '.' . ($extension ?: 'zip');
+        }
+        
+        return response()->download($filePath, $fileName);
+    }
+
+    /**
+     * Télécharger le cours complet sous forme de ZIP
+     */
+    private function downloadCourseAsZip(Course $course)
+    {
+        // Récupérer toutes les leçons publiées du cours avec leurs sections
+        $course->load([
+            'instructor',
+            'category',
+            'sections' => function($query) {
+                $query->where('is_published', true)->orderBy('sort_order');
+            },
+            'sections.lessons' => function($query) {
+                $query->where('is_published', true)->orderBy('sort_order');
+            }
+        ]);
 
         // Créer un fichier ZIP temporaire
         $zipFileName = 'cours-' . $course->slug . '-' . now()->format('Y-m-d') . '.zip';
@@ -89,6 +238,11 @@ class DownloadController extends Controller
             return redirect()->route('login')->with('error', 'Vous devez être connecté pour télécharger ce fichier.');
         }
 
+        // Vérifier que le cours est téléchargeable
+        if (!$course->is_downloadable) {
+            return back()->with('error', 'Ce cours n\'est pas disponible en téléchargement.');
+        }
+
         // Vérifier l'accès au cours selon le type (gratuit/payant)
         if (!$this->hasAccessToCourse($course, Auth::id())) {
             if ($course->is_free) {
@@ -103,18 +257,43 @@ class DownloadController extends Controller
             return back()->with('error', 'Cette leçon n\'appartient pas à ce cours.');
         }
 
-        // Vérifier si la leçon a un fichier
-        if (!$lesson->file_path) {
-            return back()->with('error', 'Aucun fichier disponible pour cette leçon.');
-        }
-
-        $filePath = storage_path('app/' . $lesson->file_path);
+        // Chercher le fichier à télécharger (file_path ou content_url)
+        $filePath = null;
+        $extension = null;
+        $disk = Storage::disk('local'); // Utiliser le stockage privé
         
-        if (!file_exists($filePath)) {
-            return back()->with('error', 'Le fichier n\'existe plus sur le serveur.');
+        // Essayer avec file_path d'abord
+        if ($lesson->file_path && !filter_var($lesson->file_path, FILTER_VALIDATE_URL)) {
+            $cleanPath = str_replace('storage/', '', $lesson->file_path);
+            if ($disk->exists($cleanPath)) {
+                $filePath = $disk->path($cleanPath);
+                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+            } elseif ($disk->exists($lesson->file_path)) {
+                $filePath = $disk->path($lesson->file_path);
+                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+            }
+        }
+        
+        // Si pas de fichier trouvé avec file_path, essayer content_url
+        if (!$filePath && $lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+            $cleanPath = str_replace('storage/', '', $lesson->content_url);
+            if ($disk->exists($cleanPath)) {
+                $filePath = $disk->path($cleanPath);
+                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+            } elseif ($disk->exists($lesson->content_url)) {
+                $filePath = $disk->path($lesson->content_url);
+                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+            }
         }
 
-        $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
+        if (!$filePath || !file_exists($filePath)) {
+            return back()->with('error', 'Aucun fichier disponible pour cette leçon ou le fichier n\'existe plus sur le serveur.');
+        }
+
+        $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title);
+        if ($extension) {
+            $fileName .= '.' . $extension;
+        }
         
         return response()->download($filePath, $fileName);
     }
@@ -129,24 +308,29 @@ class DownloadController extends Controller
             return $course->isEnrolledBy($userId);
         }
 
-        // Pour les cours payants, vérifier l'inscription ET le paiement
+        // Pour les cours payants, vérifier d'abord l'inscription
         $enrollment = $course->enrollments()
             ->where('user_id', $userId)
             ->where('status', 'active')
             ->first();
 
-        if (!$enrollment) {
-            return false;
+        if ($enrollment) {
+            // Si l'utilisateur est inscrit, vérifier que la commande associée est payée
+            if ($enrollment->order_id) {
+                $order = $enrollment->order;
+                return $order && $order->status === 'paid';
+            }
         }
 
-        // Vérifier que la commande associée est payée
-        if ($enrollment->order_id) {
-            $order = $enrollment->order;
-            return $order && $order->status === 'paid';
-        }
+        // Si pas d'inscription, vérifier si l'utilisateur a acheté le cours via une commande payée
+        $hasPurchased = \App\Models\Order::where('user_id', $userId)
+            ->where('status', 'paid')
+            ->whereHas('orderItems', function($query) use ($course) {
+                $query->where('course_id', $course->id);
+            })
+            ->exists();
 
-        // Si pas de commande associée, considérer comme accès refusé pour les cours payants
-        return false;
+        return $hasPurchased;
     }
 
     /**
@@ -197,15 +381,77 @@ class DownloadController extends Controller
     private function addLessonToZip($zip, $lesson, $sectionPath)
     {
         $added = false;
+        $disk = Storage::disk('local'); // Utiliser le stockage privé
         
-        // Ajouter le fichier de la leçon s'il existe
-        if ($lesson->file_path) {
-            $filePath = storage_path('app/' . $lesson->file_path);
-            if (file_exists($filePath)) {
-                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-                $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
-                $zip->addFile($filePath, $sectionPath . $fileName);
-                $added = true;
+        // Ajouter le fichier de la leçon s'il existe (file_path)
+        if ($lesson->file_path && !filter_var($lesson->file_path, FILTER_VALIDATE_URL)) {
+            $cleanPath = str_replace('storage/', '', $lesson->file_path);
+            
+            // Essayer dans le stockage privé
+            if ($disk->exists($cleanPath)) {
+                $filePath = $disk->path($cleanPath);
+                if (file_exists($filePath)) {
+                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                    $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
+                    $zip->addFile($filePath, $sectionPath . $fileName);
+                    $added = true;
+                }
+            } elseif ($disk->exists($lesson->file_path)) {
+                $filePath = $disk->path($lesson->file_path);
+                if (file_exists($filePath)) {
+                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                    $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
+                    $zip->addFile($filePath, $sectionPath . $fileName);
+                    $added = true;
+                }
+            } else {
+                // Essayer dans l'ancien stockage public (rétrocompatibilité)
+                $publicDisk = Storage::disk('public');
+                if ($publicDisk->exists($cleanPath)) {
+                    $filePath = $publicDisk->path($cleanPath);
+                    if (file_exists($filePath)) {
+                        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                        $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
+                        $zip->addFile($filePath, $sectionPath . $fileName);
+                        $added = true;
+                    }
+                }
+            }
+        }
+        
+        // Ajouter le fichier via content_url s'il existe et que c'est un fichier local
+        if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+            $cleanPath = str_replace('storage/', '', $lesson->content_url);
+            
+            // Essayer dans le stockage privé
+            if ($disk->exists($cleanPath)) {
+                $filePath = $disk->path($cleanPath);
+                if (file_exists($filePath)) {
+                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                    $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
+                    $zip->addFile($filePath, $sectionPath . $fileName);
+                    $added = true;
+                }
+            } elseif ($disk->exists($lesson->content_url)) {
+                $filePath = $disk->path($lesson->content_url);
+                if (file_exists($filePath)) {
+                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                    $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
+                    $zip->addFile($filePath, $sectionPath . $fileName);
+                    $added = true;
+                }
+            } else {
+                // Essayer dans l'ancien stockage public (rétrocompatibilité)
+                $publicDisk = Storage::disk('public');
+                if ($publicDisk->exists($cleanPath)) {
+                    $filePath = $publicDisk->path($cleanPath);
+                    if (file_exists($filePath)) {
+                        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                        $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
+                        $zip->addFile($filePath, $sectionPath . $fileName);
+                        $added = true;
+                    }
+                }
             }
         }
         
@@ -216,15 +462,37 @@ class DownloadController extends Controller
             $added = true;
         }
         
-        // Ajouter l'URL de la vidéo s'il s'agit d'une leçon vidéo
-        if ($lesson->type === 'video' && $lesson->content_url) {
-            $videoInfo = "URL de la vidéo: " . $lesson->content_url . "\n";
-            $videoInfo .= "Titre: " . $lesson->title . "\n";
+        // Ajouter l'URL de la vidéo s'il s'agit d'une leçon vidéo (YouTube ou autre URL externe)
+        if ($lesson->type === 'video') {
+            $videoInfo = "Titre: " . $lesson->title . "\n";
             $videoInfo .= "Description: " . ($lesson->description ?? 'Aucune description') . "\n";
             $videoInfo .= "Durée: " . $lesson->duration . " minutes\n";
             
+            // Ajouter l'URL YouTube si disponible
+            if ($lesson->youtube_video_id) {
+                $videoInfo .= "URL YouTube: https://www.youtube.com/watch?v=" . $lesson->youtube_video_id . "\n";
+            }
+            
+            // Ajouter l'URL de contenu si c'est une URL externe
+            if ($lesson->content_url && filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                $videoInfo .= "URL de la vidéo: " . $lesson->content_url . "\n";
+            }
+            
             $videoFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . ' - Info Vidéo.txt';
             $zip->addFromString($sectionPath . $videoFileName, $videoInfo);
+            $added = true;
+        }
+        
+        // Pour les leçons de type PDF, DOC, etc., ajouter aussi les informations
+        if (in_array($lesson->type, ['pdf', 'text', 'quiz'])) {
+            $infoFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . ' - Info.txt';
+            $infoContent = "Titre: " . $lesson->title . "\n";
+            $infoContent .= "Type: " . ucfirst($lesson->type) . "\n";
+            $infoContent .= "Description: " . ($lesson->description ?? 'Aucune description') . "\n";
+            if ($lesson->duration) {
+                $infoContent .= "Durée: " . $lesson->duration . " minutes\n";
+            }
+            $zip->addFromString($sectionPath . $infoFileName, $infoContent);
             $added = true;
         }
         
@@ -236,11 +504,33 @@ class DownloadController extends Controller
      */
     private function addCourseResources($zip, $course)
     {
-        // Ajouter l'image du cours si elle existe
-        if ($course->image_path) {
+        // Ajouter l'image/thumbnail du cours si elle existe
+        if ($course->thumbnail) {
+            // Si c'est une URL complète, on ne peut pas la télécharger directement
+            if (!filter_var($course->thumbnail, FILTER_VALIDATE_URL)) {
+                // C'est un chemin local
+                $imagePath = storage_path('app/' . $course->thumbnail);
+                if (file_exists($imagePath)) {
+                    $zip->addFile($imagePath, 'image-cours.' . pathinfo($imagePath, PATHINFO_EXTENSION));
+                } elseif (Storage::exists($course->thumbnail)) {
+                    $fullPath = Storage::path($course->thumbnail);
+                    if (file_exists($fullPath)) {
+                        $zip->addFile($fullPath, 'image-cours.' . pathinfo($fullPath, PATHINFO_EXTENSION));
+                    }
+                }
+            }
+        }
+        
+        // Ajouter l'image_path si elle existe et est différente de thumbnail
+        if ($course->image_path && $course->image_path !== $course->thumbnail) {
             $imagePath = storage_path('app/' . $course->image_path);
             if (file_exists($imagePath)) {
-                $zip->addFile($imagePath, 'image-cours.' . pathinfo($imagePath, PATHINFO_EXTENSION));
+                $zip->addFile($imagePath, 'image-cours-2.' . pathinfo($imagePath, PATHINFO_EXTENSION));
+            } elseif (Storage::exists($course->image_path)) {
+                $fullPath = Storage::path($course->image_path);
+                if (file_exists($fullPath)) {
+                    $zip->addFile($fullPath, 'image-cours-2.' . pathinfo($fullPath, PATHINFO_EXTENSION));
+                }
             }
         }
         

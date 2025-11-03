@@ -14,10 +14,27 @@ class StudentController extends Controller
         $student = auth()->user();
         
         $enrollments = $student->enrollments()
-            ->with(['course.instructor', 'course.category'])
+            ->with(['course.instructor', 'course.category', 'order', 'course.downloads'])
+            ->withCount(['course' => function($query) {
+                $query->withCount('downloads');
+            }])
             ->latest()
             ->limit(6)
             ->get();
+        
+        // Charger les compteurs de téléchargements pour chaque cours
+        foreach ($enrollments as $enrollment) {
+            $course = $enrollment->course;
+            if ($course && $course->is_downloadable) {
+                // Compter les téléchargements de ce cours par cet utilisateur
+                $course->user_downloads_count = \App\Models\CourseDownload::where('course_id', $course->id)
+                    ->where('user_id', $student->id)
+                    ->count();
+                // Compter tous les téléchargements de ce cours
+                $course->total_downloads_count = \App\Models\CourseDownload::where('course_id', $course->id)
+                    ->count();
+            }
+        }
 
         $recent_courses = Course::published()
             ->whereIn('id', $enrollments->pluck('course_id'))
@@ -50,9 +67,26 @@ class StudentController extends Controller
         $student = auth()->user();
         
         $enrollments = $student->enrollments()
-            ->with(['course.instructor', 'course.category'])
+            ->with(['course.instructor', 'course.category', 'order', 'course.downloads'])
+            ->withCount(['course' => function($query) {
+                $query->withCount('downloads');
+            }])
             ->latest()
-            ->paginate(12);
+            ->paginate(25);
+        
+        // Charger les compteurs de téléchargements pour chaque cours
+        foreach ($enrollments as $enrollment) {
+            $course = $enrollment->course;
+            if ($course && $course->is_downloadable) {
+                // Compter les téléchargements de ce cours par cet utilisateur
+                $course->user_downloads_count = \App\Models\CourseDownload::where('course_id', $course->id)
+                    ->where('user_id', $student->id)
+                    ->count();
+                // Compter tous les téléchargements de ce cours
+                $course->total_downloads_count = \App\Models\CourseDownload::where('course_id', $course->id)
+                    ->count();
+            }
+        }
 
         return view('students.courses', compact('enrollments'));
     }

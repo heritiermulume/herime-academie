@@ -133,6 +133,11 @@ class User extends Authenticatable
         return $this->hasMany(LessonProgress::class);
     }
 
+    public function downloads()
+    {
+        return $this->hasMany(CourseDownload::class);
+    }
+
     // Scopes
     public function scopeInstructors($query)
     {

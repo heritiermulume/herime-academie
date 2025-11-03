@@ -8,12 +8,23 @@ use App\Models\CourseSection;
 use App\Models\CourseLesson;
 use App\Models\Enrollment;
 use App\Traits\CourseStatistics;
+use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class CourseController extends Controller
 {
     use CourseStatistics;
+
+    protected $fileUploadService;
+
+    public function __construct(FileUploadService $fileUploadService)
+    {
+        $this->fileUploadService = $fileUploadService;
+    }
+
     public function index(Request $request)
     {
         $query = Course::published()->with(['instructor', 'category']);
@@ -94,8 +105,18 @@ class CourseController extends Controller
             
             $hasMore = $courses->count() === $perPage;
             
+            // Formater les cours pour JSON avec la date de fin de promotion
+            $coursesArray = $courses->map(function($course) {
+                $courseArray = $course->toArray();
+                // S'assurer que sale_end_at est au format ISO 8601
+                if ($course->sale_end_at) {
+                    $courseArray['sale_end_at'] = $course->sale_end_at->toIso8601String();
+                }
+                return $courseArray;
+            });
+            
             return response()->json([
-                'courses' => $courses,
+                'courses' => $coursesArray,
                 'hasMore' => $hasMore,
                 'nextPage' => $hasMore ? $page + 1 : null
             ]);
@@ -136,7 +157,7 @@ class CourseController extends Controller
             },
             'category',
             'sections' => function($query) {
-                $query->orderBy('sort_order');
+                $query->where('is_published', true)->orderBy('sort_order');
             },
             'sections.lessons' => function($query) {
                 $query->where('is_published', true)->orderBy('sort_order');
@@ -233,12 +254,23 @@ class CourseController extends Controller
 
         // Gérer l'upload de l'image
         if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')->store('courses/thumbnails', 'public');
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('thumbnail'),
+                'courses/thumbnails',
+                null,
+                1920 // Max 1920px width
+            );
+            $data['thumbnail'] = $result['path'];
         }
 
         // Gérer l'upload de la vidéo de prévisualisation
         if ($request->hasFile('video_preview')) {
-            $data['video_preview'] = $request->file('video_preview')->store('courses/previews', 'public');
+            $result = $this->fileUploadService->uploadVideo(
+                $request->file('video_preview'),
+                'courses/previews',
+                null
+            );
+            $data['video_preview'] = $result['path'];
         }
 
         $course = Course::create($data);
@@ -282,12 +314,23 @@ class CourseController extends Controller
 
         // Gérer l'upload de l'image
         if ($request->hasFile('thumbnail')) {
-            $data['thumbnail'] = $request->file('thumbnail')->store('courses/thumbnails', 'public');
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('thumbnail'),
+                'courses/thumbnails',
+                $course->thumbnail,
+                1920 // Max 1920px width
+            );
+            $data['thumbnail'] = $result['path'];
         }
 
         // Gérer l'upload de la vidéo de prévisualisation
         if ($request->hasFile('video_preview')) {
-            $data['video_preview'] = $request->file('video_preview')->store('courses/previews', 'public');
+            $result = $this->fileUploadService->uploadVideo(
+                $request->file('video_preview'),
+                'courses/previews',
+                $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
+            );
+            $data['video_preview'] = $result['path'];
         }
 
         $course->update($data);
@@ -557,5 +600,97 @@ class CourseController extends Controller
             ];
             return $course;
         });
+    }
+
+    public function previewData(Course $course)
+    {
+        try {
+            // Récupérer toutes les leçons vidéo publiées qui ont du contenu vidéo
+            $allVideoLessons = $course->sections()
+                ->with(['lessons' => function($query) {
+                    $query->where('type', 'video')
+                          ->where('is_published', true)
+                          ->where(function($q) {
+                              $q->whereNotNull('youtube_video_id')
+                                ->orWhereNotNull('file_path')
+                                ->orWhereNotNull('content_url');
+                          })
+                          ->orderBy('sort_order');
+                }])
+                ->get()
+                ->flatMap(function($section) {
+                    return $section->lessons->map(function($lesson) use ($section) {
+                        // Déterminer l'URL de la vidéo
+                        $videoUrl = null;
+                        try {
+                            // Si c'est un fichier stocké (file_path ou content_url qui est un chemin)
+                            if ($lesson->file_path) {
+                                $videoUrl = Storage::url($lesson->file_path);
+                            } elseif ($lesson->content_url) {
+                                // Vérifier si content_url est un chemin de fichier ou une URL
+                                if (!filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                                    // C'est probablement un chemin de fichier
+                                    $videoUrl = Storage::url($lesson->content_url);
+                                } else {
+                                    // C'est une URL externe (YouTube, Vimeo, etc.)
+                                    $videoUrl = $lesson->content_url;
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Ignorer les erreurs de Storage
+                            Log::warning('Erreur Storage pour leçon ' . $lesson->id . ': ' . $e->getMessage());
+                        }
+                        
+                        return [
+                            'id' => $lesson->id,
+                            'title' => $lesson->title ?? 'Sans titre',
+                            'section' => $section->title ?? 'Sans section',
+                            'duration' => $lesson->duration ?? 0,
+                            'youtube_id' => $lesson->youtube_video_id ?? null,
+                            'is_unlisted' => $lesson->is_unlisted ?? false,
+                            'video_url' => $videoUrl,
+                            'is_preview' => $lesson->is_preview ?? false,
+                        ];
+                    });
+                });
+
+            $previews = [];
+            
+            // Ajouter l'aperçu principal du cours
+            if ($course->video_preview_youtube_id || $course->video_preview) {
+                $previews[] = [
+                    'id' => 0,
+                    'title' => 'Aperçu du cours',
+                    'section' => '',
+                    'duration' => null,
+                    'youtube_id' => $course->video_preview_youtube_id,
+                    'is_unlisted' => $course->video_preview_is_unlisted,
+                    'video_url' => $course->video_preview ? Storage::url($course->video_preview) : null,
+                    'is_main' => true,
+                ];
+            }
+
+            // Ajouter toutes les leçons vidéo
+            foreach ($allVideoLessons as $lesson) {
+                $previews[] = array_merge($lesson, [
+                    'is_main' => false,
+                    'is_preview' => $lesson['is_preview'] ?? false
+                ]);
+            }
+
+            return response()->json([
+                'preview' => $previews
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erreur dans previewData: ' . $e->getMessage(), [
+                'course_id' => $course->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'error' => 'Erreur lors du chargement des aperçus',
+                'message' => $e->getMessage(),
+                'preview' => []
+            ], 500);
+        }
     }
 }

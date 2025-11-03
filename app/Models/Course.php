@@ -18,8 +18,11 @@ class Course extends Model
         'short_description',
         'thumbnail',
         'video_preview',
+        'video_preview_youtube_id',
+        'video_preview_is_unlisted',
         'price',
         'sale_price',
+        'sale_end_at',
         'is_free',
         'use_external_payment',
         'external_payment_url',
@@ -27,6 +30,7 @@ class Course extends Model
         'is_published',
         'is_featured',
         'is_downloadable',
+        'download_file_path',
         'level',
         'language',
         'tags',
@@ -41,11 +45,13 @@ class Course extends Model
         return [
             'price' => 'decimal:2',
             'sale_price' => 'decimal:2',
+            'sale_end_at' => 'datetime',
             'is_free' => 'boolean',
             'use_external_payment' => 'boolean',
             'is_published' => 'boolean',
             'is_featured' => 'boolean',
             'is_downloadable' => 'boolean',
+            'video_preview_is_unlisted' => 'boolean',
             'tags' => 'array',
             'requirements' => 'array',
             'what_you_will_learn' => 'array',
@@ -75,6 +81,27 @@ class Course extends Model
     public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
+    }
+
+    public function downloads(): HasMany
+    {
+        return $this->hasMany(CourseDownload::class);
+    }
+
+    /**
+     * Obtenir le nombre total de téléchargements
+     */
+    public function getDownloadsCountAttribute()
+    {
+        return $this->downloads()->count();
+    }
+
+    /**
+     * Obtenir le nombre de téléchargements uniques (utilisateurs uniques)
+     */
+    public function getUniqueDownloadsCountAttribute()
+    {
+        return $this->downloads()->distinct('user_id')->count('user_id');
     }
 
     public function reviews(): HasMany
@@ -337,6 +364,104 @@ class Course extends Model
     }
 
     /**
+     * Get course features as array dynamically
+     * Returns an array of features based on course properties
+     */
+    public function getCourseFeatures(): array
+    {
+        $features = [];
+        
+        // Nombre de leçons (toujours affiché si > 0)
+        $totalLessons = $this->getTotalLessonsAttribute();
+        if ($totalLessons > 0) {
+            $features[] = [
+                'icon' => 'fa-play-circle',
+                'text' => $totalLessons . ' leçon' . ($totalLessons > 1 ? 's' : '')
+            ];
+        }
+        
+        // Durée totale (toujours affichée si > 0)
+        $totalDuration = $this->getTotalDurationAttribute();
+        if ($totalDuration > 0) {
+            $features[] = [
+                'icon' => 'fa-clock',
+                'text' => $totalDuration . ' minute' . ($totalDuration > 1 ? 's' : '') . ' de contenu'
+            ];
+        }
+        
+        // Accès mobile et desktop (toujours disponible pour les cours en ligne)
+        $features[] = [
+            'icon' => 'fa-mobile-alt',
+            'text' => 'Accès mobile et desktop'
+        ];
+        
+        // Certificat de fin de cours (vérifier si des certificats sont configurés pour ce cours)
+        // On considère qu'un certificat est disponible si le cours a au moins une section avec des leçons
+        if ($this->sections->count() > 0) {
+            $features[] = [
+                'icon' => 'fa-certificate',
+                'text' => 'Certificat de fin de cours'
+            ];
+        }
+        
+        // Accès à vie (par défaut, les cours n'ont pas d'expiration)
+        $features[] = [
+            'icon' => 'fa-infinity',
+            'text' => 'Accès à vie'
+        ];
+        
+        // Téléchargement disponible (si is_downloadable est activé)
+        if ($this->is_downloadable) {
+            $features[] = [
+                'icon' => 'fa-download',
+                'text' => 'Téléchargement disponible'
+            ];
+        }
+        
+        return $features;
+    }
+
+    /**
+     * Vérifier si la prévisualisation utilise YouTube
+     */
+    public function isYoutubePreviewVideo(): bool
+    {
+        return !empty($this->video_preview_youtube_id);
+    }
+
+    /**
+     * Obtenir l'URL d'embed YouTube sécurisée pour la prévisualisation
+     */
+    public function getSecureYouTubePreviewEmbedUrl(): ?string
+    {
+        if (!$this->isYoutubePreviewVideo()) {
+            return null;
+        }
+
+        $videoId = $this->video_preview_youtube_id;
+        $params = [
+            'rel' => 0,
+            'modestbranding' => 1,
+            'iv_load_policy' => 3,
+            'origin' => config('video.youtube.embed_domain', request()->getHost()),
+        ];
+
+        return "https://www.youtube.com/embed/{$videoId}?" . http_build_query($params);
+    }
+
+    /**
+     * Obtenir l'URL YouTube de la prévisualisation
+     */
+    public function getYouTubePreviewWatchUrl(): ?string
+    {
+        if (!$this->isYoutubePreviewVideo()) {
+            return null;
+        }
+
+        return "https://www.youtube.com/watch?v={$this->video_preview_youtube_id}";
+    }
+
+    /**
      * Get button configuration for a user
      */
     public function getButtonConfigForUser($userId = null): array
@@ -357,21 +482,83 @@ class Course extends Model
         
         switch ($state) {
             case 'enrolled':
+                // Si le cours est téléchargeable ET que l'utilisateur a payé, afficher uniquement le bouton tableau de bord
+                if ($this->is_downloadable && $userId) {
+                    $hasPurchased = false;
+                    if (!$this->is_free) {
+                        $hasPurchased = \App\Models\Order::where('user_id', $userId)
+                            ->where('status', 'paid')
+                            ->whereHas('orderItems', function($query) {
+                                $query->where('course_id', $this->id);
+                            })
+                            ->exists();
+                    } else {
+                        // Pour les cours gratuits, considérer comme "payé" si l'utilisateur est inscrit
+                        $hasPurchased = true;
+                    }
+                    
+                    if ($hasPurchased) {
+                        return [
+                            'type' => 'link',
+                            'url' => route('student.dashboard'),
+                            'class' => 'btn btn-primary',
+                            'text' => 'Accéder au tableau de bord',
+                            'icon' => 'fas fa-tachometer-alt'
+                        ];
+                    }
+                }
+                
+                // Si le cours est téléchargeable mais non payé, proposer deux options : apprentissage ou téléchargement
+                if ($this->is_downloadable) {
+                    return [
+                        'type' => 'buttons',
+                        'buttons' => [
+                            [
+                                'type' => 'link',
+                                'url' => route('learning.course', $this->slug),
+                                'class' => 'btn btn-success',
+                                'text' => 'Procéder à l\'apprentissage',
+                                'icon' => 'fas fa-play'
+                            ],
+                            [
+                                'type' => 'link',
+                                'url' => route('student.courses'),
+                                'class' => 'btn btn-outline-primary',
+                                'text' => 'Tableau de bord',
+                                'icon' => 'fas fa-download'
+                            ]
+                        ]
+                    ];
+                }
+                
+                // Sinon, juste le bouton pour accéder au cours
                 return [
                     'type' => 'link',
                     'url' => route('learning.course', $this->slug),
                     'class' => 'btn btn-success',
-                    'text' => 'Accéder au cours',
+                    'text' => 'Procéder à l\'apprentissage',
                     'icon' => 'fas fa-play'
                 ];
                 
             case 'purchased':
+                // Si le cours est téléchargeable, rediriger uniquement vers le tableau de bord étudiant
+                if ($this->is_downloadable) {
+                    return [
+                        'type' => 'link',
+                        'url' => route('student.dashboard'),
+                        'class' => 'btn btn-primary',
+                        'text' => 'Accéder au tableau de bord',
+                        'icon' => 'fas fa-tachometer-alt'
+                    ];
+                }
+                
+                // Sinon, proposer de s'inscrire pour commencer l'apprentissage
                 return [
                     'type' => 'form',
                     'action' => route('student.courses.enroll', $this->slug),
                     'class' => 'btn btn-primary',
-                    'text' => 'S\'inscrire au cours',
-                    'icon' => 'fas fa-user-plus'
+                    'text' => 'Commencer l\'apprentissage',
+                    'icon' => 'fas fa-play'
                 ];
                 
             case 'free':
@@ -410,7 +597,7 @@ class Course extends Model
                     'type' => 'link',
                     'url' => route('login'),
                     'class' => 'btn btn-primary',
-                    'text' => 'Se connecter pour s\'inscrire',
+                    'text' => 'Se connecter',
                     'icon' => 'fas fa-sign-in-alt'
                 ];
         }

@@ -103,7 +103,7 @@
                                 @if($banner->image)
                                 <div class="current-image mb-3">
                                     <p class="fw-bold mb-2"><i class="fas fa-check-circle text-success me-1"></i>Image actuelle :</p>
-                                    <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : asset($banner->image) }}" alt="Image actuelle" class="img-thumbnail" style="max-height: 200px;">
+                                    <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : \App\Helpers\FileHelper::banner($banner->image) }}" alt="Image actuelle" class="img-thumbnail" style="max-height: 200px;">
                                 </div>
                                 @endif
                                 
@@ -142,7 +142,7 @@
                                 @if($banner->mobile_image)
                                 <div class="current-image mb-3">
                                     <p class="fw-bold mb-2"><i class="fas fa-check-circle text-success me-1"></i>Image mobile actuelle :</p>
-                                    <img src="{{ str_starts_with($banner->mobile_image, 'http') ? $banner->mobile_image : asset($banner->mobile_image) }}" alt="Image mobile actuelle" class="img-thumbnail" style="max-height: 200px;">
+                                    <img src="{{ str_starts_with($banner->mobile_image, 'http') ? $banner->mobile_image : \App\Helpers\FileHelper::banner($banner->mobile_image) }}" alt="Image mobile actuelle" class="img-thumbnail" style="max-height: 200px;">
                                 </div>
                                 @endif
                                 

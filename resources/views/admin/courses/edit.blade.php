@@ -192,12 +192,27 @@
                             <div class="col-md-6 mb-3">
                                 <label for="video_preview" class="form-label fw-bold">Vidéo de prévisualisation</label>
                                 
+                                {{-- Champ YouTube (recommandé pour vidéos sécurisées) --}}
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle"></i> <strong>Recommandé:</strong> Utilisez YouTube pour un hébergement sécurisé.
+                                </div>
+                                
+                                @if($course->video_preview_youtube_id)
+                                    <div class="alert alert-success mb-3">
+                                        <i class="fab fa-youtube text-danger"></i> 
+                                        <strong>Vidéo YouTube actuelle:</strong> {{ $course->video_preview_youtube_id }}
+                                        @if($course->video_preview_is_unlisted)
+                                            <span class="badge bg-warning">Mode Non Répertorié</span>
+                                        @endif
+                                    </div>
+                                @endif
+                                
                                 <!-- Vidéo actuelle -->
-                                @if($course->video_preview)
+                                @if($course->video_preview && !str_starts_with($course->video_preview, 'http'))
                                     <div class="current-video mb-3 text-center">
                                         <p class="fw-bold mb-2 text-success">
                                             <i class="fas fa-check-circle me-1"></i>
-                                            Vidéo actuelle :
+                                            Vidéo actuelle (fichier) :
                                         </p>
                                         <video controls class="w-100 rounded" style="max-height: 200px; border: 4px solid #28a745;">
                                             <source src="{{ $course->video_preview }}" type="video/mp4">
@@ -205,20 +220,44 @@
                                     </div>
                                 @endif
                                 
-                                <!-- Option 1: Lien vidéo -->
+                                <!-- Option 1: YouTube -->
                                 <div class="mb-3">
-                                    <label class="form-label small">Option 1: Lien vidéo</label>
+                                    <label class="form-label small">
+                                        <i class="fab fa-youtube text-danger"></i> Option 1: URL YouTube (Mode Non Répertorié)
+                                    </label>
+                                    <input type="text" class="form-control @error('video_preview_youtube_id') is-invalid @enderror" 
+                                           id="video_preview_youtube_id" name="video_preview_youtube_id" value="{{ old('video_preview_youtube_id', $course->video_preview_youtube_id) }}" 
+                                           placeholder="https://www.youtube.com/watch?v=xxx ou youtu.be/xxx">
+                                    <small class="text-muted">Collez l'URL complète ou juste l'ID de la vidéo YouTube</small>
+                                    @error('video_preview_youtube_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="video_preview_is_unlisted" name="video_preview_is_unlisted" value="1" {{ old('video_preview_is_unlisted', $course->video_preview_is_unlisted) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="video_preview_is_unlisted">
+                                            Vidéo en mode "Non répertorié" sur YouTube
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">Cochez cette case si votre vidéo YouTube est en mode non répertorié (recommandé pour plus de sécurité)</small>
+                                </div>
+                                
+                                <!-- Option 2: Lien vidéo -->
+                                <div class="mb-3">
+                                    <label class="form-label small">Option 2: Lien vidéo (Vimeo, autres)</label>
                                     <input type="url" class="form-control @error('video_preview') is-invalid @enderror" 
-                                           id="video_preview" name="video_preview" value="{{ old('video_preview', $course->video_preview) }}" 
+                                           id="video_preview" name="video_preview" value="{{ old('video_preview', str_starts_with($course->video_preview ?? '', 'http') ? $course->video_preview : '') }}" 
                                            placeholder="https://...">
                                     @error('video_preview')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 
-                                <!-- Option 2: Upload fichier -->
+                                <!-- Option 3: Upload fichier -->
                                 <div>
-                                    <label class="form-label small">Option 2: Téléverser un fichier</label>
+                                    <label class="form-label small">Option 3: Téléverser un fichier</label>
                                     <div class="upload-zone" id="videoUploadZone">
                                         <input type="file" 
                                                class="form-control d-none @error('video_preview_file') is-invalid @enderror" 
@@ -302,6 +341,111 @@
                                         Cours en vedette
                                     </label>
                                 </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="is_downloadable" name="is_downloadable" value="1" 
+                                           {{ old('is_downloadable', $course->is_downloadable) ? 'checked' : '' }}
+                                           onchange="toggleDownloadFileFields()">
+                                    <label class="form-check-label" for="is_downloadable">
+                                        <strong>Cours téléchargeable</strong>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fichier de téléchargement spécifique -->
+                        <div id="download-file-fields" style="display: {{ old('is_downloadable', $course->is_downloadable) ? 'block' : 'none' }};" class="mt-4">
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        <strong>Option de téléchargement :</strong> Vous pouvez définir un fichier spécifique à télécharger (ZIP, PDF, etc.) au lieu de télécharger toutes les sections et leçons du cours. Laissez vide pour télécharger le contenu complet du cours.
+                                    </div>
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label for="download_file_path" class="form-label fw-bold">
+                                        Fichier de téléchargement spécifique <span class="text-muted">(Optionnel)</span>
+                                    </label>
+                                    
+                                    @if($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL))
+                                    <div class="current-file mb-3">
+                                        <p class="fw-bold mb-2"><i class="fas fa-check-circle text-success me-1"></i>Fichier actuel :</p>
+                                        <div class="d-flex align-items-center gap-2 p-2 bg-light rounded">
+                                            <i class="fas fa-file-archive fa-2x text-primary"></i>
+                                            <div class="flex-grow-1">
+                                                <strong>{{ basename($course->download_file_path) }}</strong>
+                                                <br>
+                                                <small class="text-muted">Fichier déjà uploadé</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endif
+                                    
+                                    <div class="upload-zone" id="downloadFileUploadZone">
+                                        <input type="file" 
+                                               class="form-control d-none @error('download_file_path') is-invalid @enderror" 
+                                               id="download_file_path" 
+                                               name="download_file_path" 
+                                               accept=".zip,.pdf,.doc,.docx,.rar,.7z,.tar,.gz">
+                                        <div class="upload-placeholder text-center p-4" onclick="document.getElementById('download_file_path').click()">
+                                            <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                            <p class="mb-2"><strong>Cliquez pour sélectionner un fichier</strong></p>
+                                            <p class="text-muted small mb-0">Formats : ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR, GZ</p>
+                                            <p class="text-muted small">Maximum : 2MB</p>
+                                        </div>
+                                        <div class="upload-preview d-none">
+                                            <div class="d-flex align-items-center gap-3 p-3">
+                                                <i class="fas fa-file-archive fa-3x text-primary"></i>
+                                                <div class="flex-grow-1">
+                                                    <div class="upload-info">
+                                                        <span class="badge bg-primary file-name"></span>
+                                                        <span class="badge bg-info file-size ms-2"></span>
+                                                    </div>
+                                                    <div class="upload-info mt-2">
+                                                        <button type="button" class="btn btn-sm btn-danger" onclick="clearDownloadFile()">
+                                                            <i class="fas fa-trash me-1"></i>Supprimer
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Pour les fichiers plus volumineux, utilisez une URL externe dans le champ ci-dessous.
+                                    </small>
+                                    <div class="invalid-feedback d-block" id="downloadFileError"></div>
+                                    @error('download_file_path')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="col-md-12 mb-3">
+                                    <label for="download_file_url" class="form-label">OU URL externe du fichier</label>
+                                    <input type="text" 
+                                           class="form-control @error('download_file_url') is-invalid @enderror" 
+                                           id="download_file_url" 
+                                           name="download_file_url" 
+                                           value="{{ old('download_file_url', filter_var($course->download_file_path ?? '', FILTER_VALIDATE_URL) ? $course->download_file_path : '') }}"
+                                           placeholder="https://example.com/course.zip">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Si vous avez le fichier hébergé ailleurs, entrez son URL complète ici.
+                                    </small>
+                                    @error('download_file_url')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                
+                                @if($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL))
+                                <div class="col-md-12 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="remove_download_file" name="remove_download_file" value="1">
+                                        <label class="form-check-label" for="remove_download_file">
+                                            Supprimer le fichier de téléchargement actuel (retour au téléchargement du contenu complet)
+                                        </label>
+                                    </div>
+                                </div>
+                                @endif
                             </div>
                         </div>
 
@@ -777,6 +921,144 @@ function toggleExternalPaymentFields() {
         document.getElementById('external_payment_text').value = '';
     }
 }
+
+// Gestion des champs de fichier de téléchargement
+function toggleDownloadFileFields() {
+    const checkbox = document.getElementById('is_downloadable');
+    const fields = document.getElementById('download-file-fields');
+    
+    if (checkbox.checked) {
+        fields.style.display = 'block';
+    } else {
+        fields.style.display = 'none';
+        const downloadInput = document.getElementById('download_file_path');
+        if (downloadInput) {
+            downloadInput.value = '';
+            clearDownloadFile();
+        }
+        const urlInput = document.getElementById('download_file_url');
+        if (urlInput) {
+            urlInput.value = '';
+        }
+        const removeCheckbox = document.getElementById('remove_download_file');
+        if (removeCheckbox) {
+            removeCheckbox.checked = false;
+        }
+    }
+}
+
+// Gestion de l'upload du fichier de téléchargement avec validation et preview
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadFileInput = document.getElementById('download_file_path');
+    if (downloadFileInput) {
+        downloadFileInput.addEventListener('change', function(e) {
+            handleDownloadFileUpload(e.target);
+        });
+    }
+});
+
+function handleDownloadFileUpload(input) {
+    const zone = document.getElementById('downloadFileUploadZone');
+    const errorDiv = document.getElementById('downloadFileError');
+    const file = input.files[0];
+    
+    // Reset error
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.classList.remove('d-block');
+    }
+    
+    if (!file) return;
+    
+    // Validation du type
+    const validExtensions = ['.zip', '.pdf', '.doc', '.docx', '.rar', '.7z', '.tar', '.gz'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    
+    if (!validExtensions.includes(fileExtension)) {
+        showDownloadFileError('❌ Format invalide. Utilisez ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR ou GZ.');
+        input.value = '';
+        return;
+    }
+    
+    // Validation de la taille (2MB)
+    const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+    if (file.size > MAX_FILE_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        showDownloadFileError(`❌ Fichier trop volumineux (${sizeMB}MB). Maximum : 2MB. Utilisez une URL externe pour les fichiers plus volumineux.`);
+        input.value = '';
+        return;
+    }
+    
+    // Afficher le preview
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    
+    if (placeholder && preview) {
+        placeholder.classList.add('d-none');
+        preview.classList.remove('d-none');
+        
+        preview.querySelector('.file-name').textContent = file.name;
+        preview.querySelector('.file-size').textContent = formatFileSize(file.size);
+        
+        zone.style.borderColor = '#28a745';
+    }
+    
+    // Effacer l'URL si un fichier est sélectionné
+    const urlInput = document.getElementById('download_file_url');
+    if (urlInput) {
+        urlInput.value = '';
+    }
+}
+
+function clearDownloadFile() {
+    const input = document.getElementById('download_file_path');
+    const zone = document.getElementById('downloadFileUploadZone');
+    
+    if (!input || !zone) return;
+    
+    input.value = '';
+    
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    
+    if (placeholder && preview) {
+        placeholder.classList.remove('d-none');
+        preview.classList.add('d-none');
+        
+        zone.style.borderColor = '#dee2e6';
+    }
+    
+    // Réinitialiser l'erreur
+    const errorDiv = document.getElementById('downloadFileError');
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.classList.remove('d-block');
+    }
+}
+
+function showDownloadFileError(message) {
+    const errorDiv = document.getElementById('downloadFileError');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.classList.add('d-block');
+    }
+}
+
+// Effacer le fichier uploadé si une URL est saisie
+document.addEventListener('DOMContentLoaded', function() {
+    const urlInput = document.getElementById('download_file_url');
+    if (urlInput) {
+        urlInput.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                // Si une URL est saisie, effacer le fichier uploadé
+                const fileInput = document.getElementById('download_file_path');
+                if (fileInput && fileInput.files.length > 0) {
+                    clearDownloadFile();
+                }
+            }
+        });
+    }
+});
 </script>
 @endpush
 
@@ -951,6 +1233,17 @@ function toggleExternalPaymentFields() {
 
 .upload-preview img:hover {
     transform: scale(1.02);
+}
+
+.current-file {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    border: 2px solid #28a745;
+}
+
+.current-file i {
+    opacity: 0.8;
 }
 
 .upload-info {

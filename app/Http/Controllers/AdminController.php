@@ -14,7 +14,9 @@ use App\Models\Testimonial;
 use App\Models\Payment;
 use App\Models\Review;
 use App\Models\Setting;
+use App\Models\CourseDownload;
 use App\Traits\DatabaseCompatibility;
+use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -24,6 +26,14 @@ use Illuminate\Support\Str;
 class AdminController extends Controller
 {
     use DatabaseCompatibility;
+
+    protected $fileUploadService;
+
+    public function __construct(FileUploadService $fileUploadService)
+    {
+        $this->fileUploadService = $fileUploadService;
+    }
+
     public function dashboard()
     {
         // Statistiques générales
@@ -260,14 +270,13 @@ class AdminController extends Controller
 
         // Gérer l'upload de l'avatar
         if ($request->hasFile('avatar')) {
-            // Supprimer l'ancien avatar s'il existe
-            if ($user->avatar) {
-                Storage::delete($user->avatar);
-            }
-
-            // Stocker le nouvel avatar
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $data['avatar'] = $path;
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('avatar'),
+                'avatars',
+                $user->avatar,
+                300 // Max 300px width
+            );
+            $data['avatar'] = $result['path'];
         }
 
         $user->update($data);
@@ -403,6 +412,9 @@ class AdminController extends Controller
             'price' => 'required|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
+            'is_downloadable' => 'boolean',
+            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:2048', // 2MB max (limite PHP)
+            'download_file_url' => 'nullable|url|max:1000',
             'is_published' => 'boolean',
             'is_featured' => 'boolean',
             'level' => 'required|in:beginner,intermediate,advanced',
@@ -411,7 +423,8 @@ class AdminController extends Controller
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
             'video_preview' => 'nullable|string|max:255',
             'video_preview_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm|max:1048576',
-            'video_preview_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm|max:1048576',
+            'video_preview_youtube_id' => 'nullable|string|max:100',
+            'video_preview_is_unlisted' => 'boolean',
             'requirements' => 'nullable|array',
             'what_you_will_learn' => 'nullable|array',
             'meta_description' => 'nullable|string|max:160',
@@ -433,6 +446,9 @@ class AdminController extends Controller
             'thumbnail.image' => 'Le fichier doit être une image.',
             'thumbnail.mimes' => 'Le fichier doit être de type: jpeg, png, jpg, gif, webp.',
             'thumbnail.max' => 'Le fichier ne doit pas dépasser 5MB.',
+            'download_file_path.file' => 'Le fichier de téléchargement doit être un fichier valide.',
+            'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz.',
+            'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 2MB. Pour les fichiers plus volumineux, utilisez une URL externe.',
         ]);
 
         DB::beginTransaction();
@@ -440,20 +456,65 @@ class AdminController extends Controller
             // Créer le cours
             $courseData = $request->only([
                 'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
-                'is_free', 'is_published', 'is_featured', 'level', 'language', 'duration',
-                'video_preview', 'meta_description', 'meta_keywords', 'tags'
+                'is_free', 'is_downloadable', 'is_published', 'is_featured', 'level', 'language', 'duration',
+                'video_preview', 'meta_description', 'meta_keywords', 'tags',
+                'video_preview_youtube_id', 'video_preview_is_unlisted'
             ]);
 
             // Gérer l'upload de l'image de couverture
             if ($request->hasFile('thumbnail')) {
-                $path = $request->file('thumbnail')->store('courses/thumbnails', 'public');
-                $courseData['thumbnail'] = $path;
+                $result = $this->fileUploadService->uploadImage(
+                    $request->file('thumbnail'),
+                    'courses/thumbnails',
+                    null,
+                    1920 // Max 1920px width
+                );
+                $courseData['thumbnail'] = $result['path'];
             }
 
-            // Gérer upload de la vidéo de prévisualisation si fournie
+            // Gérer YouTube ou upload de la vidéo de prévisualisation
+            $videoPreviewYoutubeId = $request->video_preview_youtube_id;
+            $isUnlisted = $request->boolean('video_preview_is_unlisted', false);
+            
+            // Si YouTube vidéo ID fourni, extraire et valider
+            if ($videoPreviewYoutubeId) {
+                $courseData['video_preview_youtube_id'] = $this->extractYouTubeVideoId($videoPreviewYoutubeId);
+                $courseData['video_preview_is_unlisted'] = $isUnlisted;
+            }
+            
+            // Gérer upload fichier si fourni
             if ($request->hasFile('video_preview_file')) {
-                $videoPath = $request->file('video_preview_file')->store('courses/previews', 'public');
-                $courseData['video_preview'] = $videoPath;
+                $result = $this->fileUploadService->uploadVideo(
+                    $request->file('video_preview_file'),
+                    'courses/previews',
+                    null
+                );
+                $courseData['video_preview'] = $result['path'];
+            }
+
+            // Gérer le fichier de téléchargement spécifique
+            if ($request->hasFile('download_file_path')) {
+                try {
+                    $result = $this->fileUploadService->uploadDocument(
+                        $request->file('download_file_path'),
+                        'courses/downloads',
+                        null
+                    );
+                    $courseData['download_file_path'] = $result['path'];
+                } catch (\Exception $e) {
+                    DB::rollback();
+                    \Log::error('Erreur upload download_file_path: ' . $e->getMessage(), [
+                        'file' => $request->file('download_file_path')->getClientOriginalName(),
+                        'size' => $request->file('download_file_path')->getSize(),
+                        'error' => $e->getTraceAsString()
+                    ]);
+                    return redirect()->back()
+                        ->withInput()
+                        ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()]);
+                }
+            } elseif ($request->filled('download_file_url')) {
+                // Si une URL externe est fournie, l'utiliser
+                $courseData['download_file_path'] = $request->download_file_url;
             }
 
             // Traiter les tableaux
@@ -480,7 +541,16 @@ class AdminController extends Controller
                             // Récupérer le fichier uploadé via l'indexation de la requête
                             $uploaded = $request->file("sections.$sectionIndex.lessons.$lessonIndex.content_file");
                             if ($uploaded) {
-                                $filePath = $uploaded->store('courses/lessons', 'public');
+                                // Déterminer le type de fichier
+                                $mimeType = $uploaded->getMimeType();
+                                if (strpos($mimeType, 'video/') === 0) {
+                                    $result = $this->fileUploadService->uploadVideo($uploaded, 'courses/lessons', null);
+                                } elseif (strpos($mimeType, 'application/') === 0) {
+                                    $result = $this->fileUploadService->uploadDocument($uploaded, 'courses/lessons', null);
+                                } else {
+                                    $result = $this->fileUploadService->upload($uploaded, 'courses/lessons', null);
+                                }
+                                $filePath = $result['path'];
                             }
 
                             $section->lessons()->create([
@@ -540,6 +610,9 @@ class AdminController extends Controller
             'price' => 'required|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
+            'is_downloadable' => 'boolean',
+            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:2048', // 2MB max (limite PHP)
+            'download_file_url' => 'nullable|url|max:1000',
             'use_external_payment' => 'boolean',
             'external_payment_url' => 'nullable|url|max:500|required_if:use_external_payment,1',
             'external_payment_text' => 'nullable|string|max:100',
@@ -549,6 +622,9 @@ class AdminController extends Controller
             'language' => 'required|string|max:10',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
             'video_preview' => 'nullable|string|max:255',
+            'video_preview_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm|max:1048576',
+            'video_preview_youtube_id' => 'nullable|string|max:100',
+            'video_preview_is_unlisted' => 'boolean',
             'requirements' => 'nullable|array',
             'what_you_will_learn' => 'nullable|array',
             'meta_description' => 'nullable|string|max:160',
@@ -558,32 +634,84 @@ class AdminController extends Controller
             'thumbnail.image' => 'Le fichier doit être une image.',
             'thumbnail.mimes' => 'Le fichier doit être de type: jpeg, png, jpg, gif, webp.',
             'thumbnail.max' => 'Le fichier ne doit pas dépasser 5MB.',
+            'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz.',
+            'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 2MB. Pour les fichiers plus volumineux, utilisez une URL externe.',
             'external_payment_url.required_if' => 'L\'URL de paiement externe est requise quand le paiement externe est activé.',
         ]);
 
         $data = $request->only([
             'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
-            'is_free', 'use_external_payment', 'external_payment_url', 'external_payment_text',
+            'is_free', 'is_downloadable', 'use_external_payment', 'external_payment_url', 'external_payment_text',
             'is_published', 'is_featured', 'level', 'language',
-            'video_preview', 'meta_description', 'meta_keywords', 'tags'
+            'video_preview', 'meta_description', 'meta_keywords', 'tags',
+            'video_preview_youtube_id', 'video_preview_is_unlisted'
         ]);
 
         // Gérer l'upload de l'image de couverture
         if ($request->hasFile('thumbnail')) {
-            // Supprimer l'ancienne image s'il y en a une
-            if ($course->thumbnail) {
-                Storage::delete($course->thumbnail);
-            }
-
-            // Stocker la nouvelle image
-            $path = $request->file('thumbnail')->store('courses/thumbnails', 'public');
-            $data['thumbnail'] = $path;
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('thumbnail'),
+                'courses/thumbnails',
+                $course->thumbnail,
+                1920 // Max 1920px width
+            );
+            $data['thumbnail'] = $result['path'];
         }
 
-        // Gérer upload de la vidéo de prévisualisation si fournie
+        // Gérer YouTube ou upload de la vidéo de prévisualisation
+        $videoPreviewYoutubeId = $request->video_preview_youtube_id;
+        $isUnlisted = $request->boolean('video_preview_is_unlisted', false);
+        
+        // Si YouTube vidéo ID fourni, extraire et valider
+        if ($videoPreviewYoutubeId) {
+            $data['video_preview_youtube_id'] = $this->extractYouTubeVideoId($videoPreviewYoutubeId);
+            $data['video_preview_is_unlisted'] = $isUnlisted;
+        }
+        
+        // Gérer upload fichier si fourni
         if ($request->hasFile('video_preview_file')) {
-            $videoPath = $request->file('video_preview_file')->store('courses/previews', 'public');
-            $data['video_preview'] = $videoPath;
+            $result = $this->fileUploadService->uploadVideo(
+                $request->file('video_preview_file'),
+                'courses/previews',
+                $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
+            );
+            $data['video_preview'] = $result['path'];
+        }
+
+        // Gérer le fichier de téléchargement spécifique
+        if ($request->has('remove_download_file') && $request->remove_download_file) {
+            // Supprimer l'ancien fichier s'il existe
+            if ($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+                $this->fileUploadService->deleteFile($course->download_file_path);
+            }
+            $data['download_file_path'] = null;
+        } elseif ($request->hasFile('download_file_path')) {
+            // Déterminer l'ancien chemin
+            $oldPath = null;
+            if ($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+                $oldPath = $course->download_file_path;
+            }
+            // Stocker le nouveau fichier
+            try {
+                $result = $this->fileUploadService->uploadDocument(
+                    $request->file('download_file_path'),
+                    'courses/downloads',
+                    $oldPath
+                );
+                $data['download_file_path'] = $result['path'];
+            } catch (\Exception $e) {
+                \Log::error('Erreur upload download_file_path (update): ' . $e->getMessage(), [
+                    'file' => $request->file('download_file_path')->getClientOriginalName(),
+                    'size' => $request->file('download_file_path')->getSize(),
+                    'error' => $e->getTraceAsString()
+                ]);
+                return redirect()->back()
+                    ->withInput()
+                    ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()]);
+            }
+        } elseif ($request->filled('download_file_url')) {
+            // Si une URL externe est fournie, l'utiliser
+            $data['download_file_path'] = $request->download_file_url;
         }
 
         // Traiter les tableaux
@@ -823,12 +951,18 @@ class AdminController extends Controller
             'file' => 'required|file|mimetypes:video/mp4,video/quicktime,video/webm,application/pdf|max:1048576',
         ]);
 
-        $path = $request->file('file')->store('courses/lessons', 'public');
+        // Déterminer le type de fichier
+        $mimeType = $request->file('file')->getMimeType();
+        if (strpos($mimeType, 'video/') === 0) {
+            $result = $this->fileUploadService->uploadVideo($request->file('file'), 'courses/lessons', null);
+        } else {
+            $result = $this->fileUploadService->uploadDocument($request->file('file'), 'courses/lessons', null);
+        }
 
         return response()->json([
             'success' => true,
-            'path' => $path,
-            'url' => Storage::disk('public')->url($path),
+            'path' => $result['path'],
+            'url' => $result['url'],
         ]);
     }
 
@@ -841,12 +975,12 @@ class AdminController extends Controller
             'file' => 'required|file|mimetypes:video/mp4,video/quicktime,video/webm|max:1048576',
         ]);
 
-        $path = $request->file('file')->store('courses/previews', 'public');
+        $result = $this->fileUploadService->uploadVideo($request->file('file'), 'courses/previews', null);
 
         return response()->json([
             'success' => true,
-            'path' => $path,
-            'url' => Storage::disk('public')->url($path),
+            'path' => $result['path'],
+            'url' => $result['url'],
         ]);
     }
 
@@ -939,16 +1073,32 @@ class AdminController extends Controller
             'duration' => 'nullable|integer|min:0',
             'is_preview' => 'boolean',
             'is_published' => 'boolean',
+            'youtube_video_id' => 'nullable|string|max:100',
+            'is_unlisted' => 'boolean',
         ]);
 
         // Get the next sort order for this section
         $nextOrder = $course->lessons()->where('section_id', $request->section_id)->max('sort_order') + 1;
 
-        // Gérer l'upload de fichier si fourni
+        // Gérer YouTube ou upload de fichier
         $contentUrl = $request->content_url;
+        $youtubeVideoId = $request->youtube_video_id;
+        $isUnlisted = $request->boolean('is_unlisted', false);
+        
+        // Si YouTube vidéo ID fourni, extraire et valider
+        if ($youtubeVideoId) {
+            $youtubeVideoId = $this->extractYouTubeVideoId($youtubeVideoId);
+        }
+        
         if ($request->hasFile('content_file')) {
-            $filePath = $request->file('content_file')->store('courses/lessons', 'public');
-            $contentUrl = $filePath;
+            // Déterminer le type de fichier
+            $mimeType = $request->file('content_file')->getMimeType();
+            if (strpos($mimeType, 'video/') === 0) {
+                $result = $this->fileUploadService->uploadVideo($request->file('content_file'), 'courses/lessons', null);
+            } else {
+                $result = $this->fileUploadService->uploadDocument($request->file('content_file'), 'courses/lessons', null);
+            }
+            $contentUrl = $result['path'];
         }
 
         $lesson = $course->lessons()->create([
@@ -962,6 +1112,8 @@ class AdminController extends Controller
             'sort_order' => $nextOrder,
             'is_published' => $request->boolean('is_published', true),
             'is_preview' => $request->boolean('is_preview', false),
+            'youtube_video_id' => $youtubeVideoId,
+            'is_unlisted' => $isUnlisted,
         ]);
 
         // Update course duration and lessons count
@@ -997,18 +1149,35 @@ class AdminController extends Controller
             'duration' => 'nullable|integer|min:0',
             'is_preview' => 'boolean',
             'is_published' => 'boolean',
+            'youtube_video_id' => 'nullable|string|max:100',
+            'is_unlisted' => 'boolean',
         ]);
 
-        // Gérer l'upload de fichier si fourni
+        // Gérer YouTube ou upload de fichier
         $contentUrl = $request->content_url;
+        $youtubeVideoId = $request->youtube_video_id;
+        $isUnlisted = $request->boolean('is_unlisted', false);
+        
+        // Si YouTube vidéo ID fourni, extraire et valider
+        if ($youtubeVideoId) {
+            $youtubeVideoId = $this->extractYouTubeVideoId($youtubeVideoId);
+        }
+        
         if ($request->hasFile('content_file')) {
-            // Supprimer l'ancien fichier s'il existe et n'est pas un lien externe
-            if ($lesson->content_url && !str_starts_with($lesson->content_url, 'http')) {
-                Storage::delete($lesson->content_url);
+            // Déterminer l'ancien chemin (si ce n'est pas une URL externe)
+            $oldPath = null;
+            if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                $oldPath = $lesson->content_url;
             }
             
-            $filePath = $request->file('content_file')->store('courses/lessons', 'public');
-            $contentUrl = $filePath;
+            // Déterminer le type de fichier
+            $mimeType = $request->file('content_file')->getMimeType();
+            if (strpos($mimeType, 'video/') === 0) {
+                $result = $this->fileUploadService->uploadVideo($request->file('content_file'), 'courses/lessons', $oldPath);
+            } else {
+                $result = $this->fileUploadService->uploadDocument($request->file('content_file'), 'courses/lessons', $oldPath);
+            }
+            $contentUrl = $result['path'];
         }
 
         $lesson->update([
@@ -1021,6 +1190,8 @@ class AdminController extends Controller
             'duration' => $request->duration ?? 0,
             'is_published' => $request->boolean('is_published', true),
             'is_preview' => $request->boolean('is_preview', false),
+            'youtube_video_id' => $youtubeVideoId,
+            'is_unlisted' => $isUnlisted,
         ]);
 
         // Update course duration
@@ -1061,6 +1232,65 @@ class AdminController extends Controller
             'published_courses' => Course::published()->count(),
             'total_enrollments' => Enrollment::count(),
             'total_reviews' => \App\Models\Review::count(),
+            'total_downloads' => CourseDownload::count(),
+            'unique_downloaders' => CourseDownload::distinct('user_id')->count('user_id'),
+        ];
+
+        // Statistiques de téléchargements
+        $downloadStats = [
+            // Par cours
+            'by_course' => Course::where('is_downloadable', true)
+                ->withCount('downloads')
+                ->orderBy('downloads_count', 'desc')
+                ->limit(20)
+                ->get(),
+            
+            // Par utilisateur
+            'by_user' => User::withCount('downloads')
+                ->having('downloads_count', '>', 0)
+                ->orderBy('downloads_count', 'desc')
+                ->limit(20)
+                ->get(),
+            
+            // Par catégorie
+            'by_category' => Category::withCount(['courses' => function($query) {
+                    $query->where('is_downloadable', true);
+                }])
+                ->with(['courses' => function($query) {
+                    $query->where('is_downloadable', true)->withCount('downloads');
+                }])
+                ->get()
+                ->map(function($category) {
+                    $category->total_downloads = $category->courses->sum('downloads_count');
+                    return $category;
+                })
+                ->sortByDesc('total_downloads')
+                ->take(10),
+            
+            // Par pays
+            'by_country' => CourseDownload::select('country', 'country_name')
+                ->selectRaw('COUNT(*) as downloads_count')
+                ->whereNotNull('country')
+                ->groupBy('country', 'country_name')
+                ->orderBy('downloads_count', 'desc')
+                ->limit(20)
+                ->get(),
+            
+            // Par ville
+            'by_city' => CourseDownload::select('city', 'country_name')
+                ->selectRaw('COUNT(*) as downloads_count')
+                ->whereNotNull('city')
+                ->groupBy('city', 'country_name')
+                ->orderBy('downloads_count', 'desc')
+                ->limit(20)
+                ->get(),
+            
+            // Téléchargements par jour (30 derniers jours)
+            'daily' => CourseDownload::selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', COUNT(*) as downloads_count')
+                ->where('created_at', '>=', now()->subDays(30))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get(),
         ];
 
         // Cours avec le plus d'étudiants
@@ -1080,7 +1310,7 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
 
-        return view('admin.statistics', compact('stats', 'topCourses', 'topRatedCourses'));
+        return view('admin.statistics', compact('stats', 'topCourses', 'topRatedCourses', 'downloadStats'));
     }
 
     /**
@@ -1207,5 +1437,40 @@ class AdminController extends Controller
 
         return redirect()->route('admin.settings')
             ->with('success', 'Paramètres mis à jour avec succès.');
+    }
+
+    /**
+     * Extraire l'ID vidéo YouTube depuis une URL ou un ID
+     */
+    private function extractYouTubeVideoId($url): ?string
+    {
+        if (empty($url)) {
+            return null;
+        }
+
+        // Si c'est déjà un ID simple (11 caractères alphanumériques)
+        if (preg_match('/^[a-zA-Z0-9_-]{11}$/', $url)) {
+            return $url;
+        }
+
+        // Extraire depuis différentes formes d'URL YouTube
+        $patterns = [
+            // https://www.youtube.com/watch?v=dQw4w9WgXcQ
+            '/[?&]v=([a-zA-Z0-9_-]{11})/',
+            // https://youtu.be/dQw4w9WgXcQ
+            '/youtu\.be\/([a-zA-Z0-9_-]{11})/',
+            // https://www.youtube.com/embed/dQw4w9WgXcQ
+            '/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/',
+            // https://www.youtube.com/v/dQw4w9WgXcQ
+            '/youtube\.com\/v\/([a-zA-Z0-9_-]{11})/',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $url, $matches)) {
+                return $matches[1];
+            }
+        }
+
+        return null;
     }
 }
