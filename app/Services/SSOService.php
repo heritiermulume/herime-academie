@@ -76,18 +76,20 @@ class SSOService
      */
     public function getLoginUrl(?string $redirectUrl = null, bool $forceToken = true): string
     {
-        // Utiliser l'endpoint /sso/authorize qui génère toujours un token
-        // même si l'utilisateur est déjà connecté
-        $loginUrl = $this->ssoBaseUrl . '/sso/authorize';
+        // Utiliser /login avec le paramètre force_token pour forcer la génération
+        // d'un token même si l'utilisateur est déjà connecté
+        // Si compte.herime.com a /sso/authorize, il faudra l'utiliser
+        // Pour l'instant, utilisons /login avec force_token=1
+        $loginUrl = $this->ssoBaseUrl . '/login';
         
-        // Si l'endpoint /sso/authorize n'existe pas, utiliser /login avec force_token
-        // Fallback vers /login si nécessaire
         $params = [];
         
         if ($redirectUrl) {
             $params['redirect'] = $redirectUrl;
         }
         
+        // Toujours ajouter force_token=1 pour forcer la génération du token
+        // même si l'utilisateur est déjà connecté sur compte.herime.com
         if ($forceToken) {
             $params['force_token'] = '1';
         }
