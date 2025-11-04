@@ -9,17 +9,11 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    protected $ssoService;
-
-    public function __construct(SSOService $ssoService)
-    {
-        $this->ssoService = $ssoService;
-    }
-
     /**
      * Display the login view.
      * Redirige vers le SSO si activé, sinon affiche la vue de connexion locale
@@ -27,20 +21,30 @@ class AuthenticatedSessionController extends Controller
     public function create(Request $request): View|RedirectResponse
     {
         // Si SSO est activé, rediriger vers compte.herime.com
-        if (config('services.sso.enabled', true)) {
-            $redirectUrl = $request->query('redirect') 
-                ?: $request->header('Referer') 
-                ?: url()->previous() 
-                ?: route('dashboard');
+        try {
+            if (config('services.sso.enabled', true)) {
+                $ssoService = app(SSOService::class);
+                
+                $redirectUrl = $request->query('redirect') 
+                    ?: $request->header('Referer') 
+                    ?: url()->previous() 
+                    ?: route('dashboard');
 
-            // Construire l'URL de callback complète
-            $callbackUrl = route('sso.callback', [
-                'redirect' => $redirectUrl
+                // Construire l'URL de callback complète
+                $callbackUrl = route('sso.callback', [
+                    'redirect' => $redirectUrl
+                ]);
+
+                $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl);
+                
+                return redirect($ssoLoginUrl);
+            }
+        } catch (\Exception $e) {
+            // En cas d'erreur SSO, afficher la vue de connexion locale
+            Log::error('SSO Redirect Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-
-            $ssoLoginUrl = $this->ssoService->getLoginUrl($callbackUrl);
-            
-            return redirect($ssoLoginUrl);
         }
 
         // Sinon, afficher la vue de connexion locale
@@ -76,11 +80,20 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         // Si SSO est activé, rediriger vers la déconnexion SSO pour une déconnexion globale
-        if (config('services.sso.enabled', true)) {
-            $redirectUrl = url('/');
-            $ssoLogoutUrl = $this->ssoService->getLogoutUrl($redirectUrl);
-            
-            return redirect($ssoLogoutUrl);
+        try {
+            if (config('services.sso.enabled', true)) {
+                $ssoService = app(SSOService::class);
+                $redirectUrl = url('/');
+                $ssoLogoutUrl = $ssoService->getLogoutUrl($redirectUrl);
+                
+                return redirect($ssoLogoutUrl);
+            }
+        } catch (\Exception $e) {
+            // En cas d'erreur SSO, rediriger vers la page d'accueil
+            Log::error('SSO Logout Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
         }
 
         return redirect('/');
