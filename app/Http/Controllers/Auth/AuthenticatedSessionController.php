@@ -18,24 +18,14 @@ class AuthenticatedSessionController extends Controller
      * Display the login view.
      * Redirige vers le SSO si activé, sinon affiche la vue de connexion locale
      */
-    public function create(Request $request): View|RedirectResponse
+    public function create(Request $request): RedirectResponse
     {
         // Si l'utilisateur est déjà connecté localement, rediriger vers le dashboard
         if (Auth::check()) {
             return redirect()->intended(route('dashboard'));
         }
 
-        // Protéger contre les boucles de redirection SSO
-        // Si on vient d'une erreur SSO récente, ne pas rediriger vers SSO
-        $ssoErrorCount = $request->session()->get('sso_error_count', 0);
-        if ($ssoErrorCount >= 2) {
-            Log::warning('SSO redirect loop detected, showing local login instead');
-            $request->session()->forget('sso_error_count');
-            // Afficher la vue de connexion locale pour éviter la boucle
-            return view('auth.login')->withErrors(['sso' => 'Erreur de connexion SSO. Veuillez vous connecter localement.']);
-        }
-
-        // Si SSO est activé, rediriger vers compte.herime.com
+        // Toujours rediriger vers SSO, jamais utiliser la vue locale
         try {
             if (config('services.sso.enabled', true)) {
                 $ssoService = app(SSOService::class);
@@ -57,15 +47,31 @@ class AuthenticatedSessionController extends Controller
                 return redirect($ssoLoginUrl);
             }
         } catch (\Exception $e) {
-            // En cas d'erreur SSO, afficher la vue de connexion locale
+            // En cas d'erreur, réessayer la redirection vers SSO
             Log::error('SSO Redirect Error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            
+            // Toujours rediriger vers SSO même en cas d'erreur
+            $ssoService = app(SSOService::class);
+            $callbackUrl = route('sso.callback', [
+                'redirect' => route('dashboard')
+            ]);
+            $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
+            
+            return redirect($ssoLoginUrl);
         }
 
-        // Sinon, afficher la vue de connexion locale
-        return view('auth.login');
+        // Si SSO est désactivé, rediriger quand même vers compte.herime.com
+        // (ne devrait jamais arriver si SSO est correctement configuré)
+        $ssoService = app(SSOService::class);
+        $callbackUrl = route('sso.callback', [
+            'redirect' => route('dashboard')
+        ]);
+        $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
+        
+        return redirect($ssoLoginUrl);
     }
 
     /**
