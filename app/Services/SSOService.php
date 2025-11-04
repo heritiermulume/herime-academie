@@ -71,14 +71,29 @@ class SSOService
      * Obtenir l'URL de connexion SSO avec redirection
      *
      * @param string|null $redirectUrl
+     * @param bool $forceToken Force la génération d'un token même si l'utilisateur est déjà connecté
      * @return string
      */
-    public function getLoginUrl(?string $redirectUrl = null): string
+    public function getLoginUrl(?string $redirectUrl = null, bool $forceToken = true): string
     {
-        $loginUrl = $this->ssoBaseUrl . '/login';
+        // Utiliser l'endpoint /sso/authorize qui génère toujours un token
+        // même si l'utilisateur est déjà connecté
+        $loginUrl = $this->ssoBaseUrl . '/sso/authorize';
+        
+        // Si l'endpoint /sso/authorize n'existe pas, utiliser /login avec force_token
+        // Fallback vers /login si nécessaire
+        $params = [];
         
         if ($redirectUrl) {
-            $loginUrl .= '?redirect=' . urlencode($redirectUrl);
+            $params['redirect'] = $redirectUrl;
+        }
+        
+        if ($forceToken) {
+            $params['force_token'] = '1';
+        }
+        
+        if (!empty($params)) {
+            $loginUrl .= '?' . http_build_query($params);
         }
         
         return $loginUrl;

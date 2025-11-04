@@ -20,6 +20,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): View|RedirectResponse
     {
+        // Si l'utilisateur est déjà connecté localement, rediriger vers le dashboard
+        if (Auth::check()) {
+            return redirect()->intended(route('dashboard'));
+        }
+
         // Si SSO est activé, rediriger vers compte.herime.com
         try {
             if (config('services.sso.enabled', true)) {
@@ -35,7 +40,9 @@ class AuthenticatedSessionController extends Controller
                     'redirect' => $redirectUrl
                 ]);
 
-                $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl);
+                // Utiliser force_token=true pour forcer la génération d'un token
+                // même si l'utilisateur est déjà connecté sur compte.herime.com
+                $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
                 
                 return redirect($ssoLoginUrl);
             }

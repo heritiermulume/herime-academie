@@ -1,0 +1,55 @@
+================================================================================
+COMMANDES À EXÉCUTER EN PRODUCTION
+Pour recréer tous les dossiers et configurations
+================================================================================
+
+1. SE CONNECTER AU SERVEUR
+   ssh votre-utilisateur@votre-serveur
+   cd /chemin/vers/herime-academie
+
+2. CRÉER TOUS LES DOSSIERS
+   mkdir -p storage/app/private/courses/thumbnails
+   mkdir -p storage/app/private/courses/previews
+   mkdir -p storage/app/private/courses/lessons
+   mkdir -p storage/app/private/courses/downloads
+   mkdir -p storage/app/private/avatars
+   mkdir -p storage/app/private/banners
+
+3. CRÉER LE FICHIER .gitignore
+   cat > storage/app/private/.gitignore << 'EOF'
+   *
+   !.gitignore
+   EOF
+
+4. CONFIGURER LES PERMISSIONS
+   chmod -R 775 storage/app/private
+   sudo chown -R www-data:www-data storage/app/private
+
+5. METTRE À JOUR DEPUIS GITHUB (si nécessaire)
+   git checkout --theirs storage/app/private/.gitignore
+   git add storage/app/private/.gitignore
+   git commit -m "Résolution conflit .gitignore"
+   git pull origin main
+
+6. OPTIMISER L'APPLICATION
+   php artisan config:clear
+   php artisan route:clear
+   php artisan view:clear
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+
+7. VÉRIFIER QUE TOUT EST OK
+   ls -la storage/app/private/
+   ls -la storage/app/private/courses/
+
+================================================================================
+OU UTILISER LE SCRIPT AUTOMATIQUE :
+================================================================================
+
+   chmod +x setup-production.sh
+   ./setup-production.sh
+
+================================================================================
+
+
