@@ -29,13 +29,24 @@ class SSOController extends Controller
      */
     public function callback(Request $request)
     {
+        // Protéger contre les boucles de redirection
+        // Si on vient déjà d'une erreur SSO, ne pas rediriger vers login
+        $ssoErrorCount = $request->session()->get('sso_error_count', 0);
+        if ($ssoErrorCount >= 2) {
+            Log::error('SSO redirect loop detected, stopping');
+            $request->session()->forget('sso_error_count');
+            // Rediriger vers la page d'accueil au lieu de login pour éviter la boucle
+            return redirect('/')->withErrors(['sso' => 'Erreur de connexion SSO. Veuillez réessayer plus tard.']);
+        }
+
         $token = $request->query('token');
         $redirect = $request->query('redirect', route('dashboard'));
 
         if (!$token) {
             Log::warning('SSO callback received without token');
-            return redirect()->route('login')
-                ->withErrors(['sso' => 'Token SSO manquant.']);
+            $request->session()->put('sso_error_count', $ssoErrorCount + 1);
+            // Rediriger vers la page d'accueil au lieu de login pour éviter la boucle
+            return redirect('/')->withErrors(['sso' => 'Token SSO manquant. Veuillez vous connecter à nouveau.']);
         }
 
         // Valider le token auprès du serveur SSO
@@ -43,8 +54,9 @@ class SSOController extends Controller
 
         if (!$userData) {
             Log::warning('SSO token validation failed', ['token' => substr($token, 0, 20) . '...']);
-            return redirect()->route('login')
-                ->withErrors(['sso' => 'Token SSO invalide ou expiré.']);
+            $request->session()->put('sso_error_count', $ssoErrorCount + 1);
+            // Rediriger vers la page d'accueil au lieu de login pour éviter la boucle
+            return redirect('/')->withErrors(['sso' => 'Token SSO invalide ou expiré. Veuillez vous connecter à nouveau.']);
         }
 
         try {
@@ -56,6 +68,9 @@ class SSOController extends Controller
 
             // Régénérer la session pour la sécurité
             $request->session()->regenerate();
+
+            // Réinitialiser le compteur d'erreurs en cas de succès
+            $request->session()->forget('sso_error_count');
 
             // Synchroniser le panier de session avec la base de données
             $cartController = new CartController();
@@ -75,8 +90,9 @@ class SSOController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return redirect()->route('login')
-                ->withErrors(['sso' => 'Erreur lors de la connexion SSO.']);
+            $request->session()->put('sso_error_count', $ssoErrorCount + 1);
+            // Rediriger vers la page d'accueil au lieu de login pour éviter la boucle
+            return redirect('/')->withErrors(['sso' => 'Erreur lors de la connexion SSO. Veuillez réessayer.']);
         }
     }
 

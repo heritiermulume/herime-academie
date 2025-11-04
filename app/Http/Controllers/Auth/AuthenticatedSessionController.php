@@ -25,6 +25,16 @@ class AuthenticatedSessionController extends Controller
             return redirect()->intended(route('dashboard'));
         }
 
+        // Protéger contre les boucles de redirection SSO
+        // Si on vient d'une erreur SSO récente, ne pas rediriger vers SSO
+        $ssoErrorCount = $request->session()->get('sso_error_count', 0);
+        if ($ssoErrorCount >= 2) {
+            Log::warning('SSO redirect loop detected, showing local login instead');
+            $request->session()->forget('sso_error_count');
+            // Afficher la vue de connexion locale pour éviter la boucle
+            return view('auth.login')->withErrors(['sso' => 'Erreur de connexion SSO. Veuillez vous connecter localement.']);
+        }
+
         // Si SSO est activé, rediriger vers compte.herime.com
         try {
             if (config('services.sso.enabled', true)) {

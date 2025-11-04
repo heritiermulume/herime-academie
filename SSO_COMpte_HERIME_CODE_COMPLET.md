@@ -205,3 +205,4 @@ Et dans `config/services.php` :
 ### Token invalide
 → Vérifiez que `SSO_SECRET` est identique sur les deux sites
 
+
