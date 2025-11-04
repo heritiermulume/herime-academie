@@ -5,9 +5,17 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use App\Services\SSOService;
 
 class RoleMiddleware
 {
+    protected $ssoService;
+
+    public function __construct(SSOService $ssoService)
+    {
+        $this->ssoService = $ssoService;
+    }
+
     /**
      * Handle an incoming request.
      *
@@ -16,6 +24,17 @@ class RoleMiddleware
     public function handle(Request $request, Closure $next, string $role): Response
     {
         if (!auth()->check()) {
+            // Si SSO est activé, rediriger vers le SSO
+            if (config('services.sso.enabled', true)) {
+                $currentUrl = $request->fullUrl();
+                $callbackUrl = route('sso.callback', [
+                    'redirect' => $currentUrl
+                ]);
+                $ssoLoginUrl = $this->ssoService->getLoginUrl($callbackUrl);
+                
+                return redirect($ssoLoginUrl);
+            }
+            
             return redirect()->route('login');
         }
 

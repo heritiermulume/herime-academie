@@ -48,4 +48,11 @@ return [
         'failed_url' => env('PAWAPAY_FAILED_URL', env('APP_URL') . '/payments/pawapay/failed'),
     ],
 
+    'sso' => [
+        'enabled' => env('SSO_ENABLED', true),
+        'base_url' => env('SSO_BASE_URL', 'https://compte.herime.com'),
+        'secret' => env('SSO_SECRET'),
+        'timeout' => env('SSO_TIMEOUT', 10),
+    ],
+
 ];

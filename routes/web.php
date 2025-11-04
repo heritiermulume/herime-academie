@@ -23,6 +23,7 @@ use App\Http\Controllers\FilterController;
 // use App\Http\Controllers\MaxiCashController; // désactivé
 use App\Http\Controllers\PawaPayController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\Auth\SSOController;
 use Illuminate\Support\Facades\Route;
 
 // File serving routes (sécurisées)
@@ -139,6 +140,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/students/ordres', [App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
     Route::get('/students/ordres/{order}', [App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
 });
+
+// SSO routes (must be before auth routes)
+Route::get('/sso/callback', [SSOController::class, 'callback'])->name('sso.callback');
+Route::get('/sso/redirect', [SSOController::class, 'redirectToSSO'])->name('sso.redirect');
 
 // Authentication routes
 require __DIR__.'/auth.php';
