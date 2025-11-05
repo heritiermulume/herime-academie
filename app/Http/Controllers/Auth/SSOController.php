@@ -116,20 +116,42 @@ class SSOController extends Controller
             ]);
 
             // Mettre à jour le rôle si fourni (optionnel, pour éviter les changements non désirés)
-            if (isset($userData['role']) && in_array($userData['role'], ['student', 'instructor', 'admin', 'affiliate'])) {
-                $user->role = $userData['role'];
-                $user->save();
+            if (isset($userData['role'])) {
+                $role = $userData['role'];
+                // Mapper super_user vers admin
+                if ($role === 'super_user') {
+                    $role = 'admin';
+                }
+                // S'assurer que le rôle est valide
+                if (in_array($role, ['student', 'instructor', 'admin', 'affiliate'])) {
+                    $user->role = $role;
+                    $user->save();
+                }
             }
 
             return $user;
         }
 
+        // Normaliser le rôle (mapper super_user vers admin)
+        $role = $userData['role'] ?? 'student';
+        $validRoles = ['student', 'instructor', 'admin', 'affiliate'];
+        
+        // Mapper super_user vers admin
+        if ($role === 'super_user') {
+            $role = 'admin';
+        }
+        
+        // S'assurer que le rôle est valide
+        if (!in_array($role, $validRoles)) {
+            $role = 'student';
+        }
+        
         // Créer un nouvel utilisateur
         $user = User::create([
             'name' => $userData['name'] ?? 'Utilisateur',
             'email' => $email,
             'password' => Hash::make(Str::random(32)), // Mot de passe aléatoire (non utilisé avec SSO)
-            'role' => $userData['role'] ?? 'student',
+            'role' => $role,
             'is_verified' => $userData['is_verified'] ?? false,
             'is_active' => $userData['is_active'] ?? true,
             'last_login_at' => now(),
