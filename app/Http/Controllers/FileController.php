@@ -24,25 +24,47 @@ class FileController extends Controller
      */
     public function serve(Request $request, string $type, string $path)
     {
-        $disk = Storage::disk('local');
-        
         // Décoder le chemin si nécessaire
         $path = urldecode($path);
         
         // Construire le chemin complet
         $fullPath = $this->getFullPath($type, $path);
         
+        // Utiliser le disque 'local' qui pointe vers storage/app/private
+        $disk = Storage::disk('local');
+        
         // Vérifier que le fichier existe
         if (!$disk->exists($fullPath)) {
-            // Essayer aussi avec le chemin tel quel si le path contient déjà le dossier
-            if (strpos($path, '/') !== false) {
+            // Essayer aussi avec le disque 'public' si le fichier n'est pas trouvé
+            $publicDisk = Storage::disk('public');
+            $publicPath = str_replace('courses/', 'courses/', $fullPath);
+            
+            if ($publicDisk->exists($publicPath)) {
+                $disk = $publicDisk;
+                $fullPath = $publicPath;
+            } elseif (strpos($path, '/') !== false) {
+                // Essayer avec le chemin tel quel si le path contient déjà le dossier
                 $cleanPath = ltrim(str_replace('storage/', '', $path), '/');
                 if ($disk->exists($cleanPath)) {
                     $fullPath = $cleanPath;
+                } elseif ($publicDisk->exists($cleanPath)) {
+                    $disk = $publicDisk;
+                    $fullPath = $cleanPath;
                 } else {
+                    \Log::error("File not found", [
+                        'type' => $type,
+                        'path' => $path,
+                        'fullPath' => $fullPath,
+                        'cleanPath' => $cleanPath
+                    ]);
                     abort(404, 'Fichier non trouvé: ' . $fullPath);
                 }
             } else {
+                \Log::error("File not found", [
+                    'type' => $type,
+                    'path' => $path,
+                    'fullPath' => $fullPath
+                ]);
                 abort(404, 'Fichier non trouvé: ' . $fullPath);
             }
         }

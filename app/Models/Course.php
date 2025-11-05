@@ -422,6 +422,95 @@ class Course extends Model
     }
 
     /**
+     * Obtenir l'URL de la miniature (thumbnail)
+     */
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        if (!$this->thumbnail) {
+            return null;
+        }
+        
+        // Si c'est déjà une URL complète, la retourner telle quelle
+        if (filter_var($this->thumbnail, FILTER_VALIDATE_URL)) {
+            return $this->thumbnail;
+        }
+        
+        // Si c'est un chemin, générer l'URL via FileController
+        if (strpos($this->thumbnail, 'courses/thumbnails') !== false || strpos($this->thumbnail, 'thumbnails') !== false) {
+            $filename = basename($this->thumbnail);
+            return route('files.serve', ['type' => 'thumbnails', 'path' => $filename]);
+        }
+        
+        // Fallback : utiliser Storage::url si c'est dans le storage public
+        if (strpos($this->thumbnail, 'storage/') === 0) {
+            return asset($this->thumbnail);
+        }
+        
+        return $this->thumbnail;
+    }
+
+    /**
+     * Obtenir l'URL de la vidéo de prévisualisation
+     */
+    public function getVideoPreviewUrlAttribute(): ?string
+    {
+        // Si YouTube est utilisé, retourner l'URL d'embed
+        if ($this->isYoutubePreviewVideo()) {
+            return $this->getSecureYouTubePreviewEmbedUrl();
+        }
+        
+        if (!$this->video_preview) {
+            return null;
+        }
+        
+        // Si c'est déjà une URL complète, la retourner telle quelle
+        if (filter_var($this->video_preview, FILTER_VALIDATE_URL)) {
+            return $this->video_preview;
+        }
+        
+        // Si c'est un chemin, générer l'URL via FileController
+        if (strpos($this->video_preview, 'courses/previews') !== false || strpos($this->video_preview, 'previews') !== false) {
+            $filename = basename($this->video_preview);
+            return route('files.serve', ['type' => 'previews', 'path' => $filename]);
+        }
+        
+        // Fallback : utiliser Storage::url si c'est dans le storage public
+        if (strpos($this->video_preview, 'storage/') === 0) {
+            return asset($this->video_preview);
+        }
+        
+        return $this->video_preview;
+    }
+
+    /**
+     * Obtenir l'URL du fichier de téléchargement
+     */
+    public function getDownloadFileUrlAttribute(): ?string
+    {
+        if (!$this->download_file_path) {
+            return null;
+        }
+        
+        // Si c'est déjà une URL complète, la retourner telle quelle
+        if (filter_var($this->download_file_path, FILTER_VALIDATE_URL)) {
+            return $this->download_file_path;
+        }
+        
+        // Si c'est un chemin, générer l'URL via FileController
+        if (strpos($this->download_file_path, 'courses/downloads') !== false || strpos($this->download_file_path, 'downloads') !== false) {
+            $filename = basename($this->download_file_path);
+            return route('files.serve', ['type' => 'downloads', 'path' => $filename]);
+        }
+        
+        // Fallback : utiliser Storage::url si c'est dans le storage public
+        if (strpos($this->download_file_path, 'storage/') === 0) {
+            return asset($this->download_file_path);
+        }
+        
+        return $this->download_file_path;
+    }
+
+    /**
      * Vérifier si la prévisualisation utilise YouTube
      */
     public function isYoutubePreviewVideo(): bool
