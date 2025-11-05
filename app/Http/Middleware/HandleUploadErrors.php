@@ -21,7 +21,7 @@ class HandleUploadErrors
                 // $file peut être un UploadedFile ou un tableau si multiple
                 $errorCode = is_array($file) && isset($file['error']) ? $file['error'] : (method_exists($file, 'getError') ? $file->getError() : UPLOAD_ERR_OK);
                 if ($errorCode !== UPLOAD_ERR_OK) {
-                    $errorMessage = $this->getUploadErrorMessage($file['error']);
+                    $errorMessage = $this->getUploadErrorMessage($errorCode);
                     
                     if ($request->expectsJson()) {
                         return response()->json([

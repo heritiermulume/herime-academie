@@ -58,8 +58,16 @@ class SSOController extends Controller
             $request->session()->regenerate();
 
             // Synchroniser le panier de session avec la base de données
-            $cartController = new CartController();
-            $cartController->syncSessionToDatabase();
+            // Protégé contre les erreurs pour ne pas bloquer la connexion
+            try {
+                $cartController = new CartController();
+                $cartController->syncSessionToDatabase();
+            } catch (\Exception $cartException) {
+                Log::warning('SSO cart sync failed but login continues', [
+                    'message' => $cartException->getMessage(),
+                    'user_id' => $user->id
+                ]);
+            }
 
             Log::info('SSO login successful', [
                 'user_id' => $user->id,
