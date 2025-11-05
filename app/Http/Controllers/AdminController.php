@@ -419,7 +419,9 @@ class AdminController extends Controller
             'is_featured' => 'boolean',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:10',
-            'duration' => 'nullable|integer|min:0',
+            'use_external_payment' => 'boolean',
+            'external_payment_url' => 'nullable|url|max:500|required_if:use_external_payment,1',
+            'external_payment_text' => 'nullable|string|max:100',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
             'video_preview' => 'nullable|string|max:255',
             'video_preview_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm|max:1048576',
@@ -449,6 +451,7 @@ class AdminController extends Controller
             'download_file_path.file' => 'Le fichier de téléchargement doit être un fichier valide.',
             'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz.',
             'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 2MB. Pour les fichiers plus volumineux, utilisez une URL externe.',
+            'external_payment_url.required_if' => 'L\'URL de paiement externe est requise quand le paiement externe est activé.',
         ]);
 
         DB::beginTransaction();
@@ -456,9 +459,10 @@ class AdminController extends Controller
             // Créer le cours
             $courseData = $request->only([
                 'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
-                'is_free', 'is_downloadable', 'is_published', 'is_featured', 'level', 'language', 'duration',
+                'is_free', 'is_downloadable', 'is_published', 'is_featured', 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
-                'video_preview_youtube_id', 'video_preview_is_unlisted'
+                'video_preview_youtube_id', 'video_preview_is_unlisted', 'use_external_payment',
+                'external_payment_url', 'external_payment_text'
             ]);
 
             // Gérer l'upload de l'image de couverture
@@ -570,17 +574,12 @@ class AdminController extends Controller
                 }
             }
 
-            // Calculer la durée totale et le nombre de leçons
-            $totalDuration = $course->lessons()->sum('duration');
-            $lessonsCount = $course->lessons()->count();
-            
-            $course->update([
-                'duration' => $totalDuration,
-                'lessons_count' => $lessonsCount,
-            ]);
+            // Les statistiques (duration, lessons_count, etc.) sont maintenant calculées dynamiquement
+            // via les accesseurs du modèle Course
 
             DB::commit();
 
+            $lessonsCount = $course->lessons()->count();
             return redirect()->route('admin.courses')
                 ->with('success', 'Cours créé avec succès avec ' . $lessonsCount . ' leçons.');
 
@@ -1116,14 +1115,8 @@ class AdminController extends Controller
             'is_unlisted' => $isUnlisted,
         ]);
 
-        // Update course duration and lessons count
-        $totalDuration = $course->lessons()->sum('duration');
-        $lessonsCount = $course->lessons()->count();
-        
-        $course->update([
-            'duration' => $totalDuration,
-            'lessons_count' => $lessonsCount,
-        ]);
+        // Les statistiques (duration, lessons_count, etc.) sont maintenant calculées dynamiquement
+        // via les accesseurs du modèle Course - pas besoin de les mettre à jour manuellement
 
         return redirect()->route('admin.courses.lessons', $course)
             ->with('success', 'Leçon créée avec succès.');
@@ -1194,10 +1187,8 @@ class AdminController extends Controller
             'is_unlisted' => $isUnlisted,
         ]);
 
-        // Update course duration
-        $course = $lesson->course;
-        $totalDuration = $course->lessons()->sum('duration');
-        $course->update(['duration' => $totalDuration]);
+        // Les statistiques (duration, lessons_count, etc.) sont maintenant calculées dynamiquement
+        // via les accesseurs du modèle Course - pas besoin de les mettre à jour manuellement
 
         return redirect()->route('admin.courses.lessons', $course)
             ->with('success', 'Leçon mise à jour avec succès.');

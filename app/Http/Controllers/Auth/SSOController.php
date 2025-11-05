@@ -102,56 +102,34 @@ class SSOController extends Controller
             throw new \Exception('Email manquant dans les données SSO');
         }
 
+        // Normaliser le rôle AVANT toute opération
+        $role = $this->normalizeRole($userData['role'] ?? 'student');
+
         // Chercher l'utilisateur par email
         $user = User::where('email', $email)->first();
 
         if ($user) {
             // Mettre à jour les informations utilisateur depuis SSO
-            $user->update([
+            $updateData = [
                 'name' => $userData['name'] ?? $user->name,
                 'email' => $email,
                 'is_verified' => $userData['is_verified'] ?? $user->is_verified,
                 'is_active' => $userData['is_active'] ?? true,
                 'last_login_at' => now(),
-            ]);
-
-            // Mettre à jour le rôle si fourni (optionnel, pour éviter les changements non désirés)
-            if (isset($userData['role'])) {
-                $role = $userData['role'];
-                // Mapper super_user vers admin
-                if ($role === 'super_user') {
-                    $role = 'admin';
-                }
-                // S'assurer que le rôle est valide
-                if (in_array($role, ['student', 'instructor', 'admin', 'affiliate'])) {
-                    $user->role = $role;
-                    $user->save();
-                }
-            }
+                'role' => $role, // Utiliser le rôle normalisé
+            ];
+            
+            $user->update($updateData);
 
             return $user;
         }
 
-        // Normaliser le rôle (mapper super_user vers admin)
-        $role = $userData['role'] ?? 'student';
-        $validRoles = ['student', 'instructor', 'admin', 'affiliate'];
-        
-        // Mapper super_user vers admin
-        if ($role === 'super_user') {
-            $role = 'admin';
-        }
-        
-        // S'assurer que le rôle est valide
-        if (!in_array($role, $validRoles)) {
-            $role = 'student';
-        }
-        
-        // Créer un nouvel utilisateur
+        // Créer un nouvel utilisateur avec le rôle normalisé
         $user = User::create([
             'name' => $userData['name'] ?? 'Utilisateur',
             'email' => $email,
             'password' => Hash::make(Str::random(32)), // Mot de passe aléatoire (non utilisé avec SSO)
-            'role' => $role,
+            'role' => $role, // Utiliser le rôle normalisé
             'is_verified' => $userData['is_verified'] ?? false,
             'is_active' => $userData['is_active'] ?? true,
             'last_login_at' => now(),
@@ -159,10 +137,43 @@ class SSOController extends Controller
 
         Log::info('SSO user created', [
             'user_id' => $user->id,
-            'email' => $user->email
+            'email' => $user->email,
+            'role' => $user->role
         ]);
 
         return $user;
+    }
+
+    /**
+     * Normaliser le rôle utilisateur
+     * Mappe super_user vers admin et valide le rôle
+     *
+     * @param string|null $role
+     * @return string
+     */
+    protected function normalizeRole(?string $role): string
+    {
+        $validRoles = ['student', 'instructor', 'admin', 'affiliate'];
+        
+        // Si aucun rôle fourni, retourner student par défaut
+        if (empty($role)) {
+            return 'student';
+        }
+        
+        // Mapper super_user vers admin
+        if ($role === 'super_user') {
+            return 'admin';
+        }
+        
+        // S'assurer que le rôle est valide
+        if (!in_array($role, $validRoles)) {
+            Log::warning('SSO: Invalid role provided, defaulting to student', [
+                'invalid_role' => $role
+            ]);
+            return 'student';
+        }
+        
+        return $role;
     }
 
     /**
