@@ -55,7 +55,7 @@ class StudentController extends Controller
             'completed_courses' => $enrollments->where('status', 'completed')->count(),
             'certificates_earned' => $certificates->count(),
             'learning_hours' => $enrollments->sum(function($enrollment) {
-                return $enrollment->course->duration;
+                return $enrollment->course ? $enrollment->course->duration : 0;
             }),
         ];
 

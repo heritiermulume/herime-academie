@@ -165,7 +165,7 @@
                                     @php
                                         $course = $enrollment->course;
                                         $isDownloadableAndPurchased = false;
-                                        if ($course->is_downloadable) {
+                                        if ($course && $course->is_downloadable) {
                                             $hasPurchased = false;
                                             if (!$course->is_free && $enrollment->order_id) {
                                                 $hasPurchased = $enrollment->order && $enrollment->order->status === 'paid';
@@ -202,37 +202,43 @@
                                     <div class="col-md-2 text-end">
                                         @php
                                             $course = $enrollment->course;
-                                            $hasPurchased = false;
-                                            
-                                            // Vérifier si l'utilisateur a payé (pour les cours payants)
-                                            if (!$course->is_free && $enrollment->order_id) {
-                                                $hasPurchased = $enrollment->order && $enrollment->order->status === 'paid';
-                                            } elseif ($course->is_free) {
-                                                // Pour les cours gratuits, considérer comme "payé" si inscrit
-                                                $hasPurchased = true;
+                                            if (!$course) {
+                                                $hasPurchased = false;
+                                                $isDownloadableAndPurchased = false;
+                                                $buttonText = 'Commencer';
                                             } else {
-                                                // Vérifier via les commandes
-                                                $hasPurchased = \App\Models\Order::where('user_id', auth()->id())
-                                                    ->where('status', 'paid')
-                                                    ->whereHas('orderItems', function($query) use ($course) {
-                                                        $query->where('course_id', $course->id);
-                                                    })
-                                                    ->exists();
+                                                $hasPurchased = false;
+                                                
+                                                // Vérifier si l'utilisateur a payé (pour les cours payants)
+                                                if (!$course->is_free && $enrollment->order_id) {
+                                                    $hasPurchased = $enrollment->order && $enrollment->order->status === 'paid';
+                                                } elseif ($course->is_free) {
+                                                    // Pour les cours gratuits, considérer comme "payé" si inscrit
+                                                    $hasPurchased = true;
+                                                } else {
+                                                    // Vérifier via les commandes
+                                                    $hasPurchased = \App\Models\Order::where('user_id', auth()->id())
+                                                        ->where('status', 'paid')
+                                                        ->whereHas('orderItems', function($query) use ($course) {
+                                                            $query->where('course_id', $course->id);
+                                                        })
+                                                        ->exists();
+                                                }
+                                                
+                                                // Si cours téléchargeable ET acheté, afficher uniquement le bouton télécharger
+                                                $isDownloadableAndPurchased = $course->is_downloadable && $hasPurchased;
+                                                
+                                                // Déterminer le texte du bouton selon la progression
+                                                $buttonText = $enrollment->progress > 0 ? 'Continuer' : 'Commencer';
                                             }
-                                            
-                                            // Si cours téléchargeable ET acheté, afficher uniquement le bouton télécharger
-                                            $isDownloadableAndPurchased = $course->is_downloadable && $hasPurchased;
-                                            
-                                            // Déterminer le texte du bouton selon la progression
-                                            $buttonText = $enrollment->progress > 0 ? 'Continuer' : 'Commencer';
                                         @endphp
                                         
-                                        @if($isDownloadableAndPurchased)
+                                        @if($course && $isDownloadableAndPurchased)
                                             <a href="{{ route('courses.download', $course->slug) }}" 
                                                class="btn btn-success btn-sm">
                                                 <i class="fas fa-download me-1"></i>Télécharger
                                             </a>
-                                        @else
+                                        @elseif($course)
                                             <a href="{{ route('student.courses.learn', $course->slug) }}" 
                                                class="btn btn-primary btn-sm">
                                                 <i class="fas fa-play me-1"></i>{{ $buttonText }} l'apprentissage
