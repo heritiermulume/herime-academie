@@ -127,6 +127,9 @@
                     @if($enrollments->count() > 0)
                         <div class="list-group list-group-flush">
                             @foreach($enrollments as $enrollment)
+                                @if(!$enrollment->course)
+                                    @continue
+                                @endif
                             <div class="list-group-item border-0 py-3">
                                 <div class="row align-items-center">
                                     <div class="col-md-2">
