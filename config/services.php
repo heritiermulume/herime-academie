@@ -53,6 +53,9 @@ return [
         'base_url' => env('SSO_BASE_URL', 'https://compte.herime.com'),
         'secret' => env('SSO_SECRET'),
         'timeout' => env('SSO_TIMEOUT', 10),
+        // Si true, la déconnexion se fera uniquement localement sans passer par le SSO
+        // Utile si le SSO ne redirige pas correctement après déconnexion
+        'force_local_logout' => env('SSO_FORCE_LOCAL_LOGOUT', false),
     ],
 
 ];

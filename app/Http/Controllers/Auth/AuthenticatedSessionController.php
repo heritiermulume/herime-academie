@@ -92,7 +92,7 @@ class AuthenticatedSessionController extends Controller
 
     /**
      * Destroy an authenticated session.
-     * Redirige vers le SSO pour une déconnexion globale si activé
+     * Redirige vers le SSO pour une déconnexion globale si activé, sinon vers l'accueil
      */
     public function destroy(Request $request): RedirectResponse
     {
@@ -102,23 +102,35 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        // Si SSO est activé, rediriger vers la déconnexion SSO pour une déconnexion globale
-        try {
-            if (config('services.sso.enabled', true)) {
+        // URL de redirection vers l'accueil
+        $homeUrl = route('home');
+
+        // Option pour forcer la déconnexion locale uniquement (sans passer par SSO)
+        // Si le SSO ne redirige pas correctement, cette option peut être activée
+        $forceLocalLogout = config('services.sso.force_local_logout', false);
+
+        // Si SSO est activé et que la déconnexion locale forcée n'est pas activée
+        if (!$forceLocalLogout && config('services.sso.enabled', true)) {
+            try {
                 $ssoService = app(SSOService::class);
-                $redirectUrl = url('/');
+                
+                // Utiliser l'URL complète de l'accueil pour la redirection
+                $redirectUrl = url($homeUrl);
                 $ssoLogoutUrl = $ssoService->getLogoutUrl($redirectUrl);
                 
+                // Rediriger vers le SSO qui redirigera ensuite vers l'accueil
                 return redirect($ssoLogoutUrl);
+            } catch (\Exception $e) {
+                // En cas d'erreur SSO, rediriger directement vers la page d'accueil
+                Log::error('SSO Logout Error', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
             }
-        } catch (\Exception $e) {
-            // En cas d'erreur SSO, rediriger vers la page d'accueil
-            Log::error('SSO Logout Error', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
         }
 
-        return redirect('/');
+        // Redirection directe vers l'accueil
+        // Soit si SSO désactivé, soit si déconnexion locale forcée, soit en cas d'erreur
+        return redirect($homeUrl);
     }
 }

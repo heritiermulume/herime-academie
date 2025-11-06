@@ -178,6 +178,7 @@ class SSOService
         $logoutUrl = $this->ssoBaseUrl . '/logout';
         
         if ($redirectUrl) {
+            // Encoder l'URL de redirection pour éviter les problèmes avec les caractères spéciaux
             $logoutUrl .= '?redirect=' . urlencode($redirectUrl);
         }
         
