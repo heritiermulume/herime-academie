@@ -203,7 +203,8 @@
                                                  alt="{{ $user->name }}" 
                                                  class="rounded-circle me-3" 
                                                  width="40" 
-                                                 height="40">
+                                                 height="40"
+                                                 style="border-radius: 50%; border: none; box-shadow: none; object-fit: cover;">
                                             <div>
                                                 <h6 class="mb-0">{{ $user->name }}</h6>
                                                 <small class="text-muted">{{ $user->email }}</small>
