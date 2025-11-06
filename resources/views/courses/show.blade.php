@@ -1900,13 +1900,13 @@
                         @foreach($course->reviews->take(5) as $review)
                         <div class="review-card">
                             <div class="review-header">
-                                @if($review->user->avatar)
-                                    <img src="{{ $review->user->avatar }}" 
+                                @if($review->user)
+                                    <img src="{{ $review->user->avatar_url }}" 
                                      alt="{{ $review->user->name }}" 
-                                     class="review-avatar">
+                                     class="review-avatar" style="object-fit: cover;">
                                 @else
                                     <div class="review-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 1.25rem; font-weight: bold; border-radius: 50%; min-width: 50px; min-height: 50px;">
-                                        {{ strtoupper(substr($review->user->name, 0, 1)) }}
+                                        {{ strtoupper(substr($review->user->name ?? 'U', 0, 1)) }}
                                     </div>
                                 @endif
                                 <div class="review-author">
