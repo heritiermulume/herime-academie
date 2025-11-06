@@ -25,6 +25,7 @@ use App\Http\Controllers\PawaPayController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\Auth\SSOController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 // File serving routes (sécurisées)
 Route::get('/files/{type}/{path}', [FileController::class, 'serve'])
@@ -173,44 +174,60 @@ Route::middleware('sync.cart')->group(function () {
 // Routes de fallback pour éviter les erreurs 500 sur /me et /logout
 // Ces routes sont appelées par certains scripts mais n'existent pas
 Route::get('/me', function() {
-    if (!auth()->check()) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+    try {
+        if (!auth()->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        $user = auth()->user();
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
+        ]);
+    } catch (\Throwable $e) {
+        \Log::debug('Error in /me route', ['error' => $e->getMessage()]);
+        return response()->json(['error' => 'Internal Server Error'], 500);
     }
-    return response()->json([
-        'user' => [
-            'id' => auth()->id(),
-            'name' => auth()->user()->name,
-            'email' => auth()->user()->email,
-        ]
-    ]);
 })->middleware('auth');
 
 Route::get('/api/me', function() {
-    if (!auth()->check()) {
-        return response()->json(['error' => 'Unauthorized'], 401);
+    try {
+        if (!auth()->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        $user = auth()->user();
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
+        ]);
+    } catch (\Throwable $e) {
+        \Log::debug('Error in /api/me route', ['error' => $e->getMessage()]);
+        return response()->json(['error' => 'Internal Server Error'], 500);
     }
-    return response()->json([
-        'user' => [
-            'id' => auth()->id(),
-            'name' => auth()->user()->name,
-            'email' => auth()->user()->email,
-        ]
-    ]);
 })->middleware('auth');
 
 // Route GET pour /logout (fallback pour les appels AJAX qui utilisent GET)
 // Note: La route POST logout est définie dans routes/auth.php
 Route::get('/logout', function(Request $request) {
-    // Pour les requêtes AJAX GET, retourner une réponse JSON
-    if ($request->expectsJson() || $request->ajax()) {
-        return response()->json([
-            'message' => 'Utilisez POST pour la déconnexion',
-            'redirect' => route('logout')
-        ], 405);
+    try {
+        // Pour les requêtes AJAX GET, retourner une réponse JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Utilisez POST pour la déconnexion',
+                'redirect' => route('logout')
+            ], 405);
+        }
+        // Pour les requêtes normales GET, rediriger vers la page d'accueil
+        return redirect()->route('home');
+    } catch (\Throwable $e) {
+        \Log::debug('Error in GET /logout route', ['error' => $e->getMessage()]);
+        return redirect()->route('home');
     }
-    // Pour les requêtes normales GET, créer un formulaire et le soumettre automatiquement
-    // ou rediriger vers la page d'accueil
-    return redirect()->route('home');
 })->middleware('auth');
 
 // Authenticated routes
