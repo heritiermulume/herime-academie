@@ -224,7 +224,7 @@ class AdminController extends Controller
             'verified' => User::where('is_verified', true)->count(),
             'students' => User::where('role', 'student')->count(),
             'instructors' => User::where('role', 'instructor')->count(),
-            'admins' => User::where('role', 'admin')->count(),
+            'admins' => User::whereIn('role', ['admin', 'super_user'])->count(),
             'affiliates' => User::where('role', 'affiliate')->count(),
         ];
 
