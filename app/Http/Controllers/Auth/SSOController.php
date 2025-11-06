@@ -265,6 +265,144 @@ class SSOController extends Controller
     }
 
     /**
+     * Valider l'URL de redirection pour éviter les boucles
+     * 
+     * @param string $redirectUrl
+     * @return string
+     */
+    protected function validateRedirectUrl(string $redirectUrl): string
+    {
+        try {
+            // Si l'URL est vide ou invalide, retourner le dashboard
+            if (empty($redirectUrl)) {
+                return route('dashboard');
+            }
+
+            // Parser l'URL
+            $parsed = parse_url($redirectUrl);
+            
+            // Si l'URL ne peut pas être parsée, retourner le dashboard
+            if (!$parsed) {
+                return route('dashboard');
+            }
+
+            // Extraire le domaine de l'URL de redirection
+            $redirectHost = $parsed['host'] ?? null;
+            
+            // Extraire le domaine SSO depuis la configuration
+            $ssoBaseUrl = config('services.sso.base_url', '');
+            $ssoParsed = parse_url($ssoBaseUrl);
+            $ssoHost = $ssoParsed['host'] ?? null;
+
+            // Si l'URL de redirection pointe vers le domaine SSO, éviter la boucle
+            if ($redirectHost && $ssoHost && $redirectHost === $ssoHost) {
+                Log::debug('SSO redirect URL points to SSO domain, redirecting to dashboard', [
+                    'redirect_url' => $redirectUrl,
+                    'sso_host' => $ssoHost
+                ]);
+                return route('dashboard');
+            }
+
+            // Extraire le domaine de l'application
+            $appUrl = config('app.url', '');
+            $appParsed = parse_url($appUrl);
+            $appHost = $appParsed['host'] ?? null;
+
+            // Si l'URL de redirection ne pointe pas vers l'application, retourner le dashboard
+            if ($redirectHost && $appHost && $redirectHost !== $appHost) {
+                Log::debug('SSO redirect URL points to external domain, redirecting to dashboard', [
+                    'redirect_url' => $redirectUrl,
+                    'app_host' => $appHost
+                ]);
+                return route('dashboard');
+            }
+
+            // Nettoyer l'URL pour enlever les paramètres redirect internes
+            $cleanUrl = $this->cleanCallbackUrl($redirectUrl);
+
+            return $cleanUrl;
+
+        } catch (\Throwable $e) {
+            Log::debug('SSO redirect URL validation error', [
+                'error' => $e->getMessage(),
+                'redirect_url' => $redirectUrl
+            ]);
+            // En cas d'erreur, retourner le dashboard
+            return route('dashboard');
+        }
+    }
+
+    /**
+     * Nettoyer l'URL de callback pour enlever les paramètres redirect internes
+     * 
+     * @param string $url
+     * @return string
+     */
+    protected function cleanCallbackUrl(string $url): string
+    {
+        try {
+            $parsed = parse_url($url);
+            
+            if (!$parsed) {
+                return $url;
+            }
+
+            // Si pas de query string, retourner l'URL telle quelle
+            if (!isset($parsed['query'])) {
+                return $url;
+            }
+
+            // Parser les paramètres de requête
+            parse_str($parsed['query'], $params);
+
+            // Extraire le domaine SSO
+            $ssoBaseUrl = config('services.sso.base_url', '');
+            $ssoParsed = parse_url($ssoBaseUrl);
+            $ssoHost = $ssoParsed['host'] ?? null;
+
+            // Si le paramètre redirect pointe vers le domaine SSO, le supprimer
+            if (isset($params['redirect']) && $ssoHost) {
+                $redirectParsed = parse_url($params['redirect']);
+                $redirectHost = $redirectParsed['host'] ?? null;
+                
+                if ($redirectHost === $ssoHost) {
+                    unset($params['redirect']);
+                }
+            }
+
+            // Reconstruire l'URL
+            $cleanQuery = http_build_query($params);
+            $cleanUrl = $parsed['scheme'] . '://' . $parsed['host'];
+            
+            if (isset($parsed['port'])) {
+                $cleanUrl .= ':' . $parsed['port'];
+            }
+            
+            if (isset($parsed['path'])) {
+                $cleanUrl .= $parsed['path'];
+            }
+            
+            if ($cleanQuery) {
+                $cleanUrl .= '?' . $cleanQuery;
+            }
+            
+            if (isset($parsed['fragment'])) {
+                $cleanUrl .= '#' . $parsed['fragment'];
+            }
+
+            return $cleanUrl;
+
+        } catch (\Throwable $e) {
+            Log::debug('SSO callback URL cleaning error', [
+                'error' => $e->getMessage(),
+                'url' => $url
+            ]);
+            // En cas d'erreur, retourner l'URL originale
+            return $url;
+        }
+    }
+
+    /**
      * Rediriger vers la page de connexion SSO
      *
      * @param Request $request
@@ -277,9 +415,12 @@ class SSOController extends Controller
             ?: url()->previous() 
             ?: route('dashboard');
 
+        // Valider l'URL de redirection
+        $validatedRedirect = $this->validateRedirectUrl($redirectUrl);
+
         // Construire l'URL de callback complète
         $callbackUrl = route('sso.callback', [
-            'redirect' => $redirectUrl
+            'redirect' => $validatedRedirect
         ]);
 
         $ssoLoginUrl = $this->ssoService->getLoginUrl($callbackUrl);
