@@ -50,7 +50,31 @@ class SSOService
                     $data = $response->json();
                     
                     if (isset($data['valid']) && $data['valid'] === true) {
-                        return $data['user'] ?? null;
+                        $user = $data['user'] ?? null;
+                        
+                        // Normaliser les données utilisateur pour assurer la cohérence
+                        if ($user && is_array($user)) {
+                            // Normaliser les clés de l'avatar/photo
+                            if (!isset($user['avatar']) && isset($user['photo'])) {
+                                $user['avatar'] = $user['photo'];
+                            } elseif (!isset($user['avatar']) && isset($user['picture'])) {
+                                $user['avatar'] = $user['picture'];
+                            } elseif (!isset($user['avatar']) && isset($user['image'])) {
+                                $user['avatar'] = $user['image'];
+                            }
+                            
+                            // Normaliser user_id
+                            if (!isset($user['user_id']) && isset($user['id'])) {
+                                $user['user_id'] = $user['id'];
+                            }
+                            
+                            // Normaliser name
+                            if (!isset($user['name']) && isset($user['full_name'])) {
+                                $user['name'] = $user['full_name'];
+                            }
+                        }
+                        
+                        return $user;
                     }
                 }
 
@@ -106,12 +130,14 @@ class SSOService
             
             // Extraire les données utilisateur
             $userData = [
-                'user_id' => $payload['user_id'] ?? null,
+                'user_id' => $payload['user_id'] ?? $payload['id'] ?? null,
                 'email' => $payload['email'] ?? null,
-                'name' => $payload['name'] ?? null,
+                'name' => $payload['name'] ?? $payload['full_name'] ?? null,
                 'role' => $payload['role'] ?? 'student',
                 'is_verified' => $payload['is_verified'] ?? false,
                 'is_active' => $payload['is_active'] ?? true,
+                // Récupérer l'avatar/photo depuis le SSO
+                'avatar' => $payload['avatar'] ?? $payload['photo'] ?? $payload['picture'] ?? $payload['image'] ?? null,
             ];
 
             // Vérifier que les données essentielles sont présentes

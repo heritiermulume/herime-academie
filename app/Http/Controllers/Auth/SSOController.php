@@ -119,13 +119,26 @@ class SSOController extends Controller
                 'role' => $role, // Utiliser le rôle normalisé
             ];
             
+            // Mettre à jour l'avatar si fourni par le SSO
+            if (isset($userData['avatar']) && !empty($userData['avatar'])) {
+                $updateData['avatar'] = $userData['avatar'];
+            }
+            
+            // Mettre à jour l'ID SSO si fourni
+            if (isset($userData['user_id']) && !empty($userData['user_id'])) {
+                // Stocker l'ID SSO dans les préférences si pas de colonne dédiée
+                $preferences = $user->preferences ?? [];
+                $preferences['sso_id'] = $userData['user_id'];
+                $updateData['preferences'] = $preferences;
+            }
+            
             $user->update($updateData);
 
             return $user;
         }
 
         // Créer un nouvel utilisateur avec le rôle normalisé
-        $user = User::create([
+        $userDataCreate = [
             'name' => $userData['name'] ?? 'Utilisateur',
             'email' => $email,
             'password' => Hash::make(Str::random(32)), // Mot de passe aléatoire (non utilisé avec SSO)
@@ -133,7 +146,19 @@ class SSOController extends Controller
             'is_verified' => $userData['is_verified'] ?? false,
             'is_active' => $userData['is_active'] ?? true,
             'last_login_at' => now(),
-        ]);
+        ];
+        
+        // Ajouter l'avatar si fourni par le SSO
+        if (isset($userData['avatar']) && !empty($userData['avatar'])) {
+            $userDataCreate['avatar'] = $userData['avatar'];
+        }
+        
+        // Stocker l'ID SSO dans les préférences
+        if (isset($userData['user_id']) && !empty($userData['user_id'])) {
+            $userDataCreate['preferences'] = ['sso_id' => $userData['user_id']];
+        }
+        
+        $user = User::create($userDataCreate);
 
         Log::info('SSO user created', [
             'user_id' => $user->id,

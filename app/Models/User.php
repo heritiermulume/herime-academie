@@ -67,6 +67,15 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the SSO user ID from preferences
+     */
+    public function getSsoIdAttribute()
+    {
+        $preferences = $this->preferences ?? [];
+        return $preferences['sso_id'] ?? null;
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
