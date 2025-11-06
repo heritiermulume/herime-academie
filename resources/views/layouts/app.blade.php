@@ -3218,12 +3218,13 @@
                 return originalFetch.apply(this, args)
                     .then(response => {
                         // Si c'est une erreur 401, retourner une réponse vide silencieusement
-                        if (response.status === 401) {
+                        if (!response.ok && response.status === 401) {
                             // Ne pas logger pour éviter le bruit dans la console
                             return new Response(JSON.stringify({}), {
                                 status: 200,
                                 statusText: 'OK',
-                                headers: { 'Content-Type': 'application/json' }
+                                headers: { 'Content-Type': 'application/json' },
+                                ok: true
                             });
                         }
                         // Pour les autres statuts, retourner la réponse originale
@@ -3234,9 +3235,41 @@
                         return new Response(JSON.stringify({}), {
                             status: 200,
                             statusText: 'OK',
-                            headers: { 'Content-Type': 'application/json' }
+                            headers: { 'Content-Type': 'application/json' },
+                            ok: true
                         });
                     });
+            };
+        })();
+
+        // Intercepteur pour XMLHttpRequest (pour les anciennes requêtes)
+        (function() {
+            const originalOpen = XMLHttpRequest.prototype.open;
+            const originalSend = XMLHttpRequest.prototype.send;
+            
+            XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+                this._url = url;
+                return originalOpen.apply(this, [method, url, ...rest]);
+            };
+            
+            XMLHttpRequest.prototype.send = function(...args) {
+                const url = this._url || '';
+                const isMeOrLogout = url.includes('/me') || url.includes('/logout');
+                
+                if (isMeOrLogout) {
+                    this.addEventListener('error', function() {
+                        // Ignorer silencieusement les erreurs
+                    }, { once: true });
+                    
+                    this.addEventListener('load', function() {
+                        // Si c'est une erreur 401, ne pas la propager
+                        if (this.status === 401) {
+                            // Ne pas logger pour éviter le bruit dans la console
+                        }
+                    }, { once: true });
+                }
+                
+                return originalSend.apply(this, args);
             };
         })();
 
