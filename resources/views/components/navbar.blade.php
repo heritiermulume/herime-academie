@@ -48,11 +48,7 @@
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider my-0" style="margin: 0;"></li>
-                            <li style="padding: 0;">
-                                <a class="dropdown-item" href="{{ route('contact') }}" style="padding: 0.75rem 1.25rem;">
-                                    <i class="fas fa-envelope me-2"></i>Nous contacter
-                                </a>
-                            </li>
+                            
                             <li style="padding: 0;">
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
