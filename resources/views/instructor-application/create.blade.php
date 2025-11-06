@@ -4,7 +4,7 @@
 
 @section('content')
 <!-- Header -->
-<section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 2rem 0;">
+<section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 2rem 0; padding-top: calc(2rem + 80px);">
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center text-white">

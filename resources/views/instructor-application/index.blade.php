@@ -4,7 +4,7 @@
 
 @section('content')
 <!-- Hero Section -->
-<section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 2rem 0;">
+<section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 2rem 0; padding-top: calc(2rem + 80px);">
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center text-white">
@@ -251,6 +251,17 @@
         .page-content-section {
             padding-top: 2rem !important;
             padding-bottom: 2rem !important;
+        }
+        
+        .page-header-section {
+            padding-top: calc(1.5rem + 70px) !important;
+        }
+    }
+    
+    /* Desktop navbar offset */
+    @media (min-width: 992px) {
+        .page-header-section {
+            padding-top: calc(2rem + 80px) !important;
         }
     }
 </style>
