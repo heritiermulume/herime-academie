@@ -199,7 +199,7 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <img src="{{ $user->avatar ? $user->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=003366&color=fff' }}" 
+                                            <img src="{{ $user->avatar_url }}" 
                                                  alt="{{ $user->name }}" 
                                                  class="rounded-circle me-3" 
                                                  width="40" 
