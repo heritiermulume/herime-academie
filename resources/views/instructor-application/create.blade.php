@@ -139,3 +139,26 @@
 </section>
 @endsection
 
+@push('styles')
+<style>
+    /* Navbar offset for fixed navbar */
+    @media (max-width: 767px) {
+        .page-header-section {
+            padding-top: calc(1.5rem + 65px) !important;
+        }
+    }
+    
+    @media (min-width: 768px) and (max-width: 991px) {
+        .page-header-section {
+            padding-top: calc(2rem + 70px) !important;
+        }
+    }
+    
+    @media (min-width: 992px) {
+        .page-header-section {
+            padding-top: calc(2rem + 75px) !important;
+        }
+    }
+</style>
+@endpush
+
