@@ -162,9 +162,11 @@
                                 </div>
                                 <div class="card-body text-center">
                                     <div class="mb-3">
-                                        <img src="{{ auth()->user()->avatar_url }}" 
-                                             alt="Photo de profil" class="rounded-circle" 
-                                             style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: none; box-shadow: none; display: block;">
+                                        <div style="width: 150px; height: 150px; border-radius: 50%; overflow: hidden; margin: 0 auto; aspect-ratio: 1 / 1;">
+                                            <img src="{{ auth()->user()->avatar_url }}" 
+                                                 alt="Photo de profil" 
+                                                 style="width: 100%; height: 100%; object-fit: cover; display: block; border: none; box-shadow: none; transform: none;">
+                                        </div>
                                     </div>
                                     
                                     <form method="POST" action="{{ route('profile.avatar') }}" enctype="multipart/form-data" id="avatarForm">
@@ -353,18 +355,41 @@
     font-size: 0.8em;
 }
 
-/* Styles pour les avatars ronds sans effet 3D */
+/* Styles pour les avatars ronds sans effet 3D - Forcer un cercle parfait */
 .rounded-circle {
     border-radius: 50% !important;
     border: none !important;
     box-shadow: none !important;
+    transform: none !important;
+    perspective: none !important;
 }
 
 img.rounded-circle {
     border-radius: 50% !important;
     border: none !important;
     box-shadow: none !important;
-    display: block;
+    display: block !important;
+    transform: none !important;
+    perspective: none !important;
+}
+
+/* Forcer tous les avatars à être parfaitement ronds */
+.avatar-container {
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    aspect-ratio: 1 / 1 !important;
+    display: inline-block;
+}
+
+.avatar-container img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    border-radius: 0 !important;
 }
 
 .text-muted {

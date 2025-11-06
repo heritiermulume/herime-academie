@@ -199,12 +199,11 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <img src="{{ $user->avatar_url }}" 
-                                                 alt="{{ $user->name }}" 
-                                                 class="rounded-circle me-3" 
-                                                 width="40" 
-                                                 height="40"
-                                                 style="border-radius: 50%; border: none; box-shadow: none; object-fit: cover;">
+                                            <div class="me-3" style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0; aspect-ratio: 1 / 1;">
+                                                <img src="{{ $user->avatar_url }}" 
+                                                     alt="{{ $user->name }}" 
+                                                     style="width: 100%; height: 100%; object-fit: cover; display: block; border: none; box-shadow: none; transform: none;">
+                                            </div>
                                             <div>
                                                 <h6 class="mb-0">{{ $user->name }}</h6>
                                                 <small class="text-muted">{{ $user->email }}</small>

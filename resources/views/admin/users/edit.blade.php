@@ -77,11 +77,12 @@
                                         <i class="fas fa-check-circle me-1"></i>
                                         Avatar actuel (synchronisé depuis Compte Herime) :
                                     </p>
-                                    <img src="{{ $user->avatar_url }}" 
-                                         alt="Avatar actuel" 
-                                         id="currentAvatar"
-                                         class="rounded-circle" 
-                                         style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: none; box-shadow: none; display: block;">
+                                    <div style="width: 150px; height: 150px; border-radius: 50%; overflow: hidden; margin: 0 auto; aspect-ratio: 1 / 1;">
+                                        <img src="{{ $user->avatar_url }}" 
+                                             alt="Avatar actuel" 
+                                             id="currentAvatar"
+                                             style="width: 100%; height: 100%; object-fit: cover; display: block; border: none; box-shadow: none; transform: none;">
+                                    </div>
                                     <p class="text-muted small mt-2">
                                         <i class="fas fa-info-circle me-1"></i>
                                         La photo est gérée via <a href="{{ config('services.sso.base_url') }}" target="_blank">compte.herime.com</a>
