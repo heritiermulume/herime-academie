@@ -119,9 +119,9 @@ class SSOController extends Controller
                 'role' => $role, // Utiliser le rôle normalisé
             ];
             
-            // Mettre à jour l'avatar si fourni par le SSO
-            if (isset($userData['avatar']) && !empty($userData['avatar'])) {
-                $updateData['avatar'] = $userData['avatar'];
+            // Mettre à jour l'avatar si fourni par le SSO (toujours mettre à jour, même si vide)
+            if (isset($userData['avatar'])) {
+                $updateData['avatar'] = $userData['avatar'] ?: null;
             }
             
             // Mettre à jour l'ID SSO si fourni
@@ -148,9 +148,9 @@ class SSOController extends Controller
             'last_login_at' => now(),
         ];
         
-        // Ajouter l'avatar si fourni par le SSO
-        if (isset($userData['avatar']) && !empty($userData['avatar'])) {
-            $userDataCreate['avatar'] = $userData['avatar'];
+        // Ajouter l'avatar si fourni par le SSO (toujours ajouter, même si vide)
+        if (isset($userData['avatar'])) {
+            $userDataCreate['avatar'] = $userData['avatar'] ?: null;
         }
         
         // Stocker l'ID SSO dans les préférences

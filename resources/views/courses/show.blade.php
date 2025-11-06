@@ -1835,10 +1835,10 @@
                         Votre instructeur
                     </h2>
                     <div class="instructor-card">
-                        @if($course->instructor->avatar)
-                            <img src="{{ $course->instructor->avatar }}" 
+                        @if($course->instructor)
+                            <img src="{{ $course->instructor->avatar_url }}" 
                              alt="{{ $course->instructor->name }}" 
-                             class="instructor-avatar">
+                             class="instructor-avatar" style="object-fit: cover;">
                         @else
                             <div class="instructor-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 2rem; font-weight: bold; border-radius: 50%;">
                                 {{ strtoupper(substr($course->instructor->name, 0, 1)) }}

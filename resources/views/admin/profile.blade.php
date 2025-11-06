@@ -162,16 +162,9 @@
                                 </div>
                                 <div class="card-body text-center">
                                     <div class="mb-3">
-                                        @if(auth()->user()->avatar)
-                                            <img src="{{ auth()->user()->avatar_url }}" 
-                                                 alt="Photo de profil" class="rounded-circle" 
-                                                 style="width: 150px; height: 150px; object-fit: cover;">
-                                        @else
-                                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto" 
-                                                 style="width: 150px; height: 150px;">
-                                                <i class="fas fa-user text-white" style="font-size: 4rem;"></i>
-                                            </div>
-                                        @endif
+                                        <img src="{{ auth()->user()->avatar_url }}" 
+                                             alt="Photo de profil" class="rounded-circle" 
+                                             style="width: 150px; height: 150px; object-fit: cover;">
                                     </div>
                                     
                                     <form method="POST" action="{{ route('profile.avatar') }}" enctype="multipart/form-data" id="avatarForm">

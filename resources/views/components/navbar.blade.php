@@ -122,13 +122,7 @@
                     <!-- User Menu -->
                     <div class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" title="Mon compte">
-                            @if(Auth::user()->avatar)
-                                <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="rounded-circle" width="32" height="32">
-                            @else
-                                <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                    <i class="fas fa-user text-white"></i>
-                                </div>
-                            @endif
+                            <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" class="rounded-circle" width="32" height="32" style="object-fit: cover;">
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ route('dashboard') }}">Tableau de bord</a></li>
