@@ -3173,7 +3173,7 @@
                                 </a>
                             </div>
                             <div class="list-group-item">
-                                <a href="{{ route('profile') }}">
+                                <a href="{{ app(\App\Services\SSOService::class)->getProfileUrl() }}" target="_blank" rel="noopener noreferrer">
                                     <i class="fas fa-user"></i>
                                     Profil
                                 </a>

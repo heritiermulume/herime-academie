@@ -132,7 +132,7 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ route('dashboard') }}">Tableau de bord</a></li>
-                            <li><a class="dropdown-item" href="{{ route('profile') }}">Profil</a></li>
+                            <li><a class="dropdown-item" href="{{ app(\App\Services\SSOService::class)->getProfileUrl() }}" target="_blank" rel="noopener noreferrer">Profil</a></li>
                             <li><a class="dropdown-item" href="{{ route('messages.index') }}">Messages</a></li>
                             <li><a class="dropdown-item" href="{{ route('notifications.index') }}">Notifications</a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -211,7 +211,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('profile') }}">
+                        <a class="nav-link" href="{{ app(\App\Services\SSOService::class)->getProfileUrl() }}" target="_blank" rel="noopener noreferrer">
                             <i class="fas fa-user me-2"></i>Profil
                         </a>
                     </li>
