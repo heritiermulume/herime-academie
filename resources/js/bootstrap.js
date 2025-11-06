@@ -4,6 +4,9 @@ window.axios = axios;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 // Intercepteur pour gérer les erreurs 401 (non autorisé)
+// Désactivé temporairement pour éviter les problèmes avec les réponses
+// Les erreurs 401 sont gérées côté serveur
+/*
 window.axios.interceptors.response.use(
     response => response,
     error => {
@@ -20,3 +23,4 @@ window.axios.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+*/

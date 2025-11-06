@@ -266,10 +266,13 @@ class SSOService
         // car l'endpoint /api/sso/check-token n'existe pas encore sur le serveur SSO
         // TODO: Activer l'appel API une fois l'endpoint disponible
         try {
-            return $this->validateTokenLocally($token) !== null;
-        } catch (\Exception $localException) {
-            Log::warning('SSO local token validation failed', [
+            $result = $this->validateTokenLocally($token);
+            return $result !== null;
+        } catch (\Throwable $localException) {
+            // Capturer toutes les exceptions et erreurs
+            Log::debug('SSO local token validation failed', [
                 'message' => $localException->getMessage(),
+                'type' => get_class($localException),
             ]);
             // En dernier recours, considérer le token comme invalide
             return false;
