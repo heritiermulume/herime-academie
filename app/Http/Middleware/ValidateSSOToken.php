@@ -86,72 +86,81 @@ class ValidateSSOToken
             return $next($request);
         }
 
-        // Valider le token SSO (avec gestion d'erreur)
-        try {
-            $isValid = $this->ssoService->checkToken($ssoToken);
+            // Valider le token SSO (avec gestion d'erreur)
+            try {
+                $isValid = $this->ssoService->checkToken($ssoToken);
+            } catch (\Throwable $e) {
+                // Capturer toutes les exceptions et erreurs
+                Log::debug('SSO token validation exception', [
+                    'user_id' => $user->id ?? null,
+                    'method' => $request->method(),
+                    'route' => $request->route()?->getName(),
+                    'error' => $e->getMessage(),
+                    'type' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
+                // En cas d'erreur, considérer comme valide pour ne pas bloquer l'utilisateur
+                // (l'API SSO pourrait être temporairement indisponible)
+                return $next($request);
+            }
+
+                Log::debug('SSO token validation failed before important action', [
+                    'user_id' => $user->id ?? null,
+                    'method' => $request->method(),
+                    'route' => $request->route()?->getName(),
+                ]);
+
+                // Pour les requêtes AJAX, retourner une réponse JSON
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'message' => 'Votre session a expiré. Veuillez vous reconnecter.',
+                        'redirect' => route('login')
+                    ], 401);
+                }
+
+                // Pour les requêtes normales, déconnecter et rediriger
+                try {
+                    Auth::logout();
+                    if ($request->hasSession()) {
+                        $request->session()->invalidate();
+                        $request->session()->regenerateToken();
+                    }
+                } catch (\Throwable $e) {
+                    Log::debug('Error during logout in SSO validation', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                try {
+                    $ssoService = app(SSOService::class);
+                    $currentUrl = $request->fullUrl();
+                    $callbackUrl = route('sso.callback', ['redirect' => $currentUrl]);
+                    $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
+
+                    return redirect($ssoLoginUrl)
+                        ->with('error', 'Votre session a expiré. Veuillez vous reconnecter.');
+                } catch (\Throwable $e) {
+                    Log::debug('Error creating SSO login URL', [
+                        'error' => $e->getMessage(),
+                    ]);
+                    // En cas d'erreur, rediriger vers la page de login normale
+                    return redirect()->route('login')
+                        ->with('error', 'Votre session a expiré. Veuillez vous reconnecter.');
+                }
+            }
+
+            return $next($request);
         } catch (\Throwable $e) {
-            // Capturer toutes les exceptions et erreurs
-            Log::debug('SSO token validation exception', [
-                'user_id' => $user->id ?? null,
-                'method' => $request->method(),
-                'route' => $request->route()?->getName(),
+            // En cas d'erreur dans le middleware, logger et laisser passer
+            Log::debug('SSO validation middleware error', [
                 'error' => $e->getMessage(),
                 'type' => get_class($e),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
-            // En cas d'erreur, considérer comme valide pour ne pas bloquer l'utilisateur
-            // (l'API SSO pourrait être temporairement indisponible)
             return $next($request);
         }
-
-        if (!$isValid) {
-            Log::debug('SSO token validation failed before important action', [
-                'user_id' => $user->id ?? null,
-                'method' => $request->method(),
-                'route' => $request->route()?->getName(),
-            ]);
-
-            // Pour les requêtes AJAX, retourner une réponse JSON
-            if ($request->expectsJson() || $request->ajax()) {
-                return response()->json([
-                    'message' => 'Votre session a expiré. Veuillez vous reconnecter.',
-                    'redirect' => route('login')
-                ], 401);
-            }
-
-            // Pour les requêtes normales, déconnecter et rediriger
-            try {
-                Auth::logout();
-                if ($request->hasSession()) {
-                    $request->session()->invalidate();
-                    $request->session()->regenerateToken();
-                }
-            } catch (\Throwable $e) {
-                Log::debug('Error during logout in SSO validation', [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            try {
-                $ssoService = app(SSOService::class);
-                $currentUrl = $request->fullUrl();
-                $callbackUrl = route('sso.callback', ['redirect' => $currentUrl]);
-                $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
-
-                return redirect($ssoLoginUrl)
-                    ->with('error', 'Votre session a expiré. Veuillez vous reconnecter.');
-            } catch (\Throwable $e) {
-                Log::debug('Error creating SSO login URL', [
-                    'error' => $e->getMessage(),
-                ]);
-                // En cas d'erreur, rediriger vers la page de login normale
-                return redirect()->route('login')
-                    ->with('error', 'Votre session a expiré. Veuillez vous reconnecter.');
-            }
-        }
-
-        return $next($request);
     }
 
     /**
