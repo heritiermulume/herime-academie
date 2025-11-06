@@ -115,6 +115,7 @@ Route::get('/courses/{course:slug}/lesson/{lesson}', [CourseController::class, '
 Route::get('/categories/{category:slug}', [CourseController::class, 'byCategory'])->name('courses.category');
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
 Route::get('/instructors/{instructor}', [InstructorController::class, 'show'])->name('instructors.show');
+Route::get('/become-instructor', [InstructorController::class, 'index'])->name('become-instructor'); // Alias pour compatibilité
 
 // Blog routes
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');

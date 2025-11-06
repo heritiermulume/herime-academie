@@ -214,19 +214,19 @@
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('instructors.index') }}">
+                    <a class="nav-link" href="{{ route('instructor-application.index') }}">
                         <i class="fas fa-chalkboard-teacher me-2"></i>Formateurs
                     </a>
-                    @auth
-                        @if(auth()->user()->role !== 'instructor')
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('instructor-application.index') }}">
-                                    <i class="fas fa-rocket me-2"></i>Devenir Formateur
-                                </a>
-                            </li>
-                        @endif
-                    @endauth
                 </li>
+                @auth
+                    @if(auth()->user()->role !== 'instructor')
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('instructor-application.index') }}">
+                                <i class="fas fa-rocket me-2"></i>Devenir Formateur
+                            </a>
+                        </li>
+                    @endif
+                @endauth
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('about') }}">
                         <i class="fas fa-info-circle me-2"></i>À propos
