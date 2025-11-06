@@ -32,8 +32,11 @@
                     <div class="card instructor-card h-100">
                         <div class="card-body text-center">
                             <div class="instructor-avatar mb-3">
-                                <img src="{{ $instructor->avatar ? $instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($instructor->name) . '&background=003366&color=fff&size=120' }}" 
-                                     alt="{{ $instructor->name }}" class="rounded-circle">
+                                <div style="width: 120px; height: 120px; border-radius: 50%; overflow: hidden; margin: 0 auto; border: 4px solid #e9ecef;">
+                                    <img src="{{ $instructor->avatar_url }}" 
+                                         alt="{{ $instructor->name }}" 
+                                         style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                                </div>
                             </div>
                             <h5 class="card-title">{{ $instructor->name }}</h5>
                             @if($instructor->bio)
