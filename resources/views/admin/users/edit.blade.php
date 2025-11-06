@@ -58,147 +58,87 @@
                         <h5 class="mb-0"><i class="fas fa-user me-2"></i>Informations personnelles</h5>
                     </div>
                     <div class="card-body">
+                        <!-- Avertissement SSO -->
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Gestion via SSO :</strong> Les informations personnelles (nom, email, photo) sont gérées via le SSO (compte.herime.com) et seront synchronisées automatiquement lors de la prochaine connexion de l'utilisateur. Seuls le rôle et le statut actif peuvent être modifiés ici.
+                        </div>
                         <div class="row g-3">
-                            <!-- Avatar actuel et upload -->
+                            <!-- Avatar actuel (lecture seule) -->
                             <div class="col-12">
-                                <label class="form-label fw-bold">Photo de profil</label>
+                                <label class="form-label fw-bold">
+                                    Photo de profil 
+                                    <span class="badge bg-info ms-2">Géré par SSO</span>
+                                </label>
                                 
                                 <!-- Avatar actuel -->
                                 <div class="current-avatar mb-3 text-center">
                                     <p class="fw-bold mb-2 text-success">
                                         <i class="fas fa-check-circle me-1"></i>
-                                        Avatar actuel :
+                                        Avatar actuel (synchronisé depuis le SSO) :
                                     </p>
-                                    <img src="{{ $user->avatar ? $user->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=003366&color=fff' }}" 
+                                    <img src="{{ $user->avatar_url }}" 
                                          alt="Avatar actuel" 
                                          id="currentAvatar"
                                          class="img-thumbnail rounded-circle" 
                                          style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #28a745;">
+                                    <p class="text-muted small mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        La photo est gérée via <a href="{{ config('services.sso.base_url') }}" target="_blank">compte.herime.com</a>
+                                    </p>
                                 </div>
-                                
-                                <!-- Zone d'upload pour nouveau -->
-                                <div class="upload-zone" id="avatarUploadZone">
-                                    <input type="file" 
-                                           class="form-control d-none @error('avatar') is-invalid @enderror" 
-                                           id="avatar" 
-                                           name="avatar" 
-                                           accept="image/jpeg,image/png,image/jpg,image/webp"
-                                           onchange="handleAvatarUpload(this)">
-                                    <div class="upload-placeholder text-center p-4" onclick="document.getElementById('avatar').click()">
-                                        <i class="fas fa-cloud-upload-alt fa-3x text-info mb-3"></i>
-                                        <p class="mb-2"><strong>Cliquez pour changer la photo</strong></p>
-                                        <p class="text-muted small mb-0">Format : JPG, PNG, WEBP | Max : 5MB</p>
-                                        <p class="text-muted small">Laissez vide pour conserver l'avatar actuel</p>
-                                    </div>
-                                    <div class="upload-preview d-none">
-                                        <p class="fw-bold text-info text-center mb-2">
-                                            <i class="fas fa-eye me-1"></i>Nouvelle photo :
-                                        </p>
-                                        <img src="" alt="Preview" class="img-fluid rounded-circle mx-auto d-block" style="max-width: 200px; max-height: 200px; border: 3px solid #17a2b8;">
-                                        <div class="upload-info mt-2 text-center">
-                                            <span class="badge bg-primary file-name"></span>
-                                            <span class="badge bg-info file-size"></span>
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-danger mt-2 d-block mx-auto" onclick="clearAvatar()">
-                                            <i class="fas fa-trash me-1"></i>Annuler le changement
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="invalid-feedback d-block" id="avatarError"></div>
-                                @error('avatar')
-                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                @enderror
                             </div>
 
+                            <!-- Nom (lecture seule) -->
                             <div class="col-md-6">
                                 <label for="name" class="form-label fw-bold">
-                                    Nom complet <span class="text-danger">*</span>
+                                    Nom complet 
+                                    <span class="badge bg-info ms-2">Géré par SSO</span>
                                 </label>
-                                <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                       id="name" name="name" value="{{ old('name', $user->name) }}" 
-                                       placeholder="Ex: Jean Dupont" required>
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <input type="text" class="form-control bg-light" 
+                                       id="name" name="name" value="{{ $user->name }}" 
+                                       readonly disabled>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-lock me-1"></i>
+                                    Modifiable uniquement via le SSO
+                                </small>
                             </div>
+                            
+                            <!-- Email (lecture seule) -->
                             <div class="col-md-6">
                                 <label for="email" class="form-label fw-bold">
-                                    Email <span class="text-danger">*</span>
+                                    Email 
+                                    <span class="badge bg-info ms-2">Géré par SSO</span>
                                 </label>
-                                <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                       id="email" name="email" value="{{ old('email', $user->email) }}" 
-                                       placeholder="Ex: jean@example.com" required>
-                                @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <input type="email" class="form-control bg-light" 
+                                       id="email" name="email" value="{{ $user->email }}" 
+                                       readonly disabled>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-lock me-1"></i>
+                                    Modifiable uniquement via le SSO
+                                </small>
                             </div>
-                            <div class="col-md-6">
-                                <label for="phone" class="form-label fw-bold">Téléphone</label>
-                                <input type="tel" class="form-control @error('phone') is-invalid @enderror" 
-                                       id="phone" name="phone" value="{{ old('phone', $user->phone) }}"
-                                       placeholder="Ex: +243 900 000 000">
-                                @error('phone')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="date_of_birth" class="form-label fw-bold">Date de naissance</label>
-                                <input type="date" class="form-control @error('date_of_birth') is-invalid @enderror" 
-                                       id="date_of_birth" name="date_of_birth" 
-                                       value="{{ old('date_of_birth', $user->date_of_birth ? $user->date_of_birth->format('Y-m-d') : '') }}">
-                                @error('date_of_birth')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="gender" class="form-label fw-bold">Genre</label>
-                                <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender">
-                                    <option value="">Sélectionner</option>
-                                    <option value="male" {{ old('gender', $user->gender) == 'male' ? 'selected' : '' }}>Homme</option>
-                                    <option value="female" {{ old('gender', $user->gender) == 'female' ? 'selected' : '' }}>Femme</option>
-                                    <option value="other" {{ old('gender', $user->gender) == 'other' ? 'selected' : '' }}>Autre</option>
-                                </select>
-                                @error('gender')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="bio" class="form-label fw-bold">Biographie</label>
-                                <textarea class="form-control @error('bio') is-invalid @enderror" 
-                                          id="bio" name="bio" rows="3" placeholder="Parlez-nous de vous...">{{ old('bio', $user->bio) }}</textarea>
-                                @error('bio')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                            
+                            <!-- Informations supplémentaires (lecture seule) -->
+                            <div class="col-12">
+                                <div class="alert alert-secondary">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note :</strong> Les autres informations (téléphone, date de naissance, genre, biographie) sont également gérées via le SSO et seront synchronisées lors de la prochaine connexion.
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mot de passe (optionnel) -->
+                <!-- Mot de passe (géré par SSO) -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-gradient-warning text-white">
-                        <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Changer le mot de passe (optionnel)</h5>
+                        <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Mot de passe</h5>
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
-                            Laissez ces champs vides si vous ne souhaitez pas modifier le mot de passe.
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="password" class="form-label fw-bold">Nouveau mot de passe</label>
-                                <input type="password" class="form-control @error('password') is-invalid @enderror" 
-                                       id="password" name="password">
-                                <small class="form-text text-muted">Minimum 8 caractères</small>
-                                @error('password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="password_confirmation" class="form-label fw-bold">Confirmer le nouveau mot de passe</label>
-                                <input type="password" class="form-control" 
-                                       id="password_confirmation" name="password_confirmation">
-                            </div>
+                            <strong>Gestion via SSO :</strong> Le mot de passe est géré exclusivement via le SSO (compte.herime.com). Les utilisateurs doivent modifier leur mot de passe sur le SSO.
                         </div>
                     </div>
                 </div>
@@ -227,21 +167,26 @@
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Statuts</label>
-                                <div class="d-flex gap-4">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="is_active" 
-                                               name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="is_active">
-                                            Utilisateur actif
-                                        </label>
-                                    </div>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="is_verified" 
-                                               name="is_verified" value="1" {{ old('is_verified', $user->is_verified) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="is_verified">
-                                            Email vérifié
-                                        </label>
+                                <label class="form-label fw-bold">Statut</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="is_active" 
+                                           name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="is_active">
+                                        Utilisateur actif
+                                    </label>
+                                    <small class="form-text text-muted d-block">
+                                        Désactiver pour empêcher l'accès à la plateforme
+                                    </small>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-{{ $user->is_verified ? 'success' : 'warning' }} me-2">
+                                            <i class="fas fa-{{ $user->is_verified ? 'check' : 'clock' }} me-1"></i>
+                                            Email {{ $user->is_verified ? 'vérifié' : 'non vérifié' }}
+                                        </span>
+                                        <small class="text-muted">
+                                            (Géré par le SSO)
+                                        </small>
                                     </div>
                                 </div>
                             </div>

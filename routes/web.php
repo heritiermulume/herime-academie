@@ -213,6 +213,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');
         Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('users.edit');
         Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
+        Route::post('/users/{user}/sync', [AdminController::class, 'syncUserFromSSO'])->name('users.sync');
         Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->name('users.destroy');
         
         // Categories management

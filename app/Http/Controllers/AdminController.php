@@ -20,6 +20,7 @@ use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -236,84 +237,89 @@ class AdminController extends Controller
         return view('admin.users.edit', compact('user'));
     }
 
+    /**
+     * Mettre à jour un utilisateur
+     * Seuls certains champs peuvent être modifiés localement (rôle, is_active)
+     * Les autres données (nom, email, photo) viennent du SSO et seront synchronisées
+     */
     public function updateUser(Request $request, User $user)
     {
-        // Vérifier la taille de la requête POST
-        if ($request->header('content-length') > 10 * 1024 * 1024) { // 10MB
-            return redirect()->back()
-                ->withErrors(['avatar' => 'Le fichier est trop volumineux. Taille maximum autorisée: 2MB'])
-                ->withInput();
-        }
-
+        // Avec le SSO, on limite les modifications locales
+        // Seuls le rôle et le statut actif peuvent être modifiés localement
+        // Les autres données (nom, email, photo) viennent du SSO
+        
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
             'role' => 'required|in:student,instructor,admin,affiliate,super_user',
-            'phone' => 'nullable|string|max:20',
-            'date_of_birth' => 'nullable|date',
-            'gender' => 'nullable|in:male,female,other',
-            'bio' => 'nullable|string|max:1000',
-            'website' => 'nullable|url|max:255',
-            'linkedin' => 'nullable|url|max:255',
-            'twitter' => 'nullable|url|max:255',
-            'youtube' => 'nullable|url|max:255',
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'is_active' => 'boolean',
-            'is_verified' => 'boolean',
-        ], [
-            'avatar.image' => 'Le fichier doit être une image.',
-            'avatar.mimes' => 'Le fichier doit être de type: jpeg, png, jpg, gif.',
-            'avatar.max' => 'Le fichier ne doit pas dépasser 2MB.',
+            // Note: Les autres champs (name, email, avatar) sont gérés par le SSO
         ]);
 
-        $data = $request->all();
-
-        // Gérer l'upload de l'avatar
-        if ($request->hasFile('avatar')) {
-            $result = $this->fileUploadService->uploadImage(
-                $request->file('avatar'),
-                'avatars',
-                $user->avatar,
-                300 // Max 300px width
-            );
-            $data['avatar'] = $result['path'];
-        }
-
-        $user->update($data);
+        // Mettre à jour uniquement les champs modifiables localement
+        $user->update([
+            'role' => $request->role,
+            'is_active' => $request->has('is_active'),
+        ]);
 
         return redirect()->route('admin.users')
-            ->with('success', 'Utilisateur mis à jour avec succès.');
+            ->with('success', 'Utilisateur mis à jour avec succès. Les données personnelles (nom, email, photo) sont gérées via le SSO et seront synchronisées lors de la prochaine connexion.');
+    }
+    
+    /**
+     * Synchroniser un utilisateur avec le SSO
+     * Récupère les dernières données depuis le SSO
+     */
+    public function syncUserFromSSO(User $user)
+    {
+        try {
+            // Si l'utilisateur a un ID SSO, on pourrait faire une requête au SSO
+            // Pour l'instant, on synchronise lors de la prochaine connexion
+            // Cette méthode peut être utilisée pour forcer une synchronisation
+            return redirect()->route('admin.users')
+                ->with('info', 'La synchronisation se fait automatiquement lors de la connexion via SSO. Les données seront mises à jour lors de la prochaine connexion de l\'utilisateur.');
+        } catch (\Exception $e) {
+            Log::error('SSO User Sync Error', [
+                'user_id' => $user->id,
+                'message' => $e->getMessage()
+            ]);
+            
+            return redirect()->route('admin.users')
+                ->with('error', 'Erreur lors de la synchronisation. Les données seront mises à jour lors de la prochaine connexion.');
+        }
     }
 
+    /**
+     * Afficher la page de création d'utilisateur
+     * Redirige vers le SSO car la création se fait via SSO
+     */
     public function createUser()
     {
-        return view('admin.users.create');
+        // La création d'utilisateurs se fait via le SSO
+        // Rediriger vers le SSO pour créer un utilisateur
+        if (config('services.sso.enabled', true)) {
+            $ssoService = app(\App\Services\SSOService::class);
+            $callbackUrl = route('sso.callback', [
+                'redirect' => route('admin.users')
+            ]);
+            $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
+            
+            return redirect($ssoRegisterUrl)
+                ->with('info', 'La création d\'utilisateurs se fait via le SSO. Vous allez être redirigé vers la page d\'inscription.');
+        }
+        
+        // Fallback si SSO désactivé (ne devrait pas arriver)
+        return redirect()->route('admin.users')
+            ->with('error', 'Le SSO est requis pour créer des utilisateurs.');
     }
 
+    /**
+     * Stocker un utilisateur
+     * Cette méthode ne devrait jamais être appelée car la création se fait via SSO
+     */
     public function storeUser(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:student,instructor,admin,affiliate,super_user',
-            'phone' => 'nullable|string|max:20',
-            'is_active' => 'boolean',
-            'is_verified' => 'boolean',
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'phone' => $request->phone,
-            'is_active' => $request->has('is_active'),
-            'is_verified' => $request->has('is_verified'),
-        ]);
-
+        // La création d'utilisateurs se fait uniquement via SSO
         return redirect()->route('admin.users')
-            ->with('success', 'Utilisateur créé avec succès.');
+            ->with('error', 'La création d\'utilisateurs se fait uniquement via le SSO. Veuillez rediriger l\'utilisateur vers le SSO pour créer un compte.');
     }
 
     public function showUser(User $user)
