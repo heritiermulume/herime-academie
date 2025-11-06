@@ -4,7 +4,7 @@
 
 @section('content')
 <!-- Header -->
-<section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 2rem 0; padding-top: calc(2rem + 80px);">
+<section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 2rem 0;">
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center text-white">
@@ -133,4 +133,27 @@
     </div>
 </section>
 @endsection
+
+@push('styles')
+<style>
+    /* Navbar offset for fixed navbar */
+    @media (max-width: 767px) {
+        .page-header-section {
+            padding-top: calc(1.5rem + 65px) !important;
+        }
+    }
+    
+    @media (min-width: 768px) and (max-width: 991px) {
+        .page-header-section {
+            padding-top: calc(2rem + 70px) !important;
+        }
+    }
+    
+    @media (min-width: 992px) {
+        .page-header-section {
+            padding-top: calc(2rem + 75px) !important;
+        }
+    }
+</style>
+@endpush
 
