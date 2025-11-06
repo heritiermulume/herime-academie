@@ -108,8 +108,8 @@
 
                 <!-- Benefits Section -->
                 <div class="card border-0 shadow-lg mb-5">
-                    <div class="card-header bg-white border-0 py-4">
-                        <h3 class="fw-bold text-center mb-0" style="color: #003366;">
+                    <div class="card-header border-0 py-4" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                        <h3 class="fw-bold text-center mb-0 text-white">
                             <i class="fas fa-star me-2"></i>Pourquoi Rejoindre Herime Académie ?
                         </h3>
                     </div>
@@ -144,8 +144,8 @@
 
                 <!-- Process Section -->
                 <div class="card border-0 shadow-lg">
-                    <div class="card-header bg-white border-0 py-4">
-                        <h3 class="fw-bold text-center mb-0" style="color: #003366;">
+                    <div class="card-header border-0 py-4" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                        <h3 class="fw-bold text-center mb-0 text-white">
                             <i class="fas fa-list-ol me-2"></i>Le Processus de Candidature
                         </h3>
                     </div>
