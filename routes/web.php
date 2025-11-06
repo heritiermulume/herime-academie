@@ -170,6 +170,34 @@ Route::middleware('sync.cart')->group(function () {
     Route::get('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
 });
 
+// Routes de fallback pour éviter les erreurs 500 sur /me et /logout
+// Ces routes sont appelées par certains scripts mais n'existent pas
+Route::get('/me', function() {
+    if (!auth()->check()) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+    return response()->json([
+        'user' => [
+            'id' => auth()->id(),
+            'name' => auth()->user()->name,
+            'email' => auth()->user()->email,
+        ]
+    ]);
+})->middleware('auth');
+
+Route::get('/api/me', function() {
+    if (!auth()->check()) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+    return response()->json([
+        'user' => [
+            'id' => auth()->id(),
+            'name' => auth()->user()->name,
+            'email' => auth()->user()->email,
+        ]
+    ]);
+})->middleware('auth');
+
 // Authenticated routes
 Route::middleware(['auth', 'verified'])->group(function () {
     // Route pour valider SSO avant redirection vers le profil
