@@ -67,7 +67,7 @@
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="card border-0 shadow-lg">
-                    <div class="card-body p-5">
+                    <div class="card-body p-3 p-md-5">
                         <div class="alert alert-info mb-4">
                             <i class="fas fa-info-circle me-2"></i>
                             <strong>Format accepté :</strong> PDF, DOC, DOCX (Maximum 5MB par fichier)
@@ -117,11 +117,11 @@
                             </div>
 
                             <!-- Actions -->
-                            <div class="d-flex justify-content-between mt-5">
-                                <a href="{{ route('instructor-application.step2', $application) }}" class="btn btn-outline-secondary">
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mt-4 mt-md-5">
+                                <a href="{{ route('instructor-application.step2', $application) }}" class="btn btn-outline-secondary order-2 order-md-1">
                                     <i class="fas fa-arrow-left me-2"></i>Précédent
                                 </a>
-                                <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <button type="submit" class="btn btn-primary btn-lg px-3 px-md-5 order-1 order-md-2">
                                     <i class="fas fa-paper-plane me-2"></i>Soumettre ma candidature
                                 </button>
                             </div>
