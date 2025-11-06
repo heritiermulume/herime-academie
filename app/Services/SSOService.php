@@ -260,13 +260,22 @@ class SSOService
             }
 
             return false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::debug('SSO check-token exception, falling back to local validation', [
                 'message' => $e->getMessage(),
+                'type' => get_class($e),
             ]);
             
             // Fallback: validation locale rapide
-            return $this->validateTokenLocally($token) !== null;
+            try {
+                return $this->validateTokenLocally($token) !== null;
+            } catch (\Exception $localException) {
+                Log::warning('SSO local token validation also failed', [
+                    'message' => $localException->getMessage(),
+                ]);
+                // En dernier recours, considérer le token comme invalide
+                return false;
+            }
         }
     }
 

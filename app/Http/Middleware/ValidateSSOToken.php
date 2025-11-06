@@ -109,9 +109,17 @@ class ValidateSSOToken
         // Pour l'instant, on retourne null car le token n'est pas stocké localement
         // Cette méthode peut être étendue si nécessaire
         
-        // Option 1: Depuis la session (si stocké lors du callback)
-        if (session()->has('sso_token')) {
-            return session('sso_token');
+        try {
+            // Option 1: Depuis la session (si stocké lors du callback)
+            // Vérifier que la session est disponible avant d'y accéder
+            if (session()->isStarted() && session()->has('sso_token')) {
+                return session('sso_token');
+            }
+        } catch (\Exception $e) {
+            // Si la session n'est pas disponible, logger et continuer
+            Log::debug('SSO token retrieval from session failed', [
+                'error' => $e->getMessage(),
+            ]);
         }
 
         // Option 2: Depuis les préférences utilisateur (non recommandé pour des raisons de sécurité)
