@@ -59,8 +59,16 @@ class SSOController extends Controller
 
             // Stocker le token SSO dans la session pour validation ultérieure
             // (optionnel, seulement si nécessaire pour la validation avant actions)
-            if ($token) {
-                $request->session()->put('sso_token', $token);
+            try {
+                if ($token) {
+                    $request->session()->put('sso_token', $token);
+                }
+            } catch (\Exception $sessionException) {
+                // Si l'écriture en session échoue, logger mais continuer
+                Log::warning('SSO token storage in session failed but login continues', [
+                    'message' => $sessionException->getMessage(),
+                    'user_id' => $user->id
+                ]);
             }
 
             // Synchroniser le panier de session avec la base de données
@@ -80,8 +88,11 @@ class SSOController extends Controller
                 'email' => $user->email
             ]);
 
+            // Valider l'URL de redirection pour éviter les boucles
+            $validatedRedirect = $this->validateRedirectUrl($redirect);
+            
             // Rediriger vers la page demandée ou le dashboard
-            return redirect()->intended($redirect);
+            return redirect()->intended($validatedRedirect);
 
         } catch (\Exception $e) {
             Log::error('SSO callback error', [
