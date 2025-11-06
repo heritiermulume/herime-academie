@@ -168,6 +168,38 @@ class SSOService
     }
 
     /**
+     * Obtenir l'URL d'enregistrement SSO
+     * Le SSO redirigera l'utilisateur vers $redirectUrl après l'enregistrement
+     *
+     * @param string|null $redirectUrl URL de callback après enregistrement
+     * @param bool $forceToken Force la génération d'un token même si l'utilisateur est déjà connecté
+     * @return string
+     */
+    public function getRegisterUrl(?string $redirectUrl = null, bool $forceToken = true): string
+    {
+        // Utiliser la route /register du SSO si elle existe, sinon utiliser /login
+        // Le SSO peut gérer l'enregistrement via la même page de login ou une page dédiée
+        $registerUrl = $this->ssoBaseUrl . '/register';
+        
+        $params = [];
+        
+        if ($redirectUrl) {
+            $params['redirect'] = $redirectUrl;
+        }
+        
+        // Forcer la génération du token même si l'utilisateur est déjà connecté
+        if ($forceToken) {
+            $params['force_token'] = '1';
+        }
+        
+        if (!empty($params)) {
+            $registerUrl .= '?' . http_build_query($params);
+        }
+        
+        return $registerUrl;
+    }
+
+    /**
      * Obtenir l'URL de déconnexion SSO
      * Le SSO redirigera l'utilisateur vers $redirectUrl après la déconnexion
      *

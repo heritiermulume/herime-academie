@@ -3,53 +3,89 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\CartController;
-use App\Models\User;
-use Illuminate\Auth\Events\Registered;
+use App\Services\SSOService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\Log;
 
 class RegisteredUserController extends Controller
 {
     /**
      * Display the registration view.
+     * Redirige toujours vers le SSO pour l'enregistrement
      */
-    public function create(): View
+    public function create(Request $request): RedirectResponse
     {
-        return view('auth.register');
+        // Si l'utilisateur est déjà connecté localement, rediriger vers le dashboard
+        if (Auth::check()) {
+            return redirect()->intended(route('dashboard'));
+        }
+
+        // Toujours rediriger vers SSO pour l'enregistrement, jamais utiliser la vue locale
+        try {
+            if (config('services.sso.enabled', true)) {
+                $ssoService = app(SSOService::class);
+                
+                $redirectUrl = $request->query('redirect') 
+                    ?: $request->header('Referer') 
+                    ?: url()->previous() 
+                    ?: route('dashboard');
+
+                // Construire l'URL de callback complète
+                $callbackUrl = route('sso.callback', [
+                    'redirect' => $redirectUrl
+                ]);
+
+                // Obtenir l'URL d'enregistrement SSO (ou login si le SSO gère les deux)
+                // Le SSO devrait avoir une page d'enregistrement ou permettre l'enregistrement via login
+                $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
+                
+                return redirect($ssoRegisterUrl);
+            }
+        } catch (\Exception $e) {
+            // En cas d'erreur, réessayer la redirection vers SSO
+            Log::error('SSO Register Redirect Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Toujours rediriger vers SSO même en cas d'erreur
+            $ssoService = app(SSOService::class);
+            $callbackUrl = route('sso.callback', [
+                'redirect' => route('dashboard')
+            ]);
+            $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
+            
+            return redirect($ssoRegisterUrl);
+        }
+
+        // Si SSO est désactivé, rediriger quand même vers compte.herime.com
+        // (ne devrait jamais arriver si SSO est correctement configuré)
+        $ssoService = app(SSOService::class);
+        $callbackUrl = route('sso.callback', [
+            'redirect' => route('dashboard')
+        ]);
+        $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
+        
+        return redirect($ssoRegisterUrl);
     }
 
     /**
      * Handle an incoming registration request.
+     * Cette méthode ne devrait jamais être appelée car l'enregistrement se fait via SSO
+     * Redirige vers le SSO si quelqu'un essaie de soumettre un formulaire
      *
      * @throws \Illuminate\Validation\ValidationException
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        // L'enregistrement se fait uniquement via SSO, rediriger vers le SSO
+        Log::warning('Registration attempt via POST request, redirecting to SSO', [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent()
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        event(new Registered($user));
-
-        Auth::login($user);
-
-        // Synchroniser le panier de session avec la base de données
-        $cartController = new CartController();
-        $cartController->syncSessionToDatabase();
-
-        return redirect(route('dashboard', absolute: false));
+        return $this->create($request);
     }
 }
