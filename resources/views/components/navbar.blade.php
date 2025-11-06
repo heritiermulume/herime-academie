@@ -121,21 +121,53 @@
 
                     <!-- User Menu -->
                     <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" title="Mon compte">
-                            <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: inline-block;">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; flex-shrink: 0; display: inline-block;" title="{{ Auth::user()->name }}">
                                 <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" style="width: 100%; height: 100%; object-fit: cover; display: block; border: none; box-shadow: none; transform: none;">
                             </div>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ route('dashboard') }}">Tableau de bord</a></li>
-                            <li><a class="dropdown-item" href="{{ app(\App\Services\SSOService::class)->getProfileUrl() }}" target="_blank" rel="noopener noreferrer">Profil</a></li>
-                            <li><a class="dropdown-item" href="{{ route('messages.index') }}">Messages</a></li>
-                            <li><a class="dropdown-item" href="{{ route('notifications.index') }}">Notifications</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
+                        <ul class="dropdown-menu dropdown-menu-end" style="width: 280px; padding: 0; border: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                            <!-- User Card -->
+                            <li style="padding: 1.25rem; background: linear-gradient(135deg, #003366 0%, #004080 100%); border-radius: 0.375rem 0.375rem 0 0; margin: 0;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div style="width: 60px; height: 60px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid rgba(255, 255, 255, 0.3);">
+                                        <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                                    </div>
+                                    <div class="text-white" style="flex: 1; min-width: 0;">
+                                        <div class="fw-bold mb-1" style="font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ Auth::user()->name }}</div>
+                                        <div class="text-white-50" style="font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ Auth::user()->email }}</div>
+                                    </div>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider my-0" style="margin: 0;"></li>
+                            <!-- Menu Items -->
+                            <li style="padding: 0;">
+                                <a class="dropdown-item" href="{{ route('dashboard') }}" style="padding: 0.75rem 1.25rem;">
+                                    <i class="fas fa-tachometer-alt me-2"></i>Tableau de bord
+                                </a>
+                            </li>
+                            <li style="padding: 0;">
+                                <a class="dropdown-item" href="{{ app(\App\Services\SSOService::class)->getProfileUrl() }}" target="_blank" rel="noopener noreferrer" style="padding: 0.75rem 1.25rem;">
+                                    <i class="fas fa-user me-2"></i>Profil
+                                </a>
+                            </li>
+                            <li style="padding: 0;">
+                                <a class="dropdown-item" href="{{ route('messages.index') }}" style="padding: 0.75rem 1.25rem;">
+                                    <i class="fas fa-envelope me-2"></i>Messages
+                                </a>
+                            </li>
+                            <li style="padding: 0;">
+                                <a class="dropdown-item" href="{{ route('notifications.index') }}" style="padding: 0.75rem 1.25rem;">
+                                    <i class="fas fa-bell me-2"></i>Notifications
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider my-0" style="margin: 0;"></li>
+                            <li style="padding: 0;">
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
-                                    <button type="submit" class="dropdown-item">Déconnexion</button>
+                                    <button type="submit" class="dropdown-item w-100 text-start border-0 bg-transparent" style="padding: 0.75rem 1.25rem;">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                                    </button>
                                 </form>
                             </li>
                         </ul>
