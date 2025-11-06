@@ -198,17 +198,20 @@ Route::get('/api/me', function() {
     ]);
 })->middleware('auth');
 
-// Route GET pour /logout (fallback pour les appels AJAX)
+// Route GET pour /logout (fallback pour les appels AJAX qui utilisent GET)
+// Note: La route POST logout est définie dans routes/auth.php
 Route::get('/logout', function(Request $request) {
-    // Rediriger vers la route POST logout
+    // Pour les requêtes AJAX GET, retourner une réponse JSON
     if ($request->expectsJson() || $request->ajax()) {
         return response()->json([
             'message' => 'Utilisez POST pour la déconnexion',
             'redirect' => route('logout')
         ], 405);
     }
-    return redirect()->route('logout');
-});
+    // Pour les requêtes normales GET, créer un formulaire et le soumettre automatiquement
+    // ou rediriger vers la page d'accueil
+    return redirect()->route('home');
+})->middleware('auth');
 
 // Authenticated routes
 Route::middleware(['auth', 'verified'])->group(function () {
