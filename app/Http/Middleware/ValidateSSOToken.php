@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Services\SSOService;
 use Closure;
 use Illuminate\Http\Request;
@@ -102,43 +103,37 @@ class ValidateSSOToken
                     'route' => $request->route()?->getName(),
                 ]);
 
-                // Pour les requêtes AJAX, retourner une réponse JSON
-                if ($request->expectsJson() || $request->ajax()) {
-                    return response()->json([
-                        'message' => 'Votre session a expiré. Veuillez vous reconnecter.',
-                        'redirect' => route('login')
-                    ], 401);
-                }
-
-                // Pour les requêtes normales, déconnecter et rediriger
-                try {
-                    Auth::logout();
-                    if ($request->hasSession()) {
-                        $request->session()->invalidate();
-                        $request->session()->regenerateToken();
+                // Si l'utilisateur est encore connecté, appeler la méthode logout avec notification
+                if (Auth::check()) {
+                    try {
+                        // Déconnexion locale avec notification (l'utilisateur verra une notification et pourra choisir de se reconnecter)
+                        return AuthenticatedSessionController::performLocalLogoutWithNotification($request);
+                    } catch (\Throwable $e) {
+                        Log::debug('Error during logout in SSO validation', [
+                            'error' => $e->getMessage(),
+                        ]);
+                        
+                        // En cas d'erreur, faire une déconnexion de base et rediriger
+                        try {
+                            Auth::logout();
+                            if ($request->hasSession()) {
+                                $request->session()->invalidate();
+                                $request->session()->regenerateToken();
+                                $request->session()->flash('session_expired', true);
+                                $request->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
+                            }
+                        } catch (\Throwable $logoutError) {
+                            Log::debug('Error during basic logout', [
+                                'error' => $logoutError->getMessage(),
+                            ]);
+                        }
+                        
+                        return redirect()->route('home');
                     }
-                } catch (\Throwable $e) {
-                    Log::debug('Error during logout in SSO validation', [
-                        'error' => $e->getMessage(),
-                    ]);
                 }
 
-                try {
-                    $ssoService = app(SSOService::class);
-                    $currentUrl = $request->fullUrl();
-                    $callbackUrl = route('sso.callback', ['redirect' => $currentUrl]);
-                    $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
-
-                    return redirect($ssoLoginUrl)
-                        ->with('error', 'Votre session a expiré. Veuillez vous reconnecter.');
-                } catch (\Throwable $e) {
-                    Log::debug('Error creating SSO login URL', [
-                        'error' => $e->getMessage(),
-                    ]);
-                    // En cas d'erreur, rediriger vers la page de login normale
-                    return redirect()->route('login')
-                        ->with('error', 'Votre session a expiré. Veuillez vous reconnecter.');
-                }
+                // Si l'utilisateur n'est plus connecté, rediriger vers la page d'accueil
+                return redirect()->route('home');
             }
 
             return $next($request);

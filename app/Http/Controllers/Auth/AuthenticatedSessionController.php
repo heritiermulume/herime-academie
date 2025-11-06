@@ -96,6 +96,48 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request)
     {
+        return $this->performLogout($request);
+    }
+
+    /**
+     * Effectue une déconnexion locale avec notification (sans redirection SSO).
+     * Utilisée quand le token SSO est invalide - l'utilisateur voit une notification et peut choisir de se reconnecter.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public static function performLocalLogoutWithNotification(Request $request)
+    {
+        try {
+            Auth::guard('web')->logout();
+
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                // Stocker un message spécial pour indiquer la déconnexion due à un token invalide
+                $request->session()->flash('session_expired', true);
+                $request->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
+            }
+        } catch (\Throwable $e) {
+            Log::debug('Error during local logout with notification', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Rediriger vers la page d'accueil où la notification sera affichée
+        return redirect()->route('home');
+    }
+
+    /**
+     * Effectue une déconnexion complète de l'utilisateur.
+     * Peut être appelée depuis d'autres endroits (middleware, trait, etc.)
+     * 
+     * @param Request $request
+     * @param string|null $redirectUrl URL de redirection personnalisée (optionnelle)
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    public static function performLogout(Request $request, ?string $redirectUrl = null)
+    {
         try {
             Auth::guard('web')->logout();
 
@@ -112,14 +154,14 @@ class AuthenticatedSessionController extends Controller
         // Pour les requêtes AJAX, retourner une réponse JSON
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'message' => 'Déconnexion réussie',
-                'redirect' => route('home')
-            ], 200);
+                'message' => 'Votre session a expiré. Veuillez vous reconnecter.',
+                'redirect' => $redirectUrl ?? route('home')
+            ], 401);
         }
 
-        // URL de redirection vers l'accueil (URL absolue complète)
-        $homeUrl = route('home');
-        $redirectUrl = url($homeUrl);
+        // URL de redirection (personnalisée ou vers l'accueil)
+        $homeUrl = $redirectUrl ?? route('home');
+        $finalRedirectUrl = url($homeUrl);
 
         // Option pour forcer la déconnexion locale uniquement (sans passer par SSO)
         // Si le SSO ne redirige pas correctement, cette option peut être activée
@@ -130,19 +172,19 @@ class AuthenticatedSessionController extends Controller
             try {
                 $ssoService = app(SSOService::class);
                 
-                // Construire l'URL de déconnexion SSO avec l'URL de redirection vers l'accueil
+                // Construire l'URL de déconnexion SSO avec l'URL de redirection
                 // Le SSO redirigera l'utilisateur vers cette URL après la déconnexion
-                $ssoLogoutUrl = $ssoService->getLogoutUrl($redirectUrl);
+                $ssoLogoutUrl = $ssoService->getLogoutUrl($finalRedirectUrl);
                 
                 Log::info('SSO Logout redirect', [
                     'sso_logout_url' => $ssoLogoutUrl,
-                    'redirect_url' => $redirectUrl
+                    'redirect_url' => $finalRedirectUrl
                 ]);
                 
-                // Rediriger vers le SSO qui déconnectera l'utilisateur et le redirigera vers l'accueil
+                // Rediriger vers le SSO qui déconnectera l'utilisateur et le redirigera
                 return redirect($ssoLogoutUrl);
             } catch (\Throwable $e) {
-                // En cas d'erreur SSO, logger l'erreur et rediriger directement vers l'accueil
+                // En cas d'erreur SSO, logger l'erreur et rediriger directement
                 Log::debug('SSO Logout Error', [
                     'message' => $e->getMessage(),
                     'type' => get_class($e),
@@ -150,7 +192,7 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        // Redirection directe vers l'accueil
+        // Redirection directe
         // Soit si SSO désactivé, soit si déconnexion locale forcée, soit en cas d'erreur
         return redirect($homeUrl);
     }

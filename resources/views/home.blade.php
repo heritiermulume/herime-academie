@@ -4,6 +4,32 @@
 @section('description', 'Découvrez des milliers de cours en ligne de qualité avec Herime Academie. Formations professionnelles, certifications et expertise garanties.')
 
 @section('content')
+
+<!-- Notification de déconnexion due à un token invalide -->
+@if(session('session_expired'))
+<div class="container-fluid">
+    <div class="alert alert-warning alert-dismissible fade show mt-3 mb-4" role="alert" style="border-left: 4px solid #f59e0b; background-color: #fef3c7; color: #92400e; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle me-3" style="font-size: 1.5rem;"></i>
+            <div class="flex-grow-1">
+                <h5 class="alert-heading mb-2" style="font-weight: 600;">Session expirée</h5>
+                <p class="mb-3">
+                    {{ session('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.') }}
+                </p>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('login') }}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-sign-in-alt me-2"></i>Se reconnecter
+                    </a>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="alert" aria-label="Fermer">
+                        <i class="fas fa-times me-2"></i>Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <style>
 /* Prévenir le débordement horizontal sur mobile */
 html {

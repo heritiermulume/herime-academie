@@ -33,7 +33,9 @@
                                 </a>
                             </li>
                             <li style="padding: 0;">
-                                <a class="dropdown-item" href="{{ route('profile.redirect') }}" target="_blank" rel="noopener noreferrer" style="padding: 0.75rem 1.25rem;">
+                                <a class="dropdown-item" href="{{ route('profile.redirect') }}" 
+                                   @if(session('sso_token'))target="_blank" rel="noopener noreferrer"@endif 
+                                   style="padding: 0.75rem 1.25rem;">
                                     <i class="fas fa-user me-2"></i>Profil
                                 </a>
                             </li>
@@ -213,7 +215,9 @@
                                 </a>
                             </li>
                             <li style="padding: 0;">
-                                <a class="dropdown-item" href="{{ route('profile.redirect') }}" target="_blank" rel="noopener noreferrer" style="padding: 0.75rem 1.25rem;">
+                                <a class="dropdown-item" href="{{ route('profile.redirect') }}" 
+                                   @if(session('sso_token'))target="_blank" rel="noopener noreferrer"@endif 
+                                   style="padding: 0.75rem 1.25rem;">
                                     <i class="fas fa-user me-2"></i>Profil
                                 </a>
                             </li>
@@ -314,7 +318,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('profile.redirect') }}" target="_blank" rel="noopener noreferrer">
+                        <a class="nav-link" href="{{ route('profile.redirect') }}" 
+                           @if(session('sso_token'))target="_blank" rel="noopener noreferrer"@endif>
                             <i class="fas fa-user me-2"></i>Profil
                         </a>
                     </li>

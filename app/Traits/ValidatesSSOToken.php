@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Services\SSOService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -102,22 +103,45 @@ trait ValidatesSSOToken
 
     /**
      * Gère le cas où le token SSO est invalide
-     * Déconnecte l'utilisateur et redirige vers le SSO
+     * Déconnecte l'utilisateur localement et affiche une notification avec option de reconnexion
      */
     protected function handleSSOTokenInvalid()
     {
-        Auth::logout();
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
-
-        $ssoService = app(SSOService::class);
-        $currentUrl = request()->fullUrl();
-        $callbackUrl = route('sso.callback', ['redirect' => $currentUrl]);
-        $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
-
-        redirect($ssoLoginUrl)
-            ->with('error', 'Votre session a expiré. Veuillez vous reconnecter.')
-            ->send();
+        // Si l'utilisateur est encore connecté, appeler la méthode logout avec notification
+        if (Auth::check()) {
+            try {
+                // Déconnexion locale avec notification (l'utilisateur verra une notification et pourra choisir de se reconnecter)
+                $response = AuthenticatedSessionController::performLocalLogoutWithNotification(request());
+                
+                // Si la réponse est une redirection, l'envoyer et terminer
+                if ($response instanceof \Illuminate\Http\RedirectResponse) {
+                    $response->send();
+                    exit;
+                }
+            } catch (\Throwable $e) {
+                Log::debug('Error during logout in SSO token validation', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
+        // Fallback : déconnexion basique si la méthode performLocalLogoutWithNotification échoue
+        try {
+            Auth::logout();
+            if (request()->hasSession()) {
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+                request()->session()->flash('session_expired', true);
+                request()->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
+            }
+        } catch (\Throwable $e) {
+            Log::debug('Error during basic logout in SSO token validation', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+        
+        // Rediriger vers la page d'accueil
+        redirect()->route('home')->send();
         exit;
     }
 }
