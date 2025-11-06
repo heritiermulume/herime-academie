@@ -3299,13 +3299,28 @@
         // Supprimer les erreurs 401 de la console pour /me et /logout
         (function() {
             const originalError = console.error;
+            const originalWarn = console.warn;
+            
             console.error = function(...args) {
                 const message = args.join(' ');
                 // Ignorer les erreurs 401 pour /me et /logout
                 if (message.includes('401') && (message.includes('/me') || message.includes('/logout'))) {
                     return;
                 }
+                // Ignorer les erreurs "Failed to load resource" pour /me et /logout
+                if (message.includes('Failed to load resource') && (message.includes('/me') || message.includes('/logout'))) {
+                    return;
+                }
                 originalError.apply(console, args);
+            };
+            
+            console.warn = function(...args) {
+                const message = args.join(' ');
+                // Ignorer les avertissements 401 pour /me et /logout
+                if (message.includes('401') && (message.includes('/me') || message.includes('/logout'))) {
+                    return;
+                }
+                originalWarn.apply(console, args);
             };
         })();
 
