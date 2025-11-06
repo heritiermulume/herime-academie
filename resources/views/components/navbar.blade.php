@@ -64,12 +64,12 @@
                         </ul>
                     </div>
                 @else
-                    <div class="d-flex align-items-center gap-2">
-                        <a href="{{ route('login') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color);" title="Connexion">
-                            <i class="fas fa-sign-in-alt fa-lg"></i>
+                    <div class="d-flex align-items-center" style="gap: 0.75rem;">
+                        <a href="{{ route('login') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.5rem;" title="Connexion">
+                            <i class="fas fa-sign-in-alt" style="font-size: 1.25rem;"></i>
                         </a>
-                        <a href="{{ route('register') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color);" title="Inscription">
-                            <i class="fas fa-user-plus fa-lg"></i>
+                        <a href="{{ route('register') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.5rem;" title="Inscription">
+                            <i class="fas fa-user-plus" style="font-size: 1.25rem;"></i>
                         </a>
                     </div>
                 @endauth
