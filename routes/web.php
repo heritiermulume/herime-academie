@@ -129,13 +129,15 @@ Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])
 Route::post('/newsletter/unsubscribe', [NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
 Route::get('/newsletter/confirm/{token}', [NewsletterController::class, 'confirm'])->name('newsletter.confirm');
 
-// WhatsApp Order routes
+// WhatsApp Order routes - avec validation SSO
 Route::middleware('auth')->group(function () {
-    Route::post('/whatsapp-order/create', [WhatsAppOrderController::class, 'createOrder'])->name('whatsapp.order.create');
+    Route::post('/whatsapp-order/create', [WhatsAppOrderController::class, 'createOrder'])
+        ->middleware('sso.validate')
+        ->name('whatsapp.order.create');
 });
 
 
-// Order management routes
+// Order management routes - avec validation SSO pour les actions de modification
 Route::middleware('auth')->group(function () {
     // Student order routes (moved under /students/ordres)
     Route::get('/students/ordres', [App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
@@ -149,12 +151,18 @@ Route::get('/sso/redirect', [SSOController::class, 'redirectToSSO'])->name('sso.
 // Authentication routes
 require __DIR__.'/auth.php';
 
-// Cart routes (accessible to all users)
+// Cart routes (accessible to all users) - avec validation SSO pour les actions de modification
 Route::middleware('sync.cart')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
-    Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
-    Route::delete('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+    Route::post('/cart/add', [CartController::class, 'add'])
+        ->middleware('sso.validate')
+        ->name('cart.add');
+    Route::delete('/cart/remove', [CartController::class, 'remove'])
+        ->middleware('sso.validate')
+        ->name('cart.remove');
+    Route::delete('/cart/clear', [CartController::class, 'clear'])
+        ->middleware('sso.validate')
+        ->name('cart.clear');
     Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
     Route::get('/cart/content', [CartController::class, 'getCartContent'])->name('cart.content');
     Route::get('/cart/summary', [CartController::class, 'getSummary'])->name('cart.summary');
@@ -164,6 +172,9 @@ Route::middleware('sync.cart')->group(function () {
 
 // Authenticated routes
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Route pour valider SSO avant redirection vers le profil
+    Route::get('/profile/redirect', [App\Http\Controllers\ProfileRedirectController::class, 'redirect'])->name('profile.redirect');
+    
     // Dashboard based on user role
     Route::get('/dashboard', function () {
         $user = auth()->user();
@@ -186,35 +197,45 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/certificates', [StudentController::class, 'certificates'])->name('certificates');
     });
     
-    // Enrollment route (accessible to all authenticated users)
-    Route::post('/student/courses/{course:slug}/enroll', [StudentController::class, 'enroll'])->name('student.courses.enroll');
+    // Enrollment route (accessible to all authenticated users) - avec validation SSO
+    Route::post('/student/courses/{course:slug}/enroll', [StudentController::class, 'enroll'])
+        ->middleware('sso.validate')
+        ->name('student.courses.enroll');
 
-    // Instructor Application routes (accessible to authenticated users)
+    // Instructor Application routes (accessible to authenticated users) - avec validation SSO pour les POST
     Route::middleware('auth')->group(function () {
         Route::get('/become-instructor', [App\Http\Controllers\InstructorApplicationController::class, 'index'])->name('instructor-application.index');
         Route::get('/instructor-application/create', [App\Http\Controllers\InstructorApplicationController::class, 'create'])->name('instructor-application.create');
-        Route::post('/instructor-application/step1', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep1'])->name('instructor-application.store-step1');
+        Route::post('/instructor-application/step1', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep1'])
+            ->middleware('sso.validate')
+            ->name('instructor-application.store-step1');
         Route::get('/instructor-application/{application}/step2', [App\Http\Controllers\InstructorApplicationController::class, 'step2'])->name('instructor-application.step2');
-        Route::post('/instructor-application/{application}/step2', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep2'])->name('instructor-application.store-step2');
+        Route::post('/instructor-application/{application}/step2', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep2'])
+            ->middleware('sso.validate')
+            ->name('instructor-application.store-step2');
         Route::get('/instructor-application/{application}/step3', [App\Http\Controllers\InstructorApplicationController::class, 'step3'])->name('instructor-application.step3');
-        Route::post('/instructor-application/{application}/step3', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep3'])->name('instructor-application.store-step3');
+        Route::post('/instructor-application/{application}/step3', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep3'])
+            ->middleware('sso.validate')
+            ->name('instructor-application.store-step3');
         Route::get('/instructor-application/{application}/status', [App\Http\Controllers\InstructorApplicationController::class, 'status'])->name('instructor-application.status');
         Route::get('/instructor-application/{application}/cv', [App\Http\Controllers\InstructorApplicationController::class, 'downloadCv'])->name('instructor-application.download-cv');
         Route::get('/instructor-application/{application}/motivation-letter', [App\Http\Controllers\InstructorApplicationController::class, 'downloadMotivationLetter'])->name('instructor-application.download-motivation-letter');
     });
 
-    // Instructor routes (only for approved instructors)
+    // Instructor routes (only for approved instructors) - avec validation SSO pour les POST/PUT/DELETE
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
         Route::get('/dashboard', [InstructorController::class, 'dashboard'])->name('dashboard');
-        Route::resource('courses', CourseController::class)->except(['index', 'show']);
+        Route::resource('courses', CourseController::class)->except(['index', 'show'])->middleware('sso.validate');
         Route::get('/courses/{course}/lessons', [InstructorController::class, 'lessons'])->name('courses.lessons');
-        Route::post('/courses/{course}/lessons', [InstructorController::class, 'storeLesson'])->name('courses.lessons.store');
+        Route::post('/courses/{course}/lessons', [InstructorController::class, 'storeLesson'])
+            ->middleware('sso.validate')
+            ->name('courses.lessons.store');
         Route::get('/students', [InstructorController::class, 'students'])->name('students');
         Route::get('/analytics', [InstructorController::class, 'analytics'])->name('analytics');
     });
 
-    // Admin routes
-    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+    // Admin routes - avec validation SSO pour toutes les actions de modification
+    Route::prefix('admin')->name('admin.')->middleware(['role:admin', 'sso.validate'])->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
         Route::get('/statistics', [AdminController::class, 'statistics'])->name('statistics');
@@ -288,32 +309,52 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Orders management
         Route::get('/orders', [App\Http\Controllers\OrderController::class, 'adminIndex'])->name('orders.index');
         Route::get('/orders/{order}', [App\Http\Controllers\OrderController::class, 'adminShow'])->name('orders.show');
-        Route::post('/orders/{order}/confirm', [App\Http\Controllers\OrderController::class, 'confirm'])->name('orders.confirm');
-        Route::post('/orders/{order}/mark-paid', [App\Http\Controllers\OrderController::class, 'markAsPaid'])->name('orders.mark-paid');
-        Route::post('/orders/{order}/mark-completed', [App\Http\Controllers\OrderController::class, 'markAsCompleted'])->name('orders.mark-completed');
+        Route::post('/orders/{order}/confirm', [App\Http\Controllers\OrderController::class, 'confirm'])
+            ->middleware('sso.validate')
+            ->name('orders.confirm');
+        Route::post('/orders/{order}/mark-paid', [App\Http\Controllers\OrderController::class, 'markAsPaid'])
+            ->middleware('sso.validate')
+            ->name('orders.mark-paid');
+        Route::post('/orders/{order}/mark-completed', [App\Http\Controllers\OrderController::class, 'markAsCompleted'])
+            ->middleware('sso.validate')
+            ->name('orders.mark-completed');
 
         // Payments (transactions) management
         Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
 
-        // Uploads (AJAX) for admin
-        Route::post('/uploads/lesson-file', [AdminController::class, 'uploadLessonFile'])->name('uploads.lesson-file');
-        Route::post('/uploads/video-preview', [AdminController::class, 'uploadVideoPreview'])->name('uploads.video-preview');
-        Route::post('/orders/{order}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
+        // Uploads (AJAX) for admin - avec validation SSO
+        Route::post('/uploads/lesson-file', [AdminController::class, 'uploadLessonFile'])
+            ->middleware('sso.validate')
+            ->name('uploads.lesson-file');
+        Route::post('/uploads/video-preview', [AdminController::class, 'uploadVideoPreview'])
+            ->middleware('sso.validate')
+            ->name('uploads.video-preview');
+        Route::post('/orders/{order}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])
+            ->middleware('sso.validate')
+            ->name('orders.cancel');
         Route::get('/orders/filter', [App\Http\Controllers\OrderController::class, 'filter'])->name('orders.filter');
         Route::get('/orders/export', [App\Http\Controllers\OrderController::class, 'export'])->name('orders.export');
         
-        // Settings management
+        // Settings management - avec validation SSO pour la modification
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
-        Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+        Route::post('/settings', [AdminController::class, 'updateSettings'])
+            ->middleware('sso.validate')
+            ->name('settings.update');
     });
 
-    // Profile routes
+    // Profile routes - avec validation SSO pour les modifications
     Route::get('/profile', function () {
         return view('admin.profile');
     })->name('profile');
-    Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
-    Route::post('/profile/avatar', [App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('profile.avatar');
-    Route::put('/profile/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])
+        ->middleware('sso.validate')
+        ->name('profile.update');
+    Route::post('/profile/avatar', [App\Http\Controllers\ProfileController::class, 'updateAvatar'])
+        ->middleware('sso.validate')
+        ->name('profile.avatar');
+    Route::put('/profile/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])
+        ->middleware('sso.validate')
+        ->name('profile.password');
 
     // Affiliate routes
     Route::prefix('affiliate')->name('affiliate.')->middleware('role:affiliate')->group(function () {
@@ -330,44 +371,74 @@ Route::middleware(['auth', 'verified'])->group(function () {
     //     Route::post('/webhook/stripe', [PaymentController::class, 'webhook'])->name('webhook.stripe');
     // });
 
-    // YouTube video access routes
+    // YouTube video access routes - avec validation SSO
     Route::prefix('video')->name('video.')->group(function () {
-        Route::post('/lessons/{lesson}/access-token', [YouTubeAccessController::class, 'generateAccessToken'])->name('generate-access-token');
-        Route::post('/validate-token', [YouTubeAccessController::class, 'validateToken'])->name('validate-token');
-        Route::post('/cleanup-tokens', [YouTubeAccessController::class, 'cleanupExpiredTokens'])->name('cleanup-tokens');
+        Route::post('/lessons/{lesson}/access-token', [YouTubeAccessController::class, 'generateAccessToken'])
+            ->middleware('sso.validate')
+            ->name('generate-access-token');
+        Route::post('/validate-token', [YouTubeAccessController::class, 'validateToken'])
+            ->middleware('sso.validate')
+            ->name('validate-token');
+        Route::post('/cleanup-tokens', [YouTubeAccessController::class, 'cleanupExpiredTokens'])
+            ->middleware('sso.validate')
+            ->name('cleanup-tokens');
     });
 
-    // Learning routes
+    // Learning routes - avec validation SSO pour les actions de progression
     Route::get('/learning/courses/{course:slug}', [LearningController::class, 'learn'])->name('learning.course');
     Route::get('/learning/courses/{course:slug}/lessons/{lesson}', [LearningController::class, 'lesson'])->name('learning.lesson');
-    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/start', [LearningController::class, 'startLesson'])->name('learning.start-lesson');
-    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/progress', [LearningController::class, 'updateProgress'])->name('learning.update-progress');
-    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/complete', [LearningController::class, 'completeLesson'])->name('learning.complete-lesson');
-    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/submit', [LearningController::class, 'submitQuiz'])->name('learning.submit-quiz');
+    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/start', [LearningController::class, 'startLesson'])
+        ->middleware('sso.validate')
+        ->name('learning.start-lesson');
+    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/progress', [LearningController::class, 'updateProgress'])
+        ->middleware('sso.validate')
+        ->name('learning.update-progress');
+    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/complete', [LearningController::class, 'completeLesson'])
+        ->middleware('sso.validate')
+        ->name('learning.complete-lesson');
+    Route::post('/learning/courses/{course:slug}/lessons/{lesson}/submit', [LearningController::class, 'submitQuiz'])
+        ->middleware('sso.validate')
+        ->name('learning.submit-quiz');
 
     // Download routes
     Route::get('/courses/{course:slug}/download', [DownloadController::class, 'course'])->name('courses.download');
     Route::get('/courses/{course:slug}/lesson/{lesson}/download', [DownloadController::class, 'lesson'])->name('lessons.download');
 
 
-    // Messaging routes
+    // Messaging routes - avec validation SSO pour les actions de modification
     Route::prefix('messages')->name('messages.')->group(function () {
         Route::get('/', [MessageController::class, 'index'])->name('index');
         Route::get('/create', [MessageController::class, 'create'])->name('create');
-        Route::post('/', [MessageController::class, 'store'])->name('store');
+        Route::post('/', [MessageController::class, 'store'])
+            ->middleware('sso.validate')
+            ->name('store');
         Route::get('/{message}', [MessageController::class, 'show'])->name('show');
-        Route::post('/{message}/reply', [MessageController::class, 'reply'])->name('reply');
-        Route::post('/{message}/mark-read', [MessageController::class, 'markAsRead'])->name('mark-read');
-        Route::delete('/{message}', [MessageController::class, 'delete'])->name('delete');
+        Route::post('/{message}/reply', [MessageController::class, 'reply'])
+            ->middleware('sso.validate')
+            ->name('reply');
+        Route::post('/{message}/mark-read', [MessageController::class, 'markAsRead'])
+            ->middleware('sso.validate')
+            ->name('mark-read');
+        Route::delete('/{message}', [MessageController::class, 'delete'])
+            ->middleware('sso.validate')
+            ->name('delete');
     });
 
-    // Notification routes
+    // Notification routes - avec validation SSO pour les actions de modification
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
-        Route::post('/{id}/mark-read', [NotificationController::class, 'markAsRead'])->name('mark-read');
-        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
-        Route::delete('/{id}', [NotificationController::class, 'delete'])->name('delete');
-        Route::delete('/', [NotificationController::class, 'deleteAll'])->name('delete-all');
+        Route::post('/{id}/mark-read', [NotificationController::class, 'markAsRead'])
+            ->middleware('sso.validate')
+            ->name('mark-read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+            ->middleware('sso.validate')
+            ->name('mark-all-read');
+        Route::delete('/{id}', [NotificationController::class, 'delete'])
+            ->middleware('sso.validate')
+            ->name('delete');
+        Route::delete('/', [NotificationController::class, 'deleteAll'])
+            ->middleware('sso.validate')
+            ->name('delete-all');
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
         Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
     });
