@@ -3205,35 +3205,37 @@
         (function() {
             const originalFetch = window.fetch;
             window.fetch = function(...args) {
+                const url = args[0]?.toString() || '';
+                const isMeOrLogout = url.includes('/me') || url.includes('/logout');
+                
+                // Si ce n'est pas /me ou /logout, laisser passer normalement
+                if (!isMeOrLogout) {
+                    return originalFetch.apply(this, args);
+                }
+                
+                // Pour /me et /logout, intercepter les erreurs
                 return originalFetch.apply(this, args)
                     .then(response => {
-                        // Si c'est une erreur 401 pour /me ou /logout, ignorer silencieusement
+                        // Si c'est une erreur 401, retourner une réponse vide
                         if (response.status === 401) {
-                            const url = args[0]?.toString() || '';
-                            if (url.includes('/me') || url.includes('/logout')) {
-                                console.debug('401 error ignored for:', url);
-                                // Retourner une réponse vide pour éviter l'erreur
-                                return new Response(JSON.stringify({}), {
-                                    status: 200,
-                                    statusText: 'OK',
-                                    headers: { 'Content-Type': 'application/json' }
-                                });
-                            }
-                        }
-                        return response;
-                    })
-                    .catch(error => {
-                        // Ignorer les erreurs de réseau pour /me et /logout
-                        const url = args[0]?.toString() || '';
-                        if (url.includes('/me') || url.includes('/logout')) {
-                            console.debug('Network error ignored for:', url);
+                            console.debug('401 error ignored for:', url);
                             return new Response(JSON.stringify({}), {
                                 status: 200,
                                 statusText: 'OK',
                                 headers: { 'Content-Type': 'application/json' }
                             });
                         }
-                        throw error;
+                        // Pour les autres statuts, retourner la réponse originale
+                        return response;
+                    })
+                    .catch(error => {
+                        // Ignorer les erreurs de réseau pour /me et /logout
+                        console.debug('Network error ignored for:', url);
+                        return new Response(JSON.stringify({}), {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
                     });
             };
         })();

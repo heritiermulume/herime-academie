@@ -102,25 +102,41 @@ class SSOService
     protected function validateTokenLocally(string $token): ?array
     {
         try {
+            // Vérifier que le token n'est pas vide
+            if (empty($token) || !is_string($token)) {
+                Log::debug('SSO Token empty or invalid type');
+                return null;
+            }
+
             // Décoder le JWT manuellement (sans dépendance externe)
             $parts = explode('.', $token);
             
             if (count($parts) !== 3) {
-                Log::warning('SSO Token invalid format');
+                Log::debug('SSO Token invalid format', ['parts_count' => count($parts)]);
                 return null;
             }
 
-            // Décoder le payload (partie 2)
-            $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+            // Décoder le payload (partie 2) avec gestion d'erreur
+            try {
+                $decoded = base64_decode(strtr($parts[1], '-_', '+/'), true);
+                if ($decoded === false) {
+                    Log::debug('SSO Token base64 decode failed');
+                    return null;
+                }
+                $payload = json_decode($decoded, true);
+            } catch (\Exception $e) {
+                Log::debug('SSO Token decode exception', ['message' => $e->getMessage()]);
+                return null;
+            }
             
-            if (!$payload) {
-                Log::warning('SSO Token payload decode failed');
+            if (!$payload || !is_array($payload)) {
+                Log::debug('SSO Token payload decode failed or not an array');
                 return null;
             }
 
             // Vérifier l'expiration
-            if (isset($payload['exp']) && $payload['exp'] < time()) {
-                Log::warning('SSO Token expired', ['exp' => $payload['exp'], 'now' => time()]);
+            if (isset($payload['exp']) && is_numeric($payload['exp']) && $payload['exp'] < time()) {
+                Log::debug('SSO Token expired', ['exp' => $payload['exp'], 'now' => time()]);
                 return null;
             }
 
@@ -142,11 +158,11 @@ class SSOService
 
             // Vérifier que les données essentielles sont présentes
             if (empty($userData['email'])) {
-                Log::warning('SSO Token missing email');
+                Log::debug('SSO Token missing email');
                 return null;
             }
 
-            Log::info('SSO Token validated locally', ['email' => $userData['email']]);
+            Log::debug('SSO Token validated locally', ['email' => $userData['email']]);
 
             return $userData;
 
