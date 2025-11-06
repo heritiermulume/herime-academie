@@ -3202,9 +3202,7 @@
     <!-- Custom JS -->
     <script>
         // Intercepteur global pour fetch afin de gérer les erreurs 401 silencieusement
-        // Désactivé temporairement pour éviter les problèmes avec les réponses
-        // Les erreurs 401 sont gérées côté serveur
-        /*
+        // Pour /me et /logout, les erreurs 401 sont normales si l'utilisateur n'est pas authentifié
         (function() {
             const originalFetch = window.fetch;
             window.fetch = function(...args) {
@@ -3216,12 +3214,12 @@
                     return originalFetch.apply(this, args);
                 }
                 
-                // Pour /me et /logout, intercepter les erreurs
+                // Pour /me et /logout, intercepter les erreurs 401
                 return originalFetch.apply(this, args)
                     .then(response => {
-                        // Si c'est une erreur 401, retourner une réponse vide
+                        // Si c'est une erreur 401, retourner une réponse vide silencieusement
                         if (response.status === 401) {
-                            console.debug('401 error ignored for:', url);
+                            // Ne pas logger pour éviter le bruit dans la console
                             return new Response(JSON.stringify({}), {
                                 status: 200,
                                 statusText: 'OK',
@@ -3232,8 +3230,7 @@
                         return response;
                     })
                     .catch(error => {
-                        // Ignorer les erreurs de réseau pour /me et /logout
-                        console.debug('Network error ignored for:', url);
+                        // Ignorer silencieusement les erreurs de réseau pour /me et /logout
                         return new Response(JSON.stringify({}), {
                             status: 200,
                             statusText: 'OK',
@@ -3242,7 +3239,6 @@
                     });
             };
         })();
-        */
 
         // Initialize AOS
         AOS.init({
