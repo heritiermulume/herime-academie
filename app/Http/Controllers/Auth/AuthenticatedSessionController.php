@@ -94,13 +94,28 @@ class AuthenticatedSessionController extends Controller
      * Destroy an authenticated session.
      * Redirige vers le SSO pour une déconnexion globale si activé, sinon vers l'accueil
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request)
     {
-        Auth::guard('web')->logout();
+        try {
+            Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
+        } catch (\Throwable $e) {
+            Log::debug('Error during logout', [
+                'error' => $e->getMessage(),
+            ]);
+        }
 
-        $request->session()->regenerateToken();
+        // Pour les requêtes AJAX, retourner une réponse JSON
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Déconnexion réussie',
+                'redirect' => route('home')
+            ], 200);
+        }
 
         // URL de redirection vers l'accueil (URL absolue complète)
         $homeUrl = route('home');
@@ -126,12 +141,11 @@ class AuthenticatedSessionController extends Controller
                 
                 // Rediriger vers le SSO qui déconnectera l'utilisateur et le redirigera vers l'accueil
                 return redirect($ssoLogoutUrl);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // En cas d'erreur SSO, logger l'erreur et rediriger directement vers l'accueil
-                Log::error('SSO Logout Error', [
+                Log::debug('SSO Logout Error', [
                     'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'redirect_url' => $redirectUrl
+                    'type' => get_class($e),
                 ]);
             }
         }
