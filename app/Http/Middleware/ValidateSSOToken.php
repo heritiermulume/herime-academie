@@ -50,7 +50,18 @@ class ValidateSSOToken
 
         // Récupérer le token SSO depuis la session ou les préférences utilisateur
         $user = Auth::user();
-        $ssoToken = $this->getSSOTokenFromUser($user);
+        
+        // Utiliser request()->session() pour éviter les problèmes de session
+        try {
+            $ssoToken = $request->hasSession() && $request->session()->has('sso_token') 
+                ? $request->session()->get('sso_token') 
+                : null;
+        } catch (\Throwable $e) {
+            Log::debug('SSO token retrieval failed in middleware', [
+                'error' => $e->getMessage(),
+            ]);
+            $ssoToken = null;
+        }
 
         // Si pas de token SSO, laisser passer (l'utilisateur peut être connecté localement)
         if (empty($ssoToken)) {
@@ -110,15 +121,16 @@ class ValidateSSOToken
         // Cette méthode peut être étendue si nécessaire
         
         try {
-            // Option 1: Depuis la session (si stocké lors du callback)
-            // Vérifier que la session est disponible avant d'y accéder
-            if (session()->isStarted() && session()->has('sso_token')) {
-                return session('sso_token');
+            // Utiliser request()->session() pour éviter les problèmes de session non démarrée
+            $request = request();
+            if ($request && $request->hasSession() && $request->session()->has('sso_token')) {
+                return $request->session()->get('sso_token');
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Si la session n'est pas disponible, logger et continuer
             Log::debug('SSO token retrieval from session failed', [
                 'error' => $e->getMessage(),
+                'type' => get_class($e),
             ]);
         }
 

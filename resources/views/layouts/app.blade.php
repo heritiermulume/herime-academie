@@ -3202,6 +3202,9 @@
     <!-- Custom JS -->
     <script>
         // Intercepteur global pour fetch afin de gérer les erreurs 401 silencieusement
+        // Désactivé temporairement pour éviter les problèmes avec les réponses
+        // Les erreurs 401 sont gérées côté serveur
+        /*
         (function() {
             const originalFetch = window.fetch;
             window.fetch = function(...args) {
@@ -3239,6 +3242,7 @@
                     });
             };
         })();
+        */
 
         // Initialize AOS
         AOS.init({
