@@ -74,6 +74,27 @@ tail -100 storage/logs/laravel.log | grep -E "ERROR|CRITICAL|Exception"
 tail -f storage/logs/laravel.log
 ```
 
+## 🚨 Erreur "Vite manifest not found"
+
+**Symptôme:** `Vite manifest not found at: /path/to/public/build/manifest.json`
+
+**Cause:** Les assets frontend n'ont pas été compilés sur le serveur de production.
+
+**Solution:**
+```bash
+# Option 1: Utiliser le script automatique
+./build-assets-production.sh
+
+# Option 2: Compiler manuellement
+npm install --production
+npm run build
+
+# Vérifier que le fichier existe
+ls -la public/build/manifest.json
+```
+
+**Note:** Les fichiers compilés sont dans `.gitignore`, donc ils doivent être compilés sur chaque serveur après un `git pull`.
+
 ## 🔍 Causes Courantes
 
 ### 1. Caches corrompus après git pull

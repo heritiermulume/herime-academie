@@ -105,8 +105,49 @@ php artisan route:cache 2>/dev/null && echo "✅ Cache routes recréé" || echo 
 php artisan view:cache 2>/dev/null && echo "✅ Cache vues recréé" || echo "⚠️  Erreur lors de la création du cache vues"
 echo ""
 
+# 8.5. Compiler les assets Vite (IMPORTANT pour résoudre l'erreur manifest.json)
+echo "8️⃣  Compilation des assets Vite..."
+if [ ! -f "public/build/manifest.json" ]; then
+    echo "⚠️  Fichier manifest.json manquant - Compilation des assets nécessaire"
+    
+    # Vérifier si Node.js est installé
+    if ! command -v node &> /dev/null; then
+        echo "❌ Node.js n'est pas installé!"
+        echo "   Installez Node.js pour compiler les assets"
+        echo "   Sur O2Switch, contactez le support pour installer Node.js"
+    else
+        echo "✅ Node.js trouvé: $(node --version)"
+        
+        # Vérifier si npm est installé
+        if ! command -v npm &> /dev/null; then
+            echo "❌ npm n'est pas installé!"
+        else
+            echo "✅ npm trouvé: $(npm --version)"
+            
+            # Installer les dépendances si node_modules n'existe pas
+            if [ ! -d "node_modules" ]; then
+                echo "📦 Installation des dépendances npm..."
+                npm install --production
+            fi
+            
+            # Compiler les assets
+            echo "🔨 Compilation des assets..."
+            npm run build
+            
+            if [ -f "public/build/manifest.json" ]; then
+                echo "✅ Assets compilés avec succès!"
+            else
+                echo "❌ Erreur lors de la compilation des assets"
+            fi
+        fi
+    fi
+else
+    echo "✅ Fichier manifest.json existe déjà"
+fi
+echo ""
+
 # 9. Vérifier le lien symbolique storage
-echo "8️⃣  Vérification du lien symbolique storage..."
+echo "9️⃣  Vérification du lien symbolique storage..."
 if [ ! -L "public/storage" ] && [ ! -d "public/storage" ]; then
     echo "⚠️  Lien symbolique manquant, création..."
     php artisan storage:link
