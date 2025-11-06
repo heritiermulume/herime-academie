@@ -592,10 +592,12 @@
 .instructor-avatar {
     width: 100px;
     height: 100px;
-    border-radius: 50%;
+    border-radius: 50% !important;
     object-fit: cover;
-    border: 4px solid var(--accent-color);
+    border: none !important;
+    box-shadow: none !important;
     flex-shrink: 0;
+    display: block;
 }
 
 .instructor-info h5 {
@@ -696,8 +698,11 @@
 .review-avatar {
     width: 50px;
     height: 50px;
-    border-radius: 50%;
+    border-radius: 50% !important;
     object-fit: cover;
+    border: none !important;
+    box-shadow: none !important;
+    display: block;
 }
 
 .review-author {
@@ -1838,7 +1843,7 @@
                         @if($course->instructor)
                             <img src="{{ $course->instructor->avatar_url }}" 
                              alt="{{ $course->instructor->name }}" 
-                             class="instructor-avatar" style="object-fit: cover;">
+                             class="instructor-avatar" style="object-fit: cover; border-radius: 50%; border: none; box-shadow: none;">
                         @else
                             <div class="instructor-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 2rem; font-weight: bold; border-radius: 50%;">
                                 {{ strtoupper(substr($course->instructor->name, 0, 1)) }}
@@ -1903,7 +1908,7 @@
                                 @if($review->user)
                                     <img src="{{ $review->user->avatar_url }}" 
                                      alt="{{ $review->user->name }}" 
-                                     class="review-avatar" style="object-fit: cover;">
+                                     class="review-avatar" style="object-fit: cover; border-radius: 50%; border: none; box-shadow: none;">
                                 @else
                                     <div class="review-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 1.25rem; font-weight: bold; border-radius: 50%; min-width: 50px; min-height: 50px;">
                                         {{ strtoupper(substr($review->user->name ?? 'U', 0, 1)) }}

@@ -164,7 +164,7 @@
                                     <div class="mb-3">
                                         <img src="{{ auth()->user()->avatar_url }}" 
                                              alt="Photo de profil" class="rounded-circle" 
-                                             style="width: 150px; height: 150px; object-fit: cover;">
+                                             style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: none; box-shadow: none; display: block;">
                                     </div>
                                     
                                     <form method="POST" action="{{ route('profile.avatar') }}" enctype="multipart/form-data" id="avatarForm">
@@ -353,8 +353,18 @@
     font-size: 0.8em;
 }
 
+/* Styles pour les avatars ronds sans effet 3D */
 .rounded-circle {
-    border: 3px solid #e9ecef;
+    border-radius: 50% !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+img.rounded-circle {
+    border-radius: 50% !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: block;
 }
 
 .text-muted {

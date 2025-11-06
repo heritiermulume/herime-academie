@@ -80,8 +80,8 @@
                                     <img src="{{ $user->avatar_url }}" 
                                          alt="Avatar actuel" 
                                          id="currentAvatar"
-                                         class="img-thumbnail rounded-circle" 
-                                         style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #28a745;">
+                                         class="rounded-circle" 
+                                         style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: none; box-shadow: none; display: block;">
                                     <p class="text-muted small mt-2">
                                         <i class="fas fa-info-circle me-1"></i>
                                         La photo est gérée via <a href="{{ config('services.sso.base_url') }}" target="_blank">compte.herime.com</a>
