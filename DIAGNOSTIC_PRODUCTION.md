@@ -79,3 +79,4 @@ Les résultats seront sauvegardés dans:
 - Les résultats sont sauvegardés dans des fichiers texte pour analyse ultérieure
 - Les scripts sont sûrs à exécuter en production (lecture seule, pas de modifications)
 
+
