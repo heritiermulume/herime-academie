@@ -173,12 +173,16 @@ Route::middleware('sync.cart')->group(function () {
 
 // Routes de fallback pour éviter les erreurs 500 sur /me et /logout
 // Ces routes sont appelées par certains scripts mais n'existent pas
+// Note: Pas de middleware 'auth' pour permettre de retourner 401 au lieu de rediriger
 Route::get('/me', function() {
     try {
         if (!auth()->check()) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
         $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
         return response()->json([
             'user' => [
                 'id' => $user->id,
@@ -187,10 +191,13 @@ Route::get('/me', function() {
             ]
         ]);
     } catch (\Throwable $e) {
-        \Log::debug('Error in /me route', ['error' => $e->getMessage()]);
-        return response()->json(['error' => 'Internal Server Error'], 500);
+        \Log::debug('Error in /me route', [
+            'error' => $e->getMessage(),
+            'type' => get_class($e),
+        ]);
+        return response()->json(['error' => 'Unauthorized'], 401);
     }
-})->middleware('auth');
+});
 
 Route::get('/api/me', function() {
     try {
@@ -198,6 +205,9 @@ Route::get('/api/me', function() {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
         $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
         return response()->json([
             'user' => [
                 'id' => $user->id,
@@ -206,10 +216,13 @@ Route::get('/api/me', function() {
             ]
         ]);
     } catch (\Throwable $e) {
-        \Log::debug('Error in /api/me route', ['error' => $e->getMessage()]);
-        return response()->json(['error' => 'Internal Server Error'], 500);
+        \Log::debug('Error in /api/me route', [
+            'error' => $e->getMessage(),
+            'type' => get_class($e),
+        ]);
+        return response()->json(['error' => 'Unauthorized'], 401);
     }
-})->middleware('auth');
+});
 
 // Route GET pour /logout (fallback pour les appels AJAX qui utilisent GET)
 // Note: La route POST logout est définie dans routes/auth.php
