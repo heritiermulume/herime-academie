@@ -64,11 +64,11 @@
                         </ul>
                     </div>
                 @else
-                    <div class="d-flex align-items-center" style="gap: 0.75rem;">
-                        <a href="{{ route('login') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.5rem;" title="Connexion">
+                    <div class="d-flex align-items-center" style="gap: 0.5rem;">
+                        <a href="{{ route('login') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.375rem;" title="Connexion">
                             <i class="fas fa-sign-in-alt" style="font-size: 1.25rem;"></i>
                         </a>
-                        <a href="{{ route('register') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.5rem;" title="Inscription">
+                        <a href="{{ route('register') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.375rem;" title="Inscription">
                             <i class="fas fa-user-plus" style="font-size: 1.25rem;"></i>
                         </a>
                     </div>
