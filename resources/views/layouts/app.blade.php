@@ -3201,6 +3201,43 @@
     
     <!-- Custom JS -->
     <script>
+        // Intercepteur global pour fetch afin de gérer les erreurs 401 silencieusement
+        (function() {
+            const originalFetch = window.fetch;
+            window.fetch = function(...args) {
+                return originalFetch.apply(this, args)
+                    .then(response => {
+                        // Si c'est une erreur 401 pour /me ou /logout, ignorer silencieusement
+                        if (response.status === 401) {
+                            const url = args[0]?.toString() || '';
+                            if (url.includes('/me') || url.includes('/logout')) {
+                                console.debug('401 error ignored for:', url);
+                                // Retourner une réponse vide pour éviter l'erreur
+                                return new Response(JSON.stringify({}), {
+                                    status: 200,
+                                    statusText: 'OK',
+                                    headers: { 'Content-Type': 'application/json' }
+                                });
+                            }
+                        }
+                        return response;
+                    })
+                    .catch(error => {
+                        // Ignorer les erreurs de réseau pour /me et /logout
+                        const url = args[0]?.toString() || '';
+                        if (url.includes('/me') || url.includes('/logout')) {
+                            console.debug('Network error ignored for:', url);
+                            return new Response(JSON.stringify({}), {
+                                status: 200,
+                                statusText: 'OK',
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                        }
+                        throw error;
+                    });
+            };
+        })();
+
         // Initialize AOS
         AOS.init({
             duration: 800,
