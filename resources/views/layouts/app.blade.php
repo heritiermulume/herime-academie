@@ -3164,6 +3164,21 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0">
+                    @auth
+                        <!-- User Card -->
+                        <div style="padding: 1.25rem; background: linear-gradient(135deg, #003366 0%, #004080 100%); margin: 0;">
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="width: 60px; height: 60px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid rgba(255, 255, 255, 0.3);">
+                                    <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                                </div>
+                                <div class="text-white" style="flex: 1; min-width: 0;">
+                                    <div class="fw-bold mb-1" style="font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ Auth::user()->name }}</div>
+                                    <div class="text-white-50" style="font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ Auth::user()->email }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="my-0" style="margin: 0;">
+                    @endauth
                     <div class="list-group list-group-flush">
                         @auth
                             <div class="list-group-item">
