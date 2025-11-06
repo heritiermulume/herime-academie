@@ -3157,121 +3157,33 @@
     <div class="modal fade more-modal" id="moreModal" tabindex="-1" aria-labelledby="moreModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-bottom">
             <div class="modal-content">
-                @auth
-                    <!-- User Card as Header -->
-                    <div class="modal-header" style="padding: 1.25rem; background: linear-gradient(135deg, #003366 0%, #004080 100%); border-bottom: none; position: relative;">
-                        <div class="d-flex align-items-center gap-3 w-100">
-                            <div style="width: 60px; height: 60px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid rgba(255, 255, 255, 0.3);">
-                                <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
-                            </div>
-                            <div class="text-white" style="flex: 1; min-width: 0;">
-                                <div class="fw-bold mb-1" style="font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ Auth::user()->name }}</div>
-                                <div class="text-white-50" style="font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ Auth::user()->email }}</div>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" style="position: absolute; top: 1rem; right: 1rem; opacity: 0.8;"></button>
-                    </div>
-                @else
-                    <!-- Default Header for non-authenticated users -->
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="moreModalLabel">
-                            <i class="fas fa-ellipsis-h me-2"></i>Plus d'options
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                @endauth
+                <!-- Default Header -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="moreModalLabel">
+                        <i class="fas fa-ellipsis-h me-2"></i>Plus d'options
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
                 <div class="modal-body p-0">
                     <div class="list-group list-group-flush">
-                        @auth
-                            <div class="list-group-item">
-                                <a href="{{ route('dashboard') }}">
-                                    <i class="fas fa-tachometer-alt"></i>
-                                    Tableau de bord
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ app(\App\Services\SSOService::class)->getProfileUrl() }}" target="_blank" rel="noopener noreferrer">
-                                    <i class="fas fa-user"></i>
-                                    Profil
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('orders.index') }}">
-                                    <i class="fas fa-shopping-bag"></i>
-                                    Mes commandes
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('contact') }}">
-                                    <i class="fas fa-envelope"></i>
-                                    Contact
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('about') }}">
-                                    <i class="fas fa-info-circle"></i>
-                                    À propos
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('messages.index') }}">
-                                    <i class="fas fa-envelope"></i>
-                                    Messages
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('notifications.index') }}">
-                                    <i class="fas fa-bell"></i>
-                                    Notifications
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('instructors.index') }}">
-                                    <i class="fas fa-chalkboard-teacher"></i>
-                                    Formateurs
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <form method="POST" action="{{ route('logout') }}" class="w-100">
-                                    @csrf
-                                    <button type="submit" class="btn-logout">
-                                        <i class="fas fa-sign-out-alt"></i>
-                                        <span>Déconnexion</span>
-                                    </button>
-                                </form>
-                            </div>
-                        @else
-                            <div class="list-group-item">
-                                <a href="{{ route('instructors.index') }}">
-                                    <i class="fas fa-chalkboard-teacher"></i>
-                                    Formateurs
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('contact') }}">
-                                    <i class="fas fa-envelope"></i>
-                                    Contact
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('about') }}">
-                                    <i class="fas fa-info-circle"></i>
-                                    À propos
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('login') }}">
-                                    <i class="fas fa-sign-in-alt"></i>
-                                    Connexion
-                                </a>
-                            </div>
-                            <div class="list-group-item">
-                                <a href="{{ route('register') }}">
-                                    <i class="fas fa-user-plus"></i>
-                                    S'inscrire
-                                </a>
-                            </div>
-                        @endauth
+                        <div class="list-group-item">
+                            <a href="{{ route('instructors.index') }}">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                                Formateurs
+                            </a>
+                        </div>
+                        <div class="list-group-item">
+                            <a href="{{ route('contact') }}">
+                                <i class="fas fa-envelope"></i>
+                                Contact
+                            </a>
+                        </div>
+                        <div class="list-group-item">
+                            <a href="{{ route('about') }}">
+                                <i class="fas fa-info-circle"></i>
+                                À propos
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
