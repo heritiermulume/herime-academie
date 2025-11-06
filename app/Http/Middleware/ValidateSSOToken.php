@@ -31,40 +31,58 @@ class ValidateSSOToken
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Ne valider que si SSO est activé
-        if (!config('services.sso.enabled', true)) {
-            return $next($request);
-        }
-
-        // Ne valider que pour les méthodes qui modifient les données
-        $methodsRequiringValidation = ['POST', 'PUT', 'PATCH', 'DELETE'];
-        
-        if (!in_array($request->method(), $methodsRequiringValidation)) {
-            return $next($request);
-        }
-
-        // Si l'utilisateur n'est pas authentifié, laisser passer (auth middleware gère ça)
-        if (!Auth::check()) {
-            return $next($request);
-        }
-
-        // Récupérer le token SSO depuis la session ou les préférences utilisateur
-        $user = Auth::user();
-        
-        // Utiliser request()->session() pour éviter les problèmes de session
         try {
-            $ssoToken = $request->hasSession() && $request->session()->has('sso_token') 
-                ? $request->session()->get('sso_token') 
-                : null;
-        } catch (\Throwable $e) {
-            Log::debug('SSO token retrieval failed in middleware', [
-                'error' => $e->getMessage(),
-            ]);
-            $ssoToken = null;
-        }
+            // Ne valider que si SSO est activé
+            if (!config('services.sso.enabled', true)) {
+                return $next($request);
+            }
 
-        // Si pas de token SSO, laisser passer (l'utilisateur peut être connecté localement)
-        if (empty($ssoToken)) {
+            // Ne valider que pour les méthodes qui modifient les données
+            $methodsRequiringValidation = ['POST', 'PUT', 'PATCH', 'DELETE'];
+            
+            if (!in_array($request->method(), $methodsRequiringValidation)) {
+                return $next($request);
+            }
+
+            // Si l'utilisateur n'est pas authentifié, laisser passer (auth middleware gère ça)
+            if (!Auth::check()) {
+                return $next($request);
+            }
+
+            // Récupérer le token SSO depuis la session ou les préférences utilisateur
+            $user = Auth::user();
+            
+            if (!$user) {
+                return $next($request);
+            }
+            
+            // Utiliser request()->session() pour éviter les problèmes de session
+            $ssoToken = null;
+            try {
+                if ($request->hasSession() && $request->session()->has('sso_token')) {
+                    $ssoToken = $request->session()->get('sso_token');
+                }
+            } catch (\Throwable $e) {
+                Log::debug('SSO token retrieval failed in middleware', [
+                    'error' => $e->getMessage(),
+                    'type' => get_class($e),
+                ]);
+                // En cas d'erreur, continuer sans token
+                $ssoToken = null;
+            }
+
+            // Si pas de token SSO, laisser passer (l'utilisateur peut être connecté localement)
+            if (empty($ssoToken)) {
+                return $next($request);
+            }
+        } catch (\Throwable $e) {
+            // En cas d'erreur dans le middleware, logger et laisser passer
+            Log::debug('SSO validation middleware error', [
+                'error' => $e->getMessage(),
+                'type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
             return $next($request);
         }
 
