@@ -198,6 +198,18 @@ Route::get('/api/me', function() {
     ]);
 })->middleware('auth');
 
+// Route GET pour /logout (fallback pour les appels AJAX)
+Route::get('/logout', function(Request $request) {
+    // Rediriger vers la route POST logout
+    if ($request->expectsJson() || $request->ajax()) {
+        return response()->json([
+            'message' => 'Utilisez POST pour la déconnexion',
+            'redirect' => route('logout')
+        ], 405);
+    }
+    return redirect()->route('logout');
+});
+
 // Authenticated routes
 Route::middleware(['auth', 'verified'])->group(function () {
     // Route pour valider SSO avant redirection vers le profil
