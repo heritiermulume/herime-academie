@@ -226,6 +226,51 @@ class SSOService
     }
 
     /**
+     * Vérifier rapidement si un token SSO est toujours valide
+     * Utilise l'endpoint /api/sso/check-token pour une validation légère
+     * 
+     * @param string $token
+     * @return bool
+     */
+    public function checkToken(string $token): bool
+    {
+        if (empty($token)) {
+            return false;
+        }
+
+        if (empty($this->ssoBaseUrl)) {
+            // Si pas de SSO configuré, utiliser la validation locale
+            return $this->validateTokenLocally($token) !== null;
+        }
+
+        try {
+            $response = Http::timeout($this->timeout)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($this->ssoBaseUrl . '/api/sso/check-token', [
+                    'token' => $token,
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return isset($data['success']) && $data['success'] === true 
+                    && isset($data['valid']) && $data['valid'] === true;
+            }
+
+            return false;
+        } catch (Exception $e) {
+            Log::debug('SSO check-token exception, falling back to local validation', [
+                'message' => $e->getMessage(),
+            ]);
+            
+            // Fallback: validation locale rapide
+            return $this->validateTokenLocally($token) !== null;
+        }
+    }
+
+    /**
      * Obtenir l'URL du profil SSO
      * Redirige vers le SSO (compte.herime.com)
      * Le SSO gérera automatiquement la redirection vers le profil si l'utilisateur est connecté

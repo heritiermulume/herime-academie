@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'security' => \App\Http\Middleware\SecurityMiddleware::class,
             'upload.errors' => \App\Http\Middleware\HandleUploadErrors::class,
             'sync.cart' => \App\Http\Middleware\SyncCartOnLogin::class,
+            'sso.validate' => \App\Http\Middleware\ValidateSSOToken::class,
         ]);
         
         // Appliquer le middleware d'upload globalement

@@ -57,6 +57,12 @@ class SSOController extends Controller
             // Régénérer la session pour la sécurité
             $request->session()->regenerate();
 
+            // Stocker le token SSO dans la session pour validation ultérieure
+            // (optionnel, seulement si nécessaire pour la validation avant actions)
+            if ($token) {
+                $request->session()->put('sso_token', $token);
+            }
+
             // Synchroniser le panier de session avec la base de données
             // Protégé contre les erreurs pour ne pas bloquer la connexion
             try {
