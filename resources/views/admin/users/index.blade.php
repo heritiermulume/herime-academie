@@ -211,8 +211,8 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ $user->role === 'admin' ? 'danger' : ($user->role === 'instructor' ? 'warning' : ($user->role === 'affiliate' ? 'info' : 'primary')) }}">
-                                            {{ ucfirst($user->role) }}
+                                        <span class="badge bg-{{ ($user->role === 'admin' || $user->role === 'super_user') ? 'danger' : ($user->role === 'instructor' ? 'warning' : ($user->role === 'affiliate' ? 'info' : 'primary')) }}">
+                                            {{ $user->role === 'super_user' ? 'Super User' : ucfirst($user->role) }}
                                         </span>
                                     </td>
                                     <td>
