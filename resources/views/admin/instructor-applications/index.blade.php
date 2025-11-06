@@ -22,7 +22,7 @@
                 <div class="card-body">
                     <!-- Statistiques -->
                     <div class="row mb-4">
-                        <div class="col-md-3">
+                        <div class="col-6 col-md-3 mb-3 mb-md-0">
                             <div class="card bg-primary text-white">
                                 <div class="card-body text-center">
                                     <h5 class="card-title">{{ $stats['total'] }}</h5>
@@ -30,7 +30,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-md-3 mb-3 mb-md-0">
                             <div class="card bg-warning text-white">
                                 <div class="card-body text-center">
                                     <h5 class="card-title">{{ $stats['pending'] }}</h5>
@@ -38,7 +38,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-md-3 mb-3 mb-md-0">
                             <div class="card bg-info text-white">
                                 <div class="card-body text-center">
                                     <h5 class="card-title">{{ $stats['under_review'] }}</h5>
@@ -46,7 +46,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-md-3 mb-3 mb-md-0">
                             <div class="card bg-success text-white">
                                 <div class="card-body text-center">
                                     <h5 class="card-title">{{ $stats['approved'] }}</h5>
@@ -59,14 +59,14 @@
                     <!-- Filtres -->
                     <form method="GET" action="{{ route('admin.instructor-applications') }}" class="mb-4">
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-12 col-md-4">
                                 <input type="text" 
                                        class="form-control" 
                                        name="search" 
                                        placeholder="Rechercher par nom ou email..." 
                                        value="{{ request('search') }}">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-12 col-md-3">
                                 <select class="form-select" name="status">
                                     <option value="">Tous les statuts</option>
                                     <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>En attente</option>
@@ -75,14 +75,14 @@
                                     <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejetée</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-6 col-md-3">
                                 <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search me-2"></i>Filtrer
+                                    <i class="fas fa-search me-2"></i><span class="d-none d-md-inline">Filtrer</span>
                                 </button>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-6 col-md-2">
                                 <a href="{{ route('admin.instructor-applications') }}" class="btn btn-outline-secondary w-100">
-                                    <i class="fas fa-times me-2"></i>Réinitialiser
+                                    <i class="fas fa-times me-2"></i><span class="d-none d-md-inline">Réinitialiser</span>
                                 </a>
                             </div>
                         </div>

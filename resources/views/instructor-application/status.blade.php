@@ -4,12 +4,12 @@
 
 @section('content')
 <!-- Header -->
-<section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 3rem 0;">
+<section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 2rem 0;">
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center text-white">
-                <h1 class="h2 fw-bold mb-2">Statut de ma Candidature</h1>
-                <p class="mb-0">Suivez l'état de traitement de votre dossier</p>
+                <h1 class="h3 h2-md fw-bold mb-2">Statut de ma Candidature</h1>
+                <p class="mb-0 small small-md">Suivez l'état de traitement de votre dossier</p>
             </div>
         </div>
     </div>
@@ -22,7 +22,7 @@
             <div class="col-lg-8">
                 <!-- Status Card -->
                 <div class="card border-0 shadow-lg mb-4">
-                    <div class="card-body p-5">
+                    <div class="card-body p-3 p-md-5">
                         <div class="text-center mb-4">
                             <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" 
                                  style="width: 80px; height: 80px; background: linear-gradient(135deg, #003366 0%, #004080 100%);">
@@ -125,7 +125,7 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
                                 <div class="d-flex align-items-center p-3 border rounded">
                                     <i class="fas fa-file-pdf fa-2x text-danger me-3"></i>
                                     <div class="flex-grow-1">
@@ -135,12 +135,12 @@
                                     @if($application->cv_path)
                                         <a href="{{ route('instructor-application.download-cv', $application) }}" 
                                            class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-download me-1"></i>Télécharger
+                                            <i class="fas fa-download me-1"></i><span class="d-none d-md-inline">Télécharger</span>
                                         </a>
                                     @endif
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
                                 <div class="d-flex align-items-center p-3 border rounded">
                                     <i class="fas fa-file-alt fa-2x text-primary me-3"></i>
                                     <div class="flex-grow-1">
@@ -150,7 +150,7 @@
                                     @if($application->motivation_letter_path)
                                         <a href="{{ route('instructor-application.download-motivation-letter', $application) }}" 
                                            class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-download me-1"></i>Télécharger
+                                            <i class="fas fa-download me-1"></i><span class="d-none d-md-inline">Télécharger</span>
                                         </a>
                                     @endif
                                 </div>
@@ -168,22 +168,22 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
                                 <strong>Téléphone :</strong>
                                 <p class="mb-0">{{ $application->phone ?? 'Non renseigné' }}</p>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
                                 <strong>Date de soumission :</strong>
                                 <p class="mb-0">{{ $application->created_at->format('d/m/Y à H:i') }}</p>
                             </div>
                             @if($application->reviewed_by)
-                                <div class="col-md-6">
+                                <div class="col-12 col-md-6">
                                     <strong>Révisé par :</strong>
                                     <p class="mb-0">{{ $application->reviewer->name ?? 'Administrateur' }}</p>
                                 </div>
                             @endif
                             @if($application->reviewed_at)
-                                <div class="col-md-6">
+                                <div class="col-12 col-md-6">
                                     <strong>Date de révision :</strong>
                                     <p class="mb-0">{{ $application->reviewed_at->format('d/m/Y à H:i') }}</p>
                                 </div>
@@ -193,7 +193,7 @@
                 </div>
 
                 <!-- Actions -->
-                <div class="text-center mt-4">
+                <div class="text-center mt-4 d-flex flex-column flex-md-row gap-2 justify-content-center">
                     @if($application->canBeEdited())
                         <a href="{{ route('instructor-application.create') }}" class="btn btn-outline-primary">
                             <i class="fas fa-edit me-2"></i>Modifier ma candidature

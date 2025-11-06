@@ -10,7 +10,7 @@
             <div class="card border-0 shadow mb-4">
                 <div class="card-header text-white" style="background-color: #003366;">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
                             <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
                                 <i class="fas fa-tachometer-alt"></i>
                             </a>
@@ -18,10 +18,10 @@
                                 <i class="fas fa-th-list"></i>
                             </a>
                             <div>
-                                <h4 class="mb-1">
+                                <h4 class="mb-1 text-white">
                                     <i class="fas fa-user-graduate me-2"></i>Candidature de {{ $application->user->name }}
                                 </h4>
-                                <p class="mb-0 text-description small">Détails de la candidature</p>
+                                <p class="mb-0 text-white-50 small">Détails de la candidature</p>
                             </div>
                         </div>
                         <div>
@@ -42,7 +42,7 @@
 
             <div class="row">
                 <!-- Left Column - Application Details -->
-                <div class="col-lg-8">
+                <div class="col-12 col-lg-8 mb-4 mb-lg-0">
                     <!-- User Info -->
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white border-0 py-3">
@@ -118,7 +118,7 @@
                 </div>
 
                 <!-- Right Column - Actions & Documents -->
-                <div class="col-lg-4">
+                <div class="col-12 col-lg-4">
                     <!-- Status Update -->
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white border-0 py-3">
