@@ -17,11 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'upload.errors' => \App\Http\Middleware\HandleUploadErrors::class,
             'sync.cart' => \App\Http\Middleware\SyncCartOnLogin::class,
             'sso.validate' => \App\Http\Middleware\ValidateSSOToken::class,
+            'sso.page.load' => \App\Http\Middleware\ValidateSSOOnPageLoad::class,
         ]);
         
-        // Appliquer le middleware d'upload globalement
+        // Appliquer les middlewares globalement sur les routes web
         $middleware->web(append: [
             \App\Http\Middleware\HandleUploadErrors::class,
+            // Valider le token SSO à chaque chargement de page pour les utilisateurs authentifiés
+            \App\Http\Middleware\ValidateSSOOnPageLoad::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
