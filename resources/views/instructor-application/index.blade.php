@@ -216,3 +216,43 @@
 </section>
 @endsection
 
+@push('styles')
+<style>
+    /* Responsive typography */
+    @media (min-width: 768px) {
+        .h1-md {
+            font-size: 2.5rem;
+        }
+        .h2-md {
+            font-size: 2rem;
+        }
+        .small-md {
+            font-size: 1rem;
+        }
+    }
+    
+    @media (max-width: 767px) {
+        .h1-md {
+            font-size: 1.75rem;
+        }
+        .h2-md {
+            font-size: 1.5rem;
+        }
+        .small-md {
+            font-size: 0.875rem;
+        }
+        .extra-small {
+            font-size: 0.7rem;
+        }
+    }
+    
+    /* Responsive padding adjustments */
+    @media (max-width: 767px) {
+        .page-content-section {
+            padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
+        }
+    }
+</style>
+@endpush
+
