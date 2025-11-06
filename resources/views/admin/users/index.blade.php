@@ -23,7 +23,7 @@
                             </a>
                             <div class="alert alert-info mb-0 py-2 px-3">
                                 <i class="fas fa-info-circle me-2"></i>
-                                <small>La création se fait via le SSO (compte.herime.com)</small>
+                                <small>La création se fait via Compte Herime (compte.herime.com)</small>
                             </div>
                         </div>
                     </div>

@@ -58,24 +58,24 @@
                         <h5 class="mb-0"><i class="fas fa-user me-2"></i>Informations personnelles</h5>
                     </div>
                     <div class="card-body">
-                        <!-- Avertissement SSO -->
+                        <!-- Avertissement Compte Herime -->
                         <div class="alert alert-info mb-4">
                             <i class="fas fa-info-circle me-2"></i>
-                            <strong>Gestion via SSO :</strong> Les informations personnelles (nom, email, photo) sont gérées via le SSO (compte.herime.com) et seront synchronisées automatiquement lors de la prochaine connexion de l'utilisateur. Seuls le rôle et le statut actif peuvent être modifiés ici.
+                            <strong>Gestion via Compte Herime :</strong> Les informations personnelles (nom, email, photo) sont gérées via Compte Herime (compte.herime.com) et seront synchronisées automatiquement lors de la prochaine connexion de l'utilisateur. Seuls le rôle et le statut actif peuvent être modifiés ici.
                         </div>
                         <div class="row g-3">
                             <!-- Avatar actuel (lecture seule) -->
                             <div class="col-12">
                                 <label class="form-label fw-bold">
                                     Photo de profil 
-                                    <span class="badge bg-info ms-2">Géré par SSO</span>
+                                    <span class="badge bg-info ms-2">Géré par Compte Herime</span>
                                 </label>
                                 
                                 <!-- Avatar actuel -->
                                 <div class="current-avatar mb-3 text-center">
                                     <p class="fw-bold mb-2 text-success">
                                         <i class="fas fa-check-circle me-1"></i>
-                                        Avatar actuel (synchronisé depuis le SSO) :
+                                        Avatar actuel (synchronisé depuis Compte Herime) :
                                     </p>
                                     <img src="{{ $user->avatar_url }}" 
                                          alt="Avatar actuel" 
@@ -93,14 +93,14 @@
                             <div class="col-md-6">
                                 <label for="name" class="form-label fw-bold">
                                     Nom complet 
-                                    <span class="badge bg-info ms-2">Géré par SSO</span>
+                                    <span class="badge bg-info ms-2">Géré par Compte Herime</span>
                                 </label>
                                 <input type="text" class="form-control bg-light" 
                                        id="name" name="name" value="{{ $user->name }}" 
                                        readonly disabled>
                                 <small class="form-text text-muted">
                                     <i class="fas fa-lock me-1"></i>
-                                    Modifiable uniquement via le SSO
+                                    Modifiable uniquement via Compte Herime
                                 </small>
                             </div>
                             
@@ -108,14 +108,14 @@
                             <div class="col-md-6">
                                 <label for="email" class="form-label fw-bold">
                                     Email 
-                                    <span class="badge bg-info ms-2">Géré par SSO</span>
+                                    <span class="badge bg-info ms-2">Géré par Compte Herime</span>
                                 </label>
                                 <input type="email" class="form-control bg-light" 
                                        id="email" name="email" value="{{ $user->email }}" 
                                        readonly disabled>
                                 <small class="form-text text-muted">
                                     <i class="fas fa-lock me-1"></i>
-                                    Modifiable uniquement via le SSO
+                                    Modifiable uniquement via Compte Herime
                                 </small>
                             </div>
                             
@@ -123,14 +123,14 @@
                             <div class="col-12">
                                 <div class="alert alert-secondary">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Note :</strong> Les autres informations (téléphone, date de naissance, genre, biographie) sont également gérées via le SSO et seront synchronisées lors de la prochaine connexion.
+                                    <strong>Note :</strong> Les autres informations (téléphone, date de naissance, genre, biographie) sont également gérées via Compte Herime et seront synchronisées lors de la prochaine connexion.
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mot de passe (géré par SSO) -->
+                <!-- Mot de passe (géré par Compte Herime) -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-gradient-warning text-white">
                         <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Mot de passe</h5>
@@ -138,7 +138,7 @@
                     <div class="card-body">
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i>
-                            <strong>Gestion via SSO :</strong> Le mot de passe est géré exclusivement via le SSO (compte.herime.com). Les utilisateurs doivent modifier leur mot de passe sur le SSO.
+                            <strong>Gestion via Compte Herime :</strong> Le mot de passe est géré exclusivement via Compte Herime (compte.herime.com). Les utilisateurs doivent modifier leur mot de passe sur Compte Herime.
                         </div>
                     </div>
                 </div>
@@ -185,7 +185,7 @@
                                             Email {{ $user->is_verified ? 'vérifié' : 'non vérifié' }}
                                         </span>
                                         <small class="text-muted">
-                                            (Géré par le SSO)
+                                            (Géré par Compte Herime)
                                         </small>
                                     </div>
                                 </div>

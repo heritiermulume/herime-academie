@@ -260,8 +260,8 @@ class AdminController extends Controller
             'is_active' => $request->has('is_active'),
         ]);
 
-        return redirect()->route('admin.users')
-            ->with('success', 'Utilisateur mis à jour avec succès. Les données personnelles (nom, email, photo) sont gérées via le SSO et seront synchronisées lors de la prochaine connexion.');
+            return redirect()->route('admin.users')
+                ->with('success', 'Utilisateur mis à jour avec succès. Les données personnelles (nom, email, photo) sont gérées via Compte Herime et seront synchronisées lors de la prochaine connexion.');
     }
     
     /**
@@ -275,7 +275,7 @@ class AdminController extends Controller
             // Pour l'instant, on synchronise lors de la prochaine connexion
             // Cette méthode peut être utilisée pour forcer une synchronisation
             return redirect()->route('admin.users')
-                ->with('info', 'La synchronisation se fait automatiquement lors de la connexion via SSO. Les données seront mises à jour lors de la prochaine connexion de l\'utilisateur.');
+                ->with('info', 'La synchronisation se fait automatiquement lors de la connexion via Compte Herime. Les données seront mises à jour lors de la prochaine connexion de l\'utilisateur.');
         } catch (\Exception $e) {
             Log::error('SSO User Sync Error', [
                 'user_id' => $user->id,
@@ -303,12 +303,12 @@ class AdminController extends Controller
             $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
             
             return redirect($ssoRegisterUrl)
-                ->with('info', 'La création d\'utilisateurs se fait via le SSO. Vous allez être redirigé vers la page d\'inscription.');
+                ->with('info', 'La création d\'utilisateurs se fait via Compte Herime. Vous allez être redirigé vers la page d\'inscription.');
         }
         
         // Fallback si SSO désactivé (ne devrait pas arriver)
         return redirect()->route('admin.users')
-            ->with('error', 'Le SSO est requis pour créer des utilisateurs.');
+            ->with('error', 'Compte Herime est requis pour créer des utilisateurs.');
     }
 
     /**
@@ -319,7 +319,7 @@ class AdminController extends Controller
     {
         // La création d'utilisateurs se fait uniquement via SSO
         return redirect()->route('admin.users')
-            ->with('error', 'La création d\'utilisateurs se fait uniquement via le SSO. Veuillez rediriger l\'utilisateur vers le SSO pour créer un compte.');
+            ->with('error', 'La création d\'utilisateurs se fait uniquement via Compte Herime. Veuillez rediriger l\'utilisateur vers Compte Herime pour créer un compte.');
     }
 
     public function showUser(User $user)
