@@ -39,8 +39,18 @@ class ProfileRedirectController extends Controller
             return redirect($this->ssoService->getProfileUrl());
         }
 
-        // Valider le token SSO
-        $isValid = $this->ssoService->checkToken($ssoToken);
+        // Valider le token SSO (avec gestion d'erreur)
+        try {
+            $isValid = $this->ssoService->checkToken($ssoToken);
+        } catch (\Exception $e) {
+            Log::error('SSO token validation exception in profile redirect', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            // En cas d'erreur, rediriger quand même vers le profil
+            // (l'API SSO pourrait être temporairement indisponible)
+            return redirect($this->ssoService->getProfileUrl());
+        }
 
         if (!$isValid) {
             Log::warning('SSO token validation failed before profile redirect', [

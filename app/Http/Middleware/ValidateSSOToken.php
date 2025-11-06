@@ -57,8 +57,20 @@ class ValidateSSOToken
             return $next($request);
         }
 
-        // Valider le token SSO
-        $isValid = $this->ssoService->checkToken($ssoToken);
+        // Valider le token SSO (avec gestion d'erreur)
+        try {
+            $isValid = $this->ssoService->checkToken($ssoToken);
+        } catch (\Exception $e) {
+            Log::error('SSO token validation exception', [
+                'user_id' => $user->id,
+                'method' => $request->method(),
+                'route' => $request->route()?->getName(),
+                'error' => $e->getMessage(),
+            ]);
+            // En cas d'erreur, considérer comme valide pour ne pas bloquer l'utilisateur
+            // (l'API SSO pourrait être temporairement indisponible)
+            return $next($request);
+        }
 
         if (!$isValid) {
             Log::warning('SSO token validation failed before important action', [

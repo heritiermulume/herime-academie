@@ -234,77 +234,129 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/analytics', [InstructorController::class, 'analytics'])->name('analytics');
     });
 
-    // Admin routes - avec validation SSO pour toutes les actions de modification
-    Route::prefix('admin')->name('admin.')->middleware(['role:admin', 'sso.validate'])->group(function () {
+    // Admin routes - avec validation SSO pour les actions de modification (appliqué individuellement)
+    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
         Route::get('/statistics', [AdminController::class, 'statistics'])->name('statistics');
-        Route::post('/courses/{course}/recalculate-stats', [AdminController::class, 'recalculateCourseStats'])->name('courses.recalculate-stats');
-        Route::post('/statistics/recalculate-all', [AdminController::class, 'recalculateAllStats'])->name('statistics.recalculate-all');
+        Route::post('/courses/{course}/recalculate-stats', [AdminController::class, 'recalculateCourseStats'])
+            ->middleware('sso.validate')
+            ->name('courses.recalculate-stats');
+        Route::post('/statistics/recalculate-all', [AdminController::class, 'recalculateAllStats'])
+            ->middleware('sso.validate')
+            ->name('statistics.recalculate-all');
         
         // Users management
         Route::get('/users', [AdminController::class, 'users'])->name('users');
         Route::get('/users/create', [AdminController::class, 'createUser'])->name('users.create');
-        Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store');
+        Route::post('/users', [AdminController::class, 'storeUser'])
+            ->middleware('sso.validate')
+            ->name('users.store');
         Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');
         Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('users.edit');
-        Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
-        Route::post('/users/{user}/sync', [AdminController::class, 'syncUserFromSSO'])->name('users.sync');
-        Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->name('users.destroy');
+        Route::put('/users/{user}', [AdminController::class, 'updateUser'])
+            ->middleware('sso.validate')
+            ->name('users.update');
+        Route::post('/users/{user}/sync', [AdminController::class, 'syncUserFromSSO'])
+            ->middleware('sso.validate')
+            ->name('users.sync');
+        Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])
+            ->middleware('sso.validate')
+            ->name('users.destroy');
         
         // Instructor Applications management
         Route::get('/instructor-applications', [AdminController::class, 'instructorApplications'])->name('instructor-applications');
         Route::get('/instructor-applications/{application}', [AdminController::class, 'showInstructorApplication'])->name('instructor-applications.show');
-        Route::put('/instructor-applications/{application}/status', [AdminController::class, 'updateInstructorApplicationStatus'])->name('instructor-applications.update-status');
+        Route::put('/instructor-applications/{application}/status', [AdminController::class, 'updateInstructorApplicationStatus'])
+            ->middleware('sso.validate')
+            ->name('instructor-applications.update-status');
         
         // Categories management
         Route::get('/categories', [AdminController::class, 'categories'])->name('categories');
-        Route::post('/categories', [AdminController::class, 'storeCategory'])->name('categories.store');
+        Route::post('/categories', [AdminController::class, 'storeCategory'])
+            ->middleware('sso.validate')
+            ->name('categories.store');
         Route::get('/categories/{category}/edit', [AdminController::class, 'editCategory'])->name('categories.edit');
-        Route::put('/categories/{category}', [AdminController::class, 'updateCategory'])->name('categories.update');
-        Route::delete('/categories/{category}', [AdminController::class, 'destroyCategory'])->name('categories.destroy');
+        Route::put('/categories/{category}', [AdminController::class, 'updateCategory'])
+            ->middleware('sso.validate')
+            ->name('categories.update');
+        Route::delete('/categories/{category}', [AdminController::class, 'destroyCategory'])
+            ->middleware('sso.validate')
+            ->name('categories.destroy');
         
         // Courses management
         Route::get('/courses', [AdminController::class, 'courses'])->name('courses');
         Route::get('/courses/create', [AdminController::class, 'createCourse'])->name('courses.create');
-        Route::post('/courses', [AdminController::class, 'storeCourse'])->name('courses.store');
+        Route::post('/courses', [AdminController::class, 'storeCourse'])
+            ->middleware('sso.validate')
+            ->name('courses.store');
         Route::get('/courses/{course}', [AdminController::class, 'showCourse'])->name('courses.show');
         Route::get('/courses/{course}/edit', [AdminController::class, 'editCourse'])->name('courses.edit');
-        Route::put('/courses/{course}', [AdminController::class, 'updateCourse'])->name('courses.update');
-        Route::delete('/courses/{course}', [AdminController::class, 'destroyCourse'])->name('courses.destroy');
+        Route::put('/courses/{course}', [AdminController::class, 'updateCourse'])
+            ->middleware('sso.validate')
+            ->name('courses.update');
+        Route::delete('/courses/{course}', [AdminController::class, 'destroyCourse'])
+            ->middleware('sso.validate')
+            ->name('courses.destroy');
         
         // Course lessons management
         Route::get('/courses/{course}/lessons', [AdminController::class, 'courseLessons'])->name('courses.lessons');
         Route::get('/courses/{course}/lessons/create', [AdminController::class, 'createLesson'])->name('courses.lessons.create');
-        Route::post('/courses/{course}/lessons', [AdminController::class, 'storeLesson'])->name('courses.lessons.store');
+        Route::post('/courses/{course}/lessons', [AdminController::class, 'storeLesson'])
+            ->middleware('sso.validate')
+            ->name('courses.lessons.store');
         Route::get('/lessons/{lesson}/edit', [AdminController::class, 'editLesson'])->name('lessons.edit');
-        Route::put('/lessons/{lesson}', [AdminController::class, 'updateLesson'])->name('lessons.update');
-        Route::delete('/lessons/{lesson}', [AdminController::class, 'destroyLesson'])->name('lessons.destroy');
+        Route::put('/lessons/{lesson}', [AdminController::class, 'updateLesson'])
+            ->middleware('sso.validate')
+            ->name('lessons.update');
+        Route::delete('/lessons/{lesson}', [AdminController::class, 'destroyLesson'])
+            ->middleware('sso.validate')
+            ->name('lessons.destroy');
         
         // Announcements management
         Route::get('/announcements', [AdminController::class, 'announcements'])->name('announcements');
-        Route::post('/announcements', [AdminController::class, 'storeAnnouncement'])->name('announcements.store');
+        Route::post('/announcements', [AdminController::class, 'storeAnnouncement'])
+            ->middleware('sso.validate')
+            ->name('announcements.store');
         Route::get('/announcements/{announcement}/edit', [AdminController::class, 'editAnnouncement'])->name('announcements.edit');
-        Route::put('/announcements/{announcement}', [AdminController::class, 'updateAnnouncement'])->name('announcements.update');
-        Route::delete('/announcements/{announcement}', [AdminController::class, 'destroyAnnouncement'])->name('announcements.destroy');
+        Route::put('/announcements/{announcement}', [AdminController::class, 'updateAnnouncement'])
+            ->middleware('sso.validate')
+            ->name('announcements.update');
+        Route::delete('/announcements/{announcement}', [AdminController::class, 'destroyAnnouncement'])
+            ->middleware('sso.validate')
+            ->name('announcements.destroy');
         
         // Partners management
         Route::get('/partners', [AdminController::class, 'partners'])->name('partners');
-        Route::post('/partners', [AdminController::class, 'storePartner'])->name('partners.store');
+        Route::post('/partners', [AdminController::class, 'storePartner'])
+            ->middleware('sso.validate')
+            ->name('partners.store');
         Route::get('/partners/{partner}/edit', [AdminController::class, 'editPartner'])->name('partners.edit');
-        Route::put('/partners/{partner}', [AdminController::class, 'updatePartner'])->name('partners.update');
-        Route::delete('/partners/{partner}', [AdminController::class, 'destroyPartner'])->name('partners.destroy');
+        Route::put('/partners/{partner}', [AdminController::class, 'updatePartner'])
+            ->middleware('sso.validate')
+            ->name('partners.update');
+        Route::delete('/partners/{partner}', [AdminController::class, 'destroyPartner'])
+            ->middleware('sso.validate')
+            ->name('partners.destroy');
         
         // Testimonials management
         Route::get('/testimonials', [AdminController::class, 'testimonials'])->name('testimonials');
-        Route::post('/testimonials', [AdminController::class, 'storeTestimonial'])->name('testimonials.store');
+        Route::post('/testimonials', [AdminController::class, 'storeTestimonial'])
+            ->middleware('sso.validate')
+            ->name('testimonials.store');
         Route::get('/testimonials/{testimonial}/edit', [AdminController::class, 'editTestimonial'])->name('testimonials.edit');
-        Route::put('/testimonials/{testimonial}', [AdminController::class, 'updateTestimonial'])->name('testimonials.update');
-        Route::delete('/testimonials/{testimonial}', [AdminController::class, 'destroyTestimonial'])->name('testimonials.destroy');
+        Route::put('/testimonials/{testimonial}', [AdminController::class, 'updateTestimonial'])
+            ->middleware('sso.validate')
+            ->name('testimonials.update');
+        Route::delete('/testimonials/{testimonial}', [AdminController::class, 'destroyTestimonial'])
+            ->middleware('sso.validate')
+            ->name('testimonials.destroy');
         
         // Banners management
-        Route::resource('banners', BannerController::class);
-        Route::post('/banners/{banner}/toggle-active', [BannerController::class, 'toggleActive'])->name('banners.toggle-active');
+        Route::resource('banners', BannerController::class)->middleware('sso.validate');
+        Route::post('/banners/{banner}/toggle-active', [BannerController::class, 'toggleActive'])
+            ->middleware('sso.validate')
+            ->name('banners.toggle-active');
         
         // Orders management
         Route::get('/orders', [App\Http\Controllers\OrderController::class, 'adminIndex'])->name('orders.index');
