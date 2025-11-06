@@ -243,6 +243,21 @@ class SSOService
             return $this->validateTokenLocally($token) !== null;
         }
 
+        // Pour l'instant, utiliser uniquement la validation locale
+        // car l'endpoint /api/sso/check-token n'existe pas encore sur le serveur SSO
+        // TODO: Activer l'appel API une fois l'endpoint disponible
+        try {
+            return $this->validateTokenLocally($token) !== null;
+        } catch (\Exception $localException) {
+            Log::warning('SSO local token validation failed', [
+                'message' => $localException->getMessage(),
+            ]);
+            // En dernier recours, considérer le token comme invalide
+            return false;
+        }
+
+        // Code commenté pour l'instant - à activer quand l'endpoint sera disponible
+        /*
         try {
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
@@ -257,6 +272,12 @@ class SSOService
                 $data = $response->json();
                 return isset($data['success']) && $data['success'] === true 
                     && isset($data['valid']) && $data['valid'] === true;
+            }
+
+            // Si l'endpoint retourne 404, utiliser la validation locale
+            if ($response->status() === 404) {
+                Log::debug('SSO check-token endpoint not found, using local validation');
+                return $this->validateTokenLocally($token) !== null;
             }
 
             return false;
@@ -277,6 +298,7 @@ class SSOService
                 return false;
             }
         }
+        */
     }
 
     /**
