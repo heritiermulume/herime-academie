@@ -246,7 +246,7 @@ class SSOService
 
     /**
      * Vérifier rapidement si un token SSO est toujours valide
-     * Utilise l'endpoint /api/sso/check-token pour une validation légère
+     * Essaie d'abord de valider via l'API, puis utilise la validation locale comme fallback
      * 
      * @param string $token
      * @return bool
@@ -254,73 +254,131 @@ class SSOService
     public function checkToken(string $token): bool
     {
         if (empty($token)) {
+            Log::debug('SSO checkToken: token is empty');
             return false;
         }
 
         if (empty($this->ssoBaseUrl)) {
             // Si pas de SSO configuré, utiliser la validation locale
+            Log::debug('SSO checkToken: no base URL configured, using local validation');
             return $this->validateTokenLocally($token) !== null;
         }
 
-        // Pour l'instant, utiliser uniquement la validation locale
-        // car l'endpoint /api/sso/check-token n'existe pas encore sur le serveur SSO
-        // TODO: Activer l'appel API une fois l'endpoint disponible
-        try {
-            $result = $this->validateTokenLocally($token);
-            return $result !== null;
-        } catch (\Throwable $localException) {
-            // Capturer toutes les exceptions et erreurs
-            Log::debug('SSO local token validation failed', [
-                'message' => $localException->getMessage(),
-                'type' => get_class($localException),
-            ]);
-            // En dernier recours, considérer le token comme invalide
-            return false;
-        }
-
-        // Code commenté pour l'instant - à activer quand l'endpoint sera disponible
-        /*
+        // Essayer d'abord la validation via l'API pour vérifier l'état réel côté serveur SSO
+        // Cela garantit que même si le JWT n'est pas expiré localement,
+        // on vérifie si la session est toujours valide sur compte.herime.com
         try {
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer ' . $this->ssoSecret,
                 ])
-                ->post($this->ssoBaseUrl . '/api/sso/check-token', [
+                ->post($this->ssoBaseUrl . '/api/validate-token', [
                     'token' => $token,
                 ]);
 
             if ($response->successful()) {
                 $data = $response->json();
-                return isset($data['success']) && $data['success'] === true 
-                    && isset($data['valid']) && $data['valid'] === true;
+                
+                // Vérifier la réponse de l'API
+                if (isset($data['valid']) && $data['valid'] === true) {
+                    Log::debug('SSO checkToken: token validated via API', [
+                        'token_preview' => substr($token, 0, 20) . '...'
+                    ]);
+                    return true;
+                }
+                
+                // Si l'API dit que le token n'est pas valide
+                if (isset($data['valid']) && $data['valid'] === false) {
+                    Log::debug('SSO checkToken: token invalidated via API', [
+                        'token_preview' => substr($token, 0, 20) . '...',
+                        'response' => $data
+                    ]);
+                    return false;
+                }
             }
 
-            // Si l'endpoint retourne 404, utiliser la validation locale
-            if ($response->status() === 404) {
-                Log::debug('SSO check-token endpoint not found, using local validation');
-                return $this->validateTokenLocally($token) !== null;
+            // Si la réponse n'est pas successful ou ne contient pas 'valid'
+            Log::debug('SSO checkToken: API validation returned unexpected response', [
+                'status' => $response->status(),
+                'response' => $response->body()
+            ]);
+
+            // Si l'API retourne 404 ou erreur, essayer l'endpoint alternatif /api/sso/check-token
+            if ($response->status() === 404 || !$response->successful()) {
+                try {
+                    $checkResponse = Http::timeout($this->timeout)
+                        ->withHeaders([
+                            'Accept' => 'application/json',
+                            'Content-Type' => 'application/json',
+                        ])
+                        ->post($this->ssoBaseUrl . '/api/sso/check-token', [
+                            'token' => $token,
+                        ]);
+
+                    if ($checkResponse->successful()) {
+                        $checkData = $checkResponse->json();
+                        if (isset($checkData['success']) && $checkData['success'] === true 
+                            && isset($checkData['valid']) && $checkData['valid'] === true) {
+                            Log::debug('SSO checkToken: token validated via check-token API');
+                            return true;
+                        }
+                    }
+                } catch (\Exception $checkException) {
+                    Log::debug('SSO checkToken: check-token endpoint failed', [
+                        'message' => $checkException->getMessage()
+                    ]);
+                }
             }
 
+            // Si l'API n'est pas disponible ou retourne une erreur,
+            // utiliser la validation locale comme fallback
+            // MAIS seulement si le token n'est pas expiré localement
+            Log::debug('SSO checkToken: API unavailable, falling back to local validation');
+            $localResult = $this->validateTokenLocally($token);
+            
+            if ($localResult !== null) {
+                // Le token est valide localement (format correct, pas expiré)
+                // Mais comme on n'a pas pu vérifier via l'API, on le considère comme valide
+                // avec un avertissement dans les logs
+                Log::warning('SSO checkToken: API unavailable, using local validation (may be inaccurate)', [
+                    'token_preview' => substr($token, 0, 20) . '...',
+                    'user_email' => $localResult['email'] ?? 'unknown'
+                ]);
+                return true;
+            }
+            
             return false;
+
         } catch (\Exception $e) {
-            Log::debug('SSO check-token exception, falling back to local validation', [
+            // En cas d'exception lors de l'appel API, utiliser la validation locale
+            Log::debug('SSO checkToken: API exception, falling back to local validation', [
                 'message' => $e->getMessage(),
                 'type' => get_class($e),
             ]);
             
             // Fallback: validation locale rapide
             try {
-                return $this->validateTokenLocally($token) !== null;
+                $localResult = $this->validateTokenLocally($token);
+                if ($localResult !== null) {
+                    Log::warning('SSO checkToken: API exception, using local validation (may be inaccurate)', [
+                        'token_preview' => substr($token, 0, 20) . '...',
+                        'user_email' => $localResult['email'] ?? 'unknown',
+                        'api_error' => $e->getMessage()
+                    ]);
+                    return true;
+                }
+                return false;
             } catch (\Exception $localException) {
-                Log::warning('SSO local token validation also failed', [
-                    'message' => $localException->getMessage(),
+                Log::warning('SSO checkToken: both API and local validation failed', [
+                    'api_error' => $e->getMessage(),
+                    'local_error' => $localException->getMessage(),
                 ]);
                 // En dernier recours, considérer le token comme invalide
                 return false;
             }
         }
-        */
     }
 
     /**
