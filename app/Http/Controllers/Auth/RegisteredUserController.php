@@ -13,16 +13,16 @@ class RegisteredUserController extends Controller
 {
     /**
      * Display the registration view.
-     * Redirige toujours vers le SSO pour l'enregistrement
+     * Ouvre le SSO dans un nouvel onglet pour l'enregistrement
      */
-    public function create(Request $request): RedirectResponse
+    public function create(Request $request)
     {
         // Si l'utilisateur est déjà connecté localement, rediriger vers le dashboard
         if (Auth::check()) {
             return redirect()->intended(route('dashboard'));
         }
 
-        // Toujours rediriger vers SSO pour l'enregistrement, jamais utiliser la vue locale
+        // Ouvrir le SSO dans un nouvel onglet pour l'enregistrement
         try {
             if (config('services.sso.enabled', true)) {
                 $ssoService = app(SSOService::class);
@@ -37,27 +37,31 @@ class RegisteredUserController extends Controller
                     'redirect' => $redirectUrl
                 ]);
 
-                // Obtenir l'URL d'enregistrement SSO (ou login si le SSO gère les deux)
-                // Le SSO devrait avoir une page d'enregistrement ou permettre l'enregistrement via login
+                // Obtenir l'URL d'enregistrement SSO
                 $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
                 
-                return redirect($ssoRegisterUrl);
+                // Retourner une vue qui ouvre le SSO dans un nouvel onglet
+                return view('auth.register-redirect', [
+                    'ssoRegisterUrl' => $ssoRegisterUrl
+                ]);
             }
         } catch (\Exception $e) {
-            // En cas d'erreur, réessayer la redirection vers SSO
+            // En cas d'erreur, logger et essayer quand même
             Log::error('SSO Register Redirect Error', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // Toujours rediriger vers SSO même en cas d'erreur
+            // Essayer quand même de rediriger vers SSO
             $ssoService = app(SSOService::class);
             $callbackUrl = route('sso.callback', [
                 'redirect' => route('dashboard')
             ]);
             $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
             
-            return redirect($ssoRegisterUrl);
+            return view('auth.register-redirect', [
+                'ssoRegisterUrl' => $ssoRegisterUrl
+            ]);
         }
 
         // Si SSO est désactivé, rediriger quand même vers compte.herime.com
@@ -68,7 +72,9 @@ class RegisteredUserController extends Controller
         ]);
         $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
         
-        return redirect($ssoRegisterUrl);
+        return view('auth.register-redirect', [
+            'ssoRegisterUrl' => $ssoRegisterUrl
+        ]);
     }
 
     /**
