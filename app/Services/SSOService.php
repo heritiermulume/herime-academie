@@ -201,15 +201,16 @@ class SSOService
 
     /**
      * Obtenir l'URL du profil SSO
-     * Redirige vers la page de profil du SSO avec le menu profil sélectionné
+     * Redirige vers le SSO (compte.herime.com)
+     * Le SSO gérera automatiquement la redirection vers le profil si l'utilisateur est connecté
      *
      * @return string
      */
     public function getProfileUrl(): string
     {
-        // URL du profil sur le SSO (compte.herime.com/profile)
-        // Le SSO devrait avoir une section profil avec un menu
-        return $this->ssoBaseUrl . '/profile';
+        // URL de base du SSO (compte.herime.com)
+        // Le SSO redirigera automatiquement vers le profil si l'utilisateur est connecté
+        return $this->ssoBaseUrl;
     }
 
     /**
