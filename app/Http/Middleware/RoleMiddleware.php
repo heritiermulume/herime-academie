@@ -39,6 +39,7 @@ class RoleMiddleware
         }
 
         $userRole = auth()->user()->role ?? 'student';
+        $user = auth()->user();
         
         // Pour le rôle "student", permettre l'accès à tous les utilisateurs authentifiés
         // car par défaut tous les utilisateurs sont des étudiants
@@ -46,10 +47,15 @@ class RoleMiddleware
         if ($role === 'student') {
             // Tous les utilisateurs authentifiés peuvent accéder au tableau de bord étudiant
             return $next($request);
+        } elseif ($role === 'admin') {
+            // Pour l'accès admin, accepter les rôles "admin" et "super_user"
+            if (!$user->isAdmin()) {
+                abort(403, 'Accès non autorisé. Seuls les administrateurs et super utilisateurs peuvent accéder à cette section.');
+            }
         } else {
-            // Pour les autres rôles (admin, instructor, affiliate), vérifier strictement
+            // Pour les autres rôles (instructor, affiliate), vérifier strictement
             if ($userRole !== $role) {
-            abort(403, 'Accès non autorisé pour ce rôle.');
+                abort(403, 'Accès non autorisé pour ce rôle.');
             }
         }
 

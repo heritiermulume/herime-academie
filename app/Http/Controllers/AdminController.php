@@ -248,7 +248,7 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|in:student,instructor,admin,affiliate',
+            'role' => 'required|in:student,instructor,admin,affiliate,super_user',
             'phone' => 'nullable|string|max:20',
             'date_of_birth' => 'nullable|date',
             'gender' => 'nullable|in:male,female,other',
@@ -296,7 +296,7 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:student,instructor,admin,affiliate',
+            'role' => 'required|in:student,instructor,admin,affiliate,super_user',
             'phone' => 'nullable|string|max:20',
             'is_active' => 'boolean',
             'is_verified' => 'boolean',

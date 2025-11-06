@@ -111,11 +111,11 @@ class OrderController extends Controller
     public function confirm(Request $request, Order $order)
     {
         try {
-            // Vérifier que l'utilisateur est admin
-            if (!auth()->check() || auth()->user()->role !== 'admin') {
+            // Vérifier que l'utilisateur est admin ou super_user
+            if (!auth()->check() || !auth()->user()->isAdmin()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Accès non autorisé. Vous devez être administrateur.',
+                    'message' => 'Accès non autorisé. Vous devez être administrateur ou super utilisateur.',
                 ], 403);
             }
 
@@ -219,11 +219,11 @@ class OrderController extends Controller
     public function cancel(Request $request, Order $order)
     {
         try {
-            // Vérifier que l'utilisateur est admin
-            if (!auth()->check() || auth()->user()->role !== 'admin') {
+            // Vérifier que l'utilisateur est admin ou super_user
+            if (!auth()->check() || !auth()->user()->isAdmin()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Accès non autorisé. Vous devez être administrateur.',
+                    'message' => 'Accès non autorisé. Vous devez être administrateur ou super utilisateur.',
                 ], 403);
             }
 

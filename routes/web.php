@@ -166,8 +166,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard based on user role
     Route::get('/dashboard', function () {
         $user = auth()->user();
+        // Les super_user et admin redirigent vers l'admin
+        if ($user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
         return match($user->role) {
-            'admin' => redirect()->route('admin.dashboard'),
             'instructor' => redirect()->route('instructor.dashboard'),
             'affiliate' => redirect()->route('affiliate.dashboard'),
             default => redirect()->route('student.dashboard'),

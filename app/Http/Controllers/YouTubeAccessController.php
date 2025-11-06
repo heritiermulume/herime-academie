@@ -123,11 +123,11 @@ class YouTubeAccessController extends Controller
      */
     public function revokeToken(Request $request, VideoAccessToken $token)
     {
-        // Vérifier les permissions admin
-        if (!auth()->check() || !auth()->user()->is_admin) {
+        // Vérifier les permissions admin (admin ou super_user)
+        if (!auth()->check() || !auth()->user()->isAdmin()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Accès non autorisé'
+                'message' => 'Accès non autorisé. Vous devez être administrateur ou super utilisateur.'
             ], 403);
         }
 

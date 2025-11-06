@@ -160,7 +160,8 @@ class User extends Authenticatable
 
     public function scopeAdmins($query)
     {
-        return $query->where('role', 'admin');
+        // Inclure les admins et super_users (tous ceux qui ont accès à l'administration)
+        return $query->whereIn('role', ['admin', 'super_user']);
     }
 
     public function scopeAffiliates($query)
@@ -181,7 +182,17 @@ class User extends Authenticatable
 
     public function isAdmin()
     {
-        return $this->role === 'admin';
+        // Les rôles "admin" et "super_user" ont accès à l'administration
+        return $this->role === 'admin' || $this->role === 'super_user';
+    }
+    
+    /**
+     * Vérifier si l'utilisateur peut accéder à l'administration
+     * (Admin ou Super User)
+     */
+    public function canAccessAdmin()
+    {
+        return $this->isAdmin();
     }
 
     public function isAffiliate()

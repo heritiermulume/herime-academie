@@ -171,25 +171,21 @@ class SSOController extends Controller
 
     /**
      * Normaliser le rôle utilisateur
-     * Mappe super_user vers admin et valide le rôle
+     * Conserve super_user comme tel (il a accès à l'admin via isAdmin())
      *
      * @param string|null $role
      * @return string
      */
     protected function normalizeRole(?string $role): string
     {
-        $validRoles = ['student', 'instructor', 'admin', 'affiliate'];
+        $validRoles = ['student', 'instructor', 'admin', 'affiliate', 'super_user'];
         
         // Si aucun rôle fourni, retourner student par défaut
         if (empty($role)) {
             return 'student';
         }
         
-        // Mapper super_user vers admin
-        if ($role === 'super_user') {
-            return 'admin';
-        }
-        
+        // Conserver super_user tel quel (il aura accès à l'admin via isAdmin())
         // S'assurer que le rôle est valide
         if (!in_array($role, $validRoles)) {
             Log::warning('SSO: Invalid role provided, defaulting to student', [
