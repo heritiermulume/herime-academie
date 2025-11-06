@@ -155,35 +155,85 @@ class SSOController extends Controller
         }
 
         // Créer un nouvel utilisateur avec le rôle normalisé
-        $userDataCreate = [
-            'name' => $userData['name'] ?? 'Utilisateur',
-            'email' => $email,
-            'password' => Hash::make(Str::random(32)), // Mot de passe aléatoire (non utilisé avec SSO)
-            'role' => $role, // Utiliser le rôle normalisé
-            'is_verified' => $userData['is_verified'] ?? false,
-            'is_active' => $userData['is_active'] ?? true,
-            'last_login_at' => now(),
-        ];
-        
-        // Ajouter l'avatar si fourni par le SSO (toujours ajouter, même si vide)
-        if (isset($userData['avatar'])) {
-            $userDataCreate['avatar'] = $userData['avatar'] ?: null;
-        }
-        
-        // Stocker l'ID SSO dans les préférences
-        if (isset($userData['user_id']) && !empty($userData['user_id'])) {
-            $userDataCreate['preferences'] = ['sso_id' => $userData['user_id']];
-        }
-        
-        $user = User::create($userDataCreate);
+        try {
+            $userDataCreate = [
+                'name' => $userData['name'] ?? 'Utilisateur',
+                'email' => $email,
+                'password' => Hash::make(Str::random(32)), // Mot de passe aléatoire (non utilisé avec SSO)
+                'role' => $role, // Utiliser le rôle normalisé
+                'is_verified' => $userData['is_verified'] ?? false,
+                'is_active' => $userData['is_active'] ?? true,
+                'last_login_at' => now(),
+            ];
+            
+            // Ajouter l'avatar si fourni par le SSO (toujours ajouter, même si vide)
+            if (isset($userData['avatar'])) {
+                $userDataCreate['avatar'] = $userData['avatar'] ?: null;
+            }
+            
+            // Stocker l'ID SSO dans les préférences
+            if (isset($userData['user_id']) && !empty($userData['user_id'])) {
+                $userDataCreate['preferences'] = ['sso_id' => $userData['user_id']];
+            }
+            
+            $user = User::create($userDataCreate);
 
-        Log::info('SSO user created', [
-            'user_id' => $user->id,
-            'email' => $user->email,
-            'role' => $user->role
-        ]);
+            Log::info('SSO user created', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'role' => $user->role
+            ]);
 
-        return $user;
+            return $user;
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Si l'utilisateur existe déjà (contrainte unique), le récupérer
+            if ($e->getCode() == 23000 || str_contains($e->getMessage(), 'Duplicate entry')) {
+                Log::warning('SSO user creation failed - user already exists, fetching existing user', [
+                    'email' => $email,
+                    'error' => $e->getMessage()
+                ]);
+                
+                $user = User::where('email', $email)->first();
+                if ($user) {
+                    // Mettre à jour les informations
+                    $updateData = [
+                        'name' => $userData['name'] ?? $user->name,
+                        'is_verified' => $userData['is_verified'] ?? $user->is_verified,
+                        'is_active' => $userData['is_active'] ?? true,
+                        'last_login_at' => now(),
+                        'role' => $role,
+                    ];
+                    
+                    if (isset($userData['avatar'])) {
+                        $updateData['avatar'] = $userData['avatar'] ?: null;
+                    }
+                    
+                    if (isset($userData['user_id']) && !empty($userData['user_id'])) {
+                        $preferences = $user->preferences ?? [];
+                        $preferences['sso_id'] = $userData['user_id'];
+                        $updateData['preferences'] = $preferences;
+                    }
+                    
+                    $user->update($updateData);
+                    return $user;
+                }
+            }
+            
+            // Autre erreur de base de données
+            Log::error('SSO user creation failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            Log::error('SSO user creation exception', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     /**
