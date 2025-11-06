@@ -65,11 +65,11 @@
                     </div>
                 @else
                     <div class="d-flex align-items-center gap-2">
-                        <a href="{{ route('login') }}" class="btn btn-sm btn-outline-primary" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        <a href="{{ route('login') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color);" title="Connexion">
+                            <i class="fas fa-sign-in-alt fa-lg"></i>
                         </a>
-                        <a href="{{ route('register') }}" class="btn btn-sm btn-primary" style="padding: 0.375rem 0.75rem; font-size: 0.875rem;">
-                            <i class="fas fa-user-plus me-1"></i>Register
+                        <a href="{{ route('register') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color);" title="Inscription">
+                            <i class="fas fa-user-plus fa-lg"></i>
                         </a>
                     </div>
                 @endauth
