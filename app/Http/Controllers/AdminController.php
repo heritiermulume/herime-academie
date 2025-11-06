@@ -15,9 +15,11 @@ use App\Models\Payment;
 use App\Models\Review;
 use App\Models\Setting;
 use App\Models\CourseDownload;
+use App\Models\InstructorApplication;
 use App\Traits\DatabaseCompatibility;
 use App\Services\FileUploadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -1469,5 +1471,87 @@ class AdminController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Gérer les candidatures formateur
+     */
+    public function instructorApplications(Request $request)
+    {
+        $query = InstructorApplication::with(['user', 'reviewer']);
+
+        // Filtre par statut
+        if ($request->filled('status')) {
+            $query->where('status', $request->get('status'));
+        }
+
+        // Recherche par nom ou email
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // Tri
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        if (in_array($sortBy, ['created_at', 'status', 'reviewed_at'])) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->latest();
+        }
+
+        $applications = $query->paginate(20)->withQueryString();
+
+        // Statistiques
+        $stats = [
+            'total' => InstructorApplication::count(),
+            'pending' => InstructorApplication::where('status', 'pending')->count(),
+            'under_review' => InstructorApplication::where('status', 'under_review')->count(),
+            'approved' => InstructorApplication::where('status', 'approved')->count(),
+            'rejected' => InstructorApplication::where('status', 'rejected')->count(),
+        ];
+
+        return view('admin.instructor-applications.index', compact('applications', 'stats'));
+    }
+
+    /**
+     * Afficher une candidature
+     */
+    public function showInstructorApplication(InstructorApplication $application)
+    {
+        $application->load(['user', 'reviewer']);
+        return view('admin.instructor-applications.show', compact('application'));
+    }
+
+    /**
+     * Mettre à jour le statut d'une candidature
+     */
+    public function updateInstructorApplicationStatus(Request $request, InstructorApplication $application)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,under_review,approved,rejected',
+            'admin_notes' => 'nullable|string|max:2000',
+        ]);
+
+        $application->update([
+            'status' => $request->status,
+            'admin_notes' => $request->admin_notes,
+            'reviewed_by' => Auth::id(),
+            'reviewed_at' => now(),
+        ]);
+
+        // Si approuvée, changer le rôle de l'utilisateur
+        if ($request->status === 'approved') {
+            $application->user->update([
+                'role' => 'instructor'
+            ]);
+        }
+
+        return redirect()->route('admin.instructor-applications.show', $application)
+            ->with('success', 'Statut de la candidature mis à jour avec succès.');
     }
 }

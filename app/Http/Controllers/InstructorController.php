@@ -14,13 +14,8 @@ class InstructorController extends Controller
     use DatabaseCompatibility, CourseStatistics;
     public function index()
     {
-        $instructors = User::instructors()
-            ->where('is_active', true)
-            ->withCount('courses')
-            ->orderBy('courses_count', 'desc')
-            ->paginate(12);
-
-        return view('instructors.index', compact('instructors'));
+        // Rediriger vers la page de candidature pour devenir formateur
+        return redirect()->route('instructor-application.index');
     }
 
     public function show(User $instructor)

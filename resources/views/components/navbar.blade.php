@@ -74,6 +74,11 @@
                     </ul>
                 </div>
                 <a class="nav-link" href="{{ route('instructors.index') }}">Formateurs</a>
+                @auth
+                    @if(auth()->user()->role !== 'instructor')
+                        <a class="nav-link" href="{{ route('instructor-application.index') }}">Devenir Formateur</a>
+                    @endif
+                @endauth
                 <a class="nav-link" href="{{ route('about') }}">À propos</a>
                 <a class="nav-link" href="{{ route('contact') }}">Contact</a>
             </div>
@@ -212,6 +217,15 @@
                     <a class="nav-link" href="{{ route('instructors.index') }}">
                         <i class="fas fa-chalkboard-teacher me-2"></i>Formateurs
                     </a>
+                    @auth
+                        @if(auth()->user()->role !== 'instructor')
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ route('instructor-application.index') }}">
+                                    <i class="fas fa-rocket me-2"></i>Devenir Formateur
+                                </a>
+                            </li>
+                        @endif
+                    @endauth
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('about') }}">

@@ -147,6 +147,11 @@ class User extends Authenticatable
         return $this->hasMany(CourseDownload::class);
     }
 
+    public function instructorApplication()
+    {
+        return $this->hasOne(InstructorApplication::class);
+    }
+
     // Scopes
     public function scopeInstructors($query)
     {

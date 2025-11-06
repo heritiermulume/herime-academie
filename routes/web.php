@@ -188,7 +188,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Enrollment route (accessible to all authenticated users)
     Route::post('/student/courses/{course:slug}/enroll', [StudentController::class, 'enroll'])->name('student.courses.enroll');
 
-    // Instructor routes
+    // Instructor Application routes (accessible to authenticated users)
+    Route::middleware('auth')->group(function () {
+        Route::get('/become-instructor', [App\Http\Controllers\InstructorApplicationController::class, 'index'])->name('instructor-application.index');
+        Route::get('/instructor-application/create', [App\Http\Controllers\InstructorApplicationController::class, 'create'])->name('instructor-application.create');
+        Route::post('/instructor-application/step1', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep1'])->name('instructor-application.store-step1');
+        Route::get('/instructor-application/{application}/step2', [App\Http\Controllers\InstructorApplicationController::class, 'step2'])->name('instructor-application.step2');
+        Route::post('/instructor-application/{application}/step2', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep2'])->name('instructor-application.store-step2');
+        Route::get('/instructor-application/{application}/step3', [App\Http\Controllers\InstructorApplicationController::class, 'step3'])->name('instructor-application.step3');
+        Route::post('/instructor-application/{application}/step3', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep3'])->name('instructor-application.store-step3');
+        Route::get('/instructor-application/{application}/status', [App\Http\Controllers\InstructorApplicationController::class, 'status'])->name('instructor-application.status');
+        Route::get('/instructor-application/{application}/cv', [App\Http\Controllers\InstructorApplicationController::class, 'downloadCv'])->name('instructor-application.download-cv');
+        Route::get('/instructor-application/{application}/motivation-letter', [App\Http\Controllers\InstructorApplicationController::class, 'downloadMotivationLetter'])->name('instructor-application.download-motivation-letter');
+    });
+
+    // Instructor routes (only for approved instructors)
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
         Route::get('/dashboard', [InstructorController::class, 'dashboard'])->name('dashboard');
         Route::resource('courses', CourseController::class)->except(['index', 'show']);
@@ -215,6 +229,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
         Route::post('/users/{user}/sync', [AdminController::class, 'syncUserFromSSO'])->name('users.sync');
         Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])->name('users.destroy');
+        
+        // Instructor Applications management
+        Route::get('/instructor-applications', [AdminController::class, 'instructorApplications'])->name('instructor-applications');
+        Route::get('/instructor-applications/{application}', [AdminController::class, 'showInstructorApplication'])->name('instructor-applications.show');
+        Route::put('/instructor-applications/{application}/status', [AdminController::class, 'updateInstructorApplicationStatus'])->name('instructor-applications.update-status');
         
         // Categories management
         Route::get('/categories', [AdminController::class, 'categories'])->name('categories');

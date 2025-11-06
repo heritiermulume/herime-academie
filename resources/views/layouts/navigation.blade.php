@@ -42,6 +42,9 @@
                                 <x-dropdown-link :href="route('admin.users.index')">
                                     <i class="fas fa-users me-2"></i>Gérer les utilisateurs
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.instructor-applications')">
+                                    <i class="fas fa-user-graduate me-2"></i>Candidatures Formateur
+                                </x-dropdown-link>
                                 <x-dropdown-link :href="route('admin.categories.index')">
                                     <i class="fas fa-tags me-2"></i>Gérer les catégories
                                 </x-dropdown-link>

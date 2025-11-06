@@ -103,9 +103,17 @@
                 <p class="lead mb-4">
                     Partagez vos connaissances et aidez d'autres personnes à réussir. Rejoignez notre communauté de formateurs experts.
                 </p>
-                <a href="#" class="btn btn-warning btn-lg">
-                    <i class="fas fa-plus me-2"></i>Devenir formateur
-                </a>
+                @auth
+                    @if(auth()->user()->role !== 'instructor')
+                        <a href="{{ route('instructor-application.index') }}" class="btn btn-warning btn-lg">
+                            <i class="fas fa-rocket me-2"></i>Devenir formateur
+                        </a>
+                    @endif
+                @else
+                    <a href="{{ route('login') }}" class="btn btn-warning btn-lg">
+                        <i class="fas fa-sign-in-alt me-2"></i>Se connecter pour postuler
+                    </a>
+                @endauth
             </div>
         </div>
     </div>
