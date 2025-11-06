@@ -166,10 +166,13 @@ class SSOService
 
             return $userData;
 
-        } catch (Exception $e) {
-            Log::error('SSO Local Token Validation Exception', [
+        } catch (\Throwable $e) {
+            // Capturer toutes les exceptions et erreurs (y compris les erreurs fatales)
+            Log::debug('SSO Token validation error', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
             return null;
         }
