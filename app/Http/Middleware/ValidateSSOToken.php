@@ -75,16 +75,6 @@ class ValidateSSOToken
             if (empty($ssoToken)) {
                 return $next($request);
             }
-        } catch (\Throwable $e) {
-            // En cas d'erreur dans le middleware, logger et laisser passer
-            Log::debug('SSO validation middleware error', [
-                'error' => $e->getMessage(),
-                'type' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-            return $next($request);
-        }
 
             // Valider le token SSO (avec gestion d'erreur)
             try {
@@ -105,6 +95,7 @@ class ValidateSSOToken
                 return $next($request);
             }
 
+            if (!$isValid) {
                 Log::debug('SSO token validation failed before important action', [
                     'user_id' => $user->id ?? null,
                     'method' => $request->method(),
@@ -197,4 +188,3 @@ class ValidateSSOToken
         return null;
     }
 }
-
