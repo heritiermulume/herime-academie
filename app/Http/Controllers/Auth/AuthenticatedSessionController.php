@@ -102,8 +102,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        // URL de redirection vers l'accueil
+        // URL de redirection vers l'accueil (URL absolue complète)
         $homeUrl = route('home');
+        $redirectUrl = url($homeUrl);
 
         // Option pour forcer la déconnexion locale uniquement (sans passer par SSO)
         // Si le SSO ne redirige pas correctement, cette option peut être activée
@@ -114,17 +115,23 @@ class AuthenticatedSessionController extends Controller
             try {
                 $ssoService = app(SSOService::class);
                 
-                // Utiliser l'URL complète de l'accueil pour la redirection
-                $redirectUrl = url($homeUrl);
+                // Construire l'URL de déconnexion SSO avec l'URL de redirection vers l'accueil
+                // Le SSO redirigera l'utilisateur vers cette URL après la déconnexion
                 $ssoLogoutUrl = $ssoService->getLogoutUrl($redirectUrl);
                 
-                // Rediriger vers le SSO qui redirigera ensuite vers l'accueil
+                Log::info('SSO Logout redirect', [
+                    'sso_logout_url' => $ssoLogoutUrl,
+                    'redirect_url' => $redirectUrl
+                ]);
+                
+                // Rediriger vers le SSO qui déconnectera l'utilisateur et le redirigera vers l'accueil
                 return redirect($ssoLogoutUrl);
             } catch (\Exception $e) {
-                // En cas d'erreur SSO, rediriger directement vers la page d'accueil
+                // En cas d'erreur SSO, logger l'erreur et rediriger directement vers l'accueil
                 Log::error('SSO Logout Error', [
                     'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
+                    'redirect_url' => $redirectUrl
                 ]);
             }
         }

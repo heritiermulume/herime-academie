@@ -169,8 +169,9 @@ class SSOService
 
     /**
      * Obtenir l'URL de déconnexion SSO
+     * Le SSO redirigera l'utilisateur vers $redirectUrl après la déconnexion
      *
-     * @param string|null $redirectUrl
+     * @param string|null $redirectUrl URL complète vers laquelle rediriger après déconnexion
      * @return string
      */
     public function getLogoutUrl(?string $redirectUrl = null): string
@@ -178,7 +179,14 @@ class SSOService
         $logoutUrl = $this->ssoBaseUrl . '/logout';
         
         if ($redirectUrl) {
+            // S'assurer que l'URL est absolue
+            if (!filter_var($redirectUrl, FILTER_VALIDATE_URL)) {
+                // Si ce n'est pas une URL absolue, la convertir
+                $redirectUrl = url($redirectUrl);
+            }
+            
             // Encoder l'URL de redirection pour éviter les problèmes avec les caractères spéciaux
+            // Le SSO doit rediriger vers cette URL après la déconnexion
             $logoutUrl .= '?redirect=' . urlencode($redirectUrl);
         }
         
