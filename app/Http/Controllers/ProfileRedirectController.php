@@ -154,7 +154,56 @@ class ProfileRedirectController extends Controller
             return redirect()->route('home');
         }
 
-        // Token valide, rediriger vers le profil SSO
+        // Token valide, vérifier que le profil correspond bien à l'utilisateur connecté
+        try {
+            $tokenUser = $this->ssoService->validateToken($ssoToken);
+
+            $tokenEmail = isset($tokenUser['email']) ? strtolower($tokenUser['email']) : null;
+            $localEmail = strtolower($user->email ?? '');
+
+            if (!$tokenUser || ($tokenEmail && $tokenEmail !== $localEmail)) {
+                Log::warning('SSO token belongs to another user before profile redirect', [
+                    'current_user_id' => $user->id,
+                    'current_email' => $user->email,
+                    'token_email' => $tokenEmail,
+                ]);
+
+                if (Auth::check()) {
+                    try {
+                        return AuthenticatedSessionController::performLocalLogoutWithNotification($request);
+                    } catch (\Throwable $e) {
+                        Log::debug('Error during logout after token mismatch in profile redirect', [
+                            'error' => $e->getMessage(),
+                        ]);
+
+                        try {
+                            Auth::logout();
+                            if ($request->hasSession()) {
+                                $request->session()->invalidate();
+                                $request->session()->regenerateToken();
+                                $request->session()->flash('session_expired', true);
+                                $request->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
+                            }
+                        } catch (\Throwable $logoutError) {
+                            Log::debug('Error during basic logout after token mismatch in profile redirect', [
+                                'error' => $logoutError->getMessage(),
+                            ]);
+                        }
+
+                        return redirect()->route('home');
+                    }
+                }
+
+                return redirect()->route('home');
+            }
+        } catch (\Throwable $e) {
+            Log::debug('SSO token user validation exception before profile redirect', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Token valide et correspond à l'utilisateur, rediriger vers le profil SSO
         return redirect($this->ssoService->getProfileUrl());
     }
 }
