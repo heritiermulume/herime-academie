@@ -24,20 +24,17 @@ class InstructorApplicationController extends Controller
      */
     public function index()
     {
-        // Si l'utilisateur est déjà formateur, rediriger vers son dashboard
-        if (Auth::check() && Auth::user()->role === 'instructor') {
-            return redirect()->route('instructor.dashboard');
-        }
+        $application = null;
 
-        // Vérifier si l'utilisateur a déjà une candidature
         if (Auth::check()) {
-            $application = InstructorApplication::where('user_id', Auth::id())->first();
-            if ($application) {
-                return redirect()->route('instructor-application.status', $application);
+            if (Auth::user()->role === 'instructor') {
+                return redirect()->route('instructor.dashboard');
             }
+
+            $application = InstructorApplication::where('user_id', Auth::id())->first();
         }
 
-        return view('instructor-application.index');
+        return view('instructor-application.index', compact('application'));
     }
 
     /**
@@ -207,6 +204,31 @@ class InstructorApplicationController extends Controller
         }
 
         return view('instructor-application.status', compact('application'));
+    }
+
+    public function abandon(Request $request, InstructorApplication $application)
+    {
+        if (!Auth::check() || $application->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        if (!$application->canBeEdited()) {
+            return redirect()->route('instructor-application.status', $application)
+                ->with('error', 'Cette candidature ne peut plus être abandonnée.');
+        }
+
+        if ($application->cv_path) {
+            Storage::delete($application->cv_path);
+        }
+
+        if ($application->motivation_letter_path) {
+            Storage::delete($application->motivation_letter_path);
+        }
+
+        $application->delete();
+
+        return redirect()->route('instructor-application.create')
+            ->with('success', 'Votre candidature a été réinitialisée. Vous pouvez recommencer depuis le début.');
     }
 
     /**

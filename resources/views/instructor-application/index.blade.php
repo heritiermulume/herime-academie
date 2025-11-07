@@ -26,6 +26,35 @@
     </div>
 </section>
 
+@auth
+    @if(isset($application) && $application)
+        <section class="py-4">
+            <div class="container">
+                <div class="col-lg-10 mx-auto">
+                    <div class="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center shadow-sm" role="alert">
+                        <div class="mb-3 mb-md-0">
+                            <h5 class="fw-bold mb-1"><i class="fas fa-hourglass-half me-2"></i>Candidature en cours</h5>
+                            <p class="mb-0">Vous avez déjà une candidature au profil formateur. Vous pouvez suivre son statut ou la recommencer depuis le début.</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{{ route('instructor-application.status', $application) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-eye me-1"></i>Voir le statut
+                            </a>
+                            <form method="POST" action="{{ route('instructor-application.abandon', $application) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir abandonner votre candidature et recommencer ?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-undo me-1"></i>Abandonner et recommencer
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    @endif
+@endauth
+
 <!-- Role Explanation Section -->
 <section class="page-content-section py-5">
     <div class="container">

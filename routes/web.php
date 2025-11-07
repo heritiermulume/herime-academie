@@ -116,7 +116,7 @@ Route::get('/courses/{course:slug}/lesson/{lesson}', [CourseController::class, '
 Route::get('/categories/{category:slug}', [CourseController::class, 'byCategory'])->name('courses.category');
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
 Route::get('/instructors/{instructor}', [InstructorController::class, 'show'])->name('instructors.show');
-Route::get('/become-instructor', [InstructorController::class, 'index'])->name('become-instructor'); // Alias pour compatibilité
+Route::get('/become-instructor', [InstructorApplicationController::class, 'index'])->name('instructor-application.index');
 
 // Blog routes
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
@@ -277,7 +277,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Instructor Application routes (accessible to authenticated users) - avec validation SSO pour les POST
     Route::middleware('auth')->group(function () {
-        Route::get('/become-instructor', [App\Http\Controllers\InstructorApplicationController::class, 'index'])->name('instructor-application.index');
         Route::get('/instructor-application/create', [App\Http\Controllers\InstructorApplicationController::class, 'create'])->name('instructor-application.create');
         Route::post('/instructor-application/step1', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep1'])
             ->middleware('sso.validate')
@@ -293,6 +292,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/instructor-application/{application}/status', [App\Http\Controllers\InstructorApplicationController::class, 'status'])->name('instructor-application.status');
         Route::get('/instructor-application/{application}/cv', [App\Http\Controllers\InstructorApplicationController::class, 'downloadCv'])->name('instructor-application.download-cv');
         Route::get('/instructor-application/{application}/motivation-letter', [App\Http\Controllers\InstructorApplicationController::class, 'downloadMotivationLetter'])->name('instructor-application.download-motivation-letter');
+    Route::delete('/instructor-application/{application}', [App\Http\Controllers\InstructorApplicationController::class, 'abandon'])
+        ->middleware('sso.validate')
+        ->name('instructor-application.abandon');
     });
 
     // Instructor routes (only for approved instructors) - avec validation SSO pour les POST/PUT/DELETE
