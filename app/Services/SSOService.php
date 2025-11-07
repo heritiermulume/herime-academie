@@ -268,15 +268,19 @@ class SSOService
         // Cela garantit que même si le JWT n'est pas expiré localement,
         // on vérifie si la session est toujours valide sur compte.herime.com
         try {
+            $validateUrl = $this->ssoBaseUrl . '/api/validate-token';
+
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                     'Authorization' => 'Bearer ' . $this->ssoSecret,
                 ])
-                ->post($this->ssoBaseUrl . '/api/validate-token', [
+                ->post($validateUrl, [
                     'token' => $token,
                 ]);
+
+            $data = null;
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -304,6 +308,50 @@ class SSOService
                 'status' => $response->status(),
                 'response' => $response->body()
             ]);
+
+            // Depuis la mise à jour de compte.herime.com, certains appels utilisent encore GET
+            // L'endpoint retourne désormais { "valid": false } (HTTP 200) au lieu d'un 405,
+            // mais par sécurité, on tente une requête GET si la POST échoue ou si la réponse est vide.
+            if (in_array($response->status(), [405, 400]) || ($response->successful() && !isset($data['valid']))) {
+                try {
+                    $getResponse = Http::timeout($this->timeout)
+                        ->withHeaders([
+                            'Accept' => 'application/json',
+                            'Authorization' => 'Bearer ' . $this->ssoSecret,
+                        ])
+                        ->get($validateUrl, [
+                            'token' => $token,
+                        ]);
+
+                    if ($getResponse->successful()) {
+                        $getData = $getResponse->json();
+
+                        if (isset($getData['valid']) && $getData['valid'] === true) {
+                            Log::debug('SSO checkToken: token validated via GET /api/validate-token fallback', [
+                                'token_preview' => substr($token, 0, 20) . '...',
+                            ]);
+                            return true;
+                        }
+
+                        if (isset($getData['valid']) && $getData['valid'] === false) {
+                            Log::debug('SSO checkToken: token invalidated via GET /api/validate-token fallback', [
+                                'token_preview' => substr($token, 0, 20) . '...',
+                                'response' => $getData,
+                            ]);
+                            return false;
+                        }
+                    }
+
+                    Log::debug('SSO checkToken: GET fallback returned unexpected response', [
+                        'status' => $getResponse->status(),
+                        'response' => $getResponse->body(),
+                    ]);
+                } catch (\Exception $getException) {
+                    Log::debug('SSO checkToken: GET fallback failed', [
+                        'message' => $getException->getMessage(),
+                    ]);
+                }
+            }
 
             // Si l'API retourne 404 ou erreur, essayer l'endpoint alternatif /api/sso/check-token
             if ($response->status() === 404 || !$response->successful()) {

@@ -110,6 +110,27 @@ class OrderController extends Controller
 
 ## 📝 Exemples par Type d'Action
 
+## 🔌 Tests API & erreurs 401 sur /api/logout
+
+### Tests manuels via Postman ou un outil externe
+
+- Ajouter systématiquement l’en-tête `Authorization: Bearer <token>` pour toutes les routes protégées (dont `/api/logout`).
+- Sans cet en-tête, le backend répond `401 Unauthorized` (comportement attendu).
+
+### À propos des 401 en cascade sur `/api/logout`
+
+- Côté frontend, Axios relance la requête et déclenche la déconnexion forcée après la première réponse `200`.
+- Les requêtes suivantes utilisent un token déjà révoqué : elles renvoient logiquement `401` et sont ignorées par l’intercepteur (`resources/js/bootstrap.js`).
+- Ces 401 supplémentaires peuvent donc être ignorées dans les logs / la console : ils indiquent simplement que la session a bien été terminée.
+
+### Vérification côté `compte.herime.com`
+
+- L’endpoint `https://compte.herime.com/api/validate-token` accepte désormais `POST` **et** `GET`.
+- En `POST`, envoyer `{"token": "<token>"}` dans le corps + l’en-tête `Authorization: Bearer {SSO_SECRET}`.
+- Si l’API répond `200` avec `{"valid": true, "user": { ... }}`, le token est toujours valide.
+- Si elle répond `{"valid": false}`, le token est expiré ou révoqué.
+- Pour les clients encore en `GET`, la réponse sera également `{"valid": false}` au lieu d’un `405` (évite les boucles de redirection).
+
 ### Actions Critiques (Toujours valider)
 
 #### 1. Création de Données (POST)
