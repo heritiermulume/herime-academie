@@ -471,7 +471,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', function () {
         return view('admin.profile');
     })->name('profile');
-    Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])
+    Route::match(['put', 'patch'], '/profile', [App\Http\Controllers\ProfileController::class, 'update'])
         ->middleware('sso.validate')
         ->name('profile.update');
     Route::post('/profile/avatar', [App\Http\Controllers\ProfileController::class, 'updateAvatar'])
@@ -480,6 +480,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/profile/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])
         ->middleware('sso.validate')
         ->name('profile.password');
+    Route::delete('/profile', [App\Http\Controllers\ProfileController::class, 'destroy'])
+        ->middleware('sso.validate')
+        ->name('profile.destroy');
 
     // Affiliate routes
     Route::prefix('affiliate')->name('affiliate.')->middleware('role:affiliate')->group(function () {

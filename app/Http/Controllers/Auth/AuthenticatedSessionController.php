@@ -18,11 +18,16 @@ class AuthenticatedSessionController extends Controller
      * Display the login view.
      * Redirige vers le SSO si activé, sinon affiche la vue de connexion locale
      */
-    public function create(Request $request): RedirectResponse
+    public function create(Request $request): RedirectResponse|View
     {
         // Si l'utilisateur est déjà connecté localement, rediriger vers le dashboard
         if (Auth::check()) {
             return redirect()->intended(route('dashboard'));
+        }
+
+        // En environnement de test ou si SSO désactivé, afficher la vue locale
+        if (!config('services.sso.enabled', true)) {
+            return view('auth.login');
         }
 
         // Toujours rediriger vers SSO, jamais utiliser la vue locale
@@ -63,15 +68,8 @@ class AuthenticatedSessionController extends Controller
             return redirect($ssoLoginUrl);
         }
 
-        // Si SSO est désactivé, rediriger quand même vers compte.herime.com
-        // (ne devrait jamais arriver si SSO est correctement configuré)
-        $ssoService = app(SSOService::class);
-        $callbackUrl = route('sso.callback', [
-            'redirect' => route('dashboard')
-        ]);
-        $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
-        
-        return redirect($ssoLoginUrl);
+        // Si le SSO est désactivé, afficher la vue locale
+        return view('auth.login');
     }
 
     /**

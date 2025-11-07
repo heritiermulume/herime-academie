@@ -12,9 +12,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Modifier l'enum pour ajouter 'super_user'
-        // MySQL ne permet pas de modifier directement un ENUM, donc on doit utiliser ALTER TABLE
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('student', 'instructor', 'admin', 'affiliate', 'super_user') DEFAULT 'student'");
+        $driver = Schema::getConnection()->getDriverName();
+
+        if ($driver === 'mysql') {
+            // Modifier l'enum pour ajouter 'super_user'
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('student', 'instructor', 'admin', 'affiliate', 'super_user') DEFAULT 'student'");
+        } else {
+            // Pour SQLite / autres pilotes utilisés lors des tests, aucune modification nécessaire :
+            // la colonne est généralement stockée en VARCHAR. On s'assure néanmoins que la colonne existe.
+            Schema::table('users', function (Blueprint $table) {
+                if (!Schema::hasColumn('users', 'role')) {
+                    $table->string('role')->default('student');
+                }
+            });
+        }
     }
 
     /**
@@ -22,9 +33,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Remettre l'enum sans super_user
-        // Note: Si des utilisateurs ont le rôle super_user, il faudra les convertir en admin d'abord
-        DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('student', 'instructor', 'admin', 'affiliate') DEFAULT 'student'");
+        $driver = Schema::getConnection()->getDriverName();
+
+        if ($driver === 'mysql') {
+            // Remettre l'enum sans super_user
+            DB::statement("ALTER TABLE users MODIFY COLUMN role ENUM('student', 'instructor', 'admin', 'affiliate') DEFAULT 'student'");
+        } else {
+            // Aucun retour spécifique requis pour SQLite / autres pilotes de tests
+        }
     }
 };
 
