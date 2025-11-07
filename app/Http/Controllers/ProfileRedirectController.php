@@ -170,7 +170,8 @@ class ProfileRedirectController extends Controller
 
                 if (Auth::check()) {
                     try {
-                        return AuthenticatedSessionController::performLocalLogoutWithNotification($request);
+                        // Déconnexion locale
+                        AuthenticatedSessionController::performLocalLogoutWithNotification($request);
                     } catch (\Throwable $e) {
                         Log::debug('Error during logout after token mismatch in profile redirect', [
                             'error' => $e->getMessage(),
@@ -190,11 +191,24 @@ class ProfileRedirectController extends Controller
                             ]);
                         }
 
-                        return redirect()->route('home');
                     }
                 }
 
-                return redirect()->route('home');
+                try {
+                    $callbackUrl = route('profile.redirect');
+                    $loginUrl = $this->ssoService->getLoginUrl($callbackUrl, true);
+                    $logoutUrl = $this->ssoService->getLogoutUrl($loginUrl);
+
+                    return redirect($logoutUrl)
+                        ->with('warning', 'Nous vous redirigeons vers le SSO pour sélectionner le bon compte.');
+                } catch (\Throwable $e) {
+                    Log::debug('Error creating SSO logout/login URLs after token mismatch', [
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    return redirect()->route('home')
+                        ->with('warning', 'Votre session a expiré. Veuillez vous reconnecter.');
+                }
             }
         } catch (\Throwable $e) {
             Log::debug('SSO token user validation exception before profile redirect', [
