@@ -217,8 +217,27 @@ class ProfileRedirectController extends Controller
             ]);
         }
 
-        // Token valide et correspond à l'utilisateur, rediriger vers le profil SSO
-        return redirect($this->ssoService->getProfileUrl());
+        // Token valide et correspond à l'utilisateur : forcer un logout SSO pour sélectionner le bon compte
+        try {
+            $callbackUrl = route('sso.callback', [
+                'redirect' => route('profile.redirect'),
+            ]);
+
+            // Forcer la génération d'un nouveau token et donc la sélection du compte
+            $loginUrl = $this->ssoService->getLoginUrl($callbackUrl, true);
+            $logoutUrl = $this->ssoService->getLogoutUrl($loginUrl);
+
+            return redirect($logoutUrl)
+                ->with('warning', 'Nous vous redirigeons vers le SSO pour confirmer le bon compte.');
+        } catch (\Throwable $e) {
+            Log::debug('SSO logout/login sequence failed before profile redirect', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            // En cas d’erreur, se replier sur la redirection standard
+            return redirect($this->ssoService->getProfileUrl());
+        }
     }
 }
 
