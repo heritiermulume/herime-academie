@@ -10,22 +10,29 @@
 ])
 
 <div class="admin-search-panel">
-    <form method="{{ $method }}" action="{{ $action }}" id="{{ $formId }}">
-        <div class="admin-search-panel__bar">
-            <div class="admin-search-panel__input">
-                <i class="fas fa-search"></i>
-                <input
-                    type="text"
-                    name="{{ $searchName }}"
-                    value="{{ $searchValue }}"
-                    class="form-control"
-                    placeholder="{{ $placeholder }}"
-                    autocomplete="off"
-                >
+    <form method="{{ $method }}" action="{{ $action }}" id="{{ $formId }}" class="admin-search-panel__form">
+        <div class="admin-search-panel__primary">
+            <div class="admin-search-panel__search">
+                <label class="admin-search-panel__label" for="{{ $formId }}_search">Recherche</label>
+                <div class="admin-search-panel__search-box">
+                    <span class="admin-search-panel__icon" aria-hidden="true">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input
+                        type="text"
+                        name="{{ $searchName }}"
+                        value="{{ $searchValue }}"
+                        id="{{ $formId }}_search"
+                        class="admin-search-panel__input"
+                        placeholder="{{ $placeholder }}"
+                        autocomplete="off"
+                    >
+                </div>
             </div>
             <div class="admin-search-panel__actions">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-search me-2"></i>Rechercher
+                <button type="submit" class="btn btn-primary admin-search-panel__submit">
+                    <i class="fas fa-search"></i>
+                    <span class="admin-search-panel__submit-label">Rechercher</span>
                 </button>
                 @if($hasFilters && $filtersId)
                     <button
@@ -35,11 +42,18 @@
                         data-bs-target="#{{ $filtersId }}"
                         aria-controls="{{ $filtersId }}"
                     >
-                        <i class="fas fa-sliders-h me-2"></i>Filtres
+                        <i class="fas fa-sliders-h"></i>
+                        <span class="admin-search-panel__filters-label">Filtres</span>
                     </button>
                 @endif
             </div>
         </div>
+
+        @if(trim($slot))
+            <div class="admin-search-panel__meta">
+                {{ $slot }}
+            </div>
+        @endif
 
         @if($hasFilters && $filtersId)
             <div class="offcanvas offcanvas-end admin-filter-offcanvas" tabindex="-1" id="{{ $filtersId }}">

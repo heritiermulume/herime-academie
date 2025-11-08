@@ -3201,6 +3201,64 @@
     
     <!-- Custom JS -->
     <script>
+        // Synchronise les hauteurs des navigations (top et bottom) via des variables CSS
+        (function() {
+            const root = document.documentElement;
+            const TOP_VAR = '--site-navbar-height';
+            const BOTTOM_VAR = '--site-mobile-bottom-nav-height';
+            let rafId = null;
+
+            function readHeight(element) {
+                if (!element) {
+                    return 0;
+                }
+                const styles = window.getComputedStyle(element);
+                if (styles.display === 'none' || styles.visibility === 'hidden') {
+                    return 0;
+                }
+                return Math.ceil(element.getBoundingClientRect().height);
+            }
+
+            function applyNavMetrics() {
+                rafId = null;
+                const topNav = document.querySelector('.navbar.fixed-top');
+                const mobileBottomNav = document.querySelector('.mobile-bottom-nav');
+
+                const topNavHeight = readHeight(topNav) || 64;
+                const bottomNavHeight = readHeight(mobileBottomNav);
+
+                root.style.setProperty(TOP_VAR, `${topNavHeight}px`);
+                root.style.setProperty(BOTTOM_VAR, `${bottomNavHeight}px`);
+            }
+
+            function scheduleMeasure() {
+                if (rafId !== null) {
+                    return;
+                }
+                rafId = window.requestAnimationFrame(applyNavMetrics);
+            }
+
+            function observeElements() {
+                if (!('ResizeObserver' in window)) {
+                    return;
+                }
+                const resizeObserver = new ResizeObserver(scheduleMeasure);
+                document.querySelectorAll('.navbar.fixed-top, .mobile-bottom-nav').forEach(el => resizeObserver.observe(el));
+            }
+
+            ['load', 'resize', 'orientationchange'].forEach(eventName => {
+                window.addEventListener(eventName, scheduleMeasure, { passive: true });
+            });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                scheduleMeasure();
+                observeElements();
+            });
+
+            // Dernier filet de sécurité si les éléments apparaissent tardivement
+            setTimeout(scheduleMeasure, 500);
+        })();
+
         // Intercepteur global pour fetch afin de gérer les erreurs 401 silencieusement
         // Pour /me et /logout, les erreurs 401 sont normales si l'utilisateur n'est pas authentifié
         (function() {
