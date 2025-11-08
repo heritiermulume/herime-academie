@@ -397,22 +397,24 @@
         .quick-actions-grid {
             grid-template-columns: 1fr;
         }
+        .admin-search-panel__bar {
+            flex-wrap: nowrap;
+            align-items: center;
+        }
         .admin-search-panel__input {
             padding: 0.55rem 0.75rem;
-            width: 100%;
-        }
-        .admin-search-panel__bar {
-            flex-direction: column;
-            align-items: stretch;
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 44px;
         }
         .admin-search-panel__actions {
-            width: 100%;
-            margin-top: 0.5rem;
-            justify-content: stretch;
+            width: auto;
+            margin-top: 0;
             gap: 0.5rem;
+            flex-wrap: nowrap;
         }
         .admin-search-panel__actions .btn {
-            flex: 1;
+            flex: none;
             height: 44px;
         }
     }
