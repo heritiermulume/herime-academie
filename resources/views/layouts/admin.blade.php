@@ -409,6 +409,9 @@
         height: 0;
     }
     @media (max-width: 991px) {
+        .admin-shell__content {
+            padding: 0 1rem 0.5rem;
+        }
         .admin-shell__container {
             flex-direction: column;
         }
@@ -441,6 +444,9 @@
     @media (max-width: 767px) {
         .admin-shell {
             padding-bottom: 5rem;
+        }
+        .admin-shell__content {
+            padding: 0 1rem 1rem;
         }
         .admin-search-panel {
             padding: 0.95rem 1rem;
@@ -513,6 +519,9 @@
         .admin-search-panel__submit-label,
         .admin-search-panel__filters-label {
             display: none;
+        }
+        .admin-shell__content {
+            padding: 0 0.85rem 1rem;
         }
     }
 
