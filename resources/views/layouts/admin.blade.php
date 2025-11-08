@@ -368,9 +368,13 @@
             width: auto;
             margin-top: 0;
             flex-wrap: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         .admin-search-panel__actions .btn {
             flex: none;
+            height: 42px;
         }
         .admin-search-panel__input {
             width: auto;
@@ -395,6 +399,21 @@
         }
         .admin-search-panel__input {
             padding: 0.55rem 0.75rem;
+            width: 100%;
+        }
+        .admin-search-panel__bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .admin-search-panel__actions {
+            width: 100%;
+            margin-top: 0.5rem;
+            justify-content: stretch;
+            gap: 0.5rem;
+        }
+        .admin-search-panel__actions .btn {
+            flex: 1;
+            height: 44px;
         }
     }
 
