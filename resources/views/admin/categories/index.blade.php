@@ -1,54 +1,45 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
-@section('title', 'Gestion des catégories - Admin')
+@section('title', 'Gestion des catégories')
+@section('admin-title', 'Gestion des catégories')
+@section('admin-subtitle', 'Structurez vos contenus par thématique et contrôlez leur visibilité')
+@section('admin-actions')
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCategoryModal" onclick="resetCategoryForm()">
+        <i class="fas fa-plus-circle me-2"></i>Nouvelle catégorie
+    </button>
+@endsection
 
-@section('content')
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </a>
-                            <h4 class="mb-0">
-                                <i class="fas fa-tags me-2"></i>Gestion des catégories
-                            </h4>
-                        </div>
-                        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#createCategoryModal" onclick="resetCategoryForm()">
-                            <i class="fas fa-plus me-1"></i>Nouvelle catégorie
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
+@section('admin-content')
+    <section class="admin-panel">
+        <div class="admin-panel__body">
                     <!-- Filtres -->
-                    <form method="GET" id="filterForm">
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <input type="text" class="form-control" placeholder="Rechercher une catégorie..." 
-                                       id="searchInput" name="search" value="{{ request('search') }}">
+                    <x-admin.search-panel
+                        action="{{ route('admin.categories') }}"
+                        formId="categoriesFilterForm"
+                        filtersId="categoriesFilters"
+                        :hasFilters="true"
+                        :searchValue="request('search')"
+                        placeholder="Rechercher une catégorie..."
+                    >
+                        <x-slot:filters>
+                            <div class="admin-form-grid admin-form-grid--two mb-3">
+                                <div>
+                                    <label class="form-label fw-semibold">Statut</label>
+                                    <select class="form-select" name="status">
+                                        <option value="">Tous les statuts</option>
+                                        <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Actives</option>
+                                        <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactives</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="col-md-3">
-                                <select class="form-select" id="statusFilter" name="status">
-                                    <option value="">Tous les statuts</option>
-                                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Actives</option>
-                                    <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactives</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-outline-primary w-100">
-                                    <i class="fas fa-filter me-1"></i>Filtrer
-                                </button>
-                            </div>
-                            <div class="col-md-2">
-                                <a href="{{ route('admin.categories') }}" class="btn btn-outline-secondary w-100">
-                                    <i class="fas fa-times"></i>Réinitialiser
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <span class="text-muted small">Personnalisez l’affichage selon vos besoins.</span>
+                                <a href="{{ route('admin.categories') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-undo me-2"></i>Réinitialiser
                                 </a>
                             </div>
-                        </div>
-                    </form>
+                        </x-slot:filters>
+                    </x-admin.search-panel>
 
                     <!-- Filtres actifs -->
                     @if(request('search') || request('status'))
@@ -191,15 +182,12 @@
 
                     <!-- Pagination -->
                     @if($categories->hasPages())
-                    <div class="d-flex justify-content-center mt-4">
+                    <div class="admin-pagination">
                         {{ $categories->links() }}
                     </div>
                     @endif
-                </div>
-            </div>
         </div>
-    </div>
-</div>
+    </section>
 
 <!-- Modal de création/édition de catégorie -->
 <div class="modal fade" id="createCategoryModal" tabindex="-1">
@@ -312,19 +300,30 @@ document.getElementById('name').addEventListener('input', function() {
     document.getElementById('slug').value = slug;
 });
 
-// Recherche en temps réel avec debounce
-let searchTimeout;
-document.getElementById('searchInput').addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        document.getElementById('filterForm').submit();
-    }, 500); // Attendre 500ms après la dernière frappe
-});
+const categoriesFilterForm = document.getElementById('categoriesFilterForm');
+const categoriesFiltersOffcanvas = document.getElementById('categoriesFilters');
 
-// Soumission automatique du formulaire lors du changement de statut
-document.getElementById('statusFilter').addEventListener('change', function() {
-    document.getElementById('filterForm').submit();
-});
+if (categoriesFilterForm) {
+    categoriesFilterForm.addEventListener('submit', () => {
+        if (categoriesFiltersOffcanvas) {
+            const instance = bootstrap.Offcanvas.getInstance(categoriesFiltersOffcanvas);
+            if (instance) {
+                instance.hide();
+            }
+        }
+    });
+}
+
+const categoriesSearchInput = document.querySelector('#categoriesFilterForm input[name=\"search\"]');
+if (categoriesSearchInput) {
+    let searchTimeout;
+    categoriesSearchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            categoriesFilterForm?.submit();
+        }, 500);
+    });
+}
 
 function resetCategoryForm() {
     // Réinitialiser le formulaire
@@ -397,118 +396,5 @@ document.getElementById('confirmDelete').addEventListener('click', function() {
     }
 });
 
-// Les fonctions applyFilters et resetFilters ne sont plus nécessaires
-// car nous utilisons maintenant un formulaire avec soumission automatique
 </script>
-@endpush
-
-@push('styles')
-<style>
-/* Design moderne pour la page de gestion des catégories */
-.card {
-    border-radius: 15px;
-    overflow: hidden;
-}
-
-.card-header {
-    background: linear-gradient(135deg, #003366 0%, #004080 100%);
-    border: none;
-    padding: 1.5rem;
-}
-
-.category-card {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease;
-    border-radius: 10px;
-}
-
-.category-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important;
-}
-
-.category-card .card-header {
-    padding: 1rem;
-    border-radius: 10px 10px 0 0 !important;
-}
-
-.table th {
-    border-top: none;
-    font-weight: 600;
-    color: #003366;
-}
-
-.form-control-color {
-    width: 100%;
-    height: 38px;
-}
-
-.badge {
-    font-size: 0.85rem;
-    padding: 0.4em 0.8em;
-    font-weight: 500;
-}
-
-.img-fluid {
-    transition: transform 0.2s ease;
-}
-
-.category-card:hover .img-fluid {
-    transform: scale(1.05);
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-    }
-    
-    .card-header {
-        padding: 0.75rem;
-    }
-    
-    .card-header h4 {
-        font-size: 1rem;
-    }
-    
-    .card-header .btn-outline-light.btn-sm {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.85rem;
-    }
-    
-    .card-header .btn-light {
-        font-size: 0.85rem;
-        padding: 0.4rem 0.8rem;
-    }
-    
-    .card-body {
-        padding: 0.75rem;
-    }
-    
-    .row.mb-4 .col-md-3 {
-        margin-bottom: 0.5rem;
-    }
-    
-    .category-card {
-        margin-bottom: 0.75rem !important;
-    }
-}
-
-@media (max-width: 576px) {
-    .card-header .d-flex {
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: stretch !important;
-    }
-    
-    .card-header .btn-light:not(.btn-sm) {
-        width: 100%;
-    }
-}
-</style>
 @endpush

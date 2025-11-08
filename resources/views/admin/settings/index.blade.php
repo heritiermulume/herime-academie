@@ -1,8 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Paramètres - Herime Academie')
 
-@section('content')
+@section('admin-content')
 <div class="container-fluid py-4">
     <!-- Header -->
     <div class="card border-0 shadow mb-4" style="border-radius: 15px; overflow: hidden;">

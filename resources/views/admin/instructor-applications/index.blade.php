@@ -1,8 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Candidatures Formateur - Admin')
 
-@section('content')
+@section('admin-content')
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">
@@ -57,36 +57,35 @@
                     </div>
 
                     <!-- Filtres -->
-                    <form method="GET" action="{{ route('admin.instructor-applications') }}" class="mb-4">
-                        <div class="row g-3">
-                            <div class="col-12 col-md-4">
-                                <input type="text" 
-                                       class="form-control" 
-                                       name="search" 
-                                       placeholder="Rechercher par nom ou email..." 
-                                       value="{{ request('search') }}">
+                    <x-admin.search-panel
+                        :action="route('admin.instructor-applications')"
+                        formId="applicationsFilterForm"
+                        filtersId="applicationsFilters"
+                        :hasFilters="true"
+                        :searchValue="request('search')"
+                        placeholder="Rechercher par nom ou email..."
+                    >
+                        <x-slot:filters>
+                            <div class="admin-form-grid admin-form-grid--two mb-3">
+                                <div>
+                                    <label class="form-label fw-semibold">Statut</label>
+                                    <select class="form-select" name="status">
+                                        <option value="">Tous les statuts</option>
+                                        <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>En attente</option>
+                                        <option value="under_review" {{ request('status') === 'under_review' ? 'selected' : '' }}>En examen</option>
+                                        <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approuvée</option>
+                                        <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejetée</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="col-12 col-md-3">
-                                <select class="form-select" name="status">
-                                    <option value="">Tous les statuts</option>
-                                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>En attente</option>
-                                    <option value="under_review" {{ request('status') === 'under_review' ? 'selected' : '' }}>En examen</option>
-                                    <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Approuvée</option>
-                                    <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejetée</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search me-2"></i><span class="d-none d-md-inline">Filtrer</span>
-                                </button>
-                            </div>
-                            <div class="col-6 col-md-2">
-                                <a href="{{ route('admin.instructor-applications') }}" class="btn btn-outline-secondary w-100">
-                                    <i class="fas fa-times me-2"></i><span class="d-none d-md-inline">Réinitialiser</span>
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <span class="text-muted small">Filtrez rapidement les candidatures selon leur statut.</span>
+                                <a href="{{ route('admin.instructor-applications') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-undo me-2"></i>Réinitialiser
                                 </a>
                             </div>
-                        </div>
-                    </form>
+                        </x-slot:filters>
+                    </x-admin.search-panel>
 
                     <!-- Table -->
                     <div class="table-responsive">
@@ -160,4 +159,33 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+const applicationsFilterForm = document.getElementById('applicationsFilterForm');
+const applicationsFiltersOffcanvas = document.getElementById('applicationsFilters');
+
+if (applicationsFilterForm) {
+    applicationsFilterForm.addEventListener('submit', () => {
+        if (applicationsFiltersOffcanvas) {
+            const instance = bootstrap.Offcanvas.getInstance(applicationsFiltersOffcanvas);
+            if (instance) {
+                instance.hide();
+            }
+        }
+    });
+}
+
+const applicationsSearchInput = document.querySelector('#applicationsFilterForm input[name="search"]');
+if (applicationsSearchInput) {
+    let searchTimeout;
+    applicationsSearchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            applicationsFilterForm?.submit();
+        }, 500);
+    });
+}
+</script>
+@endpush
 

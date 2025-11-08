@@ -1,413 +1,226 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
-@section('title', 'Gestion des Commandes - Admin')
+@section('title', 'Gestion des commandes')
+@section('admin-title', 'Gestion des commandes')
+@section('admin-subtitle', 'Suivez les transactions réalisées sur Herime Académie et leur état de traitement')
+@section('admin-actions')
+    <button class="btn btn-primary" onclick="exportOrders()">
+        <i class="fas fa-download me-2"></i>Exporter
+    </button>
+@endsection
 
-@section('content')
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </a>
-                            <h4 class="mb-0">
-                                <i class="fas fa-shopping-bag me-2"></i>Gestion des Commandes
-                            </h4>
+@section('admin-content')
+    <section class="admin-panel">
+        <div class="admin-panel__body">
+            <div class="admin-stats-grid mb-4">
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Commandes</p>
+                    <p class="admin-stat-card__value">{{ $stats['total'] ?? 0 }}</p>
+                    <p class="admin-stat-card__muted">Référencées dans la base</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">En attente</p>
+                    <p class="admin-stat-card__value">{{ $stats['pending'] ?? 0 }}</p>
+                    <p class="admin-stat-card__muted">À confirmer</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Confirmées</p>
+                    <p class="admin-stat-card__value">{{ $stats['confirmed'] ?? 0 }}</p>
+                    <p class="admin-stat-card__muted">En cours de paiement</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Payées</p>
+                    <p class="admin-stat-card__value">{{ $stats['paid'] ?? 0 }}</p>
+                    <p class="admin-stat-card__muted">Revenus sécurisés</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Terminées</p>
+                    <p class="admin-stat-card__value">{{ $stats['completed'] ?? 0 }}</p>
+                    <p class="admin-stat-card__muted">Cours délivrés</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Annulées</p>
+                    <p class="admin-stat-card__value">{{ $stats['cancelled'] ?? 0 }}</p>
+                    <p class="admin-stat-card__muted">À analyser</p>
+                </div>
+            </div>
+
+            <div class="admin-panel admin-panel__revenues mb-4">
+                <div class="admin-panel__body admin-panel__body--padded text-center" style="background: linear-gradient(135deg, #22c55e 0%, #0ea5e9 100%); color:#fff;">
+                    <h4 class="mb-0">
+                        <i class="fas fa-coins me-2"></i>Revenus totaux : {{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}
+                    </h4>
+                </div>
+            </div>
+
+            <x-admin.search-panel
+                :action="route('admin.orders.index')"
+                formId="ordersFilterForm"
+                filtersId="ordersFilters"
+                :hasFilters="true"
+                :searchValue="request('search')"
+                placeholder="Numéro de commande, nom, email..."
+            >
+                <x-slot:filters>
+                    <div class="admin-form-grid admin-form-grid--two mb-3">
+                        <div>
+                            <label class="form-label fw-semibold">Statut</label>
+                            <select class="form-select" name="status">
+                                <option value="">Tous les statuts</option>
+                                <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>En attente</option>
+                                <option value="confirmed" {{ request('status') == 'confirmed' ? 'selected' : '' }}>Confirmée</option>
+                                <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Payée</option>
+                                <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Terminée</option>
+                                <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Annulée</option>
+                            </select>
                         </div>
                         <div>
-                            <button class="btn btn-light" onclick="exportOrders()">
-                                <i class="fas fa-download me-1"></i>Exporter
-                            </button>
+                            <label class="form-label fw-semibold">Mode de paiement</label>
+                            <select class="form-select" name="payment_method">
+                                <option value="">Tous les modes</option>
+                                <option value="card" {{ request('payment_method') == 'card' ? 'selected' : '' }}>Carte bancaire</option>
+                                <option value="paypal" {{ request('payment_method') == 'paypal' ? 'selected' : '' }}>PayPal</option>
+                                <option value="mobile" {{ request('payment_method') == 'mobile' ? 'selected' : '' }}>Mobile Money</option>
+                                <option value="bank" {{ request('payment_method') == 'bank' ? 'selected' : '' }}>Virement bancaire</option>
+                                <option value="whatsapp" {{ request('payment_method') == 'whatsapp' ? 'selected' : '' }}>WhatsApp</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label fw-semibold">Date de début</label>
+                            <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+                        </div>
+                        <div>
+                            <label class="form-label fw-semibold">Date de fin</label>
+                            <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
                         </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <!-- Statistiques -->
-                    <div class="row mb-4">
-                        <div class="col-md-2">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['total'] ?? 0 }}</h5>
-                                    <p class="card-text small">Total</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['pending'] ?? 0 }}</h5>
-                                    <p class="card-text small">En attente</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-info text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['confirmed'] ?? 0 }}</h5>
-                                    <p class="card-text small">Confirmées</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-success text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['paid'] ?? 0 }}</h5>
-                                    <p class="card-text small">Payées</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-secondary text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['completed'] ?? 0 }}</h5>
-                                    <p class="card-text small">Terminées</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-danger text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['cancelled'] ?? 0 }}</h5>
-                                    <p class="card-text small">Annulées</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Revenus -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
-                                <div class="card-body text-center">
-                                    <h4 class="mb-0 text-white">
-                                        <i class="fas fa-dollar-sign me-2"></i>
-                                        Revenus totaux: {{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}
-                                    </h4>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filtres et recherche -->
-                    <form method="GET" action="{{ route('admin.orders.index') }}" id="filterForm">
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <div class="input-group">
-                                    <span class="input-group-text">
-                                        <i class="fas fa-search"></i>
-                                    </span>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="search" 
-                                           value="{{ request('search') }}"
-                                           placeholder="Rechercher par numéro, client...">
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <select class="form-select" name="status">
-                                    <option value="">Tous les statuts</option>
-                                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>En attente</option>
-                                    <option value="confirmed" {{ request('status') == 'confirmed' ? 'selected' : '' }}>Confirmée</option>
-                                    <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Payée</option>
-                                    <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Terminée</option>
-                                    <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Annulée</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <select class="form-select" name="payment_method">
-                                    <option value="">Tous les modes</option>
-                                    <option value="card" {{ request('payment_method') == 'card' ? 'selected' : '' }}>Carte bancaire</option>
-                                    <option value="paypal" {{ request('payment_method') == 'paypal' ? 'selected' : '' }}>PayPal</option>
-                                    <option value="mobile" {{ request('payment_method') == 'mobile' ? 'selected' : '' }}>Mobile Money</option>
-                                    <option value="bank" {{ request('payment_method') == 'bank' ? 'selected' : '' }}>Virement bancaire</option>
-                                    <option value="whatsapp" {{ request('payment_method') == 'whatsapp' ? 'selected' : '' }}>WhatsApp</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <input type="date" name="date_from" class="form-control" 
-                                       value="{{ request('date_from') }}" placeholder="Date de début">
-                            </div>
-                            <div class="col-md-2">
-                                <input type="date" name="date_to" class="form-control" 
-                                       value="{{ request('date_to') }}" placeholder="Date de fin">
-                            </div>
-                            <div class="col-md-1">
-                                <div class="btn-group w-100" role="group">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-filter me-1"></i>Filtrer
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-
-                    <!-- Tableau des commandes -->
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>
-                                        <input type="checkbox" id="selectAll" class="form-check-input">
-                                    </th>
-                                    <th>
-                                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'order_number', 'direction' => request('sort') == 'order_number' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" 
-                                           class="text-decoration-none text-dark">
-                                            Commande
-                                            @if(request('sort') == 'order_number')
-                                                <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
-                                            @else
-                                                <i class="fas fa-sort ms-1 text-muted"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th>
-                                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'user_id', 'direction' => request('sort') == 'user_id' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" 
-                                           class="text-decoration-none text-dark">
-                                            Client
-                                            @if(request('sort') == 'user_id')
-                                                <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
-                                            @else
-                                                <i class="fas fa-sort ms-1 text-muted"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th>
-                                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'total_amount', 'direction' => request('sort') == 'total_amount' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" 
-                                           class="text-decoration-none text-dark">
-                                            Montant
-                                            @if(request('sort') == 'total_amount')
-                                                <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
-                                            @else
-                                                <i class="fas fa-sort ms-1 text-muted"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th>Statut</th>
-                                    <th class="d-none d-sm-table-cell">Mode de paiement</th>
-                                    <th class="d-none d-md-table-cell">Devise paiement</th>
-                                    <th class="d-none d-md-table-cell">
-                                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'created_at', 'direction' => request('sort') == 'created_at' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" 
-                                           class="text-decoration-none text-dark">
-                                            Date
-                                            @if(request('sort') == 'created_at')
-                                                <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
-                                            @else
-                                                <i class="fas fa-sort ms-1 text-muted"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($orders as $order)
-                                <tr>
-                                    <td>
-                                        <input type="checkbox" class="form-check-input order-checkbox" value="{{ $order->id }}">
-                                    </td>
-                                    <td>
-                                        <div>
-                                            <strong>{{ $order->order_number }}</strong>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" 
-                                                 style="width: 40px; height: 40px; font-size: 14px; font-weight: bold;">
-                                                {{ strtoupper(substr($order->user->name, 0, 2)) }}
-                                            </div>
-                                            <div class="min-w-0">
-                                                <h6 class="mb-0 text-truncate" style="max-width: 180px;">{{ $order->user->name }}</h6>
-                                                <small class="text-muted d-block text-truncate" style="max-width: 180px;">{{ $order->user->email }}</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <strong class="text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount ?? $order->total, $order->currency) }}</strong>
-                                        @if($order->payment_amount)
-                                            <div class="small text-muted">
-                                                {{ number_format((float)$order->payment_amount, 2) }} {{ $order->payment_currency }}
-                                                @if(!is_null($order->provider_fee))
-                                                    · frais {{ number_format((float)$order->provider_fee, 2) }} {{ $order->provider_fee_currency ?? $order->payment_currency }}
-                                                    @if(!is_null($order->net_total))
-                                                        · net {{ number_format((float)$order->net_total, 2) }} {{ $order->payment_currency }}
-                                                    @endif
-                                                @endif
-                                            </div>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span class="badge order-status-{{ $order->status }}">
-                                            @switch($order->status)
-                                                @case('pending')
-                                                    En attente
-                                                    @break
-                                                @case('confirmed')
-                                                    Confirmée
-                                                    @break
-                                                @case('paid')
-                                                    Payée
-                                                    @break
-                                                @case('completed')
-                                                    Terminée
-                                                    @break
-                                                @case('cancelled')
-                                                    Annulée
-                                                    @break
-                                                @default
-                                                    {{ ucfirst($order->status) }}
-                                            @endswitch
-                                        </span>
-                                    </td>
-                                    <td class="d-none d-sm-table-cell">
-                                        <span class="badge bg-{{ $order->payment_method === 'card' ? 'primary' : ($order->payment_method === 'paypal' ? 'info' : ($order->payment_method === 'mobile' ? 'success' : ($order->payment_method === 'bank' ? 'warning' : 'secondary'))) }}">
-                                            @switch($order->payment_method)
-                                                @case('card')
-                                                    Carte bancaire
-                                                    @break
-                                                @case('paypal')
-                                                    PayPal
-                                                    @break
-                                                @case('mobile')
-                                                    Mobile Money
-                                                    @break
-                                                @case('bank')
-                                                    Virement bancaire
-                                                    @break
-                                                @case('pawapay')
-                                                    pawaPay
-                                                    @break
-                                                @case('whatsapp')
-                                                    WhatsApp
-                                                    @break
-                                                @default
-                                                    {{ ucfirst($order->payment_method ?? 'Non défini') }}
-                                            @endswitch
-                                        </span>
-                                    </td>
-                                    <td class="d-none d-md-table-cell">
-                                        @php(
-                                            $displayPaymentCurrency = $order->payment_currency
-                                                ?? (is_array($order->billing_address) ? ($order->billing_address['payment_currency'] ?? null) : null)
-                                        )
-                                        <span class="badge bg-light text-dark">
-                                            {{ $displayPaymentCurrency ?? '-' }}
-                                        </span>
-                                    </td>
-                                    <td class="d-none d-md-table-cell">
-                                        <small>{{ $order->created_at->format('d/m/Y H:i') }}</small>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-sm btn-outline-primary" title="Voir">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            
-                                            @if($order->status === 'pending')
-                                                <button class="btn btn-sm btn-outline-success" 
-                                                        onclick="confirmOrder({{ $order->id }})" title="Confirmer">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger" 
-                                                        onclick="cancelOrder({{ $order->id }})" title="Annuler">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            @elseif($order->status === 'confirmed')
-                                                <button class="btn btn-sm btn-outline-info" 
-                                                        onclick="markAsPaid({{ $order->id }})" title="Marquer comme payé">
-                                                    <i class="fas fa-credit-card"></i>
-                                                </button>
-                                            @elseif($order->status === 'paid')
-                                                <button class="btn btn-sm btn-outline-warning" 
-                                                        onclick="markAsCompleted({{ $order->id }})" title="Marquer comme terminé">
-                                                    <i class="fas fa-check-double"></i>
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="8" class="text-center py-4">
-                                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                                        <p class="text-muted">Aucune commande trouvée</p>
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Résultats de recherche -->
-                    @if(request()->hasAny(['search', 'status', 'payment_method', 'date_from', 'date_to']))
-                    <div class="alert alert-info mt-3">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Filtres appliqués :</strong>
-                        @if(request('search'))
-                            Recherche: "{{ request('search') }}"
-                        @endif
-                        @if(request('status'))
-                            | Statut: {{ ucfirst(request('status')) }}
-                        @endif
-                        @if(request('payment_method'))
-                            | Mode: {{ ucfirst(request('payment_method')) }}
-                        @endif
-                        @if(request('date_from'))
-                            | Depuis: {{ request('date_from') }}
-                        @endif
-                        @if(request('date_to'))
-                            | Jusqu'à: {{ request('date_to') }}
-                        @endif
-                        <a href="{{ route('admin.orders.index') }}" class="btn btn-sm btn-outline-primary ms-2">
-                            <i class="fas fa-times me-1"></i>Effacer les filtres
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="text-muted small">Ajustez les filtres puis appliquez-les.</span>
+                        <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-undo me-2"></i>Réinitialiser
                         </a>
                     </div>
-                    @endif
+                </x-slot:filters>
+            </x-admin.search-panel>
 
-                    <!-- Pagination -->
-                    <div class="d-flex justify-content-between align-items-center mt-4">
-                        <div>
-                            <span class="text-muted">
-                                Affichage de {{ $orders->firstItem() ?? 0 }} à {{ $orders->lastItem() ?? 0 }} sur {{ $orders->total() }} commandes
-                                @if(request()->hasAny(['search', 'status', 'payment_method', 'date_from', 'date_to']))
-                                    ({{ $orders->count() }} résultat{{ $orders->count() > 1 ? 's' : '' }})
-                                @endif
-                            </span>
-                        </div>
-                        <div>
-                            {{ $orders->appends(request()->query())->links('pagination::bootstrap-5') }}
-                        </div>
-                    </div>
+            <div class="admin-table">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width:48px;">
+                                    <input type="checkbox" id="selectAll" class="form-check-input">
+                                </th>
+                                <th>Commande</th>
+                                <th>Client</th>
+                                <th>Montant</th>
+                                <th>Statut</th>
+                                <th class="d-none d-sm-table-cell">Mode de paiement</th>
+                                <th class="d-none d-md-table-cell">Devise paiement</th>
+                                <th class="d-none d-md-table-cell">Date</th>
+                                <th class="text-center" style="width:120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($orders as $order)
+                            <tr>
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input order-checkbox" value="{{ $order->id }}">
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">#{{ $order->order_number ?? $order->id }}</div>
+                                    <div class="text-muted small">{{ strtoupper($order->payment_method ?? '—') }}</div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ $order->user->name ?? 'Utilisateur supprimé' }}</div>
+                                    <div class="text-muted small">{{ $order->user->email ?? '—' }}</div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount ?? $order->total, $order->currency ?? 'USD') }}</div>
+                                    <div class="text-muted small">HT : {{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->subtotal ?? 0, $order->currency ?? 'USD') }}</div>
+                                </td>
+                                <td>
+                                    @switch($order->status)
+                                        @case('paid')
+                                            <span class="admin-chip admin-chip--success">Payée</span>
+                                            @break
+                                        @case('pending')
+                                            <span class="admin-chip admin-chip--warning">En attente</span>
+                                            @break
+                                        @case('confirmed')
+                                            <span class="admin-chip admin-chip--info">Confirmée</span>
+                                            @break
+                                        @case('completed')
+                                            <span class="admin-chip admin-chip--success">Terminée</span>
+                                            @break
+                                        @case('cancelled')
+                                            <span class="admin-chip admin-chip--danger">Annulée</span>
+                                            @break
+                                        @default
+                                            <span class="admin-chip admin-chip--neutral">{{ ucfirst($order->status ?? 'inconnu') }}</span>
+                                    @endswitch
+                                </td>
+                                <td class="d-none d-sm-table-cell">
+                                    <span class="admin-chip admin-chip--neutral">{{ strtoupper($order->payment_method ?? '—') }}</span>
+                                </td>
+                                <td class="d-none d-md-table-cell">
+                                    <span class="admin-chip admin-chip--info">{{ strtoupper($order->currency ?? 'USD') }}</span>
+                                </td>
+                                <td class="d-none d-md-table-cell">
+                                    <span class="admin-chip admin-chip--neutral">{{ $order->created_at ? $order->created_at->format('d/m/Y H:i') : '—' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-light" title="Voir">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-light" title="Confirmer" onclick="updateOrderStatus('{{ $order->id }}', 'confirm')">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-light text-danger" title="Annuler" onclick="updateOrderStatus('{{ $order->id }}', 'cancel')">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="9" class="admin-table__empty">
+                                    <i class="fas fa-receipt mb-2 d-block"></i>
+                                    Aucune commande ne correspond aux filtres sélectionnés.
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-                    <!-- Actions en lot -->
-                    <div class="mt-3" id="bulkActions" style="display: none;">
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-success" onclick="bulkAction('confirm')">
-                                <i class="fas fa-check me-1"></i>Confirmer
-                            </button>
-                            <button class="btn btn-sm btn-info" onclick="bulkAction('mark-paid')">
-                                <i class="fas fa-credit-card me-1"></i>Marquer payé
-                            </button>
-                            <button class="btn btn-sm btn-warning" onclick="bulkAction('mark-completed')">
-                                <i class="fas fa-check-double me-1"></i>Marquer terminé
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="bulkAction('cancel')">
-                                <i class="fas fa-times me-1"></i>Annuler
-                            </button>
-                        </div>
-                    </div>
+            <div class="admin-pagination justify-content-between align-items-center">
+                <span class="text-muted">
+                    Affichage de {{ $orders->firstItem() ?? 0 }} à {{ $orders->lastItem() ?? 0 }} sur {{ $orders->total() }} commandes
+                </span>
+                {{ $orders->appends(request()->query())->links() }}
+            </div>
+
+            <div class="mt-3" id="bulkActions" style="display:none;">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-success" onclick="bulkAction('confirm')">
+                        <i class="fas fa-check me-1"></i>Confirmer
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="bulkAction('mark-paid')">
+                        <i class="fas fa-credit-card me-1"></i>Marquer payée
+                    </button>
+                    <button class="btn btn-sm btn-warning" onclick="bulkAction('complete')">
+                        <i class="fas fa-flag-checkered me-1"></i>Terminer
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="bulkAction('cancel')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Action Modals -->
-@include('admin.orders.partials.action-modals')
-
+    </section>
 @endsection
 
 @push('scripts')
@@ -436,21 +249,30 @@ function toggleBulkActions() {
     }
 }
 
-// Recherche en temps réel avec debounce
-let searchTimeout;
-document.querySelector('input[name="search"]').addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        document.getElementById('filterForm').submit();
-    }, 500);
-});
+const ordersFilterForm = document.getElementById('ordersFilterForm');
+const ordersFiltersOffcanvas = document.getElementById('ordersFilters');
 
-// Soumission automatique du formulaire lors du changement des sélecteurs
-document.querySelectorAll('select[name="status"], select[name="payment_method"]').forEach(select => {
-    select.addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
+if (ordersFilterForm) {
+    ordersFilterForm.addEventListener('submit', () => {
+        if (ordersFiltersOffcanvas) {
+            const instance = bootstrap.Offcanvas.getInstance(ordersFiltersOffcanvas);
+            if (instance) {
+                instance.hide();
+            }
+        }
     });
-});
+}
+
+const ordersSearchInput = document.querySelector('#ordersFilterForm input[name="search"]');
+if (ordersSearchInput) {
+    let searchTimeout;
+    ordersSearchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            ordersFilterForm?.submit();
+        }, 500);
+    });
+}
 
 // Fonction pour les actions en lot
 function bulkAction(action) {
@@ -496,188 +318,4 @@ function exportOrders() {
     }, 2000);
 }
 </script>
-@endpush
-
-@push('styles')
-<style>
-/* Design moderne pour la page de gestion des commandes */
-.card {
-    border-radius: 15px;
-    overflow: hidden;
-}
-
-.card-header {
-    background: linear-gradient(135deg, #003366 0%, #004080 100%);
-    border: none;
-    padding: 1.5rem;
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table th {
-    border-top: none;
-    font-weight: 600;
-    color: #003366;
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.table tbody tr {
-    transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.table-hover tbody tr:hover {
-    background-color: #f8f9fa;
-    transform: translateX(3px);
-}
-
-.badge {
-    font-size: 0.85rem;
-    padding: 0.4em 0.8em;
-    font-weight: 500;
-}
-
-.btn-group .btn {
-    border-radius: 0.375rem;
-    margin-right: 2px;
-    transition: all 0.2s ease;
-}
-
-.btn-group .btn:hover {
-    transform: translateY(-2px);
-}
-
-.form-check-input:checked {
-    background-color: #003366;
-    border-color: #003366;
-}
-
-/* Order status badges */
-.order-status-pending {
-    background-color: #ffc107 !important;
-    color: #000 !important;
-}
-
-.order-status-confirmed {
-    background-color: #17a2b8 !important;
-    color: #fff !important;
-}
-
-.order-status-paid {
-    background-color: #28a745 !important;
-    color: #fff !important;
-}
-
-.order-status-completed {
-    background-color: #6f42c1 !important;
-    color: #fff !important;
-}
-
-.order-status-cancelled {
-    background-color: #dc3545 !important;
-    color: #fff !important;
-}
-
-/* Pagination styles */
-.pagination {
-    margin-bottom: 0;
-}
-
-.pagination .page-link {
-    color: #0d6efd;
-    border: 1px solid #dee2e6;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    transition: all 0.2s ease;
-}
-
-.pagination .page-link:hover {
-    color: #0a58ca;
-    background-color: #e9ecef;
-    border-color: #dee2e6;
-}
-
-.pagination .page-item.active .page-link {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-    color: #fff;
-}
-
-.pagination .page-item.disabled .page-link {
-    color: #6c757d;
-    background-color: #fff;
-    border-color: #dee2e6;
-}
-
-.pagination .page-link i {
-    font-size: 0.75rem;
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-    }
-    
-    .card-header {
-        padding: 0.75rem;
-    }
-    
-    .card-header h4 {
-        font-size: 1rem;
-    }
-    
-    .card-header .btn-outline-light.btn-sm {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.85rem;
-    }
-    
-    .card-header .btn-light {
-        font-size: 0.85rem;
-        padding: 0.4rem 0.8rem;
-    }
-    
-    .card-body {
-        padding: 0.75rem;
-    }
-    
-    .table {
-        font-size: 0.85rem;
-    }
-    
-    .btn-group .btn {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.8rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .card-header .d-flex {
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: stretch !important;
-    }
-    
-    .card-header .btn-light:not(.btn-sm) {
-        width: 100%;
-    }
-}
-
-/* Responsive tweaks */
-@media (max-width: 768px) {
-    .table { font-size: 0.9rem; }
-    .table .text-truncate { max-width: 140px !important; }
-}
-@media (max-width: 576px) {
-    .btn-group .btn { padding: 0.35rem 0.5rem; }
-}
-</style>
 @endpush

@@ -1,8 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Créer une leçon - ' . $course->title)
 
-@section('content')
+@section('admin-content')
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">

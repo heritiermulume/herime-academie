@@ -1,55 +1,35 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
-@section('title', 'Créer une bannière - Admin')
+@section('title', 'Créer une bannière')
+@section('admin-title', 'Créer une bannière')
+@section('admin-subtitle', 'Ajoutez un visuel percutant pour mettre en avant vos contenus clés')
+@section('admin-actions')
+    <a href="{{ route('admin.banners.index') }}" class="btn btn-light">
+        <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+    </a>
+@endsection
 
-@section('content')
-<div class="container-fluid py-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <!-- Header -->
-            <div class="card border-0 shadow mb-4">
-                <div class="card-header text-white" style="background-color: #003366;">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </a>
-                            <a href="{{ route('admin.banners.index') }}" class="btn btn-outline-light btn-sm" title="Liste des bannières">
-                                <i class="fas fa-th-list"></i>
-                            </a>
-                            <div>
-                                <h4 class="mb-1">
-                                    <i class="fas fa-plus-circle me-2"></i>Créer une bannière
-                                </h4>
-                                <p class="mb-0 text-description small">Ajoutez une nouvelle bannière pour votre page d'accueil</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+@section('admin-content')
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation</h5>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
-            <!-- Affichage des erreurs -->
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation</h5>
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-
+    <div class="admin-panel">
+        <div class="admin-panel__body admin-panel__body--padded">
             <form action="{{ route('admin.banners.store') }}" method="POST" enctype="multipart/form-data" id="bannerForm">
                 @csrf
 
-                <!-- Informations générales -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-gradient-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations générales</h5>
-                    </div>
-                    <div class="card-body">
+                <div class="admin-form-grid">
+                    <div class="admin-form-card">
+                        <h5><i class="fas fa-info-circle me-2"></i>Informations générales</h5>
                         <div class="row g-3">
                             <!-- Titre -->
                             <div class="col-12">
@@ -84,14 +64,9 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Images -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-gradient-success text-white">
-                        <h5 class="mb-0"><i class="fas fa-images me-2"></i>Images de la bannière</h5>
-                    </div>
-                    <div class="card-body">
+                    <div class="admin-form-card">
+                        <h5><i class="fas fa-images me-2"></i>Images</h5>
                         <div class="row g-4">
                             <!-- Image principale -->
                             <div class="col-md-6">
@@ -157,14 +132,9 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Boutons d'action -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-gradient-warning">
-                        <h5 class="mb-0"><i class="fas fa-mouse-pointer me-2"></i>Boutons d'action</h5>
-                    </div>
-                    <div class="card-body">
+                    <div class="admin-form-card">
+                        <h5><i class="fas fa-mouse-pointer me-2"></i>Bouton principal</h5>
                         <!-- Bouton 1 -->
                         <div class="border rounded p-3 mb-3 bg-light">
                             <h6 class="fw-bold mb-3"><i class="fas fa-hand-pointer me-2 text-warning"></i>Bouton principal</h6>
@@ -228,14 +198,9 @@
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Paramètres -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-gradient-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Paramètres</h5>
-                    </div>
-                    <div class="card-body">
+                    <div class="admin-form-card">
+                        <h5><i class="fas fa-sliders-h me-2"></i>Paramètres avancés</h5>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="sort_order" class="form-label fw-bold">Ordre d'affichage</label>
@@ -266,25 +231,50 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="admin-form-card">
+                        <h5><i class="fas fa-desktop me-2"></i>Prévisualisation</h5>
+                        <div class="row g-4 align-items-center">
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-gradient-primary text-white">
+                                        <h5 class="mb-0"><i class="fas fa-desktop me-2"></i>Desktop</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <img src="" alt="Desktop Preview" class="img-fluid rounded">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-gradient-success text-white">
+                                        <h5 class="mb-0"><i class="fas fa-mobile-alt me-2"></i>Mobile</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <img src="" alt="Mobile Preview" class="img-fluid rounded">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <a href="{{ route('admin.banners.index') }}" class="btn btn-lg btn-secondary">
-                                <i class="fas fa-times me-2"></i>Annuler
-                            </a>
-                            <button type="submit" class="btn btn-lg btn-primary" id="submitBtn">
-                                <i class="fas fa-save me-2"></i>Créer la bannière
-                            </button>
-                        </div>
+                <div class="admin-panel__footer d-flex justify-content-between flex-wrap gap-2">
+                    <a href="{{ route('admin.banners.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Retour
+                    </a>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-eye me-2"></i>Prévisualiser sur le site
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Enregistrer la bannière
+                        </button>
                     </div>
                 </div>
             </form>
         </div>
     </div>
-</div>
 @endsection
 
 @push('styles')

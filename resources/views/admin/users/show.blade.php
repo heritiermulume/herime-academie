@@ -1,343 +1,280 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
-@section('title', 'Profil de ' . $user->name . ' - Admin')
+@section('title', 'Profil de ' . $user->name)
+@section('admin-title', 'Profil utilisateur')
+@section('admin-subtitle', 'Consultez les informations synchronisées et l’activité de ' . ($user->name ?? 'l’utilisateur'))
+@section('admin-actions')
+    <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary">
+        <i class="fas fa-edit me-2"></i>Modifier
+    </a>
+@endsection
 
-@section('content')
-<div class="container-fluid py-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <!-- Header -->
-            <div class="card border-0 shadow mb-4">
-                <div class="card-header text-white" style="background-color: #003366;">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </a>
-                            <a href="{{ route('admin.users') }}" class="btn btn-outline-light btn-sm" title="Liste des utilisateurs">
-                                <i class="fas fa-th-list"></i>
-                            </a>
-                            <div>
-                                <h4 class="mb-1">
-                                    <i class="fas fa-user me-2"></i>Profil utilisateur
-                                </h4>
-                                <p class="mb-0 text-description small">Détails complets de {{ $user->name }}</p>
-                            </div>
+@section('admin-content')
+    <div class="admin-panel">
+        <div class="admin-panel__body admin-panel__body--padded">
+            <div class="admin-form-grid admin-form-grid--two">
+                <div class="admin-form-card text-center">
+                    <div class="avatar-container mb-3">
+                        <img src="{{ $user->avatar ? $user->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=003366&color=fff' }}" 
+                                 alt="Avatar de {{ $user->name }}" 
+                                 class="rounded-circle img-thumbnail avatar-image" 
+                                 style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #003366;">
+                    </div>
+                    
+                    <h4 class="fw-bold text-dark mb-1">{{ $user->name }}</h4>
+                    <p class="text-muted mb-3">
+                        <i class="fas fa-envelope me-1"></i>{{ $user->email }}
+                    </p>
+                    
+                    <!-- Badge rôle -->
+                    <div class="mb-3">
+                        @switch($user->role)
+                            @case('admin')
+                                <span class="badge bg-danger fs-6 px-3 py-2">
+                                    <i class="fas fa-crown me-1"></i>Administrateur
+                                </span>
+                                @break
+                            @case('instructor')
+                                <span class="badge bg-success fs-6 px-3 py-2">
+                                    <i class="fas fa-chalkboard-teacher me-1"></i>Formateur
+                                </span>
+                                @break
+                            @case('affiliate')
+                                <span class="badge bg-info fs-6 px-3 py-2">
+                                    <i class="fas fa-handshake me-1"></i>Affilié
+                                </span>
+                                @break
+                            @default
+                                <span class="badge bg-primary fs-6 px-3 py-2">
+                                    <i class="fas fa-user-graduate me-1"></i>Étudiant
+                                </span>
+                        @endswitch
+                    </div>
+                    
+                    <div class="mt-3">
+                        <span class="admin-chip {{ $user->is_active ? 'admin-chip--success' : 'admin-chip--neutral' }}">
+                            <i class="fas fa-{{ $user->is_active ? 'check-circle' : 'times-circle' }} me-1"></i>{{ $user->is_active ? 'Compte actif' : 'Compte inactif' }}
+                        </span>
+                        <span class="admin-chip {{ $user->is_verified ? 'admin-chip--info' : 'admin-chip--warning' }}">
+                            <i class="fas fa-{{ $user->is_verified ? 'certificate' : 'exclamation-triangle' }} me-1"></i>{{ $user->is_verified ? 'Email vérifié' : 'Non vérifié' }}
+                        </span>
+                    </div>
+                    <div class="mt-3">
+                        <span class="text-muted d-block"><i class="fas fa-calendar-plus me-1"></i>Membre depuis {{ $user->created_at->format('d/m/Y') }}</span>
+                        <span class="text-muted d-block"><i class="fas fa-clock me-1"></i>Dernière connexion {{ $user->last_login_at ? $user->last_login_at->diffForHumans() : 'Jamais' }}</span>
+                    </div>
+                </div>
+                @if($user->role == 'instructor')
+                <div class="admin-form-card">
+                    <h5><i class="fas fa-chart-bar me-2"></i>Statistiques formateur</h5>
+                    <div class="admin-stats-grid">
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Cours créés</p>
+                            <p class="admin-stat-card__value">{{ $user->courses_count ?? 0 }}</p>
                         </div>
-                        <div class="d-flex gap-2">
-                            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-warning btn-sm">
-                                <i class="fas fa-edit me-1"></i>Modifier
-                            </a>
-                            <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="d-inline" 
-                                  onsubmit="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="fas fa-trash me-1"></i>Supprimer
-                                </button>
-                            </form>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Étudiants</p>
+                            <p class="admin-stat-card__value">{{ $user->enrollments_count ?? 0 }}</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Note moyenne</p>
+                            <p class="admin-stat-card__value">{{ number_format($user->courses->avg('stats.average_rating') ?? 0, 1) }}<i class="fas fa-star ms-1"></i></p>
                         </div>
                     </div>
+                </div>
+                @endif
+            </div>
+            <div class="admin-form-card">
+                <h5><i class="fas fa-user-circle me-2"></i>Informations personnelles</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="info-item">
+                            <label class="text-muted mb-1"><i class="fas fa-phone me-1"></i>Téléphone</label>
+                            <p class="fw-bold mb-0">{{ $user->phone ?? 'Non renseigné' }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-item">
+                            <label class="text-muted mb-1"><i class="fas fa-birthday-cake me-1"></i>Date de naissance</label>
+                            <p class="fw-bold mb-0">
+                                {{ $user->date_of_birth ? $user->date_of_birth->format('d/m/Y') . ' (' . $user->date_of_birth->age . ' ans)' : 'Non renseignée' }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-item">
+                            <label class="text-muted mb-1"><i class="fas fa-venus-mars me-1"></i>Genre</label>
+                            <p class="fw-bold mb-0">
+                                @switch($user->gender)
+                                    @case('male')
+                                        <i class="fas fa-mars text-primary"></i> Homme
+                                        @break
+                                    @case('female')
+                                        <i class="fas fa-venus text-danger"></i> Femme
+                                        @break
+                                    @case('other')
+                                        <i class="fas fa-genderless text-info"></i> Autre
+                                        @break
+                                    @default
+                                        Non renseigné
+                                @endswitch
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-item">
+                            <label class="text-muted mb-1"><i class="fas fa-user-tag me-1"></i>Rôle</label>
+                            <p class="fw-bold mb-0">{{ ucfirst($user->role) }}</p>
+                        </div>
+                    </div>
+                    
+                    @if($user->bio)
+                    <div class="col-12">
+                        <div class="info-item">
+                            <label class="text-muted mb-1"><i class="fas fa-quote-left me-1"></i>Biographie</label>
+                            <p class="mb-0 p-3 bg-light rounded">{{ $user->bio }}</p>
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
 
-            <div class="row g-4">
-                <!-- Colonne gauche : Avatar & Info principale -->
-                <div class="col-lg-4">
-                    <!-- Card Avatar -->
-                    <div class="card border-0 shadow-sm mb-4 profile-card">
-                        <div class="card-body text-center p-4">
-                            <div class="avatar-container mb-3">
-                                <img src="{{ $user->avatar ? $user->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=003366&color=fff' }}" 
-                                     alt="Avatar de {{ $user->name }}" 
-                                     class="rounded-circle img-thumbnail avatar-image" 
-                                     style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #003366;">
-                            </div>
-                            
-                            <h4 class="fw-bold text-dark mb-1">{{ $user->name }}</h4>
-                            <p class="text-muted mb-3">
-                                <i class="fas fa-envelope me-1"></i>{{ $user->email }}
-                            </p>
-                            
-                            <!-- Badge rôle -->
-                            <div class="mb-3">
-                                @switch($user->role)
-                                    @case('admin')
-                                        <span class="badge bg-danger fs-6 px-3 py-2">
-                                            <i class="fas fa-crown me-1"></i>Administrateur
-                                        </span>
-                                        @break
-                                    @case('instructor')
-                                        <span class="badge bg-success fs-6 px-3 py-2">
-                                            <i class="fas fa-chalkboard-teacher me-1"></i>Formateur
-                                        </span>
-                                        @break
-                                    @case('affiliate')
-                                        <span class="badge bg-info fs-6 px-3 py-2">
-                                            <i class="fas fa-handshake me-1"></i>Affilié
-                                        </span>
-                                        @break
-                                    @default
-                                        <span class="badge bg-primary fs-6 px-3 py-2">
-                                            <i class="fas fa-user-graduate me-1"></i>Étudiant
-                                        </span>
-                                @endswitch
-                            </div>
-                            
-                            <!-- Statuts -->
-                            <div class="mb-3">
-                                @if($user->is_active)
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-check-circle me-1"></i>Compte actif
-                                    </span>
-                                @else
-                                    <span class="badge bg-secondary">
-                                        <i class="fas fa-times-circle me-1"></i>Compte inactif
-                                    </span>
-                                @endif
-                                
-                                @if($user->is_verified)
-                                    <span class="badge bg-info ms-1">
-                                        <i class="fas fa-certificate me-1"></i>Email vérifié
-                                    </span>
-                                @else
-                                    <span class="badge bg-warning text-dark ms-1">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>Non vérifié
-                                    </span>
-                                @endif
-                            </div>
-                            
-                            <!-- Dates importantes -->
-                            <div class="border-top pt-3 mt-3">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted"><i class="fas fa-calendar-plus me-1"></i>Membre depuis</span>
-                                    <strong>{{ $user->created_at->format('d/m/Y') }}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted"><i class="fas fa-clock me-1"></i>Dernière connexion</span>
-                                    <strong>{{ $user->last_login_at ? $user->last_login_at->diffForHumans() : 'Jamais' }}</strong>
-                                </div>
-                            </div>
+            @if($user->website || $user->linkedin || $user->twitter || $user->youtube)
+            <div class="admin-form-card">
+                <h5><i class="fas fa-share-alt me-2"></i>Réseaux sociaux</h5>
+                <div class="row g-3">
+                    @if($user->website)
+                    <div class="col-md-6">
+                        <div class="social-link">
+                            <i class="fas fa-globe fa-2x text-primary mb-2"></i>
+                            <label class="text-muted d-block mb-1">Site web</label>
+                            <a href="{{ $user->website }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                {{ $user->website }}
+                            </a>
                         </div>
                     </div>
-
-                    @if($user->role == 'instructor')
-                    <!-- Statistiques formateur -->
-                    <div class="card border-0 shadow-sm stats-card">
-                        <div class="card-header bg-gradient-success text-white">
-                            <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Statistiques</h5>
+                    @endif
+                    
+                    @if($user->linkedin)
+                    <div class="col-md-6">
+                        <div class="social-link">
+                            <i class="fab fa-linkedin fa-2x text-info mb-2"></i>
+                            <label class="text-muted d-block mb-1">LinkedIn</label>
+                            <a href="{{ $user->linkedin }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                Voir le profil
+                            </a>
                         </div>
-                        <div class="card-body">
-                            <div class="text-center mb-3 pb-3 border-bottom">
-                                <h2 class="text-primary mb-0">{{ $user->courses_count ?? 0 }}</h2>
-                                <p class="text-muted mb-0"><i class="fas fa-book me-1"></i>Cours créés</p>
-                            </div>
-                            <div class="text-center mb-3 pb-3 border-bottom">
-                                <h2 class="text-success mb-0">{{ $user->enrollments_count ?? 0 }}</h2>
-                                <p class="text-muted mb-0"><i class="fas fa-users me-1"></i>Étudiants</p>
-                            </div>
-                            <div class="text-center">
-                                <h2 class="text-warning mb-0">
-                                    {{ number_format($user->courses->avg('stats.average_rating') ?? 0, 1) }}
-                                    <i class="fas fa-star"></i>
-                                </h2>
-                                <p class="text-muted mb-0">Note moyenne</p>
-                            </div>
+                    </div>
+                    @endif
+                    
+                    @if($user->twitter)
+                    <div class="col-md-6">
+                        <div class="social-link">
+                            <i class="fab fa-twitter fa-2x text-primary mb-2"></i>
+                            <label class="text-muted d-block mb-1">Twitter</label>
+                            <a href="{{ $user->twitter }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                Voir le profil
+                            </a>
+                        </div>
+                    </div>
+                    @endif
+                    
+                    @if($user->youtube)
+                    <div class="col-md-6">
+                        <div class="social-link">
+                            <i class="fab fa-youtube fa-2x text-danger mb-2"></i>
+                            <label class="text-muted d-block mb-1">YouTube</label>
+                            <a href="{{ $user->youtube }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                Voir la chaîne
+                            </a>
                         </div>
                     </div>
                     @endif
                 </div>
+            </div>
+            @endif
 
-                <!-- Colonne droite : Détails -->
-                <div class="col-lg-8">
-                    <!-- Informations personnelles -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-gradient-primary text-white">
-                            <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Informations personnelles</h5>
+            <div class="admin-form-card mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Historique d'activité</h5>
+                    <span class="admin-chip admin-chip--neutral"><i class="fas fa-clock me-1"></i>Dernière mise à jour {{ $user->updated_at->diffForHumans() }}</span>
+                </div>
+                <ul class="timeline-simple">
+                    <li class="timeline-item">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Inscription</h6>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-calendar me-1"></i>
+                                {{ $user->created_at->format('d/m/Y à H:i') }}
+                                <span class="badge bg-light text-dark ms-2">
+                                    Il y a {{ $user->created_at->diffForHumans() }}
+                                </span>
+                            </p>
                         </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label class="text-muted mb-1"><i class="fas fa-phone me-1"></i>Téléphone</label>
-                                        <p class="fw-bold mb-0">{{ $user->phone ?? 'Non renseigné' }}</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label class="text-muted mb-1"><i class="fas fa-birthday-cake me-1"></i>Date de naissance</label>
-                                        <p class="fw-bold mb-0">
-                                            {{ $user->date_of_birth ? $user->date_of_birth->format('d/m/Y') . ' (' . $user->date_of_birth->age . ' ans)' : 'Non renseignée' }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label class="text-muted mb-1"><i class="fas fa-venus-mars me-1"></i>Genre</label>
-                                        <p class="fw-bold mb-0">
-                                            @switch($user->gender)
-                                                @case('male')
-                                                    <i class="fas fa-mars text-primary"></i> Homme
-                                                    @break
-                                                @case('female')
-                                                    <i class="fas fa-venus text-danger"></i> Femme
-                                                    @break
-                                                @case('other')
-                                                    <i class="fas fa-genderless text-info"></i> Autre
-                                                    @break
-                                                @default
-                                                    Non renseigné
-                                            @endswitch
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label class="text-muted mb-1"><i class="fas fa-user-tag me-1"></i>Rôle</label>
-                                        <p class="fw-bold mb-0">{{ ucfirst($user->role) }}</p>
-                                    </div>
-                                </div>
-                                
-                                @if($user->bio)
-                                <div class="col-12">
-                                    <div class="info-item">
-                                        <label class="text-muted mb-1"><i class="fas fa-quote-left me-1"></i>Biographie</label>
-                                        <p class="mb-0 p-3 bg-light rounded">{{ $user->bio }}</p>
-                                    </div>
-                                </div>
-                                @endif
-                            </div>
+                    </li>
+                    
+                    @if($user->email_verified_at)
+                    <li class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Email vérifié</h6>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-check-circle me-1"></i>
+                                {{ $user->email_verified_at->format('d/m/Y à H:i') }}
+                            </p>
                         </div>
-                    </div>
-
-                    @if($user->website || $user->linkedin || $user->twitter || $user->youtube)
-                    <!-- Réseaux sociaux -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header" style="background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);">
-                            <h5 class="mb-0 text-white"><i class="fas fa-share-alt me-2"></i>Réseaux sociaux</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                @if($user->website)
-                                <div class="col-md-6">
-                                    <div class="social-link">
-                                        <i class="fas fa-globe fa-2x text-primary mb-2"></i>
-                                        <label class="text-muted d-block mb-1">Site web</label>
-                                        <a href="{{ $user->website }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                            {{ $user->website }}
-                                        </a>
-                                    </div>
-                                </div>
-                                @endif
-                                
-                                @if($user->linkedin)
-                                <div class="col-md-6">
-                                    <div class="social-link">
-                                        <i class="fab fa-linkedin fa-2x text-info mb-2"></i>
-                                        <label class="text-muted d-block mb-1">LinkedIn</label>
-                                        <a href="{{ $user->linkedin }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                            Voir le profil
-                                        </a>
-                                    </div>
-                                </div>
-                                @endif
-                                
-                                @if($user->twitter)
-                                <div class="col-md-6">
-                                    <div class="social-link">
-                                        <i class="fab fa-twitter fa-2x text-primary mb-2"></i>
-                                        <label class="text-muted d-block mb-1">Twitter</label>
-                                        <a href="{{ $user->twitter }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                            Voir le profil
-                                        </a>
-                                    </div>
-                                </div>
-                                @endif
-                                
-                                @if($user->youtube)
-                                <div class="col-md-6">
-                                    <div class="social-link">
-                                        <i class="fab fa-youtube fa-2x text-danger mb-2"></i>
-                                        <label class="text-muted d-block mb-1">YouTube</label>
-                                        <a href="{{ $user->youtube }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
-                                            Voir la chaîne
-                                        </a>
-                                    </div>
-                                </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
+                    </li>
                     @endif
+                    
+                    @if($user->last_login_at)
+                    <li class="timeline-item">
+                        <div class="timeline-marker bg-info"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Dernière connexion</h6>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-sign-in-alt me-1"></i>
+                                {{ $user->last_login_at->format('d/m/Y à H:i') }}
+                                <span class="badge bg-light text-dark ms-2">
+                                    {{ $user->last_login_at->diffForHumans() }}
+                                </span>
+                            </p>
+                        </div>
+                    </li>
+                    @endif
+                    
+                    <li class="timeline-item">
+                        <div class="timeline-marker bg-warning"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Dernière modification</h6>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-edit me-1"></i>
+                                {{ $user->updated_at->format('d/m/Y à H:i') }}
+                            </p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
 
-                    <!-- Activité récente -->
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-gradient-info text-white">
-                            <h5 class="mb-0"><i class="fas fa-history me-2"></i>Activité & Dates</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="timeline">
-                                <div class="timeline-item">
-                                    <div class="timeline-marker bg-primary"></div>
-                                    <div class="timeline-content">
-                                        <h6 class="mb-1">Inscription</h6>
-                                        <p class="text-muted mb-0">
-                                            <i class="fas fa-calendar me-1"></i>
-                                            {{ $user->created_at->format('d/m/Y à H:i') }}
-                                            <span class="badge bg-light text-dark ms-2">
-                                                Il y a {{ $user->created_at->diffForHumans() }}
-                                            </span>
-                                        </p>
-                                    </div>
-                                </div>
-                                
-                                @if($user->email_verified_at)
-                                <div class="timeline-item">
-                                    <div class="timeline-marker bg-success"></div>
-                                    <div class="timeline-content">
-                                        <h6 class="mb-1">Email vérifié</h6>
-                                        <p class="text-muted mb-0">
-                                            <i class="fas fa-check-circle me-1"></i>
-                                            {{ $user->email_verified_at->format('d/m/Y à H:i') }}
-                                        </p>
-                                    </div>
-                                </div>
-                                @endif
-                                
-                                @if($user->last_login_at)
-                                <div class="timeline-item">
-                                    <div class="timeline-marker bg-info"></div>
-                                    <div class="timeline-content">
-                                        <h6 class="mb-1">Dernière connexion</h6>
-                                        <p class="text-muted mb-0">
-                                            <i class="fas fa-sign-in-alt me-1"></i>
-                                            {{ $user->last_login_at->format('d/m/Y à H:i') }}
-                                            <span class="badge bg-light text-dark ms-2">
-                                                {{ $user->last_login_at->diffForHumans() }}
-                                            </span>
-                                        </p>
-                                    </div>
-                                </div>
-                                @endif
-                                
-                                <div class="timeline-item">
-                                    <div class="timeline-marker bg-warning"></div>
-                                    <div class="timeline-content">
-                                        <h6 class="mb-1">Dernière modification</h6>
-                                        <p class="text-muted mb-0">
-                                            <i class="fas fa-edit me-1"></i>
-                                            {{ $user->updated_at->format('d/m/Y à H:i') }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="admin-panel__footer d-flex justify-content-between flex-wrap gap-2">
+                <a href="{{ route('admin.users') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Retour
+                </a>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-outline-primary">
+                        <i class="fas fa-edit me-2"></i>Modifier
+                    </a>
+                    <form action="{{ route('admin.users.destroy', $user) }}" method="POST" onsubmit="return confirm('Supprimer cet utilisateur ?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-2"></i>Supprimer
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-</div>
 @endsection
 
 @push('styles')

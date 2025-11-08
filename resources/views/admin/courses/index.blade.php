@@ -1,622 +1,253 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
-@section('title', 'Gestion des cours - Admin')
+@section('title', 'Gestion des cours')
+@section('admin-title', 'Gestion des cours')
+@section('admin-subtitle', 'Pilotez l’ensemble des formations disponibles sur la plateforme')
+@section('admin-actions')
+    <a href="{{ route('admin.courses.create') }}" class="btn btn-primary">
+        <i class="fas fa-plus-circle me-2"></i>Nouveau cours
+    </a>
+@endsection
 
-@section('content')
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <!-- Header -->
-            <div class="card border-0 shadow mb-4">
-                <div class="card-header text-white" style="background-color: #003366;">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </a>
-                            <div>
-                                <h4 class="mb-1">
-                                    <i class="fas fa-graduation-cap me-2"></i>Gestion des cours
-                                </h4>
-                                <p class="mb-0 text-description small d-none d-md-block">Gérez tous les cours de votre plateforme</p>
-                            </div>
-                        </div>
-                        <a href="{{ route('admin.courses.create') }}" class="btn btn-light">
-                            <i class="fas fa-plus me-1 d-none d-sm-inline"></i><span class="d-none d-sm-inline">Nouveau </span>cours
-                        </a>
-                    </div>
+@section('admin-content')
+    <section class="admin-panel">
+        <div class="admin-panel__body">
+            <div class="admin-stats-grid mb-4">
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Total</p>
+                    <p class="admin-stat-card__value">{{ $stats['total'] }}</p>
+                    <p class="admin-stat-card__muted">Cours enregistrés</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Publiés</p>
+                    <p class="admin-stat-card__value">{{ $stats['published'] }}</p>
+                    <p class="admin-stat-card__muted">Visibles côté étudiant</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Brouillons</p>
+                    <p class="admin-stat-card__value">{{ $stats['draft'] }}</p>
+                    <p class="admin-stat-card__muted">À finaliser</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Gratuits</p>
+                    <p class="admin-stat-card__value">{{ $stats['free'] }}</p>
+                    <p class="admin-stat-card__muted">Accès libre</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Payants</p>
+                    <p class="admin-stat-card__value">{{ $stats['paid'] }}</p>
+                    <p class="admin-stat-card__muted">Cours premium</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Résultats</p>
+                    <p class="admin-stat-card__value">{{ $courses->total() }}</p>
+                    <p class="admin-stat-card__muted">Correspondant à vos filtres</p>
                 </div>
             </div>
 
-            <div class="card border-0 shadow">
-                <div class="card-body">
-                    <!-- Statistiques -->
-                    <div class="row mb-4">
-                        <div class="col-md-2">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['total'] }}</h5>
-                                    <p class="card-text small">Total</p>
-                                </div>
-                            </div>
+            <x-admin.search-panel
+                :action="route('admin.courses')"
+                formId="coursesFilterForm"
+                filtersId="coursesFilters"
+                :hasFilters="true"
+                searchName="search"
+                :searchValue="request('search')"
+                placeholder="Rechercher un cours..."
+            >
+                <x-slot:filters>
+                    <div class="admin-form-grid admin-form-grid--two mb-3">
+                        <div>
+                            <label class="form-label fw-semibold">Catégorie</label>
+                            <select class="form-select" name="category">
+                                <option value="">Toutes les catégories</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}" {{ request('category') == $category->id ? 'selected' : '' }}>
+                                        {{ $category->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
-                        <div class="col-md-2">
-                            <div class="card bg-success text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['published'] }}</h5>
-                                    <p class="card-text small">Publiés</p>
-                                </div>
-                            </div>
+                        <div>
+                            <label class="form-label fw-semibold">Statut</label>
+                            <select class="form-select" name="status">
+                                <option value="">Tous les statuts</option>
+                                <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>Publié</option>
+                                <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Brouillon</option>
+                                <option value="free" {{ request('status') == 'free' ? 'selected' : '' }}>Gratuit</option>
+                                <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Payant</option>
+                            </select>
                         </div>
-                        <div class="col-md-2">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['draft'] }}</h5>
-                                    <p class="card-text small">Brouillons</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-info text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['free'] }}</h5>
-                                    <p class="card-text small">Gratuits</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-danger text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $stats['paid'] }}</h5>
-                                    <p class="card-text small">Payants</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-secondary text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $courses->total() }}</h5>
-                                    <p class="card-text small">Résultats</p>
-                                </div>
-                            </div>
+                        <div>
+                            <label class="form-label fw-semibold">Formateur</label>
+                            <select class="form-select" name="instructor">
+                                <option value="">Tous les formateurs</option>
+                                @foreach($instructors as $instructor)
+                                    <option value="{{ $instructor->id }}" {{ request('instructor') == $instructor->id ? 'selected' : '' }}>
+                                        {{ $instructor->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
-
-                    <!-- Filtres et recherche -->
-                    <form method="GET" action="{{ route('admin.courses') }}" id="filterForm">
-                        <div class="row mb-4">
-                            <div class="col-md-4">
-                                <div class="input-group">
-                                    <span class="input-group-text">
-                                        <i class="fas fa-search"></i>
-                                    </span>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="search" 
-                                           value="{{ request('search') }}"
-                                           placeholder="Rechercher par titre ou description...">
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <select class="form-select" name="category">
-                                    <option value="">Toutes les catégories</option>
-                                    @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" {{ request('category') == $category->id ? 'selected' : '' }}>
-                                            {{ $category->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <select class="form-select" name="status">
-                                    <option value="">Tous les statuts</option>
-                                    <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>Publié</option>
-                                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Brouillon</option>
-                                    <option value="free" {{ request('status') == 'free' ? 'selected' : '' }}>Gratuit</option>
-                                    <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Payant</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <select class="form-select" name="instructor">
-                                    <option value="">Tous les formateurs</option>
-                                    @foreach($instructors as $instructor)
-                                        <option value="{{ $instructor->id }}" {{ request('instructor') == $instructor->id ? 'selected' : '' }}>
-                                            {{ $instructor->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="btn-group w-100" role="group">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-filter me-1"></i>Filtrer
-                                    </button>
-                                    <a href="{{ route('admin.courses') }}" class="btn btn-outline-secondary">
-                                        <i class="fas fa-times me-1"></i>Effacer
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-
-                    <!-- Résultats de recherche -->
-                    @if(request()->hasAny(['search', 'category', 'status', 'instructor']))
-                    <div class="alert alert-info mt-3">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Filtres appliqués :</strong>
-                        @if(request('search'))
-                            Recherche: "{{ request('search') }}"
-                        @endif
-                        @if(request('category'))
-                            | Catégorie: {{ $categories->firstWhere('id', request('category'))->name ?? 'Inconnue' }}
-                        @endif
-                        @if(request('status'))
-                            | Statut: {{ ucfirst(request('status')) }}
-                        @endif
-                        @if(request('instructor'))
-                            | Formateur: {{ $instructors->firstWhere('id', request('instructor'))->name ?? 'Inconnu' }}
-                        @endif
-                        <a href="{{ route('admin.courses') }}" class="btn btn-sm btn-outline-primary ms-2">
-                            <i class="fas fa-times me-1"></i>Effacer les filtres
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="text-muted small">Ajustez les filtres puis appliquez-les.</span>
+                        <a href="{{ route('admin.courses') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-undo me-2"></i>Réinitialiser
                         </a>
                     </div>
-                    @endif
+                </x-slot:filters>
+            </x-admin.search-panel>
 
-                    <!-- Tableau des cours -->
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
+            @if(request()->hasAny(['search', 'category', 'status', 'instructor']))
+                <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <i class="fas fa-filter me-2"></i>
+                        <strong>Filtres actifs</strong>
+                        @if(request('search'))
+                            | Recherche : <span class="fw-semibold">{{ request('search') }}</span>
+                        @endif
+                        @if(request('category'))
+                            | Catégorie : <span class="fw-semibold">{{ $categories->firstWhere('id', request('category'))->name ?? 'Inconnue' }}</span>
+                        @endif
+                        @if(request('status'))
+                            | Statut : <span class="fw-semibold">{{ ucfirst(request('status')) }}</span>
+                        @endif
+                        @if(request('instructor'))
+                            | Formateur : <span class="fw-semibold">{{ $instructors->firstWhere('id', request('instructor'))->name ?? 'Inconnu' }}</span>
+                        @endif
+                    </div>
+                    <a href="{{ route('admin.courses') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-times me-1"></i>Effacer
+                    </a>
+                </div>
+            @endif
+        </div>
+    </section>
+
+    <section class="admin-panel">
+        <div class="admin-panel__body">
+            <div class="admin-table">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 48px;">
+                                    <input type="checkbox" id="selectAll" class="form-check-input">
+                                </th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'title', 'direction' => request('sort') == 'title' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
+                                        Cours
+                                        @if(request('sort') == 'title')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>Formateur</th>
+                                <th>Catégorie</th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'price', 'direction' => request('sort') == 'price' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
+                                        Prix
+                                        @if(request('sort') == 'price')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>Statut</th>
+                                <th class="text-center">
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'created_at', 'direction' => request('sort') == 'created_at' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
+                                        Créé le
+                                        @if(request('sort') == 'created_at')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th class="text-center" style="width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($courses as $course)
                                 <tr>
-                                    <th>
-                                        <input type="checkbox" id="selectAll" class="form-check-input">
-                                    </th>
-                                    <th>
-                                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'title', 'direction' => request('sort') == 'title' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" 
-                                           class="text-decoration-none text-dark">
-                                            Cours
-                                            @if(request('sort') == 'title')
-                                                <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
-                                            @else
-                                                <i class="fas fa-sort ms-1 text-muted"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th>Instructeur</th>
-                                    <th>Catégorie</th>
-                                    <th>
-                                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'price', 'direction' => request('sort') == 'price' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" 
-                                           class="text-decoration-none text-dark">
-                                            Prix
-                                            @if(request('sort') == 'price')
-                                                <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
-                                            @else
-                                                <i class="fas fa-sort ms-1 text-muted"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th>Statut</th>
-                                    <th>
-                                        <a href="{{ request()->fullUrlWithQuery(['sort' => 'created_at', 'direction' => request('sort') == 'created_at' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" 
-                                           class="text-decoration-none text-dark">
-                                            Créé
-                                            @if(request('sort') == 'created_at')
-                                                <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
-                                            @else
-                                                <i class="fas fa-sort ms-1 text-muted"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($courses as $course)
-                                <tr>
-                                    <td>
-                                        <input type="checkbox" class="form-check-input course-checkbox" value="{{ $course->id }}">
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input">
                                     </td>
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="me-3">
-                                                @if($course->featured_image)
-                                                    <img src="{{ Storage::url($course->featured_image) }}" 
-                                                         alt="{{ $course->title }}" 
-                                                         class="rounded" 
-                                                         width="60" 
-                                                         height="40" 
-                                                         style="object-fit: cover;">
-                                                @else
-                                                    <div class="bg-light rounded d-flex align-items-center justify-content-center" 
-                                                         style="width: 60px; height: 40px;">
-                                                        <i class="fas fa-graduation-cap text-muted"></i>
-                                                    </div>
-                                                @endif
-                                            </div>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <img src="{{ $course->thumbnail ?? 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">
                                             <div>
-                                                <h6 class="mb-1">{{ $course->title }}</h6>
-                                                <small class="text-muted">
-                                                    {{ $course->stats['total_lessons'] ?? 0 }} leçons • {{ $course->stats['total_duration'] ?? 0 }} min
-                                                </small>
+                                                <a href="{{ route('admin.courses.show', $course) }}" class="fw-semibold text-decoration-none text-dark">
+                                                    {{ $course->title }}
+                                                </a>
+                                                <div class="text-muted small">{{ Str::limit($course->subtitle, 60) }}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            <img src="{{ $course->instructor->avatar ? $instructor->avatar : asset('images/default-avatar.svg') }}" 
-                                                 alt="{{ $course->instructor->name }}" 
-                                                 class="rounded-circle me-2" 
-                                                 width="30" 
-                                                 height="30">
-                                            <span>{{ $course->instructor->name }}</span>
-                                        </div>
+                                        <span class="admin-chip">
+                                            <i class="fas fa-user"></i>{{ $course->instructor->name ?? 'Non assigné' }}
+                                        </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ $course->category->color ?? 'primary' }}">
-                                            {{ $course->category->name }}
+                                        <span class="admin-chip admin-chip--info">
+                                            {{ $course->category->name ?? 'Aucune' }}
                                         </span>
                                     </td>
                                     <td>
                                         @if($course->is_free)
-                                            <span class="badge bg-success">Gratuit</span>
+                                            <span class="admin-chip admin-chip--success">Gratuit</span>
                                         @else
-                                            <div>
-                                                <strong>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->current_price) }}</strong>
-                                                @if($course->sale_price && $course->sale_price < $course->price)
-                                                    <br><small class="text-muted">
-                                                        <s>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</s>
-                                                    </small>
-                                                @endif
-                                            </div>
+                                            {{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price ?? 0, $course->currency ?? 'USD') }}
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="d-flex flex-column gap-1">
-                                            @if($course->is_published)
-                                                <span class="badge bg-success">Publié</span>
-                                            @else
-                                                <span class="badge bg-warning">Brouillon</span>
-                                            @endif
-                                            
-                                            @if($course->is_featured)
-                                                <span class="badge bg-info">Vedette</span>
-                                            @endif
-                                            
-                                            @if(($course->stats['average_rating'] ?? 0) > 0)
-                                                <div class="d-flex align-items-center">
-                                                    <i class="fas fa-star text-warning me-1"></i>
-                                                    <span>{{ number_format($course->stats['average_rating'] ?? 0, 1) }}</span>
-                                                    <small class="text-muted ms-1">({{ $course->stats['total_reviews'] ?? 0 }})</small>
-                                                </div>
-                                            @endif
-                                        </div>
+                                        @if($course->is_published)
+                                            <span class="admin-chip admin-chip--success">Publié</span>
+                                        @else
+                                            <span class="admin-chip admin-chip--warning">Brouillon</span>
+                                        @endif
                                     </td>
-                                    <td>
-                                        <small class="text-muted">
-                                            {{ $course->created_at->format('d/m/Y') }}
-                                        </small>
+                                    <td class="text-center">
+                                        <span class="admin-chip admin-chip--neutral">{{ $course->created_at->format('d/m/Y') }}</span>
                                     </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <a href="{{ route('admin.courses.show', $course) }}" 
-                                               class="btn btn-sm btn-outline-primary" title="Voir">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('admin.courses.edit', $course) }}" 
-                                               class="btn btn-sm btn-outline-warning" title="Modifier">
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-light" title="Modifier">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-danger" 
-                                                    title="Supprimer"
-                                                    onclick="deleteCourse({{ $course->id }})">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                            <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-light" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <form action="{{ route('admin.courses.destroy', $course) }}" method="POST" onsubmit="return confirm('Supprimer ce cours ?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-light text-danger" title="Supprimer">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
-                                @empty
+                            @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-4">
-                                        <div class="text-muted">
-                                            <i class="fas fa-graduation-cap fa-3x mb-3"></i>
-                                            <p>Aucun cours trouvé</p>
-                                            @if(request()->hasAny(['search', 'category', 'status', 'instructor']))
-                                                <a href="{{ route('admin.courses') }}" class="btn btn-primary">
-                                                    Voir tous les cours
-                                                </a>
-                                            @endif
-                                        </div>
+                                    <td colspan="8" class="admin-table__empty">
+                                        <i class="fas fa-inbox mb-2 d-block"></i>
+                                        Aucun cours trouvé avec ces critères.
                                     </td>
                                 </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <div class="d-flex justify-content-between align-items-center mt-4">
-                        <div>
-                            <span class="text-muted">
-                                Affichage de {{ $courses->firstItem() ?? 0 }} à {{ $courses->lastItem() ?? 0 }} sur {{ $courses->total() }} cours
-                                @if(request()->hasAny(['search', 'category', 'status', 'instructor']))
-                                    ({{ $courses->count() }} résultat{{ $courses->count() > 1 ? 's' : '' }})
-                                @endif
-                            </span>
-                        </div>
-                        <div>
-                            {{ $courses->appends(request()->query())->links() }}
-                        </div>
-                    </div>
-
-                    <!-- Actions en lot -->
-                    <div class="mt-3" id="bulkActions" style="display: none;">
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-success" onclick="bulkAction('publish')">
-                                <i class="fas fa-check me-1"></i>Publier
-                            </button>
-                            <button class="btn btn-sm btn-warning" onclick="bulkAction('unpublish')">
-                                <i class="fas fa-times me-1"></i>Dépublier
-                            </button>
-                            <button class="btn btn-sm btn-info" onclick="bulkAction('feature')">
-                                <i class="fas fa-star me-1"></i>Mettre en vedette
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="bulkAction('delete')">
-                                <i class="fas fa-trash me-1"></i>Supprimer
-                            </button>
-                        </div>
-                    </div>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Modal de confirmation de suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmer la suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer ce cours ? Cette action est irréversible.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-danger" id="confirmDelete">Supprimer</button>
+            <div class="admin-pagination">
+                {{ $courses->withQueryString()->links() }}
             </div>
         </div>
-    </div>
-</div>
-
-@push('scripts')
-<script>
-let courseIdToDelete = null;
-
-// Gestion de la sélection multiple
-document.getElementById('selectAll').addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.course-checkbox');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-    });
-    toggleBulkActions();
-});
-
-document.querySelectorAll('.course-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', toggleBulkActions);
-});
-
-function toggleBulkActions() {
-    const checkedBoxes = document.querySelectorAll('.course-checkbox:checked');
-    const bulkActions = document.getElementById('bulkActions');
-    
-    if (checkedBoxes.length > 0) {
-        bulkActions.style.display = 'block';
-    } else {
-        bulkActions.style.display = 'none';
-    }
-}
-
-function deleteCourse(courseId) {
-    courseIdToDelete = courseId;
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
-}
-
-document.getElementById('confirmDelete').addEventListener('click', function() {
-    if (courseIdToDelete) {
-        // Créer un formulaire pour la suppression
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/courses/${courseIdToDelete}`;
-        
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = '_token';
-        csrfToken.value = '{{ csrf_token() }}';
-        
-        const methodField = document.createElement('input');
-        methodField.type = 'hidden';
-        methodField.name = '_method';
-        methodField.value = 'DELETE';
-        
-        form.appendChild(csrfToken);
-        form.appendChild(methodField);
-        document.body.appendChild(form);
-        form.submit();
-    }
-});
-
-// Recherche en temps réel avec debounce
-let searchTimeout;
-document.querySelector('input[name="search"]').addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        document.getElementById('filterForm').submit();
-    }, 500);
-});
-
-// Soumission automatique du formulaire lors du changement des sélecteurs
-document.querySelectorAll('select[name="category"], select[name="status"], select[name="instructor"]').forEach(select => {
-    select.addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
-    });
-});
-
-// Fonction pour les actions en lot
-function bulkAction(action) {
-    const checkedBoxes = document.querySelectorAll('.course-checkbox:checked');
-    const courseIds = Array.from(checkedBoxes).map(cb => cb.value);
-    
-    if (courseIds.length === 0) {
-        alert('Veuillez sélectionner au moins un cours.');
-        return;
-    }
-    
-    if (action === 'delete' && !confirm('Êtes-vous sûr de vouloir supprimer les cours sélectionnés ?')) {
-        return;
-    }
-    
-    // Ici vous pouvez implémenter les actions en lot
-    console.log(`Action: ${action}, Courses: ${courseIds.join(',')}`);
-    alert(`Action "${action}" appliquée à ${courseIds.length} cours.`);
-}
-</script>
-@endpush
-
-@push('styles')
-<style>
-/* Design moderne pour la page de gestion des cours */
-.card {
-    border-radius: 15px;
-    overflow: hidden;
-}
-
-.card-header {
-    background: linear-gradient(135deg, #003366 0%, #004080 100%);
-    border: none;
-    padding: 1.5rem;
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table th {
-    border-top: none;
-    font-weight: 600;
-    color: #003366;
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-}
-
-.table tbody tr {
-    transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.table tbody tr:hover {
-    background-color: #f8f9fa;
-    transform: translateX(3px);
-}
-
-.badge {
-    font-size: 0.85rem;
-    padding: 0.4em 0.8em;
-    font-weight: 500;
-}
-
-.btn-group .btn {
-    border-radius: 0.375rem;
-    margin-right: 2px;
-    transition: all 0.2s ease;
-}
-
-.btn-group .btn:hover {
-    transform: translateY(-2px);
-}
-
-.card-body h6 {
-    color: #003366;
-}
-
-.text-primary {
-    color: #003366 !important;
-}
-
-.form-check-input:checked {
-    background-color: #003366;
-    border-color: #003366;
-}
-
-.rounded, .rounded-circle {
-    transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-.rounded:hover, .rounded-circle:hover {
-    transform: scale(1.05);
-    border-color: #0d6efd;
-}
-
-/* En-tête */
-.text-description {
-    opacity: 0.9;
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-    .container-fluid {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-    }
-    
-    .card-header {
-        padding: 0.75rem;
-    }
-    
-    .card-header h4 {
-        font-size: 1rem;
-    }
-    
-    .card-header .btn-outline-light.btn-sm {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.85rem;
-    }
-    
-    .card-header .btn-light {
-        font-size: 0.85rem;
-        padding: 0.4rem 0.8rem;
-    }
-    
-    .card-body {
-        padding: 0.75rem;
-    }
-    
-    .table {
-        font-size: 0.85rem;
-    }
-    
-    .btn-group .btn {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.8rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .card-header .d-flex {
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: stretch !important;
-    }
-    
-    .card-header .btn-light:not(.btn-sm) {
-        width: 100%;
-    }
-}
-</style>
-@endpush
+    </section>
 @endsection

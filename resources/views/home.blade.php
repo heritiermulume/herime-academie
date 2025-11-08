@@ -1055,32 +1055,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Test des boutons au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Page d\'accueil chargée - Test des boutons...');
-    
     const startLearningBtn = document.getElementById('start-learning-btn');
     const exploreBtn = document.getElementById('explore-btn');
-    
+
     if (startLearningBtn) {
-        console.log('✅ Bouton "Commencer à apprendre" trouvé et prêt');
-        // Test de clic programmatique
         startLearningBtn.addEventListener('click', function(e) {
             console.log('🎯 Clic détecté sur "Commencer à apprendre"');
         });
-    } else {
-        console.error('❌ Bouton "Commencer à apprendre" non trouvé');
     }
-    
+
     if (exploreBtn) {
-        console.log('✅ Bouton "Explorer les cours" trouvé et prêt');
-        // Test de clic programmatique
         exploreBtn.addEventListener('click', function(e) {
             console.log('🎯 Clic détecté sur "Explorer les cours"');
         });
-    } else {
-        console.error('❌ Bouton "Explorer les cours" non trouvé');
     }
-    
-    // Les boutons sont prêts (sans notification)
 });
 
 // La fonction addToCart est maintenant définie globalement dans app.blade.php

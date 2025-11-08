@@ -3331,36 +3331,6 @@
             once: true
         });
 
-        // Footer visibility test (only in development)
-        @if(config('app.debug'))
-        console.log('🔍 Test de visibilité du footer - Herime Academie');
-        
-        function checkFooterVisibility() {
-            const footer = document.querySelector('.footer');
-            if (!footer) {
-                console.error('❌ Footer non trouvé sur la page');
-                return false;
-            }
-            
-            const footerRect = footer.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const isVisible = footerRect.top < windowHeight && footerRect.bottom > 0;
-            
-            if (isVisible) {
-                console.log('✅ Footer visible');
-            } else {
-                console.error('❌ Footer non visible');
-            }
-            
-            return isVisible;
-        }
-        
-        // Vérifier le footer au chargement
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(checkFooterVisibility, 1000);
-        });
-        @endif
-
         // Smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

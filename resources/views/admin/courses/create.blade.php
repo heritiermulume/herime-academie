@@ -1,48 +1,31 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
-@section('title', 'Créer un cours - Admin')
+@section('title', 'Créer un cours')
+@section('admin-title', 'Créer un cours')
+@section('admin-subtitle', 'Ajoutez un nouveau contenu pédagogique à votre catalogue')
+@section('admin-actions')
+    <a href="{{ route('admin.courses') }}" class="btn btn-light">
+        <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+    </a>
+@endsection
 
-@section('content')
-<div class="container-fluid py-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <!-- Header -->
-            <div class="card border-0 shadow mb-4">
-                <div class="card-header text-white" style="background-color: #003366;">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </a>
-                            <a href="{{ route('admin.courses') }}" class="btn btn-outline-light btn-sm" title="Liste des cours">
-                                <i class="fas fa-th-list"></i>
-                            </a>
-                            <div>
-                                <h4 class="mb-1">
-                                    <i class="fas fa-plus-circle me-2"></i>Créer un nouveau cours
-                                </h4>
-                                <p class="mb-0 text-description small">Ajoutez un nouveau cours à votre plateforme</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+@section('admin-content')
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation</h5>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
-            <!-- Affichage des erreurs -->
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation</h5>
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
+    <div class="admin-panel">
+        <div class="admin-panel__body admin-panel__body--padded">
             <form action="{{ route('admin.courses.store') }}" method="POST" id="courseForm" enctype="multipart/form-data">
                 @csrf
-                
                 <!-- Informations de base -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-gradient-primary text-white">
@@ -515,7 +498,7 @@
             </form>
         </div>
     </div>
-</div>
+@endsection
 
 @push('scripts')
 <script>
@@ -1175,4 +1158,3 @@ function uploadVideoPreviewAjax(input) {
 }
 </style>
 @endpush
-@endsection

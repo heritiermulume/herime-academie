@@ -1,162 +1,74 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
-@section('title', 'Modifier l\'utilisateur - Admin')
+@section('title', "Modifier l'utilisateur")
+@section('admin-title', "Modifier l'utilisateur")
+@section('admin-subtitle', "Ajustez le rôle et le statut de " . ($user->name ?? 'cet utilisateur') . " (données SSO synchronisées)")
+@section('admin-actions')
+    <a href="{{ route('admin.users') }}" class="btn btn-light">
+        <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+    </a>
+@endsection
 
-@section('content')
-<div class="container-fluid py-4">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <!-- Header -->
-            <div class="card border-0 shadow mb-4">
-                <div class="card-header text-white" style="background-color: #003366;">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
-                                <i class="fas fa-tachometer-alt"></i>
-                            </a>
-                            <a href="{{ route('admin.users') }}" class="btn btn-outline-light btn-sm" title="Liste des utilisateurs">
-                                <i class="fas fa-th-list"></i>
-                            </a>
-                            <div>
-                                <h4 class="mb-1">
-                                    <i class="fas fa-user-edit me-2"></i>Modifier l'utilisateur
-                                </h4>
-                                <p class="mb-0 text-description small">Mettre à jour les informations de {{ $user->name }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+@section('admin-content')
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation</h5>
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
 
-            <!-- Affichage des erreurs -->
-            @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation</h5>
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-
-            @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            @endif
-
+    <div class="admin-panel">
+        <div class="admin-panel__body admin-panel__body--padded">
             <form action="{{ route('admin.users.update', $user) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
-                <!-- Informations personnelles -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-gradient-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-user me-2"></i>Informations personnelles</h5>
-                    </div>
-                    <div class="card-body">
+                <div class="admin-form-grid admin-form-grid--two">
+                    <div class="admin-form-card">
+                        <h5><i class="fas fa-user me-2"></i>Profil synchronisé</h5>
                         <!-- Avertissement Compte Herime -->
                         <div class="alert alert-info mb-4">
                             <i class="fas fa-info-circle me-2"></i>
                             <strong>Gestion via Compte Herime :</strong> Les informations personnelles (nom, email, photo) sont gérées via Compte Herime (compte.herime.com) et seront synchronisées automatiquement lors de la prochaine connexion de l'utilisateur. Seuls le rôle et le statut actif peuvent être modifiés ici.
                         </div>
-                        <div class="row g-3">
-                            <!-- Avatar actuel (lecture seule) -->
-                            <div class="col-12">
-                                <label class="form-label fw-bold">
-                                    Photo de profil 
-                                    <span class="badge bg-info ms-2">Géré par Compte Herime</span>
-                                </label>
-                                
-                                <!-- Avatar actuel -->
-                                <div class="current-avatar mb-3 text-center">
-                                    <p class="fw-bold mb-2 text-success">
-                                        <i class="fas fa-check-circle me-1"></i>
-                                        Avatar actuel (synchronisé depuis Compte Herime) :
-                                    </p>
-                                    <div style="width: 150px; height: 150px; border-radius: 50%; overflow: hidden; margin: 0 auto; aspect-ratio: 1 / 1;">
-                                        <img src="{{ $user->avatar_url }}" 
-                                             alt="Avatar actuel" 
-                                             id="currentAvatar"
-                                             style="width: 100%; height: 100%; object-fit: cover; display: block; border: none; box-shadow: none; transform: none;">
-                                    </div>
-                                    <p class="text-muted small mt-2">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        La photo est gérée via <a href="{{ config('services.sso.base_url') }}" target="_blank">compte.herime.com</a>
-                                    </p>
-                                </div>
+                        <div class="text-center mb-3">
+                            <div style="width: 150px; height: 150px; border-radius: 50%; overflow: hidden; margin: 0 auto;">
+                                <img src="{{ $user->avatar_url }}" alt="Avatar actuel" class="img-fluid" style="width:100%; height:100%; object-fit:cover;">
                             </div>
-
-                            <!-- Nom (lecture seule) -->
-                            <div class="col-md-6">
-                                <label for="name" class="form-label fw-bold">
-                                    Nom complet 
-                                    <span class="badge bg-info ms-2">Géré par Compte Herime</span>
-                                </label>
-                                <input type="text" class="form-control bg-light" 
-                                       id="name" name="name" value="{{ $user->name }}" 
-                                       readonly disabled>
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-lock me-1"></i>
-                                    Modifiable uniquement via Compte Herime
-                                </small>
-                            </div>
-                            
-                            <!-- Email (lecture seule) -->
-                            <div class="col-md-6">
-                                <label for="email" class="form-label fw-bold">
-                                    Email 
-                                    <span class="badge bg-info ms-2">Géré par Compte Herime</span>
-                                </label>
-                                <input type="email" class="form-control bg-light" 
-                                       id="email" name="email" value="{{ $user->email }}" 
-                                       readonly disabled>
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-lock me-1"></i>
-                                    Modifiable uniquement via Compte Herime
-                                </small>
-                            </div>
-                            
-                            <!-- Informations supplémentaires (lecture seule) -->
-                            <div class="col-12">
-                                <div class="alert alert-secondary">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Note :</strong> Les autres informations (téléphone, date de naissance, genre, biographie) sont également gérées via Compte Herime et seront synchronisées lors de la prochaine connexion.
-                                </div>
-                            </div>
+                            <p class="text-muted small mt-2">
+                                <i class="fas fa-info-circle me-1"></i>Photo, nom et email sont gérés via <a href="{{ config('services.sso.base_url') }}" target="_blank">compte.herime.com</a>
+                            </p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nom complet</label>
+                            <input type="text" class="form-control bg-light" value="{{ $user->name }}" readonly disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control bg-light" value="{{ $user->email }}" readonly disabled>
+                        </div>
+                        <div class="alert alert-secondary mb-0">
+                            <i class="fas fa-info-circle me-2"></i>Les informations complémentaires (téléphone, biographie, etc.) sont synchronisées à la connexion.
                         </div>
                     </div>
-                </div>
 
-                <!-- Mot de passe (géré par Compte Herime) -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-gradient-warning text-white">
-                        <h5 class="mb-0"><i class="fas fa-lock me-2"></i>Mot de passe</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Gestion via Compte Herime :</strong> Le mot de passe est géré exclusivement via Compte Herime (compte.herime.com). Les utilisateurs doivent modifier leur mot de passe sur Compte Herime.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Rôle & Paramètres -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-gradient-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Rôle & Paramètres</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="role" class="form-label fw-bold">
-                                    Rôle <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-select @error('role') is-invalid @enderror" 
-                                        id="role" name="role" required>
+                    <div class="admin-form-card">
+                        <h5><i class="fas fa-cog me-2"></i>Rôle & Paramètres</h5>
+                        <div class="admin-form-grid">
+                            <div>
+                                <label for="role" class="form-label fw-bold">Rôle <span class="text-danger">*</span></label>
+                                <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required>
                                     <option value="">Sélectionner un rôle</option>
                                     <option value="student" {{ old('role', $user->role) == 'student' ? 'selected' : '' }}>Étudiant</option>
                                     <option value="instructor" {{ old('role', $user->role) == 'instructor' ? 'selected' : '' }}>Formateur</option>
@@ -167,106 +79,62 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="col-md-6">
+                            <div>
                                 <label class="form-label fw-bold">Statut</label>
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="is_active" 
-                                           name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_active">
-                                        Utilisateur actif
-                                    </label>
-                                    <small class="form-text text-muted d-block">
-                                        Désactiver pour empêcher l'accès à la plateforme
-                                    </small>
+                                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="is_active">Utilisateur actif</label>
                                 </div>
+                                <small class="text-muted">Désactivez pour bloquer l’accès à la plateforme.</small>
                                 <div class="mt-3">
-                                    <div class="d-flex align-items-center">
-                                        <span class="badge bg-{{ $user->is_verified ? 'success' : 'warning' }} me-2">
-                                            <i class="fas fa-{{ $user->is_verified ? 'check' : 'clock' }} me-1"></i>
-                                            Email {{ $user->is_verified ? 'vérifié' : 'non vérifié' }}
-                                        </span>
-                                        <small class="text-muted">
-                                            (Géré par Compte Herime)
-                                        </small>
-                                    </div>
+                                    <span class="admin-chip {{ $user->is_verified ? 'admin-chip--success' : 'admin-chip--warning' }}">
+                                        <i class="fas fa-{{ $user->is_verified ? 'check' : 'clock' }} me-1"></i>Email {{ $user->is_verified ? 'vérifié' : 'non vérifié' }}
+                                    </span>
+                                    <small class="text-muted ms-2">(Géré par Compte Herime)</small>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Réseaux sociaux -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header" style="background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);">
-                        <h5 class="mb-0 text-white"><i class="fas fa-share-alt me-2"></i>Réseaux sociaux</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="website" class="form-label fw-bold">
-                                    <i class="fas fa-globe me-1"></i>Site web
-                                </label>
-                                <input type="url" class="form-control @error('website') is-invalid @enderror" 
-                                       id="website" name="website" value="{{ old('website', $user->website) }}"
-                                       placeholder="https://example.com">
-                                @error('website')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                <div class="admin-form-card">
+                    <h5><i class="fas fa-history me-2"></i>Historique & infos</h5>
+                    <div class="admin-form-grid admin-form-grid--two">
+                        <div>
+                            <label class="form-label fw-bold">Date d'inscription</label>
+                            <input type="text" class="form-control bg-light" value="{{ $user->created_at->format('d/m/Y H:i') }}" readonly disabled>
+                        </div>
+                        <div>
+                            <label class="form-label fw-bold">Dernière connexion</label>
+                            <input type="text" class="form-control bg-light" value="{{ $user->last_login_at ? $user->last_login_at->format('d/m/Y H:i') : 'Jamais' }}" readonly disabled>
+                        </div>
+                        <div>
+                            <label class="form-label fw-bold">Dernière mise à jour</label>
+                            <input type="text" class="form-control bg-light" value="{{ $user->updated_at->format('d/m/Y H:i') }}" readonly disabled>
+                        </div>
+                        <div>
+                            <label class="form-label fw-bold">Profils sociaux (SSO)</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="admin-chip admin-chip--neutral"><i class="fab fa-linkedin me-1"></i>LinkedIn</span>
+                                <span class="admin-chip admin-chip--neutral"><i class="fab fa-twitter me-1"></i>Twitter</span>
+                                <span class="admin-chip admin-chip--neutral"><i class="fab fa-facebook-f me-1"></i>Facebook</span>
+                                <span class="admin-chip admin-chip--neutral"><i class="fas fa-globe me-1"></i>Site</span>
                             </div>
-                            <div class="col-md-6">
-                                <label for="linkedin" class="form-label fw-bold">
-                                    <i class="fab fa-linkedin me-1"></i>LinkedIn
-                                </label>
-                                <input type="url" class="form-control @error('linkedin') is-invalid @enderror" 
-                                       id="linkedin" name="linkedin" value="{{ old('linkedin', $user->linkedin) }}"
-                                       placeholder="https://linkedin.com/in/username">
-                                @error('linkedin')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="twitter" class="form-label fw-bold">
-                                    <i class="fab fa-twitter me-1"></i>Twitter
-                                </label>
-                                <input type="url" class="form-control @error('twitter') is-invalid @enderror" 
-                                       id="twitter" name="twitter" value="{{ old('twitter', $user->twitter) }}"
-                                       placeholder="https://twitter.com/username">
-                                @error('twitter')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="youtube" class="form-label fw-bold">
-                                    <i class="fab fa-youtube me-1"></i>YouTube
-                                </label>
-                                <input type="url" class="form-control @error('youtube') is-invalid @enderror" 
-                                       id="youtube" name="youtube" value="{{ old('youtube', $user->youtube) }}"
-                                       placeholder="https://youtube.com/@username">
-                                @error('youtube')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            <small class="text-muted d-block mt-1">Gérés via Compte Herime lorsqu’ils sont fournis.</small>
                         </div>
                     </div>
                 </div>
 
-                <!-- Boutons d'action -->
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between gap-2">
-                            <a href="{{ route('admin.users') }}" class="btn btn-secondary">
-                                <i class="fas fa-times me-1"></i>Annuler
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-1"></i>Mettre à jour
-                            </button>
-                        </div>
-                    </div>
+                <div class="admin-panel__footer d-flex justify-content-between flex-wrap gap-2">
+                    <a href="{{ route('admin.users') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Retour
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                    </button>
                 </div>
             </form>
         </div>
     </div>
-</div>
 @endsection
 
 @push('styles')
