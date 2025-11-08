@@ -7,9 +7,6 @@
     <a href="{{ route('admin.analytics') }}" class="btn btn-outline-primary">
         <i class="fas fa-chart-line me-2"></i>Console analytics
     </a>
-    <a href="{{ route('courses.index') }}" class="btn btn-primary">
-        <i class="fas fa-plus-circle me-2"></i>Nouveau cours
-    </a>
 @endsection
 
 @php
@@ -209,7 +206,7 @@
                         <i class="fas fa-layer-group me-2"></i>Gérer
                     </a>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 admin-dashboard-table">
                     @if($popularCourses->count() > 0)
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
@@ -224,13 +221,13 @@
                                 <tbody>
                                     @foreach($popularCourses as $course)
                                         <tr>
-                                            <td>
+                                            <td data-label="Cours">
                                                 <span class="fw-semibold d-block">{{ Str::limit($course->title, 42) }}</span>
                                                 <small class="text-muted">{{ Str::limit($course->subtitle, 60) }}</small>
                                             </td>
-                                            <td>{{ $course->instructor->name ?? 'N/A' }}</td>
-                                            <td><span class="badge bg-light text-muted border">{{ $course->category->name ?? 'Général' }}</span></td>
-                                            <td class="text-end fw-semibold">{{ number_format($course->enrollments_count) }}</td>
+                                            <td data-label="Formateur">{{ $course->instructor->name ?? 'N/A' }}</td>
+                                            <td data-label="Catégorie"><span class="badge bg-light text-muted border">{{ $course->category->name ?? 'Général' }}</span></td>
+                                            <td data-label="Inscriptions" class="text-end fw-semibold">{{ number_format($course->enrollments_count) }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
