@@ -5,7 +5,6 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
 
 class FileUploadService
 {
@@ -19,50 +18,26 @@ class FileUploadService
      */
     public function upload(UploadedFile $file, string $folder, ?string $oldPath = null): array
     {
-        $disk = Storage::disk('local'); // Utiliser le disque privé
-        
-        // Supprimer l'ancien fichier si fourni
+        $disk = Storage::disk('local'); // Disque privé (storage/app/private)
+
         if ($oldPath) {
             $this->deleteFile($oldPath);
         }
-        
-        // Générer un nom de fichier unique
+
         $filename = $this->generateUniqueFilename($file);
-        
-        // Construire le chemin complet
-        $path = rtrim($folder, '/') . '/' . $filename;
-        
-        // S'assurer que le dossier existe
+        $folder = trim($folder, '/');
+
         $this->ensureDirectoryExists($disk, $folder);
-        
-        // Vérifier que le fichier temporaire existe et est lisible
-        $tempPath = $file->getRealPath();
-        if (!$tempPath || !file_exists($tempPath)) {
-            throw new \Exception('Le fichier temporaire n\'existe pas ou n\'est pas accessible.');
-        }
-        
-        // Vérifier que le fichier n'est pas vide
-        if ($file->getSize() === 0) {
-            throw new \Exception('Le fichier est vide.');
-        }
-        
-        // Lire le contenu du fichier
-        $content = file_get_contents($tempPath);
-        if ($content === false) {
-            throw new \Exception('Impossible de lire le fichier uploadé.');
-        }
-        
-        // Stocker le fichier en utilisant put() avec le contenu
-        $stored = $disk->put($path, $content);
-        
-        if (!$stored) {
+
+        $storedPath = $file->storeAs($folder, $filename, ['disk' => 'local']);
+
+        if (!$storedPath) {
             throw new \Exception('Impossible d\'écrire le fichier sur le disque. Vérifiez les permissions du dossier de stockage.');
         }
-        
-        // Retourner le chemin relatif et l'URL sécurisée via le FileController
+
         return [
-            'path' => $path,
-            'url' => $this->getSecureUrl($path, $folder),
+            'path' => $storedPath,
+            'url' => $this->getSecureUrl($storedPath, $folder),
         ];
     }
 
@@ -102,27 +77,35 @@ class FileUploadService
         
         try {
             // Si redimensionnement requis, utiliser Intervention Image
-            if ($maxWidth && $this->isImage($file)) {
-                $image = Image::make($file->getRealPath());
-                
-                // Redimensionner si nécessaire
+            if (
+                $maxWidth &&
+                $this->isImage($file) &&
+                class_exists(\Intervention\Image\Facades\Image::class)
+            ) {
+                $image = \Intervention\Image\Facades\Image::make($file->getRealPath());
+
                 if ($image->width() > $maxWidth) {
                     $image->resize($maxWidth, null, function ($constraint) {
                         $constraint->aspectRatio();
                         $constraint->upsize();
                     });
                 }
-                
-                // Sauvegarder l'image optimisée
+
                 $image->save($fullPath, $quality);
             } else {
-                // Sinon, copier le fichier tel quel
-                $disk->put($path, file_get_contents($file->getRealPath()));
+                // Sinon, stocker directement via le disque (supporte les gros fichiers)
+                $storedPath = $file->storeAs($folder, $filename, ['disk' => 'local']);
+                if (!$storedPath) {
+                    throw new \Exception("Impossible d'enregistrer le fichier dans {$folder}");
+                }
             }
         } catch (\Exception $e) {
             // En cas d'erreur avec Intervention Image, fallback vers upload normal
             \Log::warning("Erreur lors de l'optimisation de l'image: " . $e->getMessage());
-            $disk->put($path, file_get_contents($file->getRealPath()));
+            $storedPath = $file->storeAs($folder, $filename, ['disk' => 'local']);
+            if (!$storedPath) {
+                throw new \Exception("Impossible d'enregistrer le fichier dans {$folder}");
+            }
         }
         
         return [
@@ -170,20 +153,14 @@ class FileUploadService
             return false;
         }
         
-        $disk = Storage::disk('local'); // Utiliser le disque privé
-        
-        // Supprimer le préfixe 'storage/' si présent
-        $cleanPath = str_replace('storage/', '', $path);
-        
+        $disk = Storage::disk('local');
+
+        $cleanPath = ltrim(preg_replace('#^storage/#', '', $path), '/');
+
         if ($disk->exists($cleanPath)) {
             return $disk->delete($cleanPath);
         }
-        
-        // Essayer avec le chemin tel quel
-        if ($disk->exists($path)) {
-            return $disk->delete($path);
-        }
-        
+
         return false;
     }
 
@@ -215,18 +192,11 @@ class FileUploadService
      */
     protected function ensureDirectoryExists($disk, string $folder): void
     {
-        $path = $disk->path($folder);
-        
-        if (!file_exists($path)) {
-            $created = @mkdir($path, 0755, true);
+        if (!$disk->exists($folder)) {
+            $created = $disk->makeDirectory($folder);
             if (!$created) {
-                throw new \Exception("Impossible de créer le dossier de stockage : {$path}. Vérifiez les permissions.");
+                throw new \Exception("Impossible de créer le dossier de stockage : {$folder}. Vérifiez les permissions.");
             }
-        }
-        
-        // Vérifier que le dossier est accessible en écriture
-        if (!is_writable($path)) {
-            throw new \Exception("Le dossier de stockage n'est pas accessible en écriture : {$path}. Vérifiez les permissions.");
         }
     }
 
@@ -268,7 +238,7 @@ class FileUploadService
     protected function getSecureUrl(string $path, ?string $folder = null): string
     {
         // Nettoyer le chemin
-        $cleanPath = str_replace('storage/', '', $path);
+        $cleanPath = ltrim($path, '/');
         
         // Déterminer le type de fichier depuis le dossier
         if (!$folder) {
@@ -285,6 +255,8 @@ class FileUploadService
                 $type = 'avatars';
             } elseif (strpos($cleanPath, 'banners') === 0) {
                 $type = 'banners';
+            } elseif (strpos($cleanPath, 'media/') === 0) {
+                $type = 'media';
             } else {
                 $type = 'files'; // Type par défaut
             }
@@ -293,11 +265,16 @@ class FileUploadService
             $type = $this->getTypeFromFolder($folder);
         }
         
-        // Extraire le nom du fichier du chemin complet
-        $filename = basename($cleanPath);
-        
-        // Retourner l'URL de la route sécurisée
-        return route('files.serve', ['type' => $type, 'path' => $filename]);
+        $baseDir = $this->getBaseDirectoryForType($type);
+        $relativePath = $cleanPath;
+
+        if ($baseDir && str_starts_with($cleanPath, $baseDir)) {
+            $relativePath = ltrim(substr($cleanPath, strlen($baseDir)), '/');
+        }
+
+        $relativePath = $relativePath ?: basename($cleanPath);
+
+        return route('files.serve', ['type' => $type, 'path' => $relativePath]);
     }
 
     /**
@@ -317,9 +294,25 @@ class FileUploadService
             return 'avatars';
         } elseif (strpos($folder, 'banners') !== false) {
             return 'banners';
+        } elseif (strpos($folder, 'media/') !== false) {
+            return 'media';
         }
         
         return 'files';
+    }
+
+    protected function getBaseDirectoryForType(string $type): ?string
+    {
+        return match ($type) {
+            'thumbnails' => 'courses/thumbnails',
+            'previews' => 'courses/previews',
+            'lessons' => 'courses/lessons',
+            'downloads' => 'courses/downloads',
+            'avatars' => 'avatars',
+            'banners' => 'banners',
+            'media' => 'media',
+            default => null,
+        };
     }
 }
 

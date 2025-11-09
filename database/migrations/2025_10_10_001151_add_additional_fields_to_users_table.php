@@ -12,21 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('phone')->nullable();
-            $table->date('date_of_birth')->nullable();
-            $table->enum('gender', ['male', 'female', 'other'])->nullable();
-            $table->text('bio')->nullable();
-            $table->string('avatar')->nullable();
-            $table->string('cover_image')->nullable();
-            $table->string('website')->nullable();
-            $table->string('linkedin')->nullable();
-            $table->string('twitter')->nullable();
-            $table->string('youtube')->nullable();
-            $table->enum('role', ['student', 'instructor', 'admin', 'affiliate'])->default('student');
-            $table->boolean('is_verified')->default(false);
-            $table->boolean('is_active')->default(true);
-            $table->timestamp('last_login_at')->nullable();
-            $table->json('preferences')->nullable();
+            $table->string('phone')->nullable()->after('remember_token');
+            $table->date('date_of_birth')->nullable()->after('phone');
+            $table->enum('gender', ['male', 'female', 'other'])->nullable()->after('date_of_birth');
+            $table->text('bio')->nullable()->after('gender');
+            $table->string('avatar')->nullable()->after('bio');
+            $table->string('cover_image')->nullable()->after('avatar');
+            $table->string('website')->nullable()->after('cover_image');
+            $table->string('linkedin')->nullable()->after('website');
+            $table->string('twitter')->nullable()->after('linkedin');
+            $table->string('youtube')->nullable()->after('twitter');
+            $table->enum('role', ['student', 'instructor', 'admin', 'affiliate'])->default('student')->after('youtube');
+            $table->boolean('is_verified')->default(false)->after('role');
+            $table->boolean('is_active')->default(true)->after('is_verified');
+            $table->timestamp('last_login_at')->nullable()->after('is_active');
+            $table->json('preferences')->nullable()->after('last_login_at');
+            $table->string('sso_id')->nullable()->unique()->after('preferences');
+            $table->string('sso_provider', 100)->default('herime')->after('sso_id');
+            $table->json('sso_metadata')->nullable()->after('sso_provider');
         });
     }
 
@@ -37,9 +40,24 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn([
-                'phone', 'date_of_birth', 'gender', 'bio', 'avatar', 'cover_image',
-                'website', 'linkedin', 'twitter', 'youtube', 'role', 'is_verified',
-                'is_active', 'last_login_at', 'preferences'
+                'phone',
+                'date_of_birth',
+                'gender',
+                'bio',
+                'avatar',
+                'cover_image',
+                'website',
+                'linkedin',
+                'twitter',
+                'youtube',
+                'role',
+                'is_verified',
+                'is_active',
+                'last_login_at',
+                'preferences',
+                'sso_id',
+                'sso_provider',
+                'sso_metadata',
             ]);
         });
     }

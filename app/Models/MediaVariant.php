@@ -90,8 +90,10 @@ class MediaVariant extends Model
             return $this->storage_path;
         }
         
-        // Sinon, construire l'URL avec asset()
-        return asset($this->storage_path);
+        $service = app(\App\Services\FileUploadService::class);
+        $folder = dirname($this->storage_path);
+
+        return $service->getUrl($this->storage_path, $folder !== '.' ? $folder : null);
     }
 
     public function isReady(): bool

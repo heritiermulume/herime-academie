@@ -90,7 +90,9 @@ class MigrateBannersToFileStorage extends Command
             $path = 'banners/' . $filename;
             
             // Save to storage
-            Storage::disk('public')->put($path, $data);
+            Storage::disk('local')->put($path, $data);
+            $this->info("Fichier migré: {$path}");
+            $migrated[] = $path;
             
             return $path;
         }

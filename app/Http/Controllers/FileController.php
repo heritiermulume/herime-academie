@@ -30,40 +30,19 @@ class FileController extends Controller
         // Construire le chemin complet
         $fullPath = $this->getFullPath($type, $path);
         
-        // Utiliser le disque 'local' qui pointe vers storage/app/private
         $disk = Storage::disk('local');
-        
-        // Vérifier que le fichier existe
+
         if (!$disk->exists($fullPath)) {
-            // Essayer aussi avec le disque 'public' si le fichier n'est pas trouvé
-            $publicDisk = Storage::disk('public');
-            $publicPath = str_replace('courses/', 'courses/', $fullPath);
-            
-            if ($publicDisk->exists($publicPath)) {
-                $disk = $publicDisk;
-                $fullPath = $publicPath;
-            } elseif (strpos($path, '/') !== false) {
-                // Essayer avec le chemin tel quel si le path contient déjà le dossier
-                $cleanPath = ltrim(str_replace('storage/', '', $path), '/');
-                if ($disk->exists($cleanPath)) {
-                    $fullPath = $cleanPath;
-                } elseif ($publicDisk->exists($cleanPath)) {
-                    $disk = $publicDisk;
-                    $fullPath = $cleanPath;
-                } else {
-                    \Log::error("File not found", [
-                        'type' => $type,
-                        'path' => $path,
-                        'fullPath' => $fullPath,
-                        'cleanPath' => $cleanPath
-                    ]);
-                    abort(404, 'Fichier non trouvé: ' . $fullPath);
-                }
+            $cleanPath = ltrim(preg_replace('#^storage/#', '', $path), '/');
+
+            if ($disk->exists($cleanPath)) {
+                $fullPath = $cleanPath;
             } else {
                 \Log::error("File not found", [
                     'type' => $type,
                     'path' => $path,
-                    'fullPath' => $fullPath
+                    'fullPath' => $fullPath,
+                    'cleanPath' => $cleanPath
                 ]);
                 abort(404, 'Fichier non trouvé: ' . $fullPath);
             }
@@ -118,6 +97,9 @@ class FileController extends Controller
             case 'banners':
                 $basePath = 'banners';
                 break;
+            case 'media':
+                $basePath = 'media';
+                break;
             default:
                 abort(400, 'Type de fichier non valide');
         }
@@ -135,7 +117,7 @@ class FileController extends Controller
     protected function hasAccess(string $type, string $path): bool
     {
         // Les avatars et banners sont publics (mais protégés par l'URL)
-        if (in_array($type, ['avatars', 'banners'])) {
+        if (in_array($type, ['avatars', 'banners', 'media'])) {
             return true;
         }
         

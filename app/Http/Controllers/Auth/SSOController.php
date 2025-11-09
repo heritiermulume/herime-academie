@@ -125,6 +125,10 @@ class SSOController extends Controller
         // Chercher l'utilisateur par email
         $user = User::where('email', $email)->first();
 
+        $provider = $userData['provider'] ?? 'herime';
+        $ssoUserId = $userData['user_id'] ?? null;
+        $ssoMetadata = $userData['metadata'] ?? null;
+
         if ($user) {
             // Mettre à jour les informations utilisateur depuis SSO
             $updateData = [
@@ -141,12 +145,16 @@ class SSOController extends Controller
                 $updateData['avatar'] = $userData['avatar'] ?: null;
             }
             
-            // Mettre à jour l'ID SSO si fourni
-            if (isset($userData['user_id']) && !empty($userData['user_id'])) {
-                // Stocker l'ID SSO dans les préférences si pas de colonne dédiée
-                $preferences = $user->preferences ?? [];
-                $preferences['sso_id'] = $userData['user_id'];
-                $updateData['preferences'] = $preferences;
+            if (!empty($ssoUserId)) {
+                $updateData['sso_id'] = $ssoUserId;
+            }
+
+            if (!empty($provider)) {
+                $updateData['sso_provider'] = $provider;
+            }
+
+            if (!empty($ssoMetadata)) {
+                $updateData['sso_metadata'] = $ssoMetadata;
             }
             
             $user->update($updateData);
@@ -164,6 +172,8 @@ class SSOController extends Controller
                 'is_verified' => $userData['is_verified'] ?? false,
                 'is_active' => $userData['is_active'] ?? true,
                 'last_login_at' => now(),
+                'sso_id' => $ssoUserId,
+                'sso_provider' => $provider,
             ];
             
             // Ajouter l'avatar si fourni par le SSO (toujours ajouter, même si vide)
@@ -171,9 +181,8 @@ class SSOController extends Controller
                 $userDataCreate['avatar'] = $userData['avatar'] ?: null;
             }
             
-            // Stocker l'ID SSO dans les préférences
-            if (isset($userData['user_id']) && !empty($userData['user_id'])) {
-                $userDataCreate['preferences'] = ['sso_id' => $userData['user_id']];
+            if (!empty($ssoMetadata)) {
+                $userDataCreate['sso_metadata'] = $ssoMetadata;
             }
             
             $user = User::create($userDataCreate);
@@ -209,11 +218,17 @@ class SSOController extends Controller
                     }
                     
                     if (isset($userData['user_id']) && !empty($userData['user_id'])) {
-                        $preferences = $user->preferences ?? [];
-                        $preferences['sso_id'] = $userData['user_id'];
-                        $updateData['preferences'] = $preferences;
+                        $updateData['sso_id'] = $userData['user_id'];
                     }
                     
+                    if (!empty($provider)) {
+                        $updateData['sso_provider'] = $provider;
+                    }
+
+                    if (!empty($ssoMetadata)) {
+                        $updateData['sso_metadata'] = $ssoMetadata;
+                    }
+
                     $user->update($updateData);
                     return $user;
                 }

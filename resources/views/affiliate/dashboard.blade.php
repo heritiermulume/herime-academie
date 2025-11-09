@@ -127,7 +127,7 @@
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <img src="{{ $order->user->avatar ? $order->user->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($order->user->name) . '&background=003366&color=fff' }}" 
+                                                <img src="{{ $order->user->avatar_url }}" 
                                                      alt="{{ $order->user->name }}" class="rounded-circle me-2" width="30" height="30">
                                                 <span>{{ $order->user->name }}</span>
                                             </div>
@@ -219,7 +219,7 @@
                             @foreach($popularCourses as $course)
                             <div class="list-group-item border-0 py-3">
                                 <div class="d-flex align-items-start">
-                                    <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=60&h=40&fit=crop' }}" 
+                                    <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=60&h=40&fit=crop' }}" 
                                          alt="{{ $course->title }}" class="rounded me-3" style="width: 60px; height: 40px; object-fit: cover;">
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1 fw-bold">

@@ -2,12 +2,26 @@
 
 namespace App\Models;
 
+use App\Notifications\OrderStatusUpdated;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Order extends Model
 {
+    protected static function booted(): void
+    {
+        static::created(function (Order $order) {
+            $order->notifyStatus($order->status ?? 'pending');
+        });
+
+        static::updated(function (Order $order) {
+            if ($order->wasChanged('status')) {
+                $order->notifyStatus($order->status ?? 'pending');
+            }
+        });
+    }
+
     protected $fillable = [
         'order_number',
         'user_id',
@@ -107,5 +121,16 @@ class Order extends Model
     public function scopeFailed($query)
     {
         return $query->where('status', 'failed');
+    }
+
+    public function notifyStatus(string $status, ?string $message = null): void
+    {
+        if (!$this->relationLoaded('user')) {
+            $this->load('user');
+        }
+
+        if ($this->user) {
+            $this->user->notify(new OrderStatusUpdated($this, $status, $message));
+        }
     }
 }

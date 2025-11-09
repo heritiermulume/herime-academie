@@ -74,7 +74,7 @@ class OrderController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $orders = $query->paginate(20);
+        $orders = $query->paginate(15);
 
         // Statistiques dynamiques basées sur les filtres appliqués
         $statsBase = clone $query;

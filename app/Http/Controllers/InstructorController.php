@@ -50,6 +50,18 @@ class InstructorController extends Controller
             'total_earnings' => 0, // À implémenter avec le système de paiement
         ];
 
+        $stats['active_students'] = Enrollment::whereHas('course', function($query) use ($instructor) {
+            $query->where('instructor_id', $instructor->id);
+        })->where('created_at', '>=', now()->subDays(30))->count();
+
+        $coursesForRatings = $instructor->courses()
+            ->withAvg('reviews', 'rating')
+            ->withCount('reviews')
+            ->get();
+
+        $stats['average_rating'] = $coursesForRatings->avg('reviews_avg_rating') ?? 0;
+        $stats['total_reviews'] = $coursesForRatings->sum('reviews_count');
+ 
         $recent_courses = $instructor->courses()
             ->with(['category'])
             ->latest()
@@ -64,7 +76,19 @@ class InstructorController extends Controller
         ->limit(10)
         ->get();
 
-        return view('instructors.dashboard', compact('stats', 'recent_courses', 'recent_enrollments'));
+        $stats['top_courses'] = $instructor->courses()
+            ->withCount(['enrollments', 'reviews'])
+            ->withAvg('reviews', 'rating')
+            ->orderByDesc('enrollments_count')
+            ->limit(3)
+            ->get();
+
+        return view('instructors.dashboard', [
+            'instructor' => $instructor,
+            'stats' => $stats,
+            'recent_courses' => $recent_courses,
+            'recent_enrollments' => $recent_enrollments,
+        ]);
     }
 
     public function students()
@@ -78,7 +102,10 @@ class InstructorController extends Controller
         ->latest()
         ->paginate(20);
 
-        return view('instructors.students', compact('enrollments'));
+        return view('instructors.students', [
+            'instructor' => $instructor,
+            'enrollments' => $enrollments,
+        ]);
     }
 
     public function analytics()
@@ -117,6 +144,43 @@ class InstructorController extends Controller
         ->orderBy('month')
         ->get();
 
-        return view('instructors.analytics', compact('courseStats', 'popularCourses', 'enrollmentsByMonth'));
+        return view('instructors.analytics', [
+            'instructor' => $instructor,
+            'courseStats' => $courseStats,
+            'popularCourses' => $popularCourses,
+            'enrollmentsByMonth' => $enrollmentsByMonth,
+        ]);
+    }
+
+    public function coursesIndex(Request $request)
+    {
+        $instructor = auth()->user();
+
+        $status = $request->get('status');
+
+        $coursesQuery = $instructor->courses()
+            ->with(['category'])
+            ->withCount(['enrollments', 'reviews']);
+
+        if ($status === 'published') {
+            $coursesQuery->where('is_published', true);
+        } elseif ($status === 'draft') {
+            $coursesQuery->where('is_published', false);
+        }
+
+        $courses = $coursesQuery
+            ->orderByDesc('created_at')
+            ->paginate(10)
+            ->through(function ($course) {
+                $course->stats = $course->getCourseStats();
+                return $course;
+            })
+            ->withQueryString();
+
+        return view('instructors.courses.index', [
+            'instructor' => $instructor,
+            'courses' => $courses,
+            'status' => $status,
+        ]);
     }
 }

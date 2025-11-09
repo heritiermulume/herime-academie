@@ -22,7 +22,7 @@ class BannerController extends Controller
      */
     public function index()
     {
-        $banners = Banner::ordered()->paginate(20);
+        $banners = Banner::ordered()->paginate(15);
         return view('admin.banners.index', compact('banners'));
     }
 
@@ -165,7 +165,7 @@ class BannerController extends Controller
             // Déterminer l'ancien chemin (si ce n'est pas base64)
             $oldPath = null;
             if ($banner->image && !str_starts_with($banner->image, 'data:')) {
-                $oldPath = str_replace('storage/', '', $banner->image);
+                $oldPath = preg_replace('#^storage/#', '', $banner->image);
             }
             
             $result = $this->fileUploadService->uploadImage(
@@ -183,7 +183,7 @@ class BannerController extends Controller
             // Déterminer l'ancien chemin (si ce n'est pas base64)
             $oldPath = null;
             if ($banner->mobile_image && !str_starts_with($banner->mobile_image, 'data:')) {
-                $oldPath = str_replace('storage/', '', $banner->mobile_image);
+                $oldPath = preg_replace('#^storage/#', '', $banner->mobile_image);
             }
             
             $result = $this->fileUploadService->uploadImage(
@@ -211,16 +211,16 @@ class BannerController extends Controller
     {
         // Supprimer les fichiers images si ce ne sont pas des images base64
         if ($banner->image && !str_starts_with($banner->image, 'data:')) {
-            $imagePath = str_replace('storage/', '', $banner->image);
-            if (Storage::disk('public')->exists($imagePath)) {
-                Storage::disk('public')->delete($imagePath);
+            $imagePath = ltrim(preg_replace('#^storage/#', '', $banner->image), '/');
+            if (Storage::disk('local')->exists($imagePath)) {
+                Storage::disk('local')->delete($imagePath);
             }
         }
         
         if ($banner->mobile_image && !str_starts_with($banner->mobile_image, 'data:')) {
-            $mobileImagePath = str_replace('storage/', '', $banner->mobile_image);
-            if (Storage::disk('public')->exists($mobileImagePath)) {
-                Storage::disk('public')->delete($mobileImagePath);
+            $mobileImagePath = ltrim(preg_replace('#^storage/#', '', $banner->mobile_image), '/');
+            if (Storage::disk('local')->exists($mobileImagePath)) {
+                Storage::disk('local')->delete($mobileImagePath);
             }
         }
         

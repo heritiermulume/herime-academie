@@ -12,7 +12,7 @@
             <button class="btn btn-sm btn-outline-secondary" onclick="downloadPDF()">
                 <i class="fas fa-download"></i> Télécharger
             </button>
-            @if($lesson->content_url)
+            @if($lesson->content_file_url)
                 <button class="btn btn-sm btn-primary" onclick="openPDFInNewTab()">
                     <i class="fas fa-external-link-alt"></i> Ouvrir
                 </button>
@@ -22,7 +22,7 @@
     <div class="pdf-content" style="height: calc(100vh - 200px); background: #f5f5f5;">
         <iframe 
             id="pdf-viewer-{{ $lesson->id }}" 
-            src="{{ str_starts_with($lesson->content_url, 'http') ? $lesson->content_url : \App\Helpers\FileHelper::lessonFile($lesson->content_url) }}#toolbar=0" 
+            src="{{ $lesson->content_file_url }}#toolbar=0" 
             style="width: 100%; height: 100%; border: none;"
             frameborder="0">
         </iframe>
@@ -31,12 +31,12 @@
 
 <script>
 function downloadPDF() {
-    const pdfUrl = "{{ str_starts_with($lesson->content_url, 'http') ? $lesson->content_url : \App\Helpers\FileHelper::lessonFile($lesson->content_url) }}";
+    const pdfUrl = "{{ $lesson->content_file_url }}";
     window.open(pdfUrl, '_blank');
 }
 
 function openPDFInNewTab() {
-    const pdfUrl = "{{ str_starts_with($lesson->content_url, 'http') ? $lesson->content_url : \App\Helpers\FileHelper::lessonFile($lesson->content_url) }}";
+    const pdfUrl = "{{ $lesson->content_file_url }}";
     window.open(pdfUrl, '_blank');
 }
 </script>

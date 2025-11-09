@@ -123,31 +123,14 @@ class DownloadController extends Controller
         $filePath = null;
         $fileName = null;
         
-        // Vérifier si c'est un chemin local ou une URL
         if (!filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
-            // C'est un chemin local - utiliser le disque privé
             $disk = Storage::disk('local');
-            
-            // Nettoyer le chemin (supprimer storage/ si présent)
-            $cleanPath = str_replace('storage/', '', $course->download_file_path);
-            
-            // Vérifier si le fichier existe dans le stockage privé
+
+            $cleanPath = ltrim($course->download_file_path, '/');
+
             if ($disk->exists($cleanPath)) {
                 $filePath = $disk->path($cleanPath);
                 $fileName = basename($cleanPath);
-            } else {
-                // Essayer aussi avec le chemin tel quel
-                if ($disk->exists($course->download_file_path)) {
-                    $filePath = $disk->path($course->download_file_path);
-                    $fileName = basename($course->download_file_path);
-                } else {
-                    // Essayer dans l'ancien emplacement public (rétrocompatibilité)
-                    $publicDisk = Storage::disk('public');
-                    if ($publicDisk->exists($cleanPath)) {
-                        $filePath = $publicDisk->path($cleanPath);
-                        $fileName = basename($cleanPath);
-                    }
-                }
             }
         } else {
             // C'est une URL externe - rediriger vers cette URL
@@ -259,31 +242,19 @@ class DownloadController extends Controller
 
         // Chercher le fichier à télécharger (file_path ou content_url)
         $filePath = null;
-        $extension = null;
-        $disk = Storage::disk('local'); // Utiliser le stockage privé
-        
-        // Essayer avec file_path d'abord
-        if ($lesson->file_path && !filter_var($lesson->file_path, FILTER_VALIDATE_URL)) {
-            $cleanPath = str_replace('storage/', '', $lesson->file_path);
+        $fileName = $lesson->downloadable_filename ?? ($this->sanitizeFileName($lesson->title) . '.zip');
+
+        if ($lesson->download_file_path && !filter_var($lesson->download_file_path, FILTER_VALIDATE_URL)) {
+            $disk = Storage::disk('local');
+            $cleanPath = ltrim($lesson->download_file_path, '/');
+
             if ($disk->exists($cleanPath)) {
                 $filePath = $disk->path($cleanPath);
-                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-            } elseif ($disk->exists($lesson->file_path)) {
-                $filePath = $disk->path($lesson->file_path);
-                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+            } elseif ($disk->exists($lesson->download_file_path)) {
+                $filePath = $disk->path($lesson->download_file_path);
             }
-        }
-        
-        // Si pas de fichier trouvé avec file_path, essayer content_url
-        if (!$filePath && $lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
-            $cleanPath = str_replace('storage/', '', $lesson->content_url);
-            if ($disk->exists($cleanPath)) {
-                $filePath = $disk->path($cleanPath);
-                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-            } elseif ($disk->exists($lesson->content_url)) {
-                $filePath = $disk->path($lesson->content_url);
-                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-            }
+        } elseif ($lesson->download_file_path) {
+            return redirect($lesson->download_file_path);
         }
 
         if (!$filePath || !file_exists($filePath)) {
@@ -384,74 +355,26 @@ class DownloadController extends Controller
         $disk = Storage::disk('local'); // Utiliser le stockage privé
         
         // Ajouter le fichier de la leçon s'il existe (file_path)
+        $sourceForExtension = $lesson->file_path ?: $lesson->content_url;
+        $extension = $sourceForExtension ? pathinfo($sourceForExtension, PATHINFO_EXTENSION) : 'bin';
+        $lessonFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title);
+        if ($extension) {
+            $lessonFileName .= '.' . $extension;
+        }
+
         if ($lesson->file_path && !filter_var($lesson->file_path, FILTER_VALIDATE_URL)) {
-            $cleanPath = str_replace('storage/', '', $lesson->file_path);
-            
-            // Essayer dans le stockage privé
+            $cleanPath = ltrim($lesson->file_path, '/');
             if ($disk->exists($cleanPath)) {
-                $filePath = $disk->path($cleanPath);
-                if (file_exists($filePath)) {
-                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-                    $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
-                    $zip->addFile($filePath, $sectionPath . $fileName);
-                    $added = true;
-                }
-            } elseif ($disk->exists($lesson->file_path)) {
-                $filePath = $disk->path($lesson->file_path);
-                if (file_exists($filePath)) {
-                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-                    $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
-                    $zip->addFile($filePath, $sectionPath . $fileName);
-                    $added = true;
-                }
-            } else {
-                // Essayer dans l'ancien stockage public (rétrocompatibilité)
-                $publicDisk = Storage::disk('public');
-                if ($publicDisk->exists($cleanPath)) {
-                    $filePath = $publicDisk->path($cleanPath);
-                    if (file_exists($filePath)) {
-                        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-                        $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
-                        $zip->addFile($filePath, $sectionPath . $fileName);
-                        $added = true;
-                    }
-                }
+                $zip->addFile($disk->path($cleanPath), $sectionPath . $lessonFileName);
+                return true;
             }
         }
-        
-        // Ajouter le fichier via content_url s'il existe et que c'est un fichier local
+
         if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
-            $cleanPath = str_replace('storage/', '', $lesson->content_url);
-            
-            // Essayer dans le stockage privé
+            $cleanPath = ltrim($lesson->content_url, '/');
             if ($disk->exists($cleanPath)) {
-                $filePath = $disk->path($cleanPath);
-                if (file_exists($filePath)) {
-                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-                    $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
-                    $zip->addFile($filePath, $sectionPath . $fileName);
-                    $added = true;
-                }
-            } elseif ($disk->exists($lesson->content_url)) {
-                $filePath = $disk->path($lesson->content_url);
-                if (file_exists($filePath)) {
-                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-                    $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
-                    $zip->addFile($filePath, $sectionPath . $fileName);
-                    $added = true;
-                }
-            } else {
-                // Essayer dans l'ancien stockage public (rétrocompatibilité)
-                $publicDisk = Storage::disk('public');
-                if ($publicDisk->exists($cleanPath)) {
-                    $filePath = $publicDisk->path($cleanPath);
-                    if (file_exists($filePath)) {
-                        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-                        $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . '.' . $extension;
-                        $zip->addFile($filePath, $sectionPath . $fileName);
-                        $added = true;
-                    }
-                }
+                $zip->addFile($disk->path($cleanPath), $sectionPath . $lessonFileName);
+                return true;
             }
         }
         
@@ -505,32 +428,23 @@ class DownloadController extends Controller
     private function addCourseResources($zip, $course)
     {
         // Ajouter l'image/thumbnail du cours si elle existe
-        if ($course->thumbnail) {
-            // Si c'est une URL complète, on ne peut pas la télécharger directement
-            if (!filter_var($course->thumbnail, FILTER_VALIDATE_URL)) {
-                // C'est un chemin local
-                $imagePath = storage_path('app/' . $course->thumbnail);
-                if (file_exists($imagePath)) {
-                    $zip->addFile($imagePath, 'image-cours.' . pathinfo($imagePath, PATHINFO_EXTENSION));
-                } elseif (Storage::exists($course->thumbnail)) {
-                    $fullPath = Storage::path($course->thumbnail);
-                    if (file_exists($fullPath)) {
-                        $zip->addFile($fullPath, 'image-cours.' . pathinfo($fullPath, PATHINFO_EXTENSION));
-                    }
-                }
+        if ($course->thumbnail && !filter_var($course->thumbnail, FILTER_VALIDATE_URL)) {
+            $thumbnailPath = ltrim($course->thumbnail, '/');
+            $disk = Storage::disk('local');
+
+            if ($disk->exists($thumbnailPath)) {
+                $fullPath = $disk->path($thumbnailPath);
+                $zip->addFile($fullPath, 'image-cours.' . pathinfo($fullPath, PATHINFO_EXTENSION));
             }
         }
-        
-        // Ajouter l'image_path si elle existe et est différente de thumbnail
-        if ($course->image_path && $course->image_path !== $course->thumbnail) {
-            $imagePath = storage_path('app/' . $course->image_path);
-            if (file_exists($imagePath)) {
-                $zip->addFile($imagePath, 'image-cours-2.' . pathinfo($imagePath, PATHINFO_EXTENSION));
-            } elseif (Storage::exists($course->image_path)) {
-                $fullPath = Storage::path($course->image_path);
-                if (file_exists($fullPath)) {
-                    $zip->addFile($fullPath, 'image-cours-2.' . pathinfo($fullPath, PATHINFO_EXTENSION));
-                }
+
+        if ($course->image_path && $course->image_path !== $course->thumbnail && !filter_var($course->image_path, FILTER_VALIDATE_URL)) {
+            $imagePath = ltrim($course->image_path, '/');
+            $disk = Storage::disk('local');
+
+            if ($disk->exists($imagePath)) {
+                $fullPath = $disk->path($imagePath);
+                $zip->addFile($fullPath, 'image-cours-2.' . pathinfo($fullPath, PATHINFO_EXTENSION));
             }
         }
         

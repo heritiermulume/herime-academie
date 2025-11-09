@@ -1608,7 +1608,7 @@
     // Toutes les sections sont déjà filtrées par is_published dans le contrôleur
     $publishedSections = $course->sections->where('is_published', true);
     
-    $hasVideoPreview = $course->video_preview || $course->video_preview_youtube_id;
+    $hasVideoPreview = $course->video_preview_url || $course->video_preview_youtube_id;
     $hasPreviewLessons = $publishedSections->flatMap(function($section) {
         return $section->lessons->where('is_preview', true)->where('type', 'video');
     })->count() > 0;
@@ -1680,8 +1680,8 @@
                 <div class="content-card">
                     <div class="video-preview-wrapper" data-bs-toggle="modal" data-bs-target="#coursePreviewModal">
                         <div class="ratio ratio-16x9">
-                            @if($course->thumbnail)
-                                <img src="{{ $course->thumbnail }}" 
+                            @if($course->thumbnail_url)
+                                <img src="{{ $course->thumbnail_url }}" 
                                  alt="{{ $course->title }}" 
                                  class="img-fluid" 
                                  style="object-fit: cover;">
@@ -1698,9 +1698,9 @@
                         </div>
                     </div>
                 </div>
-                @elseif($course->thumbnail)
+                @elseif($course->thumbnail_url)
                 <div class="content-card">
-                    <img src="{{ $course->thumbnail }}" 
+                    <img src="{{ $course->thumbnail_url }}" 
                          alt="{{ $course->title }}" 
                          class="img-fluid rounded" 
                          style="width: 100%; height: auto; border-radius: 16px;">
@@ -1824,7 +1824,7 @@
                                      data-preview-title="{{ htmlspecialchars($lesson->title, ENT_QUOTES, 'UTF-8') }}"
                                      data-preview-youtube-id="{{ $lesson->youtube_video_id ?? '' }}"
                                      data-preview-is-unlisted="{{ $lesson->is_unlisted ? '1' : '0' }}"
-                                     data-preview-video-url="{{ ($lesson->file_path ? \App\Helpers\FileHelper::lessonFile($lesson->file_path) : ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? \App\Helpers\FileHelper::lessonFile($lesson->content_url) : ($lesson->content_url ?? ''))) }}"
+                                     data-preview-video-url="{{ ($lesson->file_path ? $lesson->file_url : ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_file_url : ($lesson->content_url ?? ''))) }}"
                                      data-preview-section="{{ htmlspecialchars($section->title, ENT_QUOTES, 'UTF-8') }}"
                                      style="cursor: pointer;"
                                      onclick="event.stopPropagation(); openPreviewLesson({{ $lesson->id }}, this); return false;"
@@ -2211,12 +2211,14 @@
                                     <div class="preview-player-wrapper active" data-preview-id="0">
                                     <x-plyr-player :lesson="$previewLesson" :course="$course" :isMobile="false" />
                                     </div>
-                                @elseif($course->video_preview)
+                                @elseif($course->video_preview_url)
                                     <div class="preview-player-wrapper active" data-preview-id="0">
-                                        <video id="coursePreviewVideo" controls class="rounded shadow w-100 h-100" style="background: #000; object-fit: contain;">
-                                            <source src="{{ \App\Helpers\FileHelper::coursePreview($course->video_preview) }}" type="video/mp4">
-                                        Votre navigateur ne supporte pas la lecture vidéo.
-                                    </video>
+                                        <div class="ratio ratio-16x9">
+                                            <video controls class="w-100 h-100 rounded shadow-sm">
+                                                <source src="{{ $course->video_preview_url }}" type="video/mp4">
+                                                Votre navigateur ne supporte pas la lecture vidéo.
+                                            </video>
+                                        </div>
                                     </div>
                                 @endif
                                 
@@ -2570,7 +2572,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Charger la liste des aperçus
             loadPreviewList();
             
-            @if($course->video_preview && !$course->video_preview_youtube_id)
+            @if($course->video_preview_url && !$course->video_preview_youtube_id)
                 const video = document.getElementById('coursePreviewVideo');
                 if (video) {
                     video.load();
@@ -2622,7 +2624,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            @if($course->video_preview_youtube_id || $course->video_preview)
+            @if($course->video_preview_youtube_id || $course->video_preview_url)
                 // Réinitialiser à l'aperçu principal
                 const allWrappers = document.querySelectorAll('.preview-player-wrapper');
                 allWrappers.forEach(wrapper => {

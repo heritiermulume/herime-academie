@@ -5,9 +5,9 @@
 @section('admin-subtitle', 'Supervisez les comptes créés via Compte Herime et ajustez leurs rôles')
 @section('admin-actions')
     <div class="d-flex align-items-center gap-2 flex-wrap">
-        <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
-            <i class="fas fa-user-plus me-2"></i>Nouvel utilisateur
-        </a>
+    <a href="https://compte.herime.com" class="btn btn-primary" target="_blank" rel="noopener">
+        <i class="fas fa-user-plus me-2"></i>Nouvel utilisateur
+    </a>
         <div class="alert alert-info mb-0 py-2 px-3">
             <i class="fas fa-info-circle me-2"></i>
             <small>La création se fait via Compte Herime (compte.herime.com)</small>
@@ -126,9 +126,6 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th class="text-center" style="width:48px;">
-                                    <input type="checkbox" id="selectAll" class="form-check-input">
-                                </th>
                                 <th>
                                     <a href="{{ request()->fullUrlWithQuery(['sort' => 'name', 'direction' => request('sort') == 'name' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
                                         Utilisateur
@@ -167,12 +164,9 @@
                         <tbody>
                             @forelse($users as $user)
                             <tr>
-                                <td class="text-center">
-                                    <input type="checkbox" class="form-check-input user-checkbox" value="{{ $user->id }}">
-                                </td>
                                 <td>
                                     <div class="d-flex align-items-center gap-3">
-                                        <img src="{{ $user->avatar ?? 'https://ui-avatars.com/api/?name=' . urlencode($user->name ?? 'Utilisateur') . '&background=003366&color=fff' }}" alt="{{ $user->name }}" class="rounded-circle" style="width: 48px; height: 48px; object-fit: cover;">
+                                        <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="admin-user-avatar">
                                         <div>
                                             <a href="{{ route('admin.users.show', $user) }}" class="fw-semibold text-decoration-none text-dark">{{ $user->name }}</a>
                                             <div class="text-muted small">{{ $user->email }}</div>
@@ -181,7 +175,23 @@
                                 </td>
                                 <td>
                                     <span class="admin-chip admin-chip--info text-uppercase">
-                                        <i class="fas fa-user-tag me-1"></i>{{ $user->role }}
+                                        <i class="fas fa-user-tag me-1"></i>
+                                        @switch($user->role)
+                                            @case('admin')
+                                                Administrateur
+                                                @break
+                                            @case('instructor')
+                                                Formateur
+                                                @break
+                                            @case('affiliate')
+                                                Affilié
+                                                @break
+                                            @case('student')
+                                                Étudiant
+                                                @break
+                                            @default
+                                                {{ ucfirst($user->role ?? 'utilisateur') }}
+                                        @endswitch
                                     </span>
                                 </td>
                                 <td>
@@ -222,7 +232,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="text-center py-4">
+                                <td colspan="6" class="text-center py-4">
                                     <i class="fas fa-users fa-3x text-muted mb-3"></i>
                                     <p class="text-muted">Aucun utilisateur trouvé</p>
                                 </td>
@@ -234,32 +244,9 @@
 
                 <!-- Pagination -->
                 <div class="admin-pagination justify-content-between align-items-center">
-                    <span class="text-muted">
-                        Affichage de {{ $users->firstItem() ?? 0 }} à {{ $users->lastItem() ?? 0 }} sur {{ $users->total() }} utilisateurs
-                        @if(request()->hasAny(['search', 'role', 'status']))
-                            ({{ $users->count() }} résultat{{ $users->count() > 1 ? 's' : '' }})
-                        @endif
-                    </span>
                     {{ $users->appends(request()->query())->links() }}
                 </div>
 
-                <!-- Actions en lot -->
-                <div class="mt-3" id="bulkActions" style="display: none;">
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-success" onclick="bulkAction('activate')">
-                            <i class="fas fa-check me-1"></i>Activer
-                        </button>
-                        <button class="btn btn-sm btn-warning" onclick="bulkAction('deactivate')">
-                            <i class="fas fa-times me-1"></i>Désactiver
-                        </button>
-                        <button class="btn btn-sm btn-info" onclick="bulkAction('verify')">
-                            <i class="fas fa-check-circle me-1"></i>Vérifier
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="bulkAction('delete')">
-                            <i class="fas fa-trash me-1"></i>Supprimer
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     </section>
@@ -287,30 +274,6 @@
 @push('scripts')
 <script>
 let userIdToDelete = null;
-
-// Sélection multiple
-document.getElementById('selectAll').addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.user-checkbox');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-    });
-    toggleBulkActions();
-});
-
-document.querySelectorAll('.user-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', toggleBulkActions);
-});
-
-function toggleBulkActions() {
-    const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
-    const bulkActions = document.getElementById('bulkActions');
-    
-    if (checkedBoxes.length > 0) {
-        bulkActions.style.display = 'block';
-    } else {
-        bulkActions.style.display = 'none';
-    }
-}
 
 function deleteUser(userId) {
     userIdToDelete = userId;
@@ -366,23 +329,18 @@ if (searchInput) {
     });
 }
 
-// Fonction pour les actions en lot
-function bulkAction(action) {
-    const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
-    const userIds = Array.from(checkedBoxes).map(cb => cb.value);
-    
-    if (userIds.length === 0) {
-        alert('Veuillez sélectionner au moins un utilisateur.');
-        return;
-    }
-    
-    if (action === 'delete' && !confirm('Êtes-vous sûr de vouloir supprimer les utilisateurs sélectionnés ?')) {
-        return;
-    }
-    
-    // Ici vous pouvez implémenter les actions en lot
-    console.log(`Action: ${action}, Users: ${userIds.join(',')}`);
-    alert(`Action "${action}" appliquée à ${userIds.length} utilisateur(s).`);
-}
 </script>
+@endpush
+
+@push('styles')
+<style>
+.admin-user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 6px 12px -6px rgba(15, 23, 42, 0.35);
+}
+</style>
 @endpush

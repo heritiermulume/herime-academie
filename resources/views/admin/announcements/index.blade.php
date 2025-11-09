@@ -43,17 +43,25 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <small>{{ $announcement->starts_at ? $announcement->starts_at->format('d/m/Y') : 'Immédiat' }}</small>
+                                            <small>
+                                                {{ $announcement->starts_at ? $announcement->starts_at->format('d/m/Y H:i') : 'Immédiat' }}
+                                            </small>
                                         </td>
                                         <td>
-                                            <small>{{ $announcement->expires_at ? $announcement->expires_at->format('d/m/Y') : 'Illimité' }}</small>
+                                            <small>
+                                                {{ $announcement->expires_at ? $announcement->expires_at->format('d/m/Y H:i') : 'Illimité' }}
+                                            </small>
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
                                                 <button class="btn btn-sm btn-outline-warning" onclick="editAnnouncement({{ $announcement->id }})">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteAnnouncement({{ $announcement->id }})">
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-danger" 
+                                                    data-action="{{ route('admin.announcements.destroy', $announcement) }}"
+                                                    data-title="{{ $announcement->title }}"
+                                                    onclick="openDeleteAnnouncementModal(this)">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
@@ -266,27 +274,33 @@ function editAnnouncement(id) {
         });
 }
 
-function deleteAnnouncement(id) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/admin/announcements/${id}`;
-        
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = '_token';
-        csrfToken.value = '{{ csrf_token() }}';
-        
-        const methodField = document.createElement('input');
-        methodField.type = 'hidden';
-        methodField.name = '_method';
-        methodField.value = 'DELETE';
-        
-        form.appendChild(csrfToken);
-        form.appendChild(methodField);
-        document.body.appendChild(form);
-        form.submit();
+function openDeleteAnnouncementModal(button) {
+    const action = button?.dataset?.action;
+    if (!action) {
+        console.error('Aucune action de suppression fournie.');
+        return;
     }
+
+    const title = button.dataset.title || '';
+    const messageElement = document.getElementById('deleteAnnouncementMessage');
+    if (messageElement) {
+        messageElement.textContent = title
+            ? `Êtes-vous sûr de vouloir supprimer l’annonce « ${title} » ? Cette action est irréversible.`
+            : `Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.`;
+    }
+
+    const form = document.getElementById('deleteAnnouncementForm');
+    if (form) {
+        form.action = action;
+    }
+
+    const modalElement = document.getElementById('deleteAnnouncementModal');
+    if (!modalElement) {
+        return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
 }
 </script>
 @endpush
@@ -399,3 +413,27 @@ function deleteAnnouncement(id) {
 }
 </style>
 @endpush
+<!-- Modal de suppression -->
+<div class="modal fade" id="deleteAnnouncementModal" tabindex="-1" aria-labelledby="deleteAnnouncementModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteAnnouncementModalLabel">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteAnnouncementMessage">Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deleteAnnouncementForm" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

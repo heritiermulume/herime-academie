@@ -36,6 +36,9 @@ class User extends Authenticatable
         'is_active',
         'last_login_at',
         'preferences',
+        'sso_id',
+        'sso_provider',
+        'sso_metadata',
     ];
 
     /**
@@ -62,8 +65,8 @@ class User extends Authenticatable
             return $this->avatar;
         }
         
-        // Sinon, utiliser Storage::url()
-        return \Storage::url($this->avatar);
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->avatar, 'avatars');
     }
 
     /**
@@ -71,8 +74,7 @@ class User extends Authenticatable
      */
     public function getSsoIdAttribute()
     {
-        $preferences = $this->preferences ?? [];
-        return $preferences['sso_id'] ?? null;
+        return $this->attributes['sso_id'] ?? null;
     }
 
     /**
@@ -88,6 +90,7 @@ class User extends Authenticatable
             'date_of_birth' => 'date',
             'last_login_at' => 'datetime',
             'preferences' => 'array',
+            'sso_metadata' => 'array',
         ];
     }
 

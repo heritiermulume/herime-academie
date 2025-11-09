@@ -59,7 +59,13 @@ class StudentController extends Controller
             }),
         ];
 
-        return view('students.dashboard', compact('enrollments', 'recent_courses', 'certificates', 'stats'));
+        return view('students.dashboard', [
+            'user' => $student,
+            'enrollments' => $enrollments,
+            'recent_courses' => $recent_courses,
+            'certificates' => $certificates,
+            'stats' => $stats,
+        ]);
     }
 
     public function courses()
@@ -88,7 +94,10 @@ class StudentController extends Controller
             }
         }
 
-        return view('students.courses', compact('enrollments'));
+        return view('students.courses', [
+            'user' => $student,
+            'enrollments' => $enrollments,
+        ]);
     }
 
     public function learn(Course $course)
@@ -140,6 +149,9 @@ class StudentController extends Controller
             ->latest()
             ->paginate(12);
 
-        return view('students.certificates', compact('certificates'));
+        return view('students.certificates', [
+            'user' => $student,
+            'certificates' => $certificates,
+        ]);
     }
 }

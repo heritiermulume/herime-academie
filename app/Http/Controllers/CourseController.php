@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 
 class CourseController extends Controller
 {
@@ -345,7 +346,12 @@ class CourseController extends Controller
         
         $course->delete();
         
-        return redirect()->route('instructor.courses.index')
+        if (Route::has('instructor.courses.list')) {
+            return redirect()->route('instructor.courses.list')
+                ->with('success', 'Cours supprimé avec succès.');
+        }
+
+        return redirect('/instructor/courses/list')
             ->with('success', 'Cours supprimé avec succès.');
     }
 
@@ -605,6 +611,7 @@ class CourseController extends Controller
     public function previewData(Course $course)
     {
         try {
+            $fileHelper = app(\App\Helpers\FileHelper::class);
             // Récupérer toutes les leçons vidéo publiées qui ont du contenu vidéo
             $allVideoLessons = $course->sections()
                 ->with(['lessons' => function($query) {
@@ -622,23 +629,12 @@ class CourseController extends Controller
                     return $section->lessons->map(function($lesson) use ($section) {
                         // Déterminer l'URL de la vidéo
                         $videoUrl = null;
-                        try {
-                            // Si c'est un fichier stocké (file_path ou content_url qui est un chemin)
-                            if ($lesson->file_path) {
-                                $videoUrl = Storage::url($lesson->file_path);
-                            } elseif ($lesson->content_url) {
-                                // Vérifier si content_url est un chemin de fichier ou une URL
-                                if (!filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
-                                    // C'est probablement un chemin de fichier
-                                    $videoUrl = Storage::url($lesson->content_url);
-                                } else {
-                                    // C'est une URL externe (YouTube, Vimeo, etc.)
-                                    $videoUrl = $lesson->content_url;
-                                }
-                            }
-                        } catch (\Exception $e) {
-                            // Ignorer les erreurs de Storage
-                            Log::warning('Erreur Storage pour leçon ' . $lesson->id . ': ' . $e->getMessage());
+                        if ($lesson->file_path && !filter_var($lesson->file_path, FILTER_VALIDATE_URL)) {
+                            $videoUrl = $lesson->file_url;
+                        } elseif ($lesson->content_url) {
+                            $videoUrl = filter_var($lesson->content_url, FILTER_VALIDATE_URL)
+                                ? $lesson->content_url
+                                : $lesson->content_file_url;
                         }
                         
                         return [
@@ -665,7 +661,9 @@ class CourseController extends Controller
                     'duration' => null,
                     'youtube_id' => $course->video_preview_youtube_id,
                     'is_unlisted' => $course->video_preview_is_unlisted,
-                    'video_url' => $course->video_preview ? Storage::url($course->video_preview) : null,
+                    'video_url' => $course->video_preview
+                        ? $course->video_preview_url
+                        : null,
                     'is_main' => true,
                 ];
             }

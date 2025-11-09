@@ -9,6 +9,86 @@
     </a>
 @endsection
 
+@push('modals')
+    <div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-labelledby="deleteCourseModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteCourseModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Supprimer le cours
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Êtes-vous sûr de vouloir supprimer le cours <span id="courseDeleteName" class="fw-semibold"></span> ?</p>
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Cette action est irréversible et supprimera toutes les informations associées.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" id="confirmCourseDelete">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+@endpush
+
+@push('scripts')
+<script>
+    let courseDeleteModal = null;
+    let courseFormToSubmit = null;
+    let courseTitleToDelete = '';
+
+    function openCourseDeleteModal(button) {
+        const courseId = button.getAttribute('data-course-id');
+        const courseTitle = button.getAttribute('data-course-title');
+        const nameSpan = document.getElementById('courseDeleteName');
+        const form = document.getElementById(`course-delete-form-${courseId}`);
+
+        if (!courseId || !form) return;
+
+        courseFormToSubmit = form;
+        courseTitleToDelete = courseTitle ?? '';
+
+        if (nameSpan) {
+            nameSpan.textContent = courseTitleToDelete;
+        }
+
+        const modalElement = document.getElementById('deleteCourseModal');
+
+        if (!modalElement) {
+            console.error('Modal de suppression introuvable dans le DOM.');
+            return;
+        }
+
+        if (!window.bootstrap || !window.bootstrap.Modal) {
+            console.error('Bootstrap Modal n\'est pas chargé. Veuillez vérifier l\'inclusion de bootstrap.bundle.min.js.');
+            return;
+        }
+
+        if (!courseDeleteModal) {
+            courseDeleteModal = new window.bootstrap.Modal(modalElement);
+
+            const confirmBtn = document.getElementById('confirmCourseDelete');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function () {
+                    if (courseFormToSubmit) {
+                        courseDeleteModal.hide();
+                        courseFormToSubmit.submit();
+                    }
+                });
+            }
+        }
+
+        courseDeleteModal.show();
+    }
+</script>
+@endpush
+
 @section('admin-content')
     <section class="admin-panel">
         <div class="admin-panel__body">
@@ -131,10 +211,7 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th class="text-center" style="width: 48px;">
-                                    <input type="checkbox" id="selectAll" class="form-check-input">
-                                </th>
-                                <th>
+                                <th style="min-width: 280px;">
                                     <a href="{{ request()->fullUrlWithQuery(['sort' => 'title', 'direction' => request('sort') == 'title' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
                                         Cours
                                         @if(request('sort') == 'title')
@@ -157,28 +234,15 @@
                                     </a>
                                 </th>
                                 <th>Statut</th>
-                                <th class="text-center">
-                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'created_at', 'direction' => request('sort') == 'created_at' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
-                                        Créé le
-                                        @if(request('sort') == 'created_at')
-                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
-                                        @else
-                                            <i class="fas fa-sort ms-1 text-muted"></i>
-                                        @endif
-                                    </a>
-                                </th>
                                 <th class="text-center" style="width: 120px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($courses as $course)
                                 <tr>
-                                    <td class="text-center">
-                                        <input type="checkbox" class="form-check-input">
-                                    </td>
-                                    <td>
+                                    <td style="min-width: 280px;">
                                         <div class="d-flex align-items-center gap-3">
-                                            <img src="{{ $course->thumbnail ?? 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">
+                                            <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">
                                             <div>
                                                 <a href="{{ route('admin.courses.show', $course) }}" class="fw-semibold text-decoration-none text-dark">
                                                     {{ $course->title }}
@@ -212,9 +276,6 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        <span class="admin-chip admin-chip--neutral">{{ $course->created_at->format('d/m/Y') }}</span>
-                                    </td>
-                                    <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
                                             <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-light" title="Modifier">
                                                 <i class="fas fa-edit"></i>
@@ -222,19 +283,22 @@
                                             <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-light" title="Voir">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <form action="{{ route('admin.courses.destroy', $course) }}" method="POST" onsubmit="return confirm('Supprimer ce cours ?')">
+                                            <button type="button" class="btn btn-light text-danger" title="Supprimer"
+                                                    data-course-id="{{ $course->id }}"
+                                                    data-course-title="{{ $course->title }}"
+                                                    onclick="openCourseDeleteModal(this)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                        <form id="course-delete-form-{{ $course->id }}" action="{{ route('admin.courses.destroy', $course) }}" method="POST" class="d-none">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-light text-danger" title="Supprimer">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
+                                        </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="admin-table__empty">
+                                    <td colspan="6" class="admin-table__empty">
                                         <i class="fas fa-inbox mb-2 d-block"></i>
                                         Aucun cours trouvé avec ces critères.
                                     </td>

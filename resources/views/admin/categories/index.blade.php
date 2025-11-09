@@ -65,38 +65,26 @@
                     @endif
 
                     <!-- Statistiques rapides -->
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $categories->total() }}</h5>
-                                    <p class="card-text mb-0">Total des catégories</p>
-                                </div>
-                            </div>
+                    <div class="admin-stats-grid mb-4">
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Total</p>
+                            <p class="admin-stat-card__value">{{ $categories->total() }}</p>
+                            <p class="admin-stat-card__muted">Catégories enregistrées</p>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $categories->where('is_active', true)->count() }}</h5>
-                                    <p class="card-text mb-0">Catégories actives</p>
-                                </div>
-                            </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Actives</p>
+                            <p class="admin-stat-card__value">{{ $categories->where('is_active', true)->count() }}</p>
+                            <p class="admin-stat-card__muted">Visibles côté plateforme</p>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $categories->where('is_active', false)->count() }}</h5>
-                                    <p class="card-text mb-0">Catégories inactives</p>
-                                </div>
-                            </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Inactives</p>
+                            <p class="admin-stat-card__value">{{ $categories->where('is_active', false)->count() }}</p>
+                            <p class="admin-stat-card__muted">En attente d’activation</p>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-info text-white">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ $categories->sum('courses_count') }}</h5>
-                                    <p class="card-text mb-0">Total des cours</p>
-                                </div>
-                            </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Cours associés</p>
+                            <p class="admin-stat-card__value">{{ $categories->sum('courses_count') }}</p>
+                            <p class="admin-stat-card__muted">Nombre total de cours liés</p>
                         </div>
                     </div>
 
@@ -104,68 +92,79 @@
                     <div class="row">
                         @forelse($categories as $category)
                         <div class="col-md-6 col-lg-4 mb-4">
-                            <div class="card h-100 border-0 shadow-sm category-card">
-                                <div class="card-header d-flex justify-content-between align-items-center" 
-                                     style="background-color: {{ $category->color ?? '#003366' }}; color: white;">
-                                    <div class="d-flex align-items-center">
+                            <div class="category-card-modern h-100">
+                                <div class="category-card-modern__badge" style="--category-color: {{ $category->color ?? '#003366' }};">
+                                    <span>{{ strtoupper(Str::substr($category->name, 0, 1)) }}</span>
+                                </div>
+                                <div class="category-card-modern__header">
+                                    <div class="category-card-modern__icon" style="background: {{ $category->color ?? '#003366' }};">
                                         @if($category->icon)
-                                            <i class="{{ $category->icon }} me-2"></i>
+                                            <i class="{{ $category->icon }}"></i>
+                                        @else
+                                            <i class="fas fa-tag"></i>
                                         @endif
-                                        <h6 class="mb-0">{{ $category->name }}</h6>
+                                    </div>
+                                    <div class="category-card-modern__title">
+                                        <h5>{{ $category->name }}</h5>
+                                        <p>{{ $category->description ?? 'Aucune description pour cette catégorie.' }}</p>
                                     </div>
                                     <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                            <i class="fas fa-ellipsis-v"></i>
+                                        <button class="category-card-modern__menu" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-h"></i>
                                         </button>
-                                        <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#" onclick="editCategory({{ $category->id }})">
-                                                <i class="fas fa-edit me-2"></i>Modifier
-                                            </a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="deleteCategory({{ $category->id }})">
-                                                <i class="fas fa-trash me-2"></i>Supprimer
-                                            </a></li>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="editCategory({{ $category->id }})">
+                                                    <i class="fas fa-edit me-2"></i>Modifier
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="deleteCategory({{ $category->id }})">
+                                                    <i class="fas fa-trash me-2"></i>Supprimer
+                                                </a>
+                                            </li>
                                         </ul>
                                     </div>
                                 </div>
-                                <div class="card-body">
-                                    <p class="card-text text-muted">{{ $category->description ?? 'Aucune description' }}</p>
-                                    
-                                    <div class="row text-center">
-                                        <div class="col-6">
-                                            <h5 class="text-primary">{{ $category->courses_count ?? 0 }}</h5>
-                                            <small class="text-muted">Cours</small>
-                                        </div>
-                                        <div class="col-6">
-                                            <h5 class="text-success">
-                                                @if($category->is_active)
-                                                    <i class="fas fa-check-circle text-success"></i>
-                                                @else
-                                                    <i class="fas fa-times-circle text-danger"></i>
-                                                @endif
-                                            </h5>
-                                            <small class="text-muted">Statut</small>
-                                        </div>
+                                <div class="category-card-modern__metrics">
+                                    <div>
+                                        <span class="category-card-modern__metric-label">Cours associés</span>
+                                        <span class="category-card-modern__metric-value">{{ $category->courses_count ?? 0 }}</span>
                                     </div>
-                                    
-                                    @if($category->image)
-                                    <div class="mt-3">
-                                        <img src="{{ Storage::url($category->image) }}" 
-                                             alt="{{ $category->name }}" 
-                                             class="img-fluid rounded" 
-                                             style="max-height: 100px; width: 100%; object-fit: cover;">
+                                    <div>
+                                        <span class="category-card-modern__metric-label">Statut</span>
+                                        <span class="category-card-modern__metric-badge {{ $category->is_active ? 'is-active' : 'is-inactive' }}">
+                                            {{ $category->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
                                     </div>
-                                    @endif
+                                    <div>
+                                        <span class="category-card-modern__metric-label">Visibilité</span>
+                                        <span class="category-card-modern__metric-value">
+                                            @if($category->is_active)
+                                                <i class="fas fa-eye text-success"></i>
+                                            @else
+                                                <i class="fas fa-eye-slash text-muted"></i>
+                                            @endif
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="card-footer bg-light">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <small class="text-muted">
-                                            Créée le {{ $category->created_at->format('d/m/Y') }}
-                                        </small>
-                                        <div>
-                                            <span class="badge bg-{{ $category->is_active ? 'success' : 'secondary' }}">
-                                                {{ $category->is_active ? 'Active' : 'Inactive' }}
-                                            </span>
-                                        </div>
+                                @if($category->image)
+                                <div class="category-card-modern__media">
+                                    <img src="{{ \App\Helpers\FileHelper::url($category->image, 'categories') }}" alt="{{ $category->name }}">
+                                </div>
+                                @endif
+                                <div class="category-card-modern__footer">
+                                    <div>
+                                        <span class="category-card-modern__footer-label">Créée le</span>
+                                        <strong>{{ $category->created_at->format('d/m/Y') }}</strong>
+                                    </div>
+                                    <div class="category-card-modern__tags">
+                                        <span class="badge rounded-pill text-bg-light">
+                                            #{{ $category->slug }}
+                                        </span>
+                                        <span class="badge rounded-pill text-bg-light">
+                                            Ordre : {{ $category->sort_order ?? 0 }}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -256,7 +255,10 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Créer la catégorie</button>
+                    <button type="submit" class="btn btn-primary" id="categoryFormSubmit">
+                        <span class="submit-label-create"><i class="fas fa-plus me-2"></i>Créer la catégorie</span>
+                        <span class="submit-label-update d-none"><i class="fas fa-save me-2"></i>Enregistrer les modifications</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -335,8 +337,17 @@ function resetCategoryForm() {
     const form = document.getElementById('categoryForm');
     form.action = '{{ route("admin.categories.store") }}';
     
+    // Retirer le champ _method si présent
+    const methodInput = form.querySelector('input[name="_method"]');
+    if (methodInput) {
+        methodInput.remove();
+    }
+    
     // Changer le titre du modal
     document.querySelector('#createCategoryModal .modal-title').textContent = 'Nouvelle catégorie';
+    
+    // Mettre à jour le libellé du bouton
+    toggleCategorySubmitLabels('create');
 }
 
 function editCategory(categoryId) {
@@ -356,8 +367,19 @@ function editCategory(categoryId) {
             const form = document.getElementById('categoryForm');
             form.action = `/admin/categories/${categoryId}`;
             
+            // Ajouter ou mettre à jour le champ _method pour l'update
+            let methodInput = form.querySelector('input[name="_method"]');
+            if (!methodInput) {
+                methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                form.prepend(methodInput);
+            }
+            methodInput.value = 'PUT';
+            
             // Changer le titre du modal
             document.querySelector('#createCategoryModal .modal-title').textContent = 'Modifier la catégorie';
+            toggleCategorySubmitLabels('edit');
             
             // Ouvrir le modal
             new bootstrap.Modal(document.getElementById('createCategoryModal')).show();
@@ -396,5 +418,227 @@ document.getElementById('confirmDelete').addEventListener('click', function() {
     }
 });
 
+function toggleCategorySubmitLabels(mode) {
+    const submitButton = document.getElementById('categoryFormSubmit');
+    if (!submitButton) return;
+    const createLabel = submitButton.querySelector('.submit-label-create');
+    const updateLabel = submitButton.querySelector('.submit-label-update');
+    
+    if (mode === 'edit') {
+        createLabel?.classList.add('d-none');
+        updateLabel?.classList.remove('d-none');
+    } else {
+        createLabel?.classList.remove('d-none');
+        updateLabel?.classList.add('d-none');
+    }
+}
+
 </script>
+@endpush
+
+@push('styles')
+<style>
+.category-card-modern {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+    background: #ffffff;
+    border-radius: 1.5rem;
+    padding: 1.75rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 22px 45px -30px rgba(15, 23, 42, 0.35);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    overflow: hidden;
+}
+.category-card-modern::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.06) 100%);
+    pointer-events: none;
+}
+.category-card-modern:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 30px 60px -30px rgba(15, 23, 42, 0.45);
+}
+.category-card-modern__badge {
+    position: absolute;
+    top: -32px;
+    right: -32px;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle at center, var(--category-color) 0%, rgba(15, 23, 42, 0) 70%);
+    opacity: 0.22;
+    pointer-events: none;
+}
+.category-card-modern__badge span {
+    position: absolute;
+    bottom: 32px;
+    right: 40px;
+    font-size: 2.85rem;
+    font-weight: 800;
+    color: rgba(15, 23, 42, 0.08);
+    letter-spacing: -0.04em;
+}
+.category-card-modern__header {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+.category-card-modern__icon {
+    flex: 0 0 52px;
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 1.35rem;
+    box-shadow: 0 12px 25px -18px rgba(15, 23, 42, 0.65);
+}
+.category-card-modern__title {
+    flex: 1 1 160px;
+    min-width: 0;
+}
+.category-card-modern__title h5 {
+    margin: 0;
+    font-weight: 700;
+    color: #0f172a;
+}
+.category-card-modern__title p {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.88rem;
+}
+.category-card-modern__menu {
+    border: none;
+    background: rgba(148, 163, 184, 0.18);
+    color: #475569;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-left: auto;
+}
+.category-card-modern__menu:hover {
+    background: rgba(15, 23, 42, 0.1);
+    color: #1f2937;
+}
+.category-card-modern__metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.85rem;
+    padding: 0.85rem;
+    border-radius: 1rem;
+    background: rgba(241, 245, 249, 0.6);
+}
+.category-card-modern__metrics > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.85rem 0.75rem;
+    background: rgba(148, 163, 184, 0.08);
+    border-radius: 0.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    min-height: 100%;
+}
+.category-card-modern__metrics > div:nth-child(odd) {
+    background: rgba(148, 163, 184, 0.12);
+}
+.category-card-modern__metric-label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    color: #94a3b8;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.35rem;
+}
+.category-card-modern__metric-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.category-card-modern__metric-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    background: rgba(15, 23, 42, 0.06);
+    color: #0f172a;
+}
+.category-card-modern__metric-badge.is-active {
+    background: rgba(34, 197, 94, 0.14);
+    color: #15803d;
+}
+.category-card-modern__metric-badge.is-inactive {
+    background: rgba(148, 163, 184, 0.18);
+    color: #475569;
+}
+.category-card-modern__media {
+    border-radius: 1.2rem;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    max-height: 160px;
+}
+.category-card-modern__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.category-card-modern__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed rgba(148, 163, 184, 0.4);
+}
+.category-card-modern__footer-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.category-card-modern__tags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.category-card-modern__tags .badge {
+    background: rgba(15, 23, 42, 0.05);
+    color: #334155;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    font-weight: 600;
+}
+
+@media (max-width: 575px) {
+    .category-card-modern {
+        padding: 1.5rem;
+    }
+    .category-card-modern__metrics {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    .category-card-modern__badge {
+        width: 90px;
+        height: 90px;
+    }
+    .category-card-modern__badge span {
+        font-size: 2.2rem;
+    }
+    .category-card-modern__footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+</style>
 @endpush

@@ -28,17 +28,59 @@
                             <li><hr class="dropdown-divider my-0" style="margin: 0;"></li>
                             <!-- Menu Items -->
                             <li style="padding: 0;">
-                                <a class="dropdown-item" href="{{ route('dashboard') }}" style="padding: 0.75rem 1.25rem;">
-                                    <i class="fas fa-tachometer-alt me-2"></i>Tableau de bord
-                                </a>
-                            </li>
-                            <li style="padding: 0;">
                                 <a class="dropdown-item" href="{{ route('profile.redirect') }}" 
                                    @if(session('sso_token'))target="_blank" rel="noopener noreferrer"@endif 
                                    style="padding: 0.75rem 1.25rem;">
                                     <i class="fas fa-user me-2"></i>Profil
                                 </a>
                             </li>
+                            @php
+                                $user = Auth::user();
+                                $dashboardLinks = [];
+
+                                if ($user->isAdmin()) {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Administrateur',
+                                        'route' => route('admin.dashboard'),
+                                        'icon' => 'fas fa-tools',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord formateur',
+                                        'route' => route('instructor.dashboard'),
+                                        'icon' => 'fas fa-chalkboard-teacher',
+                                    ];
+                                } elseif ($user->isInstructor()) {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord formateur',
+                                        'route' => route('instructor.dashboard'),
+                                        'icon' => 'fas fa-chalkboard-teacher',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                } else {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                }
+                            @endphp
+
+                            @foreach($dashboardLinks as $dashboardLink)
+                                <li style="padding: 0;">
+                                    <a class="dropdown-item" href="{{ $dashboardLink['route'] }}" style="padding: 0.75rem 1.25rem;">
+                                        <i class="{{ $dashboardLink['icon'] }} me-2"></i>{{ $dashboardLink['label'] }}
+                                    </a>
+                                </li>
+                            @endforeach
                             <li style="padding: 0;">
                                 <a class="dropdown-item" href="{{ route('messages.index') }}" style="padding: 0.75rem 1.25rem;">
                                     <i class="fas fa-envelope me-2"></i>Messages
@@ -85,24 +127,26 @@
                 @auth
                     <!-- Notifications -->
                     <div class="dropdown">
-                        <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" title="Notifications">
+                        <a class="nav-link position-relative notification-toggle" href="#" role="button" data-bs-toggle="dropdown" title="Notifications">
                             <i class="fas fa-bell fa-lg"></i>
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="notification-count-mobile" style="display: none; background-color: var(--primary-color); color: white;">
                                 0
                             </span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end notification-dropdown" style="width: 350px;">
-                            <li class="dropdown-header d-flex justify-content-between align-items-center">
+                        <div class="dropdown-menu notification-dropdown notification-dropdown--mobile">
+                            <div class="dropdown-header d-flex justify-content-between align-items-center px-3 py-2">
                                 <span>Notifications</span>
-                                <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <div id="notifications-list-mobile">
-                                <li class="dropdown-item text-center py-3">
+                                <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-outline-primary notification-view-all" aria-label="Voir toutes les notifications">
+                                    <i class="fas fa-list"></i>
+                                </a>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <ul id="notifications-list-mobile" class="list-unstyled mb-0">
+                                <li class="dropdown-item text-center py-3 text-muted">
                                     <i class="fas fa-spinner fa-spin"></i> Chargement...
                                 </li>
-                            </div>
-                        </ul>
+                            </ul>
+                        </div>
                     </div>
                 @endauth
                 
@@ -137,11 +181,6 @@
                     </ul>
                 </div>
                 <a class="nav-link" href="{{ route('instructors.index') }}">Formateurs</a>
-                @auth
-                    @if(auth()->user()->role !== 'instructor')
-                        <a class="nav-link" href="{{ route('instructor-application.index') }}">Devenir Formateur</a>
-                    @endif
-                @endauth
                 <a class="nav-link" href="{{ route('about') }}">À propos</a>
                 <a class="nav-link" href="{{ route('contact') }}">Contact</a>
             </div>
@@ -159,24 +198,26 @@
                 @auth
                     <!-- Notifications -->
                     <div class="nav-item dropdown me-3">
-                        <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" title="Notifications">
+                        <a class="nav-link position-relative notification-toggle" href="#" role="button" data-bs-toggle="dropdown" title="Notifications">
                             <i class="fas fa-bell fa-lg"></i>
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="notification-count" style="display: none; background-color: var(--primary-color); color: white;">
                                 0
                             </span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end notification-dropdown" style="width: 350px;">
-                            <li class="dropdown-header d-flex justify-content-between align-items-center">
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown notification-dropdown--desktop">
+                            <div class="dropdown-header d-flex justify-content-between align-items-center px-3 py-2">
                                 <span>Notifications</span>
-                                <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <div id="notifications-list">
-                                <li class="dropdown-item text-center py-3">
+                                <a href="{{ route('notifications.index') }}" class="btn btn-sm btn-outline-primary notification-view-all" aria-label="Voir toutes les notifications">
+                                    <i class="fas fa-list"></i>
+                                </a>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <ul id="notifications-list" class="list-unstyled mb-0">
+                                <li class="dropdown-item text-center py-3 text-muted">
                                     <i class="fas fa-spinner fa-spin"></i> Chargement...
                                 </li>
-                            </div>
-                        </ul>
+                            </ul>
+                        </div>
                     </div>
 
                     <!-- Messages -->
@@ -209,11 +250,53 @@
                             </li>
                             <li><hr class="dropdown-divider my-0" style="margin: 0;"></li>
                             <!-- Menu Items -->
-                            <li style="padding: 0;">
-                                <a class="dropdown-item" href="{{ route('dashboard') }}" style="padding: 0.75rem 1.25rem;">
-                                    <i class="fas fa-tachometer-alt me-2"></i>Tableau de bord
-                                </a>
-                            </li>
+                            @php
+                                $user = Auth::user();
+                                $dashboardLinks = [];
+
+                                if ($user->isAdmin()) {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Administrateur',
+                                        'route' => route('admin.dashboard'),
+                                        'icon' => 'fas fa-tools',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord formateur',
+                                        'route' => route('instructor.dashboard'),
+                                        'icon' => 'fas fa-chalkboard-teacher',
+                                    ];
+                                } elseif ($user->isInstructor()) {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord formateur',
+                                        'route' => route('instructor.dashboard'),
+                                        'icon' => 'fas fa-chalkboard-teacher',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                } else {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                }
+                            @endphp
+
+                            @foreach($dashboardLinks as $dashboardLink)
+                                <li style="padding: 0;">
+                                    <a class="dropdown-item" href="{{ $dashboardLink['route'] }}" style="padding: 0.75rem 1.25rem;">
+                                        <i class="{{ $dashboardLink['icon'] }} me-2"></i>{{ $dashboardLink['label'] }}
+                                    </a>
+                                </li>
+                            @endforeach
                             <li style="padding: 0;">
                                 <a class="dropdown-item" href="{{ route('profile.redirect') }}" 
                                    @if(session('sso_token'))target="_blank" rel="noopener noreferrer"@endif 
@@ -304,6 +387,54 @@
                 </li>
                 
                 @auth
+                    @php
+                        $user = Auth::user();
+                        $dashboardLinks = [];
+
+                        if ($user->isAdmin()) {
+                            $dashboardLinks[] = [
+                                'label' => 'Administrateur',
+                                'route' => route('admin.dashboard'),
+                                'icon' => 'fas fa-tools',
+                            ];
+                            $dashboardLinks[] = [
+                                'label' => 'Tableau de bord étudiant',
+                                'route' => route('student.dashboard'),
+                                'icon' => 'fas fa-user-graduate',
+                            ];
+                            $dashboardLinks[] = [
+                                'label' => 'Tableau de bord formateur',
+                                'route' => route('instructor.dashboard'),
+                                'icon' => 'fas fa-chalkboard-teacher',
+                            ];
+                        } elseif ($user->isInstructor()) {
+                            $dashboardLinks[] = [
+                                'label' => 'Tableau de bord formateur',
+                                'route' => route('instructor.dashboard'),
+                                'icon' => 'fas fa-chalkboard-teacher',
+                            ];
+                            $dashboardLinks[] = [
+                                'label' => 'Tableau de bord étudiant',
+                                'route' => route('student.dashboard'),
+                                'icon' => 'fas fa-user-graduate',
+                            ];
+                        } else {
+                            $dashboardLinks[] = [
+                                'label' => 'Tableau de bord étudiant',
+                                'route' => route('student.dashboard'),
+                                'icon' => 'fas fa-user-graduate',
+                            ];
+                        }
+                    @endphp
+
+                    @foreach($dashboardLinks as $dashboardLink)
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ $dashboardLink['route'] }}">
+                                <i class="{{ $dashboardLink['icon'] }} me-2"></i>{{ $dashboardLink['label'] }}
+                            </a>
+                        </li>
+                    @endforeach
+
                     <li class="nav-item">
                         <a class="nav-link position-relative" href="{{ route('messages.index') }}">
                             <i class="fas fa-envelope me-2"></i>Messages

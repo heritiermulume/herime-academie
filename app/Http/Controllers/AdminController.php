@@ -18,6 +18,11 @@ use App\Models\CourseDownload;
 use App\Models\InstructorApplication;
 use App\Traits\DatabaseCompatibility;
 use App\Services\FileUploadService;
+use App\Notifications\AnnouncementPublished;
+use App\Notifications\CategoryCreatedNotification;
+use App\Notifications\CourseModerationNotification;
+use App\Notifications\CoursePublishedNotification;
+use App\Notifications\InstructorApplicationStatusUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +30,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
 {
@@ -217,7 +225,7 @@ class AdminController extends Controller
             $query->latest();
         }
 
-        $users = $query->paginate(20)->withQueryString();
+        $users = $query->paginate(15)->withQueryString();
 
         // Statistiques pour les filtres
         $stats = [
@@ -417,7 +425,7 @@ class AdminController extends Controller
             'description' => 'required|string',
             'instructor_id' => 'required|exists:users,id',
             'category_id' => 'required|exists:categories,id',
-            'price' => 'required|numeric|min:0',
+            'price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
             'is_downloadable' => 'boolean',
@@ -448,7 +456,7 @@ class AdminController extends Controller
             'sections.*.lessons.*.description' => 'nullable|string',
             'sections.*.lessons.*.type' => 'required_with:sections.*.lessons|in:video,text,quiz,assignment',
             'sections.*.lessons.*.content_url' => 'nullable|string',
-            'sections.*.lessons.*.content_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,application/pdf|max:1048576',
+            'sections.*.lessons.*.content_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/x-rar-compressed,application/x-7z-compressed,application/x-tar,application/gzip|max:1048576',
             'sections.*.lessons.*.content_text' => 'nullable|string',
             'sections.*.lessons.*.duration' => 'nullable|integer|min:0',
             'sections.*.lessons.*.is_preview' => 'boolean',
@@ -467,7 +475,7 @@ class AdminController extends Controller
             // Créer le cours
             $courseData = $request->only([
                 'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
-                'is_free', 'is_downloadable', 'is_published', 'is_featured', 'level', 'language',
+                'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
                 'video_preview_youtube_id', 'video_preview_is_unlisted', 'use_external_payment',
                 'external_payment_url', 'external_payment_text'
@@ -532,7 +540,34 @@ class AdminController extends Controller
             // Traiter les tableaux
             $courseData['requirements'] = $request->input('requirements', []);
             $courseData['what_you_will_learn'] = $request->input('what_you_will_learn', []);
-            $courseData['slug'] = \Str::slug($request->title);
+            $courseData['slug'] = $this->generateUniqueCourseSlug($request->title);
+
+            $courseData['price'] = $request->filled('price') ? (float) $request->input('price') : null;
+            $courseData['sale_price'] = $request->filled('sale_price') ? (float) $request->input('sale_price') : null;
+
+            $courseData['is_free'] = $request->boolean('is_free', false);
+            $courseData['is_downloadable'] = $request->boolean('is_downloadable', false);
+            $courseData['use_external_payment'] = $request->boolean('use_external_payment', false);
+            $courseData['is_published'] = $request->boolean('is_published', false);
+            $courseData['is_featured'] = $request->boolean('is_featured', false);
+            $courseData['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
+
+            if ($courseData['is_free']) {
+                $courseData['price'] = 0;
+                $courseData['sale_price'] = null;
+            } else {
+                if ($courseData['price'] === null) {
+                    throw ValidationException::withMessages([
+                        'price' => 'Le prix est obligatoire sauf si le cours est gratuit.',
+                    ]);
+                }
+
+                if (!is_null($courseData['sale_price']) && $courseData['sale_price'] > $courseData['price']) {
+                    throw ValidationException::withMessages([
+                        'sale_price' => 'Le prix promotionnel doit être inférieur ou égal au prix standard.',
+                    ]);
+                }
+            }
 
             $course = Course::create($courseData);
 
@@ -587,6 +622,15 @@ class AdminController extends Controller
 
             DB::commit();
 
+            $course->refresh();
+
+            if ($course->is_published) {
+                $course->notifyStudentsOfNewCourse();
+                $this->notifyInstructorCourseModeration($course, 'approved');
+            } else {
+                $this->notifyInstructorCourseModeration($course, 'pending');
+            }
+
             $lessonsCount = $course->lessons()->count();
             return redirect()->route('admin.courses')
                 ->with('success', 'Cours créé avec succès avec ' . $lessonsCount . ' leçons.');
@@ -614,7 +658,7 @@ class AdminController extends Controller
             'description' => 'required|string',
             'instructor_id' => 'required|exists:users,id',
             'category_id' => 'required|exists:categories,id',
-            'price' => 'required|numeric|min:0',
+            'price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
             'is_downloadable' => 'boolean',
@@ -637,6 +681,22 @@ class AdminController extends Controller
             'meta_description' => 'nullable|string|max:160',
             'meta_keywords' => 'nullable|string|max:255',
             'tags' => 'nullable|string',
+            'sections' => 'nullable|array',
+            'sections.*.id' => 'nullable|integer|exists:course_sections,id',
+            'sections.*.title' => 'required_with:sections|string|max:255',
+            'sections.*.description' => 'nullable|string',
+            'sections.*.lessons' => 'nullable|array',
+            'sections.*.lessons.*.id' => 'nullable|integer|exists:course_lessons,id',
+            'sections.*.lessons.*.title' => 'required_with:sections.*.lessons|string|max:255',
+            'sections.*.lessons.*.description' => 'nullable|string',
+            'sections.*.lessons.*.type' => 'required_with:sections.*.lessons|in:video,text,quiz,assignment',
+            'sections.*.lessons.*.content_url' => 'nullable|string',
+            'sections.*.lessons.*.content_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/x-rar-compressed,application/x-7z-compressed,application/x-tar,application/gzip|max:1048576',
+            'sections.*.lessons.*.content_text' => 'nullable|string',
+            'sections.*.lessons.*.duration' => 'nullable|integer|min:0',
+            'sections.*.lessons.*.is_preview' => 'boolean',
+            'sections.*.lessons.*.remove_existing_file' => 'nullable',
+            'sections.*.lessons.*.existing_file_path' => 'nullable|string',
         ], [
             'thumbnail.image' => 'Le fichier doit être une image.',
             'thumbnail.mimes' => 'Le fichier doit être de type: jpeg, png, jpg, gif, webp.',
@@ -646,87 +706,298 @@ class AdminController extends Controller
             'external_payment_url.required_if' => 'L\'URL de paiement externe est requise quand le paiement externe est activé.',
         ]);
 
-        $data = $request->only([
-            'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
-            'is_free', 'is_downloadable', 'use_external_payment', 'external_payment_url', 'external_payment_text',
-            'is_published', 'is_featured', 'level', 'language',
-            'video_preview', 'meta_description', 'meta_keywords', 'tags',
-            'video_preview_youtube_id', 'video_preview_is_unlisted'
-        ]);
+        $wasPublished = $course->is_published;
 
-        // Gérer l'upload de l'image de couverture
-        if ($request->hasFile('thumbnail')) {
-            $result = $this->fileUploadService->uploadImage(
-                $request->file('thumbnail'),
-                'courses/thumbnails',
-                $course->thumbnail,
-                1920 // Max 1920px width
-            );
-            $data['thumbnail'] = $result['path'];
-        }
+        DB::beginTransaction();
 
-        // Gérer YouTube ou upload de la vidéo de prévisualisation
-        $videoPreviewYoutubeId = $request->video_preview_youtube_id;
-        $isUnlisted = $request->boolean('video_preview_is_unlisted', false);
-        
-        // Si YouTube vidéo ID fourni, extraire et valider
-        if ($videoPreviewYoutubeId) {
-            $data['video_preview_youtube_id'] = $this->extractYouTubeVideoId($videoPreviewYoutubeId);
-            $data['video_preview_is_unlisted'] = $isUnlisted;
-        }
-        
-        // Gérer upload fichier si fourni
-        if ($request->hasFile('video_preview_file')) {
-            $result = $this->fileUploadService->uploadVideo(
-                $request->file('video_preview_file'),
-                'courses/previews',
-                $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
-            );
-            $data['video_preview'] = $result['path'];
-        }
+        try {
+            $data = $request->only([
+                'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
+                'use_external_payment', 'external_payment_url', 'external_payment_text',
+                'level', 'language',
+                'video_preview', 'meta_description', 'meta_keywords', 'tags',
+                'video_preview_youtube_id', 'video_preview_is_unlisted'
+            ]);
 
-        // Gérer le fichier de téléchargement spécifique
-        if ($request->has('remove_download_file') && $request->remove_download_file) {
-            // Supprimer l'ancien fichier s'il existe
-            if ($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
-                $this->fileUploadService->deleteFile($course->download_file_path);
-            }
-            $data['download_file_path'] = null;
-        } elseif ($request->hasFile('download_file_path')) {
-            // Déterminer l'ancien chemin
-            $oldPath = null;
-            if ($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
-                $oldPath = $course->download_file_path;
-            }
-            // Stocker le nouveau fichier
-            try {
-                $result = $this->fileUploadService->uploadDocument(
-                    $request->file('download_file_path'),
-                    'courses/downloads',
-                    $oldPath
+            // Gérer l'upload de l'image de couverture
+            if ($request->hasFile('thumbnail')) {
+                $result = $this->fileUploadService->uploadImage(
+                    $request->file('thumbnail'),
+                    'courses/thumbnails',
+                    $course->thumbnail,
+                    1920 // Max 1920px width
                 );
-                $data['download_file_path'] = $result['path'];
-            } catch (\Exception $e) {
-                \Log::error('Erreur upload download_file_path (update): ' . $e->getMessage(), [
-                    'file' => $request->file('download_file_path')->getClientOriginalName(),
-                    'size' => $request->file('download_file_path')->getSize(),
-                    'error' => $e->getTraceAsString()
-                ]);
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()]);
+                $data['thumbnail'] = $result['path'];
             }
-        } elseif ($request->filled('download_file_url')) {
-            // Si une URL externe est fournie, l'utiliser
-            $data['download_file_path'] = $request->download_file_url;
+
+            // Gérer YouTube ou upload de la vidéo de prévisualisation
+            $videoPreviewYoutubeId = $request->video_preview_youtube_id;
+            $isUnlisted = $request->boolean('video_preview_is_unlisted', false);
+
+            if ($videoPreviewYoutubeId) {
+                $data['video_preview_youtube_id'] = $this->extractYouTubeVideoId($videoPreviewYoutubeId);
+                $data['video_preview_is_unlisted'] = $isUnlisted;
+            }
+
+            if ($request->hasFile('video_preview_file')) {
+                $result = $this->fileUploadService->uploadVideo(
+                    $request->file('video_preview_file'),
+                    'courses/previews',
+                    $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
+                );
+                $data['video_preview'] = $result['path'];
+            }
+
+            // Gérer le fichier de téléchargement spécifique
+            if ($request->has('remove_download_file') && $request->remove_download_file) {
+                if ($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+                    $this->fileUploadService->deleteFile($course->download_file_path);
+                }
+                $data['download_file_path'] = null;
+            } elseif ($request->hasFile('download_file_path')) {
+                $oldPath = null;
+                if ($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+                    $oldPath = $course->download_file_path;
+                }
+                try {
+                    $result = $this->fileUploadService->uploadDocument(
+                        $request->file('download_file_path'),
+                        'courses/downloads',
+                        $oldPath
+                    );
+                    $data['download_file_path'] = $result['path'];
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    \Log::error('Erreur upload download_file_path (update): ' . $e->getMessage(), [
+                        'file' => $request->file('download_file_path')->getClientOriginalName(),
+                        'size' => $request->file('download_file_path')->getSize(),
+                        'error' => $e->getTraceAsString()
+                    ]);
+                    return redirect()->back()
+                        ->withInput()
+                        ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()]);
+                }
+            } elseif ($request->filled('download_file_url')) {
+                $data['download_file_path'] = $request->download_file_url;
+            }
+
+            $data['requirements'] = $request->input('requirements', []);
+            $data['what_you_will_learn'] = $request->input('what_you_will_learn', []);
+            $data['slug'] = $this->generateUniqueCourseSlug($request->title, $course);
+
+            $data['price'] = $request->filled('price') ? (float) $request->input('price') : null;
+            $data['sale_price'] = $request->filled('sale_price') ? (float) $request->input('sale_price') : null;
+
+            $data['is_free'] = $request->boolean('is_free', false);
+            $data['is_downloadable'] = $request->boolean('is_downloadable', false);
+            $data['use_external_payment'] = $request->boolean('use_external_payment', false);
+            $data['is_published'] = $request->boolean('is_published', false);
+            $data['is_featured'] = $request->boolean('is_featured', false);
+            $data['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
+
+            if ($data['is_free']) {
+                $data['price'] = 0;
+                $data['sale_price'] = null;
+            } else {
+                if ($data['price'] === null) {
+                    throw ValidationException::withMessages([
+                        'price' => 'Le prix est obligatoire sauf si le cours est gratuit.',
+                    ]);
+                }
+
+                if (!is_null($data['sale_price']) && $data['sale_price'] > $data['price']) {
+                    throw ValidationException::withMessages([
+                        'sale_price' => 'Le prix promotionnel doit être inférieur ou égal au prix standard.',
+                    ]);
+                }
+            }
+
+            $course->update($data);
+
+            $sectionsPayload = $request->input('sections', []);
+            $sectionsToKeep = [];
+
+            if (is_array($sectionsPayload)) {
+                foreach ($sectionsPayload as $sectionIndex => $sectionData) {
+                    if (!is_array($sectionData)) {
+                        continue;
+                    }
+
+                    $sectionTitle = $sectionData['title'] ?? null;
+                    if (empty($sectionTitle)) {
+                        continue;
+                    }
+
+                    $sectionAttributes = [
+                        'title' => $sectionTitle,
+                        'description' => $sectionData['description'] ?? '',
+                        'sort_order' => $sectionIndex + 1,
+                        'is_published' => true,
+                    ];
+
+                    $section = null;
+                    if (!empty($sectionData['id'])) {
+                        $section = $course->sections()->where('id', $sectionData['id'])->first();
+                    }
+
+                    if ($section) {
+                        $section->update($sectionAttributes);
+                    } else {
+                        $section = $course->sections()->create($sectionAttributes);
+                    }
+
+                    $sectionsToKeep[] = $section->id;
+
+                    $lessonsPayload = $sectionData['lessons'] ?? [];
+                    if (!is_array($lessonsPayload)) {
+                        $lessonsPayload = [];
+                    }
+
+                    $lessonIdsToKeep = [];
+
+                    foreach ($lessonsPayload as $lessonIndex => $lessonData) {
+                        if (!is_array($lessonData)) {
+                            continue;
+                        }
+
+                        $lessonTitle = $lessonData['title'] ?? null;
+                        $lessonType = $lessonData['type'] ?? null;
+
+                        if (empty($lessonTitle) || empty($lessonType)) {
+                            continue;
+                        }
+
+                        $lesson = null;
+                        if (!empty($lessonData['id'])) {
+                            $lesson = $section->lessons()->where('id', $lessonData['id'])->first();
+                        }
+
+                        $lessonAttributes = [
+                            'course_id' => $course->id,
+                            'section_id' => $section->id,
+                            'title' => $lessonTitle,
+                            'description' => $lessonData['description'] ?? '',
+                            'type' => $lessonType,
+                            'content_text' => $lessonData['content_text'] ?? null,
+                            'duration' => isset($lessonData['duration']) ? (int) $lessonData['duration'] : 0,
+                            'sort_order' => $lessonIndex + 1,
+                            'is_published' => true,
+                            'is_preview' => in_array($lessonData['is_preview'] ?? false, [1, '1', true, 'true', 'on'], true),
+                        ];
+
+                        $uploaded = $request->file("sections.$sectionIndex.lessons.$lessonIndex.content_file");
+                        $removeExistingFile = in_array($lessonData['remove_existing_file'] ?? false, [1, '1', true, 'true', 'on'], true);
+
+                        $existingHiddenPath = $lessonData['existing_file_path'] ?? null;
+                        $contentUrl = $lessonData['content_url'] ?? null;
+
+                        $currentFilePath = null;
+                        if ($lesson && $lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                            $currentFilePath = $lesson->content_url;
+                        }
+
+                        if ($uploaded) {
+                            $mimeType = $uploaded->getMimeType();
+                            try {
+                                if (strpos($mimeType, 'video/') === 0) {
+                                    $result = $this->fileUploadService->uploadVideo($uploaded, 'courses/lessons', $currentFilePath);
+                                } else {
+                                    $result = $this->fileUploadService->uploadDocument($uploaded, 'courses/lessons', $currentFilePath);
+                                }
+                            } catch (\Exception $e) {
+                                DB::rollBack();
+                                \Log::error('Erreur upload content_file (update): ' . $e->getMessage(), [
+                                    'course_id' => $course->id,
+                                    'lesson_id' => $lesson?->id,
+                                    'file' => $uploaded->getClientOriginalName(),
+                                    'size' => $uploaded->getSize(),
+                                    'error' => $e->getTraceAsString()
+                                ]);
+                                return redirect()->back()
+                                    ->withInput()
+                                    ->withErrors([
+                                        "sections.$sectionIndex.lessons.$lessonIndex.content_file" => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()
+                                    ]);
+                            }
+
+                            $contentUrl = $result['path'];
+                            $currentFilePath = $contentUrl;
+                            $removeExistingFile = false;
+                        } elseif ($removeExistingFile) {
+                            if ($currentFilePath) {
+                                $this->fileUploadService->deleteFile($currentFilePath);
+                            }
+                            $currentFilePath = null;
+                            if (!$contentUrl) {
+                                $contentUrl = null;
+                            }
+                        } elseif ($existingHiddenPath) {
+                            $contentUrl = $existingHiddenPath;
+                        } elseif ($currentFilePath && !$contentUrl) {
+                            $contentUrl = $currentFilePath;
+                        }
+
+                        $lessonAttributes['content_url'] = $contentUrl;
+                        $lessonAttributes['is_preview'] = $lessonAttributes['is_preview'] ? 1 : 0;
+
+                        if ($lesson) {
+                            $lesson->update($lessonAttributes);
+                        } else {
+                            $lesson = $section->lessons()->create($lessonAttributes);
+                        }
+
+                        $lessonIdsToKeep[] = $lesson->id;
+                    }
+
+                    $section->lessons()
+                        ->whereNotIn('id', $lessonIdsToKeep)
+                        ->get()
+                        ->each(function (CourseLesson $lesson) {
+                            if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                                $this->fileUploadService->deleteFile($lesson->content_url);
+                            }
+                            $lesson->delete();
+                        });
+                }
+            }
+
+            $course->sections()
+                ->whereNotIn('id', $sectionsToKeep)
+                ->get()
+                ->each(function ($section) {
+                    foreach ($section->lessons as $lesson) {
+                        if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                            $this->fileUploadService->deleteFile($lesson->content_url);
+                        }
+                        $lesson->delete();
+                    }
+                    $section->delete();
+                });
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erreur lors de la mise à jour du cours: ' . $e->getMessage(), [
+                'course_id' => $course->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Erreur lors de la mise à jour du cours: ' . $e->getMessage()]);
         }
 
-        // Traiter les tableaux
-        $data['requirements'] = $request->input('requirements', []);
-        $data['what_you_will_learn'] = $request->input('what_you_will_learn', []);
-        $data['slug'] = \Str::slug($request->title);
+        $course->refresh();
 
-        $course->update($data);
+        if (!$wasPublished && $course->is_published) {
+            $course->notifyStudentsOfNewCourse();
+            $this->notifyInstructorCourseModeration($course, 'approved');
+        } elseif ($wasPublished && !$course->is_published) {
+            $this->notifyInstructorCourseModeration($course, 'rejected');
+        } else {
+            $this->notifyInstructorCourseModeration($course, $course->is_published ? 'approved' : 'pending');
+        }
 
         return redirect()->route('admin.courses')
             ->with('success', 'Cours mis à jour avec succès.');
@@ -794,13 +1065,31 @@ class AdminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|unique:categories,slug',
+            'slug' => 'nullable|string|unique:categories,slug',
             'description' => 'nullable|string',
             'color' => 'required|string|max:7',
             'icon' => 'nullable|string',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
         ]);
 
-        Category::create($request->all());
+        $data = $request->only([
+            'name',
+            'slug',
+            'description',
+            'color',
+            'icon',
+            'sort_order',
+        ]);
+
+        $data['slug'] = Str::slug($data['slug'] ?? $request->name);
+        $data['is_active'] = $request->boolean('is_active', false);
+
+        $category = Category::create($data);
+
+        if ($category->is_active) {
+            $this->notifyUsersOfNewCategory($category);
+        }
 
         return redirect()->route('admin.categories')
             ->with('success', 'Catégorie créée avec succès.');
@@ -819,10 +1108,23 @@ class AdminController extends Controller
             'description' => 'nullable|string',
             'color' => 'required|string|max:7',
             'icon' => 'nullable|string',
-            'is_active' => 'boolean',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
         ]);
 
-        $category->update($request->all());
+        $data = $request->only([
+            'name',
+            'slug',
+            'description',
+            'color',
+            'icon',
+            'sort_order',
+        ]);
+
+        $data['slug'] = Str::slug($data['slug'] ?? $category->name);
+        $data['is_active'] = $request->boolean('is_active', false);
+
+        $category->update($data);
 
         return redirect()->route('admin.categories')
             ->with('success', 'Catégorie mise à jour avec succès.');
@@ -838,7 +1140,7 @@ class AdminController extends Controller
     // Gestion des annonces
     public function announcements()
     {
-        $announcements = Announcement::latest()->paginate(20);
+        $announcements = Announcement::latest()->paginate(15);
         return view('admin.announcements.index', compact('announcements'));
     }
 
@@ -849,16 +1151,11 @@ class AdminController extends Controller
 
     public function storeAnnouncement(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-            'type' => 'required|in:info,success,warning,error',
-            'button_text' => 'nullable|string|max:255',
-            'button_url' => 'nullable|url',
-            'is_active' => 'boolean',
-        ]);
+        $data = $this->validatedAnnouncementData($request);
 
-        Announcement::create($request->all());
+        $announcement = Announcement::create($data);
+
+        $this->notifyUsersOfAnnouncement($announcement);
 
         return redirect()->route('admin.announcements')
             ->with('success', 'Annonce créée avec succès.');
@@ -871,16 +1168,11 @@ class AdminController extends Controller
 
     public function updateAnnouncement(Request $request, Announcement $announcement)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-            'type' => 'required|in:info,success,warning,error',
-            'button_text' => 'nullable|string|max:255',
-            'button_url' => 'nullable|url',
-            'is_active' => 'boolean',
-        ]);
+        $data = $this->validatedAnnouncementData($request);
 
-        $announcement->update($request->all());
+        $announcement->update($data);
+
+        $this->notifyUsersOfAnnouncement($announcement->refresh());
 
         return redirect()->route('admin.announcements')
             ->with('success', 'Annonce mise à jour avec succès.');
@@ -891,6 +1183,93 @@ class AdminController extends Controller
         $announcement->delete();
         return redirect()->route('admin.announcements')
             ->with('success', 'Annonce supprimée avec succès.');
+    }
+
+    protected function validatedAnnouncementData(Request $request): array
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'type' => 'required|in:info,success,warning,error',
+            'button_text' => 'nullable|string|max:255',
+            'button_url' => 'nullable|url',
+            'starts_at' => ['nullable', 'date_format:Y-m-d\TH:i'],
+            'expires_at' => ['nullable', 'date_format:Y-m-d\TH:i', 'after_or_equal:starts_at'],
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        $data['is_active'] = $request->boolean('is_active', false);
+
+        $data['starts_at'] = !empty($data['starts_at'])
+            ? Carbon::createFromFormat('Y-m-d\TH:i', $data['starts_at'], config('app.timezone'))
+            : null;
+
+        $data['expires_at'] = !empty($data['expires_at'])
+            ? Carbon::createFromFormat('Y-m-d\TH:i', $data['expires_at'], config('app.timezone'))
+            : null;
+
+        $data['button_text'] = $data['button_text'] ?? null;
+        $data['button_url'] = $data['button_url'] ?? null;
+
+        return $data;
+    }
+
+    protected function notifyUsersOfAnnouncement(Announcement $announcement): void
+    {
+        if (!$announcement->is_active) {
+            return;
+        }
+
+        // Envoi de la notification en lots pour éviter de charger tous les utilisateurs en mémoire
+        User::where('is_active', true)
+            ->select('id', 'name', 'email')
+            ->chunk(200, function ($users) use ($announcement) {
+                Notification::send($users, new AnnouncementPublished($announcement));
+            });
+    }
+
+    protected function generateUniqueCourseSlug(string $title, ?Course $ignoreCourse = null): string
+    {
+        $baseSlug = Str::slug($title) ?: 'cours';
+        $slug = $baseSlug;
+        $counter = 1;
+
+        while (
+            Course::where('slug', $slug)
+                ->when($ignoreCourse, fn($query) => $query->where('id', '!=', $ignoreCourse->id))
+                ->exists()
+        ) {
+            $slug = $baseSlug . '-' . $counter++;
+        }
+
+        return $slug;
+    }
+
+    protected function notifyUsersOfNewCategory(Category $category): void
+    {
+        User::where('is_active', true)
+            ->chunk(200, function ($users) use ($category) {
+                Notification::send($users, new CategoryCreatedNotification($category));
+            });
+    }
+
+    protected function notifyStudentsOfNewCourse(Course $course): void
+    {
+        User::students()
+            ->where('is_active', true)
+            ->chunk(200, function ($users) use ($course) {
+                Notification::send($users, new CoursePublishedNotification($course));
+            });
+    }
+
+    protected function notifyInstructorCourseModeration(Course $course, string $status): void
+    {
+        $instructor = $course->instructor;
+        if (!$instructor) {
+            return;
+        }
+
+        $instructor->notify(new CourseModerationNotification($course, $status));
     }
 
     // Gestion des partenaires
@@ -1051,174 +1430,7 @@ class AdminController extends Controller
             ->with('success', 'Témoignage supprimé avec succès.');
     }
 
-    // Course Lessons Management
-    public function courseLessons(Course $course)
-    {
-        $course->load(['sections.lessons' => function($query) {
-            $query->orderBy('sort_order');
-        }]);
-        
-        return view('admin.courses.lessons.index', compact('course'));
-    }
-
-    public function createLesson(Course $course)
-    {
-        $sections = $course->sections()->orderBy('sort_order')->get();
-        return view('admin.courses.lessons.create', compact('course', 'sections'));
-    }
-
-    public function storeLesson(Request $request, Course $course)
-    {
-        $request->validate([
-            'section_id' => 'required|exists:course_sections,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'required|in:video,text,quiz,assignment',
-            'content_url' => 'nullable|string|max:500',
-            'content_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,application/pdf|max:1048576',
-            'content_text' => 'nullable|string',
-            'duration' => 'nullable|integer|min:0',
-            'is_preview' => 'boolean',
-            'is_published' => 'boolean',
-            'youtube_video_id' => 'nullable|string|max:100',
-            'is_unlisted' => 'boolean',
-        ]);
-
-        // Get the next sort order for this section
-        $nextOrder = $course->lessons()->where('section_id', $request->section_id)->max('sort_order') + 1;
-
-        // Gérer YouTube ou upload de fichier
-        $contentUrl = $request->content_url;
-        $youtubeVideoId = $request->youtube_video_id;
-        $isUnlisted = $request->boolean('is_unlisted', false);
-        
-        // Si YouTube vidéo ID fourni, extraire et valider
-        if ($youtubeVideoId) {
-            $youtubeVideoId = $this->extractYouTubeVideoId($youtubeVideoId);
-        }
-        
-        if ($request->hasFile('content_file')) {
-            // Déterminer le type de fichier
-            $mimeType = $request->file('content_file')->getMimeType();
-            if (strpos($mimeType, 'video/') === 0) {
-                $result = $this->fileUploadService->uploadVideo($request->file('content_file'), 'courses/lessons', null);
-            } else {
-                $result = $this->fileUploadService->uploadDocument($request->file('content_file'), 'courses/lessons', null);
-            }
-            $contentUrl = $result['path'];
-        }
-
-        $lesson = $course->lessons()->create([
-            'section_id' => $request->section_id,
-            'title' => $request->title,
-            'description' => $request->description,
-            'type' => $request->type,
-            'content_url' => $contentUrl,
-            'content_text' => $request->content_text,
-            'duration' => $request->duration ?? 0,
-            'sort_order' => $nextOrder,
-            'is_published' => $request->boolean('is_published', true),
-            'is_preview' => $request->boolean('is_preview', false),
-            'youtube_video_id' => $youtubeVideoId,
-            'is_unlisted' => $isUnlisted,
-        ]);
-
-        // Les statistiques (duration, lessons_count, etc.) sont maintenant calculées dynamiquement
-        // via les accesseurs du modèle Course - pas besoin de les mettre à jour manuellement
-
-        return redirect()->route('admin.courses.lessons', $course)
-            ->with('success', 'Leçon créée avec succès.');
-    }
-
-    public function editLesson(CourseLesson $lesson)
-    {
-        $course = $lesson->course;
-        $sections = $course->sections()->orderBy('sort_order')->get();
-        return view('admin.courses.lessons.edit', compact('lesson', 'course', 'sections'));
-    }
-
-    public function updateLesson(Request $request, CourseLesson $lesson)
-    {
-        $request->validate([
-            'section_id' => 'required|exists:course_sections,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'required|in:video,text,quiz,assignment',
-            'content_url' => 'nullable|string|max:500',
-            'content_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,application/pdf|max:1048576',
-            'content_text' => 'nullable|string',
-            'duration' => 'nullable|integer|min:0',
-            'is_preview' => 'boolean',
-            'is_published' => 'boolean',
-            'youtube_video_id' => 'nullable|string|max:100',
-            'is_unlisted' => 'boolean',
-        ]);
-
-        // Gérer YouTube ou upload de fichier
-        $contentUrl = $request->content_url;
-        $youtubeVideoId = $request->youtube_video_id;
-        $isUnlisted = $request->boolean('is_unlisted', false);
-        
-        // Si YouTube vidéo ID fourni, extraire et valider
-        if ($youtubeVideoId) {
-            $youtubeVideoId = $this->extractYouTubeVideoId($youtubeVideoId);
-        }
-        
-        if ($request->hasFile('content_file')) {
-            // Déterminer l'ancien chemin (si ce n'est pas une URL externe)
-            $oldPath = null;
-            if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
-                $oldPath = $lesson->content_url;
-            }
-            
-            // Déterminer le type de fichier
-            $mimeType = $request->file('content_file')->getMimeType();
-            if (strpos($mimeType, 'video/') === 0) {
-                $result = $this->fileUploadService->uploadVideo($request->file('content_file'), 'courses/lessons', $oldPath);
-            } else {
-                $result = $this->fileUploadService->uploadDocument($request->file('content_file'), 'courses/lessons', $oldPath);
-            }
-            $contentUrl = $result['path'];
-        }
-
-        $lesson->update([
-            'section_id' => $request->section_id,
-            'title' => $request->title,
-            'description' => $request->description,
-            'type' => $request->type,
-            'content_url' => $contentUrl,
-            'content_text' => $request->content_text,
-            'duration' => $request->duration ?? 0,
-            'is_published' => $request->boolean('is_published', true),
-            'is_preview' => $request->boolean('is_preview', false),
-            'youtube_video_id' => $youtubeVideoId,
-            'is_unlisted' => $isUnlisted,
-        ]);
-
-        // Les statistiques (duration, lessons_count, etc.) sont maintenant calculées dynamiquement
-        // via les accesseurs du modèle Course - pas besoin de les mettre à jour manuellement
-
-        return redirect()->route('admin.courses.lessons', $course)
-            ->with('success', 'Leçon mise à jour avec succès.');
-    }
-
-    public function destroyLesson(CourseLesson $lesson)
-    {
-        $course = $lesson->course;
-        $lesson->delete();
-
-        // Update course duration and lessons count
-        $totalDuration = $course->lessons()->sum('duration');
-        $lessonsCount = $course->lessons()->count();
-        
-        $course->update([
-            'duration' => $totalDuration,
-            'lessons_count' => $lessonsCount,
-        ]);
-
-        return redirect()->route('admin.courses.lessons', $course)
-            ->with('success', 'Leçon supprimée avec succès.');
-    }
+    // Course Lessons Management (legacy - removed)
 
     /**
      * Afficher la page de gestion des statistiques
@@ -1549,6 +1761,14 @@ class AdminController extends Controller
             $application->user->update([
                 'role' => 'instructor'
             ]);
+        }
+
+        if ($application->relationLoaded('user') === false) {
+            $application->load('user');
+        }
+
+        if ($application->user) {
+            $application->user->notify(new InstructorApplicationStatusUpdated($application));
         }
 
         return redirect()->route('admin.instructor-applications.show', $application)

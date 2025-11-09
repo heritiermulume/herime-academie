@@ -39,4 +39,18 @@ class Category extends Model
     {
         return $query->orderBy('sort_order');
     }
+
+    public function getImageUrlAttribute(): string
+    {
+        if (!$this->image) {
+            return 'https://via.placeholder.com/300x200?text=' . urlencode($this->name);
+        }
+
+        if (str_starts_with($this->image, 'http')) {
+            return $this->image;
+        }
+
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->image, 'categories');
+    }
 }

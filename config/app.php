@@ -123,4 +123,15 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'http' => [
+        'post_max_size' => env('POST_MAX_SIZE', '512M'),
+    ],
+
+    'upload_limits' => [
+        'upload_max_filesize' => env('UPLOAD_MAX_FILESIZE', '512M'),
+        'post_max_size' => env('POST_MAX_SIZE', '512M'),
+        'max_execution_time' => env('UPLOAD_MAX_EXECUTION_TIME', 600),
+        'max_input_time' => env('UPLOAD_MAX_INPUT_TIME', 600),
+    ],
+
 ];

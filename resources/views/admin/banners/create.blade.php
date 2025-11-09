@@ -263,14 +263,9 @@
                     <a href="{{ route('admin.banners.index') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Retour
                     </a>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-outline-primary">
-                            <i class="fas fa-eye me-2"></i>Prévisualiser sur le site
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Enregistrer la bannière
-                        </button>
-                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Enregistrer la bannière
+                    </button>
                 </div>
             </form>
         </div>
@@ -284,21 +279,25 @@
     overflow: hidden;
 }
 
+.card-header h5,
+.card-header h4,
 .card-header .text-description {
-    color: rgba(255, 255, 255, 0.85) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
 }
 .bg-gradient-primary {
     background: linear-gradient(135deg, #003366 0%, #004080 100%);
 }
 .bg-gradient-success {
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: #ffffff !important;
 }
 .bg-gradient-warning {
     background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
-    color: #000 !important;
+    color: #ffffff !important;
 }
 .bg-gradient-info {
     background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: #ffffff !important;
 }
 
 .upload-zone {

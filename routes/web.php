@@ -59,35 +59,6 @@ Route::post('/courses/filter', [FilterController::class, 'filterCourses'])->name
 Route::get('/courses/filter-options', [FilterController::class, 'getFilterOptions'])->name('courses.filter-options');
 Route::get('/courses/search', [FilterController::class, 'searchCourses'])->name('courses.search');
 
-// Test route for lessons
-Route::get('/test-lessons', function() {
-    $course = App\Models\Course::with('sections.lessons')->first();
-    return response()->json([
-        'course' => $course->title,
-        'sections_count' => $course->sections->count(),
-        'lessons_count' => $course->lessons->count(),
-        'sections' => $course->sections->map(function($section) {
-            return [
-                'title' => $section->title,
-                'lessons_count' => $section->lessons->count(),
-                'lessons' => $section->lessons->map(function($lesson) {
-                    return [
-                        'title' => $lesson->title,
-                        'type' => $lesson->type,
-                        'is_preview' => $lesson->is_preview
-                    ];
-                })
-            ];
-        })
-    ]);
-});
-
-// Test route for lessons view
-Route::get('/test-lessons-view', function() {
-    $course = App\Models\Course::with('sections.lessons')->first();
-    return view('admin.courses.lessons.index', compact('course'));
-});
-
 // Test route for categories
 Route::get('/test-categories', function() {
     $categories = App\Models\Category::withCount('courses')->ordered()->get();
@@ -300,6 +271,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Instructor routes (only for approved instructors) - avec validation SSO pour les POST/PUT/DELETE
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
+        Route::get('/courses', function () {
+            return redirect()->route('instructor.courses.list');
+        })->name('courses.index');
+        Route::get('/courses/list', [InstructorController::class, 'coursesIndex'])->name('courses.list');
         Route::get('/dashboard', [InstructorController::class, 'dashboard'])->name('dashboard');
         Route::resource('courses', CourseController::class)->except(['index', 'show'])->middleware('sso.validate');
         Route::get('/courses/{course}/lessons', [InstructorController::class, 'lessons'])->name('courses.lessons');
@@ -375,19 +350,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('courses.destroy');
         
-        // Course lessons management
-        Route::get('/courses/{course}/lessons', [AdminController::class, 'courseLessons'])->name('courses.lessons');
-        Route::get('/courses/{course}/lessons/create', [AdminController::class, 'createLesson'])->name('courses.lessons.create');
-        Route::post('/courses/{course}/lessons', [AdminController::class, 'storeLesson'])
-            ->middleware('sso.validate')
-            ->name('courses.lessons.store');
-        Route::get('/lessons/{lesson}/edit', [AdminController::class, 'editLesson'])->name('lessons.edit');
-        Route::put('/lessons/{lesson}', [AdminController::class, 'updateLesson'])
-            ->middleware('sso.validate')
-            ->name('lessons.update');
-        Route::delete('/lessons/{lesson}', [AdminController::class, 'destroyLesson'])
-            ->middleware('sso.validate')
-            ->name('lessons.destroy');
+        // Course lessons management (disabled - legacy routes removed)
         
         // Announcements management
         Route::get('/announcements', [AdminController::class, 'announcements'])->name('announcements');

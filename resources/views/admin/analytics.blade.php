@@ -11,256 +11,240 @@
 
 @section('admin-content')
     <section class="admin-panel">
-        <div class="admin-panel__body admin-panel__body--padded">
-                    <!-- Statistiques générales -->
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body text-center">
-                                    <h3 class="card-title">{{ $stats['total_users'] ?? 0 }}</h3>
-                                    <p class="card-text mb-0">Utilisateurs</p>
-                                </div>
-                            </div>
+        <div class="admin-panel__body">
+            <div class="admin-stats-grid">
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Utilisateurs</p>
+                    <p class="admin-stat-card__value">{{ number_format($stats['total_users'] ?? 0) }}</p>
+                    <p class="admin-stat-card__muted">Total inscrits</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Cours</p>
+                    <p class="admin-stat-card__value">{{ number_format($stats['total_courses'] ?? 0) }}</p>
+                    <p class="admin-stat-card__muted">Catalogue disponible</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Commandes</p>
+                    <p class="admin-stat-card__value">{{ number_format($stats['total_orders'] ?? 0) }}</p>
+                    <p class="admin-stat-card__muted">Transactions enregistrées</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Revenus</p>
+                    <p class="admin-stat-card__value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}</p>
+                    <p class="admin-stat-card__muted">Cumul sur la période</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="admin-panel">
+        <div class="admin-panel__body">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="admin-card shadow-sm h-100">
+                        <div class="admin-card__header">
+                            <h5 class="admin-card__title">
+                                <i class="fas fa-chart-bar me-2"></i>Revenus par mois
+                            </h5>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
-                                <div class="card-body text-center">
-                                    <h3 class="card-title">{{ $stats['total_courses'] ?? 0 }}</h3>
-                                    <p class="card-text mb-0">Cours</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body text-center">
-                                    <h3 class="card-title">{{ $stats['total_orders'] ?? 0 }}</h3>
-                                    <p class="card-text mb-0">Commandes</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card bg-info text-white">
-                                <div class="card-body text-center">
-                                    <h3 class="card-title">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}</h3>
-                                    <p class="card-text mb-0">Revenus</p>
-                                </div>
-                            </div>
+                        <div class="admin-card__body">
+                            <canvas id="revenueChart" height="200"></canvas>
                         </div>
                     </div>
-
-                    <!-- Graphiques -->
-                    <div class="row">
-                        <!-- Revenus par mois -->
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header text-white">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-chart-bar me-2"></i>Revenus par mois
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="revenueChart" width="400" height="200"></canvas>
-                                </div>
-                            </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="admin-card shadow-sm h-100">
+                        <div class="admin-card__header">
+                            <h5 class="admin-card__title">
+                                <i class="fas fa-users me-2"></i>Croissance des utilisateurs
+                            </h5>
                         </div>
-
-                        <!-- Croissance des utilisateurs -->
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header text-white">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-users me-2"></i>Croissance des utilisateurs
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="usersChart" width="400" height="200"></canvas>
-                                </div>
-                            </div>
+                        <div class="admin-card__body">
+                            <canvas id="usersChart" height="200"></canvas>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                    <!-- Statistiques par catégorie et paiements -->
-                    <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header text-white">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-tags me-2"></i>Cours par catégorie
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="categoriesChart" width="400" height="200"></canvas>
-                                </div>
-                            </div>
+    <section class="admin-panel">
+        <div class="admin-panel__body">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="admin-card shadow-sm h-100">
+                        <div class="admin-card__header">
+                            <h5 class="admin-card__title">
+                                <i class="fas fa-tags me-2"></i>Cours par catégorie
+                            </h5>
                         </div>
-
-                        <!-- Paiements par méthode -->
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header text-white">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-wallet me-2"></i>Paiements par méthode
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="paymentsMethodChart" width="400" height="200"></canvas>
-                                </div>
-                            </div>
+                        <div class="admin-card__body">
+                            <canvas id="categoriesChart" height="200"></canvas>
                         </div>
                     </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="admin-card shadow-sm h-100">
+                        <div class="admin-card__header">
+                            <h5 class="admin-card__title">
+                                <i class="fas fa-wallet me-2"></i>Paiements par méthode
+                            </h5>
+                        </div>
+                        <div class="admin-card__body">
+                            <canvas id="paymentsMethodChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                    <!-- Cours populaires et répartition des statuts de paiements -->
-                    <div class="row">
-                        <!-- Cours les plus populaires -->
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header text-white">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-star me-2"></i>Cours les plus populaires
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="list-group">
-                                        @forelse($popularCourses as $course)
-                                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 class="mb-1">{{ $course->title }}</h6>
-                                                <small class="text-muted">{{ $course->instructor->name }}</small>
-                                            </div>
-                                            <div class="text-end">
-                                                <span class="badge bg-primary me-2">{{ $course->enrollments_count }} inscrits</span>
-                                            </div>
+    <section class="admin-panel">
+        <div class="admin-panel__body">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="admin-card shadow-sm h-100">
+                        <div class="admin-card__header">
+                            <h5 class="admin-card__title">
+                                <i class="fas fa-star me-2"></i>Cours les plus populaires
+                            </h5>
+                        </div>
+                        <div class="admin-card__body">
+                            <ul class="admin-list">
+                                @forelse($popularCourses as $course)
+                                    <li class="admin-list__item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="fw-semibold">{{ $course->title }}</div>
+                                            <div class="text-muted small">{{ $course->instructor->name }}</div>
                                         </div>
-                                        @empty
-                                        <div class="text-center py-3">
-                                            <p class="text-muted">Aucun cours trouvé</p>
-                                        </div>
-                                        @endforelse
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Paiements par statut -->
-                        <div class="col-md-6 mb-4">
-                            <div class="card">
-                                <div class="card-header text-white">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-chart-pie me-2"></i>Paiements par statut
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="paymentsStatusChart" width="400" height="200"></canvas>
-                                </div>
-                            </div>
+                                        <span class="admin-chip admin-chip--primary">{{ $course->enrollments_count }} inscrits</span>
+                                    </li>
+                                @empty
+                                    <li class="admin-list__item text-center text-muted">Aucun cours trouvé</li>
+                                @endforelse
+                            </ul>
                         </div>
                     </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="admin-card shadow-sm h-100">
+                        <div class="admin-card__header">
+                            <h5 class="admin-card__title">
+                                <i class="fas fa-chart-pie me-2"></i>Paiements par statut
+                            </h5>
+                        </div>
+                        <div class="admin-card__body">
+                            <canvas id="paymentsStatusChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                    <!-- Tableau des statistiques détaillées -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header text-white">
-                                    <h5 class="mb-0">
-                                        <i class="fas fa-table me-2"></i>Statistiques détaillées
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Métrique</th>
-                                                    <th>Valeur</th>
-                                                    <th>Évolution</th>
-                                                    <th>Tendance</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td>
-                                                        <i class="fas fa-users text-primary me-2"></i>
-                                                        Nouveaux utilisateurs ce mois
-                                                    </td>
-                                                    <td><strong>{{ $userGrowth->last()?->count ?? 0 }}</strong></td>
-                                                    <td>
-                                                        @if($userGrowth->count() > 1)
-                                                            @php
-                                                                $previous = $userGrowth->slice(-2, 1)->first()?->count ?? 0;
-                                                                $current = $userGrowth->last()?->count ?? 0;
-                                                                $change = $previous > 0 ? (($current - $previous) / $previous) * 100 : 0;
-                                                            @endphp
-                                                            <span class="badge bg-{{ $change >= 0 ? 'success' : 'danger' }}">
-                                                                {{ $change >= 0 ? '+' : '' }}{{ number_format($change, 1) }}%
-                                                            </span>
-                                                        @else
-                                                            <span class="badge bg-secondary">N/A</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @if($userGrowth->count() > 1)
-                                                            @php
-                                                                $change = $previous > 0 ? (($current - $previous) / $previous) * 100 : 0;
-                                                            @endphp
-                                                            <i class="fas fa-arrow-{{ $change >= 0 ? 'up' : 'down' }} text-{{ $change >= 0 ? 'success' : 'danger' }}"></i>
-                                                        @else
-                                                            <i class="fas fa-minus text-secondary"></i>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>
-                                                        <i class="fas fa-graduation-cap text-success me-2"></i>
-                                                        Cours publiés
-                                                    </td>
-                                                    <td><strong>{{ $courseStats->published_courses ?? 0 }}</strong></td>
-                                                    <td>
-                                                        <span class="badge bg-info">
-                                                            {{ $courseStats->total_courses ?? 0 }} total
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <i class="fas fa-check text-success"></i>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>
-                                                        <i class="fas fa-user-graduate text-warning me-2"></i>
-                                                        Total des étudiants
-                                                    </td>
-                                                    <td><strong>{{ $courseStats->total_students ?? 0 }}</strong></td>
-                                                    <td>
-                                                        <span class="badge bg-primary">
-                                                            {{ $stats['total_enrollments'] ?? 0 }} inscriptions
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <i class="fas fa-arrow-up text-success"></i>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>
-                                                        <i class="fas fa-star text-info me-2"></i>
-                                                        Note moyenne des cours
-                                                    </td>
-                                                    <td><strong>{{ number_format($courseStats->average_rating ?? 0, 1) }}/5</strong></td>
-                                                    <td>
-                                                        <div class="text-warning">
-                                                            @for($i = 1; $i <= 5; $i++)
-                                                                <i class="fas fa-star{{ $i <= ($courseStats->average_rating ?? 0) ? '' : '-o' }}"></i>
-                                                            @endfor
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <i class="fas fa-star text-warning"></i>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <section class="admin-panel">
+        <div class="admin-panel__body">
+            <div class="admin-card shadow-sm">
+                <div class="admin-card__header">
+                    <h5 class="admin-card__title">
+                        <i class="fas fa-table me-2"></i>Statistiques détaillées
+                    </h5>
+                </div>
+                <div class="admin-card__body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Métrique</th>
+                                    <th>Valeur</th>
+                                    <th>Évolution</th>
+                                    <th>Tendance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-users text-primary me-2"></i>
+                                        Nouveaux utilisateurs ce mois
+                                    </td>
+                                    <td><strong>{{ $userGrowth->last()?->count ?? 0 }}</strong></td>
+                                    <td>
+                                        @if($userGrowth->count() > 1)
+                                            @php
+                                                $previous = $userGrowth->slice(-2, 1)->first()?->count ?? 0;
+                                                $current = $userGrowth->last()?->count ?? 0;
+                                                $change = $previous > 0 ? (($current - $previous) / $previous) * 100 : 0;
+                                            @endphp
+                                            <span class="badge bg-{{ $change >= 0 ? 'success' : 'danger' }}">
+                                                {{ $change >= 0 ? '+' : '' }}{{ number_format($change, 1) }}%
+                                            </span>
+                                        @else
+                                            <span class="badge bg-secondary">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($userGrowth->count() > 1)
+                                            @php
+                                                $change = $previous > 0 ? (($current - $previous) / $previous) * 100 : 0;
+                                            @endphp
+                                            <i class="fas fa-arrow-{{ $change >= 0 ? 'up' : 'down' }} text-{{ $change >= 0 ? 'success' : 'danger' }}"></i>
+                                        @else
+                                            <i class="fas fa-minus text-secondary"></i>
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-graduation-cap text-success me-2"></i>
+                                        Cours publiés
+                                    </td>
+                                    <td><strong>{{ $courseStats->published_courses ?? 0 }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ $courseStats->total_courses ?? 0 }} total
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-check text-success"></i>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-user-graduate text-warning me-2"></i>
+                                        Total des étudiants
+                                    </td>
+                                    <td><strong>{{ $courseStats->total_students ?? 0 }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {{ $stats['total_enrollments'] ?? 0 }} inscriptions
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-arrow-up text-success"></i>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-star text-info me-2"></i>
+                                        Note moyenne des cours
+                                    </td>
+                                    <td><strong>{{ number_format($courseStats->average_rating ?? 0, 1) }}/5</strong></td>
+                                    <td>
+                                        <div class="text-warning">
+                                            @for($i = 1; $i <= 5; $i++)
+                                                <i class="fas fa-star{{ $i <= ($courseStats->average_rating ?? 0) ? '' : '-o' }}"></i>
+                                            @endfor
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-star text-warning"></i>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
+                </div>
+            </div>
         </div>
     </section>
 @endsection
@@ -401,35 +385,72 @@ new Chart(statusCtx, {
 
 @push('styles')
 <style>
-.card-header {
-    background: linear-gradient(135deg, #003366 0%, #004080 100%);
+.admin-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-.table th {
-    border-top: none;
+.admin-card__header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.admin-card__title {
+    margin: 0;
     font-weight: 600;
-    color: #003366;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
-.list-group-item {
-    border-left: none;
-    border-right: none;
+.admin-card__body {
+    padding: 1.5rem;
 }
 
-.list-group-item:first-child {
-    border-top: none;
+.admin-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1rem;
 }
 
-.list-group-item:last-child {
-    border-bottom: none;
+.admin-list__item {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-.badge {
-    font-size: 0.75em;
+.admin-list__item:hover {
+    background: #eef2ff;
 }
 
-.text-warning {
-    color: #ffc107 !important;
+.admin-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+
+.admin-chip--info {
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+}
+
+.admin-chip--primary {
+    background: rgba(14, 165, 233, 0.12);
+    color: #0369a1;
+}
+
+.table thead th {
+    background: #f1f5f9;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
 }
 </style>
 @endpush

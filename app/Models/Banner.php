@@ -40,4 +40,32 @@ class Banner extends Model
     {
         return $query->orderBy('sort_order', 'asc');
     }
+
+    public function getImageUrlAttribute(): string
+    {
+        if (!$this->image) {
+            return '';
+        }
+
+        if (filter_var($this->image, FILTER_VALIDATE_URL)) {
+            return $this->image;
+        }
+
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->image, 'banners');
+    }
+
+    public function getMobileImageUrlAttribute(): string
+    {
+        if (!$this->mobile_image) {
+            return '';
+        }
+
+        if (filter_var($this->mobile_image, FILTER_VALIDATE_URL)) {
+            return $this->mobile_image;
+        }
+
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->mobile_image, 'banners');
+    }
 }

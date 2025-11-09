@@ -278,7 +278,8 @@ class PaymentController extends Controller
         $payment = Payment::where('payment_id', $paymentIntent->id)->first();
         if ($payment) {
             $payment->update(['status' => 'failed']);
-            $payment->order->update(['status' => 'failed']);
+            $order = $payment->order;
+            $order->update(['status' => 'failed']);
         }
     }
 }

@@ -18,7 +18,9 @@ class VideoProcessingService
     public function processVideo(MediaFile $mediaFile): bool
     {
         try {
-            $inputPath = storage_path('app/public/' . str_replace('storage/', '', $mediaFile->storage_path));
+            $relativePath = ltrim(preg_replace('#^storage/#', '', $mediaFile->storage_path), '/');
+            $disk = Storage::disk('local');
+            $inputPath = $disk->path($relativePath);
             
             if (!file_exists($inputPath)) {
                 throw new \Exception("Fichier vidéo introuvable: {$inputPath}");
@@ -104,15 +106,11 @@ class VideoProcessingService
      */
     protected function generateThumbnail(MediaFile $mediaFile, string $inputPath): void
     {
-        $basePath = dirname(str_replace('storage/', '', $mediaFile->storage_path));
+        $basePath = dirname(ltrim(preg_replace('#^storage/#', '', $mediaFile->storage_path), '/'));
         $thumbnailPath = "{$basePath}/thumbnail.jpg";
-        $thumbnailFullPath = storage_path("app/public/{$thumbnailPath}");
-
-        // Créer le dossier si nécessaire
-        $dir = dirname($thumbnailFullPath);
-        if (!file_exists($dir)) {
-            mkdir($dir, 0755, true);
-        }
+        $disk = Storage::disk('local');
+        $disk->makeDirectory($basePath);
+        $thumbnailFullPath = $disk->path($thumbnailPath);
 
         // Extraire une frame à 5 secondes
         $command = sprintf(
@@ -129,7 +127,7 @@ class VideoProcessingService
                 'media_file_id' => $mediaFile->id,
                 'variant_type' => 'thumbnail',
                 'format' => 'jpg',
-                'storage_path' => 'storage/' . $thumbnailPath,
+                'storage_path' => $thumbnailPath,
                 'size' => filesize($thumbnailFullPath),
                 'status' => 'ready',
             ]);
@@ -142,7 +140,7 @@ class VideoProcessingService
     protected function encodeMultipleResolutions(MediaFile $mediaFile, string $inputPath, array $metadata): void
     {
         $originalHeight = $metadata['height'];
-        $basePath = dirname(str_replace('storage/', '', $mediaFile->storage_path));
+        $basePath = dirname(ltrim(preg_replace('#^storage/#', '', $mediaFile->storage_path), '/'));
 
         // Définir les résolutions cibles
         $resolutions = $this->determineResolutions($originalHeight);
@@ -181,14 +179,14 @@ class VideoProcessingService
 
         // Créer le dossier pour cette résolution
         $resolutionPath = "{$basePath}/{$resolutionKey}";
-        $resolutionFullPath = storage_path("app/public/{$resolutionPath}");
+        $resolutionFullPath = "{$basePath}/{$resolutionKey}/playlist.m3u8";
         
-        if (!file_exists($resolutionFullPath)) {
-            mkdir($resolutionFullPath, 0755, true);
-        }
+        $disk = Storage::disk('local');
+        $disk->makeDirectory(dirname($resolutionFullPath));
+        $resolutionFullPath = $disk->path($resolutionFullPath);
 
-        $outputPlaylist = "{$resolutionFullPath}/playlist.m3u8";
-        $outputSegment = "{$resolutionFullPath}/segment_%03d.ts";
+        $outputPlaylist = $resolutionFullPath;
+        $outputSegment = "{$basePath}/{$resolutionKey}/segment_%03d.ts";
 
         // Commande FFmpeg pour encoder en HLS
         $command = sprintf(
@@ -213,7 +211,7 @@ class VideoProcessingService
         if ($returnCode === 0 && file_exists($outputPlaylist)) {
             // Calculer la taille totale des segments
             $totalSize = 0;
-            foreach (glob("{$resolutionFullPath}/segment_*.ts") as $segment) {
+            foreach (glob("{$basePath}/{$resolutionKey}/segment_*.ts") as $segment) {
                 $totalSize += filesize($segment);
             }
 
@@ -229,7 +227,7 @@ class VideoProcessingService
                 'codec' => 'h264',
                 'status' => 'ready',
                 'metadata' => [
-                    'segments_count' => count(glob("{$resolutionFullPath}/segment_*.ts")),
+                    'segments_count' => count(glob("{$basePath}/{$resolutionKey}/segment_*.ts")),
                     'segment_duration' => 6,
                 ],
             ]);
@@ -241,8 +239,10 @@ class VideoProcessingService
      */
     protected function generateHLSManifest(MediaFile $mediaFile): void
     {
-        $basePath = dirname(str_replace('storage/', '', $mediaFile->storage_path));
-        $masterPlaylist = storage_path("app/public/{$basePath}/master.m3u8");
+        $basePath = dirname(preg_replace('#^storage/#', '', $mediaFile->storage_path));
+        $disk = Storage::disk('local');
+        $disk->makeDirectory($basePath);
+        $masterPlaylist = $disk->path("{$basePath}/master.m3u8");
 
         $variants = $mediaFile->variants()
             ->where('format', 'm3u8')

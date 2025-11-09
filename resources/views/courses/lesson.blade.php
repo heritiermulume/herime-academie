@@ -135,7 +135,7 @@
                                         @endif
                                     @else
                                         <video controls class="w-100 h-100" style="object-fit: cover;">
-                                            <source src="{{ $lesson->content_url }}" type="video/mp4">
+                                            <source src="{{ $lesson->content_file_url }}" type="video/mp4">
                                             Votre navigateur ne supporte pas la lecture vidéo.
                                         </video>
                                     @endif
@@ -166,7 +166,7 @@
                                         <i class="fas fa-question-circle fa-3x text-warning mb-3"></i>
                                         <h5>Quiz disponible</h5>
                                         <p class="text-muted">Cliquez sur le lien ci-dessous pour accéder au quiz</p>
-                                        <a href="{{ $lesson->content_url }}" target="_blank" class="btn btn-warning">
+                                        <a href="{{ $lesson->content_file_url }}" target="_blank" class="btn btn-warning">
                                             <i class="fas fa-external-link-alt me-2"></i>Ouvrir le quiz
                                         </a>
                                     </div>
@@ -184,7 +184,7 @@
                                         <i class="fas fa-tasks fa-3x text-success mb-3"></i>
                                         <h5>Devoir disponible</h5>
                                         <p class="text-muted">Cliquez sur le lien ci-dessous pour accéder au devoir</p>
-                                        <a href="{{ $lesson->content_url }}" target="_blank" class="btn btn-success">
+                                        <a href="{{ $lesson->content_file_url }}" target="_blank" class="btn btn-success">
                                             <i class="fas fa-external-link-alt me-2"></i>Ouvrir le devoir
                                         </a>
                                     </div>

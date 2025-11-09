@@ -108,9 +108,6 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th class="text-center" style="width:48px;">
-                                    <input type="checkbox" id="selectAll" class="form-check-input">
-                                </th>
                                 <th>Commande</th>
                                 <th>Client</th>
                                 <th>Montant</th>
@@ -124,9 +121,6 @@
                         <tbody>
                             @forelse($orders as $order)
                             <tr>
-                                <td class="text-center">
-                                    <input type="checkbox" class="form-check-input order-checkbox" value="{{ $order->id }}">
-                                </td>
                                 <td>
                                     <div class="fw-semibold">#{{ $order->order_number ?? $order->id }}</div>
                                     <div class="text-muted small">{{ strtoupper($order->payment_method ?? '—') }}</div>
@@ -174,10 +168,22 @@
                                         <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-light" title="Voir">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <button type="button" class="btn btn-light" title="Confirmer" onclick="updateOrderStatus('{{ $order->id }}', 'confirm')">
+                                        <button type="button"
+                                            class="btn btn-light"
+                                            title="Confirmer"
+                                            data-action-url="{{ route('admin.orders.confirm', $order) }}"
+                                            data-confirm="Confirmer cette commande ?"
+                                            data-success="Commande confirmée avec succès."
+                                            onclick="handleOrderAction(this)">
                                             <i class="fas fa-check"></i>
                                         </button>
-                                        <button type="button" class="btn btn-light text-danger" title="Annuler" onclick="updateOrderStatus('{{ $order->id }}', 'cancel')">
+                                        <button type="button"
+                                            class="btn btn-light text-danger"
+                                            title="Annuler"
+                                            data-action-url="{{ route('admin.orders.cancel', $order) }}"
+                                            data-confirm="Annuler cette commande ?"
+                                            data-success="Commande annulée."
+                                            onclick="handleOrderAction(this)">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     </div>
@@ -185,7 +191,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9" class="admin-table__empty">
+                                <td colspan="8" class="admin-table__empty">
                                     <i class="fas fa-receipt mb-2 d-block"></i>
                                     Aucune commande ne correspond aux filtres sélectionnés.
                                 </td>
@@ -203,52 +209,12 @@
                 {{ $orders->appends(request()->query())->links() }}
             </div>
 
-            <div class="mt-3" id="bulkActions" style="display:none;">
-                <div class="d-flex gap-2 flex-wrap">
-                    <button class="btn btn-sm btn-success" onclick="bulkAction('confirm')">
-                        <i class="fas fa-check me-1"></i>Confirmer
-                    </button>
-                    <button class="btn btn-sm btn-info" onclick="bulkAction('mark-paid')">
-                        <i class="fas fa-credit-card me-1"></i>Marquer payée
-                    </button>
-                    <button class="btn btn-sm btn-warning" onclick="bulkAction('complete')">
-                        <i class="fas fa-flag-checkered me-1"></i>Terminer
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="bulkAction('cancel')">
-                        <i class="fas fa-times me-1"></i>Annuler
-                    </button>
-                </div>
-            </div>
         </div>
     </section>
 @endsection
 
 @push('scripts')
 <script>
-// Sélection multiple
-document.getElementById('selectAll').addEventListener('change', function() {
-    const checkboxes = document.querySelectorAll('.order-checkbox');
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-    });
-    toggleBulkActions();
-});
-
-document.querySelectorAll('.order-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', toggleBulkActions);
-});
-
-function toggleBulkActions() {
-    const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
-    const bulkActions = document.getElementById('bulkActions');
-    
-    if (checkedBoxes.length > 0) {
-        bulkActions.style.display = 'block';
-    } else {
-        bulkActions.style.display = 'none';
-    }
-}
-
 const ordersFilterForm = document.getElementById('ordersFilterForm');
 const ordersFiltersOffcanvas = document.getElementById('ordersFilters');
 
@@ -274,25 +240,6 @@ if (ordersSearchInput) {
     });
 }
 
-// Fonction pour les actions en lot
-function bulkAction(action) {
-    const checkedBoxes = document.querySelectorAll('.order-checkbox:checked');
-    const orderIds = Array.from(checkedBoxes).map(cb => cb.value);
-    
-    if (orderIds.length === 0) {
-        alert('Veuillez sélectionner au moins une commande.');
-        return;
-    }
-    
-    if (action === 'cancel' && !confirm('Êtes-vous sûr de vouloir annuler les commandes sélectionnées ?')) {
-        return;
-    }
-    
-    // Ici vous pouvez implémenter les actions en lot
-    console.log(`Action: ${action}, Orders: ${orderIds.join(',')}`);
-    alert(`Action "${action}" appliquée à ${orderIds.length} commande(s).`);
-}
-
 function exportOrders() {
     const urlParams = new URLSearchParams(window.location.search);
     const exportUrl = '{{ route("admin.orders.export") }}?' + urlParams.toString();
@@ -316,6 +263,70 @@ function exportOrders() {
         button.innerHTML = originalText;
         button.disabled = false;
     }, 2000);
+}
+
+function handleOrderAction(button) {
+    if (!button || button.disabled) {
+        return;
+    }
+
+    const url = button.dataset.actionUrl;
+    if (!url) {
+        console.error('Aucune URL d’action disponible pour ce bouton.');
+        return;
+    }
+
+    const confirmMessage = button.dataset.confirm;
+    if (confirmMessage && !confirm(confirmMessage)) {
+        return;
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (!csrfToken) {
+        alert('Jeton CSRF introuvable. Veuillez rafraîchir la page.');
+        return;
+    }
+
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+        },
+    })
+    .then(async response => {
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (error) {
+            data = null;
+        }
+
+        if (!response.ok) {
+            const message = data?.message || 'Une erreur est survenue lors du traitement.';
+            throw new Error(message);
+        }
+
+        const successMessage = button.dataset.success || data?.message || 'Action effectuée avec succès.';
+        alert(successMessage);
+
+        if (button.dataset.refresh !== 'false') {
+            window.location.reload();
+        }
+    })
+    .catch(error => {
+        console.error(error);
+        alert(error.message || 'Impossible d’exécuter l’action demandée.');
+    })
+    .finally(() => {
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+    });
 }
 </script>
 @endpush

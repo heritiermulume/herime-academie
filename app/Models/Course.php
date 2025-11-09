@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Notifications\CourseModerationNotification;
+use App\Notifications\CoursePublishedNotification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Facades\Notification;
+use App\Models\User;
 
 class Course extends Model
 {
@@ -427,26 +431,15 @@ class Course extends Model
     public function getThumbnailUrlAttribute(): ?string
     {
         if (!$this->thumbnail) {
-            return null;
+            return '';
         }
-        
-        // Si c'est déjà une URL complète, la retourner telle quelle
+
         if (filter_var($this->thumbnail, FILTER_VALIDATE_URL)) {
             return $this->thumbnail;
         }
-        
-        // Si c'est un chemin, générer l'URL via FileController
-        if (strpos($this->thumbnail, 'courses/thumbnails') !== false || strpos($this->thumbnail, 'thumbnails') !== false) {
-            $filename = basename($this->thumbnail);
-            return route('files.serve', ['type' => 'thumbnails', 'path' => $filename]);
-        }
-        
-        // Fallback : utiliser Storage::url si c'est dans le storage public
-        if (strpos($this->thumbnail, 'storage/') === 0) {
-            return asset($this->thumbnail);
-        }
-        
-        return $this->thumbnail;
+
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->thumbnail, 'courses/thumbnails');
     }
 
     /**
@@ -460,26 +453,15 @@ class Course extends Model
         }
         
         if (!$this->video_preview) {
-            return null;
+            return '';
         }
-        
-        // Si c'est déjà une URL complète, la retourner telle quelle
+
         if (filter_var($this->video_preview, FILTER_VALIDATE_URL)) {
             return $this->video_preview;
         }
-        
-        // Si c'est un chemin, générer l'URL via FileController
-        if (strpos($this->video_preview, 'courses/previews') !== false || strpos($this->video_preview, 'previews') !== false) {
-            $filename = basename($this->video_preview);
-            return route('files.serve', ['type' => 'previews', 'path' => $filename]);
-        }
-        
-        // Fallback : utiliser Storage::url si c'est dans le storage public
-        if (strpos($this->video_preview, 'storage/') === 0) {
-            return asset($this->video_preview);
-        }
-        
-        return $this->video_preview;
+
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->video_preview, 'courses/previews');
     }
 
     /**
@@ -488,26 +470,15 @@ class Course extends Model
     public function getDownloadFileUrlAttribute(): ?string
     {
         if (!$this->download_file_path) {
-            return null;
+            return '';
         }
-        
-        // Si c'est déjà une URL complète, la retourner telle quelle
+
         if (filter_var($this->download_file_path, FILTER_VALIDATE_URL)) {
             return $this->download_file_path;
         }
-        
-        // Si c'est un chemin, générer l'URL via FileController
-        if (strpos($this->download_file_path, 'courses/downloads') !== false || strpos($this->download_file_path, 'downloads') !== false) {
-            $filename = basename($this->download_file_path);
-            return route('files.serve', ['type' => 'downloads', 'path' => $filename]);
-        }
-        
-        // Fallback : utiliser Storage::url si c'est dans le storage public
-        if (strpos($this->download_file_path, 'storage/') === 0) {
-            return asset($this->download_file_path);
-        }
-        
-        return $this->download_file_path;
+
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->download_file_path, 'courses/downloads');
     }
 
     /**
@@ -690,5 +661,28 @@ class Course extends Model
                     'icon' => 'fas fa-sign-in-alt'
                 ];
         }
+    }
+
+    public function notifyModeratorStatus(?string $status = null): void
+    {
+        $status = $status ?? ($this->is_published ? 'approved' : 'pending');
+
+        if (!$this->relationLoaded('instructor')) {
+            $this->load('instructor');
+        }
+
+        if ($this->instructor) {
+            $this->instructor->notify(new CourseModerationNotification($this, $status));
+        }
+    }
+
+    public function notifyStudentsOfNewCourse(): void
+    {
+        $freshCourse = $this->fresh(['instructor', 'category']);
+
+        User::where('is_active', true)
+            ->chunk(200, function ($users) use ($freshCourse) {
+                Notification::send($users, new CoursePublishedNotification($freshCourse));
+            });
     }
 }

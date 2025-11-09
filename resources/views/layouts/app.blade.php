@@ -49,6 +49,183 @@
             position: relative;
         }
         
+        body.has-global-announcement {
+            padding-top: calc(60px + var(--announcement-height, 0px)) !important;
+        }
+        
+        .global-announcement {
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1055;
+            box-shadow: 0 15px 30px -20px rgba(15, 23, 42, 0.35);
+        }
+
+        @media (max-width: 991.98px) {
+            .notification-dropdown.notification-dropdown--mobile {
+                position: fixed !important;
+                left: 50% !important;
+                top: calc(var(--site-navbar-height, 60px) + 0.5rem) !important;
+                transform: translateX(-50%) !important;
+                width: min(92vw, 320px) !important;
+                max-height: 65vh;
+                margin: 0 !important;
+                border-radius: 16px;
+                box-shadow: 0 18px 40px -24px rgba(15, 23, 42, 0.35);
+                border: 1px solid rgba(148, 163, 184, 0.25);
+                overflow-y: auto;
+                z-index: 1080;
+            }
+            .notification-dropdown.notification-dropdown--mobile .dropdown-header {
+                position: sticky;
+                top: 0;
+                background: #ffffff;
+                z-index: 2;
+                padding: 0.5rem 0.75rem;
+            }
+            .notification-dropdown.notification-dropdown--mobile .dropdown-item {
+                font-size: 0.9rem;
+                padding: 0.75rem 1rem;
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
+            .notification-dropdown.notification-dropdown--mobile .btn {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+                border-radius: 999px;
+                line-height: 1.2;
+            }
+            .notification-dropdown .notification-view-all {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                padding: 0;
+            }
+            .notification-dropdown.notification-dropdown--desktop {
+                width: min(92vw, 360px) !important;
+                max-height: 70vh;
+            }
+        }
+        .global-announcement__inner {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            justify-content: space-between;
+            padding: 0.85rem 1.25rem;
+        }
+        .global-announcement__content {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            flex: 1;
+            min-width: 0;
+        }
+        .global-announcement__icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+            flex-shrink: 0;
+        }
+        .global-announcement__title {
+            font-weight: 600;
+            margin: 0;
+            color: #ffffff;
+        }
+        .global-announcement__text {
+            margin: 0;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.95rem;
+        }
+        .global-announcement__actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+        .global-announcement__btn {
+            color: #ffffff;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            border-radius: 999px;
+            text-decoration: none;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .global-announcement__btn:hover {
+            color: #0b1f3a;
+            background: #ffffff;
+        }
+        .global-announcement__close {
+            border: none;
+            background: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .global-announcement__close:hover {
+            background: rgba(255, 255, 255, 0.32);
+            transform: scale(1.05);
+        }
+        .global-announcement--info {
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+        }
+        .global-announcement--success {
+            background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+        }
+        .global-announcement--warning {
+            background: linear-gradient(135deg, #b45309 0%, #f59e0b 100%);
+        }
+        .global-announcement--error {
+            background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%);
+        }
+        .global-announcement--hidden {
+            animation: announcement-slide-up 0.3s ease forwards;
+        }
+        @keyframes announcement-slide-up {
+            to {
+                transform: translateY(-100%);
+                opacity: 0;
+                height: 0;
+                margin: 0;
+                padding: 0;
+            }
+        }
+        @media (max-width: 768px) {
+            .global-announcement__inner {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+            .global-announcement__actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .global-announcement__btn {
+                flex: 1;
+                justify-content: center;
+            }
+            .global-announcement__close {
+                align-self: flex-end;
+            }
+        }
+        
         /* Global Font Styles - Appliquer seulement aux éléments de texte */
         body, button, input, select, textarea, .btn, .form-control {
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -1573,6 +1750,10 @@
                 padding-top: 60px !important;
             }
             
+            body.has-global-announcement {
+                padding-top: calc(60px + var(--announcement-height, 0px)) !important;
+            }
+            
             /* Add padding to main content to prevent overlap with bottom nav */
             main {
                 padding-bottom: 60px;
@@ -1600,6 +1781,10 @@
             body {
                 padding-top: 60px !important;
             }
+            
+            body.has-global-announcement {
+                padding-top: calc(60px + var(--announcement-height, 0px)) !important;
+            }
         }
         
         /* Assurer que tous les éléments principaux occupent toute la largeur */
@@ -1614,6 +1799,10 @@
                 width: 100%;
                 position: relative;
                 padding-top: 60px !important;
+            }
+            
+            body.has-global-announcement {
+                padding-top: calc(60px + var(--announcement-height, 0px)) !important;
             }
             
             .navbar,
@@ -2345,7 +2534,8 @@
 
             /* Empêcher le bouton toggle de prendre de l'espace dans le flex - SEULEMENT les boutons toggle */
             .input-group > .btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
-            .input-group > button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
+            .input-group > button.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light),
+            .input-group > button:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light) {
                 flex: 0 0 auto !important;
                 width: auto !important;
                 position: absolute !important;
@@ -3118,6 +3308,67 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
 <body>
+    @php
+        if (isset($globalAnnouncement) && $globalAnnouncement) {
+            $now = \Illuminate\Support\Carbon::now();
+
+            if ($globalAnnouncement->starts_at instanceof \Illuminate\Support\Carbon
+                && $globalAnnouncement->starts_at->greaterThan($now)) {
+                $globalAnnouncement = null;
+            }
+
+            if ($globalAnnouncement && $globalAnnouncement->expires_at instanceof \Illuminate\Support\Carbon
+                && $globalAnnouncement->expires_at->lessThanOrEqualTo($now)) {
+                $globalAnnouncement = null;
+            }
+        }
+    @endphp
+    @if(isset($globalAnnouncement) && $globalAnnouncement)
+        @php
+            $announcementIcon = match ($globalAnnouncement->type) {
+                'success' => 'fas fa-circle-check',
+                'warning' => 'fas fa-triangle-exclamation',
+                'error' => 'fas fa-circle-exclamation',
+                default => 'fas fa-bullhorn',
+            };
+        @endphp
+        <div id="global-announcement"
+             class="global-announcement global-announcement--{{ $globalAnnouncement->type }}"
+             data-announcement-id="{{ $globalAnnouncement->id }}">
+            <div class="container global-announcement__inner">
+                <div class="global-announcement__content">
+                    <span class="global-announcement__icon">
+                        <i class="{{ $announcementIcon }}"></i>
+                    </span>
+                    <div class="global-announcement__text-wrapper">
+                        <p class="global-announcement__title mb-0">
+                            {{ $globalAnnouncement->title }}
+                        </p>
+                        <p class="global-announcement__text mb-0">
+                            {{ \Illuminate\Support\Str::limit(strip_tags($globalAnnouncement->content), 160) }}
+                        </p>
+                    </div>
+                </div>
+                <div class="global-announcement__actions">
+                    @if($globalAnnouncement->button_text && $globalAnnouncement->button_url)
+                        <a href="{{ $globalAnnouncement->button_url }}"
+                           class="global-announcement__btn"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            <span>{{ $globalAnnouncement->button_text }}</span>
+                            <i class="fas fa-arrow-up-right-from-square"></i>
+                        </a>
+                    @endif
+                    <button type="button"
+                            class="global-announcement__close"
+                            data-announcement-dismiss
+                            aria-label="Fermer l'annonce">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
     <!-- Navigation -->
     <x-navbar />
 
@@ -3166,6 +3417,57 @@
                 </div>
                 <div class="modal-body p-0">
                     <div class="list-group list-group-flush">
+                        @auth
+                            @php
+                                $user = Auth::user();
+                                $dashboardLinks = [];
+
+                                if ($user->isAdmin()) {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Administrateur',
+                                        'route' => route('admin.dashboard'),
+                                        'icon' => 'fas fa-tools',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord formateur',
+                                        'route' => route('instructor.dashboard'),
+                                        'icon' => 'fas fa-chalkboard-teacher',
+                                    ];
+                                } elseif ($user->isInstructor()) {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord formateur',
+                                        'route' => route('instructor.dashboard'),
+                                        'icon' => 'fas fa-chalkboard-teacher',
+                                    ];
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                } else {
+                                    $dashboardLinks[] = [
+                                        'label' => 'Tableau de bord étudiant',
+                                        'route' => route('student.dashboard'),
+                                        'icon' => 'fas fa-user-graduate',
+                                    ];
+                                }
+                            @endphp
+
+                            @foreach($dashboardLinks as $dashboardLink)
+                                <div class="list-group-item">
+                                    <a href="{{ $dashboardLink['route'] }}">
+                                        <i class="{{ $dashboardLink['icon'] }}"></i>
+                                        {{ $dashboardLink['label'] }}
+                                    </a>
+                                </div>
+                            @endforeach
+                        @endauth
+
                         <div class="list-group-item">
                             <a href="{{ route('instructors.index') }}">
                                 <i class="fas fa-chalkboard-teacher"></i>
@@ -3199,8 +3501,54 @@
     <!-- AOS Animation -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     
+    <!-- Day.js pour la gestion des dates relatives -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/locale/fr.js"></script>
+    
     <!-- Custom JS -->
     <script>
+        if (window.dayjs && window.dayjs_plugin_relativeTime) {
+            dayjs.extend(window.dayjs_plugin_relativeTime);
+            dayjs.locale('fr');
+        }
+
+        (function() {
+            const banner = document.getElementById('global-announcement');
+            if (!banner) {
+                return;
+            }
+
+            const navbar = document.querySelector('.navbar.fixed-top');
+
+            function applyAnnouncementOffset() {
+                const height = Math.ceil(banner.getBoundingClientRect().height);
+                document.body.classList.toggle('has-global-announcement', height > 0);
+                document.body.style.setProperty('--announcement-height', `${height}px`);
+                if (navbar) {
+                    navbar.style.top = `${height}px`;
+                }
+            }
+
+            applyAnnouncementOffset();
+            window.addEventListener('resize', applyAnnouncementOffset, { passive: true });
+
+            const dismissButton = banner.querySelector('[data-announcement-dismiss]');
+            dismissButton?.addEventListener('click', () => {
+                window.removeEventListener('resize', applyAnnouncementOffset);
+                if (navbar) {
+                    navbar.style.top = '';
+                }
+                document.body.classList.remove('has-global-announcement');
+                document.body.style.removeProperty('--announcement-height');
+
+                banner.classList.add('global-announcement--hidden');
+                window.setTimeout(() => {
+                    banner.parentNode && banner.parentNode.removeChild(banner);
+                }, 320);
+            });
+        })();
+
         // Synchronise les hauteurs des navigations (top et bottom) via des variables CSS
         (function() {
             const root = document.documentElement;
@@ -3403,18 +3751,136 @@
             });
         });
 
-        // Load notifications (simplified)
-        function loadNotifications() {
-            // For now, we'll just hide the notification badges
-            const notificationCount = document.getElementById('notification-count');
-            const notificationCountMobile = document.getElementById('notification-count-mobile');
-            
-            if (notificationCount) {
-                notificationCount.style.display = 'none';
+        const notificationState = {
+            initialized: false,
+            templates: {
+                empty: `
+                    <li class="dropdown-item text-center py-4 text-muted">
+                        <i class="fas fa-bell-slash fa-2x mb-2 d-block"></i>
+                        Aucune notification pour le moment
+                    </li>
+                `,
+                error: `
+                    <li class="dropdown-item text-center py-4 text-danger">
+                        <i class="fas fa-triangle-exclamation fa-2x mb-2 d-block"></i>
+                        Impossible de charger les notifications
+                    </li>
+                `
             }
-            if (notificationCountMobile) {
-                notificationCountMobile.style.display = 'none';
+        };
+
+        function renderNotifications(containerId, notifications) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const unread = (notifications || []).filter(notification => !notification.read_at);
+
+            if (!unread.length) {
+                container.innerHTML = notificationState.templates.empty;
+                return;
             }
+
+            container.innerHTML = unread.map(notification => {
+                const data = notification.data || {};
+                const title = data.title || 'Notification';
+                const message = data.excerpt || data.message || data.body || '';
+                const createdAt = window.dayjs ? dayjs(notification.created_at).fromNow() : (data.created_at_formatted || '');
+                const url = data.button_url || data.action_url || null;
+                const ctaText = data.button_text || data.action_text || 'Voir les détails';
+                const badge = notification.read_at ? '' : '<span class="badge bg-primary me-2">Nouveau</span>';
+
+                return `
+                    <li class="dropdown-item px-3 py-3 ${notification.read_at ? '' : 'bg-light'}" style="white-space: normal;">
+                        <div class="d-flex flex-column gap-1">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <span class="fw-semibold text-truncate">${badge}${title}</span>
+                                <small class="text-muted flex-shrink-0">${createdAt}</small>
+                            </div>
+                            <p class="mb-0 text-muted" style="overflow-wrap: anywhere;">${message}</p>
+                            ${url ? `
+                                <div>
+                                    <a href="${url}" class="btn btn-sm btn-outline-primary mt-2 text-truncate" target="_blank" rel="noopener" style="max-width: 100%;">
+                                        ${ctaText}
+                                    </a>
+                                </div>` : ''}
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function updateNotificationBadge(count) {
+            const badgeDesktop = document.getElementById('notification-count');
+            const badgeMobile = document.getElementById('notification-count-mobile');
+            const displayValue = count > 0 ? 'inline' : 'none';
+            const text = count > 99 ? '99+' : count;
+
+            [badgeDesktop, badgeMobile].forEach(badge => {
+                if (badge) {
+                    badge.textContent = text;
+                    badge.style.display = displayValue;
+                }
+            });
+        }
+
+        const NOTIFICATIONS_RECENT_URL = '/notifications/recent';
+        const NOTIFICATIONS_COUNT_URL = '/notifications/unread-count';
+
+        async function loadNotifications(force = false) {
+            try {
+                const [recentResponse, countResponse] = await Promise.all([
+                    fetch(NOTIFICATIONS_RECENT_URL, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin',
+                    }),
+                    fetch(NOTIFICATIONS_COUNT_URL, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin',
+                    })
+                ]);
+
+                if (!recentResponse.ok || !countResponse.ok) {
+                    throw new Error('Échec du chargement des notifications');
+                }
+
+                const notifications = await recentResponse.json();
+                const { count } = await countResponse.json();
+
+                renderNotifications('notifications-list', notifications);
+                renderNotifications('notifications-list-mobile', notifications);
+                updateNotificationBadge(count);
+
+                notificationState.initialized = true;
+
+                if (force && notifications.length === 0) {
+                    document.querySelectorAll('.notification-dropdown.show').forEach(dropdown => {
+                        const toggle = dropdown.previousElementSibling?.querySelector('[data-bs-toggle="dropdown"]');
+                        if (toggle) {
+                            const instance = bootstrap.Dropdown.getInstance(toggle);
+                            instance?.hide();
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Erreur de chargement des notifications:', error);
+                if (!notificationState.initialized) {
+                    renderNotifications('notifications-list', []);
+                    renderNotifications('notifications-list-mobile', []);
+                }
+            }
+        }
+
+        function initNotificationDropdowns() {
+            const dropdowns = document.querySelectorAll('[data-bs-toggle="dropdown"][title="Notifications"]');
+            dropdowns.forEach(dropdownToggle => {
+                dropdownToggle.addEventListener('show.bs.dropdown', () => {
+                    loadNotifications();
+                });
+
+                dropdownToggle.addEventListener('hide.bs.dropdown', () => {
+                    loadNotifications(true);
+                });
+            });
         }
 
         // Load cart count
@@ -3480,6 +3946,7 @@
 
         // Load notifications on page load
         document.addEventListener('DOMContentLoaded', function() {
+            initNotificationDropdowns();
             loadNotifications();
             loadCartCount();
             controlMobileMenu();
@@ -3965,6 +4432,7 @@
         window.initPromotionCountdowns = initPromotionCountdowns;
     </script>
 
+    @stack('modals')
     @stack('scripts')
     </body>
 </html>

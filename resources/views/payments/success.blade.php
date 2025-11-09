@@ -60,7 +60,7 @@
                     <div class="border-bottom p-4">
                         <div class="row align-items-center">
                             <div class="col-md-3">
-                                <img src="{{ $item->course->thumbnail ? $item->course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&h=60&fit=crop' }}" 
+                                <img src="{{ $item->course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&h=60&fit=crop' }}" 
                                      alt="{{ $item->course->title }}" class="img-fluid rounded">
                             </div>
                             <div class="col-md-6">

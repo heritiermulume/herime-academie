@@ -23,12 +23,36 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $name = fake()->name();
+        $role = fake()->randomElement(['student', 'instructor', 'affiliate']);
+        $now = now();
+
         return [
-            'name' => fake()->name(),
+            'name' => $name,
             'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
+            'email_verified_at' => $now,
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'phone' => fake()->optional()->e164PhoneNumber(),
+            'date_of_birth' => fake()->optional()->dateTimeBetween('-60 years', '-18 years'),
+            'gender' => fake()->optional()->randomElement(['male', 'female', 'other']),
+            'bio' => fake()->optional()->paragraph(),
+            'avatar' => fake()->optional()->imageUrl(300, 300, 'people', true),
+            'cover_image' => fake()->optional()->imageUrl(1200, 400, 'abstract', true),
+            'website' => fake()->optional()->url(),
+            'linkedin' => fake()->optional()->url(),
+            'twitter' => fake()->optional()->url(),
+            'youtube' => fake()->optional()->url(),
+            'role' => $role,
+            'is_verified' => fake()->boolean(90),
+            'is_active' => fake()->boolean(95),
+            'last_login_at' => fake()->optional()->dateTimeBetween('-30 days', 'now'),
+            'preferences' => [],
+            'sso_id' => (string) Str::uuid(),
+            'sso_provider' => 'herime',
+            'sso_metadata' => [
+                'synced_at' => $now->toIso8601String(),
+            ],
         ];
     }
 

@@ -485,9 +485,6 @@
                                 <i class="fas fa-times me-1"></i>Annuler
                             </a>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-outline-primary" onclick="saveDraft()">
-                                    <i class="fas fa-save me-1"></i>Enregistrer comme brouillon
-                                </button>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-check me-1"></i>Créer le cours
                                 </button>
@@ -507,9 +504,25 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
 const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const VALID_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
+const LESSON_ALLOWED_TYPES = [
+    'video/mp4',
+    'video/webm',
+    'application/pdf',
+    'application/zip',
+    'application/x-zip-compressed',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+];
+const LESSON_MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 
 let sectionCount = 0;
 let lessonCount = 0;
+let cachedPriceValue = null;
+let cachedSalePriceValue = null;
 
 // Gestion de l'upload d'image de couverture
 function handleThumbnailUpload(input) {
@@ -854,6 +867,7 @@ function addLesson(sectionId) {
     const container = document.getElementById(`lessons-${sectionId}`);
     const lessonDiv = document.createElement('div');
     lessonDiv.className = 'card border-0 shadow-sm mb-2';
+    const lessonUniqueId = `${sectionId}-${lessonCount}`;
     lessonDiv.innerHTML = `
         <div class="card-body">
             <div class="row">
@@ -895,15 +909,43 @@ function addLesson(sectionId) {
                     <textarea class="form-control" name="sections[${sectionId}][lessons][${lessonCount}][description]" rows="2" placeholder="Description de la leçon"></textarea>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Contenu de la leçon</label>
-                    <div class="lesson-content-upload">
-                        <input type="url" class="form-control mb-2 lesson-url-input" name="sections[${sectionId}][lessons][${lessonCount}][content_url]" placeholder="Lien (https://...)">
-                        <input type="file" class="form-control lesson-file-input" name="sections[${sectionId}][lessons][${lessonCount}][content_file]" accept="video/*,application/pdf" onchange="uploadLessonInline(this)">
-                        <small class="text-muted">Vous pouvez fournir un lien OU téléverser un fichier</small>
-                        <div class="progress mt-2 d-none" style="height:6px;">
-                            <div class="progress-bar" role="progressbar" style="width:0%"></div>
+                    <label class="form-label">Fichier ou média de la leçon</label>
+                    <div class="upload-zone lesson-upload-zone" id="lessonUploadZone-${lessonUniqueId}" onclick="triggerLessonFile('${lessonUniqueId}', event)">
+                        <input type="file"
+                               class="form-control d-none lesson-file-input"
+                               id="lesson_file_${lessonUniqueId}"
+                               name="sections[${sectionId}][lessons][${lessonCount}][content_file]"
+                               accept="video/mp4,video/webm,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                               onchange="handleLessonFileUpload('${lessonUniqueId}', this)">
+                        <div class="upload-placeholder text-center p-3">
+                            <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
+                            <p class="mb-1"><strong>Cliquez pour sélectionner un fichier</strong></p>
+                            <p class="text-muted small mb-0">Formats acceptés : MP4, WEBM, PDF, ZIP, DOCX...</p>
+                            <p class="text-muted small">Taille max : 200MB</p>
                         </div>
-                        <div class="mt-2 d-none lesson-file-preview"></div>
+                        <div class="upload-preview d-none text-center">
+                            <div class="lesson-file-visual mb-3"></div>
+                            <div class="upload-info mb-2 d-inline-flex flex-column gap-1">
+                                <span class="badge bg-primary file-name"></span>
+                                <span class="badge bg-info file-size"></span>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-danger lesson-remove-btn" onclick="clearLessonFile('${lessonUniqueId}')">
+                                    <i class="fas fa-trash me-1"></i>Supprimer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="invalid-feedback d-block lesson-file-error" id="lessonFileError-${lessonUniqueId}"></div>
+                    <div class="mt-3">
+                        <label class="form-label small">Ou renseignez un lien externe</label>
+                        <input type="url"
+                               class="form-control lesson-url-input"
+                               name="sections[${sectionId}][lessons][${lessonCount}][content_url]"
+                               placeholder="Lien (https://...)"
+                               data-lesson-url="${lessonUniqueId}"
+                               oninput="handleLessonUrlInput('${lessonUniqueId}', this)">
+                        <small class="text-muted">Le lien sera prioritaire si aucun fichier n'est téléversé.</small>
                     </div>
                 </div>
             </div>
@@ -922,25 +964,251 @@ function removeLesson(button) {
     button.closest('.card').remove();
 }
 
-// Sauvegarder comme brouillon
-function saveDraft() {
-    document.getElementById('is_published').checked = false;
-    document.getElementById('courseForm').submit();
+function handleLessonFileUpload(uniqueId, input) {
+    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
+    if (!zone) return;
+
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    const fileNameBadge = preview?.querySelector('.file-name');
+    const fileSizeBadge = preview?.querySelector('.file-size');
+    const visualContainer = preview?.querySelector('.lesson-file-visual');
+    const errorDiv = document.getElementById(`lessonFileError-${uniqueId}`);
+
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+    }
+
+    if (!input.files || !input.files[0]) {
+        clearLessonFile(uniqueId);
+        return;
+    }
+
+    const file = input.files[0];
+
+    if (!isLessonFileTypeAllowed(file)) {
+        showLessonFileError(uniqueId, '❌ Format non supporté. Utilisez une vidéo (MP4/WEBM) ou un document (PDF, ZIP, DOCX, etc.).');
+        input.value = '';
+        return;
+    }
+
+    if (file.size > LESSON_MAX_FILE_SIZE) {
+        showLessonFileError(uniqueId, `❌ Fichier trop volumineux (${formatFileSize(file.size)}). Maximum : ${formatFileSize(LESSON_MAX_FILE_SIZE)}.`);
+        input.value = '';
+        return;
+    }
+
+    if (placeholder && preview) {
+        placeholder.classList.add('d-none');
+        preview.classList.remove('d-none');
+        if (fileNameBadge) fileNameBadge.textContent = file.name;
+        if (fileSizeBadge) fileSizeBadge.textContent = formatFileSize(file.size);
+        if (visualContainer) {
+            renderLessonFilePreview(zone, visualContainer, file);
+        }
+    }
+
+    zone.style.borderColor = '#28a745';
+
+    const urlInput = document.querySelector(`[data-lesson-url="${uniqueId}"]`);
+    if (urlInput) {
+        urlInput.value = '';
+    }
+}
+
+function triggerLessonFile(uniqueId, event) {
+    if (event) {
+        const target = event.target;
+        if (target.closest('button') || target.tagName === 'INPUT' || target.closest('a')) {
+            return;
+        }
+    }
+    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
+    if (!zone) return;
+
+    const input = zone.querySelector('input[type="file"]');
+    if (input) {
+        input.click();
+    }
+}
+
+function renderLessonFilePreview(zone, container, file) {
+    if (!container) return;
+
+    // Nettoyer une éventuelle URL précédente
+    if (zone.dataset.previewUrl) {
+        URL.revokeObjectURL(zone.dataset.previewUrl);
+        delete zone.dataset.previewUrl;
+    }
+
+    const type = file.type || '';
+    const extension = file.name?.split('.').pop()?.toLowerCase() || '';
+
+    if (type.startsWith('video/')) {
+        const videoUrl = URL.createObjectURL(file);
+        zone.dataset.previewUrl = videoUrl;
+        container.innerHTML = `
+            <video controls class="rounded" style="max-width: 240px; max-height: 180px; border: 3px solid #28a745;">
+                <source src="${videoUrl}" type="${file.type}">
+                Votre navigateur ne supporte pas la lecture de cette vidéo.
+            </video>
+        `;
+        return;
+    }
+
+    let iconClass = 'fas fa-file text-secondary';
+    if (type === 'application/pdf' || extension === 'pdf') {
+        iconClass = 'fas fa-file-pdf text-danger';
+    } else if (type.includes('zip') || ['zip', 'rar', '7z'].includes(extension)) {
+        iconClass = 'fas fa-file-archive text-warning';
+    } else if (type.includes('word') || ['doc', 'docx'].includes(extension)) {
+        iconClass = 'fas fa-file-word text-primary';
+    } else if (type.includes('presentation') || ['ppt', 'pptx'].includes(extension)) {
+        iconClass = 'fas fa-file-powerpoint text-warning';
+    } else if (type.includes('excel') || ['xls', 'xlsx', 'csv'].includes(extension)) {
+        iconClass = 'fas fa-file-excel text-success';
+    }
+
+    container.innerHTML = `<i class="${iconClass} fa-3x"></i>`;
+}
+
+function clearLessonFile(uniqueId) {
+    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
+    if (!zone) return;
+
+    const input = zone.querySelector('input[type="file"]');
+    const placeholder = zone.querySelector('.upload-placeholder');
+    const preview = zone.querySelector('.upload-preview');
+    const errorDiv = document.getElementById(`lessonFileError-${uniqueId}`);
+
+    if (zone.dataset.previewUrl) {
+        URL.revokeObjectURL(zone.dataset.previewUrl);
+        delete zone.dataset.previewUrl;
+    }
+
+    if (input) {
+        input.value = '';
+    }
+
+    if (preview) {
+        preview.classList.add('d-none');
+        const fileNameBadge = preview.querySelector('.file-name');
+        const fileSizeBadge = preview.querySelector('.file-size');
+        const visualContainer = preview.querySelector('.lesson-file-visual');
+        if (fileNameBadge) fileNameBadge.textContent = '';
+        if (fileSizeBadge) fileSizeBadge.textContent = '';
+        if (visualContainer) visualContainer.innerHTML = '';
+    }
+
+    if (placeholder) {
+        placeholder.classList.remove('d-none');
+    }
+
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+    }
+
+    zone.style.borderColor = '#dee2e6';
+}
+
+function handleLessonUrlInput(uniqueId, input) {
+    if (input.value.trim() !== '') {
+        clearLessonFile(uniqueId);
+    }
+}
+
+function isLessonFileTypeAllowed(file) {
+    if (!file) return false;
+    if (LESSON_ALLOWED_TYPES.includes(file.type)) {
+        return true;
+    }
+
+    const extension = file.name?.split('.').pop()?.toLowerCase() || '';
+    const allowedExtensions = ['mp4', 'webm', 'pdf', 'zip', 'rar', '7z', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'];
+    return allowedExtensions.includes(extension);
+}
+
+function showLessonFileError(uniqueId, message) {
+    const errorDiv = document.getElementById(`lessonFileError-${uniqueId}`);
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
 }
 
 // Gestion du cours gratuit
-document.getElementById('is_free').addEventListener('change', function() {
+function syncFreeCourseFields(isInitial = false) {
+    const freeCheckbox = document.getElementById('is_free');
     const priceField = document.getElementById('price');
     const salePriceField = document.getElementById('sale_price');
-    
-    if (this.checked) {
+
+    if (!priceField || !salePriceField) {
+        return;
+    }
+
+    const isFree = freeCheckbox ? freeCheckbox.checked : false;
+
+    if (isFree) {
+        if (!isInitial) {
+            cachedPriceValue = priceField.value;
+            cachedSalePriceValue = salePriceField.value;
+        }
+        if (cachedPriceValue === null) {
+            cachedPriceValue = priceField.value;
+        }
+        if (cachedSalePriceValue === null) {
+            cachedSalePriceValue = salePriceField.value;
+        }
+
         priceField.value = '0';
         priceField.disabled = true;
-        salePriceField.value = '0';
+        salePriceField.value = '';
         salePriceField.disabled = true;
     } else {
         priceField.disabled = false;
         salePriceField.disabled = false;
+
+        if (cachedPriceValue !== null) {
+            priceField.value = cachedPriceValue || '';
+        }
+
+        if (cachedSalePriceValue !== null) {
+            salePriceField.value = cachedSalePriceValue || '';
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const freeCheckbox = document.getElementById('is_free');
+    const priceField = document.getElementById('price');
+    const salePriceField = document.getElementById('sale_price');
+
+    if (priceField) {
+        cachedPriceValue = priceField.value;
+        priceField.addEventListener('input', function() {
+            if (!freeCheckbox || !freeCheckbox.checked) {
+                cachedPriceValue = this.value;
+            }
+        });
+    }
+
+    if (salePriceField) {
+        cachedSalePriceValue = salePriceField.value;
+        salePriceField.addEventListener('input', function() {
+            if (!freeCheckbox || !freeCheckbox.checked) {
+                cachedSalePriceValue = this.value;
+            }
+        });
+    }
+
+    syncFreeCourseFields(true);
+
+    if (freeCheckbox) {
+        freeCheckbox.addEventListener('change', function() {
+            syncFreeCourseFields();
+        });
     }
 });
 
@@ -1005,22 +1273,27 @@ function uploadVideoPreviewAjax(input) {
 /* Gradients pour les headers */
 .bg-gradient-primary {
     background: linear-gradient(135deg, #003366 0%, #004080 100%) !important;
+    color: #ffffff !important;
 }
 
 .bg-gradient-success {
     background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    color: #ffffff !important;
 }
 
 .bg-gradient-warning {
     background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+    color: #ffffff !important;
 }
 
 .bg-gradient-info {
     background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%) !important;
+    color: #ffffff !important;
 }
 
 .bg-gradient-secondary {
     background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+    color: #ffffff !important;
 }
 
 /* Cards */
@@ -1155,6 +1428,28 @@ function uploadVideoPreviewAjax(input) {
 .upload-info .badge {
     font-size: 0.85rem;
     padding: 0.4em 0.8em;
+}
+
+.lesson-upload-zone .upload-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 1rem;
+}
+
+.lesson-upload-zone .lesson-file-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lesson-upload-zone .upload-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
 }
 </style>
 @endpush

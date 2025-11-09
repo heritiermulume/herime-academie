@@ -312,10 +312,10 @@ body {
                 <div class="hero-container">
                     <div class="hero-image-bg">
                         <picture>
-                            @if($banner->mobile_image)
-                                <source media="(max-width: 768px)" srcset="{{ str_starts_with($banner->mobile_image, 'http') ? $banner->mobile_image : \App\Helpers\FileHelper::banner($banner->mobile_image) }}">
+                            @if($banner->mobile_image_url)
+                                <source media="(max-width: 768px)" srcset="{{ $banner->mobile_image_url }}">
                             @endif
-                            <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : \App\Helpers\FileHelper::banner($banner->image) }}" 
+                            <img src="{{ $banner->image_url ?: 'https://via.placeholder.com/1200x600?text=Banner' }}" 
                                  alt="{{ $banner->title }}" 
                                  class="hero-bg-image"
                                  loading="{{ $index === 0 ? 'eager' : 'lazy' }}">
@@ -528,7 +528,7 @@ body {
                         <!-- Lien invisible pour rendre toute la carte cliquable -->
                         <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
                         <div class="position-relative">
-                            <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
+                            <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                  class="card-img-top" alt="{{ $course->title }}">
                             <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
                                 @if($course->is_featured)
@@ -628,7 +628,7 @@ body {
                         <!-- Lien invisible pour rendre toute la carte cliquable -->
                         <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
                         <div class="position-relative">
-                            <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
+                            <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                  class="card-img-top" alt="{{ $course->title }}">
                             <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
                                 @if($course->is_featured)
@@ -792,7 +792,7 @@ body {
                         <!-- Lien invisible pour rendre toute la carte cliquable -->
                         <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
                         <div class="position-relative">
-                            <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
+                            <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                  class="card-img-top" alt="{{ $course->title }}">
                             <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
                                 <span class="badge bg-danger">Tendance</span>

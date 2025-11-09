@@ -15,7 +15,7 @@
             <div class="admin-form-grid admin-form-grid--two">
                 <div class="admin-form-card text-center">
                     <div class="avatar-container mb-3">
-                        <img src="{{ $user->avatar ? $user->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=003366&color=fff' }}" 
+                        <img src="{{ $user->avatar_url }}" 
                                  alt="Avatar de {{ $user->name }}" 
                                  class="rounded-circle img-thumbnail avatar-image" 
                                  style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #003366;">
@@ -264,7 +264,28 @@
                     <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-outline-primary">
                         <i class="fas fa-edit me-2"></i>Modifier
                     </a>
-                    <form action="{{ route('admin.users.destroy', $user) }}" method="POST" onsubmit="return confirm('Supprimer cet utilisateur ?')">
+                    <button type="button" class="btn btn-danger" onclick="openDeleteModal({{ $user->id }})">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <div class="modal fade" id="deleteUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <form id="deleteUserForm" method="POST" action="{{ route('admin.users.destroy', $user) }}">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger">
@@ -501,4 +522,13 @@
     }
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+function openDeleteModal(userId) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+    modal.show();
+}
+</script>
 @endpush

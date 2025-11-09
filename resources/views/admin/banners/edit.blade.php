@@ -78,7 +78,7 @@
                                 @if($banner->image)
                                 <div class="current-image mb-3">
                                     <p class="fw-bold mb-2"><i class="fas fa-check-circle text-success me-1"></i>Image actuelle :</p>
-                                    <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : \App\Helpers\FileHelper::banner($banner->image) }}" alt="Image actuelle" class="img-thumbnail" style="max-height: 200px;">
+                                    <img src="{{ $banner->image_url ?: 'https://via.placeholder.com/400x200?text=Banner' }}" alt="Image actuelle" class="img-thumbnail" style="max-height: 200px;">
                                 </div>
                                 @endif
                                 
@@ -117,7 +117,7 @@
                                 @if($banner->mobile_image)
                                 <div class="current-image mb-3">
                                     <p class="fw-bold mb-2"><i class="fas fa-check-circle text-success me-1"></i>Image mobile actuelle :</p>
-                                    <img src="{{ str_starts_with($banner->mobile_image, 'http') ? $banner->mobile_image : \App\Helpers\FileHelper::banner($banner->mobile_image) }}" alt="Image mobile actuelle" class="img-thumbnail" style="max-height: 200px;">
+                                    <img src="{{ $banner->mobile_image_url ?: 'https://via.placeholder.com/400x200?text=Banner+Mobile' }}" alt="Image mobile actuelle" class="img-thumbnail" style="max-height: 200px;">
                                 </div>
                                 @endif
                                 
@@ -254,13 +254,13 @@
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-3">Image principale (Desktop)</h6>
                                 <div class="preview-image-container">
-                                    <img src="{{ str_starts_with($banner->image, 'http') ? $banner->image : \App\Helpers\FileHelper::banner($banner->image) }}" alt="Preview Desktop" class="img-fluid rounded">
+                                    <img src="{{ $banner->image_url ?: 'https://via.placeholder.com/600x300?text=Banner' }}" alt="Preview Desktop" class="img-fluid rounded">
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-3">Image mobile (16:9)</h6>
                                 <div class="preview-image-container">
-                                    <img src="{{ str_starts_with($banner->mobile_image, 'http') ? $banner->mobile_image : \App\Helpers\FileHelper::banner($banner->mobile_image) }}" alt="Preview Mobile" class="img-fluid rounded">
+                                    <img src="{{ $banner->mobile_image_url ?: 'https://via.placeholder.com/320x480?text=Banner+Mobile' }}" alt="Preview Mobile" class="img-fluid rounded">
                                 </div>
                             </div>
                         </div>
@@ -272,9 +272,11 @@
                         <i class="fas fa-arrow-left me-2"></i>Retour
                     </a>
                     <div class="d-flex gap-2 flex-wrap">
-                        <a href="{{ route('banners.preview', $banner) }}" class="btn btn-outline-primary" target="_blank">
-                            <i class="fas fa-eye me-2"></i>Prévisualiser
-                        </a>
+                        @if($banner->preview_url ?? false)
+                            <a href="{{ $banner->preview_url }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+                                <i class="fas fa-eye me-2"></i>Prévisualiser
+                            </a>
+                        @endif
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save me-2"></i>Enregistrer les modifications
                         </button>

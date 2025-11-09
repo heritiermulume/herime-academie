@@ -85,7 +85,7 @@ class FileHelper
         // Si le chemin commence par storage/, c'est un ancien chemin public
         if (str_starts_with($path, 'storage/')) {
             // Essayer de trouver le fichier dans le stockage privé
-            $cleanPath = str_replace('storage/', '', $path);
+            $cleanPath = preg_replace('#^storage/#', '', $path);
             return self::url($cleanPath, 'banners');
         }
 
@@ -100,7 +100,7 @@ class FileHelper
         $disk = Storage::disk('local');
         
         // Nettoyer le chemin
-        $cleanPath = str_replace('storage/', '', $path);
+        $cleanPath = preg_replace('#^storage/#', '', $path);
         
         return $disk->exists($cleanPath);
     }

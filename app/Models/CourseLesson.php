@@ -111,4 +111,32 @@ class CourseLesson extends Model
 
         return "https://www.youtube.com/watch?v={$this->youtube_video_id}";
     }
+
+    public function getFileUrlAttribute(): string
+    {
+        if (!$this->file_path) {
+            return '';
+        }
+
+        if (filter_var($this->file_path, FILTER_VALIDATE_URL)) {
+            return $this->file_path;
+        }
+
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->file_path, 'courses/lessons');
+    }
+
+    public function getContentFileUrlAttribute(): string
+    {
+        if (!$this->content_url) {
+            return '';
+        }
+
+        if (filter_var($this->content_url, FILTER_VALIDATE_URL)) {
+            return $this->content_url;
+        }
+
+        $service = app(\App\Services\FileUploadService::class);
+        return $service->getUrl($this->content_url, 'courses/lessons');
+    }
 }

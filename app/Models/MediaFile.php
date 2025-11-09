@@ -144,8 +144,11 @@ class MediaFile extends Model
             return $path;
         }
         
-        // Sinon, construire l'URL avec asset()
-        return asset($path);
+        $service = app(\App\Services\FileUploadService::class);
+
+        $folder = $this->storage_bucket ?? dirname($path);
+
+        return $service->getUrl($path, $folder !== '.' ? $folder : null);
     }
 
     public function isImage(): bool

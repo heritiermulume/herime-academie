@@ -52,7 +52,7 @@ use Illuminate\Support\Facades\Storage;
                             <!-- Lien invisible pour rendre toute la carte cliquable -->
                             <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
                             <div class="position-relative">
-                                <img src="{{ $course->thumbnail ? $course->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
+                                <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                      class="card-img-top" alt="{{ $course->title }}">
                                 <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
                                     @if($course->is_featured)

@@ -28,7 +28,20 @@ class NotificationController extends Controller
         
         $notification->markAsRead();
         
-        return response()->json(['success' => true]);
+        $unreadCount = $user->unreadNotifications()->count();
+        $recent = $this->formatNotifications(
+            $user->notifications()
+                ->where('notifiable_id', $user->id)
+                ->latest()
+                ->limit(5)
+                ->get()
+        );
+
+        return response()->json([
+            'success' => true,
+            'unread_count' => $unreadCount,
+            'recent' => $recent,
+        ]);
     }
 
     public function markAllAsRead()
@@ -36,7 +49,13 @@ class NotificationController extends Controller
         $user = Auth::user();
         $user->unreadNotifications->markAsRead();
         
-        return response()->json(['success' => true]);
+        $recent = $this->formatNotifications($user->notifications()->latest()->limit(5)->get());
+
+        return response()->json([
+            'success' => true,
+            'unread_count' => 0,
+            'recent' => $recent,
+        ]);
     }
 
     public function delete($id)
@@ -46,7 +65,20 @@ class NotificationController extends Controller
         
         $notification->delete();
         
-        return response()->json(['success' => true]);
+        $unreadCount = $user->unreadNotifications()->count();
+        $recent = $this->formatNotifications(
+            $user->notifications()
+                ->where('notifiable_id', $user->id)
+                ->latest()
+                ->limit(5)
+                ->get()
+        );
+
+        return response()->json([
+            'success' => true,
+            'unread_count' => $unreadCount,
+            'recent' => $recent,
+        ]);
     }
 
     public function deleteAll()
@@ -54,7 +86,11 @@ class NotificationController extends Controller
         $user = Auth::user();
         $user->notifications()->delete();
         
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'unread_count' => 0,
+            'recent' => [],
+        ]);
     }
 
     public function getUnreadCount()
@@ -68,11 +104,28 @@ class NotificationController extends Controller
     public function getRecent()
     {
         $user = Auth::user();
-        $notifications = $user->notifications()
-            ->latest()
-            ->limit(5)
-            ->get();
+        $notifications = $this->formatNotifications(
+            $user->notifications()
+                ->where('notifiable_id', $user->id)
+                ->latest()
+                ->limit(5)
+                ->get()
+        );
         
         return response()->json($notifications);
+    }
+
+    protected function formatNotifications($notifications)
+    {
+        return $notifications->map(function ($notification) {
+            return [
+                'id' => $notification->id,
+                'data' => array_merge($notification->data ?? [], [
+                    'created_at_formatted' => $notification->created_at?->diffForHumans(),
+                ]),
+                'read_at' => $notification->read_at,
+                'created_at' => $notification->created_at,
+            ];
+        });
     }
 }

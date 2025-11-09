@@ -24,21 +24,22 @@ class MediaStorageService
         // Générer un ID unique
         $fileId = MediaFile::generateFileId();
         
-        // Déterminer le bucket/dossier de stockage
         $bucket = $this->determineBucket($mediaType, $userId);
-        
-        // Chemin de stockage organisé
-        // Format: media/{type}/{user_id}/{file_id}/original.{ext}
         $extension = $file->getClientOriginalExtension();
         $storagePath = "{$bucket}/{$fileId}/original.{$extension}";
-        
-        // Stocker le fichier
-        $disk = Storage::disk('public');
-        $disk->put($storagePath, file_get_contents($file->getRealPath()));
+
+        $disk = Storage::disk('local');
+        $disk->makeDirectory("{$bucket}/{$fileId}");
+
+        $stored = $file->storeAs("{$bucket}/{$fileId}", "original.{$extension}", ['disk' => 'local']);
+        if (!$stored) {
+            throw new \RuntimeException('Erreur lors de la sauvegarde du fichier média.');
+        }
         
         // Calculer les checksums
-        $md5 = md5_file($file->getRealPath());
-        $sha256 = hash_file('sha256', $file->getRealPath());
+        $absolutePath = $disk->path($storagePath);
+        $md5 = md5_file($absolutePath);
+        $sha256 = hash_file('sha256', $absolutePath);
         
         // Extraire les métadonnées selon le type
         $metadata = $this->extractMetadata($file, $mediaType);
@@ -51,7 +52,7 @@ class MediaStorageService
             'media_type' => $mediaType,
             'size' => $file->getSize(),
             'storage_bucket' => $bucket,
-            'storage_path' => 'storage/' . $storagePath,
+            'storage_path' => $storagePath,
             'storage_driver' => 'local',
             'checksum_md5' => $md5,
             'checksum_sha256' => $sha256,
@@ -135,8 +136,8 @@ class MediaStorageService
      */
     protected function processImage(MediaFile $mediaFile, UploadedFile $file): void
     {
-        $disk = Storage::disk('public');
-        $basePath = dirname(str_replace('storage/', '', $mediaFile->storage_path));
+        $disk = Storage::disk('local');
+        $basePath = dirname($mediaFile->storage_path);
         
         // Définir les tailles de variantes
         $variants = [
@@ -169,14 +170,9 @@ class MediaStorageService
             
             // Sauvegarder la variante
             $variantPath = "{$basePath}/{$variantType}.jpg";
-            $variantFullPath = storage_path("app/public/{$variantPath}");
-            
-            // Créer le dossier si nécessaire
-            $dir = dirname($variantFullPath);
-            if (!file_exists($dir)) {
-                mkdir($dir, 0755, true);
-            }
-            
+            $disk->makeDirectory($basePath);
+
+            $variantFullPath = $disk->path($variantPath);
             $variantImage->save($variantFullPath, 85);
             
             // Créer l'enregistrement de variante
@@ -184,7 +180,7 @@ class MediaStorageService
                 'media_file_id' => $mediaFile->id,
                 'variant_type' => $variantType,
                 'format' => 'jpg',
-                'storage_path' => 'storage/' . $variantPath,
+                'storage_path' => $variantPath,
                 'size' => filesize($variantFullPath),
                 'width' => $variantImage->width(),
                 'height' => $variantImage->height(),
@@ -200,18 +196,18 @@ class MediaStorageService
      */
     public function delete(MediaFile $mediaFile): bool
     {
-        $disk = Storage::disk('public');
+        $disk = Storage::disk('local');
         
         try {
             // Supprimer le fichier original
-            $originalPath = str_replace('storage/', '', $mediaFile->storage_path);
+            $originalPath = $mediaFile->storage_path;
             if ($disk->exists($originalPath)) {
                 $disk->delete($originalPath);
             }
             
             // Supprimer toutes les variantes
             foreach ($mediaFile->variants as $variant) {
-                $variantPath = str_replace('storage/', '', $variant->storage_path);
+                $variantPath = $variant->storage_path;
                 if ($disk->exists($variantPath)) {
                     $disk->delete($variantPath);
                 }
@@ -219,9 +215,7 @@ class MediaStorageService
             
             // Supprimer le dossier du fichier
             $folder = dirname($originalPath);
-            if ($disk->exists($folder)) {
-                $disk->deleteDirectory($folder);
-            }
+            $disk->deleteDirectory($folder);
             
             // Supprimer l'enregistrement (soft delete)
             $mediaFile->delete();
