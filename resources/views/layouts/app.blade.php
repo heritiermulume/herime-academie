@@ -3417,57 +3417,6 @@
                 </div>
                 <div class="modal-body p-0">
                     <div class="list-group list-group-flush">
-                        @auth
-                            @php
-                                $user = Auth::user();
-                                $dashboardLinks = [];
-
-                                if ($user->isAdmin()) {
-                                    $dashboardLinks[] = [
-                                        'label' => 'Administrateur',
-                                        'route' => route('admin.dashboard'),
-                                        'icon' => 'fas fa-tools',
-                                    ];
-                                    $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
-                                        'route' => route('student.dashboard'),
-                                        'icon' => 'fas fa-user-graduate',
-                                    ];
-                                    $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord formateur',
-                                        'route' => route('instructor.dashboard'),
-                                        'icon' => 'fas fa-chalkboard-teacher',
-                                    ];
-                                } elseif ($user->isInstructor()) {
-                                    $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord formateur',
-                                        'route' => route('instructor.dashboard'),
-                                        'icon' => 'fas fa-chalkboard-teacher',
-                                    ];
-                                    $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
-                                        'route' => route('student.dashboard'),
-                                        'icon' => 'fas fa-user-graduate',
-                                    ];
-                                } else {
-                                    $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
-                                        'route' => route('student.dashboard'),
-                                        'icon' => 'fas fa-user-graduate',
-                                    ];
-                                }
-                            @endphp
-
-                            @foreach($dashboardLinks as $dashboardLink)
-                                <div class="list-group-item">
-                                    <a href="{{ $dashboardLink['route'] }}">
-                                        <i class="{{ $dashboardLink['icon'] }}"></i>
-                                        {{ $dashboardLink['label'] }}
-                                    </a>
-                                </div>
-                            @endforeach
-                        @endauth
-
                         <div class="list-group-item">
                             <a href="{{ route('instructors.index') }}">
                                 <i class="fas fa-chalkboard-teacher"></i>
