@@ -14,6 +14,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
+use App\Models\Order;
 
 class CourseController extends Controller
 {
@@ -171,9 +173,29 @@ class CourseController extends Controller
             },
         ]);
         
+        $userId = auth()->id();
+
         // Vérifier si l'utilisateur est inscrit
-        $isEnrolled = auth()->check() ? $course->isEnrolledBy(auth()->id()) : false;
-        $enrollment = $isEnrolled ? $course->getEnrollmentFor(auth()->id()) : null;
+        $isEnrolled = $userId ? $course->isEnrolledBy($userId) : false;
+        $enrollment = $isEnrolled ? $course->getEnrollmentFor($userId) : null;
+
+        $hasPurchased = false;
+        if ($userId) {
+            if ($isEnrolled || $course->is_free) {
+                $hasPurchased = $isEnrolled;
+            } elseif (!$course->is_free) {
+                $hasPurchased = Order::where('user_id', $userId)
+                    ->where('status', 'paid')
+                    ->whereHas('orderItems', function ($query) use ($course) {
+                        $query->where('course_id', $course->id);
+                    })
+                    ->exists();
+            }
+        }
+
+        $buttonState = $course->getButtonStateForUser($userId);
+        $canAccessCourse = $isEnrolled || $hasPurchased;
+        $canDownloadCourse = $course->is_downloadable && $canAccessCourse;
 
         // Calculer les statistiques du cours (simplifiées)
         $courseStats = [
@@ -186,7 +208,17 @@ class CourseController extends Controller
         // Cours similaires avec algorithme de recommandation amélioré
         $relatedCourses = $this->getRecommendedCourses($course);
 
-        return view('courses.show', compact('course', 'isEnrolled', 'enrollment', 'relatedCourses', 'courseStats'));
+        return view('courses.show', compact(
+            'course',
+            'isEnrolled',
+            'enrollment',
+            'relatedCourses',
+            'courseStats',
+            'buttonState',
+            'hasPurchased',
+            'canAccessCourse',
+            'canDownloadCourse'
+        ));
     }
 
     public function byCategory(Category $category)
@@ -243,46 +275,187 @@ class CourseController extends Controller
             'language' => 'required|string|max:5',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'video_preview' => 'nullable|file|mimes:mp4,avi,mov|max:10240',
+            'video_preview_path' => 'nullable|string|max:2048',
             'requirements' => 'nullable|array',
             'what_you_will_learn' => 'nullable|array',
             'tags' => 'nullable|array',
+            'sections' => 'nullable|array',
+            'sections.*.title' => 'required_with:sections|string|max:255',
+            'sections.*.description' => 'nullable|string',
+            'sections.*.lessons' => 'nullable|array',
+            'sections.*.lessons.*.title' => 'required_with:sections.*.lessons|string|max:255',
+            'sections.*.lessons.*.description' => 'nullable|string',
+            'sections.*.lessons.*.type' => 'required_with:sections.*.lessons|in:video,text,quiz,assignment',
+            'sections.*.lessons.*.content_url' => 'nullable|string',
+            'sections.*.lessons.*.content_file' => 'nullable|file|mimetypes:video/mp4,video/webm,video/ogg,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/x-rar-compressed,application/x-7z-compressed,application/x-tar,application/gzip|max:1048576',
+            'sections.*.lessons.*.content_file_path' => 'nullable|string|max:2048',
+            'sections.*.lessons.*.content_text' => 'nullable|string',
+            'sections.*.lessons.*.duration' => 'nullable|integer|min:0',
+            'sections.*.lessons.*.is_preview' => 'boolean',
         ]);
 
-        $data = $request->all();
-        $data['instructor_id'] = auth()->id();
-        $data['slug'] = Str::slug($request->title);
-        $data['is_published'] = false; // Par défaut, le cours n'est pas publié
+        DB::beginTransaction();
 
-        // Gérer l'upload de l'image
-        if ($request->hasFile('thumbnail')) {
-            $result = $this->fileUploadService->uploadImage(
-                $request->file('thumbnail'),
-                'courses/thumbnails',
-                null,
-                1920 // Max 1920px width
-            );
-            $data['thumbnail'] = $result['path'];
+        try {
+            $instructorId = auth()->id();
+
+            if (!$instructorId) {
+                abort(403, 'Vous devez être connecté en tant que formateur pour créer un cours.');
+            }
+
+            $data = $request->only([
+                'title',
+                'description',
+                'short_description',
+                'category_id',
+                'price',
+                'sale_price',
+                'level',
+                'language',
+                'requirements',
+                'what_you_will_learn',
+                'tags',
+            ]);
+
+            $data['instructor_id'] = $instructorId;
+            $data['slug'] = $this->generateUniqueSlug($request->title);
+            $data['is_published'] = false;
+            $data['is_free'] = false;
+            $data['use_external_payment'] = false;
+
+            $data['requirements'] = collect($request->input('requirements', []))
+                ->filter(fn($value) => filled($value))
+                ->values()
+                ->all();
+
+            $data['what_you_will_learn'] = collect($request->input('what_you_will_learn', []))
+                ->filter(fn($value) => filled($value))
+                ->values()
+                ->all();
+
+            $data['tags'] = collect($request->input('tags', []))
+                ->filter(fn($value) => filled($value))
+                ->values()
+                ->all();
+
+            if ($request->hasFile('thumbnail')) {
+                $result = $this->fileUploadService->uploadImage(
+                    $request->file('thumbnail'),
+                    'courses/thumbnails',
+                    null,
+                    1920
+                );
+                $data['thumbnail'] = $result['path'];
+            }
+
+            if ($request->hasFile('video_preview')) {
+                $result = $this->fileUploadService->uploadVideo(
+                    $request->file('video_preview'),
+                    'courses/previews',
+                    null
+                );
+                $data['video_preview'] = $result['path'];
+        } elseif ($request->filled('video_preview_path')) {
+            $data['video_preview'] = $this->sanitizeUploadedPath($request->string('video_preview_path')->toString());
+            }
+
+            $course = Course::create($data);
+
+            $sections = $request->input('sections', []);
+            foreach ($sections as $sectionIndex => $sectionData) {
+                $sectionTitle = $sectionData['title'] ?? null;
+                if (!filled($sectionTitle)) {
+                    continue;
+                }
+
+                $section = $course->sections()->create([
+                    'title' => $sectionTitle,
+                    'description' => $sectionData['description'] ?? '',
+                    'sort_order' => $sectionIndex + 1,
+                    'is_published' => true,
+                ]);
+
+                $lessons = $sectionData['lessons'] ?? [];
+                if (!is_array($lessons) || empty($lessons)) {
+                    continue;
+                }
+
+                foreach ($lessons as $lessonIndex => $lessonData) {
+                    $lessonTitle = $lessonData['title'] ?? null;
+                    $lessonType = $lessonData['type'] ?? null;
+
+                    if (!filled($lessonTitle) || !filled($lessonType)) {
+                        continue;
+                    }
+
+                    $filePath = null;
+                    $chunkPath = $this->sanitizeUploadedPath($lessonData['content_file_path'] ?? null);
+                    if ($chunkPath) {
+                        $filePath = $chunkPath;
+                    }
+                    if ($request->hasFile("sections.$sectionIndex.lessons.$lessonIndex.content_file")) {
+                        $uploadedFile = $request->file("sections.$sectionIndex.lessons.$lessonIndex.content_file");
+
+                        try {
+                            $mimeType = $uploadedFile->getMimeType();
+                            if ($mimeType && str_starts_with($mimeType, 'video/')) {
+                                $result = $this->fileUploadService->uploadVideo($uploadedFile, 'courses/lessons', null);
+                            } elseif ($mimeType && str_starts_with($mimeType, 'application/')) {
+                                $result = $this->fileUploadService->uploadDocument($uploadedFile, 'courses/lessons', null);
+                            } else {
+                                $result = $this->fileUploadService->upload($uploadedFile, 'courses/lessons', null);
+                            }
+                            $filePath = $result['path'];
+                        } catch (\Throwable $e) {
+                            Log::error('Erreur lors du téléversement du fichier de leçon', [
+                                'instructor_id' => auth()->id(),
+                                'course_id' => $course->id,
+                                'section_index' => $sectionIndex,
+                                'lesson_index' => $lessonIndex,
+                                'message' => $e->getMessage(),
+                            ]);
+                            throw $e;
+                        }
+                    }
+
+                    $section->lessons()->create([
+                        'course_id' => $course->id,
+                        'title' => $lessonTitle,
+                        'description' => $lessonData['description'] ?? null,
+                        'type' => $lessonType,
+                        'content_url' => $filePath ?: ($lessonData['content_url'] ?? null),
+                        'file_path' => $filePath,
+                        'content_text' => $lessonData['content_text'] ?? null,
+                        'duration' => isset($lessonData['duration']) ? (int) $lessonData['duration'] : 0,
+                        'sort_order' => $lessonIndex + 1,
+                        'is_published' => true,
+                        'is_preview' => !empty($lessonData['is_preview']),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('instructor.courses.edit', $course)
+                ->with('success', 'Cours créé avec succès. Vous pouvez maintenant finaliser les détails ou publier votre formation.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Erreur lors de la création du cours', [
+                'instructor_id' => auth()->id(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Impossible de créer le cours pour le moment. Veuillez réessayer plus tard.']);
         }
-
-        // Gérer l'upload de la vidéo de prévisualisation
-        if ($request->hasFile('video_preview')) {
-            $result = $this->fileUploadService->uploadVideo(
-                $request->file('video_preview'),
-                'courses/previews',
-                null
-            );
-            $data['video_preview'] = $result['path'];
-        }
-
-        $course = Course::create($data);
-
-        return redirect()->route('instructor.courses.edit', $course)
-            ->with('success', 'Cours créé avec succès. Vous pouvez maintenant ajouter des sections et des leçons.');
     }
 
     public function edit(Course $course)
     {
-        $this->authorize('update', $course);
+        $this->ensureCanManageCourse($course);
         
         $categories = Category::active()->ordered()->get();
         $course->load(['sections.lessons']);
@@ -292,7 +465,7 @@ class CourseController extends Controller
 
     public function update(Request $request, Course $course)
     {
-        $this->authorize('update', $course);
+        $this->ensureCanManageCourse($course);
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -305,13 +478,17 @@ class CourseController extends Controller
             'language' => 'required|string|max:5',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'video_preview' => 'nullable|file|mimes:mp4,avi,mov|max:10240',
+            'video_preview_path' => 'nullable|string|max:2048',
             'requirements' => 'nullable|array',
             'what_you_will_learn' => 'nullable|array',
             'tags' => 'nullable|array',
         ]);
 
         $data = $request->all();
-        $data['slug'] = Str::slug($request->title);
+        if (auth()->check() && auth()->user()->isInstructor()) {
+            $data['instructor_id'] = $course->instructor_id ?? auth()->id();
+        }
+        $data['slug'] = $this->generateUniqueSlug($request->title, $course->id);
 
         // Gérer l'upload de l'image
         if ($request->hasFile('thumbnail')) {
@@ -332,6 +509,8 @@ class CourseController extends Controller
                 $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
             );
             $data['video_preview'] = $result['path'];
+        } elseif ($request->filled('video_preview_path')) {
+            $data['video_preview'] = $this->sanitizeUploadedPath($request->string('video_preview_path')->toString());
         }
 
         $course->update($data);
@@ -342,22 +521,22 @@ class CourseController extends Controller
 
     public function destroy(Course $course)
     {
-        $this->authorize('delete', $course);
+        $this->ensureCanManageCourse($course);
         
         $course->delete();
         
-        if (Route::has('instructor.courses.list')) {
-            return redirect()->route('instructor.courses.list')
+        if (Route::has('instructor.courses.index')) {
+            return redirect()->route('instructor.courses.index')
                 ->with('success', 'Cours supprimé avec succès.');
         }
 
-        return redirect('/instructor/courses/list')
+        return redirect('/instructor/courses')
             ->with('success', 'Cours supprimé avec succès.');
     }
 
     public function publish(Course $course)
     {
-        $this->authorize('update', $course);
+        $this->ensureCanManageCourse($course);
         
         $course->update(['is_published' => true]);
         
@@ -367,7 +546,7 @@ class CourseController extends Controller
 
     public function unpublish(Course $course)
     {
-        $this->authorize('update', $course);
+        $this->ensureCanManageCourse($course);
         
         $course->update(['is_published' => false]);
         
@@ -606,6 +785,61 @@ class CourseController extends Controller
             ];
             return $course;
         });
+    }
+
+    private function ensureCanManageCourse(Course $course): void
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($user->isAdmin() || ($user->isInstructor() && (int) $course->instructor_id === (int) $user->id)) {
+            return;
+        }
+
+        abort(403);
+    }
+
+    private function sanitizeUploadedPath(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        $clean = trim($path);
+
+        if ($clean === '') {
+            return null;
+        }
+
+        $clean = ltrim($clean, '/');
+
+        if (str_starts_with($clean, 'storage/')) {
+            $clean = ltrim(substr($clean, strlen('storage/')), '/');
+        }
+
+        return $clean;
+    }
+
+    private function generateUniqueSlug(string $title, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($title);
+        if ($base === '') {
+            $base = Str::random(8);
+        }
+
+        $slug = $base;
+        $counter = 1;
+
+        while (Course::where('slug', $slug)
+            ->when($ignoreId, fn($query) => $query->where('id', '!=', $ignoreId))
+            ->exists()) {
+            $slug = $base.'-'.$counter++;
+        }
+
+        return $slug;
     }
 
     public function previewData(Course $course)

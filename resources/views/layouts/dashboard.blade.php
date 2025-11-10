@@ -8,6 +8,15 @@
     $dashboardBrand = $dashboardBrand ?? 'Espace';
     $dashboardReturnRoute = $dashboardReturnRoute ?? route('home');
 
+    if (empty($dashboardNavItems)) {
+        $sharedContext = $sharedContext ?? null;
+        if ($sharedContext && isset($sharedContext['dashboardNavItems']) && is_array($sharedContext['dashboardNavItems'])) {
+            $dashboardNavItems = $sharedContext['dashboardNavItems'];
+            $dashboardBrand = $sharedContext['dashboardBrand'] ?? $dashboardBrand;
+            $dashboardReturnRoute = $sharedContext['dashboardReturnRoute'] ?? $dashboardReturnRoute;
+        }
+    }
+
     $pageTitle = trim($__env->yieldContent('dashboard-title'));
     if ($pageTitle === '') {
         $pageTitle = trim($__env->yieldContent('title')) ?: $dashboardBrand;
@@ -26,7 +35,23 @@
                 <i class="fas fa-user-circle me-2"></i>{{ $dashboardBrand }}
             </div>
             <nav class="admin-nav flex-grow-1">
-                @foreach($dashboardNavItems as $item)
+                @foreach(($dashboardNavItems ?? []) as $item)
+                    @php
+                        $type = $item['type'] ?? 'link';
+                    @endphp
+
+                    @if($type === 'heading')
+                        @if(($item['label'] ?? '') !== '')
+                            <div class="admin-nav__heading">{{ $item['label'] }}</div>
+                        @endif
+                        @continue
+                    @endif
+
+                    @if($type === 'divider')
+                        <div class="admin-nav__divider" role="separator" aria-hidden="true"></div>
+                        @continue
+                    @endif
+
                     @php
                         $hasRoute = isset($item['route']) && is_string($item['route']);
                         $isAvailable = $item['available'] ?? true;
@@ -34,13 +59,13 @@
                             continue;
                         }
 
-                        $url = '#';
+                        $url = $item['url'] ?? '#';
                         $activeRoutes = [];
                         if ($hasRoute) {
-                            $url = Route::has($item['route']) ? route($item['route']) : url($item['route']);
                             $activeRoutes = $item['active'] ?? [$item['route']];
-                        } elseif (!empty($item['url'])) {
-                            $url = $item['url'];
+                            if (empty($item['url'])) {
+                                $url = Route::has($item['route']) ? route($item['route']) : url($item['route']);
+                            }
                         }
 
                         $isActive = false;
@@ -66,7 +91,23 @@
 
         <main class="admin-shell__content">
             <nav class="admin-shell__mobile-nav d-md-none" aria-label="Navigation du tableau de bord">
-                @foreach($dashboardNavItems as $item)
+                @foreach(($dashboardNavItems ?? []) as $item)
+                    @php
+                        $type = $item['type'] ?? 'link';
+                    @endphp
+
+                    @if($type === 'heading')
+                        @if(($item['label'] ?? '') !== '')
+                            <div class="admin-shell__mobile-heading">{{ $item['label'] }}</div>
+                        @endif
+                        @continue
+                    @endif
+
+                    @if($type === 'divider')
+                        <div class="admin-shell__mobile-divider" role="separator" aria-hidden="true"></div>
+                        @continue
+                    @endif
+
                     @php
                         $hasRoute = isset($item['route']) && is_string($item['route']);
                         $isAvailable = $item['available'] ?? true;
@@ -74,13 +115,13 @@
                             continue;
                         }
 
-                        $url = '#';
+                        $url = $item['url'] ?? '#';
                         $activeRoutes = [];
                         if ($hasRoute) {
-                            $url = Route::has($item['route']) ? route($item['route']) : url($item['route']);
                             $activeRoutes = $item['active'] ?? [$item['route']];
-                        } elseif (!empty($item['url'])) {
-                            $url = $item['url'];
+                            if (empty($item['url'])) {
+                                $url = Route::has($item['route']) ? route($item['route']) : url($item['route']);
+                            }
                         }
 
                         $isActive = false;
@@ -177,6 +218,19 @@
         outline: 2px solid #fbbf24;
         outline-offset: 3px;
     }
+    .admin-nav__heading {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(255, 255, 255, 0.55);
+        margin: 1.25rem 0 0.5rem 0.75rem;
+    }
+    .admin-nav__divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.12);
+        margin: 1.5rem 0;
+    }
     .admin-nav__icon {
         width: 34px;
         height: 34px;
@@ -248,6 +302,22 @@
         border-radius: 999px;
         white-space: nowrap;
         transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .admin-shell__mobile-heading {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #334155;
+        padding: 0 0.65rem;
+        flex: 0 0 auto;
+    }
+    .admin-shell__mobile-divider {
+        width: 1px;
+        height: 24px;
+        background: rgba(148, 163, 184, 0.35);
+        flex: 0 0 1px;
+        align-self: center;
     }
     .admin-shell__mobile-link i {
         font-size: 0.95rem;

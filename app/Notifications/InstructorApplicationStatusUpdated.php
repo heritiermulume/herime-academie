@@ -70,3 +70,4 @@ class InstructorApplicationStatusUpdated extends Notification
 }
 
 
+

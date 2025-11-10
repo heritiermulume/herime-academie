@@ -180,6 +180,26 @@ class Course extends Model
     }
 
     /**
+     * Obtenir des initiales pour le titre du cours (fallback visuel)
+     */
+    public function getInitialsAttribute(): string
+    {
+        $title = trim((string) $this->title);
+
+        if ($title === '') {
+            return 'HC';
+        }
+
+        $parts = preg_split('/\s+/u', $title) ?: [];
+        $first = mb_substr($parts[0] ?? '', 0, 1, 'UTF-8');
+        $second = mb_substr($parts[1] ?? '', 0, 1, 'UTF-8');
+
+        $initials = mb_strtoupper($first . $second, 'UTF-8');
+
+        return $initials !== '' ? $initials : 'HC';
+    }
+
+    /**
      * Obtenir la durée totale du cours (en minutes)
      */
     public function getDurationAttribute()

@@ -50,3 +50,4 @@ class CoursePublishedNotification extends Notification
 }
 
 
+

@@ -1615,6 +1615,7 @@
     $hasAnyPreview = $hasVideoPreview || $hasPreviewLessons;
     $learnings = $course->getWhatYouWillLearnArray();
     $requirements = $course->getRequirementsArray();
+    $user = auth()->user();
     
     // Calculer les statistiques depuis les données de la base de données
     $totalLessons = $publishedSections->sum(function($section) { 
@@ -2090,7 +2091,78 @@
                             @endif
                         </div>
 
-                        <x-course-button :course="$course" size="normal" :show-cart="true" />
+                        @if(!$user)
+                            <div class="d-grid gap-2">
+                                <a href="{{ route('login') }}" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Se connecter pour accéder au cours
+                                </a>
+                                <a href="{{ route('register') }}" class="btn btn-outline-primary btn-lg w-100">
+                                    <i class="fas fa-user-plus me-2"></i>Créer un compte
+                                </a>
+                            </div>
+                        @else
+                            <div class="d-grid gap-2">
+                                @if($course->is_free)
+                                    @if($course->is_downloadable)
+                                        @if($canDownloadCourse)
+                                            <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
+                                                <i class="fas fa-download me-2"></i>Télécharger le cours
+                                            </a>
+                                            <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-outline-light btn-lg w-100">
+                                                <i class="fas fa-play me-2"></i>Démarrer l'apprentissage
+                                            </a>
+                                        @else
+                                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="d-grid gap-2">
+                                                @csrf
+                                                <input type="hidden" name="redirect_to" value="download">
+                                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                    <i class="fas fa-download me-2"></i>Télécharger le cours
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="d-grid gap-2">
+                                                @csrf
+                                                <input type="hidden" name="redirect_to" value="learn">
+                                                <button type="submit" class="btn btn-outline-light btn-lg w-100">
+                                                    <i class="fas fa-play me-2"></i>Démarrer l'apprentissage
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @else
+                                        @if($canAccessCourse)
+                                            <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
+                                                <i class="fas fa-play me-2"></i>Poursuivre l'apprentissage
+                                            </a>
+                                        @else
+                                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="redirect_to" value="learn">
+                                                <button type="submit" class="btn btn-success btn-lg w-100">
+                                                    <i class="fas fa-play me-2"></i>Commencer l'apprentissage
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endif
+                                @else
+                                    @if($canAccessCourse)
+                                        <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
+                                            <i class="fas fa-play me-2"></i>Continuer l'apprentissage
+                                        </a>
+                                        @if($canDownloadCourse)
+                                            <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-outline-light btn-lg w-100">
+                                                <i class="fas fa-download me-2"></i>Télécharger le cours
+                                            </a>
+                                        @endif
+                                    @else
+                                        <button type="button" class="btn btn-outline-primary btn-lg w-100" onclick="addToCart({{ $course->id }})">
+                                            <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
+                                        </button>
+                                        <button type="button" class="btn btn-success btn-lg w-100" onclick="proceedToCheckout({{ $course->id }})">
+                                            <i class="fas fa-credit-card me-2"></i>Procéder au paiement
+                                        </button>
+                                    @endif
+                                @endif
+                            </div>
+                        @endif
 
                         <hr class="my-4">
 
@@ -2178,7 +2250,58 @@
                 </div>
             </div>
             <div class="col-auto mobile-btn-col">
-                <x-course-button :course="$course" size="normal" :show-cart="false" />
+                @if(!$user)
+                    <a href="{{ route('login') }}" class="btn btn-primary w-100">
+                        <i class="fas fa-sign-in-alt me-2"></i>Se connecter
+                    </a>
+                @else
+                    @if($course->is_free)
+                        @if($course->is_downloadable)
+                            @if($canDownloadCourse)
+                                <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary w-100">
+                                    <i class="fas fa-download me-2"></i>Télécharger
+                                </a>
+                            @else
+                                <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="redirect_to" value="download">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-download me-2"></i>Télécharger
+                                    </button>
+                                </form>
+                            @endif
+                        @else
+                            @if($canAccessCourse)
+                                <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success w-100">
+                                    <i class="fas fa-play me-2"></i>Apprendre
+                                </a>
+                            @else
+                                <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="redirect_to" value="learn">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-play me-2"></i>Apprendre
+                                    </button>
+                                </form>
+                            @endif
+                        @endif
+                    @else
+                        @if($canAccessCourse)
+                            <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success w-100">
+                                <i class="fas fa-play me-2"></i>Continuer
+                            </a>
+                        @else
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-primary w-100" onclick="addToCart({{ $course->id }})">
+                                    <i class="fas fa-shopping-cart me-2"></i>Ajouter
+                                </button>
+                                <button type="button" class="btn btn-success w-100" onclick="proceedToCheckout({{ $course->id }})">
+                                    <i class="fas fa-credit-card me-2"></i>Payer
+                                </button>
+                            </div>
+                        @endif
+                    @endif
+                @endif
             </div>
         </div>
     </div>

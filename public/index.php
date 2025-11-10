@@ -5,6 +5,12 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+// Increase memory limit early to accommodate large form uploads/local development
+if (function_exists('ini_set')) {
+    $memoryLimit = getenv('APP_MEMORY_LIMIT') ?: '1024M';
+    @ini_set('memory_limit', $memoryLimit);
+}
+
 // Determine if the application is in maintenance mode...
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;

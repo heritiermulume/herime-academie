@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\CourseController;
+use App\Http\Controllers\ChunkUploadController;
 use App\Http\Controllers\InstructorController;
 use App\Http\Controllers\InstructorApplicationController;
 use App\Http\Controllers\StudentController;
@@ -271,18 +272,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Instructor routes (only for approved instructors) - avec validation SSO pour les POST/PUT/DELETE
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
-        Route::get('/courses', function () {
-            return redirect()->route('instructor.courses.list');
-        })->name('courses.index');
-        Route::get('/courses/list', [InstructorController::class, 'coursesIndex'])->name('courses.list');
+        Route::get('/courses/list', function () {
+            return redirect()->route('instructor.courses.index');
+        });
+        Route::get('/courses', [InstructorController::class, 'coursesIndex'])->name('courses.index');
         Route::get('/dashboard', [InstructorController::class, 'dashboard'])->name('dashboard');
         Route::resource('courses', CourseController::class)->except(['index', 'show'])->middleware('sso.validate');
         Route::get('/courses/{course}/lessons', [InstructorController::class, 'lessons'])->name('courses.lessons');
         Route::post('/courses/{course}/lessons', [InstructorController::class, 'storeLesson'])
             ->middleware('sso.validate')
             ->name('courses.lessons.store');
+        Route::post('/uploads/chunk', [ChunkUploadController::class, 'handle'])
+            ->middleware('sso.validate')
+            ->name('uploads.chunk');
         Route::get('/students', [InstructorController::class, 'students'])->name('students');
         Route::get('/analytics', [InstructorController::class, 'analytics'])->name('analytics');
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
     });
 
     // Admin routes - avec validation SSO pour les actions de modification (appliqué individuellement)
@@ -536,6 +541,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
         Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
     });
+
+    // Notifications – routes en JSON
+        Route::post('/notifications/{id}/mark-read', [NotificationController::class, 'markAsRead'])
+            ->name('notifications.mark-read');
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+            ->name('notifications.mark-all-read');
+        Route::delete('/notifications/{id}', [NotificationController::class, 'delete'])
+            ->name('notifications.delete');
+        Route::delete('/notifications', [NotificationController::class, 'deleteAll'])
+            ->name('notifications.delete-all');
+        Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])
+            ->name('notifications.unread-count');
+        Route::get('/notifications/recent', [NotificationController::class, 'getRecent'])
+            ->name('notifications.recent');
 
     // Affiliate routes
     Route::prefix('affiliate')->name('affiliate.')->middleware('role:affiliate')->group(function () {

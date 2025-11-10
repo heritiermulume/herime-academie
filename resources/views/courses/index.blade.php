@@ -4,193 +4,256 @@
 @section('description', 'Découvrez notre collection complète de cours en ligne. Formations professionnelles dans tous les domaines.')
 
 @section('content')
-<!-- Page Header Section -->
-<section class="page-header-section">
+<!-- Page Content Section -->
+<section class="page-content-section" style="padding: 0.8rem 0 1.4rem;">
     <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1>Tous les cours</h1>
-                <p class="lead">
-                    Explorez notre collection de cours en ligne
+        @php
+            $filtersActive = request()->filled('category')
+                || request()->filled('level')
+                || request()->filled('price')
+                || request()->filled('sort');
+            $currentCategoryId = request('category');
+        @endphp
+
+        <div class="row align-items-center courses-page-head mb-0 mb-md-3">
+            <div class="col-12">
+                <h1 class="courses-page-title">Trouver le cours idéal pour progresser</h1>
+                <p class="courses-page-description">
+                    Parcourez toutes nos formations en ligne, filtrez par catégorie, niveau et prix pour dénicher le programme qui correspond à vos objectifs.
                 </p>
             </div>
         </div>
-    </div>
-</section>
 
-<!-- Page Content Section -->
-<section class="page-content-section">
-    <div class="container">
+        <div class="row courses-page-layout">
+            <aside class="col-lg-3">
+                <div class="courses-categories-panel">
+                    <div class="courses-categories-panel__header">
+                        <i class="fas fa-layer-group me-2"></i>
+                        <span>Catégories</span>
+                    </div>
+                    <nav class="courses-categories-panel__nav">
+                        <a
+                            href="{{ route('courses.index', request()->except(['page', 'category'])) }}"
+                            class="courses-categories-panel__link {{ empty($currentCategoryId) ? 'is-active' : '' }}"
+                        >
+                            <span>Toutes les catégories</span>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        @foreach($categories as $category)
+                            <a
+                                href="{{ route('courses.index', array_merge(request()->except(['page', 'category']), ['category' => $category->id])) }}"
+                                class="courses-categories-panel__link {{ (int) $currentCategoryId === (int) $category->id ? 'is-active' : '' }}"
+                            >
+                                <span>{{ $category->name }}</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        @endforeach
+                    </nav>
+                </div>
+            </aside>
 
-        <!-- Filters -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body p-4">
-                    <form method="GET" action="{{ route('courses.index') }}" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="search" class="form-label">Rechercher</label>
-                            <input type="text" class="form-control" id="search" name="search" 
-                                   value="{{ request('search') }}" placeholder="Nom du cours, formateur...">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="category" class="form-label">Catégorie</label>
-                            <select class="form-select" id="category" name="category">
-                                <option value="">Toutes les catégories</option>
-                                @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ request('category') == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="level" class="form-label">Niveau</label>
-                            <select class="form-select" id="level" name="level">
-                                <option value="">Tous les niveaux</option>
-                                <option value="beginner" {{ request('level') == 'beginner' ? 'selected' : '' }}>Débutant</option>
-                                <option value="intermediate" {{ request('level') == 'intermediate' ? 'selected' : '' }}>Intermédiaire</option>
-                                <option value="advanced" {{ request('level') == 'advanced' ? 'selected' : '' }}>Avancé</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="price" class="form-label">Prix</label>
-                            <select class="form-select" id="price" name="price">
-                                <option value="">Tous les prix</option>
-                                <option value="free" {{ request('price') == 'free' ? 'selected' : '' }}>Gratuit</option>
-                                <option value="paid" {{ request('price') == 'paid' ? 'selected' : '' }}>Payant</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="sort" class="form-label">Trier par</label>
-                            <select class="form-select" id="sort" name="sort">
-                                <option value="popular" {{ (request('sort') == 'popular' || !request('sort')) ? 'selected' : '' }}>Plus populaires</option>
-                                <option value="latest" {{ request('sort') == 'latest' ? 'selected' : '' }}>Plus récents</option>
-                                <option value="rating" {{ request('sort') == 'rating' ? 'selected' : '' }}>Mieux notés</option>
-                                <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>Prix croissant</option>
-                                <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>Prix décroissant</option>
-                            </select>
-                        </div>
-                        <div class="col-md-1 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
+            <div class="col-lg-9 mt-0 mt-lg-0">
+                <!-- Filters -->
+                <div class="courses-search-wrapper mb-4">
+                    <form method="GET" action="{{ route('courses.index') }}" class="courses-search">
+                        <div class="courses-search__bar">
+                            <label for="search" class="visually-hidden">Recherche</label>
+                            <div class="courses-search__input-wrapper">
                                 <i class="fas fa-search"></i>
+                                <input
+                                    type="text"
+                                    id="search"
+                                    name="search"
+                                    value="{{ request('search') }}"
+                                    placeholder="Rechercher un cours, un formateur..."
+                                >
+                                <button type="submit" class="btn btn-primary courses-search__submit-btn" aria-label="Rechercher">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="courses-search__actions">
+                            <button
+                                class="courses-search__filters-btn toggle-filters-btn {{ $filtersActive ? 'is-active' : '' }}"
+                                type="button"
+                                id="courses-filter-toggle"
+                                aria-expanded="{{ $filtersActive ? 'true' : 'false' }}"
+                                aria-controls="courses-filter-panel"
+                            >
+                                <i class="fas fa-sliders-h me-2"></i>
+                                Filtres avancés
                             </button>
+                            <a href="{{ route('courses.index') }}" class="courses-search__reset-btn">
+                                <i class="fas fa-rotate-left me-2"></i>
+                                Réinitialiser
+                            </a>
+                        </div>
+
+                        <div
+                            id="courses-filter-panel"
+                            class="courses-search__filters{{ $filtersActive ? ' is-visible' : '' }}"
+                        >
+                            <div class="row g-3">
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="category" class="form-label">Catégorie</label>
+                                    <select class="form-select" id="category" name="category">
+                                        <option value="">Toutes les catégories</option>
+                                        @foreach($categories as $category)
+                                            <option value="{{ $category->id }}" {{ request('category') == $category->id ? 'selected' : '' }}>
+                                                {{ $category->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="level" class="form-label">Niveau</label>
+                                    <select class="form-select" id="level" name="level">
+                                        <option value="">Tous les niveaux</option>
+                                        <option value="beginner" {{ request('level') == 'beginner' ? 'selected' : '' }}>Débutant</option>
+                                        <option value="intermediate" {{ request('level') == 'intermediate' ? 'selected' : '' }}>Intermédiaire</option>
+                                        <option value="advanced" {{ request('level') == 'advanced' ? 'selected' : '' }}>Avancé</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="price" class="form-label">Prix</label>
+                                    <select class="form-select" id="price" name="price">
+                                        <option value="">Tous les prix</option>
+                                        <option value="free" {{ request('price') == 'free' ? 'selected' : '' }}>Gratuit</option>
+                                        <option value="paid" {{ request('price') == 'paid' ? 'selected' : '' }}>Payant</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <label for="sort" class="form-label">Trier par</label>
+                                    <select class="form-select" id="sort" name="sort">
+                                        <option value="popular" {{ (request('sort') == 'popular' || !request('sort')) ? 'selected' : '' }}>Plus populaires</option>
+                                        <option value="latest" {{ request('sort') == 'latest' ? 'selected' : '' }}>Plus récents</option>
+                                        <option value="rating" {{ request('sort') == 'rating' ? 'selected' : '' }}>Mieux notés</option>
+                                        <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>Prix croissant</option>
+                                        <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>Prix décroissant</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="courses-search__filters-actions">
+                                <button type="submit" class="btn btn-primary w-100 w-md-auto">
+                                    Appliquer les filtres
+                                </button>
+                            </div>
                         </div>
                     </form>
-                    </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Results -->
-        <div class="row">
-            <div class="col-12">
-                @if($courses->count() > 0)
-                <div id="courses-container" class="row g-3">
-                    @foreach($courses as $course)
-                    <div class="col-lg-4 col-md-6 col-sm-6 course-item">
-                        <div class="course-card">
-                            <div class="card">
-                                <!-- Invisible link to make entire card clickable -->
-                                <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
-                                
-                                <div class="position-relative">
-                                    <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
-                                         class="card-img-top" alt="{{ $course->title }}">
-                            <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
-                                @if($course->is_featured)
-                                <span class="badge bg-warning">En vedette</span>
-                                @endif
-                                @if($course->is_free)
-                                <span class="badge bg-success">Gratuit</span>
-                                @endif
-                                @if($course->sale_price)
-                                <span class="badge bg-danger">
-                                    -{{ round((($course->price - $course->sale_price) / $course->price) * 100) }}%
-                                </span>
-                                @endif
-                            </div>
-                                </div>
-                                <div class="card-body">
-                                    <h6 class="card-title">
-                                        <a href="{{ route('courses.show', $course->slug) }}">
-                                            {{ Str::limit($course->title, 50) }}
-                                        </a>
-                                    </h6>
-                                    <p class="card-text">{{ Str::limit($course->short_description, 100) }}</p>
-                                    
-                                    <div class="instructor-info">
-                                        <small class="instructor-name">
-                                            <i class="fas fa-user me-1"></i>{{ Str::limit($course->instructor->name, 20) }}
-                                        </small>
-                                        <div class="rating">
-                                            <i class="fas fa-star"></i>
-                                            <span>{{ number_format($course->stats['average_rating'] ?? 0, 1) }}</span>
-                                            <span class="text-muted">({{ $course->stats['total_reviews'] ?? 0 }})</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="price-duration">
-                                        <div class="price">
-                                            @if($course->is_free)
-                                                <span class="text-success fw-bold">Gratuit</span>
-                                            @else
-                                                @if($course->sale_price)
-                                                    <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
-                                                    <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
-                                                @else
-                                                    <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
-                                                @endif
-                                            @endif
-                                        </div>
-                                        @if($course->sale_price && $course->sale_end_at)
-                                            <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
-                                                <i class="fas fa-fire me-1 text-danger"></i>
-                                                <span class="countdown-text">
-                                                    <span class="countdown-years">0</span>a 
-                                                    <span class="countdown-months">0</span>m 
-                                                    <span class="countdown-days">0</span>j 
-                                                    <span class="countdown-hours">0</span>h 
-                                                    <span class="countdown-minutes">0</span>min
-                                                </span>
-                                            </div>
+                <!-- Results -->
+                <div class="row">
+                    <div class="col-12">
+                        @if($courses->count() > 0)
+                        <div id="courses-container" class="row g-3">
+                            @foreach($courses as $course)
+                            <div class="col-lg-4 col-md-6 col-sm-6 course-item">
+                                <div class="course-card">
+                                    <div class="card course-card-inner">
+                                        <!-- Invisible link to make entire card clickable -->
+                                        <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
+                                        
+                                        <div class="position-relative">
+                                            <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
+                                                 class="card-img-top" alt="{{ $course->title }}">
+                                    <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
+                                        @if($course->is_featured)
+                                        <span class="badge bg-warning">En vedette</span>
+                                        @endif
+                                        @if($course->is_free)
+                                        <span class="badge bg-success">Gratuit</span>
+                                        @endif
+                                        @if($course->sale_price)
+                                        <span class="badge bg-danger">
+                                            -{{ round((($course->price - $course->sale_price) / $course->price) * 100) }}%
+                                        </span>
                                         @endif
                                     </div>
-                                    
-                                    <div class="card-actions">
-                                        <x-course-button :course="$course" size="small" :show-cart="false" />
+                                        </div>
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <a href="{{ route('courses.show', $course->slug) }}">
+                                                    {{ Str::limit($course->title, 50) }}
+                                                </a>
+                                            </h6>
+                                            <p class="card-text">{{ Str::limit($course->short_description, 100) }}</p>
+                                            
+                                            <div class="instructor-info">
+                                                <small class="instructor-name">
+                                                    <i class="fas fa-user me-1"></i>{{ Str::limit($course->instructor->name, 20) }}
+                                                </small>
+                                                <div class="rating">
+                                                    <i class="fas fa-star"></i>
+                                                    <span>{{ number_format($course->stats['average_rating'] ?? 0, 1) }}</span>
+                                                    <span class="text-muted">({{ $course->stats['total_reviews'] ?? 0 }})</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="price-duration">
+                                                <div class="price">
+                                                    @if($course->is_free)
+                                                        <span class="text-success fw-bold">Gratuit</span>
+                                                    @else
+                                                        @if($course->sale_price)
+                                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                                                            <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
+                                                        @else
+                                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
+                                                        @endif
+                                                    @endif
+                                                </div>
+                                                @if($course->sale_price && $course->sale_end_at)
+                                                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                                        <i class="fas fa-fire me-1 text-danger"></i>
+                                                        <span class="countdown-text">
+                                                            <span class="countdown-years">0</span>a 
+                                                            <span class="countdown-months">0</span>m 
+                                                            <span class="countdown-days">0</span>j 
+                                                            <span class="countdown-hours">0</span>h 
+                                                            <span class="countdown-minutes">0</span>min
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            
+                                            <div class="card-actions mt-2">
+                                                <x-course-button :course="$course" size="small" :show-cart="false" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            @endforeach
                         </div>
-                    </div>
-                    @endforeach
-                </div>
 
-                <!-- Loading Indicator -->
-                <div id="loading-indicator" class="text-center mt-5" style="display: none;">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Chargement...</span>
-                    </div>
-                    <p class="mt-2">Chargement de plus de cours...</p>
-                </div>
+                        <!-- Loading Indicator -->
+                        <div id="loading-indicator" class="text-center mt-5" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Chargement...</span>
+                            </div>
+                            <p class="mt-2">Chargement de plus de cours...</p>
+                        </div>
 
-                <!-- End Indicator -->
-                <div id="end-indicator" class="text-center mt-5" style="display: none;">
-                    <p class="text-muted">Vous avez vu tous les cours disponibles.</p>
-                </div>
-            @else
-                <div class="text-center py-5">
-                    <div class="mb-4">
-                        <i class="fas fa-search fa-4x text-muted"></i>
+                        <!-- End Indicator -->
+                        <div id="end-indicator" class="text-center mt-5" style="display: none;">
+                            <p class="text-muted">Vous avez vu tous les cours disponibles.</p>
+                        </div>
+                    @else
+                        <div class="text-center py-5">
+                            <div class="mb-4">
+                                <i class="fas fa-search fa-4x text-muted"></i>
+                            </div>
+                            <h3 class="text-muted">Aucun cours trouvé</h3>
+                            <p class="text-muted">Essayez de modifier vos critères de recherche</p>
+                            <a href="{{ route('courses.index') }}" class="btn btn-primary">
+                                Voir tous les cours
+                            </a>
+                        </div>
+                    @endif
                     </div>
-                    <h3 class="text-muted">Aucun cours trouvé</h3>
-                    <p class="text-muted">Essayez de modifier vos critères de recherche</p>
-                    <a href="{{ route('courses.index') }}" class="btn btn-primary">
-                        Voir tous les cours
-                    </a>
                 </div>
-            @endif
             </div>
         </div>
     </div>
@@ -199,25 +262,222 @@
 
 @push('styles')
 <style>
-/* Ensure page header is not hidden by fixed navbar */
-body {
-    padding-top: 40px;
+.courses-page-head {
+    row-gap: 0.6rem;
 }
 
-.page-header-section {
-    margin-top: -40px;
-    padding-top: 50px;
+.courses-page-title {
+    margin: 0;
+    font-size: clamp(1.55rem, 1.35rem + 0.6vw, 1.95rem);
+    font-weight: 700;
+    color: #0f172a;
 }
 
-@media (min-width: 992px) {
-    body {
-        padding-top: 40px;
-    }
-    
-    .page-header-section {
-        margin-top: -40px;
-        padding-top: 50px;
-    }
+.courses-page-description {
+    margin-top: 0.06rem;
+    margin-bottom: 0;
+    color: #475569;
+    max-width: 640px;
+}
+
+.courses-page-layout {
+    row-gap: 2.5rem;
+}
+
+.courses-categories-panel {
+    position: sticky;
+    top: calc(var(--site-navbar-height, 64px) + 1.5rem);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    box-shadow: 0 20px 45px -35px rgba(15, 23, 42, 0.35);
+}
+
+.courses-categories-panel__header {
+    display: flex;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(180deg, #003366 0%, #022447 100%);
+    color: #ffffff;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.95rem;
+}
+
+.courses-categories-panel__nav {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+}
+
+.courses-categories-panel__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 1.2rem;
+    color: #1f2937;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.82rem;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.courses-categories-panel__link:last-child {
+    border-bottom: 0;
+}
+
+.courses-categories-panel__link i {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.courses-categories-panel__link:hover {
+    background: rgba(12, 74, 110, 0.08);
+    color: #0c4a6e;
+    transform: translateX(4px);
+}
+
+.courses-categories-panel__link:hover i {
+    transform: translateX(4px);
+    color: #0c4a6e;
+}
+
+.courses-categories-panel__link.is-active {
+    background: rgba(12, 74, 110, 0.12);
+    color: #0c4a6e;
+}
+
+.courses-categories-panel__link.is-active i {
+    color: #0c4a6e;
+}
+
+.courses-search-wrapper {
+    background: #ffffff;
+    border-radius: 1.25rem;
+    padding: clamp(0.85rem, 0.8rem + 0.4vw, 1.25rem);
+    box-shadow: 0 20px 40px -38px rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+.courses-search {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.courses-search__bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.courses-search__input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.3rem 0.3rem 0.3rem 0.75rem;
+    gap: 0.55rem;
+}
+
+.courses-search__input-wrapper i {
+    color: #0ea5e9;
+    font-size: 0.9rem;
+}
+
+.courses-search__input-wrapper input {
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    padding: 0.28rem 0.55rem;
+    font-size: 0.9rem;
+    min-width: 0;
+}
+
+.courses-search__input-wrapper input:focus {
+    outline: none;
+}
+
+.courses-search__input-wrapper button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    padding: 0.4rem 1.15rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex: 0 0 auto;
+}
+
+.courses-search__submit-btn i {
+    font-size: 0.95rem;
+}
+
+.courses-search__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.courses-search__filters-btn,
+.courses-search__reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid #e1e7ef;
+    background: #ffffff;
+    color: #0f172a;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.88rem;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.courses-search__filters-btn:hover,
+.courses-search__filters-btn:focus,
+.courses-search__reset-btn:hover,
+.courses-search__reset-btn:focus {
+    background: rgba(14, 165, 233, 0.12);
+    border-color: #0ea5e9;
+    color: #0f172a;
+}
+
+.courses-search__filters-btn.is-active {
+    background: #0ea5e9;
+    border-color: #0ea5e9;
+    color: #ffffff;
+}
+
+.courses-search__filters-btn.is-active:hover {
+    background: #0284c7;
+}
+
+.courses-search__filters {
+    border-top: 1px solid rgba(226, 232, 240, 0.6);
+    padding-top: 0.85rem;
+    display: none;
+}
+
+.courses-search__filters.is-visible {
+    display: block;
+}
+
+.courses-search__filters-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.65rem;
+}
+
+.courses-search__filters .form-label {
+    font-weight: 600;
+    color: #0f172a;
 }
 
 .hover-lift {
@@ -229,32 +489,200 @@ body {
     box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
 }
 
-.course-card .card:hover {
+.course-card-inner {
+    padding: 0.6rem;
+    border: 1px solid rgba(226, 232, 240, 0.7);
+    border-radius: 1.1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+}
+
+.course-card-inner:hover {
     border-color: #ffcc33 !important;
+    box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.3);
 }
 
-.rating i {
-    font-size: 0.9em; /* relative to parent */
+.course-card-inner .card-body {
+    padding: 0.6rem 0 0;
 }
 
-.pagination {
-    justify-content: center;
+.course-card-inner .card-body .card-text {
+    font-weight: 400;
+    color: #475569;
+    font-size: 0.92rem;
+    line-height: 1.45;
 }
 
-.page-link {
-    color: #003366;
-    border-color: #dee2e6;
+.course-card-inner .card-body .price {
+    font-size: 1rem;
+    font-weight: 600;
 }
 
-.page-link:hover {
-    color: #ffcc33;
-    background-color: #f8f9fa;
-    border-color: #dee2e6;
+.price-duration {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
 }
 
-.page-item.active .page-link {
-    background-color: #003366;
-    border-color: #003366;
+.price-duration .promotion-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: #ef4444;
+}
+
+.price-duration .promotion-countdown i {
+    font-size: 0.8rem;
+}
+
+@media (max-width: 991.98px) {
+    .page-content-section .container {
+        padding-top: calc(var(--site-navbar-height, 64px) + 0.1rem);
+    }
+
+    .courses-page-head {
+        text-align: center;
+        margin-top: 0;
+    }
+
+    .courses-page-description {
+        margin-inline: auto;
+    }
+
+    .courses-search__filters-actions {
+        flex-direction: column;
+        gap: 0.45rem;
+        align-items: stretch;
+    }
+
+    .courses-search__filters-actions .btn {
+        width: 100%;
+    }
+
+    .courses-search__bar {
+        gap: 0.5rem;
+    }
+
+    .courses-search__input-wrapper {
+        padding: 0.3rem 0.35rem;
+        border-radius: 9px;
+        gap: 0.4rem;
+    }
+
+    .courses-search__input-wrapper input {
+        font-size: 0.78rem;
+    }
+
+    .courses-search__input-wrapper button {
+        padding: 0.32rem 0.75rem;
+        font-size: 0.78rem;
+        min-height: 36px;
+        width: auto;
+    }
+    
+    .courses-search__submit-btn {
+        padding: 0.3rem 0.6rem;
+        min-height: 34px;
+    }
+
+    .courses-search__actions {
+        width: 100%;
+        gap: 0.25rem;
+    }
+
+    .courses-search__filters-btn,
+    .courses-search__reset-btn {
+        flex: 1 1 0;
+        justify-content: center;
+        font-size: 0.7rem;
+        padding: 0.32rem 0.65rem;
+        min-height: 34px;
+    }
+
+    .courses-categories-panel {
+        position: fixed;
+        top: calc(var(--site-navbar-height, 64px));
+        left: 0;
+        right: 0;
+        z-index: 1030;
+        border-radius: 0;
+        box-shadow: 0 20px 40px -25px rgba(2, 36, 71, 0.55);
+    }
+
+    .courses-categories-panel__header {
+        display: none;
+    }
+
+    .courses-categories-panel__nav {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 0.25rem;
+        padding: 0.65rem 0.75rem;
+    }
+
+    .courses-categories-panel__nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .courses-categories-panel__link {
+        flex: 0 0 auto;
+        border: 0;
+        border-radius: 999px;
+        padding: 0.65rem 1.1rem;
+        background: rgba(15, 23, 42, 0.05);
+        color: #0f172a;
+        font-size: 0.7rem;
+    }
+
+    .courses-categories-panel__link i {
+        display: none;
+    }
+
+    .courses-categories-panel__link.is-active {
+        background: #ffffff;
+        color: #0c4a6e;
+        box-shadow: 0 14px 30px -20px rgba(15, 23, 42, 0.55);
+    }
+
+    .course-card-inner {
+        padding: 0.5rem;
+    }
+
+    .course-card-inner .card-body {
+        padding-top: 0.45rem;
+        padding-bottom: 0.45rem;
+    }
+
+    .price-duration {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .price-duration .promotion-countdown {
+        margin-left: auto;
+        font-size: 0.82rem;
+    }
+
+    .courses-page-title {
+        font-size: 1.15rem;
+    }
+
+    .courses-page-description {
+        font-size: 0.85rem;
+        margin-top: 0.1rem;
+    }
+
+    .courses-page-layout {
+        padding-top: 0.1rem;
+    }
 }
 </style>
 @endpush
@@ -264,6 +692,8 @@ body {
 let currentPage = 1;
 let isLoading = false;
 let hasMore = true;
+let filterToggle;
+let filterPanel;
 
 // Fonction pour charger plus de cours
 function loadMoreCourses() {
@@ -422,6 +852,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingIndicator = document.getElementById('loading-indicator');
     if (loadingIndicator) {
         observer.observe(loadingIndicator);
+    }
+    
+    filterPanel = document.getElementById('courses-filter-panel');
+    filterToggle = document.getElementById('courses-filter-toggle');
+
+    if (filterPanel && filterToggle) {
+        const updateToggleState = (isShown) => {
+            if (isShown) {
+                filterToggle.classList.add('is-active');
+                filterToggle.setAttribute('aria-expanded', 'true');
+                filterToggle.innerHTML = '<i class="fas fa-sliders-h me-2"></i>Masquer les filtres';
+            } else {
+                filterToggle.classList.remove('is-active');
+                filterToggle.setAttribute('aria-expanded', 'false');
+                filterToggle.innerHTML = '<i class="fas fa-sliders-h me-2"></i>Filtres avancés';
+            }
+        };
+
+        updateToggleState(filterPanel.classList.contains('is-visible'));
+
+        filterToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            const willShow = !filterPanel.classList.contains('is-visible');
+            filterPanel.classList.toggle('is-visible', willShow);
+            updateToggleState(willShow);
+        });
     }
     
     // Mettre à jour le compteur du panier (attendre que la fonction globale soit chargée)

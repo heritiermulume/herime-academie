@@ -12,16 +12,54 @@ class OrderController extends Controller
     /**
      * Afficher les commandes de l'utilisateur connecté (étudiant)
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
-        
-        $orders = Order::where('user_id', $user->id)
-            ->with(['enrollments.course'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
 
-        return view('students.orders', compact('orders'));
+        $status = $request->get('status', 'all');
+        $search = $request->get('q');
+
+        $ordersQuery = Order::where('user_id', $user->id)
+            ->with(['enrollments.course'])
+            ->latest();
+
+        if ($status !== 'all') {
+            $ordersQuery->where('status', $status);
+        }
+
+        if (!empty($search)) {
+            $ordersQuery->where(function ($query) use ($search) {
+                $query->where('order_number', 'like', '%' . $search . '%')
+                    ->orWhere('payment_reference', 'like', '%' . $search . '%');
+            });
+        }
+
+        $orders = $ordersQuery->paginate(10)->withQueryString();
+
+        $summaryBase = Order::where('user_id', $user->id);
+
+        $summary = [
+            'total' => (clone $summaryBase)->count(),
+            'pending' => (clone $summaryBase)->where('status', 'pending')->count(),
+            'confirmed' => (clone $summaryBase)->where('status', 'confirmed')->count(),
+            'paid' => (clone $summaryBase)->where('status', 'paid')->count(),
+            'completed' => (clone $summaryBase)->where('status', 'completed')->count(),
+            'cancelled' => (clone $summaryBase)->where('status', 'cancelled')->count(),
+            'total_spent' => (clone $summaryBase)
+                ->whereIn('status', ['paid', 'completed'])
+                ->get()
+                ->sum(function ($order) {
+                    return $order->total_amount ?? $order->total ?? 0;
+                }),
+            'last_order' => (clone $summaryBase)->latest('created_at')->first(),
+        ];
+
+        return view('students.orders', [
+            'orders' => $orders,
+            'status' => $status,
+            'search' => $search,
+            'summary' => $summary,
+        ]);
     }
 
     /**
