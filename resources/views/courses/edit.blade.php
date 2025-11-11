@@ -249,34 +249,92 @@
                 </div>
             </header>
 
+            @php
+                $requirements = old('requirements', $course->requirements ?? ['']);
+                $requirements = is_array($requirements) ? $requirements : (array) $requirements;
+                if (empty($requirements)) {
+                    $requirements = [''];
+                }
+
+                $learnings = old('what_you_will_learn', $course->what_you_will_learn ?? ['']);
+                $learnings = is_array($learnings) ? $learnings : (array) $learnings;
+                if (empty($learnings)) {
+                    $learnings = [''];
+                }
+
+                $tags = old('tags', $course->tags ?? ['']);
+                if (is_string($tags)) {
+                    $tags = array_filter(array_map('trim', explode(',', $tags)));
+                }
+                $tags = is_array($tags) ? $tags : (array) $tags;
+                if (empty($tags)) {
+                    $tags = [''];
+                }
+            @endphp
+
             <div class="create-course__lists">
-                <x-instructor-dynamic-list
-                    id="edit-requirements"
-                    name="requirements[]"
-                    title="Prérequis"
-                    helper="Ajoutez les prérequis nécessaires avant de démarrer le cours."
-                    :items="old('requirements', $course->requirements ?? [''])"
-                    placeholder="Ex : Notions de base en informatique"
-                />
+                <div class="create-course__list">
+                    <div class="create-course__list-head">
+                        <h3>Prérequis</h3>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="CreateCourseForm.addItem('requirements')">
+                            <i class="fas fa-plus me-1"></i>Ajouter
+                        </button>
+                    </div>
+                    <div id="requirements-list" class="create-course__list-items" data-type="requirements">
+                        @foreach($requirements as $requirement)
+                            <div class="create-course__list-item">
+                                <input type="text" name="requirements[]" value="{{ $requirement }}" placeholder="Ex : Notions de base en informatique">
+                                <button type="button" class="btn btn-link text-danger" onclick="CreateCourseForm.removeItem(this)" aria-label="Supprimer">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                    <p class="create-course__helper">Ajoutez les prérequis nécessaires avant de démarrer le cours.</p>
+                    @error('requirements') <span class="create-course__error">{{ $message }}</span> @enderror
+                </div>
 
-                <x-instructor-dynamic-list
-                    id="edit-learnings"
-                    name="what_you_will_learn[]"
-                    title="Ce que les apprenants vont maîtriser"
-                    helper="Mettez en avant les compétences clés qui seront acquises."
-                    :items="old('what_you_will_learn', $course->what_you_will_learn ?? [''])"
-                    placeholder="Ex : Construire une API Laravel"
-                />
+                <div class="create-course__list">
+                    <div class="create-course__list-head">
+                        <h3>Ce que les apprenants vont maîtriser</h3>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="CreateCourseForm.addItem('learnings')">
+                            <i class="fas fa-plus me-1"></i>Ajouter
+                        </button>
+                    </div>
+                    <div id="learnings-list" class="create-course__list-items" data-type="learnings">
+                        @foreach($learnings as $learning)
+                            <div class="create-course__list-item">
+                                <input type="text" name="what_you_will_learn[]" value="{{ $learning }}" placeholder="Ex : Construire une API Laravel">
+                                <button type="button" class="btn btn-link text-danger" onclick="CreateCourseForm.removeItem(this)" aria-label="Supprimer">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                    <p class="create-course__helper">Mettez en avant les compétences clés qui seront acquises.</p>
+                    @error('what_you_will_learn') <span class="create-course__error">{{ $message }}</span> @enderror
+                </div>
 
-                <x-instructor-dynamic-list
-                    id="edit-tags"
-                    name="tags[]"
-                    title="Tags"
-                    helper="Ajoutez des mots-clés pour optimiser la recherche."
-                    :items="old('tags', $course->tags ?? [''])"
-                    placeholder="Ex : backend"
-                    variant="chips"
-                />
+                <div class="create-course__list create-course__list--wide">
+                    <div class="create-course__list-head">
+                        <h3>Tags</h3>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="CreateCourseForm.addItem('tags')">
+                            <i class="fas fa-plus me-1"></i>Ajouter
+                        </button>
+                    </div>
+                    <div id="tags-list" class="create-course__list-items create-course__list-items--chips" data-type="tags">
+                        @foreach($tags as $tag)
+                            <div class="create-course__list-item create-course__list-item--chip">
+                                <input type="text" name="tags[]" value="{{ $tag }}" placeholder="Ex : backend">
+                                <button type="button" class="btn btn-link text-danger" onclick="CreateCourseForm.removeItem(this)" aria-label="Supprimer">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                    <p class="create-course__helper">Ajoutez des mots-clés pour optimiser la recherche.</p>
+                    @error('tags') <span class="create-course__error">{{ $message }}</span> @enderror
+                </div>
             </div>
         </section>
 
