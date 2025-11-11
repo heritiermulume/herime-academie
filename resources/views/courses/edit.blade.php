@@ -110,13 +110,53 @@
             </header>
 
             <div class="create-course__media">
-                <x-instructor-media-field
-                    type="image"
-                    name="thumbnail"
-                    :current-url="$course->thumbnail_url"
-                    label="Image de couverture"
-                    helper="JPG, PNG ou WEBP – 5 Mo max."
-                />
+                @php
+                    $currentThumbnailUrl = $course->thumbnail_url;
+                @endphp
+                <div class="create-course__upload" data-media="thumbnail">
+                    <label for="thumbnail">Image de couverture</label>
+                    <input
+                        type="file"
+                        id="thumbnail"
+                        name="thumbnail"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        class="create-course__upload-input"
+                        data-role="media-input"
+                    >
+                    <div class="create-course__upload-box" data-role="media-dropzone" tabindex="0">
+                        <div class="create-course__upload-placeholder {{ $currentThumbnailUrl ? 'is-hidden' : '' }}" data-role="media-placeholder">
+                            <i class="fas fa-image"></i>
+                            <span>Sélectionner une image</span>
+                            <small>JPG, PNG ou WEBP – 5 Mo max.</small>
+                        </div>
+                        <div class="create-course__upload-selected {{ $currentThumbnailUrl ? '' : 'is-hidden' }}" data-role="media-preview">
+                            <div class="create-course__upload-thumb" data-role="media-thumb">
+                                @if($currentThumbnailUrl)
+                                    <img src="{{ $currentThumbnailUrl }}" alt="Image de couverture actuelle">
+                                @else
+                                    <i class="fas fa-file-image"></i>
+                                @endif
+                            </div>
+                            <div class="create-course__upload-selected__body">
+                                <span data-role="media-filename">
+                                    @if($currentThumbnailUrl)
+                                        {{ basename(parse_url($currentThumbnailUrl, PHP_URL_PATH) ?? $currentThumbnailUrl) }}
+                                    @endif
+                                </span>
+                                <div class="create-course__upload-actions">
+                                    <button type="button" class="create-course__upload-change {{ $currentThumbnailUrl ? '' : 'is-hidden' }}" data-role="media-change">
+                                        Changer de fichier
+                                    </button>
+                                    <button type="button" class="create-course__upload-clear {{ $currentThumbnailUrl ? '' : 'is-hidden' }}" data-role="media-clear">
+                                        Retirer le fichier
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="create-course__error is-hidden" data-role="media-error"></span>
+                    @error('thumbnail') <span class="create-course__error">{{ $message }}</span> @enderror
+                </div>
 
                 <div class="create-course__upload" data-media="video_preview">
                     <label for="video_preview">Vidéo de prévisualisation</label>
