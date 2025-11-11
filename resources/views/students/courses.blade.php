@@ -114,6 +114,14 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @php
+                            $statusMap = [
+                                'active' => ['label' => 'En cours', 'class' => 'info'],
+                                'completed' => ['label' => 'Terminé', 'class' => 'success'],
+                                'suspended' => ['label' => 'Suspendu', 'class' => 'warning'],
+                                'cancelled' => ['label' => 'Annulé', 'class' => 'error'],
+                            ];
+                        @endphp
                         @foreach($enrollments as $enrollment)
                             @php($course = $enrollment->course)
                             @if(!$course)
@@ -160,13 +168,11 @@
                                 </td>
                                 <td>
                                     @php
-                                        $statusMap = [
-                                            'active' => ['label' => 'En cours', 'class' => 'info'],
-                                            'completed' => ['label' => 'Terminé', 'class' => 'success'],
-                                            'suspended' => ['label' => 'Suspendu', 'class' => 'warning'],
-                                            'cancelled' => ['label' => 'Annulé', 'class' => 'error'],
+                                        $statusKey = $enrollment->status ?? 'active';
+                                        $statusData = $statusMap[$statusKey] ?? [
+                                            'label' => ($statusKey ? ucfirst((string) $statusKey) : 'Statut'),
+                                            'class' => 'info',
                                         ];
-                                        $statusData = $statusMap[$enrollment->status] ?? ['label' => ucfirst($enrollment->status), 'class' => 'info'];
                                     @endphp
                                     <span class="admin-badge {{ $statusData['class'] }}">
                                         <i class="fas fa-circle"></i>

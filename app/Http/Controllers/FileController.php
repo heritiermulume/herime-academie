@@ -126,11 +126,13 @@ class FileController extends Controller
             return true;
         }
         
-        // Pour les vidéos et leçons, vérifier l'inscription
-        if (in_array($type, ['previews', 'lessons'])) {
-            // Extraire l'ID du cours depuis le chemin si possible
-            // Pour l'instant, on permet l'accès si l'utilisateur est connecté
-            // Vous pouvez améliorer cette logique selon vos besoins
+        // Les vidéos de prévisualisation doivent être accessibles publiquement
+        if ($type === 'previews') {
+            return true;
+        }
+
+        // Pour les leçons, vérifier l'inscription / connexion
+        if ($type === 'lessons') {
             return Auth::check();
         }
         

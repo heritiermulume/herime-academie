@@ -429,7 +429,7 @@ class AdminController extends Controller
             'sale_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
             'is_downloadable' => 'boolean',
-            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:2048', // 2MB max (limite PHP)
+            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:10485760', // 10GB max (kilobytes)
             'download_file_url' => 'nullable|url|max:1000',
             'is_published' => 'boolean',
             'is_featured' => 'boolean',
@@ -443,6 +443,12 @@ class AdminController extends Controller
             'video_preview_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm|max:1048576',
             'video_preview_youtube_id' => 'nullable|string|max:100',
             'video_preview_is_unlisted' => 'boolean',
+            'video_preview_path' => 'nullable|string|max:2048',
+            'video_preview_name' => 'nullable|string|max:255',
+            'video_preview_size' => 'nullable|integer|min:0',
+            'video_preview_path' => 'nullable|string|max:2048',
+            'video_preview_name' => 'nullable|string|max:255',
+            'video_preview_size' => 'nullable|integer|min:0',
             'requirements' => 'nullable|array',
             'what_you_will_learn' => 'nullable|array',
             'meta_description' => 'nullable|string|max:160',
@@ -466,7 +472,7 @@ class AdminController extends Controller
             'thumbnail.max' => 'Le fichier ne doit pas dépasser 5MB.',
             'download_file_path.file' => 'Le fichier de téléchargement doit être un fichier valide.',
             'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz.',
-            'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 2MB. Pour les fichiers plus volumineux, utilisez une URL externe.',
+            'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 10 Go. Pour les fichiers plus volumineux, utilisez une URL externe.',
             'external_payment_url.required_if' => 'L\'URL de paiement externe est requise quand le paiement externe est activé.',
         ]);
 
@@ -510,6 +516,11 @@ class AdminController extends Controller
                     null
                 );
                 $courseData['video_preview'] = $result['path'];
+            } elseif ($request->filled('video_preview_path')) {
+                $sanitizedPath = $this->sanitizeUploadedPath($request->input('video_preview_path'));
+                if ($sanitizedPath) {
+                    $courseData['video_preview'] = $sanitizedPath;
+                }
             }
 
             // Gérer le fichier de téléchargement spécifique
@@ -598,6 +609,11 @@ class AdminController extends Controller
                                     $result = $this->fileUploadService->upload($uploaded, 'courses/lessons', null);
                                 }
                                 $filePath = $result['path'];
+                            } else {
+                                $chunkPath = $this->sanitizeUploadedPath($lessonData['content_file_path'] ?? null);
+                                if ($chunkPath) {
+                                    $filePath = $chunkPath;
+                                }
                             }
 
                             $section->lessons()->create([
@@ -662,7 +678,7 @@ class AdminController extends Controller
             'sale_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
             'is_downloadable' => 'boolean',
-            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:2048', // 2MB max (limite PHP)
+            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:10485760', // 10GB max (kilobytes)
             'download_file_url' => 'nullable|url|max:1000',
             'use_external_payment' => 'boolean',
             'external_payment_url' => 'nullable|url|max:500|required_if:use_external_payment,1',
@@ -702,7 +718,7 @@ class AdminController extends Controller
             'thumbnail.mimes' => 'Le fichier doit être de type: jpeg, png, jpg, gif, webp.',
             'thumbnail.max' => 'Le fichier ne doit pas dépasser 5MB.',
             'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz.',
-            'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 2MB. Pour les fichiers plus volumineux, utilisez une URL externe.',
+            'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 10 Go. Pour les fichiers plus volumineux, utilisez une URL externe.',
             'external_payment_url.required_if' => 'L\'URL de paiement externe est requise quand le paiement externe est activé.',
         ]);
 
@@ -746,6 +762,17 @@ class AdminController extends Controller
                     $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
                 );
                 $data['video_preview'] = $result['path'];
+            } elseif ($request->filled('video_preview_path')) {
+                $sanitizedPath = $this->sanitizeUploadedPath($request->input('video_preview_path'));
+                if ($sanitizedPath) {
+                    $currentPath = $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL)
+                        ? $this->sanitizeUploadedPath($course->video_preview)
+                        : null;
+                    if ($currentPath && $currentPath !== $sanitizedPath) {
+                        $this->fileUploadService->deleteFile($currentPath);
+                    }
+                    $data['video_preview'] = $sanitizedPath;
+                }
             }
 
             // Gérer le fichier de téléchargement spécifique
@@ -888,7 +915,7 @@ class AdminController extends Controller
                         $uploaded = $request->file("sections.$sectionIndex.lessons.$lessonIndex.content_file");
                         $removeExistingFile = in_array($lessonData['remove_existing_file'] ?? false, [1, '1', true, 'true', 'on'], true);
 
-                        $existingHiddenPath = $lessonData['existing_file_path'] ?? null;
+                        $existingHiddenPath = $this->sanitizeUploadedPath($lessonData['existing_file_path'] ?? null);
                         $contentUrl = $lessonData['content_url'] ?? null;
 
                         $currentFilePath = null;
@@ -922,8 +949,22 @@ class AdminController extends Controller
 
                             $contentUrl = $result['path'];
                             $currentFilePath = $contentUrl;
+                            $existingHiddenPath = null;
                             $removeExistingFile = false;
-                        } elseif ($removeExistingFile) {
+                        } else {
+                            $chunkPath = $this->sanitizeUploadedPath($lessonData['content_file_path'] ?? null);
+                            if ($chunkPath) {
+                                if ($currentFilePath && $currentFilePath !== $chunkPath) {
+                                    $this->fileUploadService->deleteFile($currentFilePath);
+                                }
+                                $contentUrl = $chunkPath;
+                                $currentFilePath = $chunkPath;
+                                $existingHiddenPath = null;
+                                $removeExistingFile = false;
+                            }
+                        }
+
+                        if ($removeExistingFile) {
                             if ($currentFilePath) {
                                 $this->fileUploadService->deleteFile($currentFilePath);
                             }
@@ -1773,5 +1814,26 @@ class AdminController extends Controller
 
         return redirect()->route('admin.instructor-applications.show', $application)
             ->with('success', 'Statut de la candidature mis à jour avec succès.');
+    }
+
+    private function sanitizeUploadedPath(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        $clean = trim($path);
+
+        if ($clean === '') {
+            return null;
+        }
+
+        $clean = ltrim($clean, '/');
+
+        if (str_starts_with($clean, 'storage/')) {
+            $clean = ltrim(substr($clean, strlen('storage/')), '/');
+        }
+
+        return $clean;
     }
 }

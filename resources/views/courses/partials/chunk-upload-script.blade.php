@@ -9,10 +9,19 @@
     @endonce
     <script>
         const MAX_THUMBNAIL_SIZE = 5 * 1024 * 1024; // 5MB
-        const MAX_PREVIEW_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
-        const LESSON_FILE_MAX_SIZE = 1024 * 1024 * 1024; // 1GB
-        const CHUNK_SIZE_BYTES = 3 * 1024 * 1024; // 3MB
-        const CHUNK_UPLOAD_ENDPOINT = @json(route('instructor.uploads.chunk'));
+        const MAX_PREVIEW_VIDEO_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
+        const LESSON_FILE_MAX_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
+        const CHUNK_SIZE_BYTES = 1 * 1024 * 1024; // 1MB (aligné avec post_max_size local)
+        @php
+            $chunkRouteName = request()->routeIs('admin.*')
+                ? (Route::has('admin.uploads.chunk') ? 'admin.uploads.chunk' : 'instructor.uploads.chunk')
+                : 'instructor.uploads.chunk';
+        @endphp
+        const CHUNK_UPLOAD_ENDPOINT = (function() {
+            const origin = window.location.origin.replace(/\/+$/, '');
+            const path = "{{ trim(parse_url(route($chunkRouteName), PHP_URL_PATH), '/') }}";
+            return `${origin}/${path}`;
+        })();
         const ENABLE_COURSE_BUILDER = {{ $enableCourseBuilder ? 'true' : 'false' }};
         const existingSections = @json($existingSections);
 
@@ -28,6 +37,57 @@
             const value = bytes / Math.pow(1024, index);
             return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
         };
+
+        const UploadTaskManager = (() => {
+            const randomId = () => `upload-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+            const getModal = () => (typeof window !== 'undefined' ? window.UploadProgressModal : null);
+
+            return {
+                startTask(fileName, fileSize, description, initialMessage = 'Préparation du téléversement…') {
+                    const taskId = randomId();
+                    const modal = getModal();
+                    if (modal) {
+                        modal.startTask(taskId, {
+                            label: fileName,
+                            description,
+                            sizeLabel: formatBytes(fileSize),
+                            initialMessage,
+                        });
+                    }
+                    return taskId;
+                },
+                update(taskId, percent, message) {
+                    const modal = getModal();
+                    if (modal && taskId) {
+                        modal.updateTask(taskId, percent, message);
+                    }
+                },
+                setIndeterminate(taskId) {
+                    const modal = getModal();
+                    if (modal && taskId) {
+                        modal.setIndeterminate(taskId);
+                    }
+                },
+                complete(taskId, message = 'Téléversement terminé') {
+                    const modal = getModal();
+                    if (modal && taskId) {
+                        modal.completeTask(taskId, message);
+                    }
+                },
+                error(taskId, message = 'Erreur lors du téléversement') {
+                    const modal = getModal();
+                    if (modal && taskId) {
+                        modal.errorTask(taskId, message);
+                    }
+                },
+                cancel(taskId) {
+                    const modal = getModal();
+                    if (modal && taskId) {
+                        modal.cancelTask(taskId);
+                    }
+                },
+            };
+        })();
 
         const toggleHidden = (element, shouldHide = true) => {
             if (!element) {
@@ -106,12 +166,17 @@
                     target: CHUNK_UPLOAD_ENDPOINT,
                     chunkSize: CHUNK_SIZE_BYTES,
                     simultaneousUploads: 3,
-                    testChunks: true,
+                    testChunks: false,
                     throttleProgressCallbacks: 1,
                     fileParameterName: 'file',
-                    forceChunkSize: true,
+                    fileType: [
+                        'mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv',
+                        'pdf', 'zip', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'
+                    ],
+                    withCredentials: true,
                     headers: {
                         'X-CSRF-TOKEN': getCsrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
                         Accept: 'application/json',
                     },
                     query: () => ({
@@ -150,10 +215,9 @@
                 };
 
                 resumable.on('fileError', (_resumableFile, message) => handleError(message));
-                resumable.on('error', (message) => handleError(message));
+        resumable.on('error', (message) => handleError(message));
 
                 resumable.addFile(file);
-                resumable.upload();
 
                 return {
                     cancel() {
@@ -511,6 +575,7 @@
 
                 let previewUrl = null;
                 let activeUpload = null;
+                let uploadTaskId = null;
 
                 if (!dropzone || !fileInput || !label) {
                     return;
@@ -524,6 +589,10 @@
                         activeUpload.cancel();
                     }
                     activeUpload = null;
+                    if (uploadTaskId) {
+                        UploadTaskManager.cancel(uploadTaskId);
+                        uploadTaskId = null;
+                    }
                 };
 
                 const updateProgress = (percent = 0) => {
@@ -538,6 +607,11 @@
 
                 const reset = ({ clearUrl = false, keepError = false, clearStored = true } = {}) => {
                     stopActiveUpload();
+
+                    if (uploadTaskId) {
+                        UploadTaskManager.cancel(uploadTaskId);
+                        uploadTaskId = null;
+                    }
 
                     try {
                         fileInput.value = '';
@@ -677,6 +751,15 @@
                         return;
                     }
 
+                    if (uploadTaskId) {
+                        UploadTaskManager.cancel(uploadTaskId);
+                    }
+                    uploadTaskId = UploadTaskManager.startTask(
+                        file.name,
+                        file.size,
+                        'Téléversement du fichier de leçon'
+                    );
+
                     dropzone.classList.add('is-uploading', 'has-file');
                     dropzone.classList.remove('is-complete');
                     toggleHidden(changeBtn, true);
@@ -702,6 +785,7 @@
                         },
                         onProgress: (percent) => {
                             updateProgress(percent);
+                            UploadTaskManager.update(uploadTaskId, percent, 'Téléversement en cours…');
                         },
                         onSuccess: (payload) => {
                             activeUpload = null;
@@ -725,6 +809,10 @@
                             if (sizeInput) {
                                 sizeInput.value = payload.size || file.size;
                             }
+                            if (uploadTaskId) {
+                                UploadTaskManager.complete(uploadTaskId, 'Fichier importé avec succès');
+                                uploadTaskId = null;
+                            }
                         },
                         onError: (message) => {
                             activeUpload = null;
@@ -735,6 +823,10 @@
                             reset({ keepError: true, clearStored: false });
                             if (pathInput && pathInput.value) {
                                 applyStoredFile({ clearError: false });
+                            }
+                            if (uploadTaskId) {
+                                UploadTaskManager.error(uploadTaskId, errorMessage);
+                                uploadTaskId = null;
                             }
                         },
                     });
@@ -804,6 +896,10 @@
                     event.preventDefault();
                     dropzone.classList.remove('is-active');
                     const fileList = event.dataTransfer?.files || null;
+                    if (fileList && fileList.length > 1) {
+                        showError('Veuillez sélectionner un seul fichier à la fois.');
+                        return;
+                    }
                     const file = fileList && fileList[0];
                     if (!file) {
                         return;
@@ -817,6 +913,16 @@
                 });
 
                 fileInput.addEventListener('change', () => {
+                    if (fileInput.files && fileInput.files.length > 1) {
+                        showError('Veuillez sélectionner un seul fichier à la fois.');
+                        reset({ keepError: true });
+                        try {
+                            fileInput.value = '';
+                        } catch (error) {
+                            // ignore
+                        }
+                        return;
+                    }
                     const file = fileInput.files && fileInput.files[0];
                     handleFileSelection(file);
                 });
@@ -905,6 +1011,7 @@
 
             let previewUrl = null;
             let activeUpload = null;
+            let uploadTaskId = null;
 
             if (!dropzone || !input) {
                 return;
@@ -915,6 +1022,10 @@
                     activeUpload.cancel();
                 }
                 activeUpload = null;
+                if (uploadTaskId) {
+                    UploadTaskManager.cancel(uploadTaskId);
+                    uploadTaskId = null;
+                }
             };
 
             const updateProgress = (percent = 0) => {
@@ -929,6 +1040,11 @@
 
             const reset = ({ keepError = false, clearStored = true } = {}) => {
                 stopActiveUpload();
+
+                if (uploadTaskId) {
+                    UploadTaskManager.cancel(uploadTaskId);
+                    uploadTaskId = null;
+                }
 
                 try {
                     input.value = '';
@@ -1080,6 +1196,15 @@
                     return;
                 }
 
+                if (uploadTaskId) {
+                    UploadTaskManager.cancel(uploadTaskId);
+                }
+                uploadTaskId = UploadTaskManager.startTask(
+                    file.name,
+                    file.size,
+                    'Téléversement de la vidéo de prévisualisation'
+                );
+
                 dropzone.classList.add('is-uploading', 'has-file');
                 dropzone.classList.remove('is-complete');
                 toggleHidden(changeBtn, true);
@@ -1103,6 +1228,7 @@
                     },
                     onProgress: (percent) => {
                         updateProgress(percent);
+                        UploadTaskManager.update(uploadTaskId, percent, 'Téléversement en cours…');
                     },
                     onSuccess: (payload) => {
                         activeUpload = null;
@@ -1128,6 +1254,10 @@
                         if (sizeInput) {
                             sizeInput.value = payload.size || file.size;
                         }
+                        if (uploadTaskId) {
+                            UploadTaskManager.complete(uploadTaskId, 'Vidéo importée avec succès');
+                            uploadTaskId = null;
+                        }
                     },
                     onError: (message) => {
                         activeUpload = null;
@@ -1138,6 +1268,10 @@
                         reset({ keepError: true, clearStored: false });
                         if (pathInput && pathInput.value) {
                             applyStoredMedia({ clearError: false });
+                        }
+                        if (uploadTaskId) {
+                            UploadTaskManager.error(uploadTaskId, errorMessage);
+                            uploadTaskId = null;
                         }
                     },
                 });
@@ -1212,6 +1346,10 @@
                 event.preventDefault();
                 dropzone.classList.remove('is-active');
                 const fileList = event.dataTransfer?.files || null;
+                if (fileList && fileList.length > 1) {
+                    showError('Veuillez sélectionner un seul fichier à la fois.');
+                    return;
+                }
                 const file = fileList && fileList[0];
                 if (!file) {
                     return;
@@ -1232,6 +1370,16 @@
             });
 
             input.addEventListener('change', () => {
+                if (input.files && input.files.length > 1) {
+                    showError('Veuillez sélectionner un seul fichier à la fois.');
+                    reset({ keepError: true });
+                    try {
+                        input.value = '';
+                    } catch (error) {
+                        // ignore
+                    }
+                    return;
+                }
                 const file = input.files && input.files[0];
                 handleFile(file);
             });

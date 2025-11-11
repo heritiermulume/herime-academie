@@ -5,15 +5,15 @@
 @section('content')
 <div class="container-fluid py-0">
     <!-- Top Bar with Back to Dashboard -->
-    <div class="text-white px-3 py-2 d-flex align-items-center rounded-3 mb-2" style="background-color:#003366;">
+    <div class="text-white px-3 py-2 d-flex align-items-center justify-content-between justify-content-sm-start top-bar-return rounded-3 mb-2" style="background-color:#003366;">
         <a href="{{ route('student.dashboard') }}" class="btn btn-outline-light btn-sm" title="Tableau de bord">
             <i class="fas fa-tachometer-alt"></i>
         </a>
-        <span class="ms-3 small text-white-50">Retour au tableau de bord</span>
+        <span class="ms-3 small text-white-50 flex-grow-1 flex-sm-grow-0">Retour au tableau de bord</span>
     </div>
     <div class="row">
         <!-- Sidebar -->
-        <div class="col-lg-3 col-md-4">
+        <div class="col-lg-3 col-md-4 order-2 order-lg-1">
             <div class="course-sidebar bg-light">
                 <!-- Course Header -->
                 <div class="p-3 border-bottom">
@@ -45,7 +45,7 @@
                         <div class="collapse" id="section{{ $section->id }}">
                             <div class="lessons-list">
                                 @foreach($section->lessons as $lesson)
-                                <div class="lesson-item p-3 border-bottom {{ in_array($lesson->id, $enrollment->completed_lessons ?? []) ? 'completed' : '' }} {{ $lesson->is_preview ? 'preview' : '' }}">
+                                <div class="lesson-item p-3 border-bottom {{ in_array($lesson->id, $enrollment->completed_lessons ?? []) ? 'completed' : '' }} {{ $lesson->is_preview ? 'preview' : '' }}" data-lesson-id="{{ $lesson->id }}">
                                     <div class="d-flex align-items-center">
                                         <div class="lesson-icon me-3">
                                             @if(in_array($lesson->id, $enrollment->completed_lessons ?? []))
@@ -85,11 +85,15 @@
                     </div>
                     @endforeach
                 </div>
+
+                <div class="d-block d-lg-none mt-4">
+                    @include('students.partials.course-info-section', ['course' => $course, 'enrollment' => $enrollment])
+                </div>
             </div>
         </div>
 
         <!-- Main Content -->
-        <div class="col-lg-9 col-md-8">
+        <div class="col-lg-9 col-md-8 order-1 order-lg-2">
             <div class="learning-content">
                 <!-- Video Player -->
                 <div class="video-container bg-dark">
@@ -154,55 +158,8 @@
                         </div>
 
                         <!-- Course Info -->
-                        <div class="col-lg-4">
-                            <div class="card border-0 shadow-sm mb-4">
-                                <div class="card-header bg-primary text-white py-3">
-                                    <h5 class="mb-0 fw-bold">Informations du cours</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="mb-3">
-                                        <h6 class="fw-bold">Formateur</h6>
-                                        <div class="d-flex align-items-center">
-                                            <img src="{{ $course->instructor->avatar ? $course->instructor->avatar : 'https://ui-avatars.com/api/?name=' . urlencode($course->instructor->name) . '&background=003366&color=fff' }}" 
-                                                 alt="{{ $course->instructor->name }}" class="rounded-circle me-2" width="30" height="30">
-                                            <span>{{ $course->instructor->name }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <h6 class="fw-bold">Progression</h6>
-                                        <div class="progress mb-2" style="height: 8px;">
-                                            <div class="progress-bar bg-primary" role="progressbar" 
-                                                 style="width: {{ $enrollment->progress }}%" 
-                                                 aria-valuenow="{{ $enrollment->progress }}" 
-                                                 aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                        <small class="text-muted">{{ $enrollment->progress }}% terminé</small>
-                                    </div>
-                                    <div class="mb-3">
-                                        <h6 class="fw-bold">Temps restant</h6>
-                                        <small class="text-muted" id="timeRemaining">Calcul en cours...</small>
-                                    </div>
-                                    <div class="mb-3">
-                                        <h6 class="fw-bold">Leçons terminées</h6>
-                                        <small class="text-muted">
-                                            {{ count($enrollment->completed_lessons ?? []) }} / {{ $course->lessons_count }}
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Course Notes -->
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-light py-3">
-                                    <h5 class="mb-0 fw-bold">Mes notes</h5>
-                                </div>
-                                <div class="card-body">
-                                    <textarea class="form-control" rows="4" placeholder="Prenez des notes sur cette leçon..."></textarea>
-                                    <button class="btn btn-primary btn-sm mt-2">
-                                        <i class="fas fa-save me-1"></i>Sauvegarder
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="col-lg-4 d-none d-lg-block">
+                            @include('students.partials.course-info-section', ['course' => $course, 'enrollment' => $enrollment])
                         </div>
                     </div>
                 </div>
@@ -222,7 +179,9 @@ let enrollmentData = @json($enrollment);
 function initializeCourse() {
     // Set up lesson click handlers
     document.querySelectorAll('.lesson-item').forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
             const lessonId = this.dataset.lessonId;
             if (lessonId) {
                 loadLesson(lessonId);
@@ -269,10 +228,32 @@ function loadLesson(lessonId) {
     document.querySelectorAll('.lesson-item').forEach(item => {
         item.classList.remove('active');
     });
-    document.querySelector(`[data-lesson-id="${lessonId}"]`).classList.add('active');
+    const selectedLessonElement = document.querySelector(`[data-lesson-id="${lessonId}"]`);
+    if (selectedLessonElement) {
+        selectedLessonElement.classList.add('active');
+
+        const parentCollapse = selectedLessonElement.closest('.collapse');
+        if (parentCollapse && !parentCollapse.classList.contains('show')) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+                bootstrap.Collapse.getOrCreateInstance(parentCollapse, { toggle: false }).show();
+            } else {
+                parentCollapse.classList.add('show');
+            }
+        }
+    }
     
     // Update navigation buttons
     updateNavigationButtons();
+
+    // Scroll to the top (useful for mobile to reveal the player)
+    if (window.matchMedia('(max-width: 991.98px)').matches) {
+        const learningContent = document.querySelector('.learning-content');
+        if (learningContent) {
+            learningContent.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
 }
 
 // Mark lesson as complete
@@ -340,7 +321,9 @@ function calculateTimeRemaining() {
         timeText = `${minutes}min`;
     }
     
-    document.getElementById('timeRemaining').textContent = timeText;
+    document.querySelectorAll('.time-remaining-placeholder').forEach(element => {
+        element.textContent = timeText;
+    });
 }
 
 // Update navigation buttons
@@ -383,6 +366,14 @@ document.addEventListener('DOMContentLoaded', initializeCourse);
     top: 0;
     height: 100vh;
     overflow-y: auto;
+}
+
+.top-bar-return {
+    gap: 0.75rem;
+}
+
+.top-bar-return .btn {
+    flex: 0 0 auto;
 }
 
 .section-header {
@@ -459,6 +450,24 @@ document.addEventListener('DOMContentLoaded', initializeCourse);
 .card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+@media (max-width: 991.98px) {
+    .course-sidebar {
+        position: static;
+        height: auto;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .top-bar-return {
+        gap: 0.5rem;
+    }
+
+    .top-bar-return span {
+        font-size: 0.75rem;
+        flex-grow: 0;
+    }
 }
 </style>
 @endpush

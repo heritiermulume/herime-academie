@@ -282,9 +282,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/courses/{course}/lessons', [InstructorController::class, 'storeLesson'])
             ->middleware('sso.validate')
             ->name('courses.lessons.store');
-        Route::post('/uploads/chunk', [ChunkUploadController::class, 'handle'])
-            ->middleware('sso.validate')
-            ->name('uploads.chunk');
         Route::get('/students', [InstructorController::class, 'students'])->name('students');
         Route::get('/analytics', [InstructorController::class, 'analytics'])->name('analytics');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
@@ -568,6 +565,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Profile routes (handled above)
 });
+
+Route::post('/instructor/uploads/chunk', [ChunkUploadController::class, 'handle'])
+    ->middleware('auth')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('instructor.uploads.chunk');
+
+Route::post('/admin/uploads/chunk', [ChunkUploadController::class, 'handle'])
+    ->middleware('auth')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
+    ->name('admin.uploads.chunk');
 
 // MOKO Afrika Payment Routes (désactivées)
 // Route::prefix('moko')->name('moko.')->group(function () {

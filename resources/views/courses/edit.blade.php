@@ -12,6 +12,8 @@
     </a>
 @endsection
 
+@include('partials.upload-progress-modal')
+
 @section('admin-content')
     @if ($errors->any())
         <div class="admin-card create-course__alert">

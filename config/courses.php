@@ -13,7 +13,7 @@ return [
     'settings' => [
         'max_courses_per_instructor' => 100,
         'max_lessons_per_course' => 500,
-        'max_file_size' => 100 * 1024 * 1024, // 100MB
+        'max_file_size' => 10 * 1024 * 1024 * 1024, // 10GB
         'allowed_video_formats' => ['mp4', 'avi', 'mov', 'wmv', 'flv'],
         'allowed_document_formats' => ['pdf', 'doc', 'docx', 'ppt', 'pptx'],
         'thumbnail_dimensions' => [

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\FileUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Pion\Laravel\ChunkUpload\Exceptions\UploadMissingFileException;
 use Pion\Laravel\ChunkUpload\Handler\HandlerFactory;
 use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
@@ -20,6 +21,16 @@ class ChunkUploadController extends Controller
      */
     public function handle(Request $request): JsonResponse
     {
+        \Log::debug('Chunk upload request received', [
+            'upload_type' => $request->input('upload_type'),
+            'chunk_number' => $request->input('resumableChunkNumber'),
+            'chunk_size' => $request->input('resumableChunkSize'),
+            'total_chunks' => $request->input('resumableTotalChunks'),
+            'file_size' => $request->input('resumableTotalSize'),
+            'file_name' => $request->input('resumableFilename'),
+            'content_length' => $request->headers->get('content-length'),
+        ]);
+
         $receiver = new FileReceiver('file', $request, HandlerFactory::classFromRequest($request));
 
         if ($receiver->isUploaded() === false) {
@@ -38,16 +49,26 @@ class ChunkUploadController extends Controller
             try {
                 $result = $this->fileUploadService->upload($file, $folder, $replacePath);
             } finally {
-                $file->delete();
+                $temporaryPath = $file->getPathname();
+                if ($temporaryPath && file_exists($temporaryPath)) {
+                    @unlink($temporaryPath);
+                }
             }
+
+            $storedPath = $result['path'];
+            $disk = Storage::disk('local');
+
+            $originalName = $request->input('original_name', $file->getClientOriginalName());
+            $mimeType = $disk->mimeType($storedPath) ?: $file->getClientMimeType();
+            $size = $disk->size($storedPath) ?: (int) $file->getSize();
 
             return response()->json([
                 'status' => 'completed',
                 'path' => $result['path'],
                 'url' => $result['url'],
-                'filename' => $request->input('original_name', $file->getClientOriginalName()),
-                'mime_type' => $file->getMimeType(),
-                'size' => (int) $file->getSize(),
+                'filename' => $originalName,
+                'mime_type' => $mimeType,
+                'size' => $size,
             ], 201);
         }
 

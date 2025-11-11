@@ -116,7 +116,7 @@ return [
     'file_uploads' => [
         'scan_for_viruses' => true,
         'validate_file_types' => true,
-        'max_file_size' => 100 * 1024 * 1024, // 100MB
+        'max_file_size' => 10 * 1024 * 1024 * 1024, // 10GB
         'allowed_file_types' => [
             'images' => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
             'videos' => ['mp4', 'avi', 'mov', 'wmv', 'flv'],

@@ -54,6 +54,11 @@ class ValidateSSOOnPageLoad
                 return $next($request);
             }
 
+            $chunkRoutes = ['admin.uploads.chunk', 'instructor.uploads.chunk'];
+            if (in_array($routeName, $chunkRoutes, true) || $request->ajax() || $request->wantsJson()) {
+                return $next($request);
+            }
+
             // Exclure les routes API et AJAX si nécessaire
             if ($request->expectsJson() && !$request->is('api/*')) {
                 // Pour les requêtes AJAX, on peut être plus permissif

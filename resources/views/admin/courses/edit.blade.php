@@ -61,6 +61,8 @@
     </a>
 @endsection
 
+@include('partials.upload-progress-modal')
+
 @section('admin-content')
     @if ($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -298,10 +300,13 @@
                                                name="video_preview_file" 
                                                accept="video/mp4,video/webm,video/ogg"
                                                onchange="handleVideoUpload(this)">
+                                        <input type="hidden" id="video_preview_path" name="video_preview_path" value="{{ old('video_preview_path', (!empty($course->video_preview) && !filter_var($course->video_preview, FILTER_VALIDATE_URL)) ? $course->video_preview : '') }}">
+                                        <input type="hidden" id="video_preview_name" name="video_preview_name" value="{{ old('video_preview_name') }}">
+                                        <input type="hidden" id="video_preview_size" name="video_preview_size" value="{{ old('video_preview_size') }}">
                                         <div class="upload-placeholder text-center p-3" onclick="document.getElementById('video_preview_file').click()">
                                             <i class="fas fa-video fa-2x text-success mb-2"></i>
                                             <p class="mb-1 small"><strong>Cliquez pour changer la vidéo</strong></p>
-                                            <p class="text-muted small mb-0">Format : MP4, WEBM | Max : 100MB</p>
+                                            <p class="text-muted small mb-0">Format : MP4, WEBM | Max : 10&nbsp;Go</p>
                                         </div>
                                         <div class="upload-preview d-none">
                                             <p class="fw-bold text-info text-center mb-2">
@@ -400,16 +405,16 @@
                                     </label>
                                     
                                     @if($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL))
-                                    <div class="current-file mb-3">
+                                    <div class="current-file mb-3 download-current-file" id="downloadCurrentFile">
                                         <p class="fw-bold mb-2"><i class="fas fa-check-circle text-success me-1"></i>Fichier actuel :</p>
-                                        <div class="d-flex align-items-center gap-2 p-2 bg-light rounded">
+                                        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2 p-2 bg-light rounded w-100">
                                             <i class="fas fa-file-archive fa-2x text-primary"></i>
-                                            <div class="flex-grow-1">
+                                            <div class="flex-grow-1 text-break text-center text-md-start">
                                                 <strong>{{ basename($course->download_file_path) }}</strong>
                                                 <br>
                                                 <small class="text-muted">Fichier déjà uploadé</small>
                                             </div>
-                                            <a href="{{ $course->download_file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <a href="{{ $course->download_file_url }}" target="_blank" class="btn btn-sm btn-outline-primary w-100 w-md-auto">
                                                 <i class="fas fa-download me-1"></i>Aperçu
                                             </a>
                                         </div>
@@ -421,15 +426,19 @@
                                                class="form-control d-none @error('download_file_path') is-invalid @enderror" 
                                                id="download_file_path" 
                                                name="download_file_path" 
-                                               accept=".zip,.pdf,.doc,.docx,.rar,.7z,.tar,.gz">
+                                               accept=".zip,.pdf,.doc,.docx,.rar,.7z,.tar,.gz"
+                                               onchange="handleDownloadFileUpload(this)">
+                                        <input type="hidden" id="download_file_chunk_path" name="download_file_chunk_path" value="{{ old('download_file_chunk_path') }}">
+                                        <input type="hidden" id="download_file_chunk_name" name="download_file_chunk_name" value="{{ old('download_file_chunk_name') }}">
+                                        <input type="hidden" id="download_file_chunk_size" name="download_file_chunk_size" value="{{ old('download_file_chunk_size') }}">
                                         <div class="upload-placeholder text-center p-4" onclick="document.getElementById('download_file_path').click()">
                                             <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
                                             <p class="mb-2"><strong>Cliquez pour sélectionner un fichier</strong></p>
                                             <p class="text-muted small mb-0">Formats : ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR, GZ</p>
-                                            <p class="text-muted small">Maximum : 2MB</p>
+                                            <p class="text-muted small">Maximum : 10&nbsp;Go</p>
                                         </div>
-                                        <div class="upload-preview d-none">
-                                            <div class="d-flex align-items-center gap-3 p-3">
+                                        <div class="upload-preview d-none download-upload-preview">
+                                            <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 p-3 w-100 download-preview-item">
                                                 <i class="fas fa-file-archive fa-3x text-primary"></i>
                                                 <div class="flex-grow-1">
                                                     <div class="upload-info">
@@ -437,7 +446,7 @@
                                                         <span class="badge bg-info file-size ms-2"></span>
                                                     </div>
                                                     <div class="upload-info mt-2">
-                                                        <button type="button" class="btn btn-sm btn-danger" onclick="clearDownloadFile()">
+                                                        <button type="button" class="btn btn-sm btn-danger" onclick="clearDownloadFile(true)">
                                                             <i class="fas fa-trash me-1"></i>Supprimer
                                                         </button>
                                                     </div>
@@ -684,10 +693,16 @@
     </div>
 
 @push('scripts')
+    @once
+        <script src="https://cdn.jsdelivr.net/npm/resumablejs@1.1.0/resumable.min.js"></script>
+    @endonce
+@endpush
+
+@push('scripts')
 <script>
 // Constantes de validation
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_VIDEO_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
 const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const VALID_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
 const LESSON_ALLOWED_TYPES = [
@@ -708,7 +723,7 @@ const LESSON_ALLOWED_TYPES = [
     'application/x-tar',
     'application/gzip'
 ];
-const LESSON_MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+const LESSON_MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
 const INITIAL_SECTIONS = (() => {
     const raw = @json($prefilledSections);
     if (!raw) {
@@ -725,6 +740,107 @@ let lessonCount = 0;
 let cachedPriceValue = null;
 let cachedSalePriceValue = null;
 
+const CHUNK_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+const DOWNLOAD_ALLOWED_EXTENSIONS = ['.zip', '.pdf', '.doc', '.docx', '.rar', '.7z', '.tar', '.gz'];
+const MAX_DOWNLOAD_FILE_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
+const CHUNK_UPLOAD_ENDPOINT = (function() {
+    const origin = window.location.origin.replace(/\/+$/, '');
+    const path = "{{ trim(parse_url(route('admin.uploads.chunk'), PHP_URL_PATH), '/') }}";
+    return `${origin}/${path}`;
+})();
+
+let previewUploadResumable = null;
+let previewUploadTaskId = null;
+const lessonUploadControllers = new Map();
+let downloadUploadResumable = null;
+let downloadUploadTaskId = null;
+let downloadUploadSuppressError = false;
+
+function resetFileInput(input, options = {}) {
+    if (!input) {
+        return null;
+    }
+
+    const { onRebind } = options;
+
+    try {
+        input.value = '';
+    } catch (error) {
+        // ignore value reset errors
+    }
+
+    if (input.files && input.files.length) {
+        try {
+            const emptyFiles = new DataTransfer().files;
+            input.files = emptyFiles;
+        } catch (error) {
+            // ignore DataTransfer reset errors
+        }
+    }
+
+    const hasValue = input.value && input.value !== '';
+    const hasFiles = input.files && input.files.length > 0;
+    if (!hasValue && !hasFiles) {
+        return input;
+    }
+
+    const parent = input.parentNode;
+    if (!parent) {
+        return input;
+    }
+
+    const replacement = input.cloneNode(true);
+    replacement.value = '';
+    parent.replaceChild(replacement, input);
+
+    if (typeof onRebind === 'function') {
+        try {
+            onRebind(replacement);
+        } catch (error) {
+            // ignore rebind errors
+        }
+    }
+
+    return replacement;
+}
+
+function createUploadTask(fileName, fileSize, description = 'Téléversement en cours…', extra = {}) {
+    if (!window.UploadProgressModal) {
+        return null;
+    }
+    const taskId = `admin-upload-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    const baseConfig = {
+        label: fileName,
+        description,
+        sizeLabel: formatFileSize(fileSize),
+        initialMessage: 'Préparation du téléversement…',
+    };
+    const taskConfig = Object.assign({}, baseConfig, extra);
+    if (typeof taskConfig.onCancel === 'function' && typeof taskConfig.cancelable === 'undefined') {
+        taskConfig.cancelable = true;
+    }
+    window.UploadProgressModal.startTask(taskId, taskConfig);
+    return taskId;
+}
+
+function updateUploadTask(taskId, percent, message) {
+    if (taskId && window.UploadProgressModal) {
+        window.UploadProgressModal.updateTask(taskId, percent, message);
+    }
+}
+
+function completeUploadTask(taskId, message = 'Téléversement terminé') {
+    if (taskId && window.UploadProgressModal) {
+        window.UploadProgressModal.completeTask(taskId, message);
+    }
+}
+
+function errorUploadTask(taskId, message = 'Erreur lors du téléversement') {
+    if (taskId && window.UploadProgressModal) {
+        window.UploadProgressModal.errorTask(taskId, message);
+    }
+}
+
 function toBoolean(value) {
     return value === true || value === '1' || value === 1 || value === 'true' || value === 'on';
 }
@@ -734,6 +850,22 @@ document.addEventListener('DOMContentLoaded', function() {
         INITIAL_SECTIONS.forEach(section => addSection(section));
     } else {
         addSection();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const videoLinkInput = document.getElementById('video_preview');
+    if (videoLinkInput) {
+        videoLinkInput.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                const pathInput = document.getElementById('video_preview_path');
+                const nameInput = document.getElementById('video_preview_name');
+                const sizeInput = document.getElementById('video_preview_size');
+                if (pathInput) pathInput.value = '';
+                if (nameInput) nameInput.value = '';
+                if (sizeInput) sizeInput.value = '';
+            }
+        });
     }
 });
 
@@ -752,13 +884,13 @@ function handleThumbnailUpload(input) {
         
         if (!VALID_IMAGE_TYPES.includes(file.type)) {
             showError(errorDiv, '❌ Format invalide. Utilisez JPG, PNG ou WEBP.');
-            input.value = '';
+            resetFileInput(input);
             return;
         }
         
         if (file.size > MAX_IMAGE_SIZE) {
             showError(errorDiv, '❌ Le fichier est trop volumineux. Maximum 5MB.');
-            input.value = '';
+            resetFileInput(input);
             return;
         }
         
@@ -782,7 +914,7 @@ function clearThumbnail() {
     const input = document.getElementById('thumbnail');
     const errorDiv = document.getElementById('thumbnailError');
     
-    input.value = '';
+    resetFileInput(input);
     preview.querySelector('img').src = '';
     errorDiv.textContent = '';
     errorDiv.style.display = 'none';
@@ -805,13 +937,13 @@ function handleVideoUpload(input) {
         
         if (!VALID_VIDEO_TYPES.includes(file.type)) {
             showError(errorDiv, '❌ Format invalide. Utilisez MP4 ou WEBM.');
-            input.value = '';
+            resetFileInput(input);
             return;
         }
         
         if (file.size > MAX_VIDEO_SIZE) {
-            showError(errorDiv, '❌ Le fichier est trop volumineux. Maximum 100MB.');
-            input.value = '';
+            showError(errorDiv, `❌ Le fichier est trop volumineux. Maximum ${formatFileSize(MAX_VIDEO_SIZE)}.`);
+            resetFileInput(input);
             return;
         }
         
@@ -825,23 +957,344 @@ function handleVideoUpload(input) {
             preview.classList.remove('d-none');
         };
         reader.readAsDataURL(file);
+
+        uploadVideoPreviewAjax(input);
     }
 }
 
-function clearVideo() {
+function clearVideo(options = {}) {
+    const {
+        cancelUpload = true,
+        preserveError = false,
+        clearHiddenFields = true,
+        skipModalCancel = false,
+    } = options;
+
     const zone = document.getElementById('videoUploadZone');
+    if (!zone) {
+        previewUploadResumable = null;
+        previewUploadTaskId = null;
+        return;
+    }
+
+    if (cancelUpload && previewUploadResumable) {
+        try {
+            previewUploadResumable.cancel();
+        } catch (error) {
+            // ignore cancellation errors
+        }
+    }
+
+    const progressModal = window.UploadProgressModal;
+    if (!skipModalCancel && progressModal && typeof progressModal.cancelTask === 'function' && previewUploadTaskId) {
+        progressModal.cancelTask(previewUploadTaskId);
+    }
+    previewUploadTaskId = null;
+    previewUploadResumable = null;
+
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
-    const input = document.getElementById('video_preview_file');
+    const videoElement = preview ? preview.querySelector('video') : null;
+    const fileNameBadge = preview ? preview.querySelector('.file-name') : null;
+    const fileSizeBadge = preview ? preview.querySelector('.file-size') : null;
+
+    if (videoElement) {
+        try {
+            videoElement.pause();
+        } catch (error) {
+            // ignore pause errors
+        }
+        videoElement.removeAttribute('src');
+        const source = videoElement.querySelector('source');
+        if (source) {
+            source.removeAttribute('src');
+        }
+        videoElement.load();
+    }
+
+    if (fileNameBadge) fileNameBadge.textContent = '';
+    if (fileSizeBadge) fileSizeBadge.textContent = '';
+
+    if (preview) {
+        preview.classList.add('d-none');
+    }
+    if (placeholder) {
+        placeholder.classList.remove('d-none');
+    }
+
+    const progressWrapper = document.getElementById('videoPreviewProgress');
+    if (progressWrapper) {
+        progressWrapper.style.display = 'none';
+        const progressBar = progressWrapper.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.width = '0%';
+        }
+    }
+
+    resetFileInput(document.getElementById('video_preview_file'));
+
     const errorDiv = document.getElementById('videoError');
-    
-    input.value = '';
-    preview.querySelector('video').src = '';
-    errorDiv.textContent = '';
-    errorDiv.style.display = 'none';
-    preview.classList.add('d-none');
-    placeholder.classList.remove('d-none');
+    if (errorDiv) {
+        if (preserveError && errorDiv.textContent) {
+            errorDiv.style.display = 'block';
+        } else {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+        }
+    }
+
+    if (clearHiddenFields) {
+        const pathInput = document.getElementById('video_preview_path');
+        const nameInput = document.getElementById('video_preview_name');
+        const sizeInput = document.getElementById('video_preview_size');
+        if (pathInput) pathInput.value = '';
+        if (nameInput) nameInput.value = '';
+        if (sizeInput) sizeInput.value = '';
+    }
 }
+
+function uploadVideoPreviewAjax(input) {
+    const file = input.files && input.files[0];
+    if (!file) {
+        return;
+    }
+
+    if (typeof Resumable === 'undefined') {
+        return;
+    }
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (!token) {
+        return;
+    }
+
+    if (previewUploadResumable) {
+        try {
+            previewUploadResumable.cancel();
+        } catch (error) {
+        }
+        previewUploadResumable = null;
+    }
+    if (previewUploadTaskId) {
+        errorUploadTask(previewUploadTaskId, 'Téléversement annulé');
+        previewUploadTaskId = null;
+    }
+
+    const progressWrapper = document.getElementById('videoPreviewProgress');
+    const progressBar = progressWrapper ? progressWrapper.querySelector('.progress-bar') : null;
+    if (progressWrapper) {
+        progressWrapper.style.display = 'block';
+    }
+    if (progressBar) {
+        progressBar.style.width = '0%';
+    }
+
+    const resumable = new Resumable({
+        target: CHUNK_UPLOAD_ENDPOINT,
+        chunkSize: CHUNK_SIZE_BYTES,
+        simultaneousUploads: 3,
+        testChunks: false,
+        throttleProgressCallbacks: 1,
+        fileParameterName: 'file',
+        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv'],
+        withCredentials: true,
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json',
+        },
+        query: () => ({
+            upload_type: 'preview',
+            original_name: file.name,
+        }),
+    });
+
+    previewUploadTaskId = createUploadTask(file.name, file.size, 'Téléversement de la vidéo de prévisualisation', {
+        onCancel: () => clearVideo({ skipModalCancel: true }),
+        cancelLabel: 'Annuler'
+    });
+
+    resumable.on('fileProgress', function(resumableFile) {
+        const percent = Math.max(0, Math.min(100, Math.round(resumableFile.progress() * 100)));
+        if (progressBar) {
+            progressBar.style.width = percent + '%';
+        }
+        updateUploadTask(previewUploadTaskId, percent, 'Téléversement en cours…');
+    });
+
+    resumable.on('fileSuccess', function(resumableFile, response) {
+        let payload = response;
+        if (typeof response === 'string') {
+            try {
+                payload = JSON.parse(response);
+            } catch (error) {
+                payload = null;
+            }
+        }
+
+        if (!payload || !payload.path) {
+            errorUploadTask(previewUploadTaskId, 'Réponse invalide du serveur.');
+            if (progressWrapper) {
+                progressWrapper.style.display = 'none';
+            }
+            return;
+        }
+
+        const pathInput = document.getElementById('video_preview_path');
+        const nameInput = document.getElementById('video_preview_name');
+        const sizeInput = document.getElementById('video_preview_size');
+        if (pathInput) {
+            pathInput.value = payload.path;
+        }
+        if (nameInput) {
+            nameInput.value = payload.filename || file.name;
+        }
+        if (sizeInput) {
+            sizeInput.value = payload.size || file.size;
+        }
+
+        const urlField = document.getElementById('video_preview');
+        if (urlField && !urlField.value) {
+            urlField.value = '';
+        }
+
+        completeUploadTask(previewUploadTaskId, 'Vidéo importée avec succès');
+        previewUploadTaskId = null;
+        if (progressWrapper) {
+            progressWrapper.style.display = 'none';
+        }
+        resetFileInput(input);
+        previewUploadResumable = null;
+    });
+
+    const handleUploadError = (message, options = {}) => {
+        const { suppressMessage = false, resetField = true } = options;
+        const errorDiv = document.getElementById('videoError');
+        const displayMessage = (typeof message === 'string' && message.trim() !== '')
+            ? message
+            : 'Erreur lors du téléversement de la vidéo.';
+
+        if (progressWrapper) {
+            progressWrapper.style.display = 'none';
+        }
+        if (progressBar) {
+            progressBar.style.width = '0%';
+        }
+
+        if (previewUploadTaskId) {
+            if (suppressMessage && window.UploadProgressModal && typeof window.UploadProgressModal.cancelTask === 'function') {
+                window.UploadProgressModal.cancelTask(previewUploadTaskId);
+            } else {
+                errorUploadTask(previewUploadTaskId, displayMessage);
+            }
+            previewUploadTaskId = null;
+        }
+
+        if (resetField) {
+            clearVideo({ cancelUpload: false, preserveError: !suppressMessage });
+        }
+
+        if (!suppressMessage && errorDiv) {
+            errorDiv.textContent = displayMessage;
+            errorDiv.style.display = 'block';
+        } else if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.style.display = 'none';
+        }
+
+        previewUploadResumable = null;
+    };
+
+    resumable.on('fileError', function(resumableFile, message) {
+        let errorMessage = message;
+        if (typeof message === 'object' && message !== null && message.message) {
+            errorMessage = message.message;
+        }
+        handleUploadError(typeof errorMessage === 'string' ? errorMessage : 'Erreur lors du téléversement de la vidéo.');
+    });
+
+    resumable.on('error', function(message) {
+        handleUploadError(typeof message === 'string' ? message : 'Erreur réseau lors du téléversement.');
+    });
+
+    resumable.on('cancel', function() {
+        handleUploadError('Téléversement annulé.', { suppressMessage: true, resetField: true });
+    });
+
+    resumable.on('chunkingComplete', function(resumableFile) {
+        if (!resumable.isUploading()) {
+            resumable.upload();
+        }
+    });
+
+    resumable.addFile(file);
+    previewUploadResumable = resumable;
+}
+
+function cancelAllUploads() {
+    const progressModal = window.UploadProgressModal;
+    if (progressModal && typeof progressModal.getActiveTaskIds === 'function') {
+        progressModal.getActiveTaskIds().forEach((taskId) => {
+            progressModal.cancelTask(taskId);
+        });
+    }
+
+    if (previewUploadResumable) {
+        try {
+            previewUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+        previewUploadResumable = null;
+    }
+
+    if (previewUploadTaskId && progressModal) {
+        progressModal.cancelTask(previewUploadTaskId);
+    }
+    previewUploadTaskId = null;
+
+    resetFileInput(document.getElementById('video_preview_file'));
+    clearVideo();
+
+    const activeLessons = Array.from(lessonUploadControllers.entries());
+    activeLessons.forEach(([uniqueId, controller]) => {
+        if (controller && controller.resumable) {
+            try {
+                controller.resumable.cancel();
+            } catch (error) {
+                // ignore
+            }
+        }
+        if (controller && controller.taskId && progressModal) {
+            progressModal.cancelTask(controller.taskId);
+        }
+        clearLessonFile(uniqueId, true);
+    });
+    lessonUploadControllers.clear();
+
+    if (downloadUploadResumable) {
+        downloadUploadSuppressError = true;
+        try {
+            downloadUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+        downloadUploadResumable = null;
+    }
+
+    if (downloadUploadTaskId && progressModal) {
+        progressModal.cancelTask(downloadUploadTaskId);
+        downloadUploadTaskId = null;
+    }
+
+    clearDownloadFile(true);
+
+    if (progressModal && typeof progressModal.hide === 'function') {
+        progressModal.hide();
+    }
+}
+
+window.cancelAllUploads = cancelAllUploads;
 
 // Fonctions utilitaires
 function showError(errorDiv, message) {
@@ -1028,18 +1481,30 @@ function addLesson(sectionId, lessonData = null) {
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Fichier ou média de la leçon</label>
-                    <div class="upload-zone lesson-upload-zone" id="lessonUploadZone-${lessonUniqueId}" onclick="triggerLessonFile('${lessonUniqueId}', event)">
+                    <div class="upload-zone lesson-upload-zone" id="lessonUploadZone-${lessonUniqueId}" data-lesson-unique="${lessonUniqueId}" data-lesson-section="${sectionId}" data-lesson-index="${lessonIndex}" onclick="triggerLessonFile('${lessonUniqueId}', event)">
                         <input type="file"
                                class="form-control d-none lesson-file-input"
                                id="lesson_file_${lessonUniqueId}"
                                name="${lessonPrefix}[content_file]"
                                accept="video/mp4,video/webm,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/x-rar-compressed,application/x-7z-compressed,application/x-tar,application/gzip"
                                onchange="handleLessonFileUpload('${lessonUniqueId}', this)">
+                        <input type="hidden"
+                               name="${lessonPrefix}[content_file_path]"
+                               value="${lessonData?.content_file_path ?? ''}"
+                               data-lesson-path="${lessonUniqueId}">
+                        <input type="hidden"
+                               name="${lessonPrefix}[content_file_name]"
+                               value="${lessonData?.content_file_name ?? ''}"
+                               data-lesson-name="${lessonUniqueId}">
+                        <input type="hidden"
+                               name="${lessonPrefix}[content_file_size]"
+                               value="${lessonData?.content_file_size ?? ''}"
+                               data-lesson-size="${lessonUniqueId}">
                         <div class="upload-placeholder text-center p-3">
                             <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
                             <p class="mb-1"><strong>Cliquez pour sélectionner un fichier</strong></p>
                             <p class="text-muted small mb-0">Formats acceptés : MP4, WEBM, PDF, ZIP, DOCX...</p>
-                            <p class="text-muted small">Taille max : 200MB</p>
+                            <p class="text-muted small">Taille max&nbsp;: 10&nbsp;Go</p>
                         </div>
                         <div class="upload-preview d-none text-center">
                             <div class="lesson-file-visual mb-3"></div>
@@ -1055,17 +1520,19 @@ function addLesson(sectionId, lessonData = null) {
                         </div>
                     </div>
                     <div class="lesson-existing-file alert alert-secondary d-none mt-3" id="lessonExistingFile-${lessonUniqueId}">
-                        <div class="d-flex flex-column flex-md-row align-items-center gap-3">
-                            <div class="lesson-existing-icon text-primary">
-                                <i class="fas fa-folder-open fa-2x"></i>
+                        <div class="lesson-existing-wrapper d-flex flex-column flex-lg-row align-items-start gap-3 w-100">
+                            <div class="lesson-existing-preview flex-shrink-0" data-lesson-existing-preview>
+                                <i class="fas fa-folder-open fa-2x text-primary"></i>
                             </div>
-                            <div class="text-center text-md-start">
+                            <div class="lesson-existing-details flex-grow-1 text-center text-lg-start">
                                 <p class="mb-1 fw-semibold" data-lesson-existing-name>Fichier actuel</p>
                                 <a href="#" target="_blank" rel="noopener" class="small d-none" data-lesson-existing-link>Voir / télécharger</a>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearExistingLessonFile('${lessonUniqueId}')">
-                                <i class="fas fa-trash me-1"></i>Retirer
-                            </button>
+                            <div class="lesson-existing-actions">
+                                <button type="button" class="btn btn-sm btn-outline-danger w-100 w-lg-auto" onclick="clearExistingLessonFile('${lessonUniqueId}')">
+                                    <i class="fas fa-trash me-1"></i>Retirer
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="invalid-feedback d-block lesson-file-error" id="lessonFileError-${lessonUniqueId}"></div>
@@ -1171,8 +1638,16 @@ function handleLessonFileUpload(uniqueId, input) {
         errorDiv.style.display = 'none';
     }
 
+    cancelLessonUpload(uniqueId, true);
+
     if (!input.files || !input.files[0]) {
         clearLessonFile(uniqueId, true);
+        return;
+    }
+
+    if (input.files.length > 1) {
+        showLessonFileError(uniqueId, 'Veuillez sélectionner un seul fichier à la fois.');
+        resetFileInput(input);
         return;
     }
 
@@ -1180,13 +1655,13 @@ function handleLessonFileUpload(uniqueId, input) {
 
     if (!isLessonFileTypeAllowed(file)) {
         showLessonFileError(uniqueId, '❌ Format non supporté. Utilisez une vidéo (MP4/WEBM) ou un document (PDF, ZIP, DOCX, etc.).');
-        input.value = '';
+        resetFileInput(input);
         return;
     }
 
     if (file.size > LESSON_MAX_FILE_SIZE) {
         showLessonFileError(uniqueId, `❌ Fichier trop volumineux (${formatFileSize(file.size)}). Maximum : ${formatFileSize(LESSON_MAX_FILE_SIZE)}.`);
-        input.value = '';
+        resetFileInput(input);
         return;
     }
 
@@ -1211,6 +1686,168 @@ function handleLessonFileUpload(uniqueId, input) {
     if (removeFlagInput) {
         removeFlagInput.value = 0;
     }
+
+    startLessonChunkUpload(uniqueId, file, input);
+}
+
+function getLessonHiddenInputs(uniqueId) {
+    return {
+        zone: document.getElementById(`lessonUploadZone-${uniqueId}`),
+        path: document.querySelector(`[data-lesson-path="${uniqueId}"]`),
+        name: document.querySelector(`[data-lesson-name="${uniqueId}"]`),
+        size: document.querySelector(`[data-lesson-size="${uniqueId}"]`),
+        existingPath: document.querySelector(`[data-lesson-existing-path="${uniqueId}"]`),
+        removeFlag: document.querySelector(`[data-lesson-remove-flag="${uniqueId}"]`),
+        existingContainer: document.getElementById(`lessonExistingFile-${uniqueId}`)
+    };
+}
+
+function cancelLessonUpload(uniqueId, silent = false) {
+    const controller = lessonUploadControllers.get(uniqueId);
+    if (!controller || !controller.resumable) {
+        return;
+    }
+    controller.silent = silent;
+    try {
+        controller.resumable.cancel();
+    } catch (error) {
+        // ignore
+    }
+}
+
+function startLessonChunkUpload(uniqueId, file, input) {
+    const hidden = getLessonHiddenInputs(uniqueId);
+    const zone = hidden.zone;
+    if (!zone) {
+        return;
+    }
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (!token) {
+        clearLessonFile(uniqueId, true);
+        showLessonFileError(uniqueId, 'Impossible de récupérer le jeton CSRF pour l’upload.');
+        return;
+    }
+
+    const existingPath = hidden.path?.value || hidden.existingPath?.value || '';
+
+    const taskId = createUploadTask(file.name, file.size, 'Téléversement du fichier de la leçon', {
+        onCancel: () => clearLessonFile(uniqueId, true),
+        cancelLabel: 'Annuler'
+    });
+    const resumable = new Resumable({
+        target: CHUNK_UPLOAD_ENDPOINT,
+        chunkSize: CHUNK_SIZE_BYTES,
+        simultaneousUploads: 3,
+        testChunks: false,
+        throttleProgressCallbacks: 1,
+        fileParameterName: 'file',
+        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv', 'pdf', 'zip', 'doc', 'ppt', 'xls'],
+        withCredentials: true,
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json',
+        },
+        query: () => ({
+            upload_type: 'lesson',
+            original_name: file.name,
+            section_index: zone.dataset.lessonSection ?? '',
+            lesson_index: zone.dataset.lessonIndex ?? '',
+            replace_path: existingPath || '',
+        }),
+    });
+
+
+    const controller = { resumable, taskId, input, zone, silent: false };
+    lessonUploadControllers.set(uniqueId, controller);
+    zone.dataset.uploadTaskId = taskId;
+    zone.style.borderColor = '#0d6efd';
+
+    const handleError = (message, options = {}) => {
+        const current = lessonUploadControllers.get(uniqueId);
+        const silent = options.silent ?? current?.silent ?? false;
+        if (!silent) {
+            showLessonFileError(uniqueId, message || 'Erreur lors du téléversement du fichier de leçon.');
+            errorUploadTask(taskId, message || 'Erreur lors du téléversement du fichier de leçon.');
+            if (hidden.path) hidden.path.value = '';
+            if (hidden.name) hidden.name.value = '';
+            if (hidden.size) hidden.size.value = '';
+            if (hidden.removeFlag) hidden.removeFlag.value = hidden.removeFlag.value || 0;
+            restoreLessonExistingFile(uniqueId);
+        } else if (window.UploadProgressModal && typeof window.UploadProgressModal.cancelTask === 'function') {
+            window.UploadProgressModal.cancelTask(taskId);
+        } else {
+            errorUploadTask(taskId, message || 'Téléversement annulé.');
+        }
+
+        lessonUploadControllers.delete(uniqueId);
+        delete zone.dataset.uploadTaskId;
+        zone.style.borderColor = silent ? '#dee2e6' : '#dc3545';
+    };
+
+    resumable.on('fileProgress', function(resumableFile) {
+        const percent = Math.max(0, Math.min(100, Math.round(resumableFile.progress() * 100)));
+        updateUploadTask(taskId, percent, 'Téléversement en cours…');
+    });
+
+    resumable.on('fileSuccess', function(resumableFile, response) {
+        let payload = response;
+        if (typeof response === 'string') {
+            try {
+                payload = JSON.parse(response);
+            } catch (error) {
+                payload = null;
+            }
+        }
+
+        if (!payload || !payload.path) {
+            handleError('Réponse invalide du serveur.');
+            return;
+        }
+
+        if (hidden.path) hidden.path.value = payload.path;
+        if (hidden.name) hidden.name.value = payload.filename || file.name;
+        if (hidden.size) hidden.size.value = payload.size || file.size;
+        if (hidden.removeFlag) hidden.removeFlag.value = 0;
+        if (hidden.existingContainer) hidden.existingContainer.classList.add('d-none');
+
+
+        completeUploadTask(taskId, 'Fichier importé avec succès');
+        lessonUploadControllers.delete(uniqueId);
+        delete zone.dataset.uploadTaskId;
+        zone.style.borderColor = '#28a745';
+
+        if (input) {
+            resetFileInput(input);
+        }
+    });
+
+    resumable.on('fileError', function(resumableFile, message) {
+        const displayMessage = typeof message === 'string'
+            ? message
+            : (message?.message ?? 'Erreur lors du téléversement du fichier de leçon.');
+        handleError(displayMessage);
+    });
+
+    resumable.on('error', function(message) {
+        const displayMessage = typeof message === 'string'
+            ? message
+            : 'Erreur réseau lors du téléversement.';
+        handleError(displayMessage);
+    });
+
+    resumable.on('cancel', function() {
+        handleError('Téléversement annulé.', { silent: true });
+    });
+
+    resumable.on('chunkingComplete', function(resumableFile) {
+        if (!resumable.isUploading()) {
+            resumable.upload();
+        }
+    });
+
+    resumable.addFile(file);
 }
 
 function triggerLessonFile(uniqueId, event) {
@@ -1273,6 +1910,8 @@ function clearLessonFile(uniqueId, restoreExisting = false) {
     const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
     if (!zone) return;
 
+    cancelLessonUpload(uniqueId, true);
+
     const input = zone.querySelector('input[type="file"]');
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
@@ -1283,9 +1922,7 @@ function clearLessonFile(uniqueId, restoreExisting = false) {
         delete zone.dataset.previewUrl;
     }
 
-    if (input) {
-        input.value = '';
-    }
+    resetFileInput(input);
 
     if (preview) {
         preview.classList.add('d-none');
@@ -1307,6 +1944,16 @@ function clearLessonFile(uniqueId, restoreExisting = false) {
     }
 
     zone.style.borderColor = '#dee2e6';
+    delete zone.dataset.uploadTaskId;
+
+    const hidden = getLessonHiddenInputs(uniqueId);
+    if (hidden.path) hidden.path.value = '';
+    if (hidden.name) hidden.name.value = '';
+    if (hidden.size) hidden.size.value = '';
+    if (hidden.removeFlag && !restoreExisting) {
+        hidden.removeFlag.value = hidden.removeFlag.value || 0;
+    }
+    lessonUploadControllers.delete(uniqueId);
 
     if (restoreExisting) {
         restoreLessonExistingFile(uniqueId);
@@ -1318,6 +1965,7 @@ function handleLessonUrlInput(uniqueId, input) {
     const value = input.value.trim();
 
     if (value !== '') {
+        cancelLessonUpload(uniqueId, true);
         const existingContainer = document.getElementById(`lessonExistingFile-${uniqueId}`);
         if (existingContainer) {
             existingContainer.classList.add('d-none');
@@ -1330,6 +1978,7 @@ function handleLessonUrlInput(uniqueId, input) {
         if (existingPathInput) {
             existingPathInput.value = '';
         }
+        clearLessonFile(uniqueId);
     } else {
         restoreLessonExistingFile(uniqueId);
     }
@@ -1351,6 +2000,10 @@ function showLessonFileError(uniqueId, message) {
     if (errorDiv) {
         errorDiv.textContent = message;
         errorDiv.style.display = 'block';
+    }
+    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
+    if (zone) {
+        zone.style.borderColor = '#dc3545';
     }
 }
 
@@ -1403,6 +2056,9 @@ function clearExistingLessonFile(uniqueId) {
     const container = document.getElementById(`lessonExistingFile-${uniqueId}`);
     const removeFlagInput = document.querySelector(`[data-lesson-remove-flag="${uniqueId}"]`);
     const existingPathInput = document.querySelector(`[data-lesson-existing-path="${uniqueId}"]`);
+
+    cancelLessonUpload(uniqueId, true);
+    clearLessonFile(uniqueId);
 
     if (removeFlagInput) {
         removeFlagInput.value = 1;
@@ -1578,8 +2234,7 @@ function toggleDownloadFileFields() {
         fields.style.display = 'none';
         const downloadInput = document.getElementById('download_file_path');
         if (downloadInput) {
-            downloadInput.value = '';
-            clearDownloadFile();
+            clearDownloadFile(true);
         }
         const urlInput = document.getElementById('download_file_url');
         if (urlInput) {
@@ -1592,93 +2247,284 @@ function toggleDownloadFileFields() {
     }
 }
 
-// Gestion de l'upload du fichier de téléchargement avec validation et preview
-document.addEventListener('DOMContentLoaded', function() {
-    const downloadFileInput = document.getElementById('download_file_path');
-    if (downloadFileInput) {
-        downloadFileInput.addEventListener('change', function(e) {
-            handleDownloadFileUpload(e.target);
-        });
-    }
-});
+function resetDownloadHiddenFields() {
+    const chunkPathInput = document.getElementById('download_file_chunk_path');
+    const chunkNameInput = document.getElementById('download_file_chunk_name');
+    const chunkSizeInput = document.getElementById('download_file_chunk_size');
+    if (chunkPathInput) chunkPathInput.value = '';
+    if (chunkNameInput) chunkNameInput.value = '';
+    if (chunkSizeInput) chunkSizeInput.value = '';
+}
 
 function handleDownloadFileUpload(input) {
     const zone = document.getElementById('downloadFileUploadZone');
     const errorDiv = document.getElementById('downloadFileError');
     const file = input.files[0];
     
-    // Reset error
+    if (!zone) {
+        return;
+    }
+    
     if (errorDiv) {
         errorDiv.textContent = '';
         errorDiv.classList.remove('d-block');
     }
     
-    if (!file) return;
+    if (!file) {
+        return;
+    }
     
-    // Validation du type
-    const validExtensions = ['.zip', '.pdf', '.doc', '.docx', '.rar', '.7z', '.tar', '.gz'];
-    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-    
-    if (!validExtensions.includes(fileExtension)) {
+    const extension = '.' + file.name.split('.').pop().toLowerCase();
+    if (!DOWNLOAD_ALLOWED_EXTENSIONS.includes(extension)) {
         showDownloadFileError('❌ Format invalide. Utilisez ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR ou GZ.');
-        input.value = '';
+        resetFileInput(input);
         return;
     }
     
-    // Validation de la taille (2MB)
-    const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-    if (file.size > MAX_FILE_SIZE) {
-        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        showDownloadFileError(`❌ Fichier trop volumineux (${sizeMB}MB). Maximum : 2MB. Utilisez une URL externe pour les fichiers plus volumineux.`);
-        input.value = '';
+    if (file.size > MAX_DOWNLOAD_FILE_SIZE) {
+        showDownloadFileError(`❌ Fichier trop volumineux (${formatFileSize(file.size)}). Maximum : ${formatFileSize(MAX_DOWNLOAD_FILE_SIZE)}.`);
+        resetFileInput(input);
         return;
     }
     
-    // Afficher le preview
+    if (typeof Resumable === 'undefined') {
+        showDownloadFileError('❌ Votre navigateur ne supporte pas l’upload fractionné. Veuillez le mettre à jour ou utiliser un autre navigateur.');
+        resetFileInput(input);
+        return;
+    }
+    
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
+    const fileNameBadge = preview ? preview.querySelector('.file-name') : null;
+    const fileSizeBadge = preview ? preview.querySelector('.file-size') : null;
+    const urlInput = document.getElementById('download_file_url');
+    const chunkPathInput = document.getElementById('download_file_chunk_path');
+    const chunkNameInput = document.getElementById('download_file_chunk_name');
+    const chunkSizeInput = document.getElementById('download_file_chunk_size');
+    const progressModal = window.UploadProgressModal;
+    const existingContainer = document.getElementById('downloadCurrentFile');
+    const removeCheckbox = document.getElementById('remove_download_file');
+    
+    resetDownloadHiddenFields();
+    
+    if (downloadUploadResumable) {
+        downloadUploadSuppressError = true;
+        try {
+            downloadUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+        downloadUploadResumable = null;
+    }
+    if (downloadUploadTaskId && progressModal) {
+        progressModal.cancelTask(downloadUploadTaskId);
+        downloadUploadTaskId = null;
+    }
     
     if (placeholder && preview) {
         placeholder.classList.add('d-none');
         preview.classList.remove('d-none');
-        
-        preview.querySelector('.file-name').textContent = file.name;
-        preview.querySelector('.file-size').textContent = formatFileSize(file.size);
-        
-        zone.style.borderColor = '#28a745';
+    }
+    if (fileNameBadge) fileNameBadge.textContent = file.name;
+    if (fileSizeBadge) fileSizeBadge.textContent = formatFileSize(file.size);
+    zone.style.borderColor = '#0d6efd';
+    
+    if (existingContainer) {
+        existingContainer.classList.add('d-none');
+    }
+    if (removeCheckbox) {
+        removeCheckbox.checked = false;
     }
     
-    // Effacer l'URL si un fichier est sélectionné
-    const urlInput = document.getElementById('download_file_url');
     if (urlInput) {
         urlInput.value = '';
     }
+    
+    downloadUploadTaskId = createUploadTask(file.name, file.size, 'Téléversement du fichier de téléchargement', {
+        onCancel: () => clearDownloadFile(true),
+        cancelLabel: 'Annuler'
+    });
+    
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const resumable = new Resumable({
+        target: CHUNK_UPLOAD_ENDPOINT,
+        chunkSize: CHUNK_SIZE_BYTES,
+        simultaneousUploads: 3,
+        testChunks: false,
+        throttleProgressCallbacks: 1,
+        fileParameterName: 'file',
+        withCredentials: true,
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json',
+        },
+        query: () => ({
+            upload_type: 'download',
+            original_name: file.name,
+        }),
+    });
+    
+    downloadUploadResumable = resumable;
+    
+    const finalizeFailure = (message, { suppressError = false } = {}) => {
+        if (downloadUploadTaskId) {
+            errorUploadTask(downloadUploadTaskId, message || 'Téléversement annulé.');
+            downloadUploadTaskId = null;
+        }
+        downloadUploadResumable = null;
+        downloadUploadSuppressError = false;
+        resetDownloadHiddenFields();
+        if (!suppressError && message) {
+            showDownloadFileError(message);
+        }
+        if (placeholder && preview) {
+            placeholder.classList.remove('d-none');
+            preview.classList.add('d-none');
+        }
+        zone.style.borderColor = '#dee2e6';
+        if (existingContainer && suppressError) {
+            existingContainer.classList.remove('d-none');
+        }
+        resetFileInput(input);
+    };
+    
+    resumable.on('fileProgress', function(resumableFile) {
+        const percent = Math.max(0, Math.min(100, Math.round(resumableFile.progress() * 100)));
+        updateUploadTask(downloadUploadTaskId, percent, 'Téléversement en cours…');
+    });
+    
+    resumable.on('fileSuccess', function(resumableFile, response) {
+        let payload = response;
+        if (typeof response === 'string') {
+            try {
+                payload = JSON.parse(response);
+            } catch (error) {
+                payload = null;
+            }
+        }
+    
+        if (!payload || !payload.path) {
+            finalizeFailure('La réponse du serveur est invalide. Veuillez réessayer.');
+            return;
+        }
+    
+        if (chunkPathInput) chunkPathInput.value = payload.path;
+        if (chunkNameInput) chunkNameInput.value = payload.filename || file.name;
+        if (chunkSizeInput) chunkSizeInput.value = payload.size || file.size;
+    
+        if (downloadUploadTaskId) {
+            completeUploadTask(downloadUploadTaskId, 'Fichier importé avec succès');
+            downloadUploadTaskId = null;
+        }
+        downloadUploadResumable = null;
+        downloadUploadSuppressError = false;
+        zone.style.borderColor = '#28a745';
+    
+        if (fileNameBadge) fileNameBadge.textContent = payload.filename || file.name;
+        if (fileSizeBadge) fileSizeBadge.textContent = formatFileSize(payload.size || file.size);
+    
+        if (errorDiv) {
+            errorDiv.textContent = '';
+            errorDiv.classList.remove('d-block');
+        }
+    
+        if (progressModal && typeof progressModal.hideIfIdle === 'function') {
+            progressModal.hideIfIdle();
+        }
+    
+        resetFileInput(input);
+    });
+    
+    resumable.on('fileError', function(resumableFile, message) {
+        const errorMessage = typeof message === 'string'
+            ? message
+            : (message && message.message) || 'Erreur lors du téléversement du fichier.';
+        finalizeFailure(errorMessage);
+    });
+    
+    resumable.on('error', function(message) {
+        const errorMessage = typeof message === 'string'
+            ? message
+            : 'Erreur réseau lors du téléversement.';
+        finalizeFailure(errorMessage);
+    });
+    
+    resumable.on('cancel', function() {
+        if (downloadUploadSuppressError) {
+            finalizeFailure(null, { suppressError: true });
+            if (existingContainer) {
+                existingContainer.classList.remove('d-none');
+            }
+        } else {
+            finalizeFailure('Téléversement annulé.');
+        }
+    });
+    
+    resumable.on('chunkingComplete', function() {
+        if (!resumable.isUploading()) {
+            resumable.upload();
+        }
+    });
+    
+    resumable.addFile(file);
 }
 
-function clearDownloadFile() {
+function clearDownloadFile(restoreExisting = false) {
     const input = document.getElementById('download_file_path');
     const zone = document.getElementById('downloadFileUploadZone');
+    const errorDiv = document.getElementById('downloadFileError');
+    const progressModal = window.UploadProgressModal;
+    const existingContainer = document.getElementById('downloadCurrentFile');
+    const removeCheckbox = document.getElementById('remove_download_file');
     
-    if (!input || !zone) return;
+    if (downloadUploadResumable) {
+        downloadUploadSuppressError = true;
+        try {
+            downloadUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+    }
+    downloadUploadResumable = null;
     
-    input.value = '';
+    if (downloadUploadTaskId && progressModal) {
+        progressModal.cancelTask(downloadUploadTaskId);
+        downloadUploadTaskId = null;
+    }
     
-    const placeholder = zone.querySelector('.upload-placeholder');
-    const preview = zone.querySelector('.upload-preview');
+    resetDownloadHiddenFields();
     
-    if (placeholder && preview) {
-        placeholder.classList.remove('d-none');
-        preview.classList.add('d-none');
-        
+    resetFileInput(input);
+    
+    if (zone) {
+        const placeholder = zone.querySelector('.upload-placeholder');
+        const preview = zone.querySelector('.upload-preview');
+        if (placeholder && preview) {
+            placeholder.classList.remove('d-none');
+            preview.classList.add('d-none');
+        }
         zone.style.borderColor = '#dee2e6';
     }
     
-    // Réinitialiser l'erreur
-    const errorDiv = document.getElementById('downloadFileError');
     if (errorDiv) {
         errorDiv.textContent = '';
         errorDiv.classList.remove('d-block');
     }
+    
+    if (existingContainer) {
+        if (restoreExisting) {
+            existingContainer.classList.remove('d-none');
+        } else {
+            existingContainer.classList.add('d-none');
+        }
+    }
+    
+    if (removeCheckbox && restoreExisting) {
+        removeCheckbox.checked = false;
+    }
+
+    downloadUploadSuppressError = false;
 }
 
 function showDownloadFileError(message) {

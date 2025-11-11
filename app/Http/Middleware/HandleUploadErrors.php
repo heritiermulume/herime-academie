@@ -16,7 +16,14 @@ class HandleUploadErrors
     public function handle(Request $request, Closure $next): Response
     {
         // Vérifier les erreurs d'upload PHP (compatible tests et différents serveurs)
-        if ($request->isMethod('post') && !empty($request->files->all())) {
+        $routeName = $request->route()?->getName();
+        $excludedRoutes = ['admin.uploads.chunk', 'instructor.uploads.chunk'];
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return $next($request);
+        }
+
+        if ($request->isMethod('post') && !empty($request->files->all()) && !in_array($routeName, $excludedRoutes, true)) {
             foreach ($request->files->all() as $field => $file) {
                 // $file peut être un UploadedFile ou un tableau si multiple
                 $errorCode = is_array($file) && isset($file['error']) ? $file['error'] : (method_exists($file, 'getError') ? $file->getError() : UPLOAD_ERR_OK);
