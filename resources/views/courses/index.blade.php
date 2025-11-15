@@ -165,9 +165,9 @@
                                         @if($course->is_free)
                                         <span class="badge bg-success">Gratuit</span>
                                         @endif
-                                        @if($course->sale_price)
+                                        @if($course->sale_discount_percentage)
                                         <span class="badge bg-danger">
-                                            -{{ round((($course->price - $course->sale_price) / $course->price) * 100) }}%
+                                            -{{ $course->sale_discount_percentage }}%
                                         </span>
                                         @endif
                                     </div>
@@ -191,20 +191,30 @@
                                                 </div>
                                             </div>
                                             
+                                            @if($course->show_students_count && isset($course->stats['total_students']))
+                                            <div class="students-count mb-2">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-users me-1"></i>
+                                                    {{ number_format($course->stats['total_students'], 0, ',', ' ') }} 
+                                                    {{ $course->stats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                                </small>
+                                            </div>
+                                            @endif
+                                            
                                             <div class="price-duration">
                                                 <div class="price">
                                                     @if($course->is_free)
                                                         <span class="text-success fw-bold">Gratuit</span>
                                                     @else
-                                                        @if($course->sale_price)
-                                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                                                        @if($course->is_sale_active && $course->active_sale_price !== null)
+                                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</span>
                                                             <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
                                                         @else
                                                             <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                                         @endif
                                                     @endif
                                                 </div>
-                                                @if($course->sale_price && $course->sale_end_at)
+                                                @if($course->is_sale_active && $course->sale_end_at)
                                                     <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
                                                         <i class="fas fa-fire me-1 text-danger"></i>
                                                         <span class="countdown-text">
@@ -756,10 +766,11 @@ function createCourseElement(course) {
     const div = document.createElement('div');
     div.className = 'col-lg-4 col-md-6 course-item';
     
+    const hasActiveSale = Boolean(course.is_sale_active) && course.active_sale_price !== null;
     const priceHtml = course.is_free ? 
         '<span class="text-success fw-bold">Gratuit</span>' :
-        course.sale_price ?
-            `<span class="text-primary fw-bold">$${parseFloat(course.sale_price).toFixed(2)}</span>
+        hasActiveSale ?
+            `<span class="text-primary fw-bold">$${parseFloat(course.active_sale_price).toFixed(2)}</span>
              <small class="text-muted text-decoration-line-through ms-1">$${parseFloat(course.price).toFixed(2)}</small>` :
             `<span class="text-primary fw-bold">$${parseFloat(course.price).toFixed(2)}</span>`;
     
@@ -767,7 +778,7 @@ function createCourseElement(course) {
         <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
             ${course.is_featured ? '<span class="badge bg-warning">En vedette</span>' : ''}
             ${course.is_free ? '<span class="badge bg-success">Gratuit</span>' : ''}
-            ${course.sale_price ? `<span class="badge bg-danger">-${Math.round(((course.price - course.sale_price) / course.price) * 100)}%</span>` : ''}
+            ${course.sale_discount_percentage ? `<span class="badge bg-danger">-${course.sale_discount_percentage}%</span>` : ''}
         </div>
     `;
     
@@ -797,12 +808,21 @@ function createCourseElement(course) {
                             <span class="text-muted">(${course.stats?.total_reviews || 0})</span>
                         </div>
                     </div>
+                    ${course.show_students_count && course.stats?.total_students ? `
+                    <div class="students-count mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-users me-1"></i>
+                            ${parseInt(course.stats.total_students).toLocaleString('fr-FR')} 
+                            ${parseInt(course.stats.total_students) > 1 ? 'étudiants inscrits' : 'étudiant inscrit'}
+                        </small>
+                    </div>
+                    ` : ''}
                     
                     <div class="price-duration">
                         <div class="price">
                             ${priceHtml}
                         </div>
-                        ${course.sale_price && course.sale_end_at ? 
+                        ${hasActiveSale && course.sale_end_at ? 
                             `<div class="promotion-countdown" data-sale-end="${course.sale_end_at}">
                                 <i class="fas fa-fire me-1 text-danger"></i>
                                 <span class="countdown-text">

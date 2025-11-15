@@ -163,7 +163,7 @@ class PawaPayController extends Controller
         
         // Calculer le total réel depuis le panier (dans la devise de base du site)
         $subtotal = $cartItems->sum(function($item) {
-            return optional($item->course)->current_price ?? optional($item->course)->sale_price ?? optional($item->course)->price ?? 0;
+            return optional($item->course)->current_price ?? optional($item->course)->price ?? 0;
         });
         
         // IMPORTANT: Utiliser le montant converti et la devise envoyés par le frontend
@@ -203,12 +203,12 @@ class PawaPayController extends Controller
         // Créer les OrderItems
         foreach ($cartItems as $cartItem) {
             if (!$cartItem->course) { continue; }
-            $coursePrice = $cartItem->course->current_price ?? $cartItem->course->sale_price ?? $cartItem->course->price ?? 0;
+            $coursePrice = $cartItem->course->current_price ?? $cartItem->course->price ?? 0;
             OrderItem::create([
                 'order_id' => $order->id,
                 'course_id' => $cartItem->course_id,
                 'price' => $cartItem->course->price ?? 0,
-                'sale_price' => $cartItem->course->sale_price ?? null,
+                'sale_price' => $cartItem->course->is_sale_active ? $cartItem->course->active_sale_price : null,
                 'total' => $coursePrice,
             ]);
         }

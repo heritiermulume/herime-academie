@@ -391,7 +391,7 @@ class AdminController extends Controller
             $query->latest();
         }
 
-        $courses = $query->paginate(20)->withQueryString();
+        $courses = $query->paginate(15)->withQueryString();
 
         // Données pour les filtres
         $categories = Category::active()->ordered()->get();
@@ -427,18 +427,29 @@ class AdminController extends Controller
             'category_id' => 'required|exists:categories,id',
             'price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
+            'sale_start_at' => 'nullable|date',
+            'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
+            'sale_start_at' => 'nullable|date',
+            'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
             'is_free' => 'boolean',
             'is_downloadable' => 'boolean',
             'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:10485760', // 10GB max (kilobytes)
             'download_file_url' => 'nullable|url|max:1000',
             'is_published' => 'boolean',
             'is_featured' => 'boolean',
+            'show_students_count' => 'boolean',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:10',
             'use_external_payment' => 'boolean',
             'external_payment_url' => 'nullable|url|max:500|required_if:use_external_payment,1',
             'external_payment_text' => 'nullable|string|max:100',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
+            'thumbnail_chunk_path' => 'nullable|string|max:2048',
+            'thumbnail_chunk_name' => 'nullable|string|max:255',
+            'thumbnail_chunk_size' => 'nullable|integer|min:0',
+            'thumbnail_chunk_path' => 'nullable|string|max:2048',
+            'thumbnail_chunk_name' => 'nullable|string|max:255',
+            'thumbnail_chunk_size' => 'nullable|integer|min:0',
             'video_preview' => 'nullable|string|max:255',
             'video_preview_file' => 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm|max:1048576',
             'video_preview_youtube_id' => 'nullable|string|max:100',
@@ -481,11 +492,21 @@ class AdminController extends Controller
             // Créer le cours
             $courseData = $request->only([
                 'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
+                'sale_start_at', 'sale_end_at',
                 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
                 'video_preview_youtube_id', 'video_preview_is_unlisted', 'use_external_payment',
                 'external_payment_url', 'external_payment_text'
             ]);
+
+            $courseData['video_preview'] = $this->normalizeNullableString($courseData['video_preview'] ?? null);
+            $courseData['meta_description'] = $this->normalizeNullableString($courseData['meta_description'] ?? null);
+            $courseData['meta_keywords'] = $this->normalizeCommaSeparatedString($courseData['meta_keywords'] ?? null);
+            $courseData['external_payment_url'] = $this->normalizeNullableString($courseData['external_payment_url'] ?? null);
+            $courseData['external_payment_text'] = $this->normalizeNullableString($courseData['external_payment_text'] ?? null);
+            $courseData['tags'] = $this->normalizeTags($courseData['tags'] ?? null);
+            $courseData['requirements'] = $this->normalizeStringArray($request->input('requirements', []));
+            $courseData['what_you_will_learn'] = $this->normalizeStringArray($request->input('what_you_will_learn', []));
 
             // Gérer l'upload de l'image de couverture
             if ($request->hasFile('thumbnail')) {
@@ -496,6 +517,14 @@ class AdminController extends Controller
                     1920 // Max 1920px width
                 );
                 $courseData['thumbnail'] = $result['path'];
+        } elseif ($request->filled('thumbnail_chunk_path')) {
+            $chunkPath = $this->sanitizeUploadedPath($request->input('thumbnail_chunk_path'));
+            if ($chunkPath) {
+                $courseData['thumbnail'] = $this->fileUploadService->promoteTemporaryFile(
+                    $chunkPath,
+                    'courses/thumbnails'
+                );
+            }
             }
 
             // Gérer YouTube ou upload de la vidéo de prévisualisation
@@ -519,7 +548,10 @@ class AdminController extends Controller
             } elseif ($request->filled('video_preview_path')) {
                 $sanitizedPath = $this->sanitizeUploadedPath($request->input('video_preview_path'));
                 if ($sanitizedPath) {
-                    $courseData['video_preview'] = $sanitizedPath;
+                    $courseData['video_preview'] = $this->fileUploadService->promoteTemporaryFile(
+                        $sanitizedPath,
+                        'courses/previews'
+                    );
                 }
             }
 
@@ -543,29 +575,40 @@ class AdminController extends Controller
                         ->withInput()
                         ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()]);
                 }
+            } elseif ($request->filled('download_file_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('download_file_chunk_path'));
+                if ($chunkPath) {
+                    $courseData['download_file_path'] = $this->fileUploadService->promoteTemporaryFile(
+                        $chunkPath,
+                        'courses/downloads'
+                    );
+                }
             } elseif ($request->filled('download_file_url')) {
                 // Si une URL externe est fournie, l'utiliser
                 $courseData['download_file_path'] = $request->download_file_url;
             }
 
             // Traiter les tableaux
-            $courseData['requirements'] = $request->input('requirements', []);
-            $courseData['what_you_will_learn'] = $request->input('what_you_will_learn', []);
             $courseData['slug'] = $this->generateUniqueCourseSlug($request->title);
 
             $courseData['price'] = $request->filled('price') ? (float) $request->input('price') : null;
             $courseData['sale_price'] = $request->filled('sale_price') ? (float) $request->input('sale_price') : null;
+            $courseData['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
+            $courseData['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
 
             $courseData['is_free'] = $request->boolean('is_free', false);
             $courseData['is_downloadable'] = $request->boolean('is_downloadable', false);
             $courseData['use_external_payment'] = $request->boolean('use_external_payment', false);
             $courseData['is_published'] = $request->boolean('is_published', false);
             $courseData['is_featured'] = $request->boolean('is_featured', false);
+            $courseData['show_students_count'] = $request->boolean('show_students_count', false);
             $courseData['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
 
             if ($courseData['is_free']) {
                 $courseData['price'] = 0;
                 $courseData['sale_price'] = null;
+                $courseData['sale_start_at'] = null;
+                $courseData['sale_end_at'] = null;
             } else {
                 if ($courseData['price'] === null) {
                     throw ValidationException::withMessages([
@@ -577,6 +620,11 @@ class AdminController extends Controller
                     throw ValidationException::withMessages([
                         'sale_price' => 'Le prix promotionnel doit être inférieur ou égal au prix standard.',
                     ]);
+                }
+
+                if (is_null($courseData['sale_price'])) {
+                    $courseData['sale_start_at'] = null;
+                    $courseData['sale_end_at'] = null;
                 }
             }
 
@@ -612,7 +660,10 @@ class AdminController extends Controller
                             } else {
                                 $chunkPath = $this->sanitizeUploadedPath($lessonData['content_file_path'] ?? null);
                                 if ($chunkPath) {
-                                    $filePath = $chunkPath;
+                                    $filePath = $this->fileUploadService->promoteTemporaryFile(
+                                        $chunkPath,
+                                        'courses/lessons'
+                                    );
                                 }
                             }
 
@@ -685,6 +736,7 @@ class AdminController extends Controller
             'external_payment_text' => 'nullable|string|max:100',
             'is_published' => 'boolean',
             'is_featured' => 'boolean',
+            'show_students_count' => 'boolean',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:10',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
@@ -729,11 +781,21 @@ class AdminController extends Controller
         try {
             $data = $request->only([
                 'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
+                'sale_start_at', 'sale_end_at',
                 'use_external_payment', 'external_payment_url', 'external_payment_text',
                 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
                 'video_preview_youtube_id', 'video_preview_is_unlisted'
             ]);
+
+            $data['video_preview'] = $this->normalizeNullableString($data['video_preview'] ?? null);
+            $data['meta_description'] = $this->normalizeNullableString($data['meta_description'] ?? null);
+            $data['meta_keywords'] = $this->normalizeCommaSeparatedString($data['meta_keywords'] ?? null);
+            $data['external_payment_url'] = $this->normalizeNullableString($data['external_payment_url'] ?? null);
+            $data['external_payment_text'] = $this->normalizeNullableString($data['external_payment_text'] ?? null);
+            $data['tags'] = $this->normalizeTags($data['tags'] ?? null);
+            $data['requirements'] = $this->normalizeStringArray($request->input('requirements', []));
+            $data['what_you_will_learn'] = $this->normalizeStringArray($request->input('what_you_will_learn', []));
 
             // Gérer l'upload de l'image de couverture
             if ($request->hasFile('thumbnail')) {
@@ -744,6 +806,18 @@ class AdminController extends Controller
                     1920 // Max 1920px width
                 );
                 $data['thumbnail'] = $result['path'];
+        } elseif ($request->filled('thumbnail_chunk_path')) {
+            $chunkPath = $this->sanitizeUploadedPath($request->input('thumbnail_chunk_path'));
+            if ($chunkPath) {
+                $newThumbnailPath = $this->fileUploadService->promoteTemporaryFile(
+                    $chunkPath,
+                    'courses/thumbnails'
+                );
+                if ($course->thumbnail && $course->thumbnail !== $newThumbnailPath) {
+                    $this->fileUploadService->deleteFile($course->thumbnail);
+                }
+                $data['thumbnail'] = $newThumbnailPath;
+            }
             }
 
             // Gérer YouTube ou upload de la vidéo de prévisualisation
@@ -768,10 +842,14 @@ class AdminController extends Controller
                     $currentPath = $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL)
                         ? $this->sanitizeUploadedPath($course->video_preview)
                         : null;
-                    if ($currentPath && $currentPath !== $sanitizedPath) {
+                    $finalPath = $this->fileUploadService->promoteTemporaryFile(
+                        $sanitizedPath,
+                        'courses/previews'
+                    );
+                    if ($currentPath && $currentPath !== $finalPath) {
                         $this->fileUploadService->deleteFile($currentPath);
                     }
-                    $data['video_preview'] = $sanitizedPath;
+                    $data['video_preview'] = $finalPath;
                 }
             }
 
@@ -804,27 +882,44 @@ class AdminController extends Controller
                         ->withInput()
                         ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()]);
                 }
+            } elseif ($request->filled('download_file_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('download_file_chunk_path'));
+                if ($chunkPath) {
+                    $finalPath = $this->fileUploadService->promoteTemporaryFile(
+                        $chunkPath,
+                        'courses/downloads'
+                    );
+                    if ($course->download_file_path
+                        && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)
+                        && $course->download_file_path !== $finalPath) {
+                        $this->fileUploadService->deleteFile($course->download_file_path);
+                    }
+                    $data['download_file_path'] = $finalPath;
+                }
             } elseif ($request->filled('download_file_url')) {
                 $data['download_file_path'] = $request->download_file_url;
             }
 
-            $data['requirements'] = $request->input('requirements', []);
-            $data['what_you_will_learn'] = $request->input('what_you_will_learn', []);
             $data['slug'] = $this->generateUniqueCourseSlug($request->title, $course);
 
             $data['price'] = $request->filled('price') ? (float) $request->input('price') : null;
             $data['sale_price'] = $request->filled('sale_price') ? (float) $request->input('sale_price') : null;
+            $data['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
+            $data['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
 
             $data['is_free'] = $request->boolean('is_free', false);
             $data['is_downloadable'] = $request->boolean('is_downloadable', false);
             $data['use_external_payment'] = $request->boolean('use_external_payment', false);
             $data['is_published'] = $request->boolean('is_published', false);
             $data['is_featured'] = $request->boolean('is_featured', false);
+            $data['show_students_count'] = $request->boolean('show_students_count', false);
             $data['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
 
             if ($data['is_free']) {
                 $data['price'] = 0;
                 $data['sale_price'] = null;
+                $data['sale_start_at'] = null;
+                $data['sale_end_at'] = null;
             } else {
                 if ($data['price'] === null) {
                     throw ValidationException::withMessages([
@@ -836,6 +931,11 @@ class AdminController extends Controller
                     throw ValidationException::withMessages([
                         'sale_price' => 'Le prix promotionnel doit être inférieur ou égal au prix standard.',
                     ]);
+                }
+
+                if (is_null($data['sale_price'])) {
+                    $data['sale_start_at'] = null;
+                    $data['sale_end_at'] = null;
                 }
             }
 
@@ -954,11 +1054,15 @@ class AdminController extends Controller
                         } else {
                             $chunkPath = $this->sanitizeUploadedPath($lessonData['content_file_path'] ?? null);
                             if ($chunkPath) {
-                                if ($currentFilePath && $currentFilePath !== $chunkPath) {
+                                $finalChunkPath = $this->fileUploadService->promoteTemporaryFile(
+                                    $chunkPath,
+                                    'courses/lessons'
+                                );
+                                if ($currentFilePath && $currentFilePath !== $finalChunkPath) {
                                     $this->fileUploadService->deleteFile($currentFilePath);
                                 }
-                                $contentUrl = $chunkPath;
-                                $currentFilePath = $chunkPath;
+                                $contentUrl = $finalChunkPath;
+                                $currentFilePath = $finalChunkPath;
                                 $existingHiddenPath = null;
                                 $removeExistingFile = false;
                             }
@@ -1816,6 +1920,63 @@ class AdminController extends Controller
             ->with('success', 'Statut de la candidature mis à jour avec succès.');
     }
 
+    private function normalizeStringArray($values): array
+    {
+        if (!is_array($values)) {
+            return [];
+        }
+
+        return collect($values)
+            ->map(function ($value) {
+                if (is_string($value) || is_numeric($value)) {
+                    $trimmed = trim((string) $value);
+                    return $trimmed === '' ? null : $trimmed;
+                }
+                return null;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function normalizeTags($tags): array
+    {
+        if (is_array($tags)) {
+            return $this->normalizeStringArray($tags);
+        }
+
+        if (is_string($tags)) {
+            $chunks = preg_split('/[,;]+/', $tags) ?: [];
+            return $this->normalizeStringArray($chunks);
+        }
+
+        return [];
+    }
+
+    private function normalizeNullableString(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function normalizeCommaSeparatedString(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $items = preg_split('/[,;]+/', $value) ?: [];
+        $normalized = $this->normalizeStringArray($items);
+
+        return empty($normalized) ? null : implode(', ', $normalized);
+    }
+
     private function sanitizeUploadedPath(?string $path): ?string
     {
         if (!$path) {
@@ -1828,12 +1989,28 @@ class AdminController extends Controller
             return null;
         }
 
+        $clean = str_replace('..', '', $clean);
         $clean = ltrim($clean, '/');
 
         if (str_starts_with($clean, 'storage/')) {
             $clean = ltrim(substr($clean, strlen('storage/')), '/');
         }
 
-        return $clean;
+        $allowedPrefixes = [
+            FileUploadService::TEMPORARY_BASE_PATH,
+            'courses/thumbnails',
+            'courses/previews',
+            'courses/lessons',
+            'courses/downloads',
+        ];
+
+        foreach ($allowedPrefixes as $prefix) {
+            $normalized = rtrim($prefix, '/');
+            if ($clean === $normalized || str_starts_with($clean, $normalized . '/')) {
+                return $clean;
+            }
+        }
+
+        return null;
     }
 }

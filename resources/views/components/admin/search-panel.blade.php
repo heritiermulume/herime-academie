@@ -77,3 +77,107 @@
     </form>
 </div>
 
+@pushOnce('styles', 'admin-search-panel-styles')
+<style>
+    @media (max-width: 768px) {
+        .admin-search-panel__primary {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .admin-search-panel__search {
+            width: 100%;
+        }
+
+        .admin-search-panel__actions {
+            width: 100%;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .admin-search-panel__actions .btn {
+            flex: 1 1 50%;
+            font-size: 0.85rem;
+            padding: 0.45rem 0.75rem;
+        }
+
+        .reset-filters-btn {
+            max-width: 180px;
+            align-self: flex-end;
+        }
+
+        .admin-search-panel__submit-label,
+        .admin-search-panel__filters-label {
+            display: inline;
+        }
+
+        .admin-filter-offcanvas .offcanvas-body {
+            padding: 1rem;
+        }
+
+        .admin-filter-offcanvas .form-label {
+            font-size: 0.85rem;
+        }
+
+        .admin-filter-offcanvas .form-select,
+        .admin-filter-offcanvas .form-control {
+            font-size: 0.85rem;
+            padding: 0.45rem 0.6rem;
+        }
+
+        .admin-filter-offcanvas .btn {
+            font-size: 0.85rem;
+            padding: 0.45rem 0.75rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .admin-search-panel__actions .btn {
+            flex: 1 1 auto;
+            font-size: 0.8rem;
+        }
+
+        .reset-filters-btn {
+            max-width: 140px;
+        }
+
+        .admin-filter-offcanvas .offcanvas-title {
+            font-size: 1rem;
+        }
+
+        .admin-filter-offcanvas .btn {
+            width: 100%;
+        }
+
+        .admin-filter-offcanvas .offcanvas-body {
+            overflow-y: auto;
+            max-height: calc(100vh - 160px);
+        }
+
+        .admin-filter-offcanvas .offcanvas-footer {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .admin-form-grid.admin-form-grid--two {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .mobile-actions .mobile-action {
+            font-size: 0.7rem;
+        }
+
+        .mobile-actions .mobile-action i {
+            font-size: 1rem;
+        }
+
+        .reset-filters-btn {
+            max-width: 120px;
+        }
+    }
+</style>
+@endPushOnce
+

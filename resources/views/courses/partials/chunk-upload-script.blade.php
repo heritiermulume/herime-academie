@@ -24,6 +24,138 @@
         })();
         const ENABLE_COURSE_BUILDER = {{ $enableCourseBuilder ? 'true' : 'false' }};
         const existingSections = @json($existingSections);
+        if (!window.__tempUploadConfig) {
+            window.__tempUploadConfig = {
+                prefix: '{{ \App\Services\FileUploadService::TEMPORARY_BASE_PATH }}/',
+                endpoint: "{{ route('uploads.temp.destroy') }}",
+            };
+        } else {
+            window.__tempUploadConfig.prefix = '{{ \App\Services\FileUploadService::TEMPORARY_BASE_PATH }}/';
+            window.__tempUploadConfig.endpoint = "{{ route('uploads.temp.destroy') }}";
+        }
+
+        const TempUploadManager = (() => {
+            if (window.TempUploadManager) {
+                window.TempUploadManager.configure(window.__tempUploadConfig);
+                return window.TempUploadManager;
+            }
+
+            let config = window.__tempUploadConfig;
+            const state = {
+                active: new Set(),
+                queue: new Set(),
+                timer: null,
+                isSubmitting: false,
+            };
+
+            const getToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const isTemporary = (path) => {
+                return typeof path === 'string'
+                    && config?.prefix
+                    && path.startsWith(config.prefix);
+            };
+
+            const sendRequest = (paths, keepalive) => {
+                const endpoint = config?.endpoint;
+                const token = getToken();
+                if (!endpoint || !token || !Array.isArray(paths) || paths.length === 0) {
+                    return;
+                }
+
+                try {
+                    fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            Accept: 'application/json',
+                        },
+                        body: JSON.stringify({ paths }),
+                        keepalive: !!keepalive,
+                    }).catch(() => {});
+                } catch (error) {
+                    // Ignorer les erreurs réseau
+                }
+            };
+
+            const performFlush = ({ includeActive = false, keepalive = false } = {}) => {
+                if (state.timer) {
+                    clearTimeout(state.timer);
+                    state.timer = null;
+                }
+
+                const paths = new Set();
+
+                state.queue.forEach((path) => paths.add(path));
+                state.queue.clear();
+
+                if (includeActive) {
+                    state.active.forEach((path) => paths.add(path));
+                    state.active.clear();
+                }
+
+                if (!paths.size) {
+                    return;
+                }
+
+                sendRequest(Array.from(paths), keepalive);
+            };
+
+            const scheduleFlush = () => {
+                if (state.timer) {
+                    return;
+                }
+                state.timer = setTimeout(() => {
+                    state.timer = null;
+                    performFlush();
+                }, 400);
+            };
+
+            return window.TempUploadManager = {
+                configure(newConfig) {
+                    config = newConfig || config;
+                },
+                register(path) {
+                    if (isTemporary(path)) {
+                        state.active.add(path);
+                    }
+                },
+                queueDelete(path) {
+                    if (!isTemporary(path)) {
+                        return;
+                    }
+                    state.active.delete(path);
+                    state.queue.add(path);
+                    scheduleFlush();
+                },
+                flush(options = {}) {
+                    performFlush(options);
+                },
+                flushAll(options = {}) {
+                    performFlush({ includeActive: true, keepalive: options.keepalive });
+                },
+                markSubmitting() {
+                    state.isSubmitting = true;
+                },
+                isSubmitting() {
+                    return state.isSubmitting;
+                },
+            };
+        })();
+
+        const isTemporaryPath = (path) => {
+            const prefix = window.__tempUploadConfig?.prefix;
+            return typeof path === 'string' && prefix && path.startsWith(prefix);
+        };
+
+        const queueTemporaryDeletion = (path) => {
+            TempUploadManager.queueDelete(path);
+        };
+
+        const registerTemporaryPath = (path) => {
+            TempUploadManager.register(path);
+        };
 
         const formatBytes = (bytes) => {
             if (!bytes && bytes !== 0) {
@@ -651,6 +783,10 @@
 
                     if (clearStored) {
                         if (pathInput) {
+                            const previousPath = pathInput.value;
+                            if (previousPath && isTemporaryPath(previousPath)) {
+                                queueTemporaryDeletion(previousPath);
+                            }
                             pathInput.value = '';
                         }
                         if (nameInput) {
@@ -800,6 +936,7 @@
 
                             label.textContent = `${displayName} (${displaySize})`;
 
+                            const previousPath = pathInput ? pathInput.value : '';
                             if (pathInput) {
                                 pathInput.value = payload.path;
                             }
@@ -809,6 +946,10 @@
                             if (sizeInput) {
                                 sizeInput.value = payload.size || file.size;
                             }
+                            if (previousPath && previousPath !== payload.path) {
+                                queueTemporaryDeletion(previousPath);
+                            }
+                            registerTemporaryPath(payload.path);
                             if (uploadTaskId) {
                                 UploadTaskManager.complete(uploadTaskId, 'Fichier importé avec succès');
                                 uploadTaskId = null;
@@ -1085,6 +1226,10 @@
 
                 if (clearStored) {
                     if (pathInput) {
+                        const previousPath = pathInput.value;
+                        if (previousPath && isTemporaryPath(previousPath)) {
+                            queueTemporaryDeletion(previousPath);
+                        }
                         pathInput.value = '';
                     }
                     if (nameInput) {
@@ -1245,6 +1390,7 @@
                             filenameEl.textContent = `${displayName} (${displaySize})`;
                         }
 
+                        const previousPath = pathInput ? pathInput.value : '';
                         if (pathInput) {
                             pathInput.value = payload.path;
                         }
@@ -1254,6 +1400,10 @@
                         if (sizeInput) {
                             sizeInput.value = payload.size || file.size;
                         }
+                        if (previousPath && previousPath !== payload.path) {
+                            queueTemporaryDeletion(previousPath);
+                        }
+                        registerTemporaryPath(payload.path);
                         if (uploadTaskId) {
                             UploadTaskManager.complete(uploadTaskId, 'Vidéo importée avec succès');
                             uploadTaskId = null;
@@ -1426,6 +1576,38 @@
                 setupMediaUpload(previewUpload, { maxSize: MAX_PREVIEW_VIDEO_SIZE });
             }
         });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('courseForm');
+            if (form) {
+                form.addEventListener('submit', () => {
+                    TempUploadManager.markSubmitting();
+                });
+            }
+
+            document.querySelectorAll('[data-temp-upload-cancel]').forEach((cancelLink) => {
+                cancelLink.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const href = cancelLink.getAttribute('href');
+                    TempUploadManager.flushAll({ keepalive: true });
+                    const navigate = () => window.location.href = href;
+                    if (navigator.sendBeacon) {
+                        setTimeout(navigate, 50);
+                    } else {
+                        setTimeout(navigate, 0);
+                    }
+                });
+            });
+        });
+
+        if (!window.__tempUploadUnloadHook) {
+            window.__tempUploadUnloadHook = true;
+            window.addEventListener('beforeunload', () => {
+                if (TempUploadManager && !TempUploadManager.isSubmitting()) {
+                    TempUploadManager.flushAll({ keepalive: true });
+                }
+            });
+        }
     </script>
 @endpush
 

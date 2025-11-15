@@ -99,11 +99,13 @@ class PaymentController extends Controller
         ]);
 
         // Créer l'élément de commande
+        $salePriceForOrder = $course->is_sale_active ? $course->active_sale_price : null;
+
         OrderItem::create([
             'order_id' => $order->id,
             'course_id' => $course->id,
             'price' => $price,
-            'sale_price' => $course->sale_price,
+            'sale_price' => $salePriceForOrder,
             'total' => $finalPrice,
         ]);
 

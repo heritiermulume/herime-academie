@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Notifications\CourseModerationNotification;
 use App\Notifications\CoursePublishedNotification;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\Notification;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 class Course extends Model
 {
@@ -26,6 +28,7 @@ class Course extends Model
         'video_preview_is_unlisted',
         'price',
         'sale_price',
+        'sale_start_at',
         'sale_end_at',
         'is_free',
         'use_external_payment',
@@ -33,6 +36,7 @@ class Course extends Model
         'external_payment_text',
         'is_published',
         'is_featured',
+        'show_students_count',
         'is_downloadable',
         'download_file_path',
         'level',
@@ -44,16 +48,25 @@ class Course extends Model
         'meta_keywords',
     ];
 
+    protected $appends = [
+        'is_sale_active',
+        'active_sale_price',
+        'effective_price',
+        'sale_discount_percentage',
+    ];
+
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
             'sale_price' => 'decimal:2',
+            'sale_start_at' => 'datetime',
             'sale_end_at' => 'datetime',
             'is_free' => 'boolean',
             'use_external_payment' => 'boolean',
             'is_published' => 'boolean',
             'is_featured' => 'boolean',
+            'show_students_count' => 'boolean',
             'is_downloadable' => 'boolean',
             'video_preview_is_unlisted' => 'boolean',
             'tags' => 'array',
@@ -149,6 +162,87 @@ class Course extends Model
     public function getAverageRatingAttribute()
     {
         return $this->reviews()->avg('rating') ?? 0;
+    }
+
+    /**
+     * Déterminer si une promotion est active.
+     */
+    public function getIsSaleActiveAttribute(): bool
+    {
+        $salePrice = $this->attributes['sale_price'] ?? null;
+
+        if (is_null($salePrice)) {
+            return false;
+        }
+
+        $now = Carbon::now();
+        $saleStart = $this->sale_start_at;
+        $saleEnd = $this->sale_end_at;
+
+        if ($saleStart instanceof Carbon && $now->lt($saleStart)) {
+            return false;
+        }
+
+        if ($saleEnd instanceof Carbon && $now->greaterThan($saleEnd)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Prix promotionnel actif (ou null si la promotion n'est pas active).
+     */
+    protected function activeSalePrice(): Attribute
+    {
+        return Attribute::get(function () {
+            if (! $this->is_sale_active) {
+                return null;
+            }
+
+            $salePrice = $this->attributes['sale_price'] ?? null;
+
+            return is_null($salePrice) ? null : (float) $salePrice;
+        });
+    }
+
+    /**
+     * Prix effectif à afficher (prix normal ou promotionnel actif).
+     */
+    protected function effectivePrice(): Attribute
+    {
+        return Attribute::get(function () {
+            if ($this->is_free) {
+                return 0.0;
+            }
+
+            if ($this->active_sale_price !== null) {
+                return $this->active_sale_price;
+            }
+
+            $price = $this->attributes['price'] ?? null;
+
+            return is_null($price) ? null : (float) $price;
+        });
+    }
+
+    /**
+     * Pourcentage de réduction appliqué lorsque la promotion est active.
+     */
+    public function getSaleDiscountPercentageAttribute(): ?int
+    {
+        if (! $this->is_sale_active) {
+            return null;
+        }
+
+        $price = $this->attributes['price'] ?? null;
+        $salePrice = $this->active_sale_price;
+
+        if (is_null($price) || $price <= 0 || is_null($salePrice)) {
+            return null;
+        }
+
+        return (int) round((($price - $salePrice) / $price) * 100);
     }
 
     /**
@@ -282,16 +376,12 @@ class Course extends Model
     // Helper methods
     public function getCurrentPriceAttribute()
     {
-        return $this->sale_price ?? $this->price;
+        return $this->effective_price ?? $this->price;
     }
 
     public function getDiscountPercentageAttribute()
     {
-        if (!$this->sale_price || $this->sale_price >= $this->price) {
-            return 0;
-        }
-        
-        return round((($this->price - $this->sale_price) / $this->price) * 100);
+        return $this->sale_discount_percentage ?? 0;
     }
 
     public function isEnrolledBy($userId)

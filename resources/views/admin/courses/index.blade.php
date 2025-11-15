@@ -89,6 +89,164 @@
 </script>
 @endpush
 
+@push('styles')
+<style>
+    .admin-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.25rem;
+    }
+
+.mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mobile-actions .mobile-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+}
+
+.mobile-actions .mobile-action i {
+    font-size: 1.05rem;
+}
+
+.mobile-actions .mobile-action span {
+    font-size: 0.85rem;
+}
+
+    @media (max-width: 992px) {
+        .admin-panel__body {
+            padding: 1.25rem;
+        }
+
+        .admin-form-grid.admin-form-grid--two {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem 1.25rem;
+        }
+
+        .admin-table .table thead th,
+        .admin-table .table tbody td {
+            white-space: nowrap;
+        }
+
+        .admin-table img {
+            width: 56px;
+            height: 42px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .admin-panel {
+            margin-bottom: 1.25rem;
+        }
+
+        .admin-panel__body {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .admin-stats-grid .admin-stat-card__value {
+            font-size: 1.55rem;
+        }
+
+        .admin-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .admin-form-grid.admin-form-grid--two {
+            grid-template-columns: 1fr;
+        }
+
+        .admin-form-grid.admin-form-grid--two .form-label {
+            font-size: 0.85rem;
+        }
+
+        .admin-form-grid.admin-form-grid--two .form-select,
+        .admin-form-grid.admin-form-grid--two .form-control {
+            font-size: 0.85rem;
+            padding: 0.45rem 0.65rem;
+        }
+
+    }
+
+    @media (max-width: 576px) {
+        .admin-panel__body {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .admin-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        .admin-stats-grid .admin-stat-card__value {
+            font-size: 1.35rem;
+        }
+
+        .admin-table .table {
+            font-size: 0.85rem;
+        }
+
+        .admin-table img {
+            width: 44px;
+            height: 32px;
+        }
+
+        .admin-chip {
+            font-size: 0.7rem;
+        }
+
+        .admin-form-grid.admin-form-grid--two .form-select,
+        .admin-form-grid.admin-form-grid--two .form-control {
+            font-size: 0.8rem;
+            padding: 0.4rem 0.6rem;
+        }
+
+        .admin-table .table-responsive {
+            margin: 0;
+        }
+
+        .admin-table .admin-actions {
+            flex-wrap: nowrap;
+            gap: 0.35rem;
+        }
+
+        .admin-table .admin-actions .btn {
+            flex: 0 0 auto;
+        }
+
+        .mobile-actions {
+            justify-content: flex-start;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .admin-panel__body {
+            padding: 0.85rem;
+        }
+
+        .admin-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        .admin-table .table {
+            font-size: 0.9rem;
+        }
+
+        .admin-table img {
+            width: 44px;
+            height: 32px;
+        }
+    }
+</style>
+@endpush
+
 @section('admin-content')
     <section class="admin-panel">
         <div class="admin-panel__body">
@@ -171,7 +329,7 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center gap-2">
                         <span class="text-muted small">Ajustez les filtres puis appliquez-les.</span>
-                        <a href="{{ route('admin.courses') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('admin.courses') }}" class="btn btn-outline-secondary reset-filters-btn">
                             <i class="fas fa-undo me-2"></i>Réinitialiser
                         </a>
                     </div>
@@ -234,7 +392,7 @@
                                     </a>
                                 </th>
                                 <th>Statut</th>
-                                <th class="text-center" style="width: 120px;">Actions</th>
+                                <th class="text-center d-none d-md-table-cell" style="width: 120px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -275,24 +433,42 @@
                                             <span class="admin-chip admin-chip--warning">Brouillon</span>
                                         @endif
                                     </td>
-                                    <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-light" title="Modifier">
+                                    <td class="text-center align-top">
+                                        <div class="d-none d-md-inline-block">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-light" title="Modifier">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-light" title="Voir">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-light text-danger" title="Supprimer"
+                                                        data-course-id="{{ $course->id }}"
+                                                        data-course-title="{{ $course->title }}"
+                                                        onclick="openCourseDeleteModal(this)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="d-md-none mobile-actions mt-3">
+                                            <div class="mobile-action" onclick="window.location.href='{{ route('admin.courses.edit', $course) }}'">
                                                 <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-light" title="Voir">
+                                                <span>Modifier</span>
+                                            </div>
+                                            <div class="mobile-action" onclick="window.location.href='{{ route('admin.courses.show', $course) }}'">
                                                 <i class="fas fa-eye"></i>
-                                            </a>
-                                            <button type="button" class="btn btn-light text-danger" title="Supprimer"
-                                                    data-course-id="{{ $course->id }}"
-                                                    data-course-title="{{ $course->title }}"
-                                                    onclick="openCourseDeleteModal(this)">
+                                                <span>Voir</span>
+                                            </div>
+                                            <div class="mobile-action text-danger" data-course-id="{{ $course->id }}"
+                                                 data-course-title="{{ $course->title }}"
+                                                 onclick="openCourseDeleteModal(this)">
                                                 <i class="fas fa-trash"></i>
-                                            </button>
+                                                <span>Supprimer</span>
+                                            </div>
                                         </div>
                                         <form id="course-delete-form-{{ $course->id }}" action="{{ route('admin.courses.destroy', $course) }}" method="POST" class="d-none">
-                                                @csrf
-                                                @method('DELETE')
+                                            @csrf
+                                            @method('DELETE')
                                         </form>
                                     </td>
                                 </tr>
@@ -310,7 +486,7 @@
             </div>
 
             <div class="admin-pagination">
-                {{ $courses->withQueryString()->links() }}
+                {{ $courses->withQueryString()->onEachSide(1)->links() }}
             </div>
         </div>
     </section>

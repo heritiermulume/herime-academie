@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Models\Order;
+use Illuminate\Support\Carbon;
 
 class CourseController extends Controller
 {
@@ -84,10 +85,24 @@ class CourseController extends Controller
                 $query->topRated();
                 break;
             case 'price_low':
-                $query->orderByRaw('CASE WHEN sale_price IS NOT NULL THEN sale_price ELSE price END ASC');
+                $now = Carbon::now();
+                $query->orderByRaw(
+                    'CASE WHEN sale_price IS NOT NULL 
+                        AND (sale_start_at IS NULL OR sale_start_at <= ?) 
+                        AND (sale_end_at IS NULL OR sale_end_at >= ?) 
+                        THEN sale_price ELSE price END ASC',
+                    [$now, $now]
+                );
                 break;
             case 'price_high':
-                $query->orderByRaw('CASE WHEN sale_price IS NOT NULL THEN sale_price ELSE price END DESC');
+                $now = Carbon::now();
+                $query->orderByRaw(
+                    'CASE WHEN sale_price IS NOT NULL 
+                        AND (sale_start_at IS NULL OR sale_start_at <= ?) 
+                        AND (sale_end_at IS NULL OR sale_end_at >= ?) 
+                        THEN sale_price ELSE price END DESC',
+                    [$now, $now]
+                );
                 break;
             default:
                 $query->popular(); // Par défaut, cours les plus populaires
@@ -114,6 +129,17 @@ class CourseController extends Controller
                 // S'assurer que sale_end_at est au format ISO 8601
                 if ($course->sale_end_at) {
                     $courseArray['sale_end_at'] = $course->sale_end_at->toIso8601String();
+                }
+                if ($course->sale_start_at) {
+                    $courseArray['sale_start_at'] = $course->sale_start_at->toIso8601String();
+                }
+                $courseArray['is_sale_active'] = $course->is_sale_active;
+                $courseArray['active_sale_price'] = $course->active_sale_price;
+                $courseArray['sale_discount_percentage'] = $course->sale_discount_percentage;
+                if (! $course->is_sale_active) {
+                    $courseArray['sale_price'] = null;
+                } else {
+                    $courseArray['sale_price'] = $course->active_sale_price;
                 }
                 return $courseArray;
             });
@@ -271,6 +297,8 @@ class CourseController extends Controller
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0|lt:price',
+            'sale_start_at' => 'nullable|date',
+            'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:5',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -310,6 +338,8 @@ class CourseController extends Controller
                 'category_id',
                 'price',
                 'sale_price',
+                'sale_start_at',
+                'sale_end_at',
                 'level',
                 'language',
                 'requirements',
@@ -338,6 +368,15 @@ class CourseController extends Controller
                 ->values()
                 ->all();
 
+            $data['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
+            $data['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
+
+            if (! $request->filled('sale_price')) {
+                $data['sale_price'] = null;
+                $data['sale_start_at'] = null;
+                $data['sale_end_at'] = null;
+            }
+
             if ($request->hasFile('thumbnail')) {
                 $result = $this->fileUploadService->uploadImage(
                     $request->file('thumbnail'),
@@ -348,16 +387,22 @@ class CourseController extends Controller
                 $data['thumbnail'] = $result['path'];
             }
 
-            if ($request->hasFile('video_preview')) {
-                $result = $this->fileUploadService->uploadVideo(
-                    $request->file('video_preview'),
-                    'courses/previews',
-                    null
-                );
-                $data['video_preview'] = $result['path'];
+        if ($request->hasFile('video_preview')) {
+            $result = $this->fileUploadService->uploadVideo(
+                $request->file('video_preview'),
+                'courses/previews',
+                null
+            );
+            $data['video_preview'] = $result['path'];
         } elseif ($request->filled('video_preview_path')) {
-            $data['video_preview'] = $this->sanitizeUploadedPath($request->string('video_preview_path')->toString());
+            $sanitizedPath = $this->sanitizeUploadedPath($request->string('video_preview_path')->toString());
+            if ($sanitizedPath) {
+                $data['video_preview'] = $this->fileUploadService->promoteTemporaryFile(
+                    $sanitizedPath,
+                    'courses/previews'
+                );
             }
+        }
 
             $course = Course::create($data);
 
@@ -391,7 +436,10 @@ class CourseController extends Controller
                     $filePath = null;
                     $chunkPath = $this->sanitizeUploadedPath($lessonData['content_file_path'] ?? null);
                     if ($chunkPath) {
-                        $filePath = $chunkPath;
+                        $filePath = $this->fileUploadService->promoteTemporaryFile(
+                            $chunkPath,
+                            'courses/lessons'
+                        );
                     }
                     if ($request->hasFile("sections.$sectionIndex.lessons.$lessonIndex.content_file")) {
                         $uploadedFile = $request->file("sections.$sectionIndex.lessons.$lessonIndex.content_file");
@@ -474,6 +522,8 @@ class CourseController extends Controller
             'category_id' => 'required|exists:categories,id',
             'price' => 'required|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0|lt:price',
+            'sale_start_at' => 'nullable|date',
+            'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:5',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -489,6 +539,15 @@ class CourseController extends Controller
             $data['instructor_id'] = $course->instructor_id ?? auth()->id();
         }
         $data['slug'] = $this->generateUniqueSlug($request->title, $course->id);
+
+        $data['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
+        $data['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
+
+        if (! $request->filled('sale_price')) {
+            $data['sale_price'] = null;
+            $data['sale_start_at'] = null;
+            $data['sale_end_at'] = null;
+        }
 
         // Gérer l'upload de l'image
         if ($request->hasFile('thumbnail')) {
@@ -510,7 +569,18 @@ class CourseController extends Controller
             );
             $data['video_preview'] = $result['path'];
         } elseif ($request->filled('video_preview_path')) {
-            $data['video_preview'] = $this->sanitizeUploadedPath($request->string('video_preview_path')->toString());
+            $sanitizedPath = $this->sanitizeUploadedPath($request->string('video_preview_path')->toString());
+            if ($sanitizedPath) {
+                $finalPath = $this->fileUploadService->promoteTemporaryFile(
+                    $sanitizedPath,
+                    'courses/previews'
+                );
+                if ($course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL)
+                    && $course->video_preview !== $finalPath) {
+                    $this->fileUploadService->deleteFile($course->video_preview);
+                }
+                $data['video_preview'] = $finalPath;
+            }
         }
 
         $course->update($data);
@@ -814,13 +884,29 @@ class CourseController extends Controller
             return null;
         }
 
+        $clean = str_replace('..', '', $clean);
         $clean = ltrim($clean, '/');
 
         if (str_starts_with($clean, 'storage/')) {
             $clean = ltrim(substr($clean, strlen('storage/')), '/');
         }
 
-        return $clean;
+        $allowedPrefixes = [
+            FileUploadService::TEMPORARY_BASE_PATH,
+            'courses/thumbnails',
+            'courses/previews',
+            'courses/lessons',
+            'courses/downloads',
+        ];
+
+        foreach ($allowedPrefixes as $prefix) {
+            $normalized = rtrim($prefix, '/');
+            if ($clean === $normalized || str_starts_with($clean, $normalized . '/')) {
+                return $clean;
+            }
+        }
+
+        return null;
     }
 
     private function generateUniqueSlug(string $title, ?int $ignoreId = null): string
@@ -846,11 +932,12 @@ class CourseController extends Controller
     {
         try {
             $fileHelper = app(\App\Helpers\FileHelper::class);
-            // Récupérer toutes les leçons vidéo publiées qui ont du contenu vidéo
-            $allVideoLessons = $course->sections()
+            // Récupérer uniquement les leçons vidéo d'aperçu publiées qui ont du contenu vidéo
+            $previewVideoLessons = $course->sections()
                 ->with(['lessons' => function($query) {
                     $query->where('type', 'video')
                           ->where('is_published', true)
+                          ->where('is_preview', true)
                           ->where(function($q) {
                               $q->whereNotNull('youtube_video_id')
                                 ->orWhereNotNull('file_path')
@@ -879,7 +966,7 @@ class CourseController extends Controller
                             'youtube_id' => $lesson->youtube_video_id ?? null,
                             'is_unlisted' => $lesson->is_unlisted ?? false,
                             'video_url' => $videoUrl,
-                            'is_preview' => $lesson->is_preview ?? false,
+                            'is_preview' => true,
                         ];
                     });
                 });
@@ -902,11 +989,11 @@ class CourseController extends Controller
                 ];
             }
 
-            // Ajouter toutes les leçons vidéo
-            foreach ($allVideoLessons as $lesson) {
+            // Ajouter toutes les leçons vidéo d'aperçu
+            foreach ($previewVideoLessons as $lesson) {
                 $previews[] = array_merge($lesson, [
                     'is_main' => false,
-                    'is_preview' => $lesson['is_preview'] ?? false
+                    'is_preview' => true
                 ]);
             }
 

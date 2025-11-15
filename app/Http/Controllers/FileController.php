@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\CourseLesson;
 use App\Models\User;
+use App\Services\FileUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -100,6 +101,9 @@ class FileController extends Controller
             case 'media':
                 $basePath = 'media';
                 break;
+            case 'temporary':
+                $basePath = FileUploadService::TEMPORARY_BASE_PATH;
+                break;
             default:
                 abort(400, 'Type de fichier non valide');
         }
@@ -119,6 +123,10 @@ class FileController extends Controller
         // Les avatars et banners sont publics (mais protégés par l'URL)
         if (in_array($type, ['avatars', 'banners', 'media'])) {
             return true;
+        }
+
+        if ($type === 'temporary') {
+            return Auth::check();
         }
         
         // Les thumbnails de cours sont publics (pour l'affichage des listes)

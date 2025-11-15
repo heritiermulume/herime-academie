@@ -25,6 +25,7 @@ use App\Http\Controllers\FilterController;
 // use App\Http\Controllers\MaxiCashController; // désactivé
 use App\Http\Controllers\PawaPayController;
 use App\Http\Controllers\FileController;
+use App\Http\Controllers\TemporaryUploadController;
 use App\Http\Controllers\Auth\SSOController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -234,6 +235,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             default => redirect()->route('student.dashboard'),
         };
     })->name('dashboard');
+
+    Route::match(['POST', 'DELETE'], '/uploads/temp', [TemporaryUploadController::class, 'destroy'])
+        ->name('uploads.temp.destroy');
 
     // Student routes
     Route::prefix('student')->name('student.')->middleware('role:student')->group(function () {

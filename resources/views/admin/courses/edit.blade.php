@@ -56,7 +56,7 @@
 @section('admin-title', 'Modifier un cours')
 @section('admin-subtitle', "Actualisez l'ensemble des informations du cours « " . Str::limit($course->title, 60) . " »")
 @section('admin-actions')
-    <a href="{{ route('admin.courses') }}" class="btn btn-light">
+    <a href="{{ route('admin.courses') }}" class="btn btn-light" data-temp-upload-cancel>
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
 @endsection
@@ -77,7 +77,7 @@
     @endif
 
     <div class="admin-panel">
-        <div class="admin-panel__body admin-panel__body--padded">
+        <div class="admin-panel__body p-0">
             <form action="{{ route('admin.courses.update', $course) }}" method="POST" id="courseForm" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
@@ -89,17 +89,25 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-8 mb-3">
-                                <label for="title" class="form-label">Titre du cours <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control @error('title') is-invalid @enderror" 
-                                       id="title" name="title" value="{{ old('title', $course->title) }}" required>
+                            <div class="col-md-8">
+                                <label for="title" class="form-label fw-bold">
+                                    Titre du cours <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg @error('title') is-invalid @enderror" 
+                                       id="title" 
+                                       name="title" 
+                                       value="{{ old('title', $course->title) }}" 
+                                       placeholder="Ex: Formation complète en développement web"
+                                       required>
+                                <small class="form-text text-muted">Le titre principal du cours</small>
                                 @error('title')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             
-                            <div class="col-md-4 mb-3">
-                                <label for="instructor_id" class="form-label">Instructeur <span class="text-danger">*</span></label>
+                            <div class="col-md-4">
+                                <label for="instructor_id" class="form-label fw-bold">Instructeur <span class="text-danger">*</span></label>
                                 <select class="form-select @error('instructor_id') is-invalid @enderror" 
                                         id="instructor_id" name="instructor_id" required>
                                     <option value="">Sélectionner un instructeur</option>
@@ -113,11 +121,9 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="category_id" class="form-label">Catégorie <span class="text-danger">*</span></label>
+                            
+                            <div class="col-md-6">
+                                <label for="category_id" class="form-label fw-bold">Catégorie <span class="text-danger">*</span></label>
                                 <select class="form-select @error('category_id') is-invalid @enderror" 
                                         id="category_id" name="category_id" required>
                                     <option value="">Sélectionner une catégorie</option>
@@ -132,8 +138,8 @@
                                 @enderror
                             </div>
                             
-                            <div class="col-md-3 mb-3">
-                                <label for="level" class="form-label">Niveau <span class="text-danger">*</span></label>
+                            <div class="col-md-3">
+                                <label for="level" class="form-label fw-bold">Niveau <span class="text-danger">*</span></label>
                                 <select class="form-select @error('level') is-invalid @enderror" id="level" name="level" required>
                                     <option value="">Sélectionner</option>
                                     <option value="beginner" {{ old('level', $course->level) == 'beginner' ? 'selected' : '' }}>Débutant</option>
@@ -145,8 +151,8 @@
                                 @enderror
                             </div>
                             
-                            <div class="col-md-3 mb-3">
-                                <label for="language" class="form-label">Langue <span class="text-danger">*</span></label>
+                            <div class="col-md-3">
+                                <label for="language" class="form-label fw-bold">Langue <span class="text-danger">*</span></label>
                                 <select class="form-select @error('language') is-invalid @enderror" id="language" name="language" required>
                                     <option value="">Sélectionner</option>
                                     <option value="fr" {{ old('language', $course->language) == 'fr' ? 'selected' : '' }}>Français</option>
@@ -156,13 +162,16 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-12 mb-3">
-                                <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                            
+                            <div class="col-12">
+                                <label for="description" class="form-label fw-bold">Description <span class="text-danger">*</span></label>
                                 <textarea class="form-control @error('description') is-invalid @enderror" 
-                                          id="description" name="description" rows="4" required>{{ old('description', $course->description) }}</textarea>
+                                          id="description" 
+                                          name="description" 
+                                          rows="5"
+                                          placeholder="Décrivez le contenu et les objectifs du cours..."
+                                          required>{{ old('description', $course->description) }}</textarea>
+                                <small class="form-text text-muted">Une description détaillée qui sera visible par les étudiants</small>
                                 @error('description')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -200,17 +209,20 @@
                                            name="thumbnail" 
                                            accept="image/jpeg,image/png,image/jpg,image/webp"
                                            onchange="handleThumbnailUpload(this)">
+                                    <input type="hidden" id="thumbnail_chunk_path" name="thumbnail_chunk_path" value="{{ old('thumbnail_chunk_path') }}">
+                                    <input type="hidden" id="thumbnail_chunk_name" name="thumbnail_chunk_name" value="{{ old('thumbnail_chunk_name') }}">
+                                    <input type="hidden" id="thumbnail_chunk_size" name="thumbnail_chunk_size" value="{{ old('thumbnail_chunk_size') }}">
                                     <div class="upload-placeholder text-center p-4" onclick="document.getElementById('thumbnail').click()">
-                                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
-                                        <p class="mb-2"><strong>Cliquez pour changer l'image</strong></p>
+                                        <i class="fas fa-image fa-3x text-primary mb-3"></i>
+                                        <p class="mb-2"><strong>Cliquez pour sélectionner une image</strong></p>
                                         <p class="text-muted small mb-0">Format : JPG, PNG, WEBP | Max : 5MB</p>
-                                        <p class="text-muted small">Laissez vide pour conserver l'image actuelle</p>
+                                        <p class="text-muted small">Recommandé : 1920x1080px (16:9)</p>
                                     </div>
                                     <div class="upload-preview d-none">
                                         <p class="fw-bold text-info text-center mb-2">
                                             <i class="fas fa-eye me-1"></i>Nouvelle image :
                                         </p>
-                                        <img src="" alt="Preview" class="img-fluid rounded mx-auto d-block" style="max-width: 100%; max-height: 300px; border: 3px solid #17a2b8;">
+                                        <img src="" alt="Preview" class="img-fluid rounded mx-auto d-block" style="max-width: 100%; max-height: 300px; border: 3px solid #28a745;">
                                         <div class="upload-info mt-2 text-center">
                                             <span class="badge bg-primary file-name"></span>
                                             <span class="badge bg-info file-size"></span>
@@ -224,6 +236,7 @@
                                 @error('thumbnail')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
+                                <small class="text-muted d-block mt-2">Laissez vide pour conserver l'image actuelle.</small>
                             </div>
                             
                             <div class="col-md-6 mb-3">
@@ -305,14 +318,14 @@
                                         <input type="hidden" id="video_preview_size" name="video_preview_size" value="{{ old('video_preview_size') }}">
                                         <div class="upload-placeholder text-center p-3" onclick="document.getElementById('video_preview_file').click()">
                                             <i class="fas fa-video fa-2x text-success mb-2"></i>
-                                            <p class="mb-1 small"><strong>Cliquez pour changer la vidéo</strong></p>
+                                            <p class="mb-1 small"><strong>Cliquez pour sélectionner une vidéo</strong></p>
                                             <p class="text-muted small mb-0">Format : MP4, WEBM | Max : 10&nbsp;Go</p>
                                         </div>
                                         <div class="upload-preview d-none">
                                             <p class="fw-bold text-info text-center mb-2">
                                                 <i class="fas fa-eye me-1"></i>Nouvelle vidéo :
                                             </p>
-                                            <video controls class="w-100 rounded" style="max-height: 200px; border: 3px solid #17a2b8;"></video>
+                                            <video controls class="w-100 rounded" style="max-height: 200px; border: 3px solid #28a745;"></video>
                                             <div class="upload-info mt-2 text-center">
                                                 <span class="badge bg-primary file-name"></span>
                                                 <span class="badge bg-info file-size"></span>
@@ -339,25 +352,47 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-3 mb-3">
-                                <label for="price" class="form-label">Prix ({{ $baseCurrency ?? 'USD' }}) <span class="text-danger">*</span></label>
+                            <div class="col-md-3">
+                                <label for="price" class="form-label fw-bold">Prix ({{ $baseCurrency ?? 'USD' }}) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control @error('price') is-invalid @enderror" 
                                        id="price" name="price" value="{{ old('price', $course->price) }}" min="0" required>
                                 @error('price')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <label for="sale_price" class="form-label">Prix de vente ({{ $baseCurrency ?? 'USD' }})</label>
+
+                            <div class="col-md-3">
+                                <label for="sale_price" class="form-label fw-bold">Prix de vente ({{ $baseCurrency ?? 'USD' }})</label>
                                 <input type="number" class="form-control @error('sale_price') is-invalid @enderror" 
                                        id="sale_price" name="sale_price" value="{{ old('sale_price', $course->sale_price) }}" min="0">
                                 @error('sale_price')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
-                            <div class="col-md-6 mb-3">
+
+                            <div class="col-md-3">
+                                <label for="sale_start_at" class="form-label fw-bold">Début de promotion</label>
+                                <input type="datetime-local" class="form-control @error('sale_start_at') is-invalid @enderror"
+                                       id="sale_start_at" name="sale_start_at"
+                                       value="{{ old('sale_start_at', optional($course->sale_start_at)->format('Y-m-d\TH:i')) }}">
+                                <small class="form-text text-muted">Laissez vide pour rendre la promotion active immédiatement.</small>
+                                @error('sale_start_at')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3">
+                                <label for="sale_end_at" class="form-label fw-bold">Fin de promotion</label>
+                                <input type="datetime-local" class="form-control @error('sale_end_at') is-invalid @enderror"
+                                       id="sale_end_at" name="sale_end_at"
+                                       value="{{ old('sale_end_at', optional($course->sale_end_at)->format('Y-m-d\TH:i')) }}">
+                                <small class="form-text text-muted">La promotion s'arrêtera automatiquement à cette date.</small>
+                                @error('sale_end_at')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-12">
                                 <div class="form-check mt-4">
                                     <input class="form-check-input" type="checkbox" id="is_free" name="is_free" value="1" 
                                            {{ old('is_free', $course->is_free) ? 'checked' : '' }}>
@@ -369,7 +404,7 @@
                                     <input class="form-check-input" type="checkbox" id="is_published" name="is_published" value="1" 
                                            {{ old('is_published', $course->is_published) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_published">
-                                        Publié
+                                        Publier immédiatement
                                     </label>
                                 </div>
                                 <div class="form-check">
@@ -377,6 +412,13 @@
                                            {{ old('is_featured', $course->is_featured) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_featured">
                                         Cours en vedette
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="show_students_count" name="show_students_count" value="1" 
+                                           {{ old('show_students_count', $course->show_students_count) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="show_students_count">
+                                        Afficher le nombre d'étudiants inscrits sur la carte du cours
                                     </label>
                                 </div>
                                 <div class="form-check">
@@ -556,8 +598,8 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-6 mb-3">
-                                <label for="requirements" class="form-label">Prérequis</label>
+                            <div class="col-md-6">
+                                <label for="requirements" class="form-label fw-bold">Prérequis</label>
                                 <div id="requirements-container">
                                     @php $requirements = $course->getRequirementsArray(); @endphp
                                     @if(count($requirements) > 0)
@@ -583,8 +625,8 @@
                                 </button>
                             </div>
                             
-                            <div class="col-md-6 mb-3">
-                                <label for="what_you_will_learn" class="form-label">Ce que vous apprendrez</label>
+                            <div class="col-md-6">
+                                <label for="what_you_will_learn" class="form-label fw-bold">Ce que vous apprendrez</label>
                                 <div id="learnings-container">
                                     @php $learnings = $course->getWhatYouWillLearnArray(); @endphp
                                     @if(count($learnings) > 0)
@@ -620,8 +662,8 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-6 mb-3">
-                                <label for="meta_description" class="form-label">Description SEO</label>
+                            <div class="col-md-6">
+                                <label for="meta_description" class="form-label fw-bold">Description SEO</label>
                                 <textarea class="form-control @error('meta_description') is-invalid @enderror" 
                                           id="meta_description" name="meta_description" rows="3" maxlength="160">{{ old('meta_description', $course->meta_description) }}</textarea>
                                 <small class="text-muted">Maximum 160 caractères</small>
@@ -630,8 +672,8 @@
                                 @enderror
                             </div>
                             
-                            <div class="col-md-6 mb-3">
-                                <label for="meta_keywords" class="form-label">Mots-clés SEO</label>
+                            <div class="col-md-6">
+                                <label for="meta_keywords" class="form-label fw-bold">Mots-clés SEO</label>
                                 <input type="text" class="form-control @error('meta_keywords') is-invalid @enderror" 
                                        id="meta_keywords" name="meta_keywords" value="{{ old('meta_keywords', $course->meta_keywords) }}" 
                                        placeholder="mot-clé1, mot-clé2, mot-clé3">
@@ -641,9 +683,9 @@
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-12 mb-3">
-                                <label for="tags" class="form-label">Tags</label>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="tags" class="form-label fw-bold">Tags</label>
                                 <input type="text" class="form-control @error('tags') is-invalid @enderror" 
                                        id="tags" name="tags" value="{{ old('tags', implode(', ', $course->getTagsArray())) }}" 
                                        placeholder="tag1, tag2, tag3">
@@ -656,35 +698,31 @@
                 </div>
 
                 <!-- Contenu du cours -->
-                <div class="card shadow-sm mb-4">
+                <div class="card shadow-sm mb-4 course-content-card">
                     <div class="card-header bg-gradient-primary text-white">
                         <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contenu du cours</h5>
                     </div>
-                    <div class="card-body">
-                        <p class="text-muted small mb-3">
-                            Organisez vos sections et leçons directement ici. Chaque leçon peut inclure un fichier téléversé ou un lien externe, ainsi qu'un contenu texte.
-                        </p>
-                        <div id="sections-container"></div>
-                        <div class="d-flex justify-content-start mt-3">
-                            <button type="button" class="btn btn-primary" onclick="addSection()">
-                                <i class="fas fa-plus me-1"></i>Ajouter une section
-                            </button>
+                    <div class="card-body course-content-card__body p-0">
+                        <div id="sections-container">
+                            <!-- Les sections seront ajoutées dynamiquement -->
                         </div>
+
+                        <button type="button" class="btn btn-primary" onclick="addSection()">
+                            <i class="fas fa-plus me-1"></i>Ajouter une section
+                        </button>
                     </div>
                 </div>
 
                 <!-- Actions -->
-                <div class="card shadow-sm mb-4">
+                <div class="card shadow-sm mb-4 form-actions-card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <a href="{{ route('admin.courses') }}" class="btn btn-secondary">
+                        <div class="form-actions d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
+                            <a href="{{ route('admin.courses') }}" class="btn btn-secondary form-actions__btn" data-temp-upload-cancel>
                                 <i class="fas fa-times me-1"></i>Annuler
                             </a>
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-check me-1"></i>Mettre à jour
-                                </button>
-                            </div>
+                            <button type="submit" class="btn btn-primary form-actions__btn form-actions__btn--primary">
+                                <i class="fas fa-check me-1"></i>Enregistrer les modifications
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -739,6 +777,8 @@ let sectionCount = 0;
 let lessonCount = 0;
 let cachedPriceValue = null;
 let cachedSalePriceValue = null;
+let cachedSaleStartValue = null;
+let cachedSaleEndValue = null;
 
 const CHUNK_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 const DOWNLOAD_ALLOWED_EXTENSIONS = ['.zip', '.pdf', '.doc', '.docx', '.rar', '.7z', '.tar', '.gz'];
@@ -748,7 +788,176 @@ const CHUNK_UPLOAD_ENDPOINT = (function() {
     const path = "{{ trim(parse_url(route('admin.uploads.chunk'), PHP_URL_PATH), '/') }}";
     return `${origin}/${path}`;
 })();
+if (!window.__tempUploadConfig) {
+    window.__tempUploadConfig = {
+        prefix: '{{ \App\Services\FileUploadService::TEMPORARY_BASE_PATH }}/',
+        endpoint: "{{ route('uploads.temp.destroy') }}",
+    };
+} else {
+    window.__tempUploadConfig.prefix = '{{ \App\Services\FileUploadService::TEMPORARY_BASE_PATH }}/';
+    window.__tempUploadConfig.endpoint = "{{ route('uploads.temp.destroy') }}";
+}
 
+const TempUploadManager = (() => {
+    if (window.TempUploadManager) {
+        window.TempUploadManager.configure(window.__tempUploadConfig);
+        return window.TempUploadManager;
+    }
+
+    let config = window.__tempUploadConfig;
+    const state = {
+        active: new Set(),
+        queue: new Set(),
+        timer: null,
+        isSubmitting: false,
+    };
+
+    const getToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const isTemporary = (path) => {
+        return typeof path === 'string'
+            && config?.prefix
+            && path.startsWith(config.prefix);
+    };
+
+    const sendRequest = (paths, keepalive) => {
+        const endpoint = config?.endpoint;
+        const token = getToken();
+        if (!endpoint || !token || !Array.isArray(paths) || paths.length === 0) {
+            return;
+        }
+
+        try {
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ paths }),
+                keepalive: !!keepalive,
+            }).catch(() => {});
+        } catch (error) {
+            // Ignorer les erreurs réseau
+        }
+    };
+
+    const performFlush = ({ includeActive = false, keepalive = false } = {}) => {
+        if (state.timer) {
+            clearTimeout(state.timer);
+            state.timer = null;
+        }
+
+        const paths = new Set();
+
+        state.queue.forEach((path) => paths.add(path));
+        state.queue.clear();
+
+        if (includeActive) {
+            state.active.forEach((path) => paths.add(path));
+            state.active.clear();
+        }
+
+        if (!paths.size) {
+            return;
+        }
+
+        sendRequest(Array.from(paths), keepalive);
+    };
+
+    const scheduleFlush = () => {
+        if (state.timer) {
+            return;
+        }
+        state.timer = setTimeout(() => {
+            state.timer = null;
+            performFlush();
+        }, 400);
+    };
+
+    return window.TempUploadManager = {
+        configure(newConfig) {
+            config = newConfig || config;
+        },
+        register(path) {
+            if (isTemporary(path)) {
+                state.active.add(path);
+            }
+        },
+        queueDelete(path) {
+            if (!isTemporary(path)) {
+                return;
+            }
+            state.active.delete(path);
+            state.queue.add(path);
+            scheduleFlush();
+        },
+        flush(options = {}) {
+            performFlush(options);
+        },
+        flushAll(options = {}) {
+            performFlush({ includeActive: true, keepalive: options.keepalive });
+        },
+        markSubmitting() {
+            state.isSubmitting = true;
+        },
+        isSubmitting() {
+            return state.isSubmitting;
+        },
+    };
+})();
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+function isTemporaryPath(path) {
+    const prefix = window.__tempUploadConfig?.prefix;
+    return typeof path === 'string' && prefix && path.startsWith(prefix);
+}
+
+function registerTemporaryPath(path) {
+    TempUploadManager.register(path);
+}
+
+function queueTemporaryDeletion(path) {
+    TempUploadManager.queueDelete(path);
+}
+
+function getThumbnailHiddenInputs() {
+    return {
+        path: document.getElementById('thumbnail_chunk_path'),
+        name: document.getElementById('thumbnail_chunk_name'),
+        size: document.getElementById('thumbnail_chunk_size'),
+    };
+}
+
+function resetThumbnailHiddenFields(options = {}) {
+    const { preserve = false } = options;
+    const hidden = getThumbnailHiddenInputs();
+    if (!hidden.path) {
+        return;
+    }
+
+    if (!preserve) {
+        const previousPath = hidden.path.value;
+        if (previousPath && isTemporaryPath(previousPath)) {
+            queueTemporaryDeletion(previousPath);
+        }
+        hidden.path.value = '';
+    }
+
+    if (!preserve && hidden.name) {
+        hidden.name.value = '';
+    }
+    if (!preserve && hidden.size) {
+        hidden.size.value = '';
+    }
+}
+
+let thumbnailUploadResumable = null;
+let thumbnailUploadTaskId = null;
 let previewUploadResumable = null;
 let previewUploadTaskId = null;
 const lessonUploadControllers = new Map();
@@ -861,7 +1070,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const pathInput = document.getElementById('video_preview_path');
                 const nameInput = document.getElementById('video_preview_name');
                 const sizeInput = document.getElementById('video_preview_size');
-                if (pathInput) pathInput.value = '';
+                if (pathInput) {
+                    const previousPath = pathInput.value;
+                    if (previousPath && isTemporaryPath(previousPath)) {
+                        queueTemporaryDeletion(previousPath);
+                    }
+                    pathInput.value = '';
+                }
                 if (nameInput) nameInput.value = '';
                 if (sizeInput) sizeInput.value = '';
             }
@@ -893,6 +1108,14 @@ function handleThumbnailUpload(input) {
             resetFileInput(input);
             return;
         }
+
+        if (typeof Resumable === 'undefined') {
+            showError(errorDiv, '❌ Votre navigateur ne supporte pas l’upload fractionné. Veuillez le mettre à jour ou utiliser un autre navigateur.');
+            resetFileInput(input);
+            return;
+        }
+
+        resetThumbnailHiddenFields();
         
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -904,22 +1127,213 @@ function handleThumbnailUpload(input) {
             preview.classList.remove('d-none');
         };
         reader.readAsDataURL(file);
+
+        document.querySelectorAll('.current-thumbnail').forEach((element) => element.classList.add('d-none'));
+
+        zone.style.borderColor = '#0d6efd';
+        startThumbnailChunkUpload(file, input);
     }
 }
 
-function clearThumbnail() {
+function startThumbnailChunkUpload(file, input) {
+    const token = getCsrfToken();
+    const errorDiv = document.getElementById('thumbnailError');
+    const zone = document.getElementById('thumbnailUploadZone');
+
+    if (!token) {
+        showError(errorDiv, '❌ Impossible de récupérer le jeton CSRF pour l’upload.');
+        resetFileInput(input);
+        return;
+    }
+
+    if (thumbnailUploadResumable) {
+        try {
+            thumbnailUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+        thumbnailUploadResumable = null;
+    }
+    if (thumbnailUploadTaskId) {
+        errorUploadTask(thumbnailUploadTaskId, 'Téléversement annulé');
+        thumbnailUploadTaskId = null;
+    }
+
+    const resumable = new Resumable({
+        target: CHUNK_UPLOAD_ENDPOINT,
+        chunkSize: CHUNK_SIZE_BYTES,
+        simultaneousUploads: 3,
+        testChunks: false,
+        throttleProgressCallbacks: 1,
+        fileParameterName: 'file',
+        fileType: ['png', 'jpg', 'jpeg', 'webp'],
+        withCredentials: true,
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json',
+        },
+        query: () => ({
+            upload_type: 'thumbnail',
+            original_name: file.name,
+        }),
+    });
+
+    thumbnailUploadResumable = resumable;
+
+    thumbnailUploadTaskId = createUploadTask(
+        file.name,
+        file.size,
+        'Téléversement de l’image de couverture',
+        {
+            onCancel: () => clearThumbnail({ skipModalCancel: true }),
+            cancelLabel: 'Annuler',
+        }
+    );
+
+    resumable.on('fileProgress', function(resumableFile) {
+        const percent = Math.max(0, Math.min(100, Math.round(resumableFile.progress() * 100)));
+        updateUploadTask(thumbnailUploadTaskId, percent, 'Téléversement en cours…');
+    });
+
+    const handleUploadError = (message, { suppressModal = false } = {}) => {
+        const displayMessage = typeof message === 'string' && message.trim() !== ''
+            ? message
+            : 'Erreur lors du téléversement de l’image.';
+
+        if (thumbnailUploadTaskId) {
+            if (suppressModal && window.UploadProgressModal && typeof window.UploadProgressModal.cancelTask === 'function') {
+                window.UploadProgressModal.cancelTask(thumbnailUploadTaskId);
+            } else {
+                errorUploadTask(thumbnailUploadTaskId, displayMessage);
+            }
+            thumbnailUploadTaskId = null;
+        }
+
+        thumbnailUploadResumable = null;
+
+        if (!suppressModal) {
+            showError(errorDiv, displayMessage);
+        }
+
+        zone.style.borderColor = '#dc3545';
+        clearThumbnail({ skipModalCancel: true, preserveHidden: false, restoreExistingPreview: true });
+    };
+
+    resumable.on('fileSuccess', function(resumableFile, response) {
+        let payload = response;
+        if (typeof response === 'string') {
+            try {
+                payload = JSON.parse(response);
+            } catch (error) {
+                payload = null;
+            }
+        }
+
+        if (!payload || !payload.path) {
+            handleUploadError('Réponse invalide du serveur.');
+            return;
+        }
+
+        const hidden = getThumbnailHiddenInputs();
+        const previousPath = hidden.path ? hidden.path.value : '';
+
+        if (hidden.path) hidden.path.value = payload.path;
+        if (hidden.name) hidden.name.value = payload.filename || file.name;
+        if (hidden.size) hidden.size.value = payload.size || file.size;
+
+        if (previousPath && previousPath !== payload.path) {
+            queueTemporaryDeletion(previousPath);
+        }
+        registerTemporaryPath(payload.path);
+
+        if (thumbnailUploadTaskId) {
+            completeUploadTask(thumbnailUploadTaskId, 'Image importée avec succès');
+            thumbnailUploadTaskId = null;
+        }
+
+        thumbnailUploadResumable = null;
+
+        zone.style.borderColor = '#28a745';
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+
+        resetFileInput(input);
+    });
+
+    resumable.on('fileError', function(resumableFile, message) {
+        handleUploadError(message);
+    });
+
+    resumable.on('error', function(message) {
+        handleUploadError(message);
+    });
+
+    resumable.on('cancel', function() {
+        handleUploadError('Téléversement annulé.', { suppressModal: true });
+    });
+
+    resumable.on('chunkingComplete', function() {
+        if (!resumable.isUploading()) {
+            resumable.upload();
+        }
+    });
+
+    resumable.addFile(file);
+}
+
+function clearThumbnail(options = {}) {
+    const { skipModalCancel = false, preserveHidden = false, restoreExistingPreview = true } = options;
     const zone = document.getElementById('thumbnailUploadZone');
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
     const input = document.getElementById('thumbnail');
     const errorDiv = document.getElementById('thumbnailError');
     
+    if (thumbnailUploadResumable) {
+        try {
+            thumbnailUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+    }
+    thumbnailUploadResumable = null;
+
+    if (thumbnailUploadTaskId) {
+        const progressModal = window.UploadProgressModal;
+        if (!skipModalCancel && progressModal && typeof progressModal.cancelTask === 'function') {
+            progressModal.cancelTask(thumbnailUploadTaskId);
+        }
+        thumbnailUploadTaskId = null;
+    }
+
+    if (!preserveHidden) {
+        resetThumbnailHiddenFields();
+    }
+
     resetFileInput(input);
-    preview.querySelector('img').src = '';
+
+    const img = preview.querySelector('img');
+    if (img) {
+        img.src = '';
+    }
+    const fileNameBadge = preview.querySelector('.file-name');
+    if (fileNameBadge) {
+        fileNameBadge.textContent = '';
+    }
+    const fileSizeBadge = preview.querySelector('.file-size');
+    if (fileSizeBadge) {
+        fileSizeBadge.textContent = '';
+    }
     errorDiv.textContent = '';
     errorDiv.style.display = 'none';
     preview.classList.add('d-none');
     placeholder.classList.remove('d-none');
+    zone.style.borderColor = '#dee2e6';
+
+    if (restoreExistingPreview) {
+        document.querySelectorAll('.current-thumbnail').forEach((element) => element.classList.remove('d-none'));
+    }
 }
 
 // Gestion de l'upload de vidéo
@@ -976,6 +1390,9 @@ function clearVideo(options = {}) {
         previewUploadTaskId = null;
         return;
     }
+
+    const pathInput = document.getElementById('video_preview_path');
+    const previousPath = pathInput ? pathInput.value : '';
 
     if (cancelUpload && previewUploadResumable) {
         try {
@@ -1044,9 +1461,11 @@ function clearVideo(options = {}) {
     }
 
     if (clearHiddenFields) {
-        const pathInput = document.getElementById('video_preview_path');
         const nameInput = document.getElementById('video_preview_name');
         const sizeInput = document.getElementById('video_preview_size');
+        if (pathInput && previousPath && isTemporaryPath(previousPath)) {
+            queueTemporaryDeletion(previousPath);
+        }
         if (pathInput) pathInput.value = '';
         if (nameInput) nameInput.value = '';
         if (sizeInput) sizeInput.value = '';
@@ -1096,7 +1515,7 @@ function uploadVideoPreviewAjax(input) {
         testChunks: false,
         throttleProgressCallbacks: 1,
         fileParameterName: 'file',
-        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv'],
+        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv', 'pdf', 'zip', 'rar', '7z', 'tar', 'gz', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'],
         withCredentials: true,
         headers: {
             'X-CSRF-TOKEN': token,
@@ -1143,6 +1562,7 @@ function uploadVideoPreviewAjax(input) {
         const pathInput = document.getElementById('video_preview_path');
         const nameInput = document.getElementById('video_preview_name');
         const sizeInput = document.getElementById('video_preview_size');
+        const previousPath = pathInput ? pathInput.value : '';
         if (pathInput) {
             pathInput.value = payload.path;
         }
@@ -1152,6 +1572,10 @@ function uploadVideoPreviewAjax(input) {
         if (sizeInput) {
             sizeInput.value = payload.size || file.size;
         }
+        if (previousPath && previousPath !== payload.path) {
+            queueTemporaryDeletion(previousPath);
+        }
+        registerTemporaryPath(payload.path);
 
         const urlField = document.getElementById('video_preview');
         if (urlField && !urlField.value) {
@@ -1239,6 +1663,21 @@ function cancelAllUploads() {
         });
     }
 
+    if (thumbnailUploadResumable) {
+        try {
+            thumbnailUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+        thumbnailUploadResumable = null;
+    }
+
+    if (thumbnailUploadTaskId && progressModal) {
+        progressModal.cancelTask(thumbnailUploadTaskId);
+    }
+    thumbnailUploadTaskId = null;
+    clearThumbnail({ skipModalCancel: true });
+
     if (previewUploadResumable) {
         try {
             previewUploadResumable.cancel();
@@ -1254,7 +1693,7 @@ function cancelAllUploads() {
     previewUploadTaskId = null;
 
     resetFileInput(document.getElementById('video_preview_file'));
-    clearVideo();
+    clearVideo({ skipModalCancel: true });
 
     const activeLessons = Array.from(lessonUploadControllers.entries());
     activeLessons.forEach(([uniqueId, controller]) => {
@@ -1328,21 +1767,16 @@ function addSection(sectionData = null) {
     const sectionDbId = sectionData?.id ?? '';
 
     const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'card border-0 shadow-sm mb-3';
+    sectionDiv.className = 'card border-0 shadow-sm mb-3 course-section-card';
     sectionDiv.id = `section-${sectionId}`;
     sectionDiv.innerHTML = `
         <div class="card-header bg-gradient-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-light text-primary section-order-badge">${sectionOrder}</span>
-                    <h6 class="mb-0 text-white section-title-label">${sectionTitle || `Section ${sectionOrder}`}</h6>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-light" onclick="removeSection(${sectionId})">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <h6 class="mb-0 text-white section-title-label">${sectionTitle || `Section ${sectionOrder}`}</h6>
+                <i class="fas fa-times course-section-remove-icon text-white" role="button" onclick="removeSection(${sectionId})" aria-label="Supprimer la section"></i>
             </div>
         </div>
-        <div class="card-body">
+        <div class="card-body course-section-card__body">
             <input type="hidden" name="sections[${sectionId}][id]" value="${sectionDbId}">
             <div class="row mb-3">
                 <div class="col-md-8">
@@ -1354,8 +1788,8 @@ function addSection(sectionData = null) {
                     <input type="text" class="form-control" name="sections[${sectionId}][description]" placeholder="Description (optionnel)">
                 </div>
             </div>
-            <div id="lessons-${sectionId}" class="lesson-list"></div>
-            <button type="button" class="btn btn-sm btn-outline-primary mt-3" onclick="addLesson(${sectionId})">
+            <div id="lessons-${sectionId}"></div>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLesson(${sectionId})">
                 <i class="fas fa-plus me-1"></i>Ajouter une leçon
             </button>
         </div>
@@ -1405,13 +1839,14 @@ function renumberSections() {
     if (!container) return;
 
     Array.from(container.children).forEach((card, index) => {
-        const badge = card.querySelector('.section-order-badge');
-        if (badge) {
-            badge.textContent = index + 1;
-        }
         const titleInput = card.querySelector('.section-title-input');
         const titleLabel = card.querySelector('.section-title-label');
-        if (titleInput && titleLabel && titleInput.value.trim() === '') {
+        if (!titleLabel) {
+            return;
+        }
+        if (titleInput && titleInput.value.trim() !== '') {
+            titleLabel.textContent = titleInput.value;
+        } else {
             titleLabel.textContent = `Section ${index + 1}`;
         }
     });
@@ -1428,6 +1863,8 @@ function addLesson(sectionId, lessonData = null) {
     lessonsContainer.dataset.lessonCount = String(lessonIndex + 1);
     const lessonUniqueId = `${sectionId}-${lessonIndex}-${Date.now()}`;
     const lessonPrefix = `sections[${sectionId}][lessons][${lessonIndex}]`;
+    lessonCount += 1;
+    const lessonDisplayNumber = lessonCount;
 
     const existingFilePath = lessonData?.existing_file_path ?? '';
     const existingFileName = lessonData?.existing_file_name ?? (existingFilePath ? existingFilePath.split('/').pop() : '');
@@ -1435,13 +1872,17 @@ function addLesson(sectionId, lessonData = null) {
     const removeExistingFlag = toBoolean(lessonData?.remove_existing_file) ? 1 : 0;
 
     const lessonDiv = document.createElement('div');
-    lessonDiv.className = 'card border-0 shadow-sm mb-2';
+    lessonDiv.className = 'card border-0 shadow-sm mb-2 course-lesson-card';
     lessonDiv.innerHTML = `
-        <div class="card-body">
+        <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center course-lesson-card__header">
+            <h6 class="mb-0 text-white"><i class="fas fa-play-circle me-2 text-white-50"></i>Leçon ${lessonDisplayNumber}</h6>
+            <i class="fas fa-times course-lesson-remove-icon text-white" role="button" onclick="removeLesson(this)" aria-label="Supprimer la leçon"></i>
+        </div>
+        <div class="card-body course-lesson-card__body">
             <input type="hidden" name="${lessonPrefix}[id]" value="${lessonData?.id ?? ''}">
             <input type="hidden" name="${lessonPrefix}[existing_file_path]" value="${existingFilePath}" data-lesson-existing-path="${lessonUniqueId}">
             <input type="hidden" name="${lessonPrefix}[remove_existing_file]" value="${removeExistingFlag}" data-lesson-remove-flag="${lessonUniqueId}">
-            <div class="row">
+            <div class="row gy-3">
                 <div class="col-md-4">
                     <label class="form-label">Titre de la leçon</label>
                     <input type="text" class="form-control" name="${lessonPrefix}[title]" placeholder="Titre de la leçon" required>
@@ -1460,18 +1901,12 @@ function addLesson(sectionId, lessonData = null) {
                     <label class="form-label">Durée (min)</label>
                     <input type="number" class="form-control" name="${lessonPrefix}[duration]" min="0" placeholder="0">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label">Aperçu</label>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="${lessonPrefix}[is_preview]" value="1">
                         <label class="form-check-label">Gratuit</label>
                     </div>
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="button" class="btn btn-outline-danger d-block" onclick="removeLesson(this)">
-                        <i class="fas fa-trash"></i>
-                    </button>
                 </div>
             </div>
             <div class="row mt-2">
@@ -1486,7 +1921,7 @@ function addLesson(sectionId, lessonData = null) {
                                class="form-control d-none lesson-file-input"
                                id="lesson_file_${lessonUniqueId}"
                                name="${lessonPrefix}[content_file]"
-                               accept="video/mp4,video/webm,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/x-rar-compressed,application/x-7z-compressed,application/x-tar,application/gzip"
+                               accept="video/mp4,video/webm,video/ogg,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,video/x-matroska,.mp4,.webm,.ogg,.avi,.mov,.wmv,.mkv,.pdf,.zip,.rar,.7z,.tar,.gz,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv"
                                onchange="handleLessonFileUpload('${lessonUniqueId}', this)">
                         <input type="hidden"
                                name="${lessonPrefix}[content_file_path]"
@@ -1520,11 +1955,11 @@ function addLesson(sectionId, lessonData = null) {
                         </div>
                     </div>
                     <div class="lesson-existing-file alert alert-secondary d-none mt-3" id="lessonExistingFile-${lessonUniqueId}">
-                        <div class="lesson-existing-wrapper d-flex flex-column flex-lg-row align-items-start gap-3 w-100">
+                        <div class="lesson-existing-wrapper d-flex flex-column flex-lg-row align-items-center justify-content-center gap-3 w-100 text-center">
                             <div class="lesson-existing-preview flex-shrink-0" data-lesson-existing-preview>
                                 <i class="fas fa-folder-open fa-2x text-primary"></i>
                             </div>
-                            <div class="lesson-existing-details flex-grow-1 text-center text-lg-start">
+                            <div class="lesson-existing-details flex-grow-1">
                                 <p class="mb-1 fw-semibold" data-lesson-existing-name>Fichier actuel</p>
                                 <a href="#" target="_blank" rel="noopener" class="small d-none" data-lesson-existing-link>Voir / télécharger</a>
                             </div>
@@ -1742,7 +2177,7 @@ function startLessonChunkUpload(uniqueId, file, input) {
         testChunks: false,
         throttleProgressCallbacks: 1,
         fileParameterName: 'file',
-        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv', 'pdf', 'zip', 'doc', 'ppt', 'xls'],
+        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv', 'pdf', 'zip', 'rar', '7z', 'tar', 'gz', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'],
         withCredentials: true,
         headers: {
             'X-CSRF-TOKEN': token,
@@ -1806,12 +2241,16 @@ function startLessonChunkUpload(uniqueId, file, input) {
             return;
         }
 
+        const previousPath = hidden.path ? hidden.path.value : '';
         if (hidden.path) hidden.path.value = payload.path;
         if (hidden.name) hidden.name.value = payload.filename || file.name;
         if (hidden.size) hidden.size.value = payload.size || file.size;
         if (hidden.removeFlag) hidden.removeFlag.value = 0;
         if (hidden.existingContainer) hidden.existingContainer.classList.add('d-none');
-
+        if (previousPath && previousPath !== payload.path) {
+            queueTemporaryDeletion(previousPath);
+        }
+        registerTemporaryPath(payload.path);
 
         completeUploadTask(taskId, 'Fichier importé avec succès');
         lessonUploadControllers.delete(uniqueId);
@@ -1910,6 +2349,9 @@ function clearLessonFile(uniqueId, restoreExisting = false) {
     const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
     if (!zone) return;
 
+    const hidden = getLessonHiddenInputs(uniqueId);
+    const previousPath = hidden.path ? hidden.path.value : '';
+
     cancelLessonUpload(uniqueId, true);
 
     const input = zone.querySelector('input[type="file"]');
@@ -1946,8 +2388,12 @@ function clearLessonFile(uniqueId, restoreExisting = false) {
     zone.style.borderColor = '#dee2e6';
     delete zone.dataset.uploadTaskId;
 
-    const hidden = getLessonHiddenInputs(uniqueId);
-    if (hidden.path) hidden.path.value = '';
+    if (hidden.path) {
+        if (previousPath && isTemporaryPath(previousPath)) {
+            queueTemporaryDeletion(previousPath);
+        }
+        hidden.path.value = '';
+    }
     if (hidden.name) hidden.name.value = '';
     if (hidden.size) hidden.size.value = '';
     if (hidden.removeFlag && !restoreExisting) {
@@ -2136,9 +2582,11 @@ function removeLearning(button) {
 function syncFreeCourseFields(isInitial = false) {
     const priceField = document.getElementById('price');
     const salePriceField = document.getElementById('sale_price');
+    const saleStartField = document.getElementById('sale_start_at');
+    const saleEndField = document.getElementById('sale_end_at');
     const freeCheckbox = document.getElementById('is_free');
 
-    if (!priceField || !salePriceField) {
+    if (!priceField || !salePriceField || !saleStartField || !saleEndField) {
         return;
     }
 
@@ -2148,6 +2596,8 @@ function syncFreeCourseFields(isInitial = false) {
         if (!isInitial) {
             cachedPriceValue = priceField.value;
             cachedSalePriceValue = salePriceField.value;
+            cachedSaleStartValue = saleStartField.value;
+            cachedSaleEndValue = saleEndField.value;
         }
         if (cachedPriceValue === null) {
             cachedPriceValue = priceField.value;
@@ -2155,14 +2605,26 @@ function syncFreeCourseFields(isInitial = false) {
         if (cachedSalePriceValue === null) {
             cachedSalePriceValue = salePriceField.value;
         }
+        if (cachedSaleStartValue === null) {
+            cachedSaleStartValue = saleStartField.value;
+        }
+        if (cachedSaleEndValue === null) {
+            cachedSaleEndValue = saleEndField.value;
+        }
 
         priceField.value = '0';
         priceField.disabled = true;
         salePriceField.value = '';
         salePriceField.disabled = true;
+        saleStartField.value = '';
+        saleStartField.disabled = true;
+        saleEndField.value = '';
+        saleEndField.disabled = true;
     } else {
         priceField.disabled = false;
         salePriceField.disabled = false;
+        saleStartField.disabled = false;
+        saleEndField.disabled = false;
 
         if (cachedPriceValue !== null) {
             priceField.value = cachedPriceValue || '';
@@ -2171,6 +2633,14 @@ function syncFreeCourseFields(isInitial = false) {
         if (cachedSalePriceValue !== null) {
             salePriceField.value = cachedSalePriceValue || '';
         }
+
+        if (cachedSaleStartValue !== null) {
+            saleStartField.value = cachedSaleStartValue || '';
+        }
+
+        if (cachedSaleEndValue !== null) {
+            saleEndField.value = cachedSaleEndValue || '';
+        }
     }
 }
 
@@ -2178,6 +2648,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const freeCheckbox = document.getElementById('is_free');
     const priceField = document.getElementById('price');
     const salePriceField = document.getElementById('sale_price');
+    const saleStartField = document.getElementById('sale_start_at');
+    const saleEndField = document.getElementById('sale_end_at');
 
     if (priceField) {
         cachedPriceValue = priceField.value;
@@ -2193,6 +2665,24 @@ document.addEventListener('DOMContentLoaded', function() {
         salePriceField.addEventListener('input', function() {
             if (!freeCheckbox || !freeCheckbox.checked) {
                 cachedSalePriceValue = this.value;
+            }
+        });
+    }
+
+    if (saleStartField) {
+        cachedSaleStartValue = saleStartField.value;
+        saleStartField.addEventListener('input', function() {
+            if (!freeCheckbox || !freeCheckbox.checked) {
+                cachedSaleStartValue = this.value;
+            }
+        });
+    }
+
+    if (saleEndField) {
+        cachedSaleEndValue = saleEndField.value;
+        saleEndField.addEventListener('input', function() {
+            if (!freeCheckbox || !freeCheckbox.checked) {
+                cachedSaleEndValue = this.value;
             }
         });
     }
@@ -2251,7 +2741,13 @@ function resetDownloadHiddenFields() {
     const chunkPathInput = document.getElementById('download_file_chunk_path');
     const chunkNameInput = document.getElementById('download_file_chunk_name');
     const chunkSizeInput = document.getElementById('download_file_chunk_size');
-    if (chunkPathInput) chunkPathInput.value = '';
+    if (chunkPathInput) {
+        const previousPath = chunkPathInput.value;
+        if (previousPath && isTemporaryPath(previousPath)) {
+            queueTemporaryDeletion(previousPath);
+        }
+        chunkPathInput.value = '';
+    }
     if (chunkNameInput) chunkNameInput.value = '';
     if (chunkSizeInput) chunkSizeInput.value = '';
 }
@@ -2409,9 +2905,14 @@ function handleDownloadFileUpload(input) {
             return;
         }
     
+        const previousPath = chunkPathInput ? chunkPathInput.value : '';
         if (chunkPathInput) chunkPathInput.value = payload.path;
         if (chunkNameInput) chunkNameInput.value = payload.filename || file.name;
         if (chunkSizeInput) chunkSizeInput.value = payload.size || file.size;
+        if (previousPath && previousPath !== payload.path) {
+            queueTemporaryDeletion(previousPath);
+        }
+        registerTemporaryPath(payload.path);
     
         if (downloadUploadTaskId) {
             completeUploadTask(downloadUploadTaskId, 'Fichier importé avec succès');
@@ -2550,6 +3051,38 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('courseForm');
+    if (form) {
+        form.addEventListener('submit', function() {
+            TempUploadManager.markSubmitting();
+        });
+    }
+
+    document.querySelectorAll('[data-temp-upload-cancel]').forEach((cancelLink) => {
+        cancelLink.addEventListener('click', function(event) {
+            event.preventDefault();
+            const href = this.getAttribute('href');
+            TempUploadManager.flushAll({ keepalive: true });
+            const navigate = () => window.location.href = href;
+            if (navigator.sendBeacon) {
+                setTimeout(navigate, 50);
+            } else {
+                setTimeout(navigate, 0);
+            }
+        });
+    });
+});
+
+if (!window.__tempUploadUnloadHook) {
+    window.__tempUploadUnloadHook = true;
+    window.addEventListener('beforeunload', function() {
+        if (TempUploadManager && !TempUploadManager.isSubmitting()) {
+            TempUploadManager.flushAll({ keepalive: true });
+        }
+    });
+}
 </script>
 @endpush
 
@@ -2779,6 +3312,20 @@ document.addEventListener('DOMContentLoaded', function() {
 .lesson-existing-file {
     border: 1px dashed #94a3b8;
     background-color: #f8fafc;
+}
+
+.lesson-existing-wrapper {
+    text-align: center;
+}
+
+.lesson-existing-details p {
+    font-size: 1rem;
+}
+
+@media (max-width: 575.98px) {
+    .lesson-existing-details p {
+        font-size: 0.875rem;
+    }
 }
 
 .lesson-existing-icon i {

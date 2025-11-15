@@ -4,7 +4,7 @@
 @section('admin-subtitle', "Actualisez les informations et le contenu de la formation pour vos étudiants.")
 
 @section('admin-actions')
-    <a href="{{ route('instructor.courses.index') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('instructor.courses.index') }}" class="btn btn-outline-secondary" data-temp-upload-cancel="true">
         <i class="fas fa-arrow-left me-2"></i>Retour à mes cours
     </a>
     <a href="{{ route('instructor.courses.show', $course->slug) }}" class="btn btn-outline-primary" target="_blank">
@@ -31,7 +31,7 @@
         </div>
     @endif
 
-    <form action="{{ route('instructor.courses.update', $course) }}" method="POST" enctype="multipart/form-data" class="create-course__form">
+    <form action="{{ route('instructor.courses.update', $course) }}" method="POST" enctype="multipart/form-data" class="create-course__form" id="courseForm">
         @csrf
         @method('PUT')
 
@@ -229,6 +229,22 @@
                     <label for="sale_price">Prix promotionnel</label>
                     <input type="number" id="sale_price" name="sale_price" value="{{ old('sale_price', $course->sale_price) }}" min="0" step="0.01">
                     @error('sale_price') <span class="create-course__error">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="create-course__field">
+                    <label for="sale_start_at">Début de promotion</label>
+                    <input type="datetime-local" id="sale_start_at" name="sale_start_at"
+                           value="{{ old('sale_start_at', optional($course->sale_start_at)->format('Y-m-d\TH:i')) }}">
+                    <small class="create-course__hint">Laissez vide pour démarrer immédiatement.</small>
+                    @error('sale_start_at') <span class="create-course__error">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="create-course__field">
+                    <label for="sale_end_at">Fin de promotion</label>
+                    <input type="datetime-local" id="sale_end_at" name="sale_end_at"
+                           value="{{ old('sale_end_at', optional($course->sale_end_at)->format('Y-m-d\TH:i')) }}">
+                    <small class="create-course__hint">La promotion s'arrêtera automatiquement à cette date.</small>
+                    @error('sale_end_at') <span class="create-course__error">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="create-course__field">

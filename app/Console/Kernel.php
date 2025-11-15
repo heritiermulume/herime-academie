@@ -24,6 +24,7 @@ class Kernel extends ConsoleKernel
             $securityService = app(\App\Services\VideoSecurityService::class);
             $securityService->monitorSuspiciousActivity();
         })->everySixHours()->name('youtube-monitor-activity');
+
     }
 
     /**

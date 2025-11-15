@@ -4,7 +4,7 @@
 @section('admin-title', 'Créer un cours')
 @section('admin-subtitle', 'Ajoutez un nouveau contenu pédagogique à votre catalogue')
 @section('admin-actions')
-    <a href="{{ route('admin.courses') }}" class="btn btn-light">
+    <a href="{{ route('admin.courses') }}" class="btn btn-light" data-temp-upload-cancel>
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
 @endsection
@@ -25,7 +25,7 @@
     @endif
 
     <div class="admin-panel">
-        <div class="admin-panel__body admin-panel__body--padded">
+        <div class="admin-panel__body p-0">
             <form action="{{ route('admin.courses.store') }}" method="POST" id="courseForm" enctype="multipart/form-data">
                 @csrf
                 <!-- Informations de base -->
@@ -143,6 +143,9 @@
                                            name="thumbnail" 
                                            accept="image/jpeg,image/png,image/jpg,image/webp"
                                            onchange="handleThumbnailUpload(this)">
+                                    <input type="hidden" id="thumbnail_chunk_path" name="thumbnail_chunk_path" value="{{ old('thumbnail_chunk_path') }}">
+                                    <input type="hidden" id="thumbnail_chunk_name" name="thumbnail_chunk_name" value="{{ old('thumbnail_chunk_name') }}">
+                                    <input type="hidden" id="thumbnail_chunk_size" name="thumbnail_chunk_size" value="{{ old('thumbnail_chunk_size') }}">
                                     <div class="upload-placeholder text-center p-4" onclick="document.getElementById('thumbnail').click()">
                                         <i class="fas fa-image fa-3x text-primary mb-3"></i>
                                         <p class="mb-2"><strong>Cliquez pour sélectionner une image</strong></p>
@@ -258,7 +261,6 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-
                             <div class="col-md-3">
                                 <label for="price" class="form-label fw-bold">Prix ({{ $baseCurrency ?? 'USD' }}) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control @error('price') is-invalid @enderror" 
@@ -267,7 +269,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
+
                             <div class="col-md-3">
                                 <label for="sale_price" class="form-label fw-bold">Prix de vente ({{ $baseCurrency ?? 'USD' }})</label>
                                 <input type="number" class="form-control @error('sale_price') is-invalid @enderror" 
@@ -276,8 +278,28 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
-                            <div class="col-md-6 mb-3">
+
+                            <div class="col-md-3">
+                                <label for="sale_start_at" class="form-label fw-bold">Début de promotion</label>
+                                <input type="datetime-local" class="form-control @error('sale_start_at') is-invalid @enderror"
+                                       id="sale_start_at" name="sale_start_at" value="{{ old('sale_start_at') }}">
+                                <small class="form-text text-muted">Laissez vide pour démarrer immédiatement.</small>
+                                @error('sale_start_at')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3">
+                                <label for="sale_end_at" class="form-label fw-bold">Fin de promotion</label>
+                                <input type="datetime-local" class="form-control @error('sale_end_at') is-invalid @enderror"
+                                       id="sale_end_at" name="sale_end_at" value="{{ old('sale_end_at') }}">
+                                <small class="form-text text-muted">La promotion s'arrêtera automatiquement.</small>
+                                @error('sale_end_at')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-12">
                                 <div class="form-check mt-4">
                                     <input class="form-check-input" type="checkbox" id="is_free" name="is_free" value="1" 
                                            {{ old('is_free') ? 'checked' : '' }}>
@@ -297,6 +319,13 @@
                                            {{ old('is_featured') ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_featured">
                                         Cours en vedette
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="show_students_count" name="show_students_count" value="1" 
+                                           {{ old('show_students_count') ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="show_students_count">
+                                        Afficher le nombre d'étudiants inscrits sur la carte du cours
                                     </label>
                                 </div>
                                 <div class="form-check">
@@ -471,11 +500,11 @@
                 </div>
 
                 <!-- Contenu du cours (Sections et leçons) -->
-                <div class="card shadow-sm mb-4">
+                <div class="card shadow-sm mb-4 course-content-card">
                     <div class="card-header bg-gradient-primary text-white">
                         <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contenu du cours</h5>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body course-content-card__body p-0">
                         <div id="sections-container">
                             <!-- Les sections seront ajoutées dynamiquement -->
                         </div>
@@ -487,17 +516,15 @@
                 </div>
 
                 <!-- Actions -->
-                <div class="card shadow-sm mb-4">
+                <div class="card shadow-sm mb-4 form-actions-card">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <a href="{{ route('admin.courses') }}" class="btn btn-secondary">
+                        <div class="form-actions d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
+                            <a href="{{ route('admin.courses') }}" class="btn btn-secondary form-actions__btn" data-temp-upload-cancel>
                                 <i class="fas fa-times me-1"></i>Annuler
                             </a>
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-check me-1"></i>Créer le cours
-                                </button>
-                            </div>
+                            <button type="submit" class="btn btn-primary form-actions__btn form-actions__btn--primary">
+                                <i class="fas fa-check me-1"></i>Créer le cours
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -536,20 +563,197 @@ const LESSON_MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
 const CHUNK_SIZE_BYTES = 1 * 1024 * 1024; // 1MB pour upload fractionné (garder petit pour limiter post size)
 const DOWNLOAD_ALLOWED_EXTENSIONS = ['.zip', '.pdf', '.doc', '.docx', '.rar', '.7z', '.tar', '.gz'];
 const MAX_DOWNLOAD_FILE_SIZE = 10 * 1024 * 1024 * 1024; // 10GB
-function resetDownloadHiddenFields() {
-    const chunkPathInput = document.getElementById('download_file_chunk_path');
-    const chunkNameInput = document.getElementById('download_file_chunk_name');
-    const chunkSizeInput = document.getElementById('download_file_chunk_size');
-    if (chunkPathInput) chunkPathInput.value = '';
-    if (chunkNameInput) chunkNameInput.value = '';
-    if (chunkSizeInput) chunkSizeInput.value = '';
-}
 const CHUNK_UPLOAD_ENDPOINT = (function() {
     const origin = window.location.origin.replace(/\/+$/, '');
     const path = "{{ trim(parse_url(route('admin.uploads.chunk'), PHP_URL_PATH), '/') }}";
     return `${origin}/${path}`;
 })();
 
+if (!window.__tempUploadConfig) {
+    window.__tempUploadConfig = {
+        prefix: '{{ \App\Services\FileUploadService::TEMPORARY_BASE_PATH }}/',
+        endpoint: "{{ route('uploads.temp.destroy') }}",
+    };
+} else {
+    window.__tempUploadConfig.prefix = '{{ \App\Services\FileUploadService::TEMPORARY_BASE_PATH }}/';
+    window.__tempUploadConfig.endpoint = "{{ route('uploads.temp.destroy') }}";
+}
+
+const TempUploadManager = (() => {
+    if (window.TempUploadManager) {
+        window.TempUploadManager.configure(window.__tempUploadConfig);
+        return window.TempUploadManager;
+    }
+
+    let config = window.__tempUploadConfig;
+    const state = {
+        active: new Set(),
+        queue: new Set(),
+        timer: null,
+        isSubmitting: false,
+    };
+
+    const getToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const isTemporary = (path) => {
+        return typeof path === 'string'
+            && config?.prefix
+            && path.startsWith(config.prefix);
+    };
+
+    const sendRequest = (paths, keepalive) => {
+        const endpoint = config?.endpoint;
+        const token = getToken();
+        if (!endpoint || !token || !Array.isArray(paths) || paths.length === 0) {
+            return;
+        }
+
+        try {
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ paths }),
+                keepalive: !!keepalive,
+            }).catch(() => {});
+        } catch (error) {
+            // Ignorer les erreurs réseau
+        }
+    };
+
+    const performFlush = ({ includeActive = false, keepalive = false } = {}) => {
+        if (state.timer) {
+            clearTimeout(state.timer);
+            state.timer = null;
+        }
+
+        const paths = new Set();
+
+        state.queue.forEach((path) => paths.add(path));
+        state.queue.clear();
+
+        if (includeActive) {
+            state.active.forEach((path) => paths.add(path));
+            state.active.clear();
+        }
+
+        if (!paths.size) {
+            return;
+        }
+
+        sendRequest(Array.from(paths), keepalive);
+    };
+
+    const scheduleFlush = () => {
+        if (state.timer) {
+            return;
+        }
+        state.timer = setTimeout(() => {
+            state.timer = null;
+            performFlush();
+        }, 400);
+    };
+
+    return window.TempUploadManager = {
+        configure(newConfig) {
+            config = newConfig || config;
+        },
+        register(path) {
+            if (isTemporary(path)) {
+                state.active.add(path);
+            }
+        },
+        queueDelete(path) {
+            if (!isTemporary(path)) {
+                return;
+            }
+            state.active.delete(path);
+            state.queue.add(path);
+            scheduleFlush();
+        },
+        flush(options = {}) {
+            performFlush(options);
+        },
+        flushAll(options = {}) {
+            performFlush({ includeActive: true, keepalive: options.keepalive });
+        },
+        markSubmitting() {
+            state.isSubmitting = true;
+        },
+        isSubmitting() {
+            return state.isSubmitting;
+        },
+    };
+})();
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+function isTemporaryPath(path) {
+    const prefix = window.__tempUploadConfig?.prefix;
+    return typeof path === 'string' && prefix && path.startsWith(prefix);
+}
+
+function registerTemporaryPath(path) {
+    TempUploadManager.register(path);
+}
+
+function queueTemporaryDeletion(path) {
+    TempUploadManager.queueDelete(path);
+}
+
+function getThumbnailHiddenInputs() {
+    return {
+        path: document.getElementById('thumbnail_chunk_path'),
+        name: document.getElementById('thumbnail_chunk_name'),
+        size: document.getElementById('thumbnail_chunk_size'),
+    };
+}
+
+function resetThumbnailHiddenFields(options = {}) {
+    const { preserve = false } = options;
+    const hidden = getThumbnailHiddenInputs();
+    if (!hidden.path) {
+        return;
+    }
+
+    if (!preserve) {
+        const previousPath = hidden.path.value;
+        if (previousPath && isTemporaryPath(previousPath)) {
+            queueTemporaryDeletion(previousPath);
+        }
+        hidden.path.value = '';
+    }
+
+    if (!preserve && hidden.name) {
+        hidden.name.value = '';
+    }
+    if (!preserve && hidden.size) {
+        hidden.size.value = '';
+    }
+}
+
+function resetDownloadHiddenFields() {
+    const chunkPathInput = document.getElementById('download_file_chunk_path');
+    const chunkNameInput = document.getElementById('download_file_chunk_name');
+    const chunkSizeInput = document.getElementById('download_file_chunk_size');
+    if (chunkPathInput) {
+        const previousPath = chunkPathInput.value;
+        if (previousPath && isTemporaryPath(previousPath)) {
+            queueTemporaryDeletion(previousPath);
+        }
+        chunkPathInput.value = '';
+    }
+    if (chunkNameInput) chunkNameInput.value = '';
+    if (chunkSizeInput) chunkSizeInput.value = '';
+}
+
+let thumbnailUploadResumable = null;
+let thumbnailUploadTaskId = null;
 let previewUploadResumable = null;
 let previewUploadTaskId = null;
 const lessonUploadControllers = new Map();
@@ -646,6 +850,8 @@ let sectionCount = 0;
 let lessonCount = 0;
 let cachedPriceValue = null;
 let cachedSalePriceValue = null;
+let cachedSaleStartValue = null;
+let cachedSaleEndValue = null;
 
 // Gestion de l'upload d'image de couverture
 function handleThumbnailUpload(input) {
@@ -672,6 +878,14 @@ function handleThumbnailUpload(input) {
             return;
         }
         
+        if (typeof Resumable === 'undefined') {
+            showError(errorDiv, '❌ Votre navigateur ne supporte pas l’upload fractionné. Veuillez le mettre à jour ou utiliser un autre navigateur.');
+            resetFileInput(input);
+            return;
+        }
+
+        resetThumbnailHiddenFields();
+
         const reader = new FileReader();
         reader.onload = function(e) {
             const img = preview.querySelector('img');
@@ -682,22 +896,214 @@ function handleThumbnailUpload(input) {
             preview.classList.remove('d-none');
         };
         reader.readAsDataURL(file);
+
+        const existingThumbnails = document.querySelectorAll('.current-thumbnail');
+        existingThumbnails.forEach((element) => element.classList.add('d-none'));
+
+        zone.style.borderColor = '#0d6efd';
+        startThumbnailChunkUpload(file, input);
     }
 }
 
-function clearThumbnail() {
+function startThumbnailChunkUpload(file, input) {
+    const token = getCsrfToken();
+    const errorDiv = document.getElementById('thumbnailError');
+    const zone = document.getElementById('thumbnailUploadZone');
+
+    if (!token) {
+        showError(errorDiv, '❌ Impossible de récupérer le jeton CSRF pour l’upload.');
+        resetFileInput(input);
+        return;
+    }
+
+    if (thumbnailUploadResumable) {
+        try {
+            thumbnailUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+        thumbnailUploadResumable = null;
+    }
+    if (thumbnailUploadTaskId) {
+        errorUploadTask(thumbnailUploadTaskId, 'Téléversement annulé');
+        thumbnailUploadTaskId = null;
+    }
+
+    const resumable = new Resumable({
+        target: CHUNK_UPLOAD_ENDPOINT,
+        chunkSize: CHUNK_SIZE_BYTES,
+        simultaneousUploads: 3,
+        testChunks: false,
+        throttleProgressCallbacks: 1,
+        fileParameterName: 'file',
+        fileType: ['png', 'jpg', 'jpeg', 'webp'],
+        withCredentials: true,
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json',
+        },
+        query: () => ({
+            upload_type: 'thumbnail',
+            original_name: file.name,
+        }),
+    });
+
+    thumbnailUploadResumable = resumable;
+
+    thumbnailUploadTaskId = createUploadTask(
+        file.name,
+        file.size,
+        'Téléversement de l’image de couverture',
+        {
+            onCancel: () => clearThumbnail({ skipModalCancel: true }),
+            cancelLabel: 'Annuler',
+        }
+    );
+
+    resumable.on('fileProgress', function(resumableFile) {
+        const percent = Math.max(0, Math.min(100, Math.round(resumableFile.progress() * 100)));
+        updateUploadTask(thumbnailUploadTaskId, percent, 'Téléversement en cours…');
+    });
+
+    const handleUploadError = (message, { suppressModal = false } = {}) => {
+        const displayMessage = typeof message === 'string' && message.trim() !== ''
+            ? message
+            : 'Erreur lors du téléversement de l’image.';
+
+        if (thumbnailUploadTaskId) {
+            if (suppressModal && window.UploadProgressModal && typeof window.UploadProgressModal.cancelTask === 'function') {
+                window.UploadProgressModal.cancelTask(thumbnailUploadTaskId);
+            } else {
+                errorUploadTask(thumbnailUploadTaskId, displayMessage);
+            }
+            thumbnailUploadTaskId = null;
+        }
+
+        thumbnailUploadResumable = null;
+
+        if (!suppressModal) {
+            showError(errorDiv, displayMessage);
+        }
+
+        zone.style.borderColor = '#dc3545';
+        clearThumbnail({ skipModalCancel: true, preserveHidden: false, restoreExistingPreview: true });
+    };
+
+    resumable.on('fileSuccess', function(resumableFile, response) {
+        let payload = response;
+        if (typeof response === 'string') {
+            try {
+                payload = JSON.parse(response);
+            } catch (error) {
+                payload = null;
+            }
+        }
+
+        if (!payload || !payload.path) {
+            handleUploadError('Réponse invalide du serveur.');
+            return;
+        }
+
+        const hidden = getThumbnailHiddenInputs();
+        const previousPath = hidden.path ? hidden.path.value : '';
+
+        if (hidden.path) hidden.path.value = payload.path;
+        if (hidden.name) hidden.name.value = payload.filename || file.name;
+        if (hidden.size) hidden.size.value = payload.size || file.size;
+
+        if (previousPath && previousPath !== payload.path) {
+            queueTemporaryDeletion(previousPath);
+        }
+        registerTemporaryPath(payload.path);
+
+        if (thumbnailUploadTaskId) {
+            completeUploadTask(thumbnailUploadTaskId, 'Image importée avec succès');
+            thumbnailUploadTaskId = null;
+        }
+
+        thumbnailUploadResumable = null;
+
+        zone.style.borderColor = '#28a745';
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+
+        resetFileInput(input);
+    });
+
+    resumable.on('fileError', function(resumableFile, message) {
+        handleUploadError(message);
+    });
+
+    resumable.on('error', function(message) {
+        handleUploadError(message);
+    });
+
+    resumable.on('cancel', function() {
+        handleUploadError('Téléversement annulé.', { suppressModal: true });
+    });
+
+    resumable.on('chunkingComplete', function() {
+        if (!resumable.isUploading()) {
+            resumable.upload();
+        }
+    });
+
+    resumable.addFile(file);
+}
+
+function clearThumbnail(options = {}) {
+    const { skipModalCancel = false, preserveHidden = false, restoreExistingPreview = true } = options;
     const zone = document.getElementById('thumbnailUploadZone');
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
     const input = document.getElementById('thumbnail');
     const errorDiv = document.getElementById('thumbnailError');
     
+    if (thumbnailUploadResumable) {
+        try {
+            thumbnailUploadResumable.cancel();
+        } catch (error) {
+            // ignore
+        }
+    }
+    thumbnailUploadResumable = null;
+
+    if (thumbnailUploadTaskId) {
+        const progressModal = window.UploadProgressModal;
+        if (!skipModalCancel && progressModal && typeof progressModal.cancelTask === 'function') {
+            progressModal.cancelTask(thumbnailUploadTaskId);
+        }
+        thumbnailUploadTaskId = null;
+    }
+
+    if (!preserveHidden) {
+        resetThumbnailHiddenFields();
+    }
+
     resetFileInput(input);
-    preview.querySelector('img').src = '';
+
+    const img = preview.querySelector('img');
+    if (img) {
+        img.src = '';
+    }
+    const fileNameBadge = preview.querySelector('.file-name');
+    if (fileNameBadge) {
+        fileNameBadge.textContent = '';
+    }
+    const fileSizeBadge = preview.querySelector('.file-size');
+    if (fileSizeBadge) {
+        fileSizeBadge.textContent = '';
+    }
     errorDiv.textContent = '';
     errorDiv.style.display = 'none';
     preview.classList.add('d-none');
     placeholder.classList.remove('d-none');
+    zone.style.borderColor = '#dee2e6';
+
+    if (restoreExistingPreview) {
+        document.querySelectorAll('.current-thumbnail').forEach((element) => element.classList.remove('d-none'));
+    }
 }
 
 // Gestion de l'upload de vidéo
@@ -755,6 +1161,9 @@ function clearVideo(options = {}) {
         previewUploadTaskId = null;
         return;
     }
+
+    const pathInput = document.getElementById('video_preview_path');
+    const previousPath = pathInput ? pathInput.value : '';
 
     if (cancelUpload && previewUploadResumable) {
         try {
@@ -823,10 +1232,14 @@ function clearVideo(options = {}) {
     }
 
     if (clearHiddenFields) {
-        const pathInput = document.getElementById('video_preview_path');
         const nameInput = document.getElementById('video_preview_name');
         const sizeInput = document.getElementById('video_preview_size');
-        if (pathInput) pathInput.value = '';
+        if (pathInput) {
+            if (previousPath && isTemporaryPath(previousPath)) {
+                queueTemporaryDeletion(previousPath);
+            }
+            pathInput.value = '';
+        }
         if (nameInput) nameInput.value = '';
         if (sizeInput) sizeInput.value = '';
     }
@@ -1001,9 +1414,14 @@ function handleDownloadFileUpload(input) {
             return;
         }
     
+        const previousPath = chunkPathInput ? chunkPathInput.value : '';
         if (chunkPathInput) chunkPathInput.value = payload.path;
         if (chunkNameInput) chunkNameInput.value = payload.filename || file.name;
         if (chunkSizeInput) chunkSizeInput.value = payload.size || file.size;
+        if (previousPath && previousPath !== payload.path) {
+            queueTemporaryDeletion(previousPath);
+        }
+        registerTemporaryPath(payload.path);
     
         if (downloadUploadTaskId) {
             completeUploadTask(downloadUploadTaskId, 'Fichier importé avec succès');
@@ -1122,7 +1540,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const pathInput = document.getElementById('video_preview_path');
                 const nameInput = document.getElementById('video_preview_name');
                 const sizeInput = document.getElementById('video_preview_size');
-                if (pathInput) pathInput.value = '';
+                if (pathInput) {
+                    const previousPath = pathInput.value;
+                    if (previousPath && isTemporaryPath(previousPath)) {
+                        queueTemporaryDeletion(previousPath);
+                    }
+                    pathInput.value = '';
+                }
                 if (nameInput) nameInput.value = '';
                 if (sizeInput) sizeInput.value = '';
             }
@@ -1192,18 +1616,16 @@ function addSection() {
     sectionCount++;
     const container = document.getElementById('sections-container');
     const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'card border-0 shadow-sm mb-3';
+    sectionDiv.className = 'card border-0 shadow-sm mb-3 course-section-card';
     sectionDiv.id = `section-${sectionCount}`;
     sectionDiv.innerHTML = `
-        <div class="card-header bg-light">
+        <div class="card-header bg-gradient-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">Section ${sectionCount}</h6>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSection(${sectionCount})">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <h6 class="mb-0 text-white">Section ${sectionCount}</h6>
+                <i class="fas fa-times course-section-remove-icon text-white" role="button" onclick="removeSection(${sectionCount})" aria-label="Supprimer la section"></i>
             </div>
         </div>
-        <div class="card-body">
+        <div class="card-body course-section-card__body">
             <div class="row mb-3">
                 <div class="col-md-8">
                     <label class="form-label">Titre de la section</label>
@@ -1234,11 +1656,15 @@ function addLesson(sectionId) {
     lessonCount++;
     const container = document.getElementById(`lessons-${sectionId}`);
     const lessonDiv = document.createElement('div');
-    lessonDiv.className = 'card border-0 shadow-sm mb-2';
+    lessonDiv.className = 'card border-0 shadow-sm mb-2 course-lesson-card';
     const lessonUniqueId = `${sectionId}-${lessonCount}`;
     lessonDiv.innerHTML = `
-        <div class="card-body">
-            <div class="row">
+        <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center course-lesson-card__header">
+            <h6 class="mb-0 text-white"><i class="fas fa-play-circle me-2 text-white-50"></i>Leçon ${lessonCount}</h6>
+            <i class="fas fa-times course-lesson-remove-icon text-white" role="button" onclick="removeLesson(this)" aria-label="Supprimer la leçon"></i>
+        </div>
+        <div class="card-body course-lesson-card__body">
+            <div class="row gy-3">
                 <div class="col-md-4">
                     <label class="form-label">Titre de la leçon</label>
                     <input type="text" class="form-control" name="sections[${sectionId}][lessons][${lessonCount}][title]" placeholder="Titre de la leçon" required>
@@ -1257,18 +1683,12 @@ function addLesson(sectionId) {
                     <label class="form-label">Durée (min)</label>
                     <input type="number" class="form-control" name="sections[${sectionId}][lessons][${lessonCount}][duration]" min="0" placeholder="0">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label">Aperçu</label>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="sections[${sectionId}][lessons][${lessonCount}][is_preview]" value="1">
                         <label class="form-check-label">Gratuit</label>
                     </div>
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="button" class="btn btn-outline-danger d-block" onclick="removeLesson(this)">
-                        <i class="fas fa-trash"></i>
-                    </button>
                 </div>
             </div>
             <div class="row mt-2">
@@ -1283,7 +1703,7 @@ function addLesson(sectionId) {
                                class="form-control d-none lesson-file-input"
                                id="lesson_file_${lessonUniqueId}"
                                name="sections[${sectionId}][lessons][${lessonCount}][content_file]"
-                               accept="video/mp4,video/webm,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                               accept="video/mp4,video/webm,video/ogg,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,video/x-matroska,.mp4,.webm,.ogg,.avi,.mov,.wmv,.mkv,.pdf,.zip,.rar,.7z,.tar,.gz,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv"
                                onchange="handleLessonFileUpload('${lessonUniqueId}', this)">
                         <input type="hidden"
                                name="sections[${sectionId}][lessons][${lessonCount}][content_file_path]"
@@ -1470,7 +1890,7 @@ function startLessonChunkUpload(uniqueId, file, input) {
         testChunks: false,
         throttleProgressCallbacks: 1,
         fileParameterName: 'file',
-        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv'],
+        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv', 'pdf', 'zip', 'rar', '7z', 'tar', 'gz', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'],
         withCredentials: true,
         headers: {
             'X-CSRF-TOKEN': token,
@@ -1537,9 +1957,14 @@ function startLessonChunkUpload(uniqueId, file, input) {
             return;
         }
 
+        const previousPath = hidden.path ? hidden.path.value : '';
         if (hidden.path) hidden.path.value = payload.path;
         if (hidden.name) hidden.name.value = payload.filename || file.name;
         if (hidden.size) hidden.size.value = payload.size || file.size;
+        if (previousPath && previousPath !== payload.path) {
+            queueTemporaryDeletion(previousPath);
+        }
+        registerTemporaryPath(payload.path);
 
 
         completeUploadTask(taskId, 'Fichier importé avec succès');
@@ -1649,6 +2074,9 @@ function clearLessonFile(uniqueId, options = {}) {
     const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
     if (!zone) return;
 
+    const hidden = getLessonHiddenInputs(uniqueId);
+    const previousPath = hidden.path ? hidden.path.value : '';
+
     cancelLessonUpload(uniqueId, { silent: true, skipModalCancel });
 
     const input = zone.querySelector('input[type="file"]');
@@ -1685,8 +2113,12 @@ function clearLessonFile(uniqueId, options = {}) {
     zone.style.borderColor = '#dee2e6';
     delete zone.dataset.uploadTaskId;
 
-    const hidden = getLessonHiddenInputs(uniqueId);
-    if (hidden.path) hidden.path.value = '';
+    if (hidden.path) {
+        if (previousPath && isTemporaryPath(previousPath)) {
+            queueTemporaryDeletion(previousPath);
+        }
+        hidden.path.value = '';
+    }
     if (hidden.name) hidden.name.value = '';
     if (hidden.size) hidden.size.value = '';
     lessonUploadControllers.delete(uniqueId);
@@ -1727,8 +2159,10 @@ function syncFreeCourseFields(isInitial = false) {
     const freeCheckbox = document.getElementById('is_free');
     const priceField = document.getElementById('price');
     const salePriceField = document.getElementById('sale_price');
+    const saleStartField = document.getElementById('sale_start_at');
+    const saleEndField = document.getElementById('sale_end_at');
 
-    if (!priceField || !salePriceField) {
+    if (!priceField || !salePriceField || !saleStartField || !saleEndField) {
         return;
     }
 
@@ -1738,6 +2172,8 @@ function syncFreeCourseFields(isInitial = false) {
         if (!isInitial) {
             cachedPriceValue = priceField.value;
             cachedSalePriceValue = salePriceField.value;
+            cachedSaleStartValue = saleStartField.value;
+            cachedSaleEndValue = saleEndField.value;
         }
         if (cachedPriceValue === null) {
             cachedPriceValue = priceField.value;
@@ -1745,14 +2181,26 @@ function syncFreeCourseFields(isInitial = false) {
         if (cachedSalePriceValue === null) {
             cachedSalePriceValue = salePriceField.value;
         }
+        if (cachedSaleStartValue === null) {
+            cachedSaleStartValue = saleStartField.value;
+        }
+        if (cachedSaleEndValue === null) {
+            cachedSaleEndValue = saleEndField.value;
+        }
 
         priceField.value = '0';
         priceField.disabled = true;
         salePriceField.value = '';
         salePriceField.disabled = true;
+        saleStartField.value = '';
+        saleStartField.disabled = true;
+        saleEndField.value = '';
+        saleEndField.disabled = true;
     } else {
         priceField.disabled = false;
         salePriceField.disabled = false;
+        saleStartField.disabled = false;
+        saleEndField.disabled = false;
 
         if (cachedPriceValue !== null) {
             priceField.value = cachedPriceValue || '';
@@ -1761,6 +2209,14 @@ function syncFreeCourseFields(isInitial = false) {
         if (cachedSalePriceValue !== null) {
             salePriceField.value = cachedSalePriceValue || '';
         }
+
+        if (cachedSaleStartValue !== null) {
+            saleStartField.value = cachedSaleStartValue || '';
+        }
+
+        if (cachedSaleEndValue !== null) {
+            saleEndField.value = cachedSaleEndValue || '';
+        }
     }
 }
 
@@ -1768,6 +2224,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const freeCheckbox = document.getElementById('is_free');
     const priceField = document.getElementById('price');
     const salePriceField = document.getElementById('sale_price');
+    const saleStartField = document.getElementById('sale_start_at');
+    const saleEndField = document.getElementById('sale_end_at');
 
     if (priceField) {
         cachedPriceValue = priceField.value;
@@ -1783,6 +2241,24 @@ document.addEventListener('DOMContentLoaded', function() {
         salePriceField.addEventListener('input', function() {
             if (!freeCheckbox || !freeCheckbox.checked) {
                 cachedSalePriceValue = this.value;
+            }
+        });
+    }
+
+    if (saleStartField) {
+        cachedSaleStartValue = saleStartField.value;
+        saleStartField.addEventListener('input', function() {
+            if (!freeCheckbox || !freeCheckbox.checked) {
+                cachedSaleStartValue = this.value;
+            }
+        });
+    }
+
+    if (saleEndField) {
+        cachedSaleEndValue = saleEndField.value;
+        saleEndField.addEventListener('input', function() {
+            if (!freeCheckbox || !freeCheckbox.checked) {
+                cachedSaleEndValue = this.value;
             }
         });
     }
@@ -1887,6 +2363,7 @@ function uploadVideoPreviewAjax(input) {
         const pathInput = document.getElementById('video_preview_path');
         const nameInput = document.getElementById('video_preview_name');
         const sizeInput = document.getElementById('video_preview_size');
+        const previousPath = pathInput ? pathInput.value : '';
         if (pathInput) {
             pathInput.value = payload.path;
         }
@@ -1896,6 +2373,10 @@ function uploadVideoPreviewAjax(input) {
         if (sizeInput) {
             sizeInput.value = payload.size || file.size;
         }
+        if (previousPath && previousPath !== payload.path) {
+            queueTemporaryDeletion(previousPath);
+        }
+        registerTemporaryPath(payload.path);
 
         const urlField = document.getElementById('video_preview');
         if (urlField && !urlField.value) {
@@ -1998,7 +2479,7 @@ function cancelAllUploads() {
     previewUploadTaskId = null;
 
     resetFileInput(document.getElementById('video_preview_file'));
-    clearVideo();
+    clearVideo({ skipModalCancel: true });
 
     const activeLessons = Array.from(lessonUploadControllers.entries());
     activeLessons.forEach(([uniqueId, controller]) => {
@@ -2031,9 +2512,43 @@ function cancelAllUploads() {
     }
     clearDownloadFile();
 
+    clearThumbnail({ skipModalCancel: true });
+
     if (progressModal && typeof progressModal.hide === 'function') {
         progressModal.hide();
     }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('courseForm');
+    if (form) {
+        form.addEventListener('submit', function() {
+            TempUploadManager.markSubmitting();
+        });
+    }
+
+    document.querySelectorAll('[data-temp-upload-cancel]').forEach((cancelLink) => {
+        cancelLink.addEventListener('click', function(event) {
+            event.preventDefault();
+            const href = this.getAttribute('href');
+            TempUploadManager.flushAll({ keepalive: true });
+            const navigate = () => window.location.href = href;
+            if (navigator.sendBeacon) {
+                setTimeout(navigate, 50);
+            } else {
+                setTimeout(navigate, 0);
+            }
+        });
+    });
+});
+
+if (!window.__tempUploadUnloadHook) {
+    window.__tempUploadUnloadHook = true;
+    window.addEventListener('beforeunload', function() {
+        if (TempUploadManager && !TempUploadManager.isSubmitting()) {
+            TempUploadManager.flushAll({ keepalive: true });
+        }
+    });
 }
 
 window.cancelAllUploads = cancelAllUploads;
@@ -2227,6 +2742,314 @@ window.cancelAllUploads = cancelAllUploads;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
+}
+
+.course-section-remove-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-radius: 50%;
+    transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.course-section-remove-icon:hover,
+.course-section-remove-icon:focus {
+    background: rgba(220, 53, 69, 0.2);
+    color: #a71d2a;
+    transform: scale(1.05);
+}
+
+.course-section-remove-icon i {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.course-lesson-card__header {
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+}
+
+.course-lesson-card__header h6 {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.course-lesson-remove-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: rgba(220, 53, 69, 0.12);
+    color: #dc3545;
+    border-radius: 50%;
+    transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.course-lesson-remove-icon:hover,
+.course-lesson-remove-icon:focus {
+    background: rgba(220, 53, 69, 0.22);
+    color: #a71d2a;
+    transform: scale(1.05);
+}
+
+.course-lesson-remove-icon i {
+    margin: 0;
+    font-size: 0.82rem;
+}
+
+.form-actions-card .card-body {
+    padding: 1.5rem 1.75rem;
+}
+
+.form-actions {
+    width: 100%;
+}
+
+.form-actions__btn {
+    flex: 1 1 auto;
+    font-weight: 600;
+}
+
+.form-actions__btn--primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-actions__btn i {
+    position: relative;
+    top: -1px;
+}
+
+/* Responsive spacing adjustments */
+@media (max-width: 991.98px) {
+    .admin-panel__body.admin-panel__body--padded {
+        padding: 1.45rem;
+    }
+
+    .admin-panel__body--padded .card-header {
+        padding: 0.95rem 1.15rem;
+    }
+
+    .admin-panel__body--padded .card-body {
+        padding: 1.1rem 1.2rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .admin-panel__body.admin-panel__body--padded {
+        padding: 0.85rem;
+    }
+
+    .admin-panel__body--padded .card-header {
+        padding: 0.8rem 0.9rem;
+    }
+
+    .admin-panel__body--padded .card-body {
+        padding: 0.85rem 0.95rem;
+    }
+
+    .admin-panel__body--padded .upload-placeholder {
+        padding: 1.25rem;
+    }
+
+    .admin-panel__body--padded .upload-preview {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .card-header {
+        padding: 1rem 1.1rem;
+    }
+
+    .card-body {
+        padding: 1.1rem 1.25rem;
+    }
+
+    .course-content-card__body {
+        padding: 1.15rem 1.35rem;
+    }
+
+    .course-section-card__body {
+        padding: 1rem 1.2rem;
+    }
+
+    .course-lesson-card__body {
+        padding: 0.9rem 1.1rem;
+    }
+
+    .course-section-remove-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .course-lesson-card__header {
+        padding: 0.65rem 0.85rem;
+    }
+
+    .course-lesson-remove-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .course-lesson-remove-icon i {
+        font-size: 0.78rem;
+    }
+
+    .card-header h5 {
+        font-size: 1.05rem;
+    }
+
+    .card-header h6,
+    .course-lesson-card__header h6 {
+        font-size: 0.98rem;
+    }
+
+    .card-body .form-label {
+        font-size: 0.95rem;
+    }
+
+    .form-control,
+    .form-select,
+    textarea.form-control {
+        font-size: 0.95rem;
+        padding: 0.6rem 0.85rem;
+    }
+
+    .form-control-lg {
+        font-size: 1rem;
+        padding: 0.65rem 0.9rem;
+    }
+
+    .btn {
+        font-size: 0.95rem;
+        padding: 0.55rem 1.1rem;
+    }
+
+    .form-actions-card .card-body {
+        padding: 1.1rem 1.25rem;
+    }
+
+    .form-actions {
+        justify-content: space-between;
+    }
+
+    .form-actions__btn {
+        flex: 0 0 auto;
+        min-width: 150px;
+    }
+
+    .form-actions__btn--primary {
+        min-width: 170px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .card-header {
+        padding: 0.8rem 0.85rem;
+    }
+
+    .card-body {
+        padding: 0.75rem 0.9rem;
+    }
+
+    .course-content-card__body {
+        padding: 0.75rem 1rem;
+    }
+
+    .course-section-card__body {
+        padding: 0.65rem 0.9rem;
+    }
+
+    .course-lesson-card__body {
+        padding: 0.55rem 0.8rem;
+    }
+
+    .course-lesson-card__body .row {
+        row-gap: 0.75rem;
+    }
+
+    .course-section-remove-icon {
+        width: 26px;
+        height: 26px;
+    }
+
+    .course-section-remove-icon i {
+        font-size: 0.8rem;
+    }
+
+    .course-lesson-card__header {
+        padding: 0.55rem 0.75rem;
+    }
+
+    .course-lesson-remove-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .course-lesson-remove-icon i {
+        font-size: 0.72rem;
+    }
+
+    .card-header h5 {
+        font-size: 0.95rem;
+    }
+
+    .card-header h6,
+    .course-lesson-card__header h6 {
+        font-size: 0.88rem;
+    }
+
+    .card-body .form-label,
+    .form-label {
+        font-size: 0.88rem;
+    }
+
+    .card-body small,
+    .card-body .text-muted,
+    .upload-placeholder p,
+    .upload-info .badge {
+        font-size: 0.8rem;
+    }
+
+    .form-control,
+    .form-select,
+    textarea.form-control {
+        font-size: 0.88rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .form-control-lg {
+        font-size: 0.95rem;
+        padding: 0.55rem 0.85rem;
+    }
+
+    .btn {
+        font-size: 0.9rem;
+        padding: 0.5rem 0.95rem;
+    }
+
+    .btn.btn-sm {
+        font-size: 0.82rem;
+        padding: 0.45rem 0.7rem;
+    }
+
+    .form-actions-card .card-body {
+        padding: 0.8rem 0.95rem;
+    }
+
+    .form-actions__btn {
+        width: 100%;
+        min-width: 0;
+    }
 }
 </style>
 @endpush

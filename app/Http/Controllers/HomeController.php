@@ -9,14 +9,31 @@ use App\Models\Banner;
 use App\Models\Partner;
 use App\Models\Testimonial;
 use App\Models\User;
+use App\Services\TemporaryUploadCleaner;
 use App\Traits\CourseStatistics;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
 {
     use CourseStatistics;
-    public function index()
+    public function index(TemporaryUploadCleaner $temporaryUploadCleaner)
     {
+        $cacheKey = 'temporary_uploads_last_cleanup_at';
+        $lockKey = 'temporary_uploads_cleanup_lock';
+        $interval = max(1, (int) config('uploads.temporary.home_cleanup_interval_minutes', 60));
+        $lastCleanup = Cache::get($cacheKey);
+
+        if ((!$lastCleanup || now()->diffInMinutes($lastCleanup) >= $interval)
+            && Cache::add($lockKey, true, 60)) {
+            try {
+                $temporaryUploadCleaner->clean();
+                Cache::put($cacheKey, now(), now()->addMinutes($interval * 2));
+            } finally {
+                Cache::forget($lockKey);
+            }
+        }
+
         // Récupérer les bannières actives pour le carousel
         $banners = Banner::active()->ordered()->get();
 

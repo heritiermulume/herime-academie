@@ -44,10 +44,8 @@ class ChunkUploadController extends Controller
 
             $uploadType = $request->input('upload_type', 'lesson');
             $folder = $this->resolveFolder($uploadType);
-            $replacePath = $request->input('replace_path');
-
             try {
-                $result = $this->fileUploadService->upload($file, $folder, $replacePath);
+                $result = $this->fileUploadService->uploadTemporary($file, $folder);
             } finally {
                 $temporaryPath = $file->getPathname();
                 if ($temporaryPath && file_exists($temporaryPath)) {

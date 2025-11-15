@@ -92,8 +92,8 @@ use Illuminate\Support\Facades\Storage;
                             @if($course->is_featured)
                             <span class="course-badge">En vedette</span>
                             @endif
-                            @if($course->sale_price)
-                            <span class="course-badge" style="background: #e74c3c; top: 3rem;">-{{ $course->discount_percentage }}%</span>
+                            @if($course->sale_discount_percentage)
+                            <span class="course-badge" style="background: #e74c3c; top: 3rem;">-{{ $course->sale_discount_percentage }}%</span>
                             @endif
                         </div>
                         <div class="card-body">
@@ -108,18 +108,32 @@ use Illuminate\Support\Facades\Storage;
                             </div>
                             <h5 class="card-title">{{ $course->title }}</h5>
                             <p class="card-text text-muted">{{ Str::limit($course->short_description, 80) }}</p>
+                            
+                            @if($course->show_students_count && isset($course->stats['total_students']))
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-users me-1"></i>
+                                    {{ number_format($course->stats['total_students'], 0, ',', ' ') }} 
+                                    {{ $course->stats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                </small>
+                            </div>
+                            @endif
+                            
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
-                                    @if($course->sale_price)
-                                        <span class="course-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</span>
+                                    @if($course->is_sale_active && $course->active_sale_price !== null)
+                                        <span class="course-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</span>
                                         <span class="course-price-old ms-2">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                     @else
                                         <span class="course-price">{{ $course->is_free ? 'Gratuit' : \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                     @endif
                                 </div>
+                                @if($course->show_students_count)
                                 <small class="text-muted">
-                                    <i class="fas fa-users me-1"></i>{{ $course->stats['total_students'] ?? 0 }} étudiants
+                                    <i class="fas fa-users me-1"></i>{{ number_format($course->stats['total_students'] ?? 0, 0, ',', ' ') }} 
+                                    {{ ($course->stats['total_students'] ?? 0) > 1 ? 'étudiants' : 'étudiant' }}
                                 </small>
+                                @endif
                             </div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted">

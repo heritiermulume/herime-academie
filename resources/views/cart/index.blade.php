@@ -39,7 +39,7 @@
                                 <img src="{{ $item['course']->thumbnail ? $item['course']->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
                                      alt="{{ $item['course']->title }}" 
                                      class="cart-item-image">
-                                @if($item['course']->is_featured || $item['course']->is_free || $item['course']->sale_price)
+                                @if($item['course']->is_featured || $item['course']->is_free || $item['course']->is_sale_active)
                                 <div class="course-badges">
                                     @if($item['course']->is_featured)
                                     <span class="course-badge featured">En vedette</span>
@@ -47,9 +47,9 @@
                                     @if($item['course']->is_free)
                                     <span class="course-badge free">Gratuit</span>
                                     @endif
-                                    @if($item['course']->sale_price)
+                                    @if($item['course']->sale_discount_percentage)
                                     <span class="course-badge sale">
-                                        -{{ round((($item['course']->price - $item['course']->sale_price) / $item['course']->price) * 100) }}%
+                                        -{{ $item['course']->sale_discount_percentage }}%
                                     </span>
                                     @endif
                                 </div>
@@ -103,7 +103,7 @@
                             <div class="cart-item-price">
                                 <div class="price-container">
                                     <span class="current-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}</span>
-                                    @if($item['course']->sale_price)
+                                    @if($item['course']->is_sale_active && $item['course']->active_sale_price !== null)
                                     <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['course']->price) }}</span>
                                     @endif
                                 </div>

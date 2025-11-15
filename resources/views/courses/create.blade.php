@@ -8,7 +8,7 @@
 @section('admin-subtitle', 'Définissez les informations essentielles de votre formation avant de la publier.')
 
 @section('admin-actions')
-    <a href="{{ route('instructor.courses.index') }}" class="btn btn-outline-primary">
+    <a href="{{ route('instructor.courses.index') }}" class="btn btn-outline-primary" data-temp-upload-cancel="true">
         <i class="fas fa-arrow-left me-2"></i>Retour à mes cours
     </a>
 @endsection
@@ -32,7 +32,7 @@
         </div>
     @endif
 
-    <form action="{{ route('instructor.courses.store') }}" method="POST" enctype="multipart/form-data" class="create-course__form">
+    <form action="{{ route('instructor.courses.store') }}" method="POST" enctype="multipart/form-data" class="create-course__form" id="courseForm">
         @csrf
 
         <section class="admin-card">
@@ -209,6 +209,20 @@
                     <label for="sale_price">Prix promotionnel</label>
                     <input type="number" id="sale_price" name="sale_price" value="{{ old('sale_price') }}" min="0" step="0.01" placeholder="Laissez vide si aucun">
                     @error('sale_price') <span class="create-course__error">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="create-course__field">
+                    <label for="sale_start_at">Début de promotion</label>
+                    <input type="datetime-local" id="sale_start_at" name="sale_start_at" value="{{ old('sale_start_at') }}">
+                    <small class="create-course__hint">Laissez vide pour démarrer immédiatement.</small>
+                    @error('sale_start_at') <span class="create-course__error">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="create-course__field">
+                    <label for="sale_end_at">Fin de promotion</label>
+                    <input type="datetime-local" id="sale_end_at" name="sale_end_at" value="{{ old('sale_end_at') }}">
+                    <small class="create-course__hint">La promotion s'arrêtera automatiquement à cette date.</small>
+                    @error('sale_end_at') <span class="create-course__error">{{ $message }}</span> @enderror
                 </div>
             </div>
         </section>

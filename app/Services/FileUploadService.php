@@ -8,6 +8,8 @@ use Illuminate\Support\Str;
 
 class FileUploadService
 {
+    public const TEMPORARY_BASE_PATH = 'tmp/uploads';
+
     /**
      * Upload un fichier de manière optimisée
      * 
@@ -39,6 +41,127 @@ class FileUploadService
             'path' => $storedPath,
             'url' => $this->getSecureUrl($storedPath, $folder),
         ];
+    }
+
+    /**
+     * Upload un fichier dans le dossier temporaire
+     *
+     * @param UploadedFile $file
+     * @param string $folder Dossier cible final (ex: courses/lessons)
+     * @return array ['path' => string, 'url' => string]
+     */
+    public function uploadTemporary(UploadedFile $file, string $folder): array
+    {
+        $disk = Storage::disk('local');
+
+        $filename = $this->generateUniqueFilename($file);
+        $folder = trim($folder, '/');
+        $temporaryFolder = $this->getTemporaryFolder($folder);
+
+        $this->ensureDirectoryExists($disk, $temporaryFolder);
+
+        $storedPath = $file->storeAs($temporaryFolder, $filename, ['disk' => 'local']);
+
+        if (!$storedPath) {
+            throw new \Exception('Impossible d\'écrire le fichier temporaire sur le disque.');
+        }
+
+        return [
+            'path' => $storedPath,
+            'url' => $this->getTemporaryUrl($storedPath),
+        ];
+    }
+
+    /**
+     * Promouvoir un fichier temporaire vers son dossier final
+     *
+     * @param string $path Chemin du fichier temporaire ou final
+     * @param string $finalFolder Dossier final (ex: courses/lessons)
+     * @return string Chemin final du fichier
+     */
+    public function promoteTemporaryFile(string $path, string $finalFolder): string
+    {
+        $disk = Storage::disk('local');
+        $cleanPath = $this->sanitizePath($path);
+
+        if (!$this->isTemporaryPath($cleanPath)) {
+            // Le fichier est déjà dans un dossier final
+            return $cleanPath;
+        }
+
+        if (!$disk->exists($cleanPath)) {
+            throw new \RuntimeException("Fichier temporaire introuvable: {$cleanPath}");
+        }
+
+        $finalFolder = trim($finalFolder, '/');
+        $this->ensureDirectoryExists($disk, $finalFolder);
+
+        $filename = basename($cleanPath);
+        $destinationPath = $finalFolder . '/' . $filename;
+
+        // En cas de collision improbable, générer un nouveau nom
+        if ($disk->exists($destinationPath)) {
+            $name = pathinfo($filename, PATHINFO_FILENAME);
+            $extension = pathinfo($filename, PATHINFO_EXTENSION);
+
+            do {
+                $candidate = $name . '_' . Str::random(6);
+                if ($extension) {
+                    $candidate .= '.' . $extension;
+                }
+                $destinationPath = $finalFolder . '/' . $candidate;
+            } while ($disk->exists($destinationPath));
+        }
+
+        $moved = $disk->move($cleanPath, $destinationPath);
+
+        if (!$moved) {
+            throw new \RuntimeException("Impossible de déplacer le fichier vers {$destinationPath}");
+        }
+
+        // Nettoyer les dossiers temporaires vides
+        $this->cleanupEmptyTemporaryDirectories(dirname($cleanPath));
+
+        return $destinationPath;
+    }
+
+    /**
+     * Déterminer si un chemin correspond au dossier temporaire
+     */
+    public function isTemporaryPath(string $path): bool
+    {
+        $clean = ltrim($path, '/');
+        return str_starts_with($clean, self::TEMPORARY_BASE_PATH . '/');
+    }
+
+    /**
+     * Supprimer un fichier temporaire (avec nettoyage des dossiers)
+     */
+    public function deleteTemporaryFile(string $path): bool
+    {
+        $clean = $this->sanitizePath($path);
+
+        if (!$this->isTemporaryPath($clean)) {
+            return false;
+        }
+
+        $deleted = $this->deleteFile($clean);
+
+        if ($deleted) {
+            $this->cleanupEmptyTemporaryDirectories(dirname($clean));
+        }
+
+        return $deleted;
+    }
+
+    /**
+     * Retourner le dossier temporaire pour un dossier final donné
+     */
+    public function getTemporaryFolder(string $folder): string
+    {
+        $folder = trim($folder, '/');
+
+        return self::TEMPORARY_BASE_PATH . '/' . $folder;
     }
 
     /**
@@ -152,7 +275,7 @@ class FileUploadService
         if (filter_var($path, FILTER_VALIDATE_URL)) {
             return false;
         }
-        
+
         $disk = Storage::disk('local');
 
         $cleanPath = ltrim(preg_replace('#^storage/#', '', $path), '/');
@@ -296,6 +419,8 @@ class FileUploadService
             return 'banners';
         } elseif (strpos($folder, 'media/') !== false) {
             return 'media';
+        } elseif (strpos($folder, self::TEMPORARY_BASE_PATH) !== false) {
+            return 'temporary';
         }
         
         return 'files';
@@ -311,8 +436,61 @@ class FileUploadService
             'avatars' => 'avatars',
             'banners' => 'banners',
             'media' => 'media',
+            'temporary' => self::TEMPORARY_BASE_PATH,
             default => null,
         };
+    }
+
+    /**
+     * Générer une URL sécurisée pour un fichier temporaire
+     */
+    protected function getTemporaryUrl(string $path): string
+    {
+        $relativePath = ltrim($path, '/');
+
+        if (!$this->isTemporaryPath($relativePath)) {
+            return $this->getSecureUrl($relativePath);
+        }
+
+        $temporaryRoot = self::TEMPORARY_BASE_PATH . '/';
+        $trimmed = str_starts_with($relativePath, $temporaryRoot)
+            ? substr($relativePath, strlen($temporaryRoot))
+            : $relativePath;
+
+        return route('files.serve', ['type' => 'temporary', 'path' => $trimmed]);
+    }
+
+    /**
+     * Nettoyer les dossiers temporaires vides
+     */
+    protected function cleanupEmptyTemporaryDirectories(string $path): void
+    {
+        $disk = Storage::disk('local');
+        $path = trim($path, '/');
+
+        while ($path && $path !== self::TEMPORARY_BASE_PATH) {
+            if ($disk->exists($path) && empty($disk->files($path)) && empty($disk->directories($path))) {
+                $disk->deleteDirectory($path);
+                $path = dirname($path);
+            } else {
+                break;
+            }
+        }
+    }
+
+    /**
+     * Nettoyer un chemin donné
+     */
+    public function sanitizePath(string $path): string
+    {
+        $clean = trim($path);
+        $clean = ltrim($clean, '/');
+
+        if (str_starts_with($clean, 'storage/')) {
+            $clean = ltrim(substr($clean, strlen('storage/')), '/');
+        }
+
+        return $clean;
     }
 }
 

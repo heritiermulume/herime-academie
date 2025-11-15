@@ -39,7 +39,7 @@ class MokoController extends Controller
             foreach ($cartItems as $item) {
                 $course = $item->course;
                 if ($course) {
-                    $total += $course->current_price ?? $course->sale_price ?? $course->price;
+                    $total += $course->current_price ?? $course->price;
                 }
             }
         } else {
@@ -52,7 +52,7 @@ class MokoController extends Controller
                 $course = Course::find($courseId);
                 if ($course) {
                     $courses->push($course);
-                    $total += $course->current_price ?? $course->sale_price ?? $course->price;
+                    $total += $course->current_price ?? $course->price;
                 }
             }
         }
@@ -94,7 +94,7 @@ class MokoController extends Controller
                 foreach ($cartItems as $item) {
                     $course = $item->course;
                     if ($course) {
-                        $total += $course->current_price ?? $course->sale_price ?? $course->price;
+                        $total += $course->current_price ?? $course->price;
                     }
                 }
                 
@@ -107,7 +107,7 @@ class MokoController extends Controller
                         return [
                             'course_id' => $item->course_id,
                             'course_price' => $item->course->price ?? 0,
-                            'course_sale_price' => $item->course->sale_price ?? 0,
+                            'course_sale_price' => $item->course->is_sale_active ? $item->course->active_sale_price : 0,
                             'course_current_price' => $item->course->current_price ?? 0
                         ];
                     })
@@ -122,7 +122,7 @@ class MokoController extends Controller
                     $course = Course::find($courseId);
                     if ($course) {
                         $courses->push($course);
-                        $total += $course->current_price ?? $course->sale_price ?? $course->price;
+                        $total += $course->current_price ?? $course->price;
                     }
                 }
                 
@@ -193,12 +193,12 @@ class MokoController extends Controller
 
             // Ajouter les articles à la commande
             foreach ($courses as $course) {
-                $coursePrice = $course->current_price ?? $course->sale_price ?? $course->price;
+                $coursePrice = $course->current_price ?? $course->price;
                 OrderItem::create([
                     'order_id' => $order->id,
                     'course_id' => $course->id,
                     'price' => $course->price,
-                    'sale_price' => $course->sale_price,
+                    'sale_price' => $course->is_sale_active ? $course->active_sale_price : null,
                     'total' => $coursePrice,
                 ]);
             }

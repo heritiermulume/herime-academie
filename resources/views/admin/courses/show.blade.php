@@ -137,9 +137,9 @@
                 <p class="admin-stat-card__value">
                     {{ $course->is_free ? 'Gratuit' : \App\Helpers\CurrencyHelper::formatWithSymbol($course->current_price ?? $course->price ?? 0, $course->currency ?? 'USD') }}
                 </p>
-                @if(!$course->is_free && $course->sale_price && $course->sale_price < $course->price)
+                @if(!$course->is_free && $course->is_sale_active && $course->active_sale_price !== null && $course->active_sale_price < $course->price)
                     <p class="admin-stat-card__muted">
-                        Promotion : {{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price, $course->currency ?? 'USD') }}
+                        Promotion : {{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price, $course->currency ?? 'USD') }}
                     </p>
                 @endif
             </div>

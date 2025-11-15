@@ -168,10 +168,10 @@
 }
 
 .course-title-hero {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     line-height: 1.3;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     color: white;
     word-wrap: break-word;
 }
@@ -211,8 +211,8 @@
     background: white;
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    padding: 2rem;
-    margin-bottom: 2rem;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
     border: 1px solid var(--border-color);
     transition: all 0.3s ease;
 }
@@ -222,15 +222,15 @@
 }
 
 .section-title-modern {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.125rem;
+    font-weight: 600;
     color: var(--primary-color);
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 3px solid var(--accent-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--accent-color);
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .section-title-modern i {
@@ -240,10 +240,10 @@
 /* Video Preview */
 .video-preview-wrapper {
     position: relative;
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
-    margin-bottom: 2rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    margin-bottom: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     cursor: pointer;
     transition: all 0.3s ease;
 }
@@ -272,15 +272,15 @@
 }
 
 .play-button-large {
-    width: 80px;
-    height: 80px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.95);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--primary-color);
-    font-size: 2rem;
+    font-size: 1.5rem;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
 }
@@ -292,9 +292,9 @@
 
 /* Course Description */
 .course-description {
-    line-height: 1.8;
+    line-height: 1.7;
     color: var(--text-color);
-    font-size: 1.05rem;
+    font-size: 0.9375rem;
 }
 
 .course-description p {
@@ -321,7 +321,7 @@
 
 .learning-item i {
     color: var(--success-color);
-    font-size: 1.25rem;
+    font-size: 1rem;
     margin-top: 0.125rem;
     flex-shrink: 0;
 }
@@ -340,7 +340,7 @@
 
 .requirement-item i {
     color: var(--info-color);
-    font-size: 1.25rem;
+    font-size: 1rem;
     margin-top: 0.125rem;
     flex-shrink: 0;
 }
@@ -489,22 +489,151 @@
 }
 
 .modal-fixed-height .modal-content {
-    max-height: 90vh;
+    max-height: 95vh;
     display: flex;
     flex-direction: column;
 }
 
 .modal-fixed-height .modal-body {
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     flex: 1;
     min-height: 0;
-    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    height: calc(95vh - 73px);
+    max-height: calc(95vh - 73px);
 }
 
-.modal-fixed-height .modal-body {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 51, 102, 0.3) transparent;
+/* Desktop: lecteur fixe, liste scrollable */
+@media (min-width: 992px) {
+    .modal-fixed-height .modal-body {
+        height: calc(95vh - 73px) !important;
+        max-height: calc(95vh - 73px) !important;
+        overflow: hidden !important;
+        display: block !important;
+    }
+    
+    .modal-fixed-height .modal-body .row {
+        height: 100% !important;
+        max-height: 100% !important;
+        margin: 0 !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: stretch !important;
+    }
+    
+    /* Colonne du lecteur - fixe, permet scroll discret pour voir la description */
+    .modal-fixed-height .modal-body .col-lg-8 {
+        height: 100% !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        flex: 0 0 66.666667% !important;
+        max-width: 66.666667% !important;
+        position: relative !important;
+    }
+    
+    /* Conteneur du lecteur - scrollable discrètement pour voir la description */
+    .modal-fixed-height .modal-body .col-lg-8 > div {
+        height: 100% !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 51, 102, 0.05) transparent;
+        padding: 1rem !important;
+    }
+    
+    /* Scrollbar très discrète pour le lecteur */
+    .modal-fixed-height .modal-body .col-lg-8 > div::-webkit-scrollbar {
+        width: 3px;
+    }
+    
+    .modal-fixed-height .modal-body .col-lg-8 > div::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .modal-fixed-height .modal-body .col-lg-8 > div::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 51, 102, 0.05);
+        border-radius: 2px;
+    }
+    
+    .modal-fixed-height .modal-body .col-lg-8 > div::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(0, 51, 102, 0.15);
+    }
+    
+    /* Colonne de la liste - flex column avec hauteur fixe */
+    .modal-fixed-height .modal-body .col-lg-4 {
+        height: 100% !important;
+        max-height: 100% !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        flex: 0 0 33.333333% !important;
+        max-width: 33.333333% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    
+    /* En-tête de la liste - hauteur fixe, pas de shrink */
+    .modal-fixed-height .modal-body .col-lg-4 > div:first-child {
+        flex: none !important;
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+        height: auto !important;
+        min-height: fit-content !important;
+        max-height: fit-content !important;
+    }
+    
+    /* Conteneur de la liste - scrollable, CRITIQUE: min-height: 0 permet le scroll dans flexbox */
+    .modal-fixed-height .modal-body .col-lg-4 #previewListContainer {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 51, 102, 0.3) transparent;
+        /* Force le scroll à apparaître si nécessaire */
+        overscroll-behavior: contain;
+    }
+    
+    /* Contenu de la liste - pas de contrainte de hauteur */
+    .modal-fixed-height .modal-body .col-lg-4 #previewListContainer #previewListContent {
+        padding: 0 1rem 1rem 1rem;
+        display: block;
+        /* Le contenu peut dépasser, déclenchant le scroll du parent */
+    }
+    
+    /* Styles de la scrollbar de la liste */
+    .modal-fixed-height .modal-body #previewListContainer::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .modal-fixed-height .modal-body #previewListContainer::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .modal-fixed-height .modal-body #previewListContainer::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 51, 102, 0.3);
+        border-radius: 4px;
+    }
+    
+    .modal-fixed-height .modal-body #previewListContainer::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(0, 51, 102, 0.5);
+    }
+}
+
+/* Mobile: tout scrollable, scroll automatique vers le lecteur */
+@media (max-width: 991.98px) {
+    .modal-fixed-height .modal-body {
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .modal-fixed-height .modal-body #previewVideoContainer {
+        scroll-margin-top: 20px;
+    }
 }
 
 .modal-fixed-height .modal-body::-webkit-scrollbar {
@@ -634,7 +763,7 @@
 }
 
 .rating-score {
-    font-size: 3rem;
+    font-size: 2rem;
     font-weight: 700;
     color: var(--primary-color);
     line-height: 1;
@@ -642,7 +771,7 @@
 
 .rating-stars {
     color: var(--warning-color);
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     margin-bottom: 0.5rem;
 }
 
@@ -754,47 +883,47 @@
 
 .sidebar-card {
     background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    padding: 2rem;
-    margin-bottom: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
     border: 1px solid var(--border-color);
 }
 
 .price-display {
     text-align: center;
-    margin-bottom: 2rem;
-    padding-bottom: 2rem;
-    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .price-free {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--success-color);
 }
 
 .price-current {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: var(--primary-color);
-    line-height: 1;
-    margin-bottom: 0.5rem;
+    line-height: 1.2;
+    margin-bottom: 0.375rem;
 }
 
 .price-original {
-    font-size: 1.25rem;
+    font-size: 1rem;
     color: var(--text-muted);
     text-decoration: line-through;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .price-discount {
     background: var(--danger-color);
     color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.75rem;
     font-weight: 600;
     display: inline-block;
 }
@@ -803,21 +932,21 @@
 .promotion-countdown {
     background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
     border: 1px solid #fecaca;
-    border-radius: 12px;
-    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    padding: 0.625rem 0.75rem;
     text-align: center;
     width: 100%;
 }
 
 .countdown-label {
-    font-size: 0.75rem;
-    margin-bottom: 0.5rem;
+    font-size: 0.6875rem;
+    margin-bottom: 0.375rem;
     display: block;
 }
 
 .countdown-text {
-    font-size: 0.95rem;
-    letter-spacing: 0.5px;
+    font-size: 0.8125rem;
+    letter-spacing: 0.3px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -857,9 +986,10 @@
 .course-features-list li {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 0;
+    gap: 0.625rem;
+    padding: 0.625rem 0;
     border-bottom: 1px solid var(--border-color);
+    font-size: 0.875rem;
 }
 
 .course-features-list li:last-child {
@@ -868,22 +998,25 @@
 
 .course-features-list i {
     color: var(--primary-color);
-    font-size: 1.125rem;
-    width: 24px;
+    font-size: 0.9375rem;
+    width: 20px;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .share-buttons {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
+    justify-content: center;
 }
 
 .share-btn {
     flex: 1;
-    min-width: 60px;
-    padding: 0.75rem;
-    border-radius: 12px;
+    min-width: 50px;
+    max-width: 60px;
+    padding: 0.625rem;
+    border-radius: 10px;
     border: 1px solid var(--border-color);
     background: white;
     color: var(--primary-color);
@@ -902,7 +1035,7 @@
 }
 
 .share-btn i {
-    font-size: 1.25rem;
+    font-size: 1rem;
 }
 
 /* Related Courses */
@@ -988,19 +1121,23 @@
     margin-left: 0;
     margin-right: 0;
     width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .mobile-price-col {
     flex: 1;
     min-width: 0;
     padding-left: 0;
-    padding-right: 0.5rem;
+    padding-right: 0.75rem;
 }
 
 .mobile-btn-col {
     flex-shrink: 0;
     padding-left: 0;
     padding-right: 0;
+    margin-left: auto;
 }
 
 .mobile-price {
@@ -1052,9 +1189,9 @@
     white-space: nowrap;
     padding: 0.5rem 0.75rem;
     font-size: 0.7rem;
-    min-width: 120px;
-    max-width: 140px;
-    width: auto;
+    min-width: 100px;
+    max-width: 130px;
+    width: 100%;
     text-align: center;
     line-height: 1.2;
     overflow: visible;
@@ -1075,8 +1212,9 @@
 .mobile-payment-btn .btn,
 .mobile-payment-btn .btn-group,
 .mobile-payment-btn .d-grid {
-    max-width: 140px;
-    min-width: 120px;
+    max-width: 130px;
+    min-width: 100px;
+    width: 100%;
     box-sizing: border-box;
 }
 
@@ -1099,11 +1237,13 @@
 }
 
 /* S'assurer que les boutons ne dépassent pas */
-.mobile-payment-btn > .container > div:last-child {
-    max-width: 140px;
+.mobile-payment-btn > .container > div:last-child,
+.mobile-payment-btn .mobile-btn-col {
+    max-width: 130px;
+    min-width: 100px;
     flex-shrink: 0;
     box-sizing: border-box;
-    margin-right: 0;
+    margin-left: auto;
 }
 
 /* Forcer le respect des marges */
@@ -1125,9 +1265,9 @@
     }
     
     .course-title-hero {
-        font-size: 1.75rem;
+        font-size: 1.25rem;
         line-height: 1.3;
-        margin-bottom: 0.875rem;
+        margin-bottom: 0.625rem;
     }
     
     .course-stats-hero {
@@ -1230,14 +1370,18 @@
     }
     
     .content-card {
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
+        padding: 1rem;
+        margin-bottom: 1.25rem;
     }
     
     .section-title-modern {
-        font-size: 1.25rem;
-        margin-bottom: 1.25rem;
-        padding-bottom: 0.75rem;
+        font-size: 1rem;
+        margin-bottom: 0.875rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .video-preview-wrapper {
+        margin-bottom: 0;
     }
     
     .course-stats-hero {
@@ -1284,8 +1428,30 @@
         padding-right: 0 !important;
     }
     
+    .mobile-payment-btn .row {
+        justify-content: space-between;
+    }
+    
     .mobile-price-col {
-        padding-right: 0.5rem;
+        padding-right: 0.75rem;
+        flex: 1;
+        min-width: 0;
+        max-width: calc(100% - 140px);
+    }
+    
+    .mobile-btn-col {
+        flex-shrink: 0;
+        margin-left: auto;
+        min-width: 100px;
+        max-width: 130px;
+    }
+    
+    .mobile-payment-btn .btn,
+    .mobile-payment-btn .btn-group,
+    .mobile-payment-btn .d-grid {
+        max-width: 130px;
+        min-width: 100px;
+        width: 100%;
     }
     
     .mobile-price {
@@ -1404,21 +1570,35 @@
     }
     
     .course-title-hero {
-        font-size: 1.375rem;
-        line-height: 1.35;
-        margin-bottom: 0.625rem;
+        font-size: 1.125rem;
+        line-height: 1.3;
+        margin-bottom: 0.5rem;
     }
     
     .content-card {
-        padding: 1rem;
+        padding: 0.875rem;
         border-radius: 12px;
-        margin-bottom: 1.25rem;
+        margin-bottom: 1rem;
     }
     
     .section-title-modern {
-        font-size: 1.125rem;
-        margin-bottom: 1rem;
-        padding-bottom: 0.625rem;
+        font-size: 0.9375rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .course-description {
+        font-size: 0.875rem;
+    }
+    
+    .video-preview-wrapper {
+        margin-bottom: 0;
+    }
+    
+    .play-button-large {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
     }
     
     .section-title-modern i {
@@ -1482,11 +1662,26 @@
     
     .mobile-payment-btn .container-fluid {
         padding-left: 0px !important;
-        padding-right: 110px !important;
+        padding-right: 0px !important;
+    }
+    
+    .mobile-payment-btn .row {
+        justify-content: space-between;
+        align-items: center;
     }
     
     .mobile-price-col {
         padding-right: 0.5rem;
+        flex: 1;
+        min-width: 0;
+        max-width: calc(100% - 140px);
+    }
+    
+    .mobile-btn-col {
+        flex-shrink: 0;
+        margin-left: auto;
+        min-width: 100px;
+        max-width: 130px;
     }
     
     .mobile-price {
@@ -1499,15 +1694,15 @@
     }
     
     .mobile-price-value {
-        font-size: 1.4rem;
+        font-size: 1.25rem;
     }
     
     .mobile-price-original {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
     
     .mobile-price-discount {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         margin-top: 0.1rem;
     }
     
@@ -1520,23 +1715,15 @@
         font-size: 0.65rem;
     }
     
-    .mobile-payment-btn > .container > div:last-child {
-        flex-shrink: 0;
-        min-width: 110px;
-        max-width: 130px;
-        padding-top: 0;
-        box-sizing: border-box;
-    }
-    
     .mobile-payment-btn .btn {
-        padding: 0.4rem 0.55rem;
+        padding: 0.4rem 0.6rem;
         font-size: 0.65rem;
         width: 100%;
-        min-width: 110px;
+        min-width: 100px;
         max-width: 130px;
         white-space: nowrap;
         line-height: 1.2;
-        height: 34px;
+        height: 36px;
         overflow: visible;
         text-overflow: clip;
         display: flex;
@@ -1554,7 +1741,7 @@
     .mobile-payment-btn .btn-group,
     .mobile-payment-btn .d-grid {
         max-width: 130px;
-        min-width: 110px;
+        min-width: 100px;
         width: 100%;
         box-sizing: border-box;
     }
@@ -1567,7 +1754,7 @@
         max-width: 100%;
         white-space: nowrap;
         line-height: 1.2;
-        height: 32px;
+        height: 30px;
         overflow: visible;
         text-overflow: clip;
         box-sizing: border-box;
@@ -1663,6 +1850,16 @@
                     <i class="fas fa-play-circle"></i>
                     <span>{{ $totalLessons }} leçons</span>
                 </div>
+                @if($course->show_students_count)
+                @php
+                    $totalStudents = $course->enrollments()->count();
+                @endphp
+                <div class="course-stat-item">
+                    <i class="fas fa-users"></i>
+                    <span>{{ number_format($totalStudents, 0, ',', ' ') }} 
+                        {{ $totalStudents > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}</span>
+                </div>
+                @endif
                 <div class="course-stat-item">
                     <i class="fas fa-language"></i>
                     <span>{{ $displayLanguage }}</span>
@@ -1678,7 +1875,7 @@
             <div class="col-lg-8">
                 <!-- Video Preview -->
                 @if($hasAnyPreview)
-                <div class="content-card">
+                <div class="content-card" style="padding: 0.5rem;">
                     <div class="video-preview-wrapper" data-bs-toggle="modal" data-bs-target="#coursePreviewModal">
                         <div class="ratio ratio-16x9">
                             @if($course->thumbnail_url)
@@ -1687,7 +1884,7 @@
                                  class="img-fluid" 
                                  style="object-fit: cover;">
                             @else
-                                <div class="d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 3rem; font-weight: bold;">
+                                <div class="d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 2rem; font-weight: bold;">
                                     {{ strtoupper(substr($course->title, 0, 1)) }}
                                 </div>
                             @endif
@@ -1700,11 +1897,11 @@
                     </div>
                 </div>
                 @elseif($course->thumbnail_url)
-                <div class="content-card">
+                <div class="content-card" style="padding: 0.5rem;">
                     <img src="{{ $course->thumbnail_url }}" 
                          alt="{{ $course->title }}" 
                          class="img-fluid rounded" 
-                         style="width: 100%; height: auto; border-radius: 16px;">
+                         style="width: 100%; height: auto; border-radius: 12px;">
                 </div>
                 @endif
 
@@ -1992,9 +2189,9 @@
                                             @if($relatedCourse->is_free)
                                             <span class="badge bg-success">Gratuit</span>
                                             @endif
-                                            @if($relatedCourse->sale_price)
+                                            @if($relatedCourse->sale_discount_percentage)
                                             <span class="badge bg-danger">
-                                                -{{ round((($relatedCourse->price - $relatedCourse->sale_price) / $relatedCourse->price) * 100) }}%
+                                                -{{ $relatedCourse->sale_discount_percentage }}%
                                             </span>
                                             @endif
                                         </div>
@@ -2018,20 +2215,30 @@
                                             </div>
                                         </div>
                                         
+                                        @if($relatedCourse->show_students_count && isset($relatedCourseStats['total_students']))
+                                        <div class="students-count mb-2">
+                                            <small class="text-muted">
+                                                <i class="fas fa-users me-1"></i>
+                                                {{ number_format($relatedCourseStats['total_students'], 0, ',', ' ') }} 
+                                                {{ $relatedCourseStats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                            </small>
+                                        </div>
+                                        @endif
+                                        
                                         <div class="price-duration">
                                             <div class="price">
                                                 @if($relatedCourse->is_free)
                                                     <span class="text-success fw-bold">Gratuit</span>
                                                 @else
-                                                    @if($relatedCourse->sale_price)
-                                                        <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->sale_price) }}</span>
+                                                    @if($relatedCourse->is_sale_active && $relatedCourse->active_sale_price !== null)
+                                                        <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->active_sale_price) }}</span>
                                                         <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->price) }}</small>
                                                     @else
                                                         <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->price) }}</span>
                                                     @endif
                                                 @endif
                                             </div>
-                                            @if($relatedCourse->sale_price && $relatedCourse->sale_end_at)
+                                            @if($relatedCourse->is_sale_active && $relatedCourse->sale_end_at)
                                                 <div class="promotion-countdown" data-sale-end="{{ $relatedCourse->sale_end_at->toIso8601String() }}">
                                                     <i class="fas fa-fire me-1 text-danger"></i>
                                                     <span class="countdown-text">
@@ -2067,13 +2274,15 @@
                             @if($course->is_free)
                                 <div class="price-free">Gratuit</div>
                             @else
-                                @if($course->sale_price)
-                                    <div class="price-current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</div>
+                                @if($course->is_sale_active && $course->active_sale_price !== null)
+                                    <div class="price-current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</div>
                                     <div class="price-original">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
+                                    @if($course->sale_discount_percentage)
                                     <div class="price-discount">
-                                        -{{ round((($course->price - $course->sale_price) / $course->price) * 100) }}% de réduction
+                                        -{{ $course->sale_discount_percentage }}% de réduction
                                     </div>
-                                    @if($course->sale_end_at)
+                                    @endif
+                                    @if($course->is_sale_active && $course->sale_end_at)
                                     <div class="promotion-countdown mt-3" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
                                         <div class="countdown-label text-muted small mb-1">
                                             <i class="fas fa-clock me-1"></i>Promotion se termine dans :
@@ -2108,22 +2317,12 @@
                                             <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
                                                 <i class="fas fa-download me-2"></i>Télécharger le cours
                                             </a>
-                                            <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-outline-light btn-lg w-100">
-                                                <i class="fas fa-play me-2"></i>Démarrer l'apprentissage
-                                            </a>
                                         @else
                                             <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="d-grid gap-2">
                                                 @csrf
                                                 <input type="hidden" name="redirect_to" value="download">
                                                 <button type="submit" class="btn btn-primary btn-lg w-100">
                                                     <i class="fas fa-download me-2"></i>Télécharger le cours
-                                                </button>
-                                            </form>
-                                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="d-grid gap-2">
-                                                @csrf
-                                                <input type="hidden" name="redirect_to" value="learn">
-                                                <button type="submit" class="btn btn-outline-light btn-lg w-100">
-                                                    <i class="fas fa-play me-2"></i>Démarrer l'apprentissage
                                                 </button>
                                             </form>
                                         @endif
@@ -2144,12 +2343,13 @@
                                     @endif
                                 @else
                                     @if($canAccessCourse)
+                                        @if($course->is_downloadable && $canDownloadCourse)
+                                            <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
+                                                <i class="fas fa-download me-2"></i>Télécharger le cours
+                                            </a>
+                                        @else
                                         <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
                                             <i class="fas fa-play me-2"></i>Continuer l'apprentissage
-                                        </a>
-                                        @if($canDownloadCourse)
-                                            <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-outline-light btn-lg w-100">
-                                                <i class="fas fa-download me-2"></i>Télécharger le cours
                                             </a>
                                         @endif
                                     @else
@@ -2164,9 +2364,9 @@
                             </div>
                         @endif
 
-                        <hr class="my-4">
+                        <hr class="my-3">
 
-                        <h6 class="fw-bold mb-3">Ce cours comprend :</h6>
+                        <h6 class="fw-bold mb-2" style="font-size: 0.9375rem;">Ce cours comprend :</h6>
                         <ul class="course-features-list">
                             @foreach($course->getCourseFeatures() as $feature)
                             <li>
@@ -2179,7 +2379,7 @@
 
                     <!-- Share Card -->
                     <div class="sidebar-card">
-                        <h6 class="fw-bold mb-3">Partager ce cours</h6>
+                        <h6 class="fw-bold mb-2" style="font-size: 0.9375rem;">Partager ce cours</h6>
                         <div class="share-buttons">
                             <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode(request()->url()) }}" 
                                target="_blank" 
@@ -2216,23 +2416,25 @@
 <!-- Mobile Payment Button -->
 <div class="mobile-payment-btn">
     <div class="container-fluid">
-        <div class="row align-items-center g-2">
-            <div class="col mobile-price-col">
+        <div class="row align-items-center g-2" style="justify-content: space-between;">
+            <div class="col mobile-price-col" style="flex: 1; min-width: 0;">
                 <div class="mobile-price">
             @if($course->is_free)
                 <div class="mobile-price-label">Prix</div>
                 <div class="mobile-price-value">Gratuit</div>
             @else
-                @if($course->sale_price)
+                @if($course->is_sale_active && $course->active_sale_price !== null)
                     <div class="mobile-price-label">Prix promotionnel</div>
                     <div class="mobile-price-wrapper">
-                        <div class="mobile-price-value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->sale_price) }}</div>
+                        <div class="mobile-price-value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</div>
                         <div class="mobile-price-original">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
+                        @if($course->sale_discount_percentage)
                         <div class="mobile-price-discount">
-                            -{{ round((($course->price - $course->sale_price) / $course->price) * 100) }}% de réduction
+                            -{{ $course->sale_discount_percentage }}% de réduction
                         </div>
+                        @endif
                     </div>
-                    @if($course->sale_end_at)
+                    @if($course->is_sale_active && $course->sale_end_at)
                     <div class="promotion-countdown mobile-countdown text-danger mt-1" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
                         <i class="fas fa-clock me-1"></i>
                         <span class="countdown-text">
@@ -2249,7 +2451,7 @@
             @endif
                 </div>
             </div>
-            <div class="col-auto mobile-btn-col">
+            <div class="col-auto mobile-btn-col" style="flex-shrink: 0;">
                 @if(!$user)
                     <a href="{{ route('login') }}" class="btn btn-primary w-100">
                         <i class="fas fa-sign-in-alt me-2"></i>Se connecter
@@ -2287,9 +2489,15 @@
                         @endif
                     @else
                         @if($canAccessCourse)
+                            @if($course->is_downloadable && $canDownloadCourse)
+                                <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary w-100">
+                                    <i class="fas fa-download me-2"></i>Télécharger
+                                </a>
+                            @else
                             <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success w-100">
                                 <i class="fas fa-play me-2"></i>Continuer
                             </a>
+                            @endif
                         @else
                             <div class="d-grid gap-2">
                                 <button type="button" class="btn btn-outline-primary w-100" onclick="addToCart({{ $course->id }})">
@@ -2318,10 +2526,10 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" style="max-height: calc(90vh - 73px);">
+            <div class="modal-body p-0">
                 <div class="row g-0 h-100">
                     <div class="col-lg-8" style="border-right: 1px solid #dee2e6;">
-                        <div class="p-4">
+                        <div class="p-4 h-100">
                             <div class="ratio ratio-16x9 mb-3" id="previewVideoContainer">
                                 @if($course->video_preview_youtube_id)
                                     @php
@@ -2345,24 +2553,7 @@
                                     </div>
                                 @endif
                                 
-                                @php
-                                    // Récupérer toutes les leçons vidéo publiées qui ont du contenu vidéo
-                                    $allVideoLessons = $course->sections->flatMap(function($section) {
-                                        return $section->lessons->where('type', 'video')
-                                            ->where('is_published', true)
-                                            ->filter(function($lesson) {
-                                                return $lesson->youtube_video_id || 
-                                                       $lesson->file_path || 
-                                                       $lesson->content_url;
-                                            });
-                                    });
-                                @endphp
-                                
-                                @foreach($allVideoLessons as $previewLessonItem)
-                                    <div class="preview-player-wrapper" data-preview-id="{{ $previewLessonItem->id }}" style="display: none;">
-                                        <x-plyr-player :lesson="$previewLessonItem" :course="$course" :isMobile="false" />
-                            </div>
-                                @endforeach
+                                {{-- Les wrappers pour les leçons d'aperçu seront créés dynamiquement via JavaScript --}}
                             </div>
                             <div class="bg-light rounded p-3" id="previewLessonInfo">
                                 <h6 class="fw-bold mb-2" style="color: #003366;">Aperçu du cours</h6>
@@ -2372,19 +2563,16 @@
                         </div>
                     </div>
                     <div class="col-lg-4 bg-light">
-                        <div class="p-4">
+                        <div class="p-4" style="flex-shrink: 0;">
                             <h6 class="fw-bold mb-3" style="color: #003366;">
                                 <i class="fas fa-list me-2"></i>Autres aperçus
                             </h6>
-                            <div id="previewListContainer">
+                        </div>
+                        <div id="previewListContainer">
+                            <div class="px-4 pb-4" id="previewListContent">
                                 <div class="text-center py-5">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Chargement...</span>
-                                            </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                            </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2424,21 +2612,96 @@ function copyToClipboard(text) {
     });
 }
 
+// Flag pour éviter les chargements multiples
+let isLoadingPreviewList = false;
+let previewListLoaded = false;
+
 // Fonction pour charger la liste des aperçus dynamiquement
 function loadPreviewList() {
-    const container = document.getElementById('previewListContainer');
-    if (!container || !window.coursePreviewData) {
-        console.error('Container ou coursePreviewData manquant');
+    // Éviter les chargements multiples
+    if (isLoadingPreviewList) {
+        console.log('⏳ Chargement déjà en cours, ignore...');
         return;
     }
     
+    console.log('=== loadPreviewList() appelée ===');
+    const container = document.getElementById('previewListContainer');
+    if (!container) {
+        console.error('❌ Container previewListContainer manquant');
+        // Réessayer après un délai
+        setTimeout(function() {
+            const retryContainer = document.getElementById('previewListContainer');
+            if (retryContainer) {
+                console.log('✅ Container trouvé après retry');
+                loadPreviewList();
+            } else {
+                console.error('❌ Container toujours manquant après retry');
+            }
+        }, 500);
+        return;
+    }
+    
+    console.log('✅ Container trouvé:', container);
+    console.log('Container parent:', container.parentElement);
+    console.log('Container visible:', container.offsetHeight > 0, 'height:', container.offsetHeight);
+    const computedStyle = window.getComputedStyle(container);
+    console.log('Container computed style:', {
+        display: computedStyle.display,
+        visibility: computedStyle.visibility,
+        opacity: computedStyle.opacity,
+        height: computedStyle.height,
+        flex: computedStyle.flex
+    });
+    
+    if (!window.coursePreviewData || !window.coursePreviewData.previewUrl) {
+        console.error('❌ coursePreviewData ou previewUrl manquant', window.coursePreviewData);
+        let contentWrapper = document.getElementById('previewListContent');
+        if (!contentWrapper && container) {
+            contentWrapper = document.createElement('div');
+            contentWrapper.id = 'previewListContent';
+            contentWrapper.className = 'px-4 pb-4';
+            container.appendChild(contentWrapper);
+        }
+        if (contentWrapper) {
+            contentWrapper.innerHTML = '<p class="text-danger text-center py-4">Erreur: Données de cours manquantes</p>';
+        }
+        return;
+    }
+    
+    // Afficher le spinner
+    let contentWrapper = document.getElementById('previewListContent');
+    if (!contentWrapper) {
+        console.log('Création du contentWrapper...');
+        contentWrapper = document.createElement('div');
+        contentWrapper.id = 'previewListContent';
+        contentWrapper.className = 'px-4 pb-4';
+        container.innerHTML = '';
+        container.appendChild(contentWrapper);
+    }
+    
+    if (contentWrapper) {
+        contentWrapper.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+            </div>
+        `;
+        console.log('✅ Spinner affiché');
+    }
+    
+    isLoadingPreviewList = true;
+    console.log('📡 Chargement des aperçus depuis:', window.coursePreviewData.previewUrl);
     fetch(window.coursePreviewData.previewUrl, {
         headers: {
             'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json'
+        },
+        credentials: 'same-origin'
     })
         .then(response => {
+            console.log('📥 Réponse reçue:', response.status, response.statusText);
             if (!response.ok) {
                 return response.json().then(err => {
                     throw new Error(err.message || err.error || 'Erreur HTTP: ' + response.status);
@@ -2449,16 +2712,128 @@ function loadPreviewList() {
             return response.json();
         })
         .then(data => {
-            container.innerHTML = '';
+            console.log('✅ Données reçues:', data);
+            isLoadingPreviewList = false;
+            previewListLoaded = true;
             
             // Vérifier si c'est une réponse d'erreur
             if (data.error) {
                 throw new Error(data.message || data.error);
             }
             
+            // Vider le conteneur et créer un wrapper pour le contenu
+            contentWrapper = document.getElementById('previewListContent');
+            if (!contentWrapper) {
+                contentWrapper = document.createElement('div');
+                contentWrapper.id = 'previewListContent';
+                contentWrapper.className = 'px-4 pb-4';
+                container.innerHTML = '';
+                container.appendChild(contentWrapper);
+            } else {
+                contentWrapper.innerHTML = '';
+            }
+            
             if (!data.preview || data.preview.length === 0) {
-                container.innerHTML = '<p class="text-muted text-center py-4">Aucun aperçu disponible</p>';
+                console.log('Aucun aperçu disponible');
+                contentWrapper.innerHTML = '<p class="text-muted text-center py-4">Aucun aperçu disponible</p>';
                 return;
+            }
+            
+            console.log('Chargement de', data.preview.length, 'aperçus');
+            
+            // Créer les wrappers de players pour les leçons d'aperçu qui n'existent pas encore
+            const previewVideoContainer = document.getElementById('previewVideoContainer');
+            if (previewVideoContainer) {
+                data.preview.forEach(preview => {
+                    // Vérifier si le wrapper existe déjà
+                    const existingWrapper = previewVideoContainer.querySelector(`[data-preview-id="${preview.id}"]`);
+                    if (!existingWrapper && preview.id !== 0) {
+                        // Créer le wrapper pour cette leçon
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'preview-player-wrapper';
+                        wrapper.setAttribute('data-preview-id', preview.id);
+                        wrapper.style.display = 'none';
+                        
+                        // Créer un player simple pour cette leçon
+                        if (preview.youtube_id) {
+                            // Pour YouTube, créer un conteneur qui sera initialisé par le composant plyr-player
+                            // On va créer une structure similaire au composant
+                            const playerId = 'plyr-player-' + preview.id;
+                            wrapper.innerHTML = `
+                                <div class="plyr-player-container position-absolute top-0 start-0 w-100 h-100" id="container-${playerId}" style="background: #000; border-radius: 8px; overflow: hidden; display: block !important; visibility: visible !important;">
+                                    <div class="video-wrapper position-relative w-100 h-100" id="video-wrapper-${playerId}">
+                                        <div id="${playerId}" class="youtube-iframe-container"></div>
+                                        <div class="custom-video-controls position-absolute w-100 h-100 d-flex flex-column" id="controls-${playerId}">
+                                            <div class="video-progress-container position-absolute w-100" id="progress-container-${playerId}" style="bottom: 60px;">
+                                                <div class="video-progress-bar mx-3" id="progress-bar-${playerId}">
+                                                    <div class="video-progress-track"></div>
+                                                    <div class="video-progress-buffered" id="progress-buffered-${playerId}"></div>
+                                                    <div class="video-progress-filled" id="progress-filled-${playerId}"></div>
+                                                    <div class="video-progress-handle" id="progress-handle-${playerId}"></div>
+                                                </div>
+                                            </div>
+                                            <div class="video-controls-bottom position-absolute w-100 d-flex align-items-center justify-content-between px-3" id="controls-bottom-${playerId}" style="bottom: 0;">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <button class="btn btn-light btn-sm control-btn" id="play-btn-${playerId}" title="Lecture">
+                                                        <i class="fas fa-play"></i>
+                                                    </button>
+                                                    <span class="text-white video-time" id="time-${playerId}">00:00 / 00:00</span>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <div class="volume-control d-flex align-items-center">
+                                                        <button class="btn btn-light btn-sm control-btn" id="mute-btn-${playerId}" title="Son">
+                                                            <i class="fas fa-volume-up"></i>
+                                                        </button>
+                                                        <div class="volume-slider-container" id="volume-container-${playerId}">
+                                                            <div class="volume-slider" id="volume-slider-${playerId}">
+                                                                <div class="volume-slider-track"></div>
+                                                                <div class="volume-slider-fill" id="volume-fill-${playerId}"></div>
+                                                                <div class="volume-slider-handle" id="volume-handle-${playerId}"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="quality-dropdown dropdown">
+                                                        <button class="btn btn-light btn-sm control-btn dropdown-toggle" id="quality-btn-${playerId}" data-bs-toggle="dropdown" title="Qualité">
+                                                            <i class="fas fa-cog"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end" id="quality-menu-${playerId}">
+                                                            <li><a class="dropdown-item" href="#" data-quality="auto">Auto</a></li>
+                                                        </ul>
+                                                    </div>
+                                                    <button class="btn btn-light btn-sm control-btn" id="fullscreen-btn-${playerId}" title="Plein écran">
+                                                        <i class="fas fa-expand"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="plyr-loading position-absolute top-50 start-50 translate-middle" id="loading-${playerId}">
+                                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                            <span class="visually-hidden">Chargement de la vidéo...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            previewVideoContainer.appendChild(wrapper);
+                            
+                            // Note: Le player sera initialisé quand le wrapper sera affiché
+                            // Ne pas initialiser tous les players au chargement pour éviter de surcharger l'API YouTube
+                            console.log('Wrapper created for lesson', preview.id, 'with YouTube ID:', preview.youtube_id);
+                        } else if (preview.video_url) {
+                            // Pour les vidéos directes, créer un player vidéo HTML5
+                            wrapper.innerHTML = `
+                                <div class="ratio ratio-16x9">
+                                    <video controls class="w-100 h-100 rounded shadow-sm">
+                                        <source src="${preview.video_url}" type="video/mp4">
+                                        Votre navigateur ne supporte pas la lecture vidéo.
+                                    </video>
+                                </div>
+                            `;
+                            previewVideoContainer.appendChild(wrapper);
+                        }
+                    }
+                });
             }
             
             data.preview.forEach(preview => {
@@ -2494,10 +2869,20 @@ function loadPreviewList() {
                     openPreviewLesson(preview.id);
                 });
                 
-                const iconClass = preview.is_main ? 'fab fa-youtube text-danger fa-2x' : 'fas fa-play-circle fa-2x';
-                const iconStyle = preview.is_main ? '' : 'color: #003366;';
+                const iconClass = 'fas fa-play-circle fa-2x';
+                const iconStyle = 'color: #003366;';
                 const isPreview = preview.is_preview || false;
                 const previewBadge = isPreview ? '<span class="badge bg-warning text-dark ms-2" style="font-size: 0.65rem;"><i class="fas fa-eye me-1"></i>Aperçu</span>' : '';
+                
+                // Fonction pour échapper le HTML et afficher correctement les caractères spéciaux
+                const escapeHtml = (text) => {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                };
+                
+                const titleText = escapeHtml(preview.title || '');
+                const sectionText = preview.section ? escapeHtml(preview.section) : '';
                 
                 item.innerHTML = `
                     <div class="d-flex ${preview.is_main ? 'align-items-center' : 'align-items-start'}">
@@ -2506,13 +2891,13 @@ function loadPreviewList() {
                         </div>
                         <div class="flex-grow-1">
                             <div class="d-flex align-items-center mb-1">
-                                <h6 class="mb-0 fw-medium" style="color: #003366; flex: 1;">${preview.title}</h6>
+                                <h6 class="mb-0 fw-medium" style="color: #003366; flex: 1;">${titleText}</h6>
                                 ${previewBadge}
                             </div>
                             ${preview.is_main 
                                 ? '<small class="text-muted"><i class="fas fa-video me-1"></i>Vidéo principale</small>'
                                 : `<div class="d-flex flex-wrap gap-2 mb-1">
-                                    ${preview.section ? `<small class="text-muted"><i class="fas fa-layer-group me-1"></i>${preview.section}</small>` : ''}
+                                    ${sectionText ? `<small class="text-muted"><i class="fas fa-layer-group me-1"></i>${sectionText}</small>` : ''}
                                     ${preview.duration ? `<small class="text-muted"><i class="fas fa-clock me-1"></i>${preview.duration} min</small>` : ''}
                                 </div>`
                             }
@@ -2520,23 +2905,63 @@ function loadPreviewList() {
                     </div>
                 `;
                 
-                container.appendChild(item);
+                contentWrapper.appendChild(item);
             });
             
             // Activer l'aperçu principal par défaut
-            const mainItem = container.querySelector('[data-preview-lesson="0"]');
+            const mainItem = contentWrapper.querySelector('[data-preview-lesson="0"]');
             if (mainItem) {
                 mainItem.classList.add('active');
             }
+            
+            console.log('✅ Liste des aperçus chargée avec succès:', data.preview.length, 'aperçus');
+            
+            // Recalculer la hauteur du conteneur après le chargement du contenu
+            setTimeout(function() {
+                const container = document.getElementById('previewListContainer');
+                const colLg4 = container ? container.closest('.col-lg-4') : null;
+                
+                if (container && colLg4) {
+                    const headerHeight = colLg4.querySelector('div:first-child')?.offsetHeight || 0;
+                    const colHeight = colLg4.offsetHeight;
+                    const availableHeight = colHeight - headerHeight;
+                    
+                    if (availableHeight > 0) {
+                        container.style.maxHeight = availableHeight + 'px';
+                        container.style.height = availableHeight + 'px';
+                        console.log('✅ Hauteur recalculée après chargement:', availableHeight + 'px');
+                        console.log('Container scrollHeight:', container.scrollHeight);
+                        console.log('Container clientHeight:', container.clientHeight);
+                        console.log('Scroll nécessaire:', container.scrollHeight > container.clientHeight);
+                    }
+                }
+            }, 100);
         })
         .catch(error => {
-            console.error('Erreur lors du chargement des aperçus:', error);
+            isLoadingPreviewList = false;
+            console.error('❌ Erreur lors du chargement des aperçus:', error);
             console.error('URL:', window.coursePreviewData?.previewUrl);
-            container.innerHTML = `
+            console.error('Container:', container);
+            let contentWrapper = document.getElementById('previewListContent');
+            if (!contentWrapper) {
+                if (container) {
+                    contentWrapper = document.createElement('div');
+                    contentWrapper.id = 'previewListContent';
+                    contentWrapper.className = 'px-4 pb-4';
+                    container.innerHTML = '';
+                    container.appendChild(contentWrapper);
+                } else {
+                    console.error('❌ Impossible de créer le conteneur de contenu');
+                    return;
+                }
+            }
+            const errorMessage = error.message || 'Erreur inconnue';
+            contentWrapper.innerHTML = `
                 <div class="text-center py-4">
                     <p class="text-danger mb-2">Erreur lors du chargement des aperçus</p>
-                    <small class="text-muted">${error.message || 'Erreur inconnue'}</small>
-                    <button class="btn btn-sm btn-primary mt-3" onclick="loadPreviewList()">
+                    <small class="text-muted">${errorMessage}</small>
+                    <br>
+                    <button class="btn btn-sm btn-primary mt-3" onclick="previewListLoaded = false; loadPreviewList();">
                         <i class="fas fa-redo me-1"></i>Réessayer
                     </button>
                 </div>
@@ -2544,6 +2969,210 @@ function loadPreviewList() {
         });
 }
 
+
+// Fonction pour initialiser un player YouTube pour une leçon d'aperçu
+function initializePreviewPlayer(lessonId, youtubeId, isUnlisted) {
+    if (!youtubeId) return;
+    
+    const playerId = 'plyr-player-' + lessonId;
+    const container = document.getElementById('container-' + playerId);
+    const loading = document.getElementById('loading-' + playerId);
+    
+    if (!container) {
+        console.warn('Container not found for player:', playerId);
+        return;
+    }
+    
+    // Vérifier si le player existe déjà
+    if (window['plyr_' + playerId]) {
+        return;
+    }
+    
+    // Charger l'API YouTube si nécessaire
+    function loadYouTubeAPI() {
+        if (window.YT && window.YT.Player) {
+            initYouTubePlayer();
+        } else {
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            
+            if (!window.onYouTubeIframeAPIReady) {
+                window.onYouTubeIframeAPIReady = function() {
+                    initYouTubePlayer();
+                };
+            } else {
+                const originalCallback = window.onYouTubeIframeAPIReady;
+                window.onYouTubeIframeAPIReady = function() {
+                    originalCallback();
+                    initYouTubePlayer();
+                };
+            }
+        }
+    }
+    
+    // Initialiser le lecteur YouTube
+    function initYouTubePlayer() {
+        const playerElement = document.getElementById(playerId);
+        if (!playerElement) {
+            console.error('Player element not found:', playerId);
+            return;
+        }
+        
+        const youtubePlayer = new YT.Player(playerElement, {
+            height: '100%',
+            width: '100%',
+            videoId: youtubeId,
+            playerVars: {
+                autoplay: 0,
+                controls: 0,
+                disablekb: 1,
+                enablejsapi: 1,
+                fs: 0,
+                iv_load_policy: 3,
+                modestbranding: 1,
+                playsinline: 1,
+                rel: 0,
+                showinfo: 0,
+                origin: window.location.origin
+            },
+            events: {
+                onReady: function(event) {
+                    if (loading) loading.style.display = 'none';
+                    setupCustomControlsForPreview(event.target, playerId);
+                    setupProgressBarForPreview(event.target, playerId);
+                    setInterval(function() {
+                        updateProgressForPreview(event.target, playerId);
+                    }, 100);
+                },
+                onStateChange: function(event) {
+                    const playBtn = document.getElementById('play-btn-' + playerId);
+                    if (event.data === YT.PlayerState.PLAYING) {
+                        if (playBtn) {
+                            playBtn.querySelector('i').classList.remove('fa-play');
+                            playBtn.querySelector('i').classList.add('fa-pause');
+                        }
+                    } else {
+                        if (playBtn) {
+                            playBtn.querySelector('i').classList.remove('fa-pause');
+                            playBtn.querySelector('i').classList.add('fa-play');
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Sauvegarder la référence
+        window['plyr_' + playerId] = youtubePlayer;
+    }
+    
+    // Configurer les contrôles personnalisés
+    function setupCustomControlsForPreview(player, pid) {
+        const playBtn = document.getElementById('play-btn-' + pid);
+        const fullscreenBtn = document.getElementById('fullscreen-btn-' + pid);
+        const muteBtn = document.getElementById('mute-btn-' + pid);
+        const volumeSlider = document.getElementById('volume-slider-' + pid);
+        const container = document.getElementById('container-' + pid);
+        
+        if (playBtn) {
+            playBtn.addEventListener('click', function() {
+                if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                    player.pauseVideo();
+                } else {
+                    player.playVideo();
+                }
+            });
+        }
+        
+        if (fullscreenBtn && container) {
+            fullscreenBtn.addEventListener('click', function() {
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.webkitRequestFullscreen) {
+                    container.webkitRequestFullscreen();
+                }
+            });
+        }
+        
+        if (muteBtn) {
+            muteBtn.addEventListener('click', function() {
+                if (player.isMuted()) {
+                    player.unMute();
+                    muteBtn.querySelector('i').classList.remove('fa-volume-mute');
+                    muteBtn.querySelector('i').classList.add('fa-volume-up');
+                } else {
+                    player.mute();
+                    muteBtn.querySelector('i').classList.remove('fa-volume-up');
+                    muteBtn.querySelector('i').classList.add('fa-volume-mute');
+                }
+            });
+        }
+        
+        if (volumeSlider) {
+            volumeSlider.addEventListener('click', function(e) {
+                const rect = volumeSlider.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                const volume = Math.max(0, Math.min(100, percent * 100));
+                player.setVolume(volume);
+            });
+        }
+    }
+    
+    // Configurer la barre de progression
+    function setupProgressBarForPreview(player, pid) {
+        const progressBar = document.getElementById('progress-bar-' + pid);
+        if (progressBar) {
+            progressBar.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const rect = progressBar.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                const duration = player.getDuration();
+                if (duration && duration > 0) {
+                    player.seekTo(duration * percent, true);
+                }
+            });
+        }
+    }
+    
+    // Mettre à jour la barre de progression
+    function updateProgressForPreview(player, pid) {
+        try {
+            const currentTime = player.getCurrentTime();
+            const duration = player.getDuration();
+            const buffered = player.getVideoLoadedFraction();
+            
+            if (duration && duration > 0) {
+                const percent = (currentTime / duration) * 100;
+                
+                const progressFilled = document.getElementById('progress-filled-' + pid);
+                const progressHandle = document.getElementById('progress-handle-' + pid);
+                const progressBuffered = document.getElementById('progress-buffered-' + pid);
+                const timeDisplay = document.getElementById('time-' + pid);
+                
+                if (progressFilled) progressFilled.style.width = percent + '%';
+                if (progressHandle) progressHandle.style.left = percent + '%';
+                if (progressBuffered) progressBuffered.style.width = (buffered * 100) + '%';
+                if (timeDisplay) {
+                    const formatTime = function(seconds) {
+                        const hrs = Math.floor(seconds / 3600);
+                        const mins = Math.floor((seconds % 3600) / 60);
+                        const secs = Math.floor(seconds % 60);
+                        if (hrs > 0) {
+                            return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                        }
+                        return `${mins}:${secs.toString().padStart(2, '0')}`;
+                    };
+                    timeDisplay.textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
+                }
+            }
+        } catch (e) {
+            // Ignorer les erreurs
+        }
+    }
+    
+    loadYouTubeAPI();
+}
 
 // Fonction pour ouvrir un aperçu de leçon dans le modal
 function openPreviewLesson(lessonId, clickedElement = null) {
@@ -2567,15 +3196,27 @@ function openPreviewLesson(lessonId, clickedElement = null) {
         section = lessonElement.getAttribute('data-preview-section') || '';
     }
     
+    // Fonction pour décoder les entités HTML
+    function decodeHtmlEntities(text) {
+        if (!text) return '';
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = text;
+        return textarea.value;
+    }
+    
     // Mettre à jour le titre dans le modal
     const titleElement = document.getElementById('previewLessonTitle');
     const sectionElement = document.getElementById('previewLessonSection');
     if (titleElement && title) {
-        titleElement.textContent = title;
+        // Décoder les entités HTML avant d'afficher
+        const decodedTitle = decodeHtmlEntities(title);
+        titleElement.textContent = decodedTitle;
     }
     if (sectionElement) {
         if (section) {
-            sectionElement.textContent = section;
+            // Décoder les entités HTML avant d'afficher
+            const decodedSection = decodeHtmlEntities(section);
+            sectionElement.textContent = decodedSection;
             sectionElement.style.display = 'block';
         } else {
             sectionElement.style.display = 'none';
@@ -2598,10 +3239,246 @@ function openPreviewLesson(lessonId, clickedElement = null) {
     });
     
     // Afficher le player correspondant
-    const targetWrapper = document.querySelector('.preview-player-wrapper[data-preview-id="' + lessonId + '"]');
+    let targetWrapper = document.querySelector('.preview-player-wrapper[data-preview-id="' + lessonId + '"]');
+    
+    // Vérifier si le wrapper existe et s'il contient un player fonctionnel
+    if (targetWrapper) {
+        // Vérifier si le wrapper contient le message "Aucune vidéo YouTube disponible"
+        const noVideoMessage = targetWrapper.querySelector('.text-center p.text-muted');
+        if (noVideoMessage && noVideoMessage.textContent.includes('Aucune vidéo YouTube disponible')) {
+            // Le wrapper existe mais n'a pas de player, le remplacer
+            const previewVideoContainer = document.getElementById('previewVideoContainer');
+            if (previewVideoContainer && lessonElement) {
+                const youtubeId = lessonElement.getAttribute('data-preview-youtube-id') || '';
+                const videoUrl = lessonElement.getAttribute('data-preview-video-url') || '';
+                const isUnlisted = lessonElement.getAttribute('data-preview-is-unlisted') === '1';
+                
+                // Supprimer l'ancien wrapper
+                targetWrapper.remove();
+                targetWrapper = null;
+                
+                // Créer un nouveau wrapper avec un player fonctionnel
+                if (youtubeId || videoUrl) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'preview-player-wrapper';
+                    wrapper.setAttribute('data-preview-id', lessonId);
+                    wrapper.style.display = 'none';
+                    
+                    if (youtubeId) {
+                        const playerId = 'plyr-player-' + lessonId;
+                        wrapper.innerHTML = `
+                            <div class="plyr-player-container position-absolute top-0 start-0 w-100 h-100" id="container-${playerId}" style="background: #000; border-radius: 8px; overflow: hidden; display: block !important; visibility: visible !important;">
+                                <div class="video-wrapper position-relative w-100 h-100" id="video-wrapper-${playerId}">
+                                    <div id="${playerId}" class="youtube-iframe-container"></div>
+                                    <div class="custom-video-controls position-absolute w-100 h-100 d-flex flex-column" id="controls-${playerId}">
+                                        <div class="video-progress-container position-absolute w-100" id="progress-container-${playerId}" style="bottom: 60px;">
+                                            <div class="video-progress-bar mx-3" id="progress-bar-${playerId}">
+                                                <div class="video-progress-track"></div>
+                                                <div class="video-progress-buffered" id="progress-buffered-${playerId}"></div>
+                                                <div class="video-progress-filled" id="progress-filled-${playerId}"></div>
+                                                <div class="video-progress-handle" id="progress-handle-${playerId}"></div>
+                                            </div>
+                                        </div>
+                                        <div class="video-controls-bottom position-absolute w-100 d-flex align-items-center justify-content-between px-3" id="controls-bottom-${playerId}" style="bottom: 0;">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <button class="btn btn-light btn-sm control-btn" id="play-btn-${playerId}" title="Lecture">
+                                                    <i class="fas fa-play"></i>
+                                                </button>
+                                                <span class="text-white video-time" id="time-${playerId}">00:00 / 00:00</span>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="volume-control d-flex align-items-center">
+                                                    <button class="btn btn-light btn-sm control-btn" id="mute-btn-${playerId}" title="Son">
+                                                        <i class="fas fa-volume-up"></i>
+                                                    </button>
+                                                    <div class="volume-slider-container" id="volume-container-${playerId}">
+                                                        <div class="volume-slider" id="volume-slider-${playerId}">
+                                                            <div class="volume-slider-track"></div>
+                                                            <div class="volume-slider-fill" id="volume-fill-${playerId}"></div>
+                                                            <div class="volume-slider-handle" id="volume-handle-${playerId}"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="quality-dropdown dropdown">
+                                                    <button class="btn btn-light btn-sm control-btn dropdown-toggle" id="quality-btn-${playerId}" data-bs-toggle="dropdown" title="Qualité">
+                                                        <i class="fas fa-cog"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end" id="quality-menu-${playerId}">
+                                                        <li><a class="dropdown-item" href="#" data-quality="auto">Auto</a></li>
+                                                    </ul>
+                                                </div>
+                                                <button class="btn btn-light btn-sm control-btn" id="fullscreen-btn-${playerId}" title="Plein écran">
+                                                    <i class="fas fa-expand"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="plyr-loading position-absolute top-50 start-50 translate-middle" id="loading-${playerId}">
+                                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                        <span class="visually-hidden">Chargement de la vidéo...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        previewVideoContainer.appendChild(wrapper);
+                        initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
+                        targetWrapper = wrapper;
+                    } else if (videoUrl) {
+                        wrapper.innerHTML = `
+                            <div class="ratio ratio-16x9">
+                                <video controls class="w-100 h-100 rounded shadow-sm">
+                                    <source src="${videoUrl}" type="video/mp4">
+                                    Votre navigateur ne supporte pas la lecture vidéo.
+                                </video>
+                            </div>
+                        `;
+                        previewVideoContainer.appendChild(wrapper);
+                        targetWrapper = wrapper;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Si le wrapper n'existe toujours pas, le créer
+    if (!targetWrapper && lessonElement && lessonId !== 0) {
+        const previewVideoContainer = document.getElementById('previewVideoContainer');
+        if (previewVideoContainer) {
+            const youtubeId = lessonElement.getAttribute('data-preview-youtube-id') || '';
+            const videoUrl = lessonElement.getAttribute('data-preview-video-url') || '';
+            const isUnlisted = lessonElement.getAttribute('data-preview-is-unlisted') === '1';
+            
+            if (youtubeId || videoUrl) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'preview-player-wrapper';
+                wrapper.setAttribute('data-preview-id', lessonId);
+                wrapper.style.display = 'none';
+                
+                if (youtubeId) {
+                    const playerId = 'plyr-player-' + lessonId;
+                    wrapper.innerHTML = `
+                        <div class="plyr-player-container position-absolute top-0 start-0 w-100 h-100" id="container-${playerId}" style="background: #000; border-radius: 8px; overflow: hidden; display: block !important; visibility: visible !important;">
+                            <div class="video-wrapper position-relative w-100 h-100" id="video-wrapper-${playerId}">
+                                <div id="${playerId}" class="youtube-iframe-container"></div>
+                                <div class="custom-video-controls position-absolute w-100 h-100 d-flex flex-column" id="controls-${playerId}">
+                                    <div class="video-progress-container position-absolute w-100" id="progress-container-${playerId}" style="bottom: 60px;">
+                                        <div class="video-progress-bar mx-3" id="progress-bar-${playerId}">
+                                            <div class="video-progress-track"></div>
+                                            <div class="video-progress-buffered" id="progress-buffered-${playerId}"></div>
+                                            <div class="video-progress-filled" id="progress-filled-${playerId}"></div>
+                                            <div class="video-progress-handle" id="progress-handle-${playerId}"></div>
+                                        </div>
+                                    </div>
+                                    <div class="video-controls-bottom position-absolute w-100 d-flex align-items-center justify-content-between px-3" id="controls-bottom-${playerId}" style="bottom: 0;">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <button class="btn btn-light btn-sm control-btn" id="play-btn-${playerId}" title="Lecture">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <span class="text-white video-time" id="time-${playerId}">00:00 / 00:00</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="volume-control d-flex align-items-center">
+                                                <button class="btn btn-light btn-sm control-btn" id="mute-btn-${playerId}" title="Son">
+                                                    <i class="fas fa-volume-up"></i>
+                                                </button>
+                                                <div class="volume-slider-container" id="volume-container-${playerId}">
+                                                    <div class="volume-slider" id="volume-slider-${playerId}">
+                                                        <div class="volume-slider-track"></div>
+                                                        <div class="volume-slider-fill" id="volume-fill-${playerId}"></div>
+                                                        <div class="volume-slider-handle" id="volume-handle-${playerId}"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="quality-dropdown dropdown">
+                                                <button class="btn btn-light btn-sm control-btn dropdown-toggle" id="quality-btn-${playerId}" data-bs-toggle="dropdown" title="Qualité">
+                                                    <i class="fas fa-cog"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" id="quality-menu-${playerId}">
+                                                    <li><a class="dropdown-item" href="#" data-quality="auto">Auto</a></li>
+                                                </ul>
+                                            </div>
+                                            <button class="btn btn-light btn-sm control-btn" id="fullscreen-btn-${playerId}" title="Plein écran">
+                                                <i class="fas fa-expand"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="plyr-loading position-absolute top-50 start-50 translate-middle" id="loading-${playerId}">
+                                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                    <span class="visually-hidden">Chargement de la vidéo...</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    previewVideoContainer.appendChild(wrapper);
+                    initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
+                    targetWrapper = wrapper;
+                } else if (videoUrl) {
+                    wrapper.innerHTML = `
+                        <div class="ratio ratio-16x9">
+                            <video controls class="w-100 h-100 rounded shadow-sm">
+                                <source src="${videoUrl}" type="video/mp4">
+                                Votre navigateur ne supporte pas la lecture vidéo.
+                            </video>
+                        </div>
+                    `;
+                    previewVideoContainer.appendChild(wrapper);
+                    targetWrapper = wrapper;
+                }
+            }
+        }
+    }
+    
     if (targetWrapper) {
         targetWrapper.style.display = 'block';
         targetWrapper.classList.add('active');
+        
+        // Sur mobile, scroller automatiquement vers le lecteur
+        if (window.innerWidth < 992) {
+            const modal = document.getElementById('coursePreviewModal');
+            if (modal) {
+                const modalBody = modal.querySelector('.modal-body');
+                const previewVideoContainer = document.getElementById('previewVideoContainer');
+                if (modalBody && previewVideoContainer) {
+                    setTimeout(function() {
+                        // Scroller dans le modal-body vers le conteneur vidéo
+                        const containerTop = previewVideoContainer.offsetTop;
+                        modalBody.scrollTo({
+                            top: containerTop - 20,
+                            behavior: 'smooth'
+                        });
+                    }, 150);
+                }
+            }
+        }
+        
+        // Vérifier si le player YouTube existe et s'initialiser si nécessaire
+        if (lessonId !== 0) {
+            // Attendre un peu pour s'assurer que le DOM est prêt
+            setTimeout(function() {
+                const playerElement = targetWrapper.querySelector('[id^="plyr-player-"]');
+                if (playerElement) {
+                    const playerId = playerElement.id;
+                    const playerKey = 'plyr_' + playerId;
+                    if (!window[playerKey]) {
+                        // Le player n'existe pas encore, l'initialiser
+                        const lessonElementData = lessonElement || document.querySelector('[data-preview-lesson="' + lessonId + '"]');
+                        if (lessonElementData) {
+                            const youtubeId = lessonElementData.getAttribute('data-preview-youtube-id') || '';
+                            const isUnlisted = lessonElementData.getAttribute('data-preview-is-unlisted') === '1';
+                            if (youtubeId) {
+                                console.log('Initializing player for lesson', lessonId, 'with YouTube ID:', youtubeId);
+                                initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
+                            } else {
+                                console.warn('No YouTube ID found for lesson', lessonId);
+                            }
+                        }
+                    }
+                }
+            }, 100);
+        }
         
         // Arrêter les autres players s'ils sont en cours de lecture
         allWrappers.forEach(wrapper => {
@@ -2651,16 +3528,42 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                         targetWrapper.style.display = 'block';
                         targetWrapper.classList.add('active');
                         
+                        // Fonction pour décoder les entités HTML
+                        function decodeHtmlEntities(text) {
+                            if (!text) return '';
+                            const textarea = document.createElement('textarea');
+                            textarea.innerHTML = text;
+                            return textarea.value;
+                        }
+                        
                         // Mettre à jour le titre et la section
                         if (titleElement && title) {
-                            titleElement.textContent = title;
+                            const decodedTitle = decodeHtmlEntities(title);
+                            titleElement.textContent = decodedTitle;
                         }
                         if (sectionElement) {
                             if (section) {
-                                sectionElement.textContent = section;
+                                const decodedSection = decodeHtmlEntities(section);
+                                sectionElement.textContent = decodedSection;
                                 sectionElement.style.display = 'block';
                             } else {
                                 sectionElement.style.display = 'none';
+                            }
+                        }
+                        
+                        // Sur mobile, scroller automatiquement vers le lecteur
+                        if (window.innerWidth < 992) {
+                            const modalBody = modal.querySelector('.modal-body');
+                            const previewVideoContainer = document.getElementById('previewVideoContainer');
+                            if (modalBody && previewVideoContainer) {
+                                setTimeout(function() {
+                                    // Scroller dans le modal-body vers le conteneur vidéo
+                                    const containerTop = previewVideoContainer.offsetTop;
+                                    modalBody.scrollTo({
+                                        top: containerTop - 20,
+                                        behavior: 'smooth'
+                                    });
+                                }, 200);
                             }
                         }
                     }
@@ -2691,9 +3594,52 @@ function openPreviewLesson(lessonId, clickedElement = null) {
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('coursePreviewModal');
     if (modal) {
+        // Écouter l'événement 'shown.bs.modal' (après que le modal soit complètement affiché)
+        modal.addEventListener('shown.bs.modal', function() {
+            console.log('🎬 Modal complètement ouvert, chargement de la liste des aperçus...');
+            const container = document.getElementById('previewListContainer');
+            const contentWrapper = document.getElementById('previewListContent');
+            const colLg4 = container ? container.closest('.col-lg-4') : null;
+            
+            console.log('Container trouvé:', !!container);
+            console.log('ContentWrapper trouvé:', !!contentWrapper);
+            console.log('Col-lg-4 trouvé:', !!colLg4);
+            
+            if (container && colLg4) {
+                // Calculer la hauteur disponible pour le conteneur
+                const headerHeight = colLg4.querySelector('div:first-child')?.offsetHeight || 0;
+                const colHeight = colLg4.offsetHeight;
+                const availableHeight = colHeight - headerHeight;
+                
+                console.log('Header height:', headerHeight);
+                console.log('Column height:', colHeight);
+                console.log('Available height:', availableHeight);
+                console.log('Container height avant:', container.offsetHeight);
+                console.log('Container computed height:', window.getComputedStyle(container).height);
+                console.log('Container scrollHeight:', container.scrollHeight);
+                console.log('Container clientHeight:', container.clientHeight);
+                
+                // Forcer une hauteur maximale pour permettre le scroll
+                if (availableHeight > 0) {
+                    container.style.maxHeight = availableHeight + 'px';
+                    container.style.height = availableHeight + 'px';
+                    console.log('✅ Hauteur définie sur le conteneur:', availableHeight + 'px');
+                }
+            }
+            
+            // Charger la liste des aperçus seulement si elle n'a pas déjà été chargée
+            if (!previewListLoaded) {
+                setTimeout(function() {
+                    loadPreviewList();
+                }, 300);
+            } else {
+                console.log('✅ Liste déjà chargée, pas de rechargement');
+            }
+        });
+        
+        // Écouter 'show.bs.modal' pour certaines actions
         modal.addEventListener('show.bs.modal', function() {
-            // Charger la liste des aperçus
-            loadPreviewList();
+            console.log('🎭 Modal en cours d\'ouverture...');
             
             @if($course->video_preview_url && !$course->video_preview_youtube_id)
                 const video = document.getElementById('coursePreviewVideo');
@@ -2713,7 +3659,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             try {
                                 existingPlayer.pauseVideo();
                             } catch (e) {
-                                // Ignorer les erreurs
+                                console.error('Erreur lors de l\'arrêt de la vidéo:', e);
                             }
                         }
                     }
@@ -2723,6 +3669,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+        });
+        
+        // Réinitialiser le flag quand le modal se ferme
+        modal.addEventListener('hidden.bs.modal', function() {
+            previewListLoaded = false;
+            isLoadingPreviewList = false;
         });
         
         // Réinitialiser à l'aperçu principal quand le modal se ferme
@@ -2764,7 +3716,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const titleElement = document.getElementById('previewLessonTitle');
                 const sectionElement = document.getElementById('previewLessonSection');
                 if (titleElement) {
-                    titleElement.textContent = '{{ addslashes($course->title) }}';
+                    // Décoder les entités HTML pour afficher correctement les caractères spéciaux
+                    const courseTitle = @json($course->title);
+                    titleElement.textContent = courseTitle;
                 }
                 if (sectionElement) {
                     sectionElement.style.display = 'none';
