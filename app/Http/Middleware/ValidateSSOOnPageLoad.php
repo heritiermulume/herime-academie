@@ -219,6 +219,11 @@ class ValidateSSOOnPageLoad
                 
                 // En cas d'erreur, faire une déconnexion de base et rediriger
                 try {
+                    // Supprimer le token SSO avant de déconnecter
+                    if ($request->hasSession() && $request->session()->has('sso_token')) {
+                        $request->session()->forget('sso_token');
+                    }
+                    
                     Auth::logout();
                     if ($request->hasSession()) {
                         $request->session()->invalidate();
