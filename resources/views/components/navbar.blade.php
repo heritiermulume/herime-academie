@@ -326,11 +326,21 @@
                         </ul>
                     </div>
                 @else
-                    <a class="nav-link me-3" href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}" title="Connexion">
+                    @php
+                        $finalLogin = url()->full();
+                        $callbackLogin = route('sso.callback', ['redirect' => $finalLogin]);
+                        $ssoLoginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLogin);
+                    @endphp
+                    <a class="nav-link me-3" href="{{ $ssoLoginUrl }}" title="Connexion">
                         <i class="fas fa-sign-in-alt fa-lg"></i>
                         <span class="d-none d-lg-inline ms-1">Connexion</span>
                     </a>
-                    <a class="btn btn-primary" href="{{ route('sso.register', ['redirect' => url()->full()]) }}" title="S'inscrire">
+                    @php
+                        $finalRegister = url()->full();
+                        $callbackRegister = route('sso.callback', ['redirect' => $finalRegister]);
+                        $ssoRegisterUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegister);
+                    @endphp
+                    <a class="btn btn-primary" href="{{ $ssoRegisterUrl }}" title="S'inscrire">
                         <i class="fas fa-user-plus me-1"></i>
                         <span class="d-none d-lg-inline">S'inscrire</span>
                     </a>
@@ -464,12 +474,22 @@
                     </li>
                 @else
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}">
+                        @php
+                            $finalLogin2 = url()->full();
+                            $callbackLogin2 = route('sso.callback', ['redirect' => $finalLogin2]);
+                            $ssoLoginUrl2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLogin2);
+                        @endphp
+                        <a class="nav-link" href="{{ $ssoLoginUrl2 }}">
                             <i class="fas fa-sign-in-alt me-2"></i>Connexion
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ route('sso.register', ['redirect' => url()->full()]) }}">
+                        @php
+                            $finalRegister2 = url()->full();
+                            $callbackRegister2 = route('sso.callback', ['redirect' => $finalRegister2]);
+                            $ssoRegisterUrl2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegister2);
+                        @endphp
+                        <a class="nav-link" href="{{ $ssoRegisterUrl2 }}">
                             <i class="fas fa-user-plus me-2"></i>S'inscrire
                         </a>
                     </li>

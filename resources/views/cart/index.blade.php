@@ -159,7 +159,12 @@
                                 Procéder au paiement
                             </button>
                         @else
-                            <a href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}" class="checkout-btn">
+                            @php
+                                $finalLoginCart = url()->full();
+                                $callbackLoginCart = route('sso.callback', ['redirect' => $finalLoginCart]);
+                                $ssoLoginUrlCart = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCart);
+                            @endphp
+                            <a href="{{ $ssoLoginUrlCart }}" class="checkout-btn">
                                 <i class="fas fa-sign-in-alt"></i>
                                 Se connecter pour payer
                             </a>

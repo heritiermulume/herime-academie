@@ -2298,10 +2298,20 @@
 
                         @if(!$user)
                             <div class="d-grid gap-2">
-                                <a href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}" class="btn btn-primary btn-lg w-100">
+                                @php
+                                    $finalLoginCourse = url()->full();
+                                    $callbackLoginCourse = route('sso.callback', ['redirect' => $finalLoginCourse]);
+                                    $ssoLoginUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse);
+                                @endphp
+                                <a href="{{ $ssoLoginUrlCourse }}" class="btn btn-primary btn-lg w-100">
                                     <i class="fas fa-sign-in-alt me-2"></i>Se connecter pour accéder au cours
                                 </a>
-                                <a href="{{ route('sso.register', ['redirect' => url()->full()]) }}" class="btn btn-outline-primary btn-lg w-100">
+                                @php
+                                    $finalRegisterCourse = url()->full();
+                                    $callbackRegisterCourse = route('sso.callback', ['redirect' => $finalRegisterCourse]);
+                                    $ssoRegisterUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegisterCourse);
+                                @endphp
+                                <a href="{{ $ssoRegisterUrlCourse }}" class="btn btn-outline-primary btn-lg w-100">
                                     <i class="fas fa-user-plus me-2"></i>Créer un compte
                                 </a>
                             </div>
@@ -2449,7 +2459,12 @@
             </div>
             <div class="col-auto mobile-btn-col" style="flex-shrink: 0;">
                 @if(!$user)
-                    <a href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}" class="btn btn-primary w-100">
+                    @php
+                        $finalLoginCourse2 = url()->full();
+                        $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
+                        $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
+                    @endphp
+                    <a href="{{ $ssoLoginUrlCourse2 }}" class="btn btn-primary w-100">
                         <i class="fas fa-sign-in-alt me-2"></i>Se connecter
                     </a>
                 @else
