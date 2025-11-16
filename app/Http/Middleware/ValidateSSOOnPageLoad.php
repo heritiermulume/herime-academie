@@ -249,30 +249,39 @@ class ValidateSSOOnPageLoad
     protected function validateSSOSession(string $token): bool
     {
         try {
+            // Utiliser l'endpoint /api/sso/check-token pour vérifier le token
             $response = \Illuminate\Support\Facades\Http::timeout(5)
                 ->withHeaders([
-                    'Authorization' => 'Bearer ' . $token,
+                    'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                 ])
-                ->get('https://compte.herime.com/api/me');
+                ->post('https://compte.herime.com/api/sso/check-token', [
+                    'token' => $token,
+                ]);
 
             if ($response->successful()) {
                 $data = $response->json();
                 
-                // Vérifier que la réponse contient success=true et data.user
-                if (isset($data['success']) && $data['success'] === true && isset($data['data']['user'])) {
-                    // Vérifier si la session est marquée comme inactive
-                    $sessionActive = $data['data']['session_active'] ?? true;
-                    
-                    if ($sessionActive === false) {
-                        Log::debug('SSO session marked as inactive', [
-                            'user_id' => $data['data']['user']['id'] ?? null,
-                        ]);
-                        return false;
-                    }
-                    
-                    return true;
+                // Vérifier que le token est valide ET que la session est active
+                $isValid = $data['valid'] ?? false;
+                $sessionActive = $data['session_active'] ?? false;
+                
+                if (!$isValid) {
+                    Log::debug('SSO token is invalid', [
+                        'response' => $data,
+                    ]);
+                    return false;
                 }
+                
+                if (!$sessionActive) {
+                    Log::debug('SSO session marked as inactive', [
+                        'response' => $data,
+                    ]);
+                    return false;
+                }
+                
+                // Token valide ET session active
+                return true;
             }
 
             Log::debug('SSO session validation failed', [
