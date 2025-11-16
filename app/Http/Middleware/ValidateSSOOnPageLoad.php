@@ -261,6 +261,16 @@ class ValidateSSOOnPageLoad
                 
                 // Vérifier que la réponse contient success=true et data.user
                 if (isset($data['success']) && $data['success'] === true && isset($data['data']['user'])) {
+                    // Vérifier si la session est marquée comme inactive
+                    $sessionActive = $data['data']['session_active'] ?? true;
+                    
+                    if ($sessionActive === false) {
+                        Log::debug('SSO session marked as inactive', [
+                            'user_id' => $data['data']['user']['id'] ?? null,
+                        ]);
+                        return false;
+                    }
+                    
                     return true;
                 }
             }
