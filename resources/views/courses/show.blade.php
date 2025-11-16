@@ -2298,10 +2298,10 @@
 
                         @if(!$user)
                             <div class="d-grid gap-2">
-                                <a href="{{ route('login') }}" class="btn btn-primary btn-lg w-100">
+                                <a href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}" class="btn btn-primary btn-lg w-100">
                                     <i class="fas fa-sign-in-alt me-2"></i>Se connecter pour accéder au cours
                                 </a>
-                                <a href="{{ route('register') }}" class="btn btn-outline-primary btn-lg w-100">
+                                <a href="{{ route('sso.register', ['redirect' => url()->full()]) }}" class="btn btn-outline-primary btn-lg w-100">
                                     <i class="fas fa-user-plus me-2"></i>Créer un compte
                                 </a>
                             </div>
@@ -2449,7 +2449,7 @@
             </div>
             <div class="col-auto mobile-btn-col" style="flex-shrink: 0;">
                 @if(!$user)
-                    <a href="{{ route('login') }}" class="btn btn-primary w-100">
+                    <a href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}" class="btn btn-primary w-100">
                         <i class="fas fa-sign-in-alt me-2"></i>Se connecter
                     </a>
                 @else

@@ -442,5 +442,31 @@ class SSOController extends Controller
 
         return redirect($ssoLoginUrl);
     }
+
+    /**
+     * Rediriger vers la page d'inscription SSO
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function redirectToSSORegister(Request $request)
+    {
+        $redirectUrl = $request->query('redirect') 
+            ?: $request->header('Referer') 
+            ?: url()->previous() 
+            ?: route('dashboard');
+
+        // Valider l'URL de redirection
+        $validatedRedirect = $this->validateRedirectUrl($redirectUrl);
+
+        // Construire l'URL de callback complète
+        $callbackUrl = route('sso.callback', [
+            'redirect' => $validatedRedirect
+        ]);
+
+        $ssoRegisterUrl = $this->ssoService->getRegisterUrl($callbackUrl);
+
+        return redirect($ssoRegisterUrl);
+    }
 }
 

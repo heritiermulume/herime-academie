@@ -1024,10 +1024,10 @@ body {
                     </a>
                 @else
                     <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-end">
-                        <a href="{{ route('register') }}" class="btn btn-warning btn-lg px-4 w-100 w-sm-auto">
+                    <a href="{{ route('sso.register', ['redirect' => url()->full()]) }}" class="btn btn-warning btn-lg px-4 w-100 w-sm-auto">
                             <i class="fas fa-user-plus me-2"></i>S'inscrire gratuitement
                         </a>
-                        <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg px-4 w-100 w-sm-auto">
+                    <a href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}" class="btn btn-outline-light btn-lg px-4 w-100 w-sm-auto">
                             <i class="fas fa-sign-in-alt me-2"></i>Se connecter
                         </a>
                     </div>

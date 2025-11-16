@@ -159,7 +159,7 @@
                                 Procéder au paiement
                             </button>
                         @else
-                            <a href="{{ route('login') }}" class="checkout-btn">
+                            <a href="{{ route('sso.redirect', ['redirect' => url()->full()]) }}" class="checkout-btn">
                                 <i class="fas fa-sign-in-alt"></i>
                                 Se connecter pour payer
                             </a>
