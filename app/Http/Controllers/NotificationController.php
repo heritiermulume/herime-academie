@@ -99,6 +99,11 @@ class NotificationController extends Controller
 
     public function getUnreadCount()
     {
+        // Si l'utilisateur n'est pas authentifié, retourner 0
+        if (!Auth::check()) {
+            return response()->json(['count' => 0]);
+        }
+        
         $user = Auth::user();
         $count = $user->unreadNotifications->count();
         
@@ -107,6 +112,11 @@ class NotificationController extends Controller
 
     public function getRecent()
     {
+        // Si l'utilisateur n'est pas authentifié, retourner un tableau vide
+        if (!Auth::check()) {
+            return response()->json([]);
+        }
+        
         $user = Auth::user();
         $notifications = $this->formatNotifications(
             $user->notifications()

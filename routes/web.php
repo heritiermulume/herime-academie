@@ -543,7 +543,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/recent', [NotificationController::class, 'getRecent'])->name('recent');
     });
 
-    // Notifications – routes en JSON
+    // Notifications – routes POST/DELETE protégées par auth
         Route::post('/notifications/{id}/mark-read', [NotificationController::class, 'markAsRead'])
             ->name('notifications.mark-read');
         Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
@@ -552,11 +552,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('notifications.delete');
         Route::delete('/notifications', [NotificationController::class, 'deleteAll'])
             ->name('notifications.delete-all');
-        Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])
-            ->name('notifications.unread-count');
-        Route::get('/notifications/recent', [NotificationController::class, 'getRecent'])
-            ->name('notifications.recent');
+});
 
+// Notifications – routes GET publiques (gèrent gracieusement les utilisateurs non authentifiés)
+Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])
+    ->name('notifications.unread-count');
+Route::get('/notifications/recent', [NotificationController::class, 'getRecent'])
+    ->name('notifications.recent');
+
+// Authenticated routes
+Route::middleware('auth')->group(function () {
     // Affiliate routes
     Route::prefix('affiliate')->name('affiliate.')->middleware('role:affiliate')->group(function () {
         Route::get('/dashboard', [AffiliateController::class, 'dashboard'])->name('dashboard');
