@@ -19,7 +19,7 @@
                 <div class="d-flex gap-2 flex-wrap">
                     @php
                         $callback = route('sso.callback', ['redirect' => url()->full()]);
-                        $ssoLoginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
+                        $ssoLoginUrl = 'https://compte.herime.com/login?redirect=' . urlencode($callback);
                     @endphp
                     <a href="{{ $ssoLoginUrl }}" class="btn btn-warning btn-sm">
                         <i class="fas fa-sign-in-alt me-2"></i>Se reconnecter
@@ -1031,7 +1031,7 @@ body {
                     @php
                         $final = url()->full();
                         $callback = route('sso.callback', ['redirect' => $final]);
-                        $ssoRegisterUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
+                        $ssoRegisterUrl = 'https://compte.herime.com/login?redirect=' . urlencode($callback);
                     @endphp
                     <a href="{{ $ssoRegisterUrl }}" class="btn btn-warning btn-lg px-4 w-100 w-sm-auto">
                             <i class="fas fa-user-plus me-2"></i>S'inscrire gratuitement
@@ -1039,7 +1039,7 @@ body {
                     @php
                         $finalLogin = url()->full();
                         $callbackLogin = route('sso.callback', ['redirect' => $finalLogin]);
-                        $ssoLoginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLogin);
+                        $ssoLoginUrl = 'https://compte.herime.com/login?redirect=' . urlencode($callbackLogin);
                     @endphp
                     <a href="{{ $ssoLoginUrl }}" class="btn btn-outline-light btn-lg px-4 w-100 w-sm-auto">
                             <i class="fas fa-sign-in-alt me-2"></i>Se connecter
