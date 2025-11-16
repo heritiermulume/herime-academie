@@ -47,10 +47,8 @@ use Illuminate\Support\Facades\Storage;
             <div class="row g-3">
                 @foreach($courses as $course)
                 <div class="col-lg-4 col-md-6 col-sm-6 course-item" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                    <div class="course-card">
-                        <div class="card">
-                            <!-- Lien invisible pour rendre toute la carte cliquable -->
-                            <a href="{{ route('courses.show', $course->slug) }}" class="course-card-link"></a>
+                    <div class="course-card" data-course-url="{{ route('courses.show', $course->slug) }}" style="cursor: pointer;">
+                        <div class="card" style="position: relative;">
                             <div class="position-relative">
                                 <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                      class="card-img-top" alt="{{ $course->title }}">
@@ -70,9 +68,7 @@ use Illuminate\Support\Facades\Storage;
                             </div>
                             <div class="card-body">
                                 <h6 class="card-title">
-                                    <a href="{{ route('courses.show', $course->slug) }}">
-                                        {{ Str::limit($course->title, 50) }}
-                                    </a>
+                                    {{ Str::limit($course->title, 50) }}
                                 </h6>
                                 <p class="card-text">{{ Str::limit($course->short_description, 100) }}</p>
                                 
@@ -124,7 +120,7 @@ use Illuminate\Support\Facades\Storage;
                                         @endif
                                     </div>
                                 
-                                <div class="card-actions">
+                                <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
                                     <x-course-button :course="$course" size="small" :show-cart="false" />
                                 </div>
                             </div>

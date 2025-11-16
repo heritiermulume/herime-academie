@@ -78,12 +78,70 @@ class SSOService
                     }
                 }
 
-                Log::debug('SSO API validation failed, trying local JWT validation', [
+                Log::debug('SSO API validation failed, trying Bearer /api/user then local JWT validation', [
                     'status' => $response->status(),
                 ]);
 
             } catch (Exception $e) {
-                Log::debug('SSO API validation exception, trying local JWT validation', [
+                Log::debug('SSO API validation exception, trying Bearer /api/user then local JWT validation', [
+                    'message' => $e->getMessage(),
+                ]);
+            }
+
+            // Fallback Option B (guide): utiliser le token utilisateur en Bearer vers /api/user
+            try {
+                $userResp = Http::timeout($this->timeout)
+                    ->withHeaders([
+                        'Accept' => 'application/json',
+                        'Authorization' => 'Bearer ' . $token,
+                    ])
+                    ->get(rtrim($this->ssoBaseUrl, '/') . '/api/user');
+
+                if ($userResp->successful()) {
+                    $user = $userResp->json();
+
+                    if (is_array($user)) {
+                        // Normaliser l'avatar
+                        if (!isset($user['avatar'])) {
+                            if (isset($user['photo'])) {
+                                $user['avatar'] = $user['photo'];
+                            } elseif (isset($user['picture'])) {
+                                $user['avatar'] = $user['picture'];
+                            } elseif (isset($user['image'])) {
+                                $user['avatar'] = $user['image'];
+                            }
+                        }
+
+                        // Normaliser user_id
+                        if (!isset($user['user_id']) && isset($user['id'])) {
+                            $user['user_id'] = $user['id'];
+                        }
+
+                        // Normaliser name
+                        if (!isset($user['name'])) {
+                            if (isset($user['full_name'])) {
+                                $user['name'] = $user['full_name'];
+                            } elseif (isset($user['first_name']) || isset($user['last_name'])) {
+                                $first = $user['first_name'] ?? '';
+                                $last = $user['last_name'] ?? '';
+                                $user['name'] = trim($first . ' ' . $last) ?: null;
+                            }
+                        }
+                    }
+
+                    // Vérifier la présence d'email (obligatoire)
+                    if (!empty($user) && is_array($user) && !empty($user['email'])) {
+                        Log::debug('SSO validation via Bearer /api/user succeeded');
+                        return $user;
+                    }
+                }
+
+                Log::debug('SSO Bearer /api/user validation failed, will try local JWT', [
+                    'status' => $userResp->status(),
+                    'body' => $userResp->body(),
+                ]);
+            } catch (Exception $e) {
+                Log::debug('SSO Bearer /api/user validation exception, will try local JWT', [
                     'message' => $e->getMessage(),
                 ]);
             }

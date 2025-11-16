@@ -1131,6 +1131,19 @@
             position: relative;
             z-index: 2;
         }
+        
+        .course-card .card-actions,
+        .course-card .card-actions * {
+            pointer-events: auto;
+        }
+        
+        .course-card[data-course-url] {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .course-card[data-course-url]:hover {
+            transform: translateY(-2px);
+        }
 
 
         /* Mobile menu separators */
@@ -4379,6 +4392,37 @@
         
         // Exposer la fonction globalement pour qu'elle soit accessible depuis d'autres scripts
         window.initPromotionCountdowns = initPromotionCountdowns;
+    </script>
+
+    <script>
+        // Rendre les cartes de cours entièrement cliquables
+        document.addEventListener('DOMContentLoaded', function() {
+            const courseCards = document.querySelectorAll('.course-card[data-course-url]');
+            
+            courseCards.forEach(function(card) {
+                card.addEventListener('click', function(e) {
+                    // Ne pas rediriger si on clique sur un bouton, un lien ou dans la zone d'actions
+                    const clickedElement = e.target;
+                    const isButton = clickedElement.closest('.card-actions, .btn, button, a.btn, form');
+                    const isBadge = clickedElement.classList.contains('badge') || clickedElement.closest('.badge');
+                    
+                    // Si on clique sur un badge ou un bouton, ne pas rediriger
+                    if (isButton || isBadge) {
+                        return;
+                    }
+                    
+                    // Si on clique directement sur un lien (autre que le lien de la carte), ne pas rediriger
+                    if (clickedElement.tagName === 'A' && !clickedElement.classList.contains('course-card-link')) {
+                        return;
+                    }
+                    
+                    const courseUrl = card.getAttribute('data-course-url');
+                    if (courseUrl) {
+                        window.location.href = courseUrl;
+                    }
+                });
+            });
+        });
     </script>
 
     @stack('modals')

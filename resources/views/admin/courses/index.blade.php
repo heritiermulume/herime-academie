@@ -86,6 +86,7 @@
 
         courseDeleteModal.show();
     }
+
 </script>
 @endpush
 

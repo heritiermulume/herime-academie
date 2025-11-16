@@ -87,7 +87,7 @@ use Illuminate\Support\Facades\Storage;
             <div class="row g-3">
                 @foreach($courses as $course)
                 <div class="col-lg-4 col-md-6 col-sm-6" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                    <div class="course-card">
+                    <div class="course-card" data-course-url="{{ route('courses.show', $course->slug) }}" style="cursor: pointer; position: relative;">
                         <div class="course-thumbnail" style="background-image: url('{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80' }}')">
                             @if($course->is_featured)
                             <span class="course-badge">En vedette</span>
@@ -143,7 +143,7 @@ use Illuminate\Support\Facades\Storage;
                                     <i class="fas fa-play-circle me-1"></i>{{ $course->stats['total_lessons'] ?? 0 }} leçons
                                 </small>
                             </div>
-                            <div class="mt-3">
+                            <div class="mt-3" onclick="event.stopPropagation(); event.preventDefault();">
                                 <a href="{{ route('courses.show', $course->slug) }}" class="btn btn-primary w-100">
                                     Voir le cours
                                 </a>

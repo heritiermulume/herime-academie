@@ -506,7 +506,7 @@
 
 /* Desktop: lecteur fixe, liste scrollable */
 @media (min-width: 992px) {
-    .modal-fixed-height .modal-body {
+.modal-fixed-height .modal-body {
         height: calc(95vh - 73px) !important;
         max-height: calc(95vh - 73px) !important;
         overflow: hidden !important;
@@ -591,8 +591,8 @@
         overflow-x: hidden !important;
         position: relative !important;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 51, 102, 0.3) transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 51, 102, 0.3) transparent;
         /* Force le scroll à apparaître si nécessaire */
         overscroll-behavior: contain;
     }
@@ -2169,10 +2169,8 @@
                             $relatedCourseStats = $relatedCourse->getCourseStats();
                         @endphp
                         <div class="col-12 col-sm-6 col-md-6 col-lg-4">
-                            <div class="course-card">
-                                <div class="card">
-                                    <!-- Lien invisible pour rendre toute la carte cliquable -->
-                                    <a href="{{ route('courses.show', $relatedCourse->slug) }}" class="course-card-link"></a>
+                            <div class="course-card" data-course-url="{{ route('courses.show', $relatedCourse->slug) }}" style="cursor: pointer;">
+                                <div class="card" style="position: relative;">
                                     <div class="position-relative">
                                         @if($relatedCourse->thumbnail)
                                             <img src="{{ $relatedCourse->thumbnail }}" 
@@ -2198,9 +2196,7 @@
                                     </div>
                                     <div class="card-body">
                                         <h6 class="card-title">
-                                            <a href="{{ route('courses.show', $relatedCourse->slug) }}">
-                                                {{ Str::limit($relatedCourse->title, 50) }}
-                                            </a>
+                                            {{ Str::limit($relatedCourse->title, 50) }}
                                         </h6>
                                         <p class="card-text">{{ Str::limit($relatedCourse->short_description ?? $relatedCourse->description, 100) }}</p>
                                         
@@ -2252,7 +2248,7 @@
                                             @endif
                                         </div>
                                         
-                                        <div class="card-actions">
+                                        <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
                                             <x-course-button :course="$relatedCourse" size="small" :show-cart="false" />
                                         </div>
                                     </div>
@@ -2568,7 +2564,7 @@
                                 <i class="fas fa-list me-2"></i>Autres aperçus
                             </h6>
                         </div>
-                        <div id="previewListContainer">
+                            <div id="previewListContainer">
                             <div class="px-4 pb-4" id="previewListContent">
                                 <div class="text-center py-5">
                                     <div class="spinner-border text-primary" role="status">
@@ -3630,7 +3626,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Charger la liste des aperçus seulement si elle n'a pas déjà été chargée
             if (!previewListLoaded) {
                 setTimeout(function() {
-                    loadPreviewList();
+            loadPreviewList();
                 }, 300);
             } else {
                 console.log('✅ Liste déjà chargée, pas de rechargement');
