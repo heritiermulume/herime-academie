@@ -127,14 +127,14 @@ class ValidateSSOOnPageLoad
                     'is_valid' => $isValid,
                 ]);
             } else {
-                // Pas de cache, valider le token
+                // Pas de cache, valider le token via /api/me
                 try {
-                    $isValid = $this->ssoService->checkToken($ssoToken);
+                    $isValid = $this->validateSSOSession($ssoToken);
                     
                     // Mettre en cache le résultat (30 secondes)
                     cache()->put($cacheKey, $isValid ? 1 : 0, $cacheTtl);
                     
-                    Log::debug('SSO token validation performed', [
+                    Log::debug('SSO session validation performed', [
                         'user_id' => $user->id,
                         'is_valid' => $isValid,
                     ]);
@@ -238,6 +238,48 @@ class ValidateSSOOnPageLoad
 
         // Si l'utilisateur n'est plus connecté, rediriger vers la page d'accueil
         return redirect()->route('home');
+    }
+
+    /**
+     * Valider la session SSO en appelant /api/me
+     * 
+     * @param string $token
+     * @return bool
+     */
+    protected function validateSSOSession(string $token): bool
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(5)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $token,
+                    'Accept' => 'application/json',
+                ])
+                ->get('https://compte.herime.com/api/me');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Vérifier que la réponse contient success=true et data.user
+                if (isset($data['success']) && $data['success'] === true && isset($data['data']['user'])) {
+                    return true;
+                }
+            }
+
+            Log::debug('SSO session validation failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return false;
+        } catch (\Throwable $e) {
+            Log::debug('SSO session validation exception', [
+                'error' => $e->getMessage(),
+                'type' => get_class($e),
+            ]);
+            
+            // En cas d'erreur réseau, considérer comme invalide pour forcer une reconnexion
+            return false;
+        }
     }
 }
 
