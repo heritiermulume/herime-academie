@@ -40,45 +40,39 @@ class SSOCallbackController extends Controller
             return redirect()->away($loginUrl);
         }
 
+        // Succès SSO: créer une session locale fonctionnelle
         $remoteUser = $resp->json();
         $email = data_get($remoteUser, 'email');
-        $name  = data_get($remoteUser, 'name') ?? trim(data_get($remoteUser, 'first_name').' '.data_get($remoteUser, 'last_name'));
+        $name  = data_get($remoteUser, 'name') ?? trim((string) data_get($remoteUser, 'first_name').' '.(string) data_get($remoteUser, 'last_name'));
 
         if (!$email) {
-            abort(403, 'SSO: email manquant');
+            Log::warning('SSO callback: missing email in /api/user response');
+            // Si les données sont insuffisantes, relancer le flux SSO
+            $callback = route('sso.callback', ['redirect' => $finalRedirect]);
+            $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
+            return redirect()->away($loginUrl);
         }
 
-        // Upsert utilisateur local
+        // Upsert utilisateur local minimal
         $user = User::firstOrCreate(
             ['email' => $email],
             [
                 'name' => $name ?: $email,
                 'password' => bcrypt(Str::random(32)),
-                'provider' => 'herime-account',
-                'provider_id' => data_get($remoteUser, 'id'),
             ]
         );
 
-        // Optionnel: maj champs
-        $user->forceFill([
-            'name' => $name ?: $user->name,
-            'provider' => 'herime-account',
-            'provider_id' => data_get($remoteUser, 'id') ?? $user->provider_id,
-        ])->save();
-
-        // Ouvrir la session locale
+        // Connexion locale + sécurisation de session
         Auth::login($user, true);
-        // Régénérer la session pour éviter la fixation et garantir l'écriture du cookie
         $request->session()->regenerate();
 
-        Log::info('SSO callback: local session established, redirecting to final URL on academie', [
+        Log::info('SSO callback: authenticated locally and redirecting', [
             'user_id' => $user->id,
             'email' => $user->email,
             'final_redirect' => $finalRedirect,
         ]);
 
-        // Redirection finale: rester sur academie.herime.com
-        return redirect()->to($this->safeRedirect($finalRedirect));
+        return redirect()->to($finalRedirect);
     }
 
     private function safeRedirect(string $url): string

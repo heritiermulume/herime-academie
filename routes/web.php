@@ -122,8 +122,6 @@ Route::middleware('auth')->group(function () {
 
 // SSO routes (must be before auth routes)
 Route::get('/sso/callback', [SSOCallbackController::class, 'handle'])->name('sso.callback');
-Route::get('/sso/redirect', [SSOController::class, 'redirectToSSO'])->name('sso.redirect');
-Route::get('/sso/register', [SSOController::class, 'redirectToSSORegister'])->name('sso.register');
 
 // Authentication routes
 require __DIR__.'/auth.php';

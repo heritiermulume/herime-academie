@@ -15,60 +15,13 @@ use Illuminate\View\View;
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Display the login view.
-     * Redirige vers le SSO si activé, sinon affiche la vue de connexion locale
+     * Display the login view (local).
      */
     public function create(Request $request): RedirectResponse|View
     {
-        // Si l'utilisateur est déjà connecté localement, rediriger vers le dashboard
         if (Auth::check()) {
             return redirect()->intended(route('dashboard'));
         }
-
-        // En environnement de test ou si SSO désactivé, afficher la vue locale
-        if (!config('services.sso.enabled', true)) {
-            return view('auth.login');
-        }
-
-        // Toujours rediriger vers SSO, jamais utiliser la vue locale
-        try {
-            if (config('services.sso.enabled', true)) {
-                $ssoService = app(SSOService::class);
-                
-                $redirectUrl = $request->query('redirect') 
-                    ?: $request->header('Referer') 
-                    ?: url()->previous() 
-                    ?: route('dashboard');
-
-                // Construire l'URL de callback complète
-                $callbackUrl = route('sso.callback', [
-                    'redirect' => $redirectUrl
-                ]);
-
-                // Utiliser force_token=true pour forcer la génération d'un token
-                // même si l'utilisateur est déjà connecté sur compte.herime.com
-                $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
-                
-                return redirect($ssoLoginUrl);
-            }
-        } catch (\Exception $e) {
-            // En cas d'erreur, réessayer la redirection vers SSO
-            Log::error('SSO Redirect Error', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            // Toujours rediriger vers SSO même en cas d'erreur
-            $ssoService = app(SSOService::class);
-            $callbackUrl = route('sso.callback', [
-                'redirect' => route('dashboard')
-            ]);
-            $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl, true);
-            
-            return redirect($ssoLoginUrl);
-        }
-
-        // Si le SSO est désactivé, afficher la vue locale
         return view('auth.login');
     }
 
@@ -161,37 +114,7 @@ class AuthenticatedSessionController extends Controller
         $homeUrl = $redirectUrl ?? route('home');
         $finalRedirectUrl = url($homeUrl);
 
-        // Option pour forcer la déconnexion locale uniquement (sans passer par SSO)
-        // Si le SSO ne redirige pas correctement, cette option peut être activée
-        $forceLocalLogout = config('services.sso.force_local_logout', false);
-
-        // Si SSO est activé et que la déconnexion locale forcée n'est pas activée
-        if (!$forceLocalLogout && config('services.sso.enabled', true)) {
-            try {
-                $ssoService = app(SSOService::class);
-                
-                // Construire l'URL de déconnexion SSO avec l'URL de redirection
-                // Le SSO redirigera l'utilisateur vers cette URL après la déconnexion
-                $ssoLogoutUrl = $ssoService->getLogoutUrl($finalRedirectUrl);
-                
-                Log::info('SSO Logout redirect', [
-                    'sso_logout_url' => $ssoLogoutUrl,
-                    'redirect_url' => $finalRedirectUrl
-                ]);
-                
-                // Rediriger vers le SSO qui déconnectera l'utilisateur et le redirigera
-                return redirect($ssoLogoutUrl);
-            } catch (\Throwable $e) {
-                // En cas d'erreur SSO, logger l'erreur et rediriger directement
-                Log::debug('SSO Logout Error', [
-                    'message' => $e->getMessage(),
-                    'type' => get_class($e),
-                ]);
-            }
-        }
-
-        // Redirection directe
-        // Soit si SSO désactivé, soit si déconnexion locale forcée, soit en cas d'erreur
+        // Redirection directe (sans SSO)
         return redirect($homeUrl);
     }
 }

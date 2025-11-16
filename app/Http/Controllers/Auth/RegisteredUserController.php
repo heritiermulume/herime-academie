@@ -16,73 +16,14 @@ use Illuminate\Validation\Rules;
 class RegisteredUserController extends Controller
 {
     /**
-     * Display the registration view.
-     * Ouvre le SSO dans un nouvel onglet pour l'enregistrement
+     * Display the registration view (local).
      */
     public function create(Request $request)
     {
-        // Si l'utilisateur est déjà connecté localement, rediriger vers le dashboard
         if (Auth::check()) {
             return redirect()->intended(route('dashboard'));
         }
-
-        if (!config('services.sso.enabled', true)) {
-            return view('auth.register');
-        }
-
-        // Ouvrir le SSO dans un nouvel onglet pour l'enregistrement
-        try {
-            if (config('services.sso.enabled', true)) {
-                $ssoService = app(SSOService::class);
-                
-                $redirectUrl = $request->query('redirect') 
-                    ?: $request->header('Referer') 
-                    ?: url()->previous() 
-                    ?: route('dashboard');
-
-                // Construire l'URL de callback complète
-                $callbackUrl = route('sso.callback', [
-                    'redirect' => $redirectUrl
-                ]);
-
-                // Obtenir l'URL d'enregistrement SSO
-                $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
-                
-                // Retourner une vue qui ouvre le SSO dans un nouvel onglet
-                return view('auth.register-redirect', [
-                    'ssoRegisterUrl' => $ssoRegisterUrl
-                ]);
-            }
-        } catch (\Exception $e) {
-            // En cas d'erreur, logger et essayer quand même
-            Log::error('SSO Register Redirect Error', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            // Essayer quand même de rediriger vers SSO
-            $ssoService = app(SSOService::class);
-            $callbackUrl = route('sso.callback', [
-                'redirect' => route('dashboard')
-            ]);
-            $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
-            
-            return view('auth.register-redirect', [
-                'ssoRegisterUrl' => $ssoRegisterUrl
-            ]);
-        }
-
-        // Si SSO est désactivé, rediriger quand même vers compte.herime.com
-        // (ne devrait jamais arriver si SSO est correctement configuré)
-        $ssoService = app(SSOService::class);
-        $callbackUrl = route('sso.callback', [
-            'redirect' => route('dashboard')
-        ]);
-        $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
-        
-        return view('auth.register-redirect', [
-            'ssoRegisterUrl' => $ssoRegisterUrl
-        ]);
+        return view('auth.register');
     }
 
     /**
@@ -94,32 +35,22 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (!config('services.sso.enabled', true)) {
-            $request->validate([
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
-                'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            ]);
-
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-            ]);
-
-            event(new Registered($user));
-
-            Auth::login($user);
-
-            return redirect()->intended(route('dashboard', absolute: false));
-        }
-
-        // L'enregistrement se fait uniquement via SSO, rediriger vers le SSO
-        Log::warning('Registration attempt via POST request, redirecting to SSO', [
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent()
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        return $this->create($request);
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        event(new Registered($user));
+
+        Auth::login($user);
+
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 }
