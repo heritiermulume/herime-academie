@@ -60,6 +60,12 @@ class AuthenticatedSessionController extends Controller
     public static function performLocalLogoutWithNotification(Request $request)
     {
         try {
+            // Supprimer le token SSO de la session avant de déconnecter
+            if ($request->hasSession() && $request->session()->has('sso_token')) {
+                $request->session()->forget('sso_token');
+                Log::debug('SSO token removed from session during logout with notification');
+            }
+
             Auth::guard('web')->logout();
 
             if ($request->hasSession()) {
@@ -90,6 +96,12 @@ class AuthenticatedSessionController extends Controller
     public static function performLogout(Request $request, ?string $redirectUrl = null)
     {
         try {
+            // Supprimer le token SSO de la session avant de déconnecter
+            if ($request->hasSession() && $request->session()->has('sso_token')) {
+                $request->session()->forget('sso_token');
+                Log::debug('SSO token removed from session during logout');
+            }
+
             Auth::guard('web')->logout();
 
             if ($request->hasSession()) {
