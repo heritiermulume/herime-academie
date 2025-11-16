@@ -68,6 +68,8 @@ class SSOCallbackController extends Controller
 
         // Ouvrir la session locale
         Auth::login($user, true);
+        // Régénérer la session pour éviter la fixation et garantir l'écriture du cookie
+        $request->session()->regenerate();
 
         Log::info('SSO callback: local session established, redirecting to final URL on academie', [
             'user_id' => $user->id,

@@ -261,3 +261,4 @@ Pour une vérification complète, il faudrait également auditer le code du serv
 *Application analysée : academie.herime.com (Client SSO)*
 *Serveur SSO : compte.herime.com*
 
+
