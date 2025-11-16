@@ -27,6 +27,7 @@ use App\Http\Controllers\PawaPayController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\TemporaryUploadController;
 use App\Http\Controllers\Auth\SSOController;
+use App\Http\Controllers\SSOCallbackController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -120,7 +121,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // SSO routes (must be before auth routes)
-Route::get('/sso/callback', [SSOController::class, 'callback'])->name('sso.callback');
+Route::get('/sso/callback', [SSOCallbackController::class, 'handle'])->name('sso.callback');
 Route::get('/sso/redirect', [SSOController::class, 'redirectToSSO'])->name('sso.redirect');
 
 // Authentication routes
