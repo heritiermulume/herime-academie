@@ -17,7 +17,11 @@
                     {{ session('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.') }}
                 </p>
                 <div class="d-flex gap-2 flex-wrap">
-                    <a href="{{ route('login') }}" class="btn btn-warning btn-sm">
+                    @php
+                        $callback = route('sso.callback', ['redirect' => url()->full()]);
+                        $ssoLoginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
+                    @endphp
+                    <a href="{{ $ssoLoginUrl }}" class="btn btn-warning btn-sm">
                         <i class="fas fa-sign-in-alt me-2"></i>Se reconnecter
                     </a>
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="alert" aria-label="Fermer">
