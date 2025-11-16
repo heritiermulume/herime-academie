@@ -105,10 +105,20 @@
                     </div>
                 @else
                     <div class="d-flex align-items-center" style="gap: 0.375rem;">
-                        <a href="{{ route('login') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.25rem;" title="Connexion">
+                        @php
+                            $finalLoginMobile = url()->full();
+                            $callbackLoginMobile = route('sso.callback', ['redirect' => $finalLoginMobile]);
+                            $ssoLoginUrlMobile = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginMobile);
+                        @endphp
+                        <a href="{{ $ssoLoginUrlMobile }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.25rem;" title="Connexion">
                             <i class="fas fa-sign-in-alt" style="font-size: 1.25rem;"></i>
                         </a>
-                        <a href="{{ route('register') }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.25rem;" title="Inscription">
+                        @php
+                            $finalRegisterMobile = url()->full();
+                            $callbackRegisterMobile = route('sso.callback', ['redirect' => $finalRegisterMobile]);
+                            $ssoRegisterUrlMobile = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegisterMobile);
+                        @endphp
+                        <a href="{{ $ssoRegisterUrlMobile }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.25rem;" title="Inscription">
                             <i class="fas fa-user-plus" style="font-size: 1.25rem;"></i>
                         </a>
                     </div>
