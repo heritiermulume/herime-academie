@@ -18,12 +18,12 @@ class SSOCallbackController extends Controller
             $finalRedirect = $request->query('redirect', url('/'));
 
             if (!$token) {
-            Log::info('SSO callback: no token, redirecting to SSO for token generation', [
-                'final_redirect' => $finalRedirect,
-            ]);
-            $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-            $loginUrl = 'https://compte.herime.com/login?redirect=' . urlencode($callback);
-            return redirect()->away($loginUrl);
+                Log::info('SSO callback: no token, redirecting to SSO for token generation', [
+                    'final_redirect' => $finalRedirect,
+                ]);
+                $callback = route('sso.callback', ['redirect' => $finalRedirect]);
+                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
+                return redirect()->away($loginUrl);
             }
 
             // Valider le token côté compte.herime.com (Passport) - endpoint recommandé /api/me
@@ -38,7 +38,7 @@ class SSOCallbackController extends Controller
                     'body' => $resp->body(),
                 ]);
                 $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?redirect=' . urlencode($callback);
+                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
                 return redirect()->away($loginUrl);
             }
 
@@ -47,7 +47,7 @@ class SSOCallbackController extends Controller
             if (!is_array($payload)) {
                 Log::warning('SSO callback: unexpected /api/me payload (not JSON object)', ['payload' => $resp->body()]);
                 $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?redirect=' . urlencode($callback);
+                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
                 return redirect()->away($loginUrl);
             }
 
@@ -57,7 +57,7 @@ class SSOCallbackController extends Controller
             if (!$success || empty($remoteUser) || !is_array($remoteUser)) {
                 Log::warning('SSO callback: /api/me returned invalid structure or not success', ['payload' => $payload]);
                 $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?redirect=' . urlencode($callback);
+                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
                 return redirect()->away($loginUrl);
             }
 
@@ -68,7 +68,7 @@ class SSOCallbackController extends Controller
                 Log::warning('SSO callback: missing email in /api/me response');
                 // Si les données sont insuffisantes, relancer le flux SSO
                 $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?redirect=' . urlencode($callback);
+                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
                 return redirect()->away($loginUrl);
             }
 

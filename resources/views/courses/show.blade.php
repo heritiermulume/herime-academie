@@ -2301,7 +2301,7 @@
                                 @php
                                     $finalLoginCourse = url()->full();
                                     $callbackLoginCourse = route('sso.callback', ['redirect' => $finalLoginCourse]);
-                                    $ssoLoginUrlCourse = 'https://compte.herime.com/login?redirect=' . urlencode($callbackLoginCourse);
+                                    $ssoLoginUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse);
                                 @endphp
                                 <a href="{{ $ssoLoginUrlCourse }}" class="btn btn-primary btn-lg w-100">
                                     <i class="fas fa-sign-in-alt me-2"></i>Se connecter pour accéder au cours
@@ -2309,7 +2309,7 @@
                                 @php
                                     $finalRegisterCourse = url()->full();
                                     $callbackRegisterCourse = route('sso.callback', ['redirect' => $finalRegisterCourse]);
-                                    $ssoRegisterUrlCourse = 'https://compte.herime.com/login?redirect=' . urlencode($callbackRegisterCourse);
+                                    $ssoRegisterUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegisterCourse);
                                 @endphp
                                 <a href="{{ $ssoRegisterUrlCourse }}" class="btn btn-outline-primary btn-lg w-100">
                                     <i class="fas fa-user-plus me-2"></i>Créer un compte
@@ -2462,7 +2462,7 @@
                     @php
                         $finalLoginCourse2 = url()->full();
                         $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
-                        $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?redirect=' . urlencode($callbackLoginCourse2);
+                        $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
                     @endphp
                     <a href="{{ $ssoLoginUrlCourse2 }}" class="btn btn-primary w-100">
                         <i class="fas fa-sign-in-alt me-2"></i>Se connecter
