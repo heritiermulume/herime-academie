@@ -6,17 +6,174 @@
 @push('styles')
 <style>
 :root {
-    --learning-bg: #0f172a;
-    --learning-sidebar: rgba(15, 23, 42, 0.92);
-    --learning-card: rgba(15, 23, 42, 0.9);
-    --learning-highlight: #38bdf8;
+    --learning-bg: #003366;
+    --learning-sidebar: rgba(0, 51, 102, 0.92);
+    --learning-card: rgba(0, 51, 102, 0.9);
+    --learning-highlight: #ffcc33;
     --learning-muted: #94a3b8;
+    --bs-info: #ffcc33;
+    --bs-primary: #003366;
+}
+
+/* Override Bootstrap colors for this page */
+.learning-shell .text-info,
+.learning-shell .btn-info {
+    color: #ffcc33 !important;
+}
+
+.learning-shell .btn-info {
+    background-color: #ffcc33 !important;
+    border-color: #ffcc33 !important;
+    color: #003366 !important;
+}
+
+.learning-shell .btn-info:hover {
+    background-color: #ff9933 !important;
+    border-color: #ff9933 !important;
+}
+
+.learning-shell .bg-info {
+    background-color: rgba(255, 204, 51, 0.1) !important;
+}
+
+.learning-shell .border-info {
+    border-color: rgba(255, 204, 51, 0.25) !important;
+}
+
+.learning-shell .bg-primary {
+    background-color: rgba(0, 51, 102, 0.1) !important;
+}
+
+.learning-shell .text-primary {
+    color: #ffcc33 !important;
+}
+
+.learning-shell .border-primary {
+    border-color: rgba(255, 204, 51, 0.25) !important;
 }
 
 .learning-shell {
-    background: #0b1120;
+    background: linear-gradient(135deg, #003366 0%, #004080 100%);
     min-height: 100vh;
     color: #e2e8f0;
+}
+
+/* S'assurer que tous les titres sont en couleur claire */
+.learning-shell h1, 
+.learning-shell h2, 
+.learning-shell h3, 
+.learning-shell h4, 
+.learning-shell h5, 
+.learning-shell h6 {
+    color: #f8fafc !important;
+}
+
+.learning-shell h1 {
+    font-size: 1.75rem;
+}
+
+.learning-shell h2 {
+    font-size: 1.5rem;
+}
+
+.learning-shell h3 {
+    font-size: 1.25rem;
+}
+
+.learning-shell h4 {
+    font-size: 1.1rem;
+}
+
+.learning-shell h5 {
+    font-size: 1rem;
+}
+
+.learning-shell h6 {
+    font-size: 0.95rem;
+}
+
+.learning-shell p {
+    color: #cbd5e1;
+}
+
+/* S'assurer que tous les textes sont lisibles */
+.learning-shell span {
+    color: #cbd5e1;
+}
+
+.learning-shell .text-muted {
+    color: #94a3b8 !important;
+}
+
+.learning-shell .small {
+    color: #94a3b8;
+}
+
+.learning-shell strong {
+    color: #f8fafc;
+}
+
+/* S'assurer que les badges sont lisibles */
+.learning-shell .badge {
+    font-weight: 600;
+}
+
+/* Corriger les couleurs des métadonnées */
+.learning-shell .lesson-header__meta span {
+    color: #94a3b8;
+}
+
+.learning-shell .outline-lesson__meta span {
+    color: #94a3b8;
+}
+
+.learning-shell .insight-list__item span {
+    color: #cbd5e1;
+}
+
+.learning-shell .recommended-meta span {
+    color: #94a3b8;
+}
+
+/* S'assurer que les icônes dans la section toggle sont visibles */
+.learning-shell .section-toggle-icon {
+    color: #94a3b8 !important;
+}
+
+/* Corriger les couleurs par défaut des éléments */
+.learning-shell div,
+.learning-shell label {
+    color: inherit;
+}
+
+/* Classes de taille de police Bootstrap */
+.learning-shell .fs-1,
+.learning-shell .fs-2,
+.learning-shell .fs-3,
+.learning-shell .fs-4,
+.learning-shell .fs-5,
+.learning-shell .fs-6 {
+    color: #f8fafc;
+}
+
+/* S'assurer que tous les liens sont visibles */
+.learning-shell a {
+    color: #cbd5e1;
+}
+
+.learning-shell a:hover {
+    color: #f8fafc;
+}
+
+/* Classes Bootstrap de poids de police */
+.learning-shell .fw-bold:not(.text-white):not(.text-info):not(.text-warning):not(.text-success):not(.text-danger),
+.learning-shell .fw-semibold:not(.text-white):not(.text-info):not(.text-warning):not(.text-success):not(.text-danger) {
+    color: #f8fafc;
+}
+
+/* S'assurer que les text-uppercase sont visibles */
+.learning-shell .text-uppercase {
+    color: #94a3b8;
 }
 
 .learning-shell .container-fluid {
@@ -38,8 +195,8 @@
 .learning-card {
     background: var(--learning-card);
     border-radius: 18px;
-    border: 1px solid rgba(56, 189, 248, 0.08);
-    box-shadow: 0 25px 50px -12px rgba(8, 47, 73, 0.45);
+    border: 1px solid rgba(255, 204, 51, 0.15);
+    box-shadow: 0 25px 50px -12px rgba(0, 51, 102, 0.45);
     overflow: hidden;
 }
 
@@ -52,12 +209,12 @@
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.85rem;
     padding: clamp(1rem, 0.8rem + 0.6vw, 1.5rem);
-    background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent);
+    background: radial-gradient(circle at top left, rgba(255, 204, 51, 0.12), transparent);
 }
 
 .learning-meta__item {
-    background: rgba(15, 23, 42, 0.75);
-    border: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(0, 51, 102, 0.75);
+    border: 1px solid rgba(255, 204, 51, 0.15);
     border-radius: 16px;
     padding: 0.9rem 1rem;
     display: flex;
@@ -68,7 +225,7 @@
 .learning-meta__item span:first-child {
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--learning-muted);
 }
 
@@ -84,7 +241,7 @@
     position: absolute;
     inset: 0;
     width: 0%;
-    background: linear-gradient(90deg, rgba(56, 189, 248, 1) 0%, rgba(14, 116, 144, 1) 100%);
+    background: linear-gradient(90deg, #ffcc33 0%, #ff9933 100%);
 }
 
 .lesson-outline {
@@ -94,10 +251,10 @@
 }
 
 .outline-section {
-    border: 1px solid rgba(148, 163, 184, 0.1);
+    border: 1px solid rgba(255, 204, 51, 0.15);
     border-radius: 16px;
     overflow: hidden;
-    background: rgba(15, 23, 42, 0.75);
+    background: rgba(0, 51, 102, 0.75);
 }
 
 .outline-section__header {
@@ -111,16 +268,16 @@
 }
 
 .outline-section__header:hover {
-    background: rgba(56, 189, 248, 0.12);
+    background: rgba(255, 204, 51, 0.12);
 }
 
 .outline-section__header.active {
-    background: rgba(56, 189, 248, 0.18);
+    background: rgba(255, 204, 51, 0.18);
 }
 
 .outline-section__body {
     padding: 0.75rem 1rem 1rem;
-    border-top: 1px solid rgba(148, 163, 184, 0.12);
+    border-top: 1px solid rgba(255, 204, 51, 0.12);
 }
 
 .outline-lesson {
@@ -135,25 +292,25 @@
 }
 
 .outline-lesson:hover {
-    border-color: rgba(56, 189, 248, 0.4);
-    background: rgba(56, 189, 248, 0.08);
+    border-color: rgba(255, 204, 51, 0.4);
+    background: rgba(255, 204, 51, 0.08);
 }
 
 .outline-lesson.active {
-    background: rgba(14, 165, 233, 0.18);
-    border-color: rgba(14, 165, 233, 0.55);
-    box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.25);
+    background: rgba(255, 204, 51, 0.18);
+    border-color: rgba(255, 204, 51, 0.55);
+    box-shadow: inset 0 0 0 1px rgba(255, 204, 51, 0.25);
 }
 
 .outline-lesson__icon {
     width: 32px;
     height: 32px;
     border-radius: 10px;
-    background: rgba(56, 189, 248, 0.12);
+    background: rgba(255, 204, 51, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(56, 189, 248, 0.8);
+    color: rgba(255, 204, 51, 0.9);
 }
 
 .outline-lesson.completed .outline-lesson__icon {
@@ -164,7 +321,7 @@
 .outline-lesson__title {
     font-weight: 600;
     color: #f8fafc;
-    font-size: 0.93rem;
+    font-size: 0.875rem;
 }
 
 .outline-lesson__meta {
@@ -177,10 +334,10 @@
 
 .learning-player-card {
     padding: clamp(1rem, 0.75rem + 0.8vw, 1.6rem);
-    background: linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.82));
+    background: linear-gradient(160deg, rgba(0, 51, 102, 0.92), rgba(0, 64, 128, 0.82));
     border-radius: 24px;
-    border: 1px solid rgba(56, 189, 248, 0.12);
-    box-shadow: 0 32px 55px -25px rgba(8, 47, 73, 0.55);
+    border: 1px solid rgba(255, 204, 51, 0.15);
+    box-shadow: 0 32px 55px -25px rgba(0, 51, 102, 0.55);
     overflow: hidden;
 }
 
@@ -191,7 +348,7 @@
 }
 
 .lesson-header__title {
-    font-size: clamp(1.3rem, 1.1rem + 0.7vw, 1.75rem);
+    font-size: clamp(1.1rem, 1rem + 0.5vw, 1.4rem);
     font-weight: 700;
     color: #f8fafc;
 }
@@ -200,7 +357,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #94a3b8;
 }
 
@@ -242,7 +399,7 @@
 }
 
 .lesson-tab {
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    border: 1px solid rgba(255, 204, 51, 0.2);
     border-radius: 999px;
     padding: 0.4rem 0.9rem;
     font-size: 0.82rem;
@@ -252,9 +409,9 @@
 }
 
 .lesson-tab.active {
-    background: rgba(56, 189, 248, 0.15);
-    border-color: rgba(56, 189, 248, 0.4);
-    color: #bae6fd;
+    background: rgba(255, 204, 51, 0.15);
+    border-color: rgba(255, 204, 51, 0.5);
+    color: #ffcc33;
 }
 
 .lesson-tab-content {
@@ -272,14 +429,15 @@
 }
 
 .insight-card {
-    background: rgba(15, 23, 42, 0.78);
+    background: rgba(0, 51, 102, 0.78);
     border-radius: 18px;
-    border: 1px solid rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(255, 204, 51, 0.15);
     padding: clamp(1rem, 0.8rem + 0.6vw, 1.4rem);
 }
 
 .insight-card h6 {
     font-weight: 700;
+    font-size: 0.95rem;
     color: #e0f2fe;
 }
 
@@ -307,13 +465,13 @@
     gap: 0.75rem;
     padding: 0.75rem;
     border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.12);
-    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 204, 51, 0.15);
+    background: rgba(0, 51, 102, 0.65);
     transition: border 0.2s ease, transform 0.2s ease;
 }
 
 .recommended-courses .recommended-item:hover {
-    border-color: rgba(56, 189, 248, 0.3);
+    border-color: rgba(255, 204, 51, 0.4);
     transform: translateY(-2px);
 }
 
@@ -334,6 +492,7 @@
 .recommended-content h6 {
     margin-bottom: 0.15rem;
     font-weight: 600;
+    font-size: 0.875rem;
     color: #f8fafc;
 }
 
@@ -375,10 +534,10 @@
 .mobile-outline-drawer__panel {
     width: min(100%, 540px);
     max-height: 88vh;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(0, 51, 102, 0.95);
     border-radius: 24px;
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    box-shadow: 0 -22px 45px -30px rgba(8, 47, 73, 0.65);
+    border: 1px solid rgba(255, 204, 51, 0.25);
+    box-shadow: 0 -22px 45px -30px rgba(0, 51, 102, 0.65);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -386,7 +545,7 @@
 
 .mobile-outline-drawer__header {
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid rgba(56, 189, 248, 0.18);
+    border-bottom: 1px solid rgba(255, 204, 51, 0.2);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -398,9 +557,9 @@
 }
 
 .mobile-outline-progress {
-    background: rgba(8, 47, 73, 0.55);
+    background: rgba(0, 51, 102, 0.55);
     border-radius: 16px;
-    border: 1px solid rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(255, 204, 51, 0.15);
     padding: 0.85rem 1rem;
 }
 
@@ -555,8 +714,8 @@
                                 <div class="outline-section" data-section-id="{{ $section->id }}">
                                     <button class="outline-section__header {{ $isSectionOpen ? 'active' : '' }}" type="button">
                                         <div>
-                                            <p class="text-uppercase small mb-1 text-muted fw-semibold">Section {{ $loop->iteration }}</p>
-                                            <h6 class="mb-0 fw-semibold text-white">{{ $section->title }}</h6>
+                                            <p class="text-uppercase small mb-1 fw-semibold" style="color: #94a3b8;">Section {{ $loop->iteration }}</p>
+                                            <h6 class="mb-0 fw-semibold" style="color: #f8fafc;">{{ $section->title }}</h6>
                                         </div>
                                         <div class="text-end">
                                             <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2 py-1">
@@ -620,6 +779,21 @@
 
             {{-- Main Column --}}
             <div class="learning-column main">
+                {{-- Course Title Header --}}
+                <div class="learning-card mb-3 d-none d-lg-block">
+                    <div class="card-body py-3">
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <div class="flex-grow-1">
+                                <p class="text-uppercase small mb-1" style="color: #94a3b8; letter-spacing: 0.08em;">Cours en formation</p>
+                                <h2 class="mb-0" style="color: #f8fafc; font-size: 1.25rem; font-weight: 700;">{{ $course->title }}</h2>
+                            </div>
+                            <a href="{{ route('courses.show', $course->slug) }}" class="btn btn-outline-light btn-sm">
+                                <i class="fas fa-info-circle me-2"></i>Détails
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="learning-player-card">
                     <div class="lesson-header">
                         <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
@@ -690,23 +864,28 @@
                             </div>
 
                     <div class="lesson-cta-row mb-4">
-                        <div class="d-flex gap-2 flex-wrap">
+                        <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap w-100">
+                            {{-- Navigation Buttons (Left) --}}
+                            <div class="d-flex gap-2">
                                     @if(isset($previousLesson))
                                 <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $previousLesson->id]) }}"
                                    class="btn btn-outline-light d-flex align-items-center gap-2">
                                     <i class="fas fa-arrow-left"></i>
-                                    <span>Précédent</span>
+                                        <span class="d-none d-sm-inline">Précédent</span>
                                 </a>
                             @endif
 
                             @if(isset($nextLesson))
                                 <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $nextLesson->id]) }}"
                                    class="btn btn-info d-flex align-items-center gap-2">
-                                    <span>Suivant</span>
+                                        <span class="d-none d-sm-inline">Suivant</span>
                                     <i class="fas fa-arrow-right"></i>
                                 </a>
                             @endif
+                            </div>
 
+                            {{-- Action Buttons (Center/Right) --}}
+                            <div class="d-flex gap-2 flex-wrap">
                             @if(isset($activeLesson))
                                 <button class="btn btn-success d-flex align-items-center gap-2"
                                         @if($progress['completed_lessons_ids']->contains($activeLesson->id))
@@ -716,17 +895,16 @@
                                     @endif
                                 >
                                     <i class="fas fa-check"></i>
-                                    {{ $progress['completed_lessons_ids']->contains($activeLesson->id) ? 'Leçon terminée' : 'Marquer comme terminé' }}
+                                        <span class="d-none d-md-inline">{{ $progress['completed_lessons_ids']->contains($activeLesson->id) ? 'Leçon terminée' : 'Marquer comme terminé' }}</span>
+                                        <span class="d-md-none">Terminé</span>
+                                    </button>
+                                    
+                                    <button class="btn btn-outline-secondary d-flex align-items-center gap-2" onclick="showLessonResources()">
+                                        <i class="fas fa-download"></i>
+                                        <span class="d-none d-sm-inline">Ressources</span>
                                 </button>
                             @endif
                         </div>
-                        <div class="d-flex flex-wrap gap-2 ms-auto">
-                            <a href="{{ route('courses.show', $course->slug) }}" class="btn btn-outline-secondary">
-                                <i class="fas fa-info-circle me-2"></i>Détails du cours
-                            </a>
-                            <button class="btn btn-outline-secondary">
-                                <i class="fas fa-download me-2"></i>Ressources
-                            </button>
                         </div>
                     </div>
 
@@ -790,15 +968,32 @@
 
                         @isset($activeLesson)
                             <div class="lesson-tab-content" id="tab-notes">
-                                <p class="text-muted mb-3">Prenez des notes personnelles pour cette leçon (fonctionnalité à venir).</p>
-                                <button class="btn btn-outline-light btn-sm disabled">Ajouter une note</button>
+                                <div class="mb-3">
+                                    <h6 class="text-white fw-semibold mb-3">Mes notes</h6>
+                                    <form id="note-form" class="mb-4">
+                                        <textarea id="note-content" class="form-control mb-2" rows="4" placeholder="Ajoutez une note pour cette leçon..." style="background: rgba(255,255,255,0.1); border-color: rgba(255,204,51,0.25); color: #fff;"></textarea>
+                                        <button type="submit" class="btn btn-info btn-sm">
+                                            <i class="fas fa-save me-2"></i>Enregistrer la note
+                                        </button>
+                                    </form>
+                                </div>
+                                <div id="notes-list"></div>
                             </div>
                             <div class="lesson-tab-content" id="tab-resources">
-                                <p class="text-muted mb-0">Les ressources téléchargeables et documents complémentaires apparaîtront ici dès qu’elles seront disponibles.</p>
+                                <h6 class="text-white fw-semibold mb-3">Ressources de la leçon</h6>
+                                <div id="resources-list"></div>
                             </div>
                             <div class="lesson-tab-content" id="tab-discussion">
-                                <p class="text-muted">Rejoignez la discussion et échangez avec les autres apprenants (module communauté à venir).</p>
-                                <button class="btn btn-outline-info btn-sm disabled">Ouvrir la discussion</button>
+                                <div class="mb-4">
+                                    <h6 class="text-white fw-semibold mb-3">Discussions</h6>
+                                    <form id="discussion-form" class="mb-4">
+                                        <textarea id="discussion-content" class="form-control mb-2" rows="3" placeholder="Posez une question ou partagez votre avis..." style="background: rgba(255,255,255,0.1); border-color: rgba(255,204,51,0.25); color: #fff;"></textarea>
+                                        <button type="submit" class="btn btn-info btn-sm">
+                                            <i class="fas fa-paper-plane me-2"></i>Publier
+                                        </button>
+                                    </form>
+                                </div>
+                                <div id="discussions-list"></div>
                             </div>
                         @endisset
                     </div>
@@ -927,8 +1122,8 @@
                         <div class="outline-section {{ $isSectionOpen ? 'open' : '' }}" data-section-id="mobile-{{ $section->id }}">
                             <button class="outline-section__header {{ $isSectionOpen ? 'active' : '' }}" type="button">
                                             <div>
-                                    <p class="text-uppercase small mb-1 text-muted fw-semibold">Section {{ $loop->iteration }}</p>
-                                    <h6 class="mb-0 fw-semibold text-white">{{ $section->title }}</h6>
+                                    <p class="text-uppercase small mb-1 fw-semibold" style="color: #94a3b8;">Section {{ $loop->iteration }}</p>
+                                    <h6 class="mb-0 fw-semibold" style="color: #f8fafc;">{{ $section->title }}</h6>
                                             </div>
                                 <div class="text-end">
                                     <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2 py-1">
@@ -1049,16 +1244,631 @@ function markAsComplete(lessonId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             window.location.reload();
+        } else {
+            alert('Erreur: ' + (data.message || 'Impossible de marquer la leçon comme terminée'));
         }
     })
-    .catch(() => alert('Erreur lors de la mise à jour de la leçon.'));
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la mise à jour de la leçon.');
+    });
 }
+
+function showLessonResources() {
+    // Switch to resources tab
+    document.querySelectorAll('.lesson-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.lesson-tab-content').forEach(panel => panel.classList.remove('active'));
+    const resourceTab = document.querySelector('[data-tab="resources"]');
+    if (resourceTab) {
+        resourceTab.classList.add('active');
+        document.getElementById('tab-resources').classList.add('active');
+    }
+}
+
+@isset($activeLesson)
+// API URLs for active lesson
+const notesUrl = '{{ route('learning.notes.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
+const notesStoreUrl = '{{ route('learning.notes.store', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
+const notesAllUrl = '{{ route('learning.notes.all', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
+const resourcesUrl = '{{ route('learning.resources.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
+const discussionsUrl = '{{ route('learning.discussions.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
+const discussionsStoreUrl = '{{ route('learning.discussions.store', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
+const discussionsAllUrl = '{{ route('learning.discussions.all', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
+const courseSlug = '{{ $course->slug }}';
+const activeLessonId = '{{ $activeLesson->id }}';
+const currentUserId = {{ auth()->id() ?? 0 }};
+
+// Helper function to generate note delete URL
+function getNoteDeleteUrl(noteId) {
+    return `{{ route('learning.notes.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}/${noteId}`;
+}
+
+// Helper function to generate note update URL
+function getNoteUpdateUrl(noteId) {
+    return `{{ route('learning.notes.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}/${noteId}`;
+}
+
+// Helper function to generate discussion like URL
+function getDiscussionLikeUrl(discussionId) {
+    return `{{ route('learning.discussions.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}/${discussionId}/like`;
+}
+
+// Helper function to generate discussion update URL
+function getDiscussionUpdateUrl(discussionId) {
+    return `{{ route('learning.discussions.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}/${discussionId}`;
+}
+
+// Load Notes
+function loadNotes() {
+    fetch(notesUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const notesList = document.getElementById('notes-list');
+                if (data.notes.length === 0) {
+                    notesList.innerHTML = '<p class="text-muted">Aucune note pour cette leçon.</p>';
+                } else {
+                    const notesHtml = data.notes.map(note => `
+                        <div class="card mb-2" style="background: rgba(0,51,102,0.75); border-color: rgba(255,204,51,0.15);" id="note-card-${note.id}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <small class="text-muted">${new Date(note.created_at).toLocaleDateString('fr-FR')}</small>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-info" onclick="toggleEditNoteInline(${note.id})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteNote(${note.id})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="note-content-display-inline" id="note-content-inline-${note.id}">
+                                    <p class="mb-0" style="color: #cbd5e1;">${note.content}</p>
+                                </div>
+                                <form class="note-edit-form-inline" id="note-edit-form-inline-${note.id}" style="display: none;" onsubmit="updateNoteInline(event, ${note.id})">
+                                    <textarea name="content" class="form-control mb-2" rows="4" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,204,51,0.25); color: #fff;">${note.content}</textarea>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="fas fa-save me-1"></i>Enregistrer
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleEditNoteInline(${note.id})">
+                                            Annuler
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    // Ajouter le bouton "Voir tout" si on a 5 notes (limite atteinte)
+                    const viewAllButton = data.notes.length >= 5 ? `
+                        <div class="text-center mt-3">
+                            <a href="${notesAllUrl}" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-list me-2"></i>Voir toutes les notes
+                            </a>
+                        </div>
+                    ` : '';
+                    
+                    notesList.innerHTML = notesHtml + viewAllButton;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des notes:', error);
+            alert('Erreur lors du chargement des notes');
+        });
+}
+
+// Load Resources
+function loadResources() {
+    fetch(resourcesUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const resourcesList = document.getElementById('resources-list');
+                if (data.resources.length === 0) {
+                    resourcesList.innerHTML = '<p class="text-muted">Aucune ressource disponible pour cette leçon.</p>';
+                } else {
+                    resourcesList.innerHTML = data.resources.map(resource => `
+                        <div class="card mb-3" style="background: rgba(0,51,102,0.75); border-color: rgba(255,204,51,0.15);">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start justify-content-between">
+                                    <div class="flex-grow-1">
+                                        <h6 class="text-white mb-1"><i class="fas fa-file-download me-2"></i>${resource.title}</h6>
+                                        ${resource.description ? `<p class="text-muted small mb-2">${resource.description}</p>` : ''}
+                                        <div class="d-flex gap-3 small text-muted">
+                                            <span><i class="fas fa-file me-1"></i>${resource.file_type || 'Fichier'}</span>
+                                            <span><i class="fas fa-weight me-1"></i>${resource.file_size}</span>
+                                            <span><i class="fas fa-download me-1"></i>${resource.download_count} téléchargements</span>
+                                        </div>
+                                    </div>
+                                    <a href="{{ route('learning.resources.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}/${resource.id}/download" 
+                                       class="btn btn-info btn-sm" target="_blank">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des ressources:', error);
+        });
+}
+
+// Load Discussions
+function loadDiscussions() {
+    fetch(discussionsUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const discussionsList = document.getElementById('discussions-list');
+                if (data.discussions.length === 0) {
+                    discussionsList.innerHTML = '<p class="text-muted">Aucune discussion pour cette leçon. Soyez le premier à poser une question !</p>';
+                } else {
+                    const discussionsHtml = data.discussions.map(discussion => {
+                        const canDeleteDiscussion = discussion.user_id === currentUserId;
+                        const canEditDiscussion = discussion.user_id === currentUserId;
+                        return `
+                        <div class="card mb-3" style="background: rgba(0,51,102,0.75); border-color: rgba(255,204,51,0.15);" id="discussion-card-${discussion.id}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <strong class="text-white">${discussion.user.name}</strong>
+                                        <small class="text-muted ms-2">${discussion.created_at}</small>
+                                        ${discussion.is_pinned ? '<span class="badge bg-warning ms-2">Épinglé</span>' : ''}
+                                        ${discussion.is_answered ? '<span class="badge bg-success ms-2">Répondu</span>' : ''}
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-info" onclick="toggleLike(${discussion.id})">
+                                            <i class="fas fa-thumbs-up me-1"></i>${discussion.likes_count}
+                                        </button>
+                                        ${canEditDiscussion ? `
+                                            <button class="btn btn-sm btn-outline-info" onclick="toggleEditDiscussionInline(${discussion.id})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        ` : ''}
+                                        ${canDeleteDiscussion ? `
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteDiscussion(${discussion.id})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                <div class="discussion-content-display-inline" id="discussion-content-inline-${discussion.id}">
+                                    <p class="mb-2" style="color: #cbd5e1;">${discussion.content}</p>
+                                </div>
+                                <form class="discussion-edit-form-inline" id="discussion-edit-form-inline-${discussion.id}" style="display: none;" onsubmit="updateDiscussionInline(event, ${discussion.id})">
+                                    <textarea name="content" class="form-control mb-2" rows="4" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,204,51,0.25); color: #fff;">${discussion.content}</textarea>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="fas fa-save me-1"></i>Enregistrer
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleEditDiscussionInline(${discussion.id})">
+                                            Annuler
+                                        </button>
+                                    </div>
+                                </form>
+                                ${discussion.replies_count > 0 ? `
+                                    <div class="mt-3 ms-4">
+                                        <p class="small text-muted mb-2"><i class="fas fa-comments me-1"></i>${discussion.replies_count} réponse(s)</p>
+                                        ${discussion.replies.map(reply => {
+                                            const canDeleteReply = reply.user_id === currentUserId;
+                                            const canEditReply = reply.user_id === currentUserId;
+                                            return `
+                                            <div class="card mb-2" style="background: rgba(0,51,102,0.5); border-color: rgba(255,204,51,0.1);" id="reply-card-${reply.id}">
+                                                <div class="card-body p-2">
+                                                    <div class="d-flex justify-content-between mb-1">
+                                                        <div>
+                                                            <strong class="text-white small">${reply.user.name}</strong>
+                                                            <small class="text-muted ms-2">${reply.created_at}</small>
+                                                        </div>
+                                                        <div class="d-flex gap-2">
+                                                            ${canEditReply ? `
+                                                                <button class="btn btn-sm btn-outline-info" onclick="toggleEditReplyInline(${reply.id})">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </button>
+                                                            ` : ''}
+                                                            ${canDeleteReply ? `
+                                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteDiscussion(${reply.id})">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            ` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <div class="reply-content-display-inline" id="reply-content-inline-${reply.id}">
+                                                        <p class="mb-0 small" style="color: #cbd5e1;">${reply.content}</p>
+                                                    </div>
+                                                    <form class="reply-edit-form-inline" id="reply-edit-form-inline-${reply.id}" style="display: none;" onsubmit="updateReplyInline(event, ${reply.id})">
+                                                        <textarea name="content" class="form-control mb-2" rows="3" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,204,51,0.25); color: #fff;">${reply.content}</textarea>
+                                                        <div class="d-flex gap-2">
+                                                            <button type="submit" class="btn btn-sm btn-success">
+                                                                <i class="fas fa-save me-1"></i>Enregistrer
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleEditReplyInline(${reply.id})">
+                                                                Annuler
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        `;
+                                        }).join('')}
+                                    </div>
+                                ` : ''}
+                                <button class="btn btn-sm btn-outline-light mt-2" onclick="replyToDiscussion(${discussion.id})">
+                                    <i class="fas fa-reply me-1"></i>Répondre
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    }).join('');
+                    
+                    // Ajouter le bouton "Voir tout" si on a 5 discussions (limite atteinte)
+                    const viewAllButton = data.discussions.length >= 5 ? `
+                        <div class="text-center mt-3">
+                            <a href="${discussionsAllUrl}" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-list me-2"></i>Voir toutes les discussions
+                            </a>
+                        </div>
+                    ` : '';
+                    
+                    discussionsList.innerHTML = discussionsHtml + viewAllButton;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des discussions:', error);
+        });
+}
+
+// Initialize form handlers when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Note form handler
+    const noteForm = document.getElementById('note-form');
+    if (noteForm) {
+        noteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const content = document.getElementById('note-content').value;
+            if (!content.trim()) {
+                alert('Veuillez entrer une note');
+                return;
+            }
+            
+            fetch(notesStoreUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('note-content').value = '';
+                    loadNotes();
+                    alert('Note enregistrée avec succès !');
+                } else {
+                    alert('Erreur: ' + (data.message || 'Impossible d\'enregistrer la note'));
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Erreur lors de l\'enregistrement de la note');
+            });
+        });
+    }
+
+    // Discussion form handler
+    const discussionForm = document.getElementById('discussion-form');
+    if (discussionForm) {
+        discussionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const content = document.getElementById('discussion-content').value;
+            if (!content.trim()) {
+                alert('Veuillez entrer un message');
+                return;
+            }
+            
+            fetch(discussionsStoreUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('discussion-content').value = '';
+                    loadDiscussions();
+                    alert('Discussion publiée avec succès !');
+                } else {
+                    alert('Erreur: ' + (data.message || 'Impossible de publier la discussion'));
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Erreur lors de la publication de la discussion');
+            });
+        });
+    }
+
+    // Attach tab click handlers
+    const notesTab = document.querySelector('[data-tab="notes"]');
+    if (notesTab) {
+        notesTab.addEventListener('click', loadNotes);
+    }
+    
+    const resourcesTab = document.querySelector('[data-tab="resources"]');
+    if (resourcesTab) {
+        resourcesTab.addEventListener('click', loadResources);
+    }
+    
+    const discussionTab = document.querySelector('[data-tab="discussion"]');
+    if (discussionTab) {
+        discussionTab.addEventListener('click', loadDiscussions);
+    }
+});
+
+function deleteNote(noteId) {
+    if (!confirm('Supprimer cette note ?')) return;
+    
+    fetch(getNoteDeleteUrl(noteId), {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadNotes();
+            alert('Note supprimée avec succès');
+        } else {
+            alert('Erreur: ' + (data.message || 'Impossible de supprimer la note'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la suppression de la note');
+    });
+}
+
+function deleteDiscussion(discussionId) {
+    if (!confirm('Supprimer cette discussion ?')) return;
+    
+    fetch(getDiscussionUpdateUrl(discussionId), {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadDiscussions();
+            alert('Discussion supprimée avec succès');
+        } else {
+            alert('Erreur: ' + (data.message || 'Impossible de supprimer la discussion'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la suppression de la discussion');
+    });
+}
+
+function toggleLike(discussionId) {
+    fetch(getDiscussionLikeUrl(discussionId), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadDiscussions();
+        } else {
+            alert('Erreur: ' + (data.message || 'Impossible d\'aimer cette discussion'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors du like');
+    });
+}
+
+function replyToDiscussion(parentId) {
+    const content = prompt('Votre réponse:');
+    if (!content) return;
+    
+    fetch(discussionsStoreUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ content, parent_id: parentId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadDiscussions();
+            alert('Réponse publiée avec succès !');
+        } else {
+            alert('Erreur: ' + (data.message || 'Impossible de publier la réponse'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la publication de la réponse');
+    });
+}
+
+// Toggle edit mode for notes (inline)
+function toggleEditNoteInline(noteId) {
+    const contentDisplay = document.getElementById('note-content-inline-' + noteId);
+    const editForm = document.getElementById('note-edit-form-inline-' + noteId);
+    
+    if (contentDisplay && editForm) {
+        const isHidden = contentDisplay.style.display === 'none';
+        contentDisplay.style.display = isHidden ? 'block' : 'none';
+        editForm.style.display = isHidden ? 'none' : 'block';
+    }
+}
+
+// Update note inline
+function updateNoteInline(event, noteId) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const content = formData.get('content');
+    
+    fetch(getNoteUpdateUrl(noteId), {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ content })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadNotes();
+            alert('Note mise à jour avec succès !');
+        } else {
+            alert('Erreur: ' + (data.message || 'Impossible de mettre à jour la note'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la mise à jour de la note');
+    });
+}
+
+// Toggle edit mode for discussions (inline)
+function toggleEditDiscussionInline(discussionId) {
+    const contentDisplay = document.getElementById('discussion-content-inline-' + discussionId);
+    const editForm = document.getElementById('discussion-edit-form-inline-' + discussionId);
+    
+    if (contentDisplay && editForm) {
+        const isHidden = contentDisplay.style.display === 'none';
+        contentDisplay.style.display = isHidden ? 'block' : 'none';
+        editForm.style.display = isHidden ? 'none' : 'block';
+    }
+}
+
+// Update discussion inline
+function updateDiscussionInline(event, discussionId) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const content = formData.get('content');
+    
+    fetch(getDiscussionUpdateUrl(discussionId), {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ content })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadDiscussions();
+            alert('Discussion mise à jour avec succès !');
+        } else {
+            alert('Erreur: ' + (data.message || 'Impossible de mettre à jour la discussion'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la mise à jour de la discussion');
+    });
+}
+
+// Toggle edit mode for replies (inline)
+function toggleEditReplyInline(replyId) {
+    const contentDisplay = document.getElementById('reply-content-inline-' + replyId);
+    const editForm = document.getElementById('reply-edit-form-inline-' + replyId);
+    
+    if (contentDisplay && editForm) {
+        const isHidden = contentDisplay.style.display === 'none';
+        contentDisplay.style.display = isHidden ? 'block' : 'none';
+        editForm.style.display = isHidden ? 'none' : 'block';
+    }
+}
+
+// Update reply inline
+function updateReplyInline(event, replyId) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const content = formData.get('content');
+    
+    fetch(`/learning/courses/${courseSlug}/lessons/${activeLessonId}/discussions/${replyId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ content })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadDiscussions();
+            alert('Réponse mise à jour avec succès !');
+        } else {
+            alert('Erreur: ' + (data.message || 'Impossible de mettre à jour la réponse'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la mise à jour de la réponse');
+    });
+}
+
+// Load notes by default if on notes tab
+if (document.getElementById('tab-notes')?.classList.contains('active')) {
+    loadNotes();
+}
+@endisset
 </script>
 @endpush

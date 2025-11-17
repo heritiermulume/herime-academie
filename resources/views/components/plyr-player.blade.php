@@ -11,7 +11,7 @@
 @endphp
 
 @if(!empty($videoId))
-<div class="plyr-player-container position-absolute top-0 start-0 w-100 h-100" id="container-{{ $playerId }}" style="background: #000; border-radius: 8px; overflow: hidden; display: block !important; visibility: visible !important;">
+<div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-{{ $playerId }}">
     <!-- Watermark overlay dynamique -->
     @if(auth()->check() && !$isPreview)
     <div class="video-watermark position-absolute" id="watermark-{{ $playerId }}">
@@ -23,71 +23,8 @@
     </div>
     @endif
     
-    <!-- Video wrapper -->
-    <div class="video-wrapper position-relative w-100 h-100" id="video-wrapper-{{ $playerId }}">
-        <!-- YouTube iframe (non-cliquable) -->
-        <div id="{{ $playerId }}" class="youtube-iframe-container"></div>
-        
-        <!-- Custom controls overlay -->
-        <div class="custom-video-controls position-absolute w-100 h-100 d-flex flex-column" id="controls-{{ $playerId }}">
-            <!-- Progress bar -->
-            <div class="video-progress-container position-absolute w-100" id="progress-container-{{ $playerId }}" style="bottom: 60px;">
-                <div class="video-progress-bar mx-3" id="progress-bar-{{ $playerId }}">
-                    <div class="video-progress-track"></div>
-                    <div class="video-progress-buffered" id="progress-buffered-{{ $playerId }}"></div>
-                    <div class="video-progress-filled" id="progress-filled-{{ $playerId }}"></div>
-                    <div class="video-progress-handle" id="progress-handle-{{ $playerId }}"></div>
-                </div>
-            </div>
-            
-            <!-- Bottom controls -->
-            <div class="video-controls-bottom position-absolute w-100 d-flex align-items-center justify-content-between px-3" id="controls-bottom-{{ $playerId }}" style="bottom: 0;">
-                <div class="d-flex align-items-center gap-3">
-                    <!-- Play/Pause button -->
-                    <button class="btn btn-light btn-sm control-btn" id="play-btn-{{ $playerId }}" title="Lecture">
-                        <i class="fas fa-play"></i>
-                    </button>
-                    <!-- Time display -->
-                    <span class="text-white video-time" id="time-{{ $playerId }}">00:00 / 00:00</span>
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    <!-- Volume control -->
-                    <div class="volume-control d-flex align-items-center">
-                        <button class="btn btn-light btn-sm control-btn" id="mute-btn-{{ $playerId }}" title="Son">
-                            <i class="fas fa-volume-up"></i>
-                        </button>
-                        <div class="volume-slider-container" id="volume-container-{{ $playerId }}">
-                            <div class="volume-slider" id="volume-slider-{{ $playerId }}">
-                                <div class="volume-slider-track"></div>
-                                <div class="volume-slider-fill" id="volume-fill-{{ $playerId }}"></div>
-                                <div class="volume-slider-handle" id="volume-handle-{{ $playerId }}"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Quality button -->
-                    <div class="quality-dropdown dropdown">
-                        <button class="btn btn-light btn-sm control-btn dropdown-toggle" id="quality-btn-{{ $playerId }}" data-bs-toggle="dropdown" title="Qualité">
-                            <i class="fas fa-cog"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" id="quality-menu-{{ $playerId }}">
-                            <li><a class="dropdown-item" href="#" data-quality="auto">Auto</a></li>
-                        </ul>
-                    </div>
-                    <!-- Fullscreen button -->
-                    <button class="btn btn-light btn-sm control-btn" id="fullscreen-btn-{{ $playerId }}" title="Plein écran">
-                        <i class="fas fa-expand"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Loading spinner -->
-    <div class="plyr-loading position-absolute top-50 start-50 translate-middle" id="loading-{{ $playerId }}">
-        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-            <span class="visually-hidden">Chargement de la vidéo...</span>
-        </div>
-    </div>
+    <!-- Plyr Player Container -->
+    <div class="plyr__video-embed" id="{{ $playerId }}" data-plyr-provider="youtube" data-plyr-embed-id="{{ $videoId }}"></div>
 </div>
 @else
 <div class="text-center py-5">
@@ -98,12 +35,314 @@
 
 @push('styles')
 <style>
+/* Variables Plyr personnalisées selon la charte graphique */
+:root {
+    --plyr-color-main: #ffcc33;
+    --plyr-video-background: #000;
+    --plyr-video-controls-background: linear-gradient(to top, rgba(0, 51, 102, 0.95) 0%, rgba(0, 51, 102, 0.7) 50%, transparent 100%);
+    --plyr-video-control-color: #ffffff;
+    --plyr-video-control-color-hover: #ffcc33;
+    --plyr-audio-controls-background: rgba(0, 51, 102, 0.95);
+    --plyr-audio-control-color: #ffffff;
+    --plyr-menu-background: rgba(0, 51, 102, 0.95);
+    --plyr-menu-color: #ffffff;
+    --plyr-menu-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --plyr-tooltip-background: rgba(0, 51, 102, 0.95);
+    --plyr-tooltip-color: #ffffff;
+    --plyr-progress-loading-background: rgba(255, 255, 255, 0.25);
+    --plyr-progress-buffered-background: rgba(255, 255, 255, 0.4);
+    --plyr-range-thumb-background: #ffcc33;
+    --plyr-range-thumb-active-shadow-width: 0 0 12px rgba(255, 204, 51, 0.6);
+    --plyr-range-track-height: 6px;
+    --plyr-range-thumb-height: 18px;
+    --plyr-range-thumb-width: 18px;
+    --plyr-control-icon-size: 20px;
+    --plyr-control-spacing: 10px;
+    --plyr-control-radius: 50%;
+    --plyr-control-padding: 8px;
+    --plyr-video-controls-padding: 15px 10px;
+}
+
+/* Wrapper du lecteur */
+.plyr-player-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 51, 102, 0.3);
+    border: 2px solid rgba(0, 51, 102, 0.2);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.plyr-player-wrapper:hover {
+    box-shadow: 0 6px 30px rgba(0, 51, 102, 0.4);
+    border-color: rgba(255, 204, 51, 0.3);
+}
+
+/* Désactiver le menu contextuel pour empêcher le téléchargement */
+.plyr-player-wrapper,
+.plyr-player-wrapper * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Styles Plyr personnalisés */
+.plyr {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.plyr__video-wrapper {
+    background: #000;
+}
+
+/* Contrôles Plyr personnalisés */
+.plyr__controls {
+    background: var(--plyr-video-controls-background) !important;
+    backdrop-filter: blur(10px);
+    padding: var(--plyr-video-controls-padding) !important;
+}
+
+.plyr__control {
+    background: rgba(0, 51, 102, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.plyr__control:hover {
+    background: var(--plyr-color-main) !important;
+    color: #003366 !important;
+    border-color: var(--plyr-color-main) !important;
+    transform: scale(1.15) !important;
+    box-shadow: 0 4px 12px rgba(255, 204, 51, 0.5) !important;
+}
+
+.plyr__control:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(255, 204, 51, 0.3) !important;
+}
+
+.plyr__control[aria-pressed="true"] {
+    background: var(--plyr-color-main) !important;
+    color: #003366 !important;
+}
+
+/* Barre de progression */
+.plyr__progress__container {
+    height: 6px !important;
+    cursor: pointer;
+}
+
+.plyr__progress__container:hover {
+    height: 8px !important;
+}
+
+.plyr__progress__buffer {
+    background: rgba(255, 255, 255, 0.4) !important;
+}
+
+.plyr__progress__played {
+    background: linear-gradient(90deg, var(--plyr-color-main) 0%, #ff9933 100%) !important;
+    box-shadow: 0 0 8px rgba(255, 204, 51, 0.5) !important;
+}
+
+.plyr__progress__container:hover .plyr__progress__played {
+    box-shadow: 0 0 12px rgba(255, 204, 51, 0.7) !important;
+}
+
+/* Curseur de progression */
+.plyr__progress__container::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%);
+    width: 18px;
+    height: 18px;
+    background: var(--plyr-color-main);
+    border: 3px solid white;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 51, 102, 0.5), 0 0 12px rgba(255, 204, 51, 0.6);
+    pointer-events: none;
+}
+
+.plyr__progress__container:hover::before {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.3);
+}
+
+/* Volume */
+.plyr__volume {
+    max-width: 90px;
+}
+
+.plyr__volume input[type="range"] {
+    color: var(--plyr-color-main) !important;
+}
+
+.plyr__volume input[type="range"]::-webkit-slider-thumb {
+    background: var(--plyr-color-main) !important;
+    border: 2px solid white !important;
+    box-shadow: 0 2px 6px rgba(0, 51, 102, 0.4) !important;
+}
+
+.plyr__volume input[type="range"]::-moz-range-thumb {
+    background: var(--plyr-color-main) !important;
+    border: 2px solid white !important;
+    box-shadow: 0 2px 6px rgba(0, 51, 102, 0.4) !important;
+}
+
+/* Temps */
+.plyr__time {
+    color: white !important;
+    font-weight: 600 !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Menu (qualité, etc.) */
+.plyr__menu {
+    background: var(--plyr-menu-background) !important;
+    border: 2px solid var(--plyr-color-main) !important;
+    border-radius: 8px !important;
+    box-shadow: var(--plyr-menu-shadow) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+.plyr__menu__container button {
+    color: white !important;
+    transition: all 0.2s ease !important;
+}
+
+.plyr__menu__container button:hover,
+.plyr__menu__container button[aria-checked="true"] {
+    background: rgba(255, 204, 51, 0.15) !important;
+    color: var(--plyr-color-main) !important;
+}
+
+.plyr__menu__container button[aria-checked="true"] {
+    background: rgba(255, 204, 51, 0.25) !important;
+    font-weight: 700 !important;
+    border-left: 3px solid var(--plyr-color-main) !important;
+}
+
+/* Tooltip */
+.plyr__tooltip {
+    background: var(--plyr-tooltip-background) !important;
+    color: var(--plyr-tooltip-color) !important;
+    border: 1px solid var(--plyr-color-main) !important;
+}
+
+/* Bouton plein écran */
+.plyr__control[data-plyr="fullscreen"] {
+    background: rgba(0, 51, 102, 0.95) !important;
+}
+
+.plyr__control[data-plyr="fullscreen"]:hover {
+    background: var(--plyr-color-main) !important;
+}
+
+/* Watermark */
+.video-watermark {
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 51, 102, 0.95) !important;
+    color: white;
+    z-index: 10;
+    display: none;
+    backdrop-filter: blur(10px);
+    border: 2px solid var(--plyr-color-main);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.video-watermark.show {
+    display: block;
+}
+
+.watermark-content {
+    background: transparent;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .plyr__control {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    
+    .plyr__time {
+        font-size: 0.75rem !important;
+    }
+    
+    .plyr__controls {
+        padding: 12px 8px !important;
+    }
+    
+    .video-watermark {
+        bottom: 10px;
+        right: 10px;
+        font-size: 0.7rem;
+        padding: 0.5rem !important;
+    }
+}
+
 /* Video Player Container */
 .plyr-player-container {
     width: 100%;
     height: 100%;
     display: block !important;
     visibility: visible !important;
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 51, 102, 0.3);
+    border: 2px solid rgba(0, 51, 102, 0.2);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.plyr-player-container:hover {
+    box-shadow: 0 6px 30px rgba(0, 51, 102, 0.4);
+    border-color: rgba(255, 204, 51, 0.3);
+}
+
+/* Désactiver le menu contextuel pour empêcher le téléchargement */
+.plyr-player-container,
+.plyr-player-container * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.plyr-player-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    pointer-events: none;
 }
 
 .video-wrapper {
@@ -117,25 +356,40 @@
     pointer-events: none;
 }
 
+/* Désactiver le menu contextuel sur l'iframe */
+.youtube-iframe-container iframe {
+    pointer-events: none;
+}
+
 .video-watermark {
     bottom: 20px;
     right: 20px;
-    background: rgba(0, 0, 0, 0.8) !important;
+    background: var(--plyr-bg-dark) !important;
     color: white;
     z-index: 10;
     display: none;
-    backdrop-filter: blur(5px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid var(--plyr-accent-color);
     border-radius: 8px;
     font-size: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .video-watermark.show {
     display: block;
 }
 
+.watermark-content {
+    background: transparent;
+}
+
 .plyr-loading {
     z-index: 5;
+}
+
+.plyr-loading .spinner-border {
+    color: var(--plyr-accent-color) !important;
+    border-width: 3px;
 }
 
 /* Contrôles personnalisés */
@@ -158,21 +412,24 @@
 }
 
 .video-controls-bottom {
-    background: linear-gradient(to top, rgba(0,51,102,0.9) 0%, rgba(0,51,102,0.7) 50%, transparent 100%);
+    background: linear-gradient(to top, var(--plyr-bg-dark) 0%, var(--plyr-bg-light) 50%, transparent 100%);
     padding: 15px 10px;
     z-index: 101;
+    backdrop-filter: blur(10px);
 }
 
-/* Progress bar */
+/* Progress bar - Style charte graphique */
 .video-progress-bar {
     position: relative;
-    height: 5px;
+    height: 6px;
     cursor: pointer;
     transition: height 0.2s ease;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .video-progress-bar:hover {
-    height: 7px;
+    height: 8px;
 }
 
 .video-progress-track {
@@ -181,7 +438,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.25);
     border-radius: 3px;
     pointer-events: none;
 }
@@ -191,7 +448,7 @@
     top: 0;
     left: 0;
     height: 100%;
-    background: rgba(255,255,255,0.5);
+    background: rgba(255, 255, 255, 0.4);
     border-radius: 3px;
     width: 0%;
     pointer-events: none;
@@ -202,11 +459,12 @@
     top: 0;
     left: 0;
     height: 100%;
-    background: #ffcc33;
+    background: linear-gradient(90deg, var(--plyr-accent-color) 0%, #ff9933 100%);
     border-radius: 3px;
     width: 0%;
     transition: width 0.1s linear;
     pointer-events: none;
+    box-shadow: 0 0 8px rgba(255, 204, 51, 0.5);
 }
 
 .video-progress-handle {
@@ -214,51 +472,61 @@
     top: 50%;
     left: 0%;
     transform: translate(-50%, -50%);
-    width: 16px;
-    height: 16px;
-    background: #ffcc33;
+    width: 18px;
+    height: 18px;
+    background: var(--plyr-accent-color);
+    border: 3px solid white;
     border-radius: 50%;
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s ease;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0, 51, 102, 0.5), 0 0 12px rgba(255, 204, 51, 0.6);
     pointer-events: auto;
 }
 
 .video-progress-bar:hover .video-progress-handle {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.2);
+    transform: translate(-50%, -50%) scale(1.3);
 }
 
 .control-btn {
     border-radius: 50%;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
-    background: rgba(255,255,255,0.95);
-    color: #003366;
-    transition: all 0.2s ease;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: var(--plyr-bg-dark);
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .control-btn:hover {
-    background: rgba(255,255,255,1);
-    transform: scale(1.1);
-    box-shadow: 0 2px 8px rgba(0,51,102,0.3);
+    background: var(--plyr-accent-color);
+    color: var(--plyr-primary-color);
+    border-color: var(--plyr-accent-color);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(255, 204, 51, 0.5);
+}
+
+.control-btn:active {
+    transform: scale(1.05);
 }
 
 .control-btn i {
-    font-size: 0.875rem;
+    font-size: 0.9rem;
 }
 
 .video-time {
     font-size: 0.875rem;
     font-weight: 600;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    color: white;
+    letter-spacing: 0.5px;
 }
 
-/* Volume control */
+/* Volume control - Style charte graphique */
 .volume-control {
     position: relative;
 }
@@ -270,15 +538,15 @@
 }
 
 .volume-control:hover .volume-slider-container {
-    width: 80px;
+    width: 90px;
 }
 
 .volume-slider {
     position: relative;
-    width: 80px;
-    height: 4px;
+    width: 90px;
+    height: 5px;
     cursor: pointer;
-    margin: 0 10px;
+    margin: 0 12px;
 }
 
 .volume-slider-track {
@@ -287,8 +555,8 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255,255,255,0.3);
-    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
 }
 
 .volume-slider-fill {
@@ -296,10 +564,11 @@
     top: 0;
     left: 0;
     height: 100%;
-    background: #ffcc33;
-    border-radius: 2px;
+    background: linear-gradient(90deg, var(--plyr-accent-color) 0%, #ff9933 100%);
+    border-radius: 3px;
     width: 100%;
     transition: width 0.1s linear;
+    box-shadow: 0 0 6px rgba(255, 204, 51, 0.4);
 }
 
 .volume-slider-handle {
@@ -307,19 +576,21 @@
     top: 50%;
     left: 0;
     transform: translate(-50%, -50%);
-    width: 12px;
-    height: 12px;
-    background: #ffcc33;
+    width: 14px;
+    height: 14px;
+    background: var(--plyr-accent-color);
+    border: 2px solid white;
     border-radius: 50%;
     opacity: 0;
     transition: opacity 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 51, 102, 0.4);
 }
 
 .volume-slider:hover .volume-slider-handle {
     opacity: 1;
 }
 
-/* Quality dropdown */
+/* Quality dropdown - Style charte graphique */
 .quality-dropdown .dropdown-toggle {
     border: none;
 }
@@ -329,34 +600,67 @@
 }
 
 .quality-dropdown .dropdown-menu {
-    background: rgba(0,51,102,0.95);
-    border: 1px solid rgba(255,255,255,0.2);
-    min-width: 100px;
+    background: var(--plyr-bg-dark);
+    border: 2px solid var(--plyr-accent-color);
+    min-width: 120px;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem 0;
 }
 
 .quality-dropdown .dropdown-item {
     color: white;
-    padding: 0.5rem 1rem;
+    padding: 0.65rem 1.25rem;
     transition: all 0.2s ease;
+    font-size: 0.875rem;
 }
 
 .quality-dropdown .dropdown-item:hover {
-    background: rgba(255,255,255,0.1);
-    color: #ffcc33;
+    background: rgba(255, 204, 51, 0.15);
+    color: var(--plyr-accent-color);
+    padding-left: 1.5rem;
 }
 
 .quality-dropdown .dropdown-item.active {
-    background: rgba(255,204,51,0.2);
-    color: #ffcc33;
-    font-weight: 600;
+    background: rgba(255, 204, 51, 0.25);
+    color: var(--plyr-accent-color);
+    font-weight: 700;
+    border-left: 3px solid var(--plyr-accent-color);
 }
 
+/* Responsive styles */
 @media (max-width: 768px) {
     .video-watermark {
         bottom: 10px;
         right: 10px;
         font-size: 0.7rem;
         padding: 0.5rem !important;
+    }
+    
+    .control-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .control-btn i {
+        font-size: 0.8rem;
+    }
+    
+    .video-time {
+        font-size: 0.75rem;
+    }
+    
+    .video-controls-bottom {
+        padding: 12px 8px;
+    }
+    
+    .video-progress-bar {
+        height: 5px;
+    }
+    
+    .video-progress-bar:hover {
+        height: 6px;
     }
 }
 </style>
@@ -369,376 +673,87 @@
     
     const playerId = '{{ $playerId }}';
     const videoId = '{{ $videoId }}';
-    const container = document.getElementById('container-{{ $playerId }}');
-    const loading = document.getElementById('loading-{{ $playerId }}');
+    const playerElement = document.getElementById('{{ $playerId }}');
+    const wrapper = document.getElementById('wrapper-{{ $playerId }}');
     const watermark = document.getElementById('watermark-{{ $playerId }}');
     const isPreview = {{ $isPreview ? 'true' : 'false' }};
     const isAuth = {{ auth()->check() ? 'true' : 'false' }};
     
-    if (!container) return;
-    
-    let youtubePlayer = null;
-    let isPlaying = false;
-    let currentVolume = 100;
-    
-    // Charger l'API YouTube
-    function loadYouTubeAPI() {
-        console.log('🔧 Loading YouTube API...');
-        if (window.YT && window.YT.Player) {
-            console.log('✅ YouTube API already loaded');
-            initYouTubePlayer();
-        } else {
-            console.log('⏳ Loading YouTube API from CDN...');
-            const tag = document.createElement('script');
-            tag.src = 'https://www.youtube.com/iframe_api';
-            const firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-            window.onYouTubeIframeAPIReady = initYouTubePlayer;
-        }
+    if (!playerElement || !window.Plyr) {
+        console.warn('Plyr not available or element not found');
+        return;
     }
     
-    // Initialiser le lecteur YouTube
-    function initYouTubePlayer() {
-        console.log('🔧 Initializing YouTube player for:', videoId);
-        
-        const playerElement = document.getElementById(playerId);
-        if (!playerElement) {
-            console.error('❌ Player element not found:', playerId);
-            return;
-        }
-        
-        youtubePlayer = new YT.Player(playerElement, {
-            height: '100%',
-            width: '100%',
-            videoId: videoId,
-            playerVars: {
-                autoplay: 0,
-                controls: 0,
-                disablekb: 1,
-                enablejsapi: 1,
-                fs: 0,
-                iv_load_policy: 3,
-                modestbranding: 1,
-                playsinline: 1,
+    // Fonction pour initialiser Plyr
+    function initPlyrPlayer() {
+        const player = new Plyr(playerElement, {
+            youtube: {
+                noCookie: false,
                 rel: 0,
                 showinfo: 0,
-                origin: window.location.origin
+                iv_load_policy: 3,
+                modestbranding: 1,
+                controls: 0,
+                disablekb: 1,
+                fs: 0,
+                cc_load_policy: 0
             },
-            events: {
-                onReady: onPlayerReady,
-                onStateChange: onPlayerStateChange,
-                onError: onPlayerError
-            }
+            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+            settings: ['quality', 'speed'],
+            keyboard: { focused: true, global: false },
+            tooltips: { controls: true, seek: true },
+            clickToPlay: true,
+            hideControls: true,
+            resetOnEnd: false,
+            disableContextMenu: true
         });
         
         // Sauvegarder la référence
-        window['plyr_' + playerId] = youtubePlayer;
-    }
-    
-    // Callback quand le lecteur est prêt
-    function onPlayerReady(event) {
-        console.log('✅ YouTube player ready');
-        if (loading) loading.style.display = 'none';
+        window['plyr_' + playerId] = player;
+        
+        // Désactiver le menu contextuel
+        if (wrapper) {
+            wrapper.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            wrapper.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+                return false;
+            });
+        }
         
         // Afficher le watermark si authentifié
         if (watermark && !isPreview && isAuth) {
-            setTimeout(() => {
-                watermark.classList.add('show');
-            }, 1000);
-        }
-        
-        // Ajouter les contrôles personnalisés
-        setupCustomControls();
-        
-        // Setup progress bar interaction
-        setupProgressBar();
-        
-        // Populate quality menu
-        setTimeout(populateQualityMenu, 1000);
-        
-        // Démarrer la mise à jour de la progress bar
-        setInterval(updateProgress, 100);
-    }
-    
-    // Callback pour les changements d'état
-    function onPlayerStateChange(event) {
-        const playBtn = document.getElementById('play-btn-' + playerId);
-        if (event.data === YT.PlayerState.PLAYING) {
-            isPlaying = true;
-            if (playBtn) {
-                playBtn.querySelector('i').classList.remove('fa-play');
-                playBtn.querySelector('i').classList.add('fa-pause');
-            }
-        } else {
-            isPlaying = false;
-            if (playBtn) {
-                playBtn.querySelector('i').classList.remove('fa-pause');
-                playBtn.querySelector('i').classList.add('fa-play');
-            }
-        }
-    }
-    
-    // Callback pour les erreurs
-    function onPlayerError(event) {
-        console.error('❌ YouTube player error:', event.data);
-    }
-    
-    // Formater le temps
-    function formatTime(seconds) {
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = Math.floor(seconds % 60);
-        
-        if (hrs > 0) {
-            return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-    
-    // Mettre à jour la progress bar
-    function updateProgress() {
-        if (!youtubePlayer) return;
-        
-        try {
-            const currentTime = youtubePlayer.getCurrentTime();
-            const duration = youtubePlayer.getDuration();
-            const buffered = youtubePlayer.getVideoLoadedFraction();
-            
-            if (duration && duration > 0) {
-                const percent = (currentTime / duration) * 100;
-                
-                const progressFilled = document.getElementById('progress-filled-' + playerId);
-                const progressHandle = document.getElementById('progress-handle-' + playerId);
-                const progressBuffered = document.getElementById('progress-buffered-' + playerId);
-                const timeDisplay = document.getElementById('time-' + playerId);
-                
-                if (progressFilled) progressFilled.style.width = percent + '%';
-                if (progressHandle) progressHandle.style.left = percent + '%';
-                if (progressBuffered) progressBuffered.style.width = (buffered * 100) + '%';
-                if (timeDisplay) timeDisplay.textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
-            }
-        } catch (e) {
-            // Ignorer les erreurs
-        }
-    }
-    
-    // Configurer les contrôles personnalisés
-    function setupCustomControls() {
-        const playBtn = document.getElementById('play-btn-' + playerId);
-        const fullscreenBtn = document.getElementById('fullscreen-btn-' + playerId);
-        const muteBtn = document.getElementById('mute-btn-' + playerId);
-        const volumeSlider = document.getElementById('volume-slider-' + playerId);
-        const volumeFill = document.getElementById('volume-fill-' + playerId);
-        const volumeHandle = document.getElementById('volume-handle-' + playerId);
-        const container = document.getElementById('container-{{ $playerId }}');
-        const wrapper = document.getElementById('video-wrapper-{{ $playerId }}');
-        
-        // Play/Pause
-        if (playBtn) {
-            playBtn.addEventListener('click', function() {
-                if (isPlaying) {
-                    youtubePlayer.pauseVideo();
-                } else {
-                    youtubePlayer.playVideo();
-                }
+            player.on('ready', function() {
+                setTimeout(() => {
+                    watermark.classList.add('show');
+                }, 1000);
             });
         }
         
-        // Fullscreen
-        if (fullscreenBtn && container) {
-            let isFullscreen = false;
-            fullscreenBtn.addEventListener('click', function() {
-                if (!isFullscreen) {
-                    if (container.requestFullscreen) {
-                        container.requestFullscreen();
-                    } else if (container.webkitRequestFullscreen) {
-                        container.webkitRequestFullscreen();
-                    } else if (container.mozRequestFullScreen) {
-                        container.mozRequestFullScreen();
-                    }
-                    fullscreenBtn.querySelector('i').classList.remove('fa-expand');
-                    fullscreenBtn.querySelector('i').classList.add('fa-compress');
-                    isFullscreen = true;
-                } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    } else if (document.webkitExitFullscreen) {
-                        document.webkitExitFullscreen();
-                    } else if (document.mozCancelFullScreen) {
-                        document.mozCancelFullScreen();
-                    }
-                    fullscreenBtn.querySelector('i').classList.remove('fa-compress');
-                    fullscreenBtn.querySelector('i').classList.add('fa-expand');
-                    isFullscreen = false;
-                }
-            });
-        }
-        
-        // Mute/Unmute
-        if (muteBtn) {
-            muteBtn.addEventListener('click', function() {
-                if (currentVolume === 0) {
-                    currentVolume = 100;
-                    youtubePlayer.setVolume(100);
-                    muteBtn.querySelector('i').classList.remove('fa-volume-mute');
-                    muteBtn.querySelector('i').classList.add('fa-volume-up');
-                } else {
-                    currentVolume = 0;
-                    youtubePlayer.setVolume(0);
-                    muteBtn.querySelector('i').classList.remove('fa-volume-up');
-                    muteBtn.querySelector('i').classList.add('fa-volume-mute');
-                }
-                updateVolumeDisplay();
-            });
-        }
-        
-        // Volume slider
-        if (volumeSlider) {
-            // Initialize volume display
-            updateVolumeDisplay();
-            
-            volumeSlider.addEventListener('click', function(e) {
-                const rect = volumeSlider.getBoundingClientRect();
-                const percent = (e.clientX - rect.left) / rect.width;
-                currentVolume = Math.max(0, Math.min(100, percent * 100));
-                youtubePlayer.setVolume(currentVolume);
-                updateVolumeDisplay();
-                
-                // Update mute button icon
-                if (muteBtn) {
-                    if (currentVolume === 0) {
-                        muteBtn.querySelector('i').classList.remove('fa-volume-up', 'fa-volume-down');
-                        muteBtn.querySelector('i').classList.add('fa-volume-mute');
-                    } else if (currentVolume < 50) {
-                        muteBtn.querySelector('i').classList.remove('fa-volume-mute', 'fa-volume-up');
-                        muteBtn.querySelector('i').classList.add('fa-volume-down');
-                    } else {
-                        muteBtn.querySelector('i').classList.remove('fa-volume-mute', 'fa-volume-down');
-                        muteBtn.querySelector('i').classList.add('fa-volume-up');
-                    }
-                }
-            });
-        }
-        
-        // Quality dropdown
-        const qualityMenu = document.getElementById('quality-menu-' + playerId);
-        if (qualityMenu) {
-            qualityMenu.addEventListener('click', function(e) {
-                e.preventDefault();
-                const quality = e.target.getAttribute('data-quality');
-                if (quality) {
-                    console.log('Changing quality to:', quality);
-                    youtubePlayer.setPlaybackQuality(quality);
-                    e.target.closest('.dropdown-menu').querySelectorAll('.dropdown-item').forEach(item => {
-                        item.classList.remove('active');
-                    });
-                    e.target.classList.add('active');
-                }
-            });
-        }
-    }
-    
-    // Setup progress bar interaction
-    function setupProgressBar() {
-        const progressBar = document.getElementById('progress-bar-' + playerId);
-        if (progressBar) {
-            console.log('Progress bar found:', progressBar);
-            progressBar.addEventListener('click', function(e) {
-                console.log('Progress bar clicked at:', e.clientX);
-                e.stopPropagation();
-                const rect = progressBar.getBoundingClientRect();
-                const percent = (e.clientX - rect.left) / rect.width;
-                console.log('Percent:', percent);
-                const duration = youtubePlayer.getDuration();
-                console.log('Duration:', duration);
-                if (duration && duration > 0) {
-                    youtubePlayer.seekTo(duration * percent, true);
-                    console.log('Seeked to:', duration * percent);
-                }
-            });
-        } else {
-            console.log('Progress bar NOT found!');
-        }
-    }
-    
-    // Populate quality menu
-    function populateQualityMenu() {
-        try {
-            console.log('🔄 Populating quality menu...');
-            const qualityLevels = youtubePlayer.getAvailableQualityLevels();
-            console.log('Available quality levels:', qualityLevels);
-            const qualityMenu = document.getElementById('quality-menu-' + playerId);
-            console.log('Quality menu element:', qualityMenu);
-            
-            if (qualityMenu && qualityLevels && qualityLevels.length > 0) {
-                qualityMenu.innerHTML = '';
-                
-                const qualityNames = {
-                    'auto': 'Auto',
-                    'small': '240p',
-                    'medium': '360p',
-                    'large': '480p',
-                    'hd720': '720p',
-                    'hd1080': '1080p',
-                    'highres': '1080p+'
-                };
-                
-                qualityLevels.forEach(quality => {
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.className = 'dropdown-item';
-                    a.href = '#';
-                    a.setAttribute('data-quality', quality);
-                    a.textContent = qualityNames[quality] || quality;
-                    li.appendChild(a);
-                    qualityMenu.appendChild(li);
-                });
-                
-                console.log('✅ Quality menu populated with', qualityLevels.length, 'items');
-                
-                // Mark current quality as active
-                const currentQuality = youtubePlayer.getPlaybackQuality();
-                console.log('Current quality:', currentQuality);
-                const activeItem = qualityMenu.querySelector(`[data-quality="${currentQuality}"]`);
-                if (activeItem) {
-                    activeItem.classList.add('active');
-                    console.log('✅ Marked quality as active');
-                }
-            } else {
-                console.warn('⚠️ Could not populate quality menu - missing data');
-            }
-        } catch (e) {
-            console.error('❌ Error populating quality menu:', e);
-        }
-    }
-    
-    // Update volume display
-    function updateVolumeDisplay() {
-        const volumeFill = document.getElementById('volume-fill-' + playerId);
-        const volumeHandle = document.getElementById('volume-handle-' + playerId);
-        
-        if (volumeFill) {
-            volumeFill.style.width = currentVolume + '%';
-        }
-        if (volumeHandle) {
-            volumeHandle.style.left = currentVolume + '%';
-        }
+        return player;
     }
     
     // Détecter si le conteneur est dans un modal Bootstrap
-    const modalElement = container?.closest('.modal');
+    const modalElement = wrapper?.closest('.modal');
     
     if (modalElement) {
         // Si dans un modal, initialiser quand le modal est affiché
         modalElement.addEventListener('shown.bs.modal', function() {
             const existingPlayer = window['plyr_' + playerId];
             if (!existingPlayer) {
-                loadYouTubeAPI();
+                initPlyrPlayer();
             }
         });
     } else {
         // Sinon, initialiser normalement
-        loadYouTubeAPI();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPlyrPlayer);
+        } else {
+            initPlyrPlayer();
+        }
     }
 })();
 </script>

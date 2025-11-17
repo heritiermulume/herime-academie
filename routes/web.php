@@ -289,6 +289,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/students', [InstructorController::class, 'students'])->name('students');
         Route::get('/analytics', [InstructorController::class, 'analytics'])->name('analytics');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
+        
+        // Lesson Resources management
+        Route::post('/lessons/{lesson}/resources', [App\Http\Controllers\LessonResourceController::class, 'store'])
+            ->middleware('sso.validate')
+            ->name('lessons.resources.store');
+        Route::put('/lessons/{lesson}/resources/{resource}', [App\Http\Controllers\LessonResourceController::class, 'update'])
+            ->middleware('sso.validate')
+            ->name('lessons.resources.update');
+        Route::delete('/lessons/{lesson}/resources/{resource}', [App\Http\Controllers\LessonResourceController::class, 'destroy'])
+            ->middleware('sso.validate')
+            ->name('lessons.resources.destroy');
     });
 
     // Admin routes - avec validation SSO pour les actions de modification (appliqué individuellement)
@@ -499,6 +510,51 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/learning/courses/{course:slug}/lessons/{lesson}/submit', [LearningController::class, 'submitQuiz'])
         ->middleware('sso.validate')
         ->name('learning.submit-quiz');
+
+    // Lesson Notes routes
+    Route::prefix('/learning/courses/{course:slug}/lessons/{lesson}')->group(function () {
+        Route::get('/notes/all', [App\Http\Controllers\LessonNoteController::class, 'all'])->name('learning.notes.all');
+        Route::get('/notes', [App\Http\Controllers\LessonNoteController::class, 'index'])->name('learning.notes.index');
+        Route::post('/notes', [App\Http\Controllers\LessonNoteController::class, 'store'])
+            ->middleware('sso.validate')
+            ->name('learning.notes.store');
+        Route::put('/notes/{note}', [App\Http\Controllers\LessonNoteController::class, 'update'])
+            ->middleware('sso.validate')
+            ->name('learning.notes.update');
+        Route::delete('/notes/{note}', [App\Http\Controllers\LessonNoteController::class, 'destroy'])
+            ->middleware('sso.validate')
+            ->name('learning.notes.destroy');
+    });
+
+    // Lesson Resources routes
+    Route::prefix('/learning/courses/{course:slug}/lessons/{lesson}')->group(function () {
+        Route::get('/resources', [App\Http\Controllers\LessonResourceController::class, 'index'])->name('learning.resources.index');
+        Route::get('/resources/{resource}/download', [App\Http\Controllers\LessonResourceController::class, 'download'])->name('learning.resources.download');
+    });
+
+    // Lesson Discussions routes
+    Route::prefix('/learning/courses/{course:slug}/lessons/{lesson}')->group(function () {
+        Route::get('/discussions/all', [App\Http\Controllers\LessonDiscussionController::class, 'all'])->name('learning.discussions.all');
+        Route::get('/discussions', [App\Http\Controllers\LessonDiscussionController::class, 'index'])->name('learning.discussions.index');
+        Route::post('/discussions', [App\Http\Controllers\LessonDiscussionController::class, 'store'])
+            ->middleware('sso.validate')
+            ->name('learning.discussions.store');
+        Route::put('/discussions/{discussion}', [App\Http\Controllers\LessonDiscussionController::class, 'update'])
+            ->middleware('sso.validate')
+            ->name('learning.discussions.update');
+        Route::delete('/discussions/{discussion}', [App\Http\Controllers\LessonDiscussionController::class, 'destroy'])
+            ->middleware('sso.validate')
+            ->name('learning.discussions.destroy');
+        Route::post('/discussions/{discussion}/like', [App\Http\Controllers\LessonDiscussionController::class, 'toggleLike'])
+            ->middleware('sso.validate')
+            ->name('learning.discussions.like');
+        Route::post('/discussions/{discussion}/pin', [App\Http\Controllers\LessonDiscussionController::class, 'togglePin'])
+            ->middleware('sso.validate')
+            ->name('learning.discussions.pin');
+        Route::post('/discussions/{discussion}/answered', [App\Http\Controllers\LessonDiscussionController::class, 'markAsAnswered'])
+            ->middleware('sso.validate')
+            ->name('learning.discussions.answered');
+    });
 
     // Download routes
     Route::get('/courses/{course:slug}/download', [DownloadController::class, 'course'])->name('courses.download');

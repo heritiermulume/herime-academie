@@ -395,8 +395,8 @@ document.addEventListener('DOMContentLoaded', initializeCourse);
 }
 
 .lesson-item.active {
-    background-color: #e3f2fd;
-    border-left: 4px solid #003366;
+    background-color: #fff9e6;
+    border-left: 4px solid #ffcc33;
 }
 
 .lesson-item.completed {

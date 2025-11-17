@@ -52,6 +52,21 @@ class CourseLesson extends Model
         return $this->hasMany(LessonProgress::class, 'lesson_id');
     }
 
+    public function notes(): HasMany
+    {
+        return $this->hasMany(LessonNote::class, 'lesson_id');
+    }
+
+    public function resources(): HasMany
+    {
+        return $this->hasMany(LessonResource::class, 'lesson_id');
+    }
+
+    public function discussions(): HasMany
+    {
+        return $this->hasMany(LessonDiscussion::class, 'lesson_id');
+    }
+
     public function scopePublished($query)
     {
         return $query->where('is_published', true);

@@ -687,7 +687,7 @@ class Course extends Model
                                 'type' => 'link',
                                 'url' => route('learning.course', $this->slug),
                                 'class' => 'btn btn-success',
-                                'text' => 'Procéder à l\'apprentissage',
+                                'text' => 'Apprendre',
                                 'icon' => 'fas fa-play'
                             ],
                             [
@@ -695,7 +695,7 @@ class Course extends Model
                                 'url' => route('student.courses'),
                                 'class' => 'btn btn-outline-primary',
                                 'text' => 'Tableau de bord',
-                                'icon' => 'fas fa-download'
+                                'icon' => 'fas fa-th-large'
                             ]
                         ]
                     ];
@@ -706,38 +706,39 @@ class Course extends Model
                     'type' => 'link',
                     'url' => route('learning.course', $this->slug),
                     'class' => 'btn btn-success',
-                    'text' => 'Procéder à l\'apprentissage',
+                    'text' => 'Apprendre',
                     'icon' => 'fas fa-play'
                 ];
                 
             case 'purchased':
-                // Si le cours est téléchargeable, rediriger uniquement vers le tableau de bord étudiant
+                // Si le cours est téléchargeable, proposer l'inscription pour accéder au tableau de bord
                 if ($this->is_downloadable) {
                     return [
-                        'type' => 'link',
-                        'url' => route('student.dashboard'),
+                        'type' => 'form',
+                        'action' => route('student.courses.enroll', $this->slug),
                         'class' => 'btn btn-primary',
-                        'text' => 'Accéder au tableau de bord',
-                        'icon' => 'fas fa-tachometer-alt'
+                        'text' => 'S\'inscrire au cours',
+                        'icon' => 'fas fa-user-plus'
                     ];
                 }
                 
-                // Sinon, proposer de s'inscrire pour commencer l'apprentissage
+                // Pour les cours non téléchargeables, proposer de s'inscrire pour commencer l'apprentissage
                 return [
                     'type' => 'form',
                     'action' => route('student.courses.enroll', $this->slug),
                     'class' => 'btn btn-primary',
-                    'text' => 'Commencer l\'apprentissage',
-                    'icon' => 'fas fa-play'
+                    'text' => 'S\'inscrire au cours',
+                    'icon' => 'fas fa-user-plus'
                 ];
                 
             case 'free':
+                // Pour les cours gratuits, proposer l'inscription directe
                 return [
-                    'type' => 'link',
-                    'url' => route('courses.show', $this->slug),
+                    'type' => 'form',
+                    'action' => route('student.courses.enroll', $this->slug),
                     'class' => 'btn btn-primary',
-                    'text' => 'Voir le cours',
-                    'icon' => 'fas fa-eye'
+                    'text' => 'S\'inscrire au cours',
+                    'icon' => 'fas fa-user-plus'
                 ];
                 
             case 'purchase':

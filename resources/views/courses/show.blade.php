@@ -488,8 +488,706 @@
     display: none !important;
 }
 
+/* Styles personnalisés pour le lecteur Plyr dans le modal */
+:root {
+    --plyr-color-main: #ffcc33;
+    --plyr-video-background: #000;
+    --plyr-video-controls-background: linear-gradient(to top, rgba(0, 51, 102, 0.95) 0%, rgba(0, 51, 102, 0.7) 50%, transparent 100%);
+    --plyr-video-control-color: #ffffff;
+    --plyr-video-control-color-hover: #ffcc33;
+    --plyr-audio-controls-background: rgba(0, 51, 102, 0.95);
+    --plyr-audio-control-color: #ffffff;
+    --plyr-menu-background: rgba(0, 51, 102, 0.95);
+    --plyr-menu-color: #ffffff;
+    --plyr-menu-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --plyr-tooltip-background: rgba(0, 51, 102, 0.95);
+    --plyr-tooltip-color: #ffffff;
+    --plyr-progress-loading-background: rgba(255, 255, 255, 0.25);
+    --plyr-progress-buffered-background: rgba(255, 255, 255, 0.4);
+    --plyr-range-thumb-background: #ffcc33;
+    --plyr-range-thumb-active-shadow-width: 0 0 12px rgba(255, 204, 51, 0.6);
+    --plyr-range-track-height: 6px;
+    --plyr-range-thumb-height: 18px;
+    --plyr-range-thumb-width: 18px;
+    --plyr-control-icon-size: 20px;
+    --plyr-control-spacing: 10px;
+    --plyr-control-radius: 50%;
+    --plyr-control-padding: 8px;
+    --plyr-video-controls-padding: 15px 10px;
+    
+    /* Variables pour compatibilité */
+    --plyr-primary-color: #003366;
+    --plyr-accent-color: #ffcc33;
+    --plyr-bg-dark: rgba(0, 51, 102, 0.95);
+    --plyr-bg-light: rgba(0, 51, 102, 0.7);
+}
+
+/* Styles Plyr personnalisés */
+.plyr {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.plyr__video-wrapper {
+    background: #000;
+}
+
+/* Contrôles Plyr personnalisés */
+.plyr__controls {
+    background: var(--plyr-video-controls-background) !important;
+    backdrop-filter: blur(10px);
+    padding: var(--plyr-video-controls-padding) !important;
+}
+
+.plyr__control {
+    background: rgba(0, 51, 102, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.plyr__control:hover {
+    background: var(--plyr-color-main) !important;
+    color: #003366 !important;
+    border-color: var(--plyr-color-main) !important;
+    transform: scale(1.15) !important;
+    box-shadow: 0 4px 12px rgba(255, 204, 51, 0.5) !important;
+}
+
+.plyr__control:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(255, 204, 51, 0.3) !important;
+}
+
+.plyr__control[aria-pressed="true"] {
+    background: var(--plyr-color-main) !important;
+    color: #003366 !important;
+}
+
+/* Barre de progression */
+.plyr__progress__container {
+    height: 6px !important;
+    cursor: pointer;
+}
+
+.plyr__progress__container:hover {
+    height: 8px !important;
+}
+
+.plyr__progress__buffer {
+    background: rgba(255, 255, 255, 0.4) !important;
+}
+
+.plyr__progress__played {
+    background: linear-gradient(90deg, var(--plyr-color-main) 0%, #ff9933 100%) !important;
+    box-shadow: 0 0 8px rgba(255, 204, 51, 0.5) !important;
+}
+
+.plyr__progress__container:hover .plyr__progress__played {
+    box-shadow: 0 0 12px rgba(255, 204, 51, 0.7) !important;
+}
+
+/* Volume */
+.plyr__volume {
+    max-width: 90px;
+}
+
+.plyr__volume input[type="range"] {
+    color: var(--plyr-color-main) !important;
+}
+
+.plyr__volume input[type="range"]::-webkit-slider-thumb {
+    background: var(--plyr-color-main) !important;
+    border: 2px solid white !important;
+    box-shadow: 0 2px 6px rgba(0, 51, 102, 0.4) !important;
+}
+
+.plyr__volume input[type="range"]::-moz-range-thumb {
+    background: var(--plyr-color-main) !important;
+    border: 2px solid white !important;
+    box-shadow: 0 2px 6px rgba(0, 51, 102, 0.4) !important;
+}
+
+/* Temps */
+.plyr__time {
+    color: white !important;
+    font-weight: 600 !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* Menu (qualité, etc.) */
+.plyr__menu {
+    background: var(--plyr-menu-background) !important;
+    border: 2px solid var(--plyr-color-main) !important;
+    border-radius: 8px !important;
+    box-shadow: var(--plyr-menu-shadow) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+.plyr__menu__container button {
+    color: white !important;
+    transition: all 0.2s ease !important;
+}
+
+.plyr__menu__container button:hover,
+.plyr__menu__container button[aria-checked="true"] {
+    background: rgba(255, 204, 51, 0.15) !important;
+    color: var(--plyr-color-main) !important;
+}
+
+.plyr__menu__container button[aria-checked="true"] {
+    background: rgba(255, 204, 51, 0.25) !important;
+    font-weight: 700 !important;
+    border-left: 3px solid var(--plyr-color-main) !important;
+}
+
+/* Tooltip */
+.plyr__tooltip {
+    background: var(--plyr-tooltip-background) !important;
+    color: var(--plyr-tooltip-color) !important;
+    border: 1px solid var(--plyr-color-main) !important;
+}
+
+/* Bouton plein écran */
+.plyr__control[data-plyr="fullscreen"] {
+    background: rgba(0, 51, 102, 0.95) !important;
+}
+
+.plyr__control[data-plyr="fullscreen"]:hover {
+    background: var(--plyr-color-main) !important;
+}
+
+/* Styles responsives pour mobile et tablette */
+@media (max-width: 991.98px) {
+    /* Réduire la taille des contrôles */
+    .plyr__control {
+        width: 32px !important;
+        height: 32px !important;
+        padding: 6px !important;
+    }
+    
+    .plyr__control svg {
+        width: 16px !important;
+        height: 16px !important;
+    }
+    
+    /* Réduire le padding des contrôles */
+    .plyr__controls {
+        padding: 10px 8px !important;
+        gap: 6px !important;
+    }
+    
+    /* Réduire la taille de la barre de progression */
+    .plyr__progress__container {
+        height: 4px !important;
+    }
+    
+    .plyr__progress__container:hover {
+        height: 5px !important;
+    }
+    
+    /* Réduire la taille du volume */
+    .plyr__volume {
+        max-width: 70px !important;
+    }
+    
+    /* Réduire la taille du texte */
+    .plyr__time {
+        font-size: 0.75rem !important;
+        padding: 0 4px !important;
+    }
+    
+    /* Ajuster le menu des paramètres pour mobile */
+    .plyr__menu {
+        min-width: 140px !important;
+        max-width: 90vw !important;
+        font-size: 0.875rem !important;
+    }
+    
+    .plyr__menu__container {
+        padding: 0.25rem 0 !important;
+    }
+    
+    .plyr__menu__container button {
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.875rem !important;
+    }
+    
+    /* S'assurer que le menu s'affiche correctement */
+    .plyr__menu[data-plyr="settings"],
+    .plyr__menu[data-plyr="captions"],
+    .plyr__menu[data-plyr="quality"],
+    .plyr__menu[data-plyr="speed"] {
+        position: absolute !important;
+        bottom: 100% !important;
+        left: auto !important;
+        right: 0 !important;
+        margin-bottom: 8px !important;
+        z-index: 1000 !important;
+        max-height: 50vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* S'assurer que le conteneur du menu ne coupe pas le contenu */
+    .plyr__menu__container {
+        max-height: 100% !important;
+        overflow: visible !important;
+    }
+    
+    /* Ajuster le wrapper du menu pour éviter les coupures */
+    .plyr__control[aria-haspopup="true"] {
+        position: relative !important;
+    }
+    
+    /* S'assurer que le conteneur du lecteur permet au menu de s'afficher */
+    .plyr-player-container,
+    .plyr-player-wrapper {
+        overflow: visible !important;
+    }
+    
+    .plyr-player-container .plyr,
+    .plyr-player-wrapper .plyr {
+        overflow: visible !important;
+    }
+    
+    .plyr-player-container .plyr__video-wrapper,
+    .plyr-player-wrapper .plyr__video-wrapper {
+        overflow: hidden !important;
+    }
+    
+    /* S'assurer que les contrôles ont assez d'espace */
+    .plyr__controls {
+        position: relative !important;
+        z-index: 10 !important;
+    }
+    
+    /* S'assurer que le conteneur du modal permet au menu de s'afficher */
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer {
+        overflow: visible !important;
+    }
+    
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer .ratio {
+        overflow: visible !important;
+    }
+    
+    /* Bouton play large */
+    .plyr__control--overlaid {
+        width: 60px !important;
+        height: 60px !important;
+    }
+    
+    .plyr__control--overlaid svg {
+        width: 24px !important;
+        height: 24px !important;
+    }
+}
+
+/* Styles pour très petits écrans */
+@media (max-width: 575.98px) {
+    /* Encore plus petit pour les très petits écrans */
+    .plyr__control {
+        width: 28px !important;
+        height: 28px !important;
+        padding: 5px !important;
+    }
+    
+    .plyr__control svg {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    
+    .plyr__controls {
+        padding: 8px 6px !important;
+        gap: 4px !important;
+    }
+    
+    .plyr__time {
+        font-size: 0.7rem !important;
+        padding: 0 3px !important;
+    }
+    
+    .plyr__volume {
+        max-width: 60px !important;
+    }
+    
+    .plyr__menu {
+        min-width: 120px !important;
+        max-width: 85vw !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .plyr__menu__container button {
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    /* Menu des paramètres pour très petits écrans */
+    .plyr__menu[data-plyr="settings"],
+    .plyr__menu[data-plyr="captions"],
+    .plyr__menu[data-plyr="quality"],
+    .plyr__menu[data-plyr="speed"] {
+        max-height: 40vh !important;
+    }
+    
+    .plyr__control--overlaid {
+        width: 50px !important;
+        height: 50px !important;
+    }
+    
+    .plyr__control--overlaid svg {
+        width: 20px !important;
+        height: 20px !important;
+    }
+    
+    /* Barre de progression encore plus fine */
+    .plyr__progress__container {
+        height: 3px !important;
+    }
+    
+    .plyr__progress__container:hover {
+        height: 4px !important;
+    }
+}
+
+/* Video Player Container - Style charte graphique */
+.plyr-player-container {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: visible !important; /* Permettre au menu de s'afficher */
+    box-shadow: 0 4px 20px rgba(0, 51, 102, 0.3);
+    border: 2px solid rgba(0, 51, 102, 0.2);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* Le wrapper vidéo peut avoir overflow hidden, mais pas le conteneur */
+.plyr-player-container .plyr {
+    overflow: hidden;
+}
+
+.plyr-player-container .plyr__video-wrapper {
+    overflow: hidden;
+}
+
+.plyr-player-container:hover {
+    box-shadow: 0 6px 30px rgba(0, 51, 102, 0.4);
+    border-color: rgba(255, 204, 51, 0.3);
+}
+
+/* Désactiver le menu contextuel pour empêcher le téléchargement */
+.plyr-player-container,
+.plyr-player-container * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.youtube-iframe-container {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.youtube-iframe-container iframe {
+    pointer-events: none;
+}
+
+/* Vidéos directes avec Plyr */
+.plyr-player-video {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+}
+
+/* Contrôles personnalisés */
+.custom-video-controls {
+    top: 0;
+    left: 0;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.plyr-player-container:hover .custom-video-controls {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.video-controls-bottom {
+    background: linear-gradient(to top, var(--plyr-bg-dark) 0%, var(--plyr-bg-light) 50%, transparent 100%);
+    padding: 15px 10px;
+    z-index: 101;
+    backdrop-filter: blur(10px);
+}
+
+/* Progress bar - Style charte graphique */
+.video-progress-bar {
+    position: relative;
+    height: 6px;
+    cursor: pointer;
+    transition: height 0.2s ease;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.video-progress-bar:hover {
+    height: 8px;
+}
+
+.video-progress-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+.video-progress-buffered {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 3px;
+    width: 0%;
+    pointer-events: none;
+}
+
+.video-progress-filled {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--plyr-accent-color) 0%, #ff9933 100%);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.1s linear;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(255, 204, 51, 0.5);
+}
+
+.video-progress-handle {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-50%, -50%);
+    width: 18px;
+    height: 18px;
+    background: var(--plyr-accent-color);
+    border: 3px solid white;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 51, 102, 0.5), 0 0 12px rgba(255, 204, 51, 0.6);
+    pointer-events: auto;
+}
+
+.video-progress-bar:hover .video-progress-handle {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.3);
+}
+
+.control-btn {
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: var(--plyr-bg-dark);
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.control-btn:hover {
+    background: var(--plyr-accent-color);
+    color: var(--plyr-primary-color);
+    border-color: var(--plyr-accent-color);
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(255, 204, 51, 0.5);
+}
+
+.control-btn:active {
+    transform: scale(1.05);
+}
+
+.control-btn i {
+    font-size: 0.9rem;
+}
+
+.video-time {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    color: white;
+    letter-spacing: 0.5px;
+}
+
+/* Volume control - Style charte graphique */
+.volume-control {
+    position: relative;
+}
+
+.volume-slider-container {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.3s ease;
+}
+
+.volume-control:hover .volume-slider-container {
+    width: 90px;
+}
+
+.volume-slider {
+    position: relative;
+    width: 90px;
+    height: 5px;
+    cursor: pointer;
+    margin: 0 12px;
+}
+
+.volume-slider-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+}
+
+.volume-slider-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, var(--plyr-accent-color) 0%, #ff9933 100%);
+    border-radius: 3px;
+    width: 100%;
+    transition: width 0.1s linear;
+    box-shadow: 0 0 6px rgba(255, 204, 51, 0.4);
+}
+
+.volume-slider-handle {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    background: var(--plyr-accent-color);
+    border: 2px solid white;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 51, 102, 0.4);
+}
+
+.volume-slider:hover .volume-slider-handle {
+    opacity: 1;
+}
+
+/* Quality dropdown - Style charte graphique */
+.quality-dropdown .dropdown-toggle {
+    border: none;
+}
+
+.quality-dropdown .dropdown-toggle::after {
+    display: none;
+}
+
+.quality-dropdown .dropdown-menu {
+    background: var(--plyr-bg-dark);
+    border: 2px solid var(--plyr-accent-color);
+    min-width: 120px;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem 0;
+}
+
+.quality-dropdown .dropdown-item {
+    color: white;
+    padding: 0.65rem 1.25rem;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.quality-dropdown .dropdown-item:hover {
+    background: rgba(255, 204, 51, 0.15);
+    color: var(--plyr-accent-color);
+    padding-left: 1.5rem;
+}
+
+.quality-dropdown .dropdown-item.active {
+    background: rgba(255, 204, 51, 0.25);
+    color: var(--plyr-accent-color);
+    font-weight: 700;
+    border-left: 3px solid var(--plyr-accent-color);
+}
+
+.plyr-loading .spinner-border {
+    color: var(--plyr-accent-color) !important;
+    border-width: 3px;
+}
+
+.video-watermark {
+    background: var(--plyr-bg-dark) !important;
+    border: 2px solid var(--plyr-accent-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 768px) {
+    .control-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .control-btn i {
+        font-size: 0.8rem;
+    }
+    
+    .video-time {
+        font-size: 0.75rem;
+    }
+    
+    .video-controls-bottom {
+        padding: 12px 8px;
+    }
+    
+    .video-progress-bar {
+        height: 5px;
+    }
+    
+    .video-progress-bar:hover {
+        height: 6px;
+    }
+}
+
 .modal-fixed-height .modal-content {
     max-height: 95vh;
+    height: 95vh;
     display: flex;
     flex-direction: column;
 }
@@ -522,7 +1220,7 @@
         align-items: stretch !important;
     }
     
-    /* Colonne du lecteur - fixe, permet scroll discret pour voir la description */
+    /* Colonne du lecteur - fixe, sans scroll */
     .modal-fixed-height .modal-body .col-lg-8 {
         height: 100% !important;
         overflow: hidden !important;
@@ -532,32 +1230,39 @@
         position: relative !important;
     }
     
-    /* Conteneur du lecteur - scrollable discrètement pour voir la description */
+    /* Conteneur du lecteur - fixe, sans scroll */
     .modal-fixed-height .modal-body .col-lg-8 > div {
         height: 100% !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 51, 102, 0.05) transparent;
+        overflow: hidden !important;
         padding: 1rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
     }
     
-    /* Scrollbar très discrète pour le lecteur */
-    .modal-fixed-height .modal-body .col-lg-8 > div::-webkit-scrollbar {
-        width: 3px;
+    /* Conteneur vidéo - prend l'espace nécessaire */
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer {
+        flex: 0 0 auto !important;
+        width: 100% !important;
+        margin-bottom: 0.75rem !important;
     }
     
-    .modal-fixed-height .modal-body .col-lg-8 > div::-webkit-scrollbar-track {
-        background: transparent;
+    /* Forcer le ratio à ne pas dépasser une certaine hauteur */
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer.ratio {
+        max-height: 70vh !important;
+        overflow: visible !important; /* Permettre au menu de s'afficher */
     }
     
-    .modal-fixed-height .modal-body .col-lg-8 > div::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 51, 102, 0.05);
-        border-radius: 2px;
+    /* S'assurer que le ratio ne coupe pas le menu */
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer.ratio .plyr-player-container,
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer.ratio .plyr-player-wrapper {
+        overflow: visible !important;
     }
     
-    .modal-fixed-height .modal-body .col-lg-8 > div::-webkit-scrollbar-thumb:hover {
-        background-color: rgba(0, 51, 102, 0.15);
+    /* Info de la leçon - hauteur flexible mais limitée */
+    .modal-fixed-height .modal-body .col-lg-8 #previewLessonInfo {
+        flex: 0 0 auto !important;
+        flex-shrink: 0 !important;
     }
     
     /* Colonne de la liste - flex column avec hauteur fixe */
@@ -571,6 +1276,7 @@
         display: flex !important;
         flex-direction: column !important;
         align-items: stretch !important;
+        min-height: 0 !important;
     }
     
     /* En-tête de la liste - hauteur fixe, pas de shrink */
@@ -584,9 +1290,11 @@
     }
     
     /* Conteneur de la liste - scrollable, CRITIQUE: min-height: 0 permet le scroll dans flexbox */
+    .modal-fixed-height .modal-body .col-lg-4 > div#previewListContainer,
     .modal-fixed-height .modal-body .col-lg-4 #previewListContainer {
         flex: 1 1 auto !important;
         min-height: 0 !important;
+        height: 100% !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         position: relative !important;
@@ -599,9 +1307,8 @@
     
     /* Contenu de la liste - pas de contrainte de hauteur */
     .modal-fixed-height .modal-body .col-lg-4 #previewListContainer #previewListContent {
-        padding: 0 1rem 1rem 1rem;
-        display: block;
         /* Le contenu peut dépasser, déclenchant le scroll du parent */
+        /* Padding géré par les classes Bootstrap (px-4 pb-4) */
     }
     
     /* Styles de la scrollbar de la liste */
@@ -633,6 +1340,24 @@
     
     .modal-fixed-height .modal-body #previewVideoContainer {
         scroll-margin-top: 20px;
+    }
+    
+    /* Réduire l'espacement entre le titre et la liste des previews sur mobile */
+    .modal-fixed-height .modal-body .col-lg-4 > div:first-child {
+        padding: 1rem 1rem 0.25rem 1rem !important;
+    }
+    
+    .modal-fixed-height .modal-body .col-lg-4 > div:first-child h6 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .modal-fixed-height .modal-body #previewListContent {
+        padding-top: 0.5rem !important;
+    }
+    
+    /* Réduire la marge du premier élément de la liste */
+    .modal-fixed-height .modal-body #previewListContent > .preview-item:first-child {
+        margin-top: 0 !important;
     }
 }
 
@@ -2335,29 +3060,37 @@
                                     @else
                                         @if($canAccessCourse)
                                             <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
-                                                <i class="fas fa-play me-2"></i>Poursuivre l'apprentissage
+                                                <i class="fas fa-play me-2"></i>Apprendre
                                             </a>
                                         @else
                                             <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
                                                 @csrf
                                                 <input type="hidden" name="redirect_to" value="learn">
-                                                <button type="submit" class="btn btn-success btn-lg w-100">
-                                                    <i class="fas fa-play me-2"></i>Commencer l'apprentissage
+                                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                    <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
                                                 </button>
                                             </form>
                                         @endif
                                     @endif
                                 @else
-                                    @if($canAccessCourse)
+                                    @if($isEnrolled)
                                         @if($course->is_downloadable && $canDownloadCourse)
                                             <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
                                                 <i class="fas fa-download me-2"></i>Télécharger le cours
                                             </a>
                                         @else
                                         <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
-                                            <i class="fas fa-play me-2"></i>Continuer l'apprentissage
+                                            <i class="fas fa-play me-2"></i>Apprendre
                                             </a>
                                         @endif
+                                    @elseif($hasPurchased)
+                                        <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                                            @csrf
+                                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'dashboard' : 'learn' }}">
+                                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
+                                            </button>
+                                        </form>
                                     @else
                                         <button type="button" class="btn btn-outline-primary btn-lg w-100" onclick="addToCart({{ $course->id }})">
                                             <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
@@ -2492,23 +3225,31 @@
                                 <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="redirect_to" value="learn">
-                                    <button type="submit" class="btn btn-success w-100">
-                                        <i class="fas fa-play me-2"></i>Apprendre
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-user-plus me-2"></i>S'inscrire
                                     </button>
                                 </form>
                             @endif
                         @endif
                     @else
-                        @if($canAccessCourse)
+                        @if($isEnrolled)
                             @if($course->is_downloadable && $canDownloadCourse)
                                 <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary w-100">
                                     <i class="fas fa-download me-2"></i>Télécharger
                                 </a>
                             @else
                             <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success w-100">
-                                <i class="fas fa-play me-2"></i>Continuer
+                                <i class="fas fa-play me-2"></i>Apprendre
                             </a>
                             @endif
+                        @elseif($hasPurchased)
+                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'dashboard' : 'learn' }}">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-user-plus me-2"></i>S'inscrire
+                                </button>
+                            </form>
                         @else
                             <div class="d-grid gap-2">
                                 <button type="button" class="btn btn-outline-primary w-100" onclick="addToCart({{ $course->id }})">
@@ -2540,8 +3281,8 @@
             <div class="modal-body p-0">
                 <div class="row g-0 h-100">
                     <div class="col-lg-8" style="border-right: 1px solid #dee2e6;">
-                        <div class="p-4 h-100">
-                            <div class="ratio ratio-16x9 mb-3" id="previewVideoContainer">
+                        <div class="p-4">
+                            <div class="ratio ratio-16x9" id="previewVideoContainer">
                                 @if($course->video_preview_youtube_id)
                                     @php
                                         $previewLesson = new \App\Models\CourseLesson();
@@ -2555,10 +3296,9 @@
                                     </div>
                                 @elseif($course->video_preview_url)
                                     <div class="preview-player-wrapper active" data-preview-id="0">
-                                        <div class="ratio ratio-16x9">
-                                            <video controls class="w-100 h-100 rounded shadow-sm">
+                                        <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-plyr-player-0">
+                                            <video id="plyr-player-0" class="plyr-player-video" playsinline>
                                                 <source src="{{ $course->video_preview_url }}" type="video/mp4">
-                                                Votre navigateur ne supporte pas la lecture vidéo.
                                             </video>
                                         </div>
                                     </div>
@@ -2573,13 +3313,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-4 bg-light">
+                    <div class="col-lg-4 bg-light" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
                         <div class="p-4" style="flex-shrink: 0;">
                             <h6 class="fw-bold mb-3" style="color: #003366;">
                                 <i class="fas fa-list me-2"></i>Autres aperçus
                             </h6>
                         </div>
-                            <div id="previewListContainer">
+                            <div id="previewListContainer" style="flex: 1 1 auto; min-height: 0; height: 100%; overflow-y: auto;">
                             <div class="px-4 pb-4" id="previewListContent">
                                 <div class="text-center py-5">
                                     <div class="spinner-border text-primary" role="status">
@@ -2765,83 +3505,54 @@ function loadPreviewList() {
                         wrapper.setAttribute('data-preview-id', preview.id);
                         wrapper.style.display = 'none';
                         
-                        // Créer un player simple pour cette leçon
+                        // Créer un player Plyr pour cette leçon
                         if (preview.youtube_id) {
-                            // Pour YouTube, créer un conteneur qui sera initialisé par le composant plyr-player
-                            // On va créer une structure similaire au composant
+                            // Pour YouTube, créer un conteneur Plyr
                             const playerId = 'plyr-player-' + preview.id;
                             wrapper.innerHTML = `
-                                <div class="plyr-player-container position-absolute top-0 start-0 w-100 h-100" id="container-${playerId}" style="background: #000; border-radius: 8px; overflow: hidden; display: block !important; visibility: visible !important;">
-                                    <div class="video-wrapper position-relative w-100 h-100" id="video-wrapper-${playerId}">
-                                        <div id="${playerId}" class="youtube-iframe-container"></div>
-                                        <div class="custom-video-controls position-absolute w-100 h-100 d-flex flex-column" id="controls-${playerId}">
-                                            <div class="video-progress-container position-absolute w-100" id="progress-container-${playerId}" style="bottom: 60px;">
-                                                <div class="video-progress-bar mx-3" id="progress-bar-${playerId}">
-                                                    <div class="video-progress-track"></div>
-                                                    <div class="video-progress-buffered" id="progress-buffered-${playerId}"></div>
-                                                    <div class="video-progress-filled" id="progress-filled-${playerId}"></div>
-                                                    <div class="video-progress-handle" id="progress-handle-${playerId}"></div>
-                                                </div>
-                                            </div>
-                                            <div class="video-controls-bottom position-absolute w-100 d-flex align-items-center justify-content-between px-3" id="controls-bottom-${playerId}" style="bottom: 0;">
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <button class="btn btn-light btn-sm control-btn" id="play-btn-${playerId}" title="Lecture">
-                                                        <i class="fas fa-play"></i>
-                                                    </button>
-                                                    <span class="text-white video-time" id="time-${playerId}">00:00 / 00:00</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <div class="volume-control d-flex align-items-center">
-                                                        <button class="btn btn-light btn-sm control-btn" id="mute-btn-${playerId}" title="Son">
-                                                            <i class="fas fa-volume-up"></i>
-                                                        </button>
-                                                        <div class="volume-slider-container" id="volume-container-${playerId}">
-                                                            <div class="volume-slider" id="volume-slider-${playerId}">
-                                                                <div class="volume-slider-track"></div>
-                                                                <div class="volume-slider-fill" id="volume-fill-${playerId}"></div>
-                                                                <div class="volume-slider-handle" id="volume-handle-${playerId}"></div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="quality-dropdown dropdown">
-                                                        <button class="btn btn-light btn-sm control-btn dropdown-toggle" id="quality-btn-${playerId}" data-bs-toggle="dropdown" title="Qualité">
-                                                            <i class="fas fa-cog"></i>
-                                                        </button>
-                                                        <ul class="dropdown-menu dropdown-menu-end" id="quality-menu-${playerId}">
-                                                            <li><a class="dropdown-item" href="#" data-quality="auto">Auto</a></li>
-                                                        </ul>
-                                                    </div>
-                                                    <button class="btn btn-light btn-sm control-btn" id="fullscreen-btn-${playerId}" title="Plein écran">
-                                                        <i class="fas fa-expand"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="plyr-loading position-absolute top-50 start-50 translate-middle" id="loading-${playerId}">
-                                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                                            <span class="visually-hidden">Chargement de la vidéo...</span>
-                                        </div>
-                                    </div>
+                                <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                                    <div class="plyr__video-embed" id="${playerId}" data-plyr-provider="youtube" data-plyr-embed-id="${preview.youtube_id}"></div>
                                 </div>
                             `;
                             
                             previewVideoContainer.appendChild(wrapper);
                             
-                            // Note: Le player sera initialisé quand le wrapper sera affiché
-                            // Ne pas initialiser tous les players au chargement pour éviter de surcharger l'API YouTube
-                            console.log('Wrapper created for lesson', preview.id, 'with YouTube ID:', preview.youtube_id);
+                            // Initialiser Plyr quand le wrapper sera affiché
+                            console.log('Plyr wrapper created for lesson', preview.id, 'with YouTube ID:', preview.youtube_id);
                         } else if (preview.video_url) {
-                            // Pour les vidéos directes, créer un player vidéo HTML5
+                            // Pour les vidéos directes, créer un player Plyr
+                            const playerId = 'plyr-player-' + preview.id;
                             wrapper.innerHTML = `
-                                <div class="ratio ratio-16x9">
-                                    <video controls class="w-100 h-100 rounded shadow-sm">
+                                <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                                    <video id="${playerId}" class="plyr-player-video" playsinline>
                                         <source src="${preview.video_url}" type="video/mp4">
-                                        Votre navigateur ne supporte pas la lecture vidéo.
                                     </video>
                                 </div>
                             `;
                             previewVideoContainer.appendChild(wrapper);
+                            
+                            // Initialiser Plyr pour cette vidéo
+                            setTimeout(function() {
+                                const videoElement = document.getElementById(playerId);
+                                if (videoElement && window.Plyr) {
+                                    try {
+                                        const player = new Plyr(videoElement, {
+                                            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+                                            settings: ['quality', 'speed'],
+                                            keyboard: { focused: true, global: false },
+                                            tooltips: { controls: true, seek: true },
+                                            clickToPlay: true,
+                                            hideControls: true,
+                                            resetOnEnd: false,
+                                            disableContextMenu: true
+                                        });
+                                        window['plyr_' + playerId] = player;
+                                        console.log('✅ Plyr initialized for video:', playerId);
+                                    } catch (error) {
+                                        console.error('❌ Error initializing Plyr for video:', error);
+                                    }
+                                }
+                            }, 100);
                         }
                     }
                 });
@@ -2981,208 +3692,64 @@ function loadPreviewList() {
 }
 
 
-// Fonction pour initialiser un player YouTube pour une leçon d'aperçu
+// Fonction pour initialiser un player Plyr pour une leçon d'aperçu
 function initializePreviewPlayer(lessonId, youtubeId, isUnlisted) {
-    if (!youtubeId) return;
+    if (!youtubeId || !window.Plyr) {
+        console.warn('Plyr not available or no YouTube ID for player:', lessonId);
+        return;
+    }
     
     const playerId = 'plyr-player-' + lessonId;
-    const container = document.getElementById('container-' + playerId);
-    const loading = document.getElementById('loading-' + playerId);
-    
-    if (!container) {
-        console.warn('Container not found for player:', playerId);
-        return;
-    }
-    
-    // Vérifier si le player existe déjà
-    if (window['plyr_' + playerId]) {
-        return;
-    }
-    
-    // Charger l'API YouTube si nécessaire
-    function loadYouTubeAPI() {
-        if (window.YT && window.YT.Player) {
-            initYouTubePlayer();
-        } else {
-            const tag = document.createElement('script');
-            tag.src = 'https://www.youtube.com/iframe_api';
-            const firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-            
-            if (!window.onYouTubeIframeAPIReady) {
-                window.onYouTubeIframeAPIReady = function() {
-                    initYouTubePlayer();
-                };
-            } else {
-                const originalCallback = window.onYouTubeIframeAPIReady;
-                window.onYouTubeIframeAPIReady = function() {
-                    originalCallback();
-                    initYouTubePlayer();
-                };
-            }
-        }
-    }
-    
-    // Initialiser le lecteur YouTube
-    function initYouTubePlayer() {
         const playerElement = document.getElementById(playerId);
-        if (!playerElement) {
-            console.error('Player element not found:', playerId);
+    const wrapper = document.getElementById('wrapper-' + playerId);
+    
+    if (!playerElement || !wrapper) {
+        console.warn('Player element or wrapper not found for:', playerId);
             return;
         }
         
-        const youtubePlayer = new YT.Player(playerElement, {
-            height: '100%',
-            width: '100%',
-            videoId: youtubeId,
-            playerVars: {
-                autoplay: 0,
-                controls: 0,
-                disablekb: 1,
-                enablejsapi: 1,
-                fs: 0,
-                iv_load_policy: 3,
-                modestbranding: 1,
-                playsinline: 1,
+    // Initialiser Plyr
+    try {
+        const player = new Plyr(playerElement, {
+            youtube: {
+                noCookie: false,
                 rel: 0,
                 showinfo: 0,
-                origin: window.location.origin
+                iv_load_policy: 3,
+                modestbranding: 1,
+                controls: 0,
+                disablekb: 1,
+                fs: 0,
+                cc_load_policy: 0
             },
-            events: {
-                onReady: function(event) {
-                    if (loading) loading.style.display = 'none';
-                    setupCustomControlsForPreview(event.target, playerId);
-                    setupProgressBarForPreview(event.target, playerId);
-                    setInterval(function() {
-                        updateProgressForPreview(event.target, playerId);
-                    }, 100);
-                },
-                onStateChange: function(event) {
-                    const playBtn = document.getElementById('play-btn-' + playerId);
-                    if (event.data === YT.PlayerState.PLAYING) {
-                        if (playBtn) {
-                            playBtn.querySelector('i').classList.remove('fa-play');
-                            playBtn.querySelector('i').classList.add('fa-pause');
-                        }
-                    } else {
-                        if (playBtn) {
-                            playBtn.querySelector('i').classList.remove('fa-pause');
-                            playBtn.querySelector('i').classList.add('fa-play');
-                        }
-                    }
-                }
-            }
+            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+            settings: ['quality', 'speed'],
+            keyboard: { focused: true, global: false },
+            tooltips: { controls: true, seek: true },
+            clickToPlay: true,
+            hideControls: true,
+            resetOnEnd: false,
+            disableContextMenu: true
         });
         
         // Sauvegarder la référence
-        window['plyr_' + playerId] = youtubePlayer;
-    }
-    
-    // Configurer les contrôles personnalisés
-    function setupCustomControlsForPreview(player, pid) {
-        const playBtn = document.getElementById('play-btn-' + pid);
-        const fullscreenBtn = document.getElementById('fullscreen-btn-' + pid);
-        const muteBtn = document.getElementById('mute-btn-' + pid);
-        const volumeSlider = document.getElementById('volume-slider-' + pid);
-        const container = document.getElementById('container-' + pid);
+        window['plyr_' + playerId] = player;
         
-        if (playBtn) {
-            playBtn.addEventListener('click', function() {
-                if (player.getPlayerState() === YT.PlayerState.PLAYING) {
-                    player.pauseVideo();
-                } else {
-                    player.playVideo();
-                }
-            });
-        }
+        // Désactiver le menu contextuel
+        wrapper.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
         
-        if (fullscreenBtn && container) {
-            fullscreenBtn.addEventListener('click', function() {
-                if (container.requestFullscreen) {
-                    container.requestFullscreen();
-                } else if (container.webkitRequestFullscreen) {
-                    container.webkitRequestFullscreen();
-                }
-            });
-        }
+        wrapper.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
         
-        if (muteBtn) {
-            muteBtn.addEventListener('click', function() {
-                if (player.isMuted()) {
-                    player.unMute();
-                    muteBtn.querySelector('i').classList.remove('fa-volume-mute');
-                    muteBtn.querySelector('i').classList.add('fa-volume-up');
-                } else {
-                    player.mute();
-                    muteBtn.querySelector('i').classList.remove('fa-volume-up');
-                    muteBtn.querySelector('i').classList.add('fa-volume-mute');
-                }
-            });
-        }
-        
-        if (volumeSlider) {
-            volumeSlider.addEventListener('click', function(e) {
-                const rect = volumeSlider.getBoundingClientRect();
-                const percent = (e.clientX - rect.left) / rect.width;
-                const volume = Math.max(0, Math.min(100, percent * 100));
-                player.setVolume(volume);
-            });
-        }
+        console.log('✅ Plyr player initialized for:', playerId);
+    } catch (error) {
+        console.error('❌ Error initializing Plyr player:', error);
     }
-    
-    // Configurer la barre de progression
-    function setupProgressBarForPreview(player, pid) {
-        const progressBar = document.getElementById('progress-bar-' + pid);
-        if (progressBar) {
-            progressBar.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const rect = progressBar.getBoundingClientRect();
-                const percent = (e.clientX - rect.left) / rect.width;
-                const duration = player.getDuration();
-                if (duration && duration > 0) {
-                    player.seekTo(duration * percent, true);
-                }
-            });
-        }
-    }
-    
-    // Mettre à jour la barre de progression
-    function updateProgressForPreview(player, pid) {
-        try {
-            const currentTime = player.getCurrentTime();
-            const duration = player.getDuration();
-            const buffered = player.getVideoLoadedFraction();
-            
-            if (duration && duration > 0) {
-                const percent = (currentTime / duration) * 100;
-                
-                const progressFilled = document.getElementById('progress-filled-' + pid);
-                const progressHandle = document.getElementById('progress-handle-' + pid);
-                const progressBuffered = document.getElementById('progress-buffered-' + pid);
-                const timeDisplay = document.getElementById('time-' + pid);
-                
-                if (progressFilled) progressFilled.style.width = percent + '%';
-                if (progressHandle) progressHandle.style.left = percent + '%';
-                if (progressBuffered) progressBuffered.style.width = (buffered * 100) + '%';
-                if (timeDisplay) {
-                    const formatTime = function(seconds) {
-                        const hrs = Math.floor(seconds / 3600);
-                        const mins = Math.floor((seconds % 3600) / 60);
-                        const secs = Math.floor(seconds % 60);
-                        if (hrs > 0) {
-                            return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                        }
-                        return `${mins}:${secs.toString().padStart(2, '0')}`;
-                    };
-                    timeDisplay.textContent = formatTime(currentTime) + ' / ' + formatTime(duration);
-                }
-            }
-        } catch (e) {
-            // Ignorer les erreurs
-        }
-    }
-    
-    loadYouTubeAPI();
 }
 
 // Fonction pour ouvrir un aperçu de leçon dans le modal
@@ -3278,74 +3845,61 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                     if (youtubeId) {
                         const playerId = 'plyr-player-' + lessonId;
                         wrapper.innerHTML = `
-                            <div class="plyr-player-container position-absolute top-0 start-0 w-100 h-100" id="container-${playerId}" style="background: #000; border-radius: 8px; overflow: hidden; display: block !important; visibility: visible !important;">
-                                <div class="video-wrapper position-relative w-100 h-100" id="video-wrapper-${playerId}">
-                                    <div id="${playerId}" class="youtube-iframe-container"></div>
-                                    <div class="custom-video-controls position-absolute w-100 h-100 d-flex flex-column" id="controls-${playerId}">
-                                        <div class="video-progress-container position-absolute w-100" id="progress-container-${playerId}" style="bottom: 60px;">
-                                            <div class="video-progress-bar mx-3" id="progress-bar-${playerId}">
-                                                <div class="video-progress-track"></div>
-                                                <div class="video-progress-buffered" id="progress-buffered-${playerId}"></div>
-                                                <div class="video-progress-filled" id="progress-filled-${playerId}"></div>
-                                                <div class="video-progress-handle" id="progress-handle-${playerId}"></div>
-                                            </div>
-                                        </div>
-                                        <div class="video-controls-bottom position-absolute w-100 d-flex align-items-center justify-content-between px-3" id="controls-bottom-${playerId}" style="bottom: 0;">
-                                            <div class="d-flex align-items-center gap-3">
-                                                <button class="btn btn-light btn-sm control-btn" id="play-btn-${playerId}" title="Lecture">
-                                                    <i class="fas fa-play"></i>
-                                                </button>
-                                                <span class="text-white video-time" id="time-${playerId}">00:00 / 00:00</span>
-                                            </div>
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="volume-control d-flex align-items-center">
-                                                    <button class="btn btn-light btn-sm control-btn" id="mute-btn-${playerId}" title="Son">
-                                                        <i class="fas fa-volume-up"></i>
-                                                    </button>
-                                                    <div class="volume-slider-container" id="volume-container-${playerId}">
-                                                        <div class="volume-slider" id="volume-slider-${playerId}">
-                                                            <div class="volume-slider-track"></div>
-                                                            <div class="volume-slider-fill" id="volume-fill-${playerId}"></div>
-                                                            <div class="volume-slider-handle" id="volume-handle-${playerId}"></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="quality-dropdown dropdown">
-                                                    <button class="btn btn-light btn-sm control-btn dropdown-toggle" id="quality-btn-${playerId}" data-bs-toggle="dropdown" title="Qualité">
-                                                        <i class="fas fa-cog"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end" id="quality-menu-${playerId}">
-                                                        <li><a class="dropdown-item" href="#" data-quality="auto">Auto</a></li>
-                                                    </ul>
-                                                </div>
-                                                <button class="btn btn-light btn-sm control-btn" id="fullscreen-btn-${playerId}" title="Plein écran">
-                                                    <i class="fas fa-expand"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="plyr-loading position-absolute top-50 start-50 translate-middle" id="loading-${playerId}">
-                                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                                        <span class="visually-hidden">Chargement de la vidéo...</span>
-                                    </div>
-                                </div>
+                            <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                                <div class="plyr__video-embed" id="${playerId}" data-plyr-provider="youtube" data-plyr-embed-id="${youtubeId}"></div>
                             </div>
                         `;
                         previewVideoContainer.appendChild(wrapper);
                         initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
                         targetWrapper = wrapper;
                     } else if (videoUrl) {
+                        const playerId = 'plyr-player-' + lessonId;
                         wrapper.innerHTML = `
-                            <div class="ratio ratio-16x9">
-                                <video controls class="w-100 h-100 rounded shadow-sm">
+                            <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                                <video id="${playerId}" class="plyr-player-video" playsinline>
                                     <source src="${videoUrl}" type="video/mp4">
-                                    Votre navigateur ne supporte pas la lecture vidéo.
                                 </video>
                             </div>
                         `;
                         previewVideoContainer.appendChild(wrapper);
                         targetWrapper = wrapper;
+                        
+                        // Initialiser Plyr pour cette vidéo
+                        setTimeout(function() {
+                            const videoElement = document.getElementById(playerId);
+                            if (videoElement && window.Plyr) {
+                                try {
+                                    const player = new Plyr(videoElement, {
+                                        controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+                                        settings: ['quality', 'speed'],
+                                        keyboard: { focused: true, global: false },
+                                        tooltips: { controls: true, seek: true },
+                                        clickToPlay: true,
+                                        hideControls: true,
+                                        resetOnEnd: false,
+                                        disableContextMenu: true
+                                    });
+                                    window['plyr_' + playerId] = player;
+                                    
+                                    // Désactiver le menu contextuel
+                                    const wrapperEl = document.getElementById('wrapper-' + playerId);
+                                    if (wrapperEl) {
+                                        wrapperEl.addEventListener('contextmenu', function(e) {
+                                            e.preventDefault();
+                                            return false;
+                                        });
+                                        wrapperEl.addEventListener('dragstart', function(e) {
+                                            e.preventDefault();
+                                            return false;
+                                        });
+                                    }
+                                    
+                                    console.log('✅ Plyr initialized for video:', playerId);
+                                } catch (error) {
+                                    console.error('❌ Error initializing Plyr for video:', error);
+                                }
+                            }
+                        }, 200);
                     }
                 }
             }
@@ -3369,74 +3923,61 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                 if (youtubeId) {
                     const playerId = 'plyr-player-' + lessonId;
                     wrapper.innerHTML = `
-                        <div class="plyr-player-container position-absolute top-0 start-0 w-100 h-100" id="container-${playerId}" style="background: #000; border-radius: 8px; overflow: hidden; display: block !important; visibility: visible !important;">
-                            <div class="video-wrapper position-relative w-100 h-100" id="video-wrapper-${playerId}">
-                                <div id="${playerId}" class="youtube-iframe-container"></div>
-                                <div class="custom-video-controls position-absolute w-100 h-100 d-flex flex-column" id="controls-${playerId}">
-                                    <div class="video-progress-container position-absolute w-100" id="progress-container-${playerId}" style="bottom: 60px;">
-                                        <div class="video-progress-bar mx-3" id="progress-bar-${playerId}">
-                                            <div class="video-progress-track"></div>
-                                            <div class="video-progress-buffered" id="progress-buffered-${playerId}"></div>
-                                            <div class="video-progress-filled" id="progress-filled-${playerId}"></div>
-                                            <div class="video-progress-handle" id="progress-handle-${playerId}"></div>
-                                        </div>
-                                    </div>
-                                    <div class="video-controls-bottom position-absolute w-100 d-flex align-items-center justify-content-between px-3" id="controls-bottom-${playerId}" style="bottom: 0;">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <button class="btn btn-light btn-sm control-btn" id="play-btn-${playerId}" title="Lecture">
-                                                <i class="fas fa-play"></i>
-                                            </button>
-                                            <span class="text-white video-time" id="time-${playerId}">00:00 / 00:00</span>
-                                        </div>
-                                        <div class="d-flex align-items-center gap-3">
-                                            <div class="volume-control d-flex align-items-center">
-                                                <button class="btn btn-light btn-sm control-btn" id="mute-btn-${playerId}" title="Son">
-                                                    <i class="fas fa-volume-up"></i>
-                                                </button>
-                                                <div class="volume-slider-container" id="volume-container-${playerId}">
-                                                    <div class="volume-slider" id="volume-slider-${playerId}">
-                                                        <div class="volume-slider-track"></div>
-                                                        <div class="volume-slider-fill" id="volume-fill-${playerId}"></div>
-                                                        <div class="volume-slider-handle" id="volume-handle-${playerId}"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="quality-dropdown dropdown">
-                                                <button class="btn btn-light btn-sm control-btn dropdown-toggle" id="quality-btn-${playerId}" data-bs-toggle="dropdown" title="Qualité">
-                                                    <i class="fas fa-cog"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" id="quality-menu-${playerId}">
-                                                    <li><a class="dropdown-item" href="#" data-quality="auto">Auto</a></li>
-                                                </ul>
-                                            </div>
-                                            <button class="btn btn-light btn-sm control-btn" id="fullscreen-btn-${playerId}" title="Plein écran">
-                                                <i class="fas fa-expand"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="plyr-loading position-absolute top-50 start-50 translate-middle" id="loading-${playerId}">
-                                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                                    <span class="visually-hidden">Chargement de la vidéo...</span>
-                                </div>
-                            </div>
+                        <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                            <div class="plyr__video-embed" id="${playerId}" data-plyr-provider="youtube" data-plyr-embed-id="${youtubeId}"></div>
                         </div>
                     `;
                     previewVideoContainer.appendChild(wrapper);
                     initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
                     targetWrapper = wrapper;
                 } else if (videoUrl) {
+                    const playerId = 'plyr-player-' + lessonId;
                     wrapper.innerHTML = `
-                        <div class="ratio ratio-16x9">
-                            <video controls class="w-100 h-100 rounded shadow-sm">
+                        <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                            <video id="${playerId}" class="plyr-player-video" playsinline>
                                 <source src="${videoUrl}" type="video/mp4">
-                                Votre navigateur ne supporte pas la lecture vidéo.
                             </video>
                         </div>
                     `;
                     previewVideoContainer.appendChild(wrapper);
                     targetWrapper = wrapper;
+                    
+                    // Initialiser Plyr pour cette vidéo
+                    setTimeout(function() {
+                        const videoElement = document.getElementById(playerId);
+                        if (videoElement && window.Plyr) {
+                            try {
+                                const player = new Plyr(videoElement, {
+                                    controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+                                    settings: ['quality', 'speed'],
+                                    keyboard: { focused: true, global: false },
+                                    tooltips: { controls: true, seek: true },
+                                    clickToPlay: true,
+                                    hideControls: true,
+                                    resetOnEnd: false,
+                                    disableContextMenu: true
+                                });
+                                window['plyr_' + playerId] = player;
+                                
+                                // Désactiver le menu contextuel
+                                const wrapperEl = document.getElementById('wrapper-' + playerId);
+                                if (wrapperEl) {
+                                    wrapperEl.addEventListener('contextmenu', function(e) {
+                                        e.preventDefault();
+                                        return false;
+                                    });
+                                    wrapperEl.addEventListener('dragstart', function(e) {
+                                        e.preventDefault();
+                                        return false;
+                                    });
+                                }
+                                
+                                console.log('✅ Plyr initialized for video:', playerId);
+                            } catch (error) {
+                                console.error('❌ Error initializing Plyr for video:', error);
+                            }
+                        }
+                    }, 200);
                 }
             }
         }
@@ -3445,6 +3986,56 @@ function openPreviewLesson(lessonId, clickedElement = null) {
     if (targetWrapper) {
         targetWrapper.style.display = 'block';
         targetWrapper.classList.add('active');
+        
+        // Initialiser Plyr si nécessaire
+        setTimeout(function() {
+            const playerElement = targetWrapper.querySelector('[id^="plyr-player-"]');
+            if (playerElement && window.Plyr) {
+                const playerId = playerElement.id;
+                const playerKey = 'plyr_' + playerId;
+                if (!window[playerKey]) {
+                    const youtubeId = playerElement.getAttribute('data-plyr-embed-id');
+                    if (youtubeId) {
+                        // C'est une vidéo YouTube
+                        const lessonId = targetWrapper.getAttribute('data-preview-id');
+                        const isUnlisted = lessonElement?.getAttribute('data-preview-is-unlisted') === '1';
+                        initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
+                    } else if (playerElement.tagName === 'VIDEO') {
+                        // C'est une vidéo directe
+                        try {
+                            const player = new Plyr(playerElement, {
+                                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+                                settings: ['quality', 'speed'],
+                                keyboard: { focused: true, global: false },
+                                tooltips: { controls: true, seek: true },
+                                clickToPlay: true,
+                                hideControls: true,
+                                resetOnEnd: false,
+                                disableContextMenu: true
+                            });
+                            window[playerKey] = player;
+                            
+                            // Désactiver le menu contextuel
+                            const wrapperEl = document.getElementById('wrapper-' + playerId);
+                            if (wrapperEl) {
+                                wrapperEl.addEventListener('contextmenu', function(e) {
+                                    e.preventDefault();
+                                    return false;
+                                });
+                                wrapperEl.addEventListener('dragstart', function(e) {
+                                    e.preventDefault();
+                                    return false;
+                                });
+                            }
+                            
+                            console.log('✅ Plyr initialized for video:', playerId);
+                        } catch (error) {
+                            console.error('❌ Error initializing Plyr for video:', error);
+                        }
+                    }
+                }
+            }
+        }, 200);
         
         // Sur mobile, scroller automatiquement vers le lecteur
         if (window.innerWidth < 992) {
@@ -3465,7 +4056,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
             }
         }
         
-        // Vérifier si le player YouTube existe et s'initialiser si nécessaire
+        // Vérifier si le player Plyr existe et s'initialiser si nécessaire
         if (lessonId !== 0) {
             // Attendre un peu pour s'assurer que le DOM est prêt
             setTimeout(function() {
@@ -3480,7 +4071,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                             const youtubeId = lessonElementData.getAttribute('data-preview-youtube-id') || '';
                             const isUnlisted = lessonElementData.getAttribute('data-preview-is-unlisted') === '1';
                             if (youtubeId) {
-                                console.log('Initializing player for lesson', lessonId, 'with YouTube ID:', youtubeId);
+                                console.log('Initializing Plyr player for lesson', lessonId, 'with YouTube ID:', youtubeId);
                                 initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
                             } else {
                                 console.warn('No YouTube ID found for lesson', lessonId);
@@ -3494,13 +4085,13 @@ function openPreviewLesson(lessonId, clickedElement = null) {
         // Arrêter les autres players s'ils sont en cours de lecture
         allWrappers.forEach(wrapper => {
             if (wrapper !== targetWrapper) {
-                const playerId = wrapper.querySelector('[id^="plyr-player-"], [id^="plyr-mobile-"]');
-                if (playerId) {
-                    const playerKey = 'plyr_' + playerId.id;
+                const playerElement = wrapper.querySelector('[id^="plyr-player-"], [id^="plyr-mobile-"]');
+                if (playerElement) {
+                    const playerKey = 'plyr_' + playerElement.id;
                     const existingPlayer = window[playerKey];
-                    if (existingPlayer && typeof existingPlayer.pauseVideo === 'function') {
+                    if (existingPlayer && typeof existingPlayer.pause === 'function') {
                         try {
-                            existingPlayer.pauseVideo();
+                            existingPlayer.pause();
                         } catch (e) {
                             console.log('Could not pause player:', e);
                         }
@@ -3538,6 +4129,56 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                         // Afficher le player correspondant
                         targetWrapper.style.display = 'block';
                         targetWrapper.classList.add('active');
+                        
+                        // Initialiser Plyr si nécessaire
+                        setTimeout(function() {
+                            const playerElement = targetWrapper.querySelector('[id^="plyr-player-"]');
+                            if (playerElement && window.Plyr) {
+                                const playerId = playerElement.id;
+                                const playerKey = 'plyr_' + playerId;
+                                if (!window[playerKey]) {
+                                    const youtubeId = playerElement.getAttribute('data-plyr-embed-id');
+                                    if (youtubeId) {
+                                        // C'est une vidéo YouTube
+                                        const lessonId = targetWrapper.getAttribute('data-preview-id');
+                                        const isUnlisted = document.querySelector('[data-preview-lesson="' + lessonId + '"]')?.getAttribute('data-preview-is-unlisted') === '1';
+                                        initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
+                                    } else if (playerElement.tagName === 'VIDEO') {
+                                        // C'est une vidéo directe
+                                        try {
+                                            const player = new Plyr(playerElement, {
+                                                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+                                                settings: ['quality', 'speed'],
+                                                keyboard: { focused: true, global: false },
+                                                tooltips: { controls: true, seek: true },
+                                                clickToPlay: true,
+                                                hideControls: true,
+                                                resetOnEnd: false,
+                                                disableContextMenu: true
+                                            });
+                                            window[playerKey] = player;
+                                            
+                                            // Désactiver le menu contextuel
+                                            const wrapperEl = document.getElementById('wrapper-' + playerId);
+                                            if (wrapperEl) {
+                                                wrapperEl.addEventListener('contextmenu', function(e) {
+                                                    e.preventDefault();
+                                                    return false;
+                                                });
+                                                wrapperEl.addEventListener('dragstart', function(e) {
+                                                    e.preventDefault();
+                                                    return false;
+                                                });
+                                            }
+                                            
+                                            console.log('✅ Plyr initialized for video:', playerId);
+                                        } catch (error) {
+                                            console.error('❌ Error initializing Plyr for video:', error);
+                                        }
+                                    }
+                                }
+                            }
+                        }, 200);
                         
                         // Fonction pour décoder les entités HTML
                         function decodeHtmlEntities(text) {
@@ -3608,6 +4249,69 @@ document.addEventListener('DOMContentLoaded', function() {
         // Écouter l'événement 'shown.bs.modal' (après que le modal soit complètement affiché)
         modal.addEventListener('shown.bs.modal', function() {
             console.log('🎬 Modal complètement ouvert, chargement de la liste des aperçus...');
+            
+            // Initialiser Plyr pour le lecteur principal (ID 0) s'il existe
+            setTimeout(function() {
+                const mainPlayerElement = document.querySelector('#plyr-player-0, [id^="plyr-player-0"]');
+                if (mainPlayerElement && window.Plyr) {
+                    const playerId = mainPlayerElement.id || 'plyr-player-0';
+                    const playerKey = 'plyr_' + playerId;
+                    if (!window[playerKey]) {
+                        try {
+                            // Vérifier si c'est une vidéo YouTube ou une vidéo directe
+                            const isYouTube = mainPlayerElement.classList.contains('plyr__video-embed') || 
+                                            mainPlayerElement.hasAttribute('data-plyr-provider');
+                            
+                            let playerConfig = {
+                                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
+                                settings: ['quality', 'speed'],
+                                keyboard: { focused: true, global: false },
+                                tooltips: { controls: true, seek: true },
+                                clickToPlay: true,
+                                hideControls: true,
+                                resetOnEnd: false,
+                                disableContextMenu: true
+                            };
+                            
+                            // Si c'est YouTube, ajouter la config YouTube
+                            if (isYouTube) {
+                                playerConfig.youtube = {
+                                    noCookie: false,
+                                    rel: 0,
+                                    showinfo: 0,
+                                    iv_load_policy: 3,
+                                    modestbranding: 1,
+                                    controls: 0,
+                                    disablekb: 1,
+                                    fs: 0,
+                                    cc_load_policy: 0
+                                };
+                            }
+                            
+                            const player = new Plyr(mainPlayerElement, playerConfig);
+                            window[playerKey] = player;
+                            
+                            // Désactiver le menu contextuel
+                            const wrapper = document.getElementById('wrapper-' + playerId) || mainPlayerElement.closest('.plyr-player-wrapper');
+                            if (wrapper) {
+                                wrapper.addEventListener('contextmenu', function(e) {
+                                    e.preventDefault();
+                                    return false;
+                                });
+                                wrapper.addEventListener('dragstart', function(e) {
+                                    e.preventDefault();
+                                    return false;
+                                });
+                            }
+                            
+                            console.log('✅ Plyr initialized for main player');
+                        } catch (error) {
+                            console.error('❌ Error initializing Plyr for main player:', error);
+                        }
+                    }
+                }
+            }, 300);
+            
             const container = document.getElementById('previewListContainer');
             const contentWrapper = document.getElementById('previewListContent');
             const colLg4 = container ? container.closest('.col-lg-4') : null;
@@ -3662,13 +4366,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Arrêter toutes les vidéos quand le modal s'ouvre (sauf celle active)
             document.querySelectorAll('.preview-player-wrapper').forEach(wrapper => {
                 if (!wrapper.classList.contains('active')) {
-                    const playerId = wrapper.querySelector('[id^="plyr-player-"], [id^="plyr-mobile-"]');
-                    if (playerId) {
-                        const playerKey = 'plyr_' + playerId.id;
+                    const playerElement = wrapper.querySelector('[id^="plyr-player-"], [id^="plyr-mobile-"]');
+                    if (playerElement) {
+                        const playerKey = 'plyr_' + playerElement.id;
                         const existingPlayer = window[playerKey];
-                        if (existingPlayer && typeof existingPlayer.pauseVideo === 'function') {
+                        if (existingPlayer && typeof existingPlayer.pause === 'function') {
                             try {
-                                existingPlayer.pauseVideo();
+                                existingPlayer.pause();
                             } catch (e) {
                                 console.error('Erreur lors de l\'arrêt de la vidéo:', e);
                             }
@@ -3806,6 +4510,79 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+});
+
+// Désactiver le menu contextuel et empêcher le téléchargement sur tous les lecteurs du modal
+document.addEventListener('DOMContentLoaded', function() {
+    function disableContextMenuOnPlayers() {
+        const players = document.querySelectorAll('.plyr-player-container');
+        players.forEach(function(container) {
+            // Désactiver le clic droit
+            container.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }, false);
+            
+            // Empêcher le drag and drop
+            container.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+                return false;
+            }, false);
+            
+            // Empêcher la sélection
+            container.addEventListener('selectstart', function(e) {
+                e.preventDefault();
+                return false;
+            }, false);
+            
+            // Empêcher le copier-coller
+            container.addEventListener('copy', function(e) {
+                e.preventDefault();
+                return false;
+            }, false);
+            
+            container.addEventListener('cut', function(e) {
+                e.preventDefault();
+                return false;
+            }, false);
+        });
+    }
+    
+    // Appliquer immédiatement
+    disableContextMenuOnPlayers();
+    
+    // Observer les nouveaux lecteurs ajoutés dynamiquement
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) { // Element node
+                    if (node.classList && node.classList.contains('plyr-player-container')) {
+                        disableContextMenuOnPlayers();
+                    } else if (node.querySelectorAll) {
+                        const newPlayers = node.querySelectorAll('.plyr-player-container');
+                        if (newPlayers.length > 0) {
+                            disableContextMenuOnPlayers();
+                        }
+                    }
+                }
+            });
+        });
+    });
+    
+    // Observer le modal pour les nouveaux lecteurs
+    const modal = document.getElementById('coursePreviewModal');
+    if (modal) {
+        observer.observe(modal, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Réappliquer quand le modal s'ouvre
+        modal.addEventListener('shown.bs.modal', function() {
+            setTimeout(disableContextMenuOnPlayers, 100);
+        });
+    }
 });
 </script>
 @endpush
