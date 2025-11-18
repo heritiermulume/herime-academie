@@ -96,21 +96,34 @@
         <div class="col-lg-9 col-md-8 order-1 order-lg-2">
             <div class="learning-content">
                 <!-- Video Player -->
-                <div class="video-container bg-dark">
-                    <div class="ratio ratio-16x9">
-                        <video id="lessonVideo" controls class="w-100 h-100" style="background: #000;">
+                <div class="video-container bg-dark" id="videoContainer" style="margin: 0; padding: 0;">
+                    <div class="ratio ratio-16x9" style="margin: 0; padding: 0; position: relative;">
+                        <!-- Container pour vidéo YouTube -->
+                        <div id="youtubePlayerContainer" style="display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; margin: 0; padding: 0;"></div>
+                        <!-- Container pour vidéo locale -->
+                        <video id="lessonVideo" controls class="w-100 h-100" style="background: #000; display: none; position: absolute; top: 0; left: 0; margin: 0; padding: 0; object-fit: contain;" controlsList="nodownload" disablePictureInPicture>
                             <source src="" type="video/mp4">
                             Votre navigateur ne supporte pas la lecture vidéo.
                         </video>
+                        <!-- Message par défaut -->
+                        <div id="noVideoMessage" class="d-flex align-items-center justify-content-center text-white" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; margin: 0; padding: 0;">
+                            <div class="text-center">
+                                <i class="fas fa-video fa-3x mb-3 text-muted"></i>
+                                <p class="text-muted">Sélectionnez une leçon pour commencer</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Text/PDF Viewer -->
+                <div id="textPdfViewerContainer" style="display: none; min-height: 600px; margin-bottom: 1rem;"></div>
 
                 <!-- Lesson Content -->
                 <div class="lesson-content p-4">
                     <div class="row">
                         <div class="col-lg-8">
-                            <h2 class="fw-bold mb-3" id="lessonTitle">Sélectionnez une leçon pour commencer</h2>
-                            <div id="lessonDescription" class="text-muted mb-4">
+                            <h2 class="lesson-title fw-bold mb-3" id="lessonTitle">Sélectionnez une leçon pour commencer</h2>
+                            <div id="lessonDescription" class="lesson-description text-muted mb-4">
                                 Choisissez une leçon dans la sidebar pour commencer votre apprentissage.
                             </div>
                             
@@ -175,6 +188,11 @@ let currentLesson = null;
 let courseData = @json($course);
 let enrollmentData = @json($enrollment);
 
+// S'assurer que courseData a un slug
+if (!courseData.slug) {
+    courseData.slug = '{{ $course->slug }}';
+}
+
 // Initialize course data
 function initializeCourse() {
     // Set up lesson click handlers
@@ -217,11 +235,103 @@ function loadLesson(lessonId) {
     document.getElementById('lessonActions').style.display = 'block';
     document.getElementById('lessonResources').style.display = 'block';
     
-    // Load video if it's a video lesson
-    if (lesson.type === 'video' && lesson.content_url) {
-        const video = document.getElementById('lessonVideo');
-        video.src = `/video/${lesson.id}/stream`;
-        video.load();
+    // Masquer tous les conteneurs d'abord
+    const videoContainer = document.getElementById('videoContainer');
+    const textPdfViewerContainer = document.getElementById('textPdfViewerContainer');
+    const video = document.getElementById('lessonVideo');
+    const youtubeContainer = document.getElementById('youtubePlayerContainer');
+    const noVideoMessage = document.getElementById('noVideoMessage');
+    
+    videoContainer.style.display = 'none';
+    textPdfViewerContainer.style.display = 'none';
+    
+    // Load content based on lesson type
+    if (lesson.type === 'video') {
+        // Afficher le conteneur vidéo
+        videoContainer.style.display = 'block';
+        
+        // Masquer tous les conteneurs vidéo
+        video.style.display = 'none';
+        youtubeContainer.style.display = 'none';
+        noVideoMessage.style.display = 'none';
+        
+        // Vérifier si c'est une vidéo YouTube
+        if (lesson.youtube_video_id) {
+            // Vidéo YouTube via youtube_video_id
+            youtubeContainer.style.display = 'block';
+            youtubeContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${lesson.youtube_video_id}?rel=0&modestbranding=1&iv_load_policy=3&controls=1&disablekb=1&fs=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width: 100%; height: 100%;"></iframe>`;
+            
+            // Initialiser le suivi de progression pour YouTube
+            initializeYouTubeProgressTracking(lesson.id, lesson.youtube_video_id);
+        } else if (lesson.content_url && (lesson.content_url.includes('youtube.com') || lesson.content_url.includes('youtu.be'))) {
+            // URL YouTube dans content_url
+            let videoId = '';
+            try {
+                if (lesson.content_url.includes('youtube.com/watch')) {
+                    const url = new URL(lesson.content_url);
+                    videoId = url.searchParams.get('v');
+                } else if (lesson.content_url.includes('youtu.be/')) {
+                    videoId = lesson.content_url.split('youtu.be/')[1].split('?')[0];
+                }
+            } catch (e) {
+                console.error('Error parsing YouTube URL:', e);
+            }
+            
+            if (videoId) {
+                youtubeContainer.style.display = 'block';
+                youtubeContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&controls=1&disablekb=1&fs=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width: 100%; height: 100%;"></iframe>`;
+                initializeYouTubeProgressTracking(lesson.id, videoId);
+            } else {
+                noVideoMessage.style.display = 'flex';
+            }
+        } else if (lesson.content_file_url || lesson.file_url || (lesson.content_url && !lesson.content_url.includes('http'))) {
+            // Vidéo locale du site (fichier uploadé)
+            const videoUrl = lesson.content_file_url || lesson.file_url || lesson.content_url || `/video/${lesson.id}/stream`;
+            video.style.display = 'block';
+            video.src = videoUrl;
+            video.load();
+            
+            // Initialiser le suivi de progression pour vidéo locale
+            initializeVideoProgressTracking(lesson.id, video);
+        } else if (lesson.content_url && lesson.content_url.includes('http') && !lesson.content_url.includes('youtube') && !lesson.content_url.includes('youtu.be')) {
+            // URL externe (Vimeo, etc.) - traiter comme vidéo locale si possible
+            video.style.display = 'block';
+            video.src = lesson.content_url;
+            video.load();
+            initializeVideoProgressTracking(lesson.id, video);
+        } else {
+            // Aucune vidéo disponible
+            noVideoMessage.style.display = 'flex';
+        }
+    } else if (lesson.type === 'text' || lesson.type === 'pdf') {
+        // Afficher le viewer texte/PDF
+        textPdfViewerContainer.style.display = 'block';
+        
+        // Créer un objet lesson pour le composant
+        const lessonData = {
+            id: lesson.id,
+            title: lesson.title,
+            description: lesson.description,
+            type: lesson.type,
+            duration: lesson.duration,
+            content_text: lesson.content_text,
+            content_file_url: lesson.content_file_url || lesson.file_url || lesson.content_url
+        };
+        
+        // Charger le viewer via fetch ou créer directement le HTML
+        loadTextViewer(lessonData);
+    } else {
+        // Autres types de leçons (quiz, assignment, etc.)
+        videoContainer.style.display = 'block';
+        video.style.display = 'none';
+        youtubeContainer.style.display = 'none';
+        noVideoMessage.style.display = 'flex';
+        noVideoMessage.innerHTML = `
+            <div class="text-center">
+                <i class="fas fa-${lesson.type === 'quiz' ? 'question-circle' : 'tasks'} fa-3x mb-3 text-muted"></i>
+                <p class="text-muted">Type de leçon: ${lesson.type}</p>
+            </div>
+        `;
     }
     
     // Update active lesson in sidebar
@@ -260,7 +370,7 @@ function loadLesson(lessonId) {
 function markLessonComplete() {
     if (!currentLesson) return;
     
-    fetch(`/student/courses/${courseData.id}/lessons/${currentLesson.id}/complete`, {
+    fetch(`/learning/courses/${courseData.slug}/lessons/${currentLesson.id}/complete`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -354,6 +464,399 @@ function showNotification(message, type) {
     }, 3000);
 }
 
+// Suivi de progression pour vidéo locale
+function initializeVideoProgressTracking(lessonId, videoElement) {
+    if (!videoElement) return;
+    
+    // Utiliser directement l'élément vidéo
+    const video = videoElement;
+    
+    let lastSavedTime = 0;
+    let isTracking = false;
+    
+    // Désactiver le menu contextuel et le téléchargement
+    video.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
+    
+    video.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+        return false;
+    });
+    
+    // Empêcher le glisser-déposer
+    video.addEventListener('drop', function(e) {
+        e.preventDefault();
+        return false;
+    });
+    
+    // Marquer la leçon comme commencée au premier play
+    video.addEventListener('play', function() {
+        if (!isTracking) {
+            isTracking = true;
+            // Marquer comme commencée
+            fetch(`/learning/courses/${courseData.slug}/lessons/${lessonId}/start`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ time_watched: Math.floor(video.currentTime) })
+            }).catch(err => console.error('Error starting lesson:', err));
+        }
+    });
+    
+    // Sauvegarder la progression toutes les 10 secondes
+    video.addEventListener('timeupdate', function() {
+        const currentTime = Math.floor(video.currentTime);
+        const duration = Math.floor(video.duration);
+        
+        // Sauvegarder toutes les 10 secondes ou si la différence est significative
+        if (currentTime - lastSavedTime >= 10 || (duration > 0 && currentTime >= duration * 0.9)) {
+            lastSavedTime = currentTime;
+            
+            const isCompleted = duration > 0 && currentTime >= duration * 0.95; // 95% = terminé
+            
+            fetch(`/learning/courses/${courseData.slug}/lessons/${lessonId}/progress`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    time_watched: currentTime,
+                    is_completed: isCompleted
+                })
+            }).catch(err => console.error('Error updating progress:', err));
+        }
+    });
+    
+    // Sauvegarder à la fin de la vidéo
+    video.addEventListener('ended', function() {
+        const duration = Math.floor(video.duration);
+        fetch(`/learning/courses/${courseData.slug}/lessons/${lessonId}/progress`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                time_watched: duration,
+                is_completed: true
+            })
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Marquer visuellement comme terminée
+                const lessonItem = document.querySelector(`[data-lesson-id="${lessonId}"]`);
+                if (lessonItem) {
+                    lessonItem.classList.add('completed');
+                    const icon = lessonItem.querySelector('.lesson-icon i');
+                    if (icon) {
+                        icon.className = 'fas fa-check-circle text-success';
+                    }
+                }
+                updateProgress();
+            }
+        }).catch(err => console.error('Error completing lesson:', err));
+    });
+}
+
+// Suivi de progression pour vidéo YouTube (basique - nécessiterait YouTube API pour un suivi précis)
+function initializeYouTubeProgressTracking(lessonId, videoId) {
+    // Pour YouTube, on ne peut pas tracker précisément sans YouTube API
+    // On marque juste comme commencée quand l'iframe est chargée
+    setTimeout(function() {
+        const iframe = document.querySelector('#youtubePlayerContainer iframe');
+        if (iframe) {
+            iframe.addEventListener('load', function() {
+                fetch(`/learning/courses/${courseData.slug}/lessons/${lessonId}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ time_watched: 0 })
+                }).catch(err => console.error('Error starting lesson:', err));
+            });
+            
+            // Si l'iframe est déjà chargée
+            if (iframe.complete) {
+                fetch(`/learning/courses/${courseData.slug}/lessons/${lessonId}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ time_watched: 0 })
+                }).catch(err => console.error('Error starting lesson:', err));
+            }
+        }
+    }, 100);
+}
+
+// Charger le viewer texte/PDF
+function loadTextViewer(lesson) {
+    const container = document.getElementById('textPdfViewerContainer');
+    if (!container) return;
+    
+    const viewerId = 'text-viewer-' + lesson.id;
+    const isPdf = lesson.type === 'pdf';
+    
+    // Créer le HTML du viewer
+    let html = `
+        <div class="text-viewer-container" id="${viewerId}">
+            <div class="text-viewer-toolbar d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+                <div class="d-flex align-items-center gap-3">
+                    ${lesson.duration ? `<span class="badge bg-primary"><i class="fas fa-clock"></i> ${lesson.duration} min</span>` : ''}
+                    <span class="badge bg-secondary">
+                        <i class="fas fa-${isPdf ? 'file-pdf' : 'file-alt'}"></i> ${isPdf ? 'PDF' : 'Texte'}
+                    </span>
+                </div>
+                <div class="text-viewer-actions">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullscreen('${viewerId}')" title="Plein écran">
+                        <i class="fas fa-expand" id="${viewerId}-expand-icon"></i>
+                        <i class="fas fa-compress d-none" id="${viewerId}-compress-icon"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="text-content p-4" id="${viewerId}-content">
+    `;
+    
+    if (isPdf && lesson.content_file_url) {
+        html += `
+                <div class="pdf-viewer-wrapper">
+                    <iframe src="${lesson.content_file_url}#toolbar=1" class="pdf-iframe" frameborder="0"></iframe>
+                </div>
+        `;
+    } else {
+        const content = lesson.content_text || 'Aucun contenu disponible.';
+        // Échapper le HTML et convertir les retours à la ligne
+        const escapedContent = content.replace(/\n/g, '<br>').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += `
+                <div class="text-body">
+                    ${escapedContent}
+                </div>
+        `;
+    }
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    
+    // Ajouter les styles si pas déjà présents
+    if (!document.getElementById('text-viewer-styles')) {
+        const style = document.createElement('style');
+        style.id = 'text-viewer-styles';
+        style.textContent = `
+            .text-viewer-container {
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                max-height: calc(100vh - 200px);
+                transition: all 0.3s ease;
+                position: relative;
+            }
+            .text-viewer-container.fullscreen {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 9999;
+                max-height: 100vh;
+                border-radius: 0;
+                margin: 0;
+            }
+            .text-viewer-toolbar {
+                flex-shrink: 0;
+                border-bottom: 1px solid #dee2e6;
+            }
+            .text-content {
+                flex: 1;
+                overflow-y: auto;
+                overflow-x: hidden;
+                min-height: 0;
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+            }
+            .text-body {
+                font-size: 1.1rem;
+                line-height: 1.8;
+                color: #333;
+                word-wrap: break-word;
+                max-width: 900px;
+                width: 100%;
+                margin: 0 auto;
+                padding: 0 1rem;
+            }
+            .text-body p { margin-bottom: 1.5rem; }
+            .text-body h1, .text-body h2, .text-body h3, .text-body h4, .text-body h5, .text-body h6 {
+                color: #003366;
+                margin-top: 2rem;
+                margin-bottom: 1rem;
+                font-weight: 600;
+            }
+            .text-body h1 { font-size: 2rem; }
+            .text-body h2 { font-size: 1.75rem; }
+            .text-body h3 { font-size: 1.5rem; }
+            .text-body h4 { font-size: 1.25rem; }
+            .text-body ul, .text-body ol {
+                margin-left: 2rem;
+                margin-bottom: 1.5rem;
+                padding-left: 1rem;
+            }
+            .text-body li { margin-bottom: 0.5rem; }
+            .text-body blockquote {
+                border-left: 4px solid #ffcc33;
+                padding-left: 1.5rem;
+                margin: 1.5rem 0;
+                font-style: italic;
+                color: #666;
+                background-color: #f8f9fa;
+                padding: 1rem 1.5rem;
+                border-radius: 4px;
+            }
+            .text-body code {
+                background-color: #f4f4f4;
+                padding: 0.2rem 0.4rem;
+                border-radius: 3px;
+                font-family: 'Courier New', monospace;
+                font-size: 0.9em;
+            }
+            .text-body pre {
+                background-color: #f4f4f4;
+                padding: 1rem;
+                border-radius: 4px;
+                overflow-x: auto;
+                margin: 1.5rem 0;
+            }
+            .text-body pre code {
+                background-color: transparent;
+                padding: 0;
+            }
+            .text-body img {
+                max-width: 100%;
+                height: auto;
+                border-radius: 4px;
+                margin: 1.5rem 0;
+            }
+            .text-body table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 1.5rem 0;
+            }
+            .text-body table th, .text-body table td {
+                border: 1px solid #dee2e6;
+                padding: 0.75rem;
+                text-align: left;
+            }
+            .text-body table th {
+                background-color: #f8f9fa;
+                font-weight: 600;
+                color: #003366;
+            }
+            .text-body a {
+                color: #003366;
+                text-decoration: underline;
+            }
+            .text-body a:hover { color: #004080; }
+            .pdf-viewer-wrapper {
+                width: 100%;
+                height: calc(100vh - 300px);
+                min-height: 600px;
+                position: relative;
+            }
+            .pdf-iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+            .text-viewer-container.fullscreen .pdf-viewer-wrapper {
+                height: calc(100vh - 80px);
+            }
+            @media (max-width: 767.98px) {
+                .text-viewer-container {
+                    max-height: calc(100vh - 150px);
+                }
+                .text-body {
+                    font-size: 1rem;
+                    line-height: 1.6;
+                }
+                .pdf-viewer-wrapper {
+                    height: calc(100vh - 250px);
+                    min-height: 400px;
+                }
+                .text-viewer-container.fullscreen .pdf-viewer-wrapper {
+                    height: calc(100vh - 60px);
+                }
+            }
+            .text-content::-webkit-scrollbar {
+                width: 8px;
+            }
+            .text-content::-webkit-scrollbar-track {
+                background: #f1f1f1;
+                border-radius: 4px;
+            }
+            .text-content::-webkit-scrollbar-thumb {
+                background: #888;
+                border-radius: 4px;
+            }
+            .text-content::-webkit-scrollbar-thumb:hover {
+                background: #555;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Fonction globale pour le plein écran
+window.toggleFullscreen = function(viewerId) {
+    const container = document.getElementById(viewerId);
+    const expandIcon = document.getElementById(viewerId + '-expand-icon');
+    const compressIcon = document.getElementById(viewerId + '-compress-icon');
+    
+    if (!container) return;
+    
+    if (container.classList.contains('fullscreen')) {
+        // Exit fullscreen
+        container.classList.remove('fullscreen');
+        if (expandIcon) expandIcon.classList.remove('d-none');
+        if (compressIcon) compressIcon.classList.add('d-none');
+        document.body.style.overflow = '';
+    } else {
+        // Enter fullscreen
+        container.classList.add('fullscreen');
+        if (expandIcon) expandIcon.classList.add('d-none');
+        if (compressIcon) compressIcon.classList.remove('d-none');
+        document.body.style.overflow = 'hidden';
+    }
+};
+
+// Exit fullscreen on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const fullscreenViewers = document.querySelectorAll('.text-viewer-container.fullscreen');
+        fullscreenViewers.forEach(viewer => {
+            const viewerId = viewer.id;
+            const expandIcon = document.getElementById(viewerId + '-expand-icon');
+            const compressIcon = document.getElementById(viewerId + '-compress-icon');
+            viewer.classList.remove('fullscreen');
+            if (expandIcon) expandIcon.classList.remove('d-none');
+            if (compressIcon) compressIcon.classList.add('d-none');
+            document.body.style.overflow = '';
+        });
+    }
+});
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', initializeCourse);
 </script>
@@ -409,6 +912,64 @@ document.addEventListener('DOMContentLoaded', initializeCourse);
 
 .video-container {
     position: relative;
+    margin: 0;
+    padding: 0;
+}
+
+.video-container .ratio {
+    margin: 0;
+    padding: 0;
+}
+
+.video-container .ratio > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Désactiver le menu contextuel et le téléchargement sur les vidéos */
+#lessonVideo {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Empêcher le téléchargement via les contrôles natifs */
+#lessonVideo::-webkit-media-controls-enclosure {
+    overflow: hidden;
+}
+
+#lessonVideo::-webkit-media-controls-panel {
+    width: calc(100% + 30px);
+}
+
+/* Désactiver le menu contextuel sur le conteneur vidéo */
+.video-container {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.video-container * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Empêcher le téléchargement via le menu contextuel */
+#youtubePlayerContainer iframe {
+    pointer-events: auto;
 }
 
 .lesson-content {
@@ -452,20 +1013,206 @@ document.addEventListener('DOMContentLoaded', initializeCourse);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
 }
 
+/* Desktop: Réduire la taille du titre de la leçon */
+.lesson-title {
+    font-size: 1.5rem;
+}
+
+.lesson-description {
+    font-size: 1rem;
+}
+
+/* Responsive: Mobile et Tablette */
 @media (max-width: 991.98px) {
     .course-sidebar {
         position: static;
         height: auto;
+        margin-top: 1rem;
+    }
+    
+    .learning-content {
+        margin-bottom: 1rem;
+    }
+    
+    .lesson-content {
+        padding: 1rem !important;
+    }
+    
+    .lesson-title {
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .lesson-description {
+        font-size: 0.9rem;
+        margin-bottom: 1rem !important;
+    }
+    
+    .section-header h6 {
+        font-size: 0.95rem;
+    }
+    
+    .lesson-item h6 {
+        font-size: 0.9rem;
+    }
+    
+    .course-sidebar h5 {
+        font-size: 1rem;
+    }
+    
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .card-body h6 {
+        font-size: 0.9rem;
+    }
+    
+    .card-body p {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .container-fluid {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
+    .lesson-title {
+        font-size: 1.1rem;
+    }
+    
+    .lesson-description {
+        font-size: 0.85rem;
+    }
+    
+    .lesson-content {
+        padding: 0.75rem !important;
+    }
+    
+    .video-container {
+        margin-bottom: 0;
+    }
+    
+    /* S'assurer que la sidebar apparaît bien en dessous du lecteur */
+    .row > .col-lg-3.order-2 {
+        margin-top: 1rem;
+    }
+    
+    .lesson-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .lesson-actions .btn {
+        width: 100%;
+        font-size: 0.8rem;
+    }
+    
+    .section-header {
+        padding: 0.75rem !important;
+    }
+    
+    .section-header h6 {
+        font-size: 0.9rem;
+    }
+    
+    .lesson-item {
+        padding: 0.75rem !important;
+    }
+    
+    .lesson-item h6 {
+        font-size: 0.85rem;
+    }
+    
+    .course-sidebar {
+        padding: 0.5rem;
+    }
+    
+    .course-sidebar .p-3 {
+        padding: 0.75rem !important;
+    }
+    
+    .course-sidebar h5 {
+        font-size: 0.95rem;
+    }
+    
+    .top-bar-return {
+        gap: 0.5rem;
+        padding: 0.5rem !important;
+    }
+
+    .top-bar-return span {
+        font-size: 0.75rem;
+        flex-grow: 0;
+    }
+    
+    .lesson-resources .card-body {
+        padding: 0.75rem;
+    }
+    
+    .lesson-resources h5 {
+        font-size: 1rem;
+        margin-bottom: 0.75rem !important;
     }
 }
 
 @media (max-width: 575.98px) {
+    .container-fluid {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+    
+    .lesson-title {
+        font-size: 1rem;
+    }
+    
+    .lesson-description {
+        font-size: 0.8rem;
+    }
+    
+    .lesson-content {
+        padding: 0.5rem !important;
+    }
+    
+    .section-header {
+        padding: 0.5rem !important;
+    }
+    
+    .section-header h6 {
+        font-size: 0.85rem;
+    }
+    
+    .lesson-item {
+        padding: 0.5rem !important;
+    }
+    
+    .lesson-item h6 {
+        font-size: 0.8rem;
+    }
+    
+    .course-sidebar .p-3 {
+        padding: 0.5rem !important;
+    }
+    
+    .course-sidebar h5 {
+        font-size: 0.9rem;
+    }
+    
+    .btn {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+    }
+    
     .top-bar-return {
         gap: 0.5rem;
     }
 
     .top-bar-return span {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         flex-grow: 0;
     }
 }

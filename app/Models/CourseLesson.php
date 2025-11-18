@@ -27,6 +27,8 @@ class CourseLesson extends Model
         'youtube_embed_url',
     ];
 
+    protected $appends = ['content_file_url', 'file_url'];
+
     protected function casts(): array
     {
         return [

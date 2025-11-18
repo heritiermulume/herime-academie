@@ -58,6 +58,24 @@
     color: #e2e8f0;
 }
 
+@media (max-width: 991.98px) {
+    .learning-shell {
+        margin-top: -0.3rem !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .learning-shell {
+        margin-top: -0.4rem !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .learning-shell {
+        margin-top: -0.5rem !important;
+    }
+}
+
 /* S'assurer que tous les titres sont en couleur claire */
 .learning-shell h1, 
 .learning-shell h2, 
@@ -408,6 +426,29 @@
     transition: all 0.2s ease;
 }
 
+@media (max-width: 991.98px) {
+    .lesson-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .lesson-tab {
+        width: 100%;
+        padding: 0.35rem 0.6rem;
+        font-size: 0.75rem;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lesson-tab i {
+        font-size: 0.7rem;
+        margin-right: 0.3rem !important;
+    }
+}
+
 .lesson-tab.active {
     background: rgba(255, 204, 51, 0.15);
     border-color: rgba(255, 204, 51, 0.5);
@@ -551,6 +592,21 @@
     justify-content: space-between;
 }
 
+.mobile-outline-close-btn {
+    padding: 0.5rem !important;
+    min-width: 36px !important;
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.mobile-outline-close-btn i {
+    margin: 0 !important;
+    font-size: 0.9rem;
+}
+
 .mobile-outline-drawer__body {
     padding: 1rem 1.25rem 1.5rem;
     overflow-y: auto;
@@ -575,8 +631,26 @@
 }
 
 @media (max-width: 991.98px) {
+    .learning-shell {
+        padding-top: 0 !important;
+    }
+
     .learning-shell .container-fluid {
-        padding: 0;
+        padding: 0 !important;
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .learning-topbar {
+        margin-bottom: 0.4rem !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* Ajouter des marges horizontales à la barre de progression sur tablette */
+    .learning-topbar .learning-progress-bar {
+        margin-left: 0.75rem;
+        margin-right: 0.75rem;
     }
 
     .learning-grid {
@@ -584,6 +658,8 @@
         flex-direction: column;
         gap: 1rem;
         padding-bottom: 1.5rem;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
     }
 
     .learning-column {
@@ -596,14 +672,44 @@
         border-left: 0;
         border-right: 0;
         padding: 0.85rem;
+        margin-top: 0 !important;
     }
 
     .player-shell {
         border-radius: 12px;
     }
 
+    /* Réduire les tailles de texte pour tablette */
+    .learning-shell h1 {
+        font-size: 1.4rem;
+    }
+
+    .learning-shell h2 {
+        font-size: 1.2rem;
+    }
+
+    .learning-shell h3 {
+        font-size: 1.1rem;
+    }
+
+    .learning-shell h4 {
+        font-size: 1rem;
+    }
+
+    .learning-shell h5 {
+        font-size: 0.95rem;
+    }
+
+    .learning-shell h6 {
+        font-size: 0.9rem;
+    }
+
     .lesson-header__title {
-        font-size: 1.15rem;
+        font-size: 1.1rem;
+    }
+
+    .lesson-header__meta {
+        font-size: 0.75rem;
     }
 
     .lesson-cta-row {
@@ -614,10 +720,24 @@
         flex: 1;
         min-width: 0;
         padding: 0.55rem;
+        font-size: 0.85rem;
     }
 
     .learning-meta {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 0.75rem;
+    }
+
+    .learning-meta__item {
+        padding: 0.75rem 0.85rem;
+    }
+
+    .learning-meta__item span:first-child {
+        font-size: 0.6rem;
+    }
+
+    .learning-meta__item strong {
+        font-size: 0.95rem;
     }
 
     .learning-column.secondary,
@@ -625,8 +745,18 @@
         order: 3;
     }
 
+    /* Ajouter des marges horizontales sur mobile pour les cartes de la colonne secondaire */
+    .learning-column.secondary .learning-card {
+        margin-left: 0.75rem;
+        margin-right: 0.75rem;
+    }
+
     .outline-section__header {
         padding: 0.75rem 0.8rem;
+    }
+
+    .outline-section__header h6 {
+        font-size: 0.9rem;
     }
 
     .outline-lesson {
@@ -634,16 +764,643 @@
     }
 
     .outline-lesson__title {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+    }
+
+    .outline-lesson__meta {
+        font-size: 0.7rem;
+    }
+
+    .lesson-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.4rem;
     }
 
     .lesson-tab {
-        font-size: 0.78rem;
-        padding: 0.35rem 0.75rem;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+        width: 100%;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lesson-tab i {
+        font-size: 0.65rem;
+        margin-right: 0.25rem !important;
     }
 
     .learning-insights {
         gap: 0.75rem;
+    }
+
+    .insight-card h6 {
+        font-size: 0.9rem;
+    }
+
+    .insight-list__item {
+        font-size: 0.8rem;
+    }
+
+    .recommended-content h6 {
+        font-size: 0.8rem;
+    }
+
+    .recommended-meta {
+        font-size: 0.7rem;
+    }
+
+    .recommended-actions .btn {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.55rem;
+    }
+
+    .learning-topbar h6 {
+        font-size: 0.9rem;
+    }
+
+    .learning-topbar p {
+        font-size: 0.6rem;
+    }
+
+    /* Boutons retour et sommaire - icônes uniquement sur tablette et mobile */
+    .learning-topbar .btn i {
+        margin: 0 !important;
+    }
+
+    .learning-topbar .btn {
+        padding: 0.5rem !important;
+        min-width: 42px !important;
+        width: 42px !important;
+        height: 42px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .learning-topbar .btn span {
+        display: none !important;
+    }
+
+    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - icônes uniquement sur tablette et mobile */
+    .lesson-header .btn i,
+    .lesson-cta-row .btn i {
+        margin: 0 !important;
+    }
+
+    .lesson-header .btn,
+    .lesson-cta-row .btn {
+        padding: 0.5rem !important;
+        min-width: 42px !important;
+        width: auto !important;
+        height: 42px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .lesson-header .btn span,
+    .lesson-cta-row .btn span {
+        display: none !important;
+    }
+
+    .card-body {
+        padding: 0.85rem !important;
+    }
+
+    .learning-card .card-body {
+        padding: 0.85rem !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* Réduire le padding-top pour mobile */
+    .learning-shell {
+        padding-top: 0 !important;
+    }
+
+    .learning-shell .container-fluid {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+        padding: 0 !important;
+    }
+
+    .learning-topbar {
+        margin-bottom: 0.3rem !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* Ajouter des marges horizontales à la barre de progression sur mobile */
+    .learning-topbar .learning-progress-bar {
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+    }
+
+    .learning-grid {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* Ajouter des marges horizontales sur mobile pour les cartes de la colonne secondaire */
+    .learning-column.secondary .learning-card {
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+    }
+
+    /* Réduire encore plus pour mobile */
+    .learning-shell h1 {
+        font-size: 1.2rem;
+    }
+
+    .learning-shell h2 {
+        font-size: 1.1rem;
+    }
+
+    .learning-shell h3 {
+        font-size: 1rem;
+    }
+
+    .learning-shell h4 {
+        font-size: 0.95rem;
+    }
+
+    .learning-shell h5 {
+        font-size: 0.9rem;
+    }
+
+    .learning-shell h6 {
+        font-size: 0.85rem;
+    }
+
+    .lesson-header__title {
+        font-size: 1rem;
+    }
+
+    .lesson-header__meta {
+        font-size: 0.7rem;
+        gap: 0.5rem;
+    }
+
+    .learning-player-card {
+        padding: 0.75rem;
+    }
+
+    .lesson-cta-row .btn {
+        font-size: 0.8rem;
+        padding: 0.5rem;
+    }
+
+    .learning-meta {
+        padding: 0.65rem;
+        gap: 0.65rem;
+    }
+
+    .learning-meta__item {
+        padding: 0.65rem 0.75rem;
+    }
+
+    .learning-meta__item span:first-child {
+        font-size: 0.55rem;
+    }
+
+    .learning-meta__item strong {
+        font-size: 0.85rem;
+    }
+
+    .outline-section__header {
+        padding: 0.65rem 0.7rem;
+    }
+
+    .outline-section__header h6 {
+        font-size: 0.85rem;
+    }
+
+    .outline-section__header p {
+        font-size: 0.65rem;
+    }
+
+    .outline-lesson {
+        padding: 0.5rem 0.6rem;
+    }
+
+    .outline-lesson__title {
+        font-size: 0.75rem;
+    }
+
+    .outline-lesson__meta {
+        font-size: 0.65rem;
+    }
+
+    .lesson-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.35rem;
+    }
+
+    .lesson-tab {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.45rem;
+        width: 100%;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lesson-tab i {
+        font-size: 0.6rem;
+        margin-right: 0.2rem !important;
+    }
+
+    .insight-card {
+        padding: 0.75rem;
+    }
+
+    .insight-card h6 {
+        font-size: 0.85rem;
+    }
+
+    .insight-card span {
+        font-size: 0.65rem;
+    }
+
+    .insight-list__item {
+        font-size: 0.75rem;
+    }
+
+    .recommended-content h6 {
+        font-size: 0.75rem;
+    }
+
+    .recommended-meta {
+        font-size: 0.65rem;
+    }
+
+    .recommended-actions .btn {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .learning-topbar h6 {
+        font-size: 0.85rem;
+    }
+
+    .learning-topbar p {
+        font-size: 0.55rem;
+    }
+
+    /* Boutons retour et sommaire - icônes uniquement sur mobile */
+    .learning-topbar .btn {
+        font-size: 0.75rem;
+        padding: 0.5rem !important;
+        min-width: 40px !important;
+        width: 40px !important;
+        height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .learning-topbar .btn i {
+        margin: 0 !important;
+    }
+
+    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - icônes uniquement sur mobile */
+    .lesson-header .btn i,
+    .lesson-cta-row .btn i {
+        margin: 0 !important;
+    }
+
+    .lesson-header .btn,
+    .lesson-cta-row .btn {
+        padding: 0.5rem !important;
+        min-width: 40px !important;
+        width: auto !important;
+        height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .lesson-header .btn span,
+    .lesson-cta-row .btn span {
+        display: none !important;
+    }
+
+    .card-body {
+        padding: 0.75rem !important;
+    }
+
+    .learning-card .card-body {
+        padding: 0.75rem !important;
+    }
+
+    .mobile-outline-drawer__header h5 {
+        font-size: 0.95rem;
+    }
+
+    .mobile-outline-drawer__body {
+        padding: 0.75rem;
+    }
+
+    .mobile-outline-progress {
+        padding: 0.7rem 0.85rem;
+    }
+
+    .mobile-outline-close-btn {
+        padding: 0.5rem !important;
+        min-width: 36px !important;
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    .mobile-outline-close-btn i {
+        margin: 0 !important;
+        font-size: 0.85rem;
+    }
+
+    .text-muted {
+        font-size: 0.8rem;
+    }
+
+    .small {
+        font-size: 0.75rem;
+    }
+
+    p {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    /* Réduire encore plus le padding-top pour très petits écrans */
+    .learning-shell {
+        padding-top: 0 !important;
+    }
+
+    .learning-shell .container-fluid {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+        padding: 0 !important;
+    }
+
+    .learning-topbar {
+        margin-bottom: 0.25rem !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* Ajouter des marges horizontales à la barre de progression sur très petit mobile */
+    .learning-topbar .learning-progress-bar {
+        margin-left: 0.4rem;
+        margin-right: 0.4rem;
+    }
+
+    .learning-grid {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* Ajouter des marges horizontales sur très petit mobile pour les cartes de la colonne secondaire */
+    .learning-column.secondary .learning-card {
+        margin-left: 0.4rem;
+        margin-right: 0.4rem;
+    }
+
+    /* Très petits écrans */
+    .learning-shell h1 {
+        font-size: 1.1rem;
+    }
+
+    .learning-shell h2 {
+        font-size: 1rem;
+    }
+
+    .learning-shell h3 {
+        font-size: 0.95rem;
+    }
+
+    .learning-shell h4 {
+        font-size: 0.9rem;
+    }
+
+    .learning-shell h5 {
+        font-size: 0.85rem;
+    }
+
+    .learning-shell h6 {
+        font-size: 0.8rem;
+    }
+
+    .lesson-header__title {
+        font-size: 0.95rem;
+    }
+
+    .lesson-header__meta {
+        font-size: 0.65rem;
+    }
+
+    .learning-player-card {
+        padding: 0.65rem;
+    }
+
+    .lesson-cta-row .btn {
+        font-size: 0.75rem;
+        padding: 0.45rem;
+    }
+
+    .learning-meta {
+        padding: 0.55rem;
+        gap: 0.55rem;
+    }
+
+    .learning-meta__item {
+        padding: 0.55rem 0.65rem;
+    }
+
+    .learning-meta__item span:first-child {
+        font-size: 0.5rem;
+    }
+
+    .learning-meta__item strong {
+        font-size: 0.8rem;
+    }
+
+    .outline-section__header {
+        padding: 0.55rem 0.6rem;
+    }
+
+    .outline-section__header h6 {
+        font-size: 0.8rem;
+    }
+
+    .outline-section__header p {
+        font-size: 0.6rem;
+    }
+
+    .outline-lesson {
+        padding: 0.45rem 0.55rem;
+    }
+
+    .outline-lesson__title {
+        font-size: 0.7rem;
+    }
+
+    .outline-lesson__meta {
+        font-size: 0.6rem;
+    }
+
+    .lesson-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.3rem;
+    }
+
+    .lesson-tab {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.4rem;
+        width: 100%;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .lesson-tab i {
+        font-size: 0.55rem;
+        margin-right: 0.15rem !important;
+    }
+
+    .insight-card {
+        padding: 0.65rem;
+    }
+
+    .insight-card h6 {
+        font-size: 0.8rem;
+    }
+
+    .insight-card span {
+        font-size: 0.6rem;
+    }
+
+    .insight-list__item {
+        font-size: 0.7rem;
+    }
+
+    .recommended-content h6 {
+        font-size: 0.7rem;
+    }
+
+    .recommended-meta {
+        font-size: 0.6rem;
+    }
+
+    .recommended-actions .btn {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.45rem;
+    }
+
+    .learning-topbar h6 {
+        font-size: 0.8rem;
+    }
+
+    .learning-topbar p {
+        font-size: 0.5rem;
+    }
+
+    /* Boutons retour et sommaire - icônes uniquement sur très petit mobile */
+    .learning-topbar .btn {
+        font-size: 0.7rem;
+        padding: 0.5rem !important;
+        min-width: 36px !important;
+        width: 36px !important;
+        height: 36px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .learning-topbar .btn i {
+        margin: 0 !important;
+        font-size: 0.9rem;
+    }
+
+    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - icônes uniquement sur très petit mobile */
+    .lesson-header .btn i,
+    .lesson-cta-row .btn i {
+        margin: 0 !important;
+        font-size: 0.9rem;
+    }
+
+    .lesson-header .btn,
+    .lesson-cta-row .btn {
+        padding: 0.5rem !important;
+        min-width: 36px !important;
+        width: auto !important;
+        height: 36px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .lesson-header .btn span,
+    .lesson-cta-row .btn span {
+        display: none !important;
+    }
+
+    .card-body {
+        padding: 0.65rem !important;
+    }
+
+    .learning-card .card-body {
+        padding: 0.65rem !important;
+    }
+
+    .mobile-outline-drawer__header h5 {
+        font-size: 0.9rem;
+    }
+
+    .mobile-outline-drawer__body {
+        padding: 0.65rem;
+    }
+
+    .mobile-outline-progress {
+        padding: 0.6rem 0.75rem;
+    }
+
+    .mobile-outline-close-btn {
+        padding: 0.45rem !important;
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .mobile-outline-close-btn i {
+        margin: 0 !important;
+        font-size: 0.8rem;
+    }
+
+    .text-muted {
+        font-size: 0.75rem;
+    }
+
+    .small {
+        font-size: 0.7rem;
+    }
+
+    p {
+        font-size: 0.8rem;
+    }
+
+    .btn {
+        font-size: 0.75rem;
+    }
+
+    .form-control {
+        font-size: 0.85rem;
     }
 }
 </style>
@@ -664,7 +1421,8 @@
                     </div>
                 </div>
                 <button class="btn btn-sm btn-outline-light" id="mobile-outline-toggle">
-                    <i class="fas fa-list-ul me-2"></i>Sommaire
+                    <i class="fas fa-list-ul"></i>
+                    <span class="d-none d-md-inline ms-2">Sommaire</span>
                 </button>
             </div>
             <div class="learning-progress-bar mt-3">
@@ -817,10 +1575,12 @@
                                     <span><i class="fas fa-signal me-1 text-info"></i>{{ ucfirst($course->level) }}</span>
                         </div>
                     </div>
+                            @if(isset($activeLesson) && ($progress['lesson_progress'][$activeLesson->id]->watched_seconds ?? 0) > 0)
                             <button class="btn btn-outline-light d-flex align-items-center gap-2">
                                 <i class="fas fa-share-nodes"></i>
-                                Partager
+                                <span class="d-none d-md-inline">Partager</span>
                         </button>
+                            @endif
                     </div>
                 </div>
 
@@ -871,14 +1631,14 @@
                                 <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $previousLesson->id]) }}"
                                    class="btn btn-outline-light d-flex align-items-center gap-2">
                                     <i class="fas fa-arrow-left"></i>
-                                        <span class="d-none d-sm-inline">Précédent</span>
+                                        <span class="d-none d-md-inline">Précédent</span>
                                 </a>
                             @endif
 
                             @if(isset($nextLesson))
                                 <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $nextLesson->id]) }}"
                                    class="btn btn-info d-flex align-items-center gap-2">
-                                        <span class="d-none d-sm-inline">Suivant</span>
+                                        <span class="d-none d-md-inline">Suivant</span>
                                     <i class="fas fa-arrow-right"></i>
                                 </a>
                             @endif
@@ -896,13 +1656,7 @@
                                 >
                                     <i class="fas fa-check"></i>
                                         <span class="d-none d-md-inline">{{ $progress['completed_lessons_ids']->contains($activeLesson->id) ? 'Leçon terminée' : 'Marquer comme terminé' }}</span>
-                                        <span class="d-md-none">Terminé</span>
                                     </button>
-                                    
-                                    <button class="btn btn-outline-secondary d-flex align-items-center gap-2" onclick="showLessonResources()">
-                                        <i class="fas fa-download"></i>
-                                        <span class="d-none d-sm-inline">Ressources</span>
-                                </button>
                             @endif
                         </div>
                         </div>
@@ -934,6 +1688,80 @@
                                         {!! nl2br(e($activeLesson->description ?? 'Aucune description fournie pour cette leçon.')) !!}
                                     </div>
                                 </div>
+
+                                {{-- Liste des sections du cours - Mobile/Tablette uniquement --}}
+                                <div class="d-lg-none mb-4">
+                                    <h5 class="text-white fw-semibold mb-3">Plan du cours</h5>
+                                    <div class="lesson-outline">
+                                        @foreach($course->sections as $section)
+                                            @php
+                                                $sectionLessons = $section->lessons ?? collect();
+                                                $isSectionOpen = $sectionLessons->contains(fn($lesson) => isset($activeLessonId) && $lesson->id === $activeLessonId);
+                                            @endphp
+                                            <div class="outline-section" data-section-id="mobile-overview-{{ $section->id }}">
+                                                <button class="outline-section__header {{ $isSectionOpen ? 'active' : '' }}" type="button">
+                                                    <div>
+                                                        <p class="text-uppercase small mb-1 fw-semibold" style="color: #94a3b8;">Section {{ $loop->iteration }}</p>
+                                                        <h6 class="mb-0 fw-semibold" style="color: #f8fafc;">{{ $section->title }}</h6>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2 py-1">
+                                                            {{ $sectionLessons->count() }} leçons
+                                                        </span>
+                                                        <i class="fas fa-chevron-down ms-2 text-muted section-toggle-icon"></i>
+                                                    </div>
+                                                </button>
+                                                
+                                                <div class="outline-section__body {{ $isSectionOpen ? '' : 'd-none' }}">
+                                                    @foreach($sectionLessons as $sectionLesson)
+                                                        @php
+                                                            $isActive = isset($activeLessonId) && $sectionLesson->id === $activeLessonId;
+                                                            $isCompleted = $progress['completed_lessons_ids']->contains($sectionLesson->id ?? 0);
+                                                            $progressEntry = $progress['lesson_progress'][$sectionLesson->id] ?? null;
+                                                        @endphp
+                                                        <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $sectionLesson->id]) }}"
+                                                           class="outline-lesson {{ $isActive ? 'active' : '' }} {{ $isCompleted ? 'completed' : '' }}">
+                                                            <div class="outline-lesson__icon">
+                                                                @switch($sectionLesson->type)
+                                                                    @case('video')
+                                                                        <i class="fas fa-play"></i>
+                                                                        @break
+                                                                    @case('pdf')
+                                                                        <i class="fas fa-file-pdf"></i>
+                                                                        @break
+                                                                    @case('quiz')
+                                                                        <i class="fas fa-star"></i>
+                                                                        @break
+                                                                    @case('text')
+                                                                        <i class="fas fa-align-left"></i>
+                                                                        @break
+                                                                    @default
+                                                                        <i class="fas fa-file"></i>
+                                                                @endswitch
+                                                            </div>
+                                                            <div class="flex-grow-1">
+                                                                <p class="outline-lesson__title mb-1">{{ $sectionLesson->title }}</p>
+                                                                <div class="outline-lesson__meta">
+                                                                    @if($sectionLesson->duration)
+                                                                        <span><i class="far fa-clock me-1"></i>{{ $sectionLesson->duration }} min</span>
+                                                                    @endif
+                                                                    @if($progressEntry)
+                                                                        <span><i class="fas fa-chart-line me-1 text-success"></i>{{ round($progressEntry->progress_percentage) }}%</span>
+                                                                    @endif
+                                                                    @if($isCompleted)
+                                                                        <span class="text-success"><i class="fas fa-check-circle me-1"></i>Terminé</span>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                            <i class="fas fa-chevron-right text-muted small"></i>
+                                                        </a>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+
                                 <div class="row g-3">
                                     <div class="col-sm-4">
                                         <div class="insight-card h-100">
@@ -1097,7 +1925,7 @@
         <div class="mobile-outline-drawer__panel">
             <div class="mobile-outline-drawer__header">
                 <h5 class="mb-0 fw-semibold text-white">Contenu du cours</h5>
-                <button type="button" class="btn btn-sm btn-outline-light" id="mobile-outline-close">
+                <button type="button" class="btn btn-sm btn-outline-light mobile-outline-close-btn" id="mobile-outline-close">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
