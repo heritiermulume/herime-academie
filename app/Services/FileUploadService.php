@@ -316,10 +316,38 @@ class FileUploadService
     protected function ensureDirectoryExists($disk, string $folder): void
     {
         if (!$disk->exists($folder)) {
-            $created = $disk->makeDirectory($folder);
-            if (!$created) {
-                throw new \Exception("Impossible de créer le dossier de stockage : {$folder}. Vérifiez les permissions.");
+            try {
+                $created = $disk->makeDirectory($folder, 0755, true);
+                if (!$created) {
+                    $fullPath = $disk->path($folder);
+                    throw new \RuntimeException(
+                        "Impossible de créer le dossier de stockage : {$folder}. " .
+                        "Chemin complet : {$fullPath}. " .
+                        "Vérifiez les permissions du dossier parent."
+                    );
+                }
+            } catch (\Exception $e) {
+                $fullPath = $disk->path($folder);
+                \Log::error('Failed to create directory', [
+                    'folder' => $folder,
+                    'full_path' => $fullPath,
+                    'error' => $e->getMessage(),
+                ]);
+                throw new \RuntimeException(
+                    "Erreur lors de la création du dossier : {$folder}. " .
+                    "Vérifiez les permissions. Détails : " . $e->getMessage()
+                );
             }
+        }
+
+        // Vérifier que le dossier est accessible en écriture
+        $fullPath = $disk->path($folder);
+        if (!is_writable($fullPath)) {
+            throw new \RuntimeException(
+                "Le dossier de stockage n'est pas accessible en écriture : {$folder}. " .
+                "Chemin complet : {$fullPath}. " .
+                "Vérifiez les permissions (doit être 755 ou 775)."
+            );
         }
     }
 
