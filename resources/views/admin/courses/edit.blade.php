@@ -3344,207 +3344,110 @@ if (!window.__tempUploadUnloadHook) {
 </style>
 @endpush
 
+@push('styles')
+<!-- Quill Editor CSS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+@endpush
+
 @push('scripts')
-<!-- TinyMCE (version open-source via jsDelivr, pas de clé API requise) -->
+<!-- Quill Editor (alternative moderne et fiable à TinyMCE) -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script>
 (function() {
-    // S'assurer que le document a un DOCTYPE pour forcer le mode standards
-    if (!document.doctype && document.firstChild && document.firstChild.nodeType !== 10) {
-        // Le DOCTYPE n'existe pas, on ne peut pas le créer après le chargement
-        // mais on peut au moins vérifier
-        console.warn('TinyMCE: DOCTYPE manquant, le mode standards pourrait ne pas être détecté');
-    }
-    
-    // Charger TinyMCE de manière asynchrone après que le document soit prêt
-    function loadTinyMCE() {
-        return new Promise((resolve, reject) => {
-            if (typeof tinymce !== 'undefined') {
-                resolve();
-                return;
-            }
+    const quillInstances = new Map();
 
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js';
-            script.async = true;
-            script.onload = () => {
-                // Patcher immédiatement après le chargement, avant toute utilisation
-                if (typeof tinymce !== 'undefined') {
-                    // Patcher isStandardsMode immédiatement
-                    if (tinymce.util && tinymce.util.Tools && tinymce.util.Tools.isStandardsMode) {
-                        tinymce.util.Tools.isStandardsMode = function() { return true; };
-                    }
-                    // Patcher document.compatMode si nécessaire
-                    try {
-                        Object.defineProperty(document, 'compatMode', {
-                            get: function() { return 'CSS1Compat'; },
-                            configurable: true
-                        });
-                    } catch(e) {
-                        // Si on ne peut pas patcher, on continue
-                    }
-                }
-                resolve();
-            };
-            script.onerror = () => reject(new Error('Failed to load TinyMCE'));
-            document.head.appendChild(script);
-        });
-    }
-
-    function initTinyMCE() {
-        // S'assurer que le document est complètement chargé
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(initTinyMCE, 100);
-            });
+    function initQuillEditor(textarea) {
+        if (!textarea || quillInstances.has(textarea)) {
             return;
         }
 
-        // Charger TinyMCE si nécessaire
-        loadTinyMCE().then(() => {
-            // Attendre un peu pour que TinyMCE soit complètement initialisé
-            setTimeout(() => {
-                if (typeof tinymce === 'undefined') {
-                    console.error('TinyMCE n\'est pas disponible');
-                    return;
-                }
-
-                // Patch pour contourner la vérification du mode standards
-                // Patcher avant toute initialisation
-                if (tinymce && tinymce.util && tinymce.util.Tools) {
-                    const originalIsStandardsMode = tinymce.util.Tools.isStandardsMode;
-                    if (originalIsStandardsMode) {
-                        tinymce.util.Tools.isStandardsMode = function() {
-                            return true; // Toujours retourner true pour forcer le mode standards
-                        };
-                    }
-                }
-
-                // Intercepter tinymce.init pour forcer le mode standards
-                const originalInit = tinymce.init;
-                tinymce.init = function(config) {
-                    // Forcer le mode standards avant l'initialisation
-                    if (document.compatMode && document.compatMode !== 'CSS1Compat') {
-                        // Si on n'est pas en mode standards, on force quand même
-                        console.warn('TinyMCE: Mode standards forcé malgré la détection');
-                    }
-                    return originalInit.call(this, config);
-                };
-
-                // Configuration TinyMCE pour les éditeurs de contenu texte
-                const tinymceConfig = {
-            selector: '.lesson-content-text-editor',
-            height: 300,
-            menubar: false,
-            plugins: [
-                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-            ],
-            toolbar: 'undo redo | formatselect | ' +
-                'bold italic underline strikethrough | forecolor backcolor | ' +
-                'alignleft aligncenter alignright alignjustify | ' +
-                'bullist numlist outdent indent | ' +
-                'removeformat | help | code',
-            content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }',
-            formats: {
-                bold: { inline: 'strong' },
-                italic: { inline: 'em' },
-                underline: { inline: 'u' },
-                strikethrough: { inline: 's' }
+        // Créer un conteneur pour Quill
+        const container = document.createElement('div');
+        container.style.height = '300px';
+        container.className = 'quill-editor-container';
+        
+        // Insérer le conteneur avant le textarea
+        textarea.parentNode.insertBefore(container, textarea);
+        
+        // Masquer le textarea
+        textarea.style.display = 'none';
+        
+        // Configuration Quill
+        const quill = new Quill(container, {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'align': [] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'size': ['small', false, 'large', 'huge'] }],
+                    ['link', 'image'],
+                    ['clean']
+                ]
             },
-            font_size_formats: '8pt 10pt 12pt 14pt 16pt 18pt 20pt 24pt 28pt 32pt 36pt 48pt 60pt 72pt',
-            // Désactiver le mode read-only
-            readonly: false,
-            // S'assurer que le document est en mode standards
-            schema: 'html5',
-            // Désactiver la vérification stricte du mode standards
-            validate: false,
-            setup: function(editor) {
-                // Ajouter le sélecteur de taille de police
-                editor.ui.registry.addMenuButton('fontsize', {
-                    text: 'Taille',
-                    fetch: function(callback) {
-                        const items = [
-                            { type: 'menuitem', text: '8pt', onAction: () => editor.execCommand('FontSize', false, '8pt') },
-                            { type: 'menuitem', text: '10pt', onAction: () => editor.execCommand('FontSize', false, '10pt') },
-                            { type: 'menuitem', text: '12pt', onAction: () => editor.execCommand('FontSize', false, '12pt') },
-                            { type: 'menuitem', text: '14pt', onAction: () => editor.execCommand('FontSize', false, '14pt') },
-                            { type: 'menuitem', text: '16pt', onAction: () => editor.execCommand('FontSize', false, '16pt') },
-                            { type: 'menuitem', text: '18pt', onAction: () => editor.execCommand('FontSize', false, '18pt') },
-                            { type: 'menuitem', text: '20pt', onAction: () => editor.execCommand('FontSize', false, '20pt') },
-                            { type: 'menuitem', text: '24pt', onAction: () => editor.execCommand('FontSize', false, '24pt') },
-                            { type: 'menuitem', text: '28pt', onAction: () => editor.execCommand('FontSize', false, '28pt') },
-                            { type: 'menuitem', text: '32pt', onAction: () => editor.execCommand('FontSize', false, '32pt') },
-                            { type: 'menuitem', text: '36pt', onAction: () => editor.execCommand('FontSize', false, '36pt') },
-                            { type: 'menuitem', text: '48pt', onAction: () => editor.execCommand('FontSize', false, '48pt') },
-                            { type: 'menuitem', text: '60pt', onAction: () => editor.execCommand('FontSize', false, '60pt') },
-                            { type: 'menuitem', text: '72pt', onAction: () => editor.execCommand('FontSize', false, '72pt') }
-                        ];
-                        callback(items);
-                    }
-                });
-            }
-        };
+            placeholder: 'Saisissez le contenu de la leçon...'
+        });
 
-        // Initialiser TinyMCE sur les textareas existants
-        if (typeof tinymce !== 'undefined') {
-            try {
-                tinymce.init(tinymceConfig);
-            } catch (error) {
-                console.error('Erreur lors de l\'initialisation de TinyMCE:', error);
-            }
+        // Charger le contenu existant
+        if (textarea.value) {
+            quill.root.innerHTML = textarea.value;
         }
 
-        // Fonction pour initialiser TinyMCE sur un nouveau textarea
-        window.initTinyMCEOnTextarea = function(textarea) {
-            if (typeof tinymce !== 'undefined' && textarea && !textarea.classList.contains('mce-initialized')) {
-                textarea.classList.add('mce-initialized');
-                try {
-                    tinymce.init({
-                        ...tinymceConfig,
-                        target: textarea
-                    });
-                } catch (error) {
-                    console.error('Erreur lors de l\'initialisation de TinyMCE sur un textarea:', error);
-                }
-            }
-        };
+        // Synchroniser le contenu avec le textarea pour la soumission du formulaire
+        quill.on('text-change', function() {
+            textarea.value = quill.root.innerHTML;
+        });
 
-        // Observer pour initialiser TinyMCE sur les nouveaux textareas ajoutés dynamiquement
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                mutation.addedNodes.forEach(function(node) {
-                    if (node.nodeType === 1) { // Element node
-                        const textareas = node.querySelectorAll ? node.querySelectorAll('.lesson-content-text-editor:not(.mce-initialized)') : [];
-                        textareas.forEach(function(textarea) {
-                            window.initTinyMCEOnTextarea(textarea);
-                        });
-                        // Si le node lui-même est un textarea
-                        if (node.classList && node.classList.contains('lesson-content-text-editor') && !node.classList.contains('mce-initialized')) {
-                            window.initTinyMCEOnTextarea(node);
-                        }
+        // Initialiser avec le contenu existant
+        textarea.value = quill.root.innerHTML;
+
+        // Stocker l'instance
+        quillInstances.set(textarea, quill);
+    }
+
+    function initAllEditors() {
+        const textareas = document.querySelectorAll('.lesson-content-text-editor');
+        textareas.forEach(function(textarea) {
+            initQuillEditor(textarea);
+        });
+    }
+
+    // Fonction globale pour initialiser un éditeur sur un nouveau textarea
+    window.initTinyMCEOnTextarea = function(textarea) {
+        initQuillEditor(textarea);
+    };
+
+    // Initialiser les éditeurs existants
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAllEditors);
+    } else {
+        initAllEditors();
+    }
+
+    // Observer pour initialiser Quill sur les nouveaux textareas ajoutés dynamiquement
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) { // Element node
+                    const textareas = node.querySelectorAll ? node.querySelectorAll('.lesson-content-text-editor') : [];
+                    textareas.forEach(function(textarea) {
+                        initQuillEditor(textarea);
+                    });
+                    // Si le node lui-même est un textarea
+                    if (node.classList && node.classList.contains('lesson-content-text-editor')) {
+                        initQuillEditor(node);
                     }
-                });
+                }
             });
         });
+    });
 
-                observer.observe(document.body, {
-                    childList: true,
-                    subtree: true
-                });
-            }, 100);
-        }).catch((error) => {
-            console.error('Erreur lors du chargement de TinyMCE:', error);
-        });
-    }
-
-    // Attendre que le DOM soit complètement chargé
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initTinyMCE);
-    } else {
-        // Le DOM est déjà chargé, attendre un peu pour être sûr
-        setTimeout(initTinyMCE, 100);
-    }
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
 })();
 </script>
 @endpush
