@@ -3395,30 +3395,31 @@ if (!window.__tempUploadUnloadHook) {
             // S'assurer que le document est en mode standards
             schema: 'html5',
             setup: function(editor) {
-            // Ajouter le sélecteur de taille de police
-            editor.ui.registry.addMenuButton('fontsize', {
-                text: 'Taille',
-                fetch: function(callback) {
-                    const items = [
-                        { type: 'menuitem', text: '8pt', onAction: () => editor.execCommand('FontSize', false, '8pt') },
-                        { type: 'menuitem', text: '10pt', onAction: () => editor.execCommand('FontSize', false, '10pt') },
-                        { type: 'menuitem', text: '12pt', onAction: () => editor.execCommand('FontSize', false, '12pt') },
-                        { type: 'menuitem', text: '14pt', onAction: () => editor.execCommand('FontSize', false, '14pt') },
-                        { type: 'menuitem', text: '16pt', onAction: () => editor.execCommand('FontSize', false, '16pt') },
-                        { type: 'menuitem', text: '18pt', onAction: () => editor.execCommand('FontSize', false, '18pt') },
-                        { type: 'menuitem', text: '20pt', onAction: () => editor.execCommand('FontSize', false, '20pt') },
-                        { type: 'menuitem', text: '24pt', onAction: () => editor.execCommand('FontSize', false, '24pt') },
-                        { type: 'menuitem', text: '28pt', onAction: () => editor.execCommand('FontSize', false, '28pt') },
-                        { type: 'menuitem', text: '32pt', onAction: () => editor.execCommand('FontSize', false, '32pt') },
-                        { type: 'menuitem', text: '36pt', onAction: () => editor.execCommand('FontSize', false, '36pt') },
-                        { type: 'menuitem', text: '48pt', onAction: () => editor.execCommand('FontSize', false, '48pt') },
-                        { type: 'menuitem', text: '60pt', onAction: () => editor.execCommand('FontSize', false, '60pt') },
-                        { type: 'menuitem', text: '72pt', onAction: () => editor.execCommand('FontSize', false, '72pt') }
-                    ];
-                    callback(items);
-                }
-            });
-        }
+                // Ajouter le sélecteur de taille de police
+                editor.ui.registry.addMenuButton('fontsize', {
+                    text: 'Taille',
+                    fetch: function(callback) {
+                        const items = [
+                            { type: 'menuitem', text: '8pt', onAction: () => editor.execCommand('FontSize', false, '8pt') },
+                            { type: 'menuitem', text: '10pt', onAction: () => editor.execCommand('FontSize', false, '10pt') },
+                            { type: 'menuitem', text: '12pt', onAction: () => editor.execCommand('FontSize', false, '12pt') },
+                            { type: 'menuitem', text: '14pt', onAction: () => editor.execCommand('FontSize', false, '14pt') },
+                            { type: 'menuitem', text: '16pt', onAction: () => editor.execCommand('FontSize', false, '16pt') },
+                            { type: 'menuitem', text: '18pt', onAction: () => editor.execCommand('FontSize', false, '18pt') },
+                            { type: 'menuitem', text: '20pt', onAction: () => editor.execCommand('FontSize', false, '20pt') },
+                            { type: 'menuitem', text: '24pt', onAction: () => editor.execCommand('FontSize', false, '24pt') },
+                            { type: 'menuitem', text: '28pt', onAction: () => editor.execCommand('FontSize', false, '28pt') },
+                            { type: 'menuitem', text: '32pt', onAction: () => editor.execCommand('FontSize', false, '32pt') },
+                            { type: 'menuitem', text: '36pt', onAction: () => editor.execCommand('FontSize', false, '36pt') },
+                            { type: 'menuitem', text: '48pt', onAction: () => editor.execCommand('FontSize', false, '48pt') },
+                            { type: 'menuitem', text: '60pt', onAction: () => editor.execCommand('FontSize', false, '60pt') },
+                            { type: 'menuitem', text: '72pt', onAction: () => editor.execCommand('FontSize', false, '72pt') }
+                        ];
+                        callback(items);
+                    }
+                });
+            }
+        };
 
         // Initialiser TinyMCE sur les textareas existants
         if (typeof tinymce !== 'undefined') {
