@@ -3151,34 +3151,52 @@ window.cancelAllUploads = cancelAllUploads;
 <!-- TinyMCE (version open-source via jsDelivr, pas de clé API requise) -->
 <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Configuration TinyMCE pour les éditeurs de contenu texte
-    const tinymceConfig = {
-        selector: '.lesson-content-text-editor',
-        height: 300,
-        menubar: false,
-        plugins: [
-            'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-            'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-            'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-        ],
-        toolbar: 'undo redo | formatselect | ' +
-            'bold italic underline strikethrough | forecolor backcolor | ' +
-            'alignleft aligncenter alignright alignjustify | ' +
-            'bullist numlist outdent indent | ' +
-            'removeformat | help | code',
-        content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }',
-        formats: {
-            bold: { inline: 'strong' },
-            italic: { inline: 'em' },
-            underline: { inline: 'u' },
-            strikethrough: { inline: 's' }
-        },
-        font_size_formats: '8pt 10pt 12pt 14pt 16pt 18pt 20pt 24pt 28pt 32pt 36pt 48pt 60pt 72pt',
-        // Désactiver le mode read-only
-        readonly: false,
-        // S'assurer que le document est en mode standards
-        schema: 'html5',
+(function() {
+    // Vérifier que le document est en mode standards
+    function isStandardsMode() {
+        if (document.compatMode) {
+            return document.compatMode === 'CSS1Compat';
+        }
+        // Fallback: vérifier si le DOCTYPE existe
+        return document.doctype !== null;
+    }
+
+    function initTinyMCE() {
+        // Vérifier le mode standards avant d'initialiser
+        if (!isStandardsMode()) {
+            console.warn('TinyMCE: Le document n\'est pas en mode standards. Vérifiez le DOCTYPE.');
+            // Réessayer après un court délai
+            setTimeout(initTinyMCE, 100);
+            return;
+        }
+
+        // Configuration TinyMCE pour les éditeurs de contenu texte
+        const tinymceConfig = {
+            selector: '.lesson-content-text-editor',
+            height: 300,
+            menubar: false,
+            plugins: [
+                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+            ],
+            toolbar: 'undo redo | formatselect | ' +
+                'bold italic underline strikethrough | forecolor backcolor | ' +
+                'alignleft aligncenter alignright alignjustify | ' +
+                'bullist numlist outdent indent | ' +
+                'removeformat | help | code',
+            content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }',
+            formats: {
+                bold: { inline: 'strong' },
+                italic: { inline: 'em' },
+                underline: { inline: 'u' },
+                strikethrough: { inline: 's' }
+            },
+            font_size_formats: '8pt 10pt 12pt 14pt 16pt 18pt 20pt 24pt 28pt 32pt 36pt 48pt 60pt 72pt',
+            // Désactiver le mode read-only
+            readonly: false,
+            // S'assurer que le document est en mode standards
+            schema: 'html5',
         setup: function(editor) {
             // Ajouter le sélecteur de taille de police
             editor.ui.registry.addMenuButton('fontsize', {
@@ -3203,24 +3221,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     callback(items);
                 }
             });
-        }
-    };
+        };
 
-    // Initialiser TinyMCE sur les textareas existants
-    if (typeof tinymce !== 'undefined') {
-        tinymce.init(tinymceConfig);
-    }
-
-    // Fonction pour initialiser TinyMCE sur un nouveau textarea
-    window.initTinyMCEOnTextarea = function(textarea) {
-        if (typeof tinymce !== 'undefined' && textarea && !textarea.classList.contains('mce-initialized')) {
-            textarea.classList.add('mce-initialized');
-            tinymce.init({
-                ...tinymceConfig,
-                target: textarea
-            });
+        // Initialiser TinyMCE sur les textareas existants
+        if (typeof tinymce !== 'undefined') {
+            try {
+                tinymce.init(tinymceConfig);
+            } catch (error) {
+                console.error('Erreur lors de l\'initialisation de TinyMCE:', error);
+            }
         }
-    };
+
+        // Fonction pour initialiser TinyMCE sur un nouveau textarea
+        window.initTinyMCEOnTextarea = function(textarea) {
+            if (!isStandardsMode()) {
+                console.warn('TinyMCE: Impossible d\'initialiser, le document n\'est pas en mode standards');
+                return;
+            }
+            
+            if (typeof tinymce !== 'undefined' && textarea && !textarea.classList.contains('mce-initialized')) {
+                textarea.classList.add('mce-initialized');
+                try {
+                    tinymce.init({
+                        ...tinymceConfig,
+                        target: textarea
+                    });
+                } catch (error) {
+                    console.error('Erreur lors de l\'initialisation de TinyMCE sur un textarea:', error);
+                }
+            }
+        };
 
     // Observer pour initialiser TinyMCE sur les nouveaux textareas ajoutés dynamiquement
     const observer = new MutationObserver(function(mutations) {
@@ -3240,10 +3270,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-});
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    // Attendre que le DOM soit complètement chargé
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTinyMCE);
+    } else {
+        // Le DOM est déjà chargé, attendre un peu pour être sûr
+        setTimeout(initTinyMCE, 50);
+    }
+})();
 </script>
 @endpush
