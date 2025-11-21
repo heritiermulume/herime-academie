@@ -3449,23 +3449,23 @@ if (!window.__tempUploadUnloadHook) {
             }
         };
 
-    // Observer pour initialiser TinyMCE sur les nouveaux textareas ajoutés dynamiquement
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            mutation.addedNodes.forEach(function(node) {
-                if (node.nodeType === 1) { // Element node
-                    const textareas = node.querySelectorAll ? node.querySelectorAll('.lesson-content-text-editor:not(.mce-initialized)') : [];
-                    textareas.forEach(function(textarea) {
-                        window.initTinyMCEOnTextarea(textarea);
-                    });
-                    // Si le node lui-même est un textarea
-                    if (node.classList && node.classList.contains('lesson-content-text-editor') && !node.classList.contains('mce-initialized')) {
-                        window.initTinyMCEOnTextarea(node);
+        // Observer pour initialiser TinyMCE sur les nouveaux textareas ajoutés dynamiquement
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) { // Element node
+                        const textareas = node.querySelectorAll ? node.querySelectorAll('.lesson-content-text-editor:not(.mce-initialized)') : [];
+                        textareas.forEach(function(textarea) {
+                            window.initTinyMCEOnTextarea(textarea);
+                        });
+                        // Si le node lui-même est un textarea
+                        if (node.classList && node.classList.contains('lesson-content-text-editor') && !node.classList.contains('mce-initialized')) {
+                            window.initTinyMCEOnTextarea(node);
+                        }
                     }
-                }
+                });
             });
         });
-    });
 
         observer.observe(document.body, {
             childList: true,
