@@ -76,11 +76,44 @@ class LessonProgress extends Model
      */
     public function getProgressPercentageAttribute()
     {
-        if (!$this->lesson || $this->lesson->duration == 0) {
-            return $this->is_completed ? 100 : 0;
+        // Si la leçon est complétée, retourner 100%
+        if ($this->is_completed) {
+            return 100;
         }
 
-        $percentage = ($this->time_watched / ($this->lesson->duration * 60)) * 100;
+        // Si la relation lesson n'est pas chargée, essayer de la charger
+        if (!$this->relationLoaded('lesson') && $this->lesson_id) {
+            $this->load('lesson');
+        }
+
+        // Si la leçon n'existe pas ou n'a pas de durée, retourner 0% (sauf si complétée)
+        if (!$this->lesson || !$this->lesson->duration || $this->lesson->duration == 0) {
+            return 0;
+        }
+
+        // Calculer le pourcentage basé sur le temps visionné
+        $totalSeconds = $this->lesson->duration * 60;
+        if ($totalSeconds == 0) {
+            return 0;
+        }
+
+        $percentage = ($this->time_watched / $totalSeconds) * 100;
         return min(100, max(0, round($percentage, 2)));
+    }
+
+    /**
+     * Vérifier si la leçon a été commencée
+     */
+    public function getIsStartedAttribute()
+    {
+        return !is_null($this->started_at);
+    }
+
+    /**
+     * Alias pour time_watched (compatibilité)
+     */
+    public function getWatchedSecondsAttribute()
+    {
+        return $this->time_watched;
     }
 }

@@ -26,6 +26,9 @@
     <!-- AOS Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     
+    <!-- Plyr Video Player Library CSS -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    
     <!-- Custom CSS -->
     <style>
         /* Prévenir le débordement horizontal global */
@@ -4426,6 +4429,10 @@
     </script>
 
     @stack('modals')
+    
+    <!-- Plyr Video Player Library JS -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    
     @stack('scripts')
     </body>
 </html>

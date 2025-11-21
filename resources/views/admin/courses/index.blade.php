@@ -87,6 +87,7 @@
         courseDeleteModal.show();
     }
 
+
 </script>
 @endpush
 
@@ -98,26 +99,195 @@
         gap: 1.25rem;
     }
 
-.mobile-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
+    .course-actions-btn--mobile {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.75rem !important;
+        line-height: 1.2;
+    }
 
-.mobile-actions .mobile-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    cursor: pointer;
-}
+    .course-actions-btn--mobile i {
+        font-size: 0.7rem !important;
+    }
 
-.mobile-actions .mobile-action i {
-    font-size: 1.05rem;
-}
+    /* Styles de base pour tous les dropdowns */
+    .dropdown,
+    .dropup {
+        position: relative;
+    }
 
-.mobile-actions .mobile-action span {
-    font-size: 0.85rem;
-}
+    /* Menu desktop - dropdown pour première ligne (vers le bas) */
+    .dropdown.d-none.d-md-block .dropdown-menu {
+        margin-top: 0.25rem;
+        top: 100%;
+        z-index: 1050 !important;
+    }
+
+    /* Flèche pour dropdown desktop première ligne (menu vers le bas) */
+    .dropdown.d-none.d-md-block .dropdown-menu::before {
+        content: '';
+        position: absolute;
+        top: -5px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 5px solid #fff;
+        z-index: 1001;
+    }
+
+    .dropdown.d-none.d-md-block .dropdown-menu::after {
+        content: '';
+        position: absolute;
+        top: -6px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 6px solid rgba(0, 0, 0, 0.175);
+        z-index: 1000;
+    }
+
+    /* Menu desktop - dropup pour autres lignes (vers le haut) */
+    .dropup.d-none.d-md-block .dropdown-menu {
+        margin-bottom: 0.25rem;
+        bottom: 100%;
+        top: auto;
+        z-index: 1050 !important;
+    }
+
+    /* Flèche pour dropup desktop (menu vers le haut) */
+    .dropup.d-none.d-md-block .dropdown-menu::before {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid #fff;
+        z-index: 1001;
+    }
+
+    .dropup.d-none.d-md-block .dropdown-menu::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid rgba(0, 0, 0, 0.175);
+        z-index: 1000;
+    }
+
+    /* Styles pour mobile */
+    @media (max-width: 768px) {
+        /* Réduire la taille du bouton sur mobile */
+        .course-actions-btn--mobile {
+            padding: 0.25rem 0.5rem !important;
+            font-size: 0.75rem !important;
+        }
+
+        .course-actions-btn--mobile i {
+            font-size: 0.7rem !important;
+        }
+
+        /* Menu avec z-index élevé pour s'afficher au-dessus */
+        .dropdown-menu,
+        .dropup .dropdown-menu {
+            z-index: 1050 !important;
+        }
+
+        /* Menu vers le haut pour dropup */
+        .dropup .dropdown-menu {
+            bottom: 100%;
+            top: auto;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Flèche pour dropup (mobile - menu vers le haut) */
+        .dropup .dropdown-menu::before {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #fff;
+            z-index: 1001;
+        }
+
+        .dropup .dropdown-menu::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid rgba(0, 0, 0, 0.175);
+            z-index: 1000;
+        }
+
+        /* Menu vers le bas pour dropdown (premier élément) */
+        .dropdown.d-md-none .dropdown-menu {
+            top: 100%;
+            bottom: auto;
+            margin-top: 0.25rem;
+        }
+
+        /* Flèche pour dropdown mobile (premier élément) */
+        .dropdown.d-md-none .dropdown-menu::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid #fff;
+            z-index: 1001;
+        }
+
+        .dropdown.d-md-none .dropdown-menu::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 6px solid rgba(0, 0, 0, 0.175);
+            z-index: 1000;
+        }
+
+        /* Réduire la taille des textes et icônes sur mobile */
+        .dropdown.d-md-none .dropdown-item,
+        .dropup .dropdown-item {
+            font-size: 0.8rem !important;
+            padding: 0.4rem 0.75rem !important;
+        }
+
+        .dropdown.d-md-none .dropdown-item i,
+        .dropup .dropdown-item i {
+            font-size: 0.75rem !important;
+        }
+
+        .dropdown.d-md-none .dropdown-divider,
+        .dropup .dropdown-divider {
+            margin: 0.3rem 0 !important;
+        }
+    }
+
 
     @media (max-width: 992px) {
         .admin-panel__body {
@@ -213,18 +383,6 @@
             margin: 0;
         }
 
-        .admin-table .admin-actions {
-            flex-wrap: nowrap;
-            gap: 0.35rem;
-        }
-
-        .admin-table .admin-actions .btn {
-            flex: 0 0 auto;
-        }
-
-        .mobile-actions {
-            justify-content: flex-start;
-        }
     }
 
     @media (max-width: 576px) {
@@ -435,38 +593,116 @@
                                         @endif
                                     </td>
                                     <td class="text-center align-top">
-                                        <div class="d-none d-md-inline-block">
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-light" title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-light" title="Voir">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                <button type="button" class="btn btn-light text-danger" title="Supprimer"
-                                                        data-course-id="{{ $course->id }}"
-                                                        data-course-title="{{ $course->title }}"
-                                                        onclick="openCourseDeleteModal(this)">
-                                                    <i class="fas fa-trash"></i>
+                                        @if($loop->first)
+                                            <div class="dropdown d-none d-md-block">
+                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $course->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
                                                 </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $course->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.courses.show', $course) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.courses.edit', $course) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-course-id="{{ $course->id }}"
+                                                           data-course-title="{{ $course->title }}"
+                                                           onclick="openCourseDeleteModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
                                             </div>
-                                        </div>
-                                        <div class="d-md-none mobile-actions mt-3">
-                                            <div class="mobile-action" onclick="window.location.href='{{ route('admin.courses.edit', $course) }}'">
-                                                <i class="fas fa-edit"></i>
-                                                <span>Modifier</span>
+                                        @else
+                                            <div class="dropup d-none d-md-block">
+                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $course->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $course->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.courses.show', $course) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.courses.edit', $course) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-course-id="{{ $course->id }}"
+                                                           data-course-title="{{ $course->title }}"
+                                                           onclick="openCourseDeleteModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
                                             </div>
-                                            <div class="mobile-action" onclick="window.location.href='{{ route('admin.courses.show', $course) }}'">
-                                                <i class="fas fa-eye"></i>
-                                                <span>Voir</span>
+                                        @endif
+                                        @if($loop->first)
+                                            <div class="dropdown d-md-none">
+                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $course->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $course->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.courses.show', $course) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.courses.edit', $course) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-course-id="{{ $course->id }}"
+                                                           data-course-title="{{ $course->title }}"
+                                                           onclick="openCourseDeleteModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
                                             </div>
-                                            <div class="mobile-action text-danger" data-course-id="{{ $course->id }}"
-                                                 data-course-title="{{ $course->title }}"
-                                                 onclick="openCourseDeleteModal(this)">
-                                                <i class="fas fa-trash"></i>
-                                                <span>Supprimer</span>
+                                        @else
+                                            <div class="dropup d-md-none">
+                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $course->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $course->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.courses.show', $course) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.courses.edit', $course) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-course-id="{{ $course->id }}"
+                                                           data-course-title="{{ $course->title }}"
+                                                           onclick="openCourseDeleteModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
                                             </div>
-                                        </div>
+                                        @endif
                                         <form id="course-delete-form-{{ $course->id }}" action="{{ route('admin.courses.destroy', $course) }}" method="POST" class="d-none">
                                             @csrf
                                             @method('DELETE')

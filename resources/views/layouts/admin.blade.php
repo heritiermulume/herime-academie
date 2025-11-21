@@ -703,5 +703,185 @@
         color: #003366;
         opacity: 0.65;
     }
+
+    /* Styles globaux pour les dropdowns d'actions dans les listes admin */
+    .course-actions-btn--mobile {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.75rem !important;
+        line-height: 1.2;
+    }
+
+    .course-actions-btn--mobile i {
+        font-size: 0.7rem !important;
+    }
+
+    /* Styles de base pour tous les dropdowns */
+    .dropdown,
+    .dropup {
+        position: relative;
+    }
+
+    /* Menu desktop - dropdown pour première ligne (vers le bas) */
+    .dropdown.d-none.d-md-block .dropdown-menu {
+        margin-top: 0.25rem;
+        top: 100%;
+        z-index: 1050 !important;
+    }
+
+    /* Flèche pour dropdown desktop première ligne (menu vers le bas) */
+    .dropdown.d-none.d-md-block .dropdown-menu::before {
+        content: '';
+        position: absolute;
+        top: -5px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 5px solid #fff;
+        z-index: 1001;
+    }
+
+    .dropdown.d-none.d-md-block .dropdown-menu::after {
+        content: '';
+        position: absolute;
+        top: -6px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 6px solid rgba(0, 0, 0, 0.175);
+        z-index: 1000;
+    }
+
+    /* Menu desktop - dropup pour autres lignes (vers le haut) */
+    .dropup.d-none.d-md-block .dropdown-menu {
+        margin-bottom: 0.25rem;
+        bottom: 100%;
+        top: auto;
+        z-index: 1050 !important;
+    }
+
+    /* Flèche pour dropup desktop (menu vers le haut) */
+    .dropup.d-none.d-md-block .dropdown-menu::before {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid #fff;
+        z-index: 1001;
+    }
+
+    .dropup.d-none.d-md-block .dropdown-menu::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid rgba(0, 0, 0, 0.175);
+        z-index: 1000;
+    }
+
+    /* Styles pour mobile */
+    @media (max-width: 768px) {
+        /* Menu avec z-index élevé pour s'afficher au-dessus */
+        .dropdown-menu,
+        .dropup .dropdown-menu {
+            z-index: 1050 !important;
+        }
+
+        /* Menu vers le haut pour dropup */
+        .dropup .dropdown-menu {
+            bottom: 100%;
+            top: auto;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Flèche pour dropup (mobile - menu vers le haut) */
+        .dropup .dropdown-menu::before {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #fff;
+            z-index: 1001;
+        }
+
+        .dropup .dropdown-menu::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid rgba(0, 0, 0, 0.175);
+            z-index: 1000;
+        }
+
+        /* Menu vers le bas pour dropdown (premier élément) */
+        .dropdown.d-md-none .dropdown-menu {
+            top: 100%;
+            bottom: auto;
+            margin-top: 0.25rem;
+        }
+
+        /* Flèche pour dropdown mobile (premier élément) */
+        .dropdown.d-md-none .dropdown-menu::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid #fff;
+            z-index: 1001;
+        }
+
+        .dropdown.d-md-none .dropdown-menu::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 6px solid rgba(0, 0, 0, 0.175);
+            z-index: 1000;
+        }
+
+        /* Réduire la taille des textes et icônes sur mobile */
+        .dropdown.d-md-none .dropdown-item,
+        .dropup .dropdown-item {
+            font-size: 0.8rem !important;
+            padding: 0.4rem 0.75rem !important;
+        }
+
+        .dropdown.d-md-none .dropdown-item i,
+        .dropup .dropdown-item i {
+            font-size: 0.75rem !important;
+        }
+
+        .dropdown.d-md-none .dropdown-divider,
+        .dropup .dropdown-divider {
+            margin: 0.3rem 0 !important;
+        }
+    }
 </style>
 @endpush

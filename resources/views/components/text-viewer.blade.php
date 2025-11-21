@@ -29,7 +29,7 @@
             </div>
         @else
             <div class="text-body">
-                {!! isset($lesson) && $lesson->content_text ? nl2br(e($lesson->content_text)) : 'Aucun contenu disponible.' !!}
+                {!! isset($lesson) && $lesson->content_text ? $lesson->content_text : 'Aucun contenu disponible.' !!}
             </div>
         @endif
     </div>
@@ -43,9 +43,14 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    width: 100%;
     max-height: calc(100vh - 200px);
     transition: all 0.3s ease;
-    position: relative;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .text-viewer-container.fullscreen {
@@ -73,6 +78,7 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
+    width: 100%;
 }
 
 .text-body {
@@ -84,6 +90,12 @@
     width: 100%;
     margin: 0 auto;
     padding: 0 1rem;
+    box-sizing: border-box;
+}
+
+/* Préserver tous les styles HTML du contenu */
+.text-body * {
+    max-width: 100%;
 }
 
 .text-body p {
@@ -101,6 +113,55 @@
 .text-body h2 { font-size: 1.75rem; }
 .text-body h3 { font-size: 1.5rem; }
 .text-body h4 { font-size: 1.25rem; }
+.text-body h5 { font-size: 1.1rem; }
+.text-body h6 { font-size: 1rem; }
+
+/* Préserver les styles de texte (gras, italique, souligné, etc.) */
+.text-body strong, .text-body b {
+    font-weight: 700;
+}
+
+.text-body em, .text-body i {
+    font-style: italic;
+}
+
+.text-body u {
+    text-decoration: underline;
+}
+
+.text-body s, .text-body strike {
+    text-decoration: line-through;
+}
+
+/* Préserver les différentes tailles de police via les balises <font> ou les styles inline */
+.text-body [style*="font-size"] {
+    /* Préserver les tailles de police définies inline */
+}
+
+.text-body [style*="font-weight"] {
+    /* Préserver les poids de police définis inline */
+}
+
+.text-body [style*="font-style"] {
+    /* Préserver les styles de police définis inline */
+}
+
+.text-body [style*="color"] {
+    /* Préserver les couleurs définies inline */
+}
+
+/* Préserver les balises <font> si elles sont utilisées */
+.text-body font[size] {
+    /* Les tailles de font seront préservées via l'attribut size */
+}
+
+.text-body font[color] {
+    /* Les couleurs de font seront préservées via l'attribut color */
+}
+
+.text-body font[face] {
+    /* Les polices de font seront préservées via l'attribut face */
+}
 
 .text-body ul, .text-body ol {
     margin-left: 2rem;
@@ -198,6 +259,12 @@
 }
 
 /* Responsive */
+@media (min-width: 992px) {
+    .player-shell .text-viewer-container {
+        max-height: none;
+    }
+}
+
 @media (max-width: 767.98px) {
     .text-viewer-container {
         max-height: calc(100vh - 150px);

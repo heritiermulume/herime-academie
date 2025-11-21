@@ -367,7 +367,7 @@
 
 .lesson-header__title {
     font-size: clamp(1.1rem, 1rem + 0.5vw, 1.4rem);
-    font-weight: 700;
+    font-weight: normal;
     color: #f8fafc;
 }
 
@@ -409,6 +409,20 @@
     font-size: 0.9rem;
 }
 
+.learning-topbar .btn:hover i {
+    color: #003366 !important;
+}
+
+.lesson-header .btn:hover i.fa-arrow-left,
+.lesson-cta-row .btn:hover i.fa-arrow-left {
+    color: #003366 !important;
+}
+
+.lesson-header .btn:hover span,
+.lesson-cta-row .btn:hover span {
+    color: #003366 !important;
+}
+
 .lesson-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -424,29 +438,6 @@
     color: #cbd5f5;
     background: transparent;
     transition: all 0.2s ease;
-}
-
-@media (max-width: 991.98px) {
-    .lesson-tabs {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.5rem;
-    }
-
-    .lesson-tab {
-        width: 100%;
-        padding: 0.35rem 0.6rem;
-        font-size: 0.75rem;
-        text-align: center;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .lesson-tab i {
-        font-size: 0.7rem;
-        margin-right: 0.3rem !important;
-    }
 }
 
 .lesson-tab.active {
@@ -620,6 +611,505 @@
 }
 
 /* Responsive */
+/* Desktop styles (min-width: 992px) */
+@media (min-width: 992px) {
+    /* Réduire les tailles de texte sur desktop */
+    .learning-shell h1 {
+        font-size: 1.5rem;
+    }
+
+    .learning-shell h2 {
+        font-size: 1.3rem;
+    }
+
+    .learning-shell h3 {
+        font-size: 1.15rem;
+    }
+
+    .learning-shell h4 {
+        font-size: 1rem;
+    }
+
+    .learning-shell h5 {
+        font-size: 0.9rem;
+    }
+
+    .learning-shell h6 {
+        font-size: 0.85rem;
+    }
+
+    .lesson-header__title {
+        font-size: 1.2rem !important;
+        line-height: 1.4;
+    }
+
+    .lesson-header__meta {
+        font-size: 0.75rem;
+        gap: 0.6rem;
+    }
+
+    .insight-card h6 {
+        font-size: 0.85rem;
+    }
+
+    .insight-list__item {
+        font-size: 0.8rem;
+    }
+
+    .recommended-content h6 {
+        font-size: 0.8rem;
+    }
+
+    .recommended-meta {
+        font-size: 0.7rem;
+    }
+
+    .outline-lesson__title {
+        font-size: 0.85rem;
+    }
+
+    .outline-lesson__meta {
+        font-size: 0.7rem;
+    }
+
+    .lesson-tab {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.75rem;
+    }
+
+    .learning-meta__item span:first-child {
+        font-size: 0.6rem;
+    }
+
+    .learning-meta__item strong {
+        font-size: 0.95rem;
+    }
+
+    .card-body {
+        padding: 1rem !important;
+    }
+
+    .learning-card .card-body {
+        padding: 1rem !important;
+    }
+
+    p {
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+
+    .small {
+        font-size: 0.75rem;
+    }
+
+    .text-muted {
+        font-size: 0.8rem;
+    }
+
+    /* Améliorer l'espacement et l'organisation */
+    .learning-card {
+        margin-bottom: 1rem;
+    }
+
+    .lesson-header {
+        padding-bottom: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .lesson-header__meta span {
+        font-size: 0.7rem;
+    }
+
+    .insight-card {
+        padding: 0.9rem 1rem;
+    }
+
+    .learning-meta {
+        padding: 0.9rem 1rem;
+        gap: 0.7rem;
+    }
+
+    .learning-meta__item {
+        padding: 0.7rem 0.85rem;
+    }
+
+    .outline-section__header {
+        padding: 0.75rem 1rem;
+    }
+
+    .outline-section__body {
+        padding: 0.6rem 0.85rem 0.85rem;
+    }
+
+    .recommended-item {
+        padding: 0.65rem;
+    }
+
+    /* Améliorer la lisibilité des boutons */
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .btn-sm {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.75rem;
+    }
+
+    /* Espacement des sections */
+    .learning-column {
+        gap: 1rem;
+    }
+
+    .player-shell {
+        margin-bottom: 1rem;
+    }
+
+    .lesson-cta-row {
+        margin-bottom: 1rem;
+        gap: 0.5rem;
+    }
+
+    /* Ajuster les textes dans les sections de contenu */
+    .lesson-tab-content h6 {
+        font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .lesson-tab-content p {
+        font-size: 0.85rem;
+        line-height: 1.6;
+        margin-bottom: 0.75rem;
+    }
+
+    .form-control {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    textarea.form-control {
+        font-size: 0.85rem;
+        line-height: 1.5;
+    }
+
+    /* Ajuster les badges et labels */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.6rem;
+    }
+
+    /* Améliorer l'alignement des éléments */
+    .d-flex {
+        gap: 0.5rem;
+    }
+
+    /* Réduire les marges excessives */
+    .mb-4 {
+        margin-bottom: 1rem !important;
+    }
+
+    .mb-3 {
+        margin-bottom: 0.75rem !important;
+    }
+
+    .mb-2 {
+        margin-bottom: 0.5rem !important;
+    }
+
+    .mt-3 {
+        margin-top: 0.75rem !important;
+    }
+
+    .mt-2 {
+        margin-top: 0.5rem !important;
+    }
+
+    /* Aligner les textes à gauche dans la section "Plan du cours" sur desktop */
+    .learning-column.sidebar .outline-section__header {
+        text-align: left;
+    }
+
+    .learning-column.sidebar .outline-section__header > div {
+        text-align: left;
+    }
+
+    .learning-column.sidebar .outline-section__header h6 {
+        text-align: left;
+    }
+
+    .learning-column.sidebar .outline-section__header p {
+        text-align: left;
+    }
+
+    .learning-column.sidebar .outline-lesson {
+        text-align: left;
+    }
+
+    .learning-column.sidebar .outline-lesson__title {
+        text-align: left;
+    }
+
+    .learning-column.sidebar .outline-lesson__meta {
+        text-align: left;
+        justify-content: flex-start;
+    }
+
+    .learning-column.sidebar .lesson-outline {
+        text-align: left;
+    }
+
+    .learning-column.sidebar .card-body {
+        text-align: left;
+    }
+
+    .learning-column.sidebar h6 {
+        text-align: left;
+    }
+
+    .learning-column.sidebar p {
+        text-align: left;
+    }
+
+    /* S'assurer que les éléments flexbox sont alignés à gauche */
+    .learning-column.sidebar .outline-section__header {
+        justify-content: space-between;
+    }
+
+    .learning-column.sidebar .outline-section__header > div:first-child {
+        text-align: left;
+        flex: 1;
+    }
+
+    .learning-column.sidebar .outline-lesson {
+        justify-content: flex-start;
+    }
+
+    .learning-column.sidebar .outline-lesson > div {
+        text-align: left;
+    }
+
+    /* Aligner correctement la section "Progression" sur desktop */
+    .learning-column.sidebar .card-body {
+        text-align: left;
+    }
+
+    .learning-column.sidebar .d-flex.align-items-center.justify-content-between {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .learning-column.sidebar .d-flex.align-items-center.justify-content-between > div:first-child {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+    }
+
+    .learning-column.sidebar .d-flex.align-items-center.justify-content-between .badge {
+        flex-shrink: 0;
+        margin-left: auto;
+    }
+
+    .learning-column.sidebar .d-flex.align-items-baseline {
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .learning-column.sidebar .fs-4 {
+        font-size: 1.25rem !important;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .learning-column.sidebar .d-flex.align-items-baseline .text-muted.small {
+        white-space: nowrap;
+    }
+
+    .learning-column.sidebar .learning-progress-bar {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        width: 100%;
+    }
+
+    .learning-column.sidebar p.text-muted.small {
+        text-align: left;
+        margin-bottom: 0;
+        width: 100%;
+    }
+
+    /* Réduire les tailles dans le conteneur de preview sur desktop */
+    .learning-player-card {
+        padding: 0.85rem 1rem;
+    }
+
+    .learning-player-card .lesson-header {
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
+        text-align: center;
+    }
+
+    .learning-player-card .lesson-header > div {
+        text-align: center;
+        width: 100%;
+    }
+
+    .learning-player-card .lesson-header p.text-uppercase {
+        font-size: 0.6rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .learning-player-card .lesson-header__title {
+        font-size: 0.95rem !important;
+        line-height: 1.3;
+        margin-bottom: 0.4rem;
+        text-align: center;
+    }
+
+    .learning-player-card .lesson-header__meta {
+        font-size: 0.65rem;
+        gap: 0.4rem;
+        justify-content: center;
+    }
+
+    .learning-player-card .lesson-header__meta span {
+        font-size: 0.65rem;
+    }
+
+    .learning-player-card .player-shell {
+        margin-bottom: 0.6rem;
+    }
+
+    .learning-player-card .lesson-cta-row {
+        margin-bottom: 0.6rem;
+        gap: 0.35rem;
+        justify-content: center;
+    }
+
+    .learning-player-card .lesson-cta-row .btn {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.7rem;
+        min-height: 34px;
+    }
+
+    .learning-player-card .lesson-tabs {
+        margin-bottom: 0.6rem;
+        gap: 0.3rem;
+        justify-content: center;
+    }
+
+    .learning-player-card .lesson-tab {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.55rem;
+    }
+
+    .learning-player-card .lesson-tab-content {
+        text-align: center;
+    }
+
+    .learning-player-card .lesson-tab-content h6 {
+        font-size: 0.8rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .learning-player-card .lesson-tab-content p {
+        font-size: 0.75rem;
+        line-height: 1.4;
+        margin-bottom: 0.5rem;
+    }
+
+    .learning-player-card .form-control {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+    }
+
+    .learning-player-card textarea.form-control {
+        font-size: 0.75rem;
+        line-height: 1.4;
+    }
+
+    .learning-player-card .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.55rem;
+    }
+
+    /* Contenu de preview (quand aucune leçon n'est sélectionnée) */
+    .learning-player-card .d-flex.flex-column.align-items-center {
+        padding: 1.5rem 1rem;
+        text-align: center;
+    }
+
+    .learning-player-card .d-flex.flex-column.align-items-center h4 {
+        font-size: 0.9rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .learning-player-card .d-flex.flex-column.align-items-center p {
+        font-size: 0.75rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .learning-player-card .d-flex.flex-column.align-items-center .btn-lg {
+        font-size: 0.85rem;
+        padding: 0.45rem 1rem;
+    }
+
+    .learning-player-card .d-flex.flex-column.align-items-center .fa-3x {
+        font-size: 1.75rem !important;
+        margin-bottom: 0.6rem;
+    }
+
+    /* Insight cards dans le preview */
+    .learning-player-card .insight-card {
+        padding: 0.65rem 0.75rem;
+        text-align: center;
+    }
+
+    .learning-player-card .insight-card span {
+        font-size: 0.6rem;
+    }
+
+    .learning-player-card .insight-card h6 {
+        font-size: 0.75rem;
+        margin-top: 0.3rem;
+        margin-bottom: 0;
+    }
+
+    /* Centrer les éléments dans le preview */
+    .learning-player-card .row {
+        justify-content: center;
+    }
+
+    .learning-player-card .row > div {
+        text-align: center;
+    }
+
+    /* Aligner correctement le conteneur de texte dans le player-shell */
+    .player-shell .text-viewer-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 18px;
+    }
+
+    .player-shell .ratio {
+        position: relative;
+    }
+
+    .player-shell .text-viewer-container .text-content {
+        width: 100%;
+    }
+
+    .player-shell .text-viewer-container .text-body {
+        width: 100%;
+        max-width: 100%;
+        padding: 0 1.5rem;
+    }
+}
+
 @media (max-width: 1199px) {
     .learning-grid {
         grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
@@ -644,7 +1134,7 @@
     .learning-topbar {
         margin-bottom: 0.4rem !important;
         margin-top: 0 !important;
-        padding-top: 0 !important;
+        padding-top: 1rem !important;
     }
 
     /* Ajouter des marges horizontales à la barre de progression sur tablette */
@@ -804,6 +1294,11 @@
         font-size: 0.8rem;
     }
 
+    .learning-player-card .d-flex.flex-column.align-items-center .btn-lg {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.9rem;
+    }
+
     .recommended-content h6 {
         font-size: 0.8rem;
     }
@@ -818,11 +1313,54 @@
     }
 
     .learning-topbar h6 {
-        font-size: 0.9rem;
+        font-size: 1.2rem;
+        text-align: center;
     }
 
     .learning-topbar p {
         font-size: 0.6rem;
+        text-align: center;
+    }
+
+    .learning-topbar > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+        width: 100%;
+    }
+
+    .learning-topbar > div > div:first-child {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .learning-topbar > div > div:first-child > a {
+        flex: 0 0 auto;
+    }
+
+    .learning-topbar > div > div:first-child > div {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+    }
+
+    .learning-topbar > div > div:first-child > div h6,
+    .learning-topbar > div > div:first-child > div p {
+        width: 100%;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .learning-topbar > div > button:last-child {
+        flex: 0 0 auto;
     }
 
     /* Boutons retour et sommaire - icônes uniquement sur tablette et mobile */
@@ -840,30 +1378,48 @@
         justify-content: center !important;
     }
 
+    .learning-topbar .btn:hover i {
+        color: #003366 !important;
+    }
+
     .learning-topbar .btn span {
         display: none !important;
     }
 
-    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - icônes uniquement sur tablette et mobile */
+    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - afficher les textes sur tablette et mobile */
     .lesson-header .btn i,
     .lesson-cta-row .btn i {
-        margin: 0 !important;
+        margin-right: 0.35rem !important;
+        font-size: 0.75rem;
     }
 
     .lesson-header .btn,
     .lesson-cta-row .btn {
-        padding: 0.5rem !important;
-        min-width: 42px !important;
+        padding: 0.4rem 0.6rem !important;
+        min-width: auto !important;
         width: auto !important;
-        height: 42px !important;
+        height: auto !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        font-size: 0.75rem;
+        white-space: nowrap;
     }
 
     .lesson-header .btn span,
     .lesson-cta-row .btn span {
-        display: none !important;
+        display: inline !important;
+        font-size: 0.75rem;
+    }
+
+    .lesson-header .btn:hover i.fa-arrow-left,
+    .lesson-cta-row .btn:hover i.fa-arrow-left {
+        color: #003366 !important;
+    }
+
+    .lesson-header .btn:hover span,
+    .lesson-cta-row .btn:hover span {
+        color: #003366 !important;
     }
 
     .card-body {
@@ -881,6 +1437,11 @@
         padding-top: 0 !important;
     }
 
+    .learning-player-card .d-flex.flex-column.align-items-center .btn-lg {
+        font-size: 0.7rem;
+        padding: 0.35rem 0.8rem;
+    }
+
     .learning-shell .container-fluid {
         padding-top: 0 !important;
         margin-top: 0 !important;
@@ -890,7 +1451,7 @@
     .learning-topbar {
         margin-bottom: 0.3rem !important;
         margin-top: 0 !important;
-        padding-top: 0 !important;
+        padding-top: 1rem !important;
     }
 
     /* Ajouter des marges horizontales à la barre de progression sur mobile */
@@ -994,25 +1555,15 @@
         font-size: 0.65rem;
     }
 
-    .lesson-tabs {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.35rem;
-    }
-
-    .lesson-tab {
-        font-size: 0.65rem;
-        padding: 0.25rem 0.45rem;
-        width: 100%;
-        text-align: center;
-        display: flex;
-        align-items: center;
+    .learning-player-card .lesson-tabs {
+        margin-bottom: 0.6rem;
+        gap: 0.3rem;
         justify-content: center;
     }
 
-    .lesson-tab i {
-        font-size: 0.6rem;
-        margin-right: 0.2rem !important;
+    .learning-player-card .lesson-tab {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.55rem;
     }
 
     .insight-card {
@@ -1045,11 +1596,54 @@
     }
 
     .learning-topbar h6 {
-        font-size: 0.85rem;
+        font-size: 1.1rem;
+        text-align: center;
     }
 
     .learning-topbar p {
         font-size: 0.55rem;
+        text-align: center;
+    }
+
+    .learning-topbar > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+        width: 100%;
+    }
+
+    .learning-topbar > div > div:first-child {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .learning-topbar > div > div:first-child > a {
+        flex: 0 0 auto;
+    }
+
+    .learning-topbar > div > div:first-child > div {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+    }
+
+    .learning-topbar > div > div:first-child > div h6,
+    .learning-topbar > div > div:first-child > div p {
+        width: 100%;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .learning-topbar > div > button:last-child {
+        flex: 0 0 auto;
     }
 
     /* Boutons retour et sommaire - icônes uniquement sur mobile */
@@ -1064,30 +1658,48 @@
         justify-content: center !important;
     }
 
+    .learning-topbar .btn:hover i {
+        color: #003366 !important;
+    }
+
     .learning-topbar .btn i {
         margin: 0 !important;
     }
 
-    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - icônes uniquement sur mobile */
+    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - afficher les textes sur mobile */
     .lesson-header .btn i,
     .lesson-cta-row .btn i {
-        margin: 0 !important;
+        margin-right: 0.3rem !important;
+        font-size: 0.7rem;
     }
 
     .lesson-header .btn,
     .lesson-cta-row .btn {
-        padding: 0.5rem !important;
-        min-width: 40px !important;
+        padding: 0.4rem 0.55rem !important;
+        min-width: auto !important;
         width: auto !important;
-        height: 40px !important;
+        height: auto !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        font-size: 0.7rem;
+        white-space: nowrap;
     }
 
     .lesson-header .btn span,
     .lesson-cta-row .btn span {
-        display: none !important;
+        display: inline !important;
+        font-size: 0.7rem;
+    }
+
+    .lesson-header .btn:hover i.fa-arrow-left,
+    .lesson-cta-row .btn:hover i.fa-arrow-left {
+        color: #003366 !important;
+    }
+
+    .lesson-header .btn:hover span,
+    .lesson-cta-row .btn:hover span {
+        color: #003366 !important;
     }
 
     .card-body {
@@ -1135,10 +1747,326 @@
     }
 }
 
+/* Styles pour le lecteur Plyr (tous les écrans) */
+/* Styles de base pour desktop et mobile */
+.plyr__menu__container {
+    font-size: 0.5rem !important;
+    min-width: 90px !important;
+    max-width: 120px !important;
+    padding: 0.2rem 0 !important;
+    background-color: #001a33 !important; /* Bleu très sombre */
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 4px !important;
+}
+
+.plyr__menu__container .plyr__control {
+    padding: 0.2rem 0.4rem !important;
+    margin: 0 !important;
+    font-size: 0.5rem !important;
+    line-height: 1.2 !important;
+    min-height: auto !important;
+    height: auto !important;
+}
+
+.plyr__menu__container .plyr__control[role="menuitem"],
+.plyr__menu__container .plyr__control[role="menuitemradio"] {
+    color: #ffffff !important;
+    background-color: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.plyr__menu__container .plyr__control[role="menuitem"]:last-child,
+.plyr__menu__container .plyr__control[role="menuitemradio"]:last-child {
+    border-bottom: none !important;
+}
+
+.plyr__menu__container .plyr__control[role="menuitem"]:hover,
+.plyr__menu__container .plyr__control[role="menuitem"]:focus,
+.plyr__menu__container .plyr__control[role="menuitemradio"]:hover,
+.plyr__menu__container .plyr__control[role="menuitemradio"]:focus {
+    background-color: rgba(255, 204, 51, 0.25) !important;
+    color: #ffcc33 !important;
+}
+
+.plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"] {
+    background-color: rgba(255, 204, 51, 0.35) !important;
+    color: #ffcc33 !important;
+    font-weight: 600 !important;
+}
+
+/* Labels dans le menu */
+.plyr__menu__container .plyr__control span {
+    color: inherit !important;
+    font-size: 0.5rem !important;
+}
+
+/* Bouton settings */
+.plyr__control[data-plyr="settings"] {
+    color: #fff !important;
+}
+
+.plyr__control[data-plyr="settings"]:hover {
+    color: #ffcc33 !important;
+}
+
+/* Bouton play central - s'assurer qu'il est rond sur tous les écrans */
+.plyr__control--overlaid,
+.plyr__control.plyr__control--overlaid {
+    border-radius: 50% !important;
+    width: 60px !important;
+    height: 60px !important;
+    min-width: 60px !important;
+    min-height: 60px !important;
+    max-width: 60px !important;
+    max-height: 60px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Icône play à l'intérieur du bouton central */
+.plyr__control--overlaid svg,
+.plyr__control.plyr__control--overlaid svg {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+}
+
+.plyr__control--overlaid .plyr__icon,
+.plyr__control.plyr__control--overlaid .plyr__icon {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 30px !important;
+}
+
+/* Styles pour le lecteur Plyr sur mobile */
+@media (max-width: 991.98px) {
+    /* Bouton play central - rond sur mobile */
+    .plyr__control--overlaid,
+    .plyr__control.plyr__control--overlaid {
+        border-radius: 50% !important;
+        width: 70px !important;
+        height: 70px !important;
+        min-width: 70px !important;
+        min-height: 70px !important;
+        max-width: 70px !important;
+        max-height: 70px !important;
+    }
+    
+    /* Icône play à l'intérieur du bouton central sur mobile */
+    .plyr__control--overlaid svg,
+    .plyr__control.plyr__control--overlaid svg {
+        width: 35px !important;
+        height: 35px !important;
+        min-width: 35px !important;
+        min-height: 35px !important;
+    }
+    
+    .plyr__control--overlaid .plyr__icon,
+    .plyr__control.plyr__control--overlaid .plyr__icon {
+        width: 35px !important;
+        height: 35px !important;
+        font-size: 35px !important;
+    }
+    /* Réduire la taille des items de settings sur mobile */
+    .plyr__menu__container {
+        font-size: 0.5rem !important;
+        min-width: 90px !important;
+        max-width: 120px !important;
+        padding: 0.2rem 0 !important;
+        background-color: #001a33 !important; /* Bleu très sombre */
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 4px !important;
+    }
+    
+    .plyr__menu__container .plyr__control {
+        padding: 0.2rem 0.4rem !important;
+        margin: 0 !important;
+        font-size: 0.5rem !important;
+        line-height: 1.2 !important;
+        min-height: auto !important;
+        height: auto !important;
+    }
+    
+    .plyr__menu__container .plyr__control[role="menuitem"],
+    .plyr__menu__container .plyr__control[role="menuitemradio"] {
+        color: #ffffff !important;
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    .plyr__menu__container .plyr__control[role="menuitem"]:last-child,
+    .plyr__menu__container .plyr__control[role="menuitemradio"]:last-child {
+        border-bottom: none !important;
+    }
+    
+    .plyr__menu__container .plyr__control[role="menuitem"]:hover,
+    .plyr__menu__container .plyr__control[role="menuitem"]:focus,
+    .plyr__menu__container .plyr__control[role="menuitemradio"]:hover,
+    .plyr__menu__container .plyr__control[role="menuitemradio"]:focus {
+        background-color: rgba(255, 204, 51, 0.25) !important;
+        color: #ffcc33 !important;
+    }
+    
+    .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"] {
+        background-color: rgba(255, 204, 51, 0.35) !important;
+        color: #ffcc33 !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Labels dans le menu */
+    .plyr__menu__container .plyr__control span {
+        color: inherit !important;
+        font-size: 0.5rem !important;
+    }
+    
+    /* Bouton settings */
+    .plyr__control[data-plyr="settings"] {
+        color: #fff !important;
+    }
+    
+    .plyr__control[data-plyr="settings"]:hover {
+        color: #ffcc33 !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* Réduire encore plus sur tablette */
+    .plyr__menu__container {
+        font-size: 0.45rem !important;
+        min-width: 80px !important;
+        max-width: 110px !important;
+        padding: 0.15rem 0 !important;
+    }
+    
+    .plyr__menu__container .plyr__control {
+        padding: 0.15rem 0.35rem !important;
+        font-size: 0.45rem !important;
+        line-height: 1.1 !important;
+    }
+    
+    .plyr__menu__container .plyr__control span {
+        font-size: 0.45rem !important;
+    }
+    
+    /* Bouton play central - rond sur tablette */
+    .plyr__control--overlaid,
+    .plyr__control.plyr__control--overlaid {
+        border-radius: 50% !important;
+        width: 60px !important;
+        height: 60px !important;
+        min-width: 60px !important;
+        min-height: 60px !important;
+        max-width: 60px !important;
+        max-height: 60px !important;
+    }
+    
+    /* Icône play à l'intérieur du bouton central sur tablette */
+    .plyr__control--overlaid svg,
+    .plyr__control.plyr__control--overlaid svg {
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
+        min-height: 30px !important;
+    }
+    
+    .plyr__control--overlaid .plyr__icon,
+    .plyr__control.plyr__control--overlaid .plyr__icon {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 30px !important;
+    }
+}
+
 @media (max-width: 575.98px) {
     /* Réduire encore plus le padding-top pour très petits écrans */
     .learning-shell {
         padding-top: 0 !important;
+    }
+    
+    /* Réduire encore plus les items de settings sur très petit mobile */
+    .plyr__menu__container {
+        font-size: 0.4rem !important;
+        min-width: 70px !important;
+        max-width: 100px !important;
+        padding: 0.1rem 0 !important;
+        background-color: #001a33 !important; /* Bleu très sombre */
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 3px !important;
+    }
+    
+    .plyr__menu__container .plyr__control {
+        padding: 0.1rem 0.3rem !important;
+        margin: 0 !important;
+        font-size: 0.4rem !important;
+        line-height: 1.1 !important;
+        min-height: auto !important;
+        height: auto !important;
+    }
+    
+    .plyr__menu__container .plyr__control[role="menuitem"],
+    .plyr__menu__container .plyr__control[role="menuitemradio"] {
+        color: #ffffff !important;
+        background-color: transparent !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    
+    .plyr__menu__container .plyr__control[role="menuitem"]:last-child,
+    .plyr__menu__container .plyr__control[role="menuitemradio"]:last-child {
+        border-bottom: none !important;
+    }
+    
+    .plyr__menu__container .plyr__control[role="menuitem"]:hover,
+    .plyr__menu__container .plyr__control[role="menuitem"]:focus,
+    .plyr__menu__container .plyr__control[role="menuitemradio"]:hover,
+    .plyr__menu__container .plyr__control[role="menuitemradio"]:focus {
+        background-color: rgba(255, 204, 51, 0.3) !important;
+        color: #ffcc33 !important;
+    }
+    
+    .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"] {
+        background-color: rgba(255, 204, 51, 0.4) !important;
+        color: #ffcc33 !important;
+        font-weight: 600 !important;
+    }
+    
+    .plyr__menu__container .plyr__control span {
+        color: inherit !important;
+        font-size: 0.4rem !important;
+    }
+    
+    /* Bouton play central - rond sur très petit mobile */
+    .plyr__control--overlaid,
+    .plyr__control.plyr__control--overlaid {
+        border-radius: 50% !important;
+        width: 50px !important;
+        height: 50px !important;
+        min-width: 50px !important;
+        min-height: 50px !important;
+        max-width: 50px !important;
+        max-height: 50px !important;
+    }
+    
+    /* Icône play à l'intérieur du bouton central sur très petit mobile */
+    .plyr__control--overlaid svg,
+    .plyr__control.plyr__control--overlaid svg {
+        width: 25px !important;
+        height: 25px !important;
+        min-width: 25px !important;
+        min-height: 25px !important;
+    }
+    
+    .plyr__control--overlaid .plyr__icon,
+    .plyr__control.plyr__control--overlaid .plyr__icon {
+        width: 25px !important;
+        height: 25px !important;
+        font-size: 25px !important;
+    }
+
+    .learning-player-card .d-flex.flex-column.align-items-center .btn-lg {
+        font-size: 0.65rem;
+        padding: 0.3rem 0.7rem;
     }
 
     .learning-shell .container-fluid {
@@ -1150,7 +2078,7 @@
     .learning-topbar {
         margin-bottom: 0.25rem !important;
         margin-top: 0 !important;
-        padding-top: 0 !important;
+        padding-top: 1rem !important;
     }
 
     /* Ajouter des marges horizontales à la barre de progression sur très petit mobile */
@@ -1253,25 +2181,15 @@
         font-size: 0.6rem;
     }
 
-    .lesson-tabs {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
+    .learning-player-card .lesson-tabs {
+        margin-bottom: 0.6rem;
         gap: 0.3rem;
-    }
-
-    .lesson-tab {
-        font-size: 0.6rem;
-        padding: 0.2rem 0.4rem;
-        width: 100%;
-        text-align: center;
-        display: flex;
-        align-items: center;
         justify-content: center;
     }
 
-    .lesson-tab i {
-        font-size: 0.55rem;
-        margin-right: 0.15rem !important;
+    .learning-player-card .lesson-tab {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.55rem;
     }
 
     .insight-card {
@@ -1304,11 +2222,54 @@
     }
 
     .learning-topbar h6 {
-        font-size: 0.8rem;
+        font-size: 1.0rem;
+        text-align: center;
     }
 
     .learning-topbar p {
         font-size: 0.5rem;
+        text-align: center;
+    }
+
+    .learning-topbar > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+        width: 100%;
+    }
+
+    .learning-topbar > div > div:first-child {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .learning-topbar > div > div:first-child > a {
+        flex: 0 0 auto;
+    }
+
+    .learning-topbar > div > div:first-child > div {
+        flex: 1;
+        min-width: 0;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+    }
+
+    .learning-topbar > div > div:first-child > div h6,
+    .learning-topbar > div > div:first-child > div p {
+        width: 100%;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .learning-topbar > div > button:last-child {
+        flex: 0 0 auto;
     }
 
     /* Boutons retour et sommaire - icônes uniquement sur très petit mobile */
@@ -1323,32 +2284,49 @@
         justify-content: center !important;
     }
 
+    .learning-topbar .btn:hover i {
+        color: #003366 !important;
+    }
+
     .learning-topbar .btn i {
         margin: 0 !important;
         font-size: 0.9rem;
     }
 
-    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - icônes uniquement sur très petit mobile */
+    /* Boutons Partager, Suivant, Précédent, Terminé, Ressources - afficher les textes sur très petit mobile */
     .lesson-header .btn i,
     .lesson-cta-row .btn i {
-        margin: 0 !important;
-        font-size: 0.9rem;
+        margin-right: 0.25rem !important;
+        font-size: 0.65rem;
     }
 
     .lesson-header .btn,
     .lesson-cta-row .btn {
-        padding: 0.5rem !important;
-        min-width: 36px !important;
+        padding: 0.35rem 0.5rem !important;
+        min-width: auto !important;
         width: auto !important;
-        height: 36px !important;
+        height: auto !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        font-size: 0.65rem;
+        white-space: nowrap;
     }
 
     .lesson-header .btn span,
     .lesson-cta-row .btn span {
-        display: none !important;
+        display: inline !important;
+        font-size: 0.65rem;
+    }
+
+    .lesson-header .btn:hover i.fa-arrow-left,
+    .lesson-cta-row .btn:hover i.fa-arrow-left {
+        color: #003366 !important;
+    }
+
+    .lesson-header .btn:hover span,
+    .lesson-cta-row .btn:hover span {
+        color: #003366 !important;
     }
 
     .card-body {
@@ -1545,7 +2523,7 @@
                                 <p class="text-uppercase small mb-1" style="color: #94a3b8; letter-spacing: 0.08em;">Cours en formation</p>
                                 <h2 class="mb-0" style="color: #f8fafc; font-size: 1.25rem; font-weight: 700;">{{ $course->title }}</h2>
                             </div>
-                            <a href="{{ route('courses.show', $course->slug) }}" class="btn btn-outline-light btn-sm">
+                            <a href="{{ route('courses.show', $course->slug) }}" class="btn btn-outline-info btn-sm">
                                 <i class="fas fa-info-circle me-2"></i>Détails
                             </a>
                         </div>
@@ -1558,7 +2536,7 @@
                             <div>
                                 <p class="text-uppercase small text-muted fw-semibold mb-1" style="letter-spacing: 0.08em;">
                                     @if(isset($activeLesson))
-                                        Leçon {{ $progress['lesson_progress'][$activeLesson->id]->watched_seconds ?? 0 > 0 ? 'en cours' : 'nouvelle' }}
+                                        Leçon {{ isset($progress['lesson_progress'][$activeLesson->id]) && ($progress['lesson_progress'][$activeLesson->id]->time_watched ?? 0) > 0 ? 'en cours' : 'nouvelle' }}
                                     @else
                                         Aperçu du cours
                                     @endif
@@ -1575,10 +2553,10 @@
                                     <span><i class="fas fa-signal me-1 text-info"></i>{{ ucfirst($course->level) }}</span>
                         </div>
                     </div>
-                            @if(isset($activeLesson) && ($progress['lesson_progress'][$activeLesson->id]->watched_seconds ?? 0) > 0)
+                            @if(isset($activeLesson) && isset($progress['lesson_progress'][$activeLesson->id]) && ($progress['lesson_progress'][$activeLesson->id]->time_watched ?? 0) > 0)
                             <button class="btn btn-outline-light d-flex align-items-center gap-2">
                                 <i class="fas fa-share-nodes"></i>
-                                <span class="d-none d-md-inline">Partager</span>
+                                <span>Partager</span>
                         </button>
                             @endif
                     </div>
@@ -1589,7 +2567,7 @@
                             @if(isset($activeLesson))
                                     @switch($activeLesson->type)
                                         @case('video')
-                                        <x-plyr-player :lesson="$activeLesson" :course="$course" :is-mobile="false" />
+                                        <x-plyr-player :lesson="$activeLesson" :course="$course" :lesson-progress="$lessonProgress" :is-mobile="false" />
                                             @break
                                         @case('pdf')
                                             <x-pdf-viewer :lesson="$activeLesson" />
@@ -1631,14 +2609,14 @@
                                 <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $previousLesson->id]) }}"
                                    class="btn btn-outline-light d-flex align-items-center gap-2">
                                     <i class="fas fa-arrow-left"></i>
-                                        <span class="d-none d-md-inline">Précédent</span>
+                                        <span>Précédent</span>
                                 </a>
                             @endif
 
                             @if(isset($nextLesson))
                                 <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $nextLesson->id]) }}"
                                    class="btn btn-info d-flex align-items-center gap-2">
-                                        <span class="d-none d-md-inline">Suivant</span>
+                                        <span>Suivant</span>
                                     <i class="fas fa-arrow-right"></i>
                                 </a>
                             @endif
@@ -1655,7 +2633,7 @@
                                     @endif
                                 >
                                     <i class="fas fa-check"></i>
-                                        <span class="d-none d-md-inline">{{ $progress['completed_lessons_ids']->contains($activeLesson->id) ? 'Leçon terminée' : 'Marquer comme terminé' }}</span>
+                                        <span>{{ $progress['completed_lessons_ids']->contains($activeLesson->id) ? 'Leçon terminée' : 'Marquer comme terminé' }}</span>
                                     </button>
                             @endif
                         </div>

@@ -414,6 +414,59 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Paiement externe -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-external-link-alt me-2"></i>Paiement externe
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="use_external_payment" name="use_external_payment" value="1" 
+                                           {{ old('use_external_payment') ? 'checked' : '' }}
+                                           onchange="toggleExternalPaymentFields()">
+                                    <label class="form-check-label" for="use_external_payment">
+                                        <strong>Utiliser un paiement externe</strong>
+                                    </label>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Si activé, les utilisateurs seront redirigés vers un lien de paiement externe au lieu d'utiliser le panier.
+                                </small>
+                            </div>
+                        </div>
+
+                        <div id="external-payment-fields" style="display: {{ old('use_external_payment') ? 'block' : 'none' }};">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="external_payment_url" class="form-label">URL de paiement externe <span class="text-danger">*</span></label>
+                                    <input type="url" class="form-control @error('external_payment_url') is-invalid @enderror" 
+                                           id="external_payment_url" name="external_payment_url" 
+                                           value="{{ old('external_payment_url') }}" 
+                                           placeholder="https://example.com/payment/...">
+                                    @error('external_payment_url')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="external_payment_text" class="form-label">Texte du bouton</label>
+                                    <input type="text" class="form-control @error('external_payment_text') is-invalid @enderror" 
+                                           id="external_payment_text" name="external_payment_text" 
+                                           value="{{ old('external_payment_text') }}" 
+                                           placeholder="Acheter maintenant">
+                                    <small class="text-muted">Texte affiché sur le bouton de paiement (par défaut: "Acheter maintenant")</small>
+                                    @error('external_payment_text')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1273,6 +1326,32 @@ function toggleDownloadFileFields() {
     }
 }
 
+// Gestion des champs de paiement externe
+function toggleExternalPaymentFields() {
+    const checkbox = document.getElementById('use_external_payment');
+    const fields = document.getElementById('external-payment-fields');
+    const urlField = document.getElementById('external_payment_url');
+    
+    if (checkbox && fields) {
+        if (checkbox.checked) {
+            fields.style.display = 'block';
+            if (urlField) {
+                urlField.required = true;
+            }
+        } else {
+            fields.style.display = 'none';
+            if (urlField) {
+                urlField.required = false;
+                urlField.value = '';
+            }
+            const textField = document.getElementById('external_payment_text');
+            if (textField) {
+                textField.value = '';
+            }
+        }
+    }
+}
+
 function handleDownloadFileUpload(input) {
     const zone = document.getElementById('downloadFileUploadZone');
     const errorDiv = document.getElementById('downloadFileError');
@@ -1752,12 +1831,20 @@ function addLesson(sectionId) {
             <div class="row mt-2">
                 <div class="col-12">
                     <label class="form-label">Contenu texte</label>
-                    <textarea class="form-control" name="sections[${sectionId}][lessons][${lessonCount}][content_text]" rows="3" placeholder="Contenu texte de la leçon"></textarea>
+                    <textarea class="form-control lesson-content-text-editor" name="sections[${sectionId}][lessons][${lessonCount}][content_text]" rows="3" placeholder="Contenu texte de la leçon"></textarea>
                 </div>
             </div>
         </div>
     `;
     container.appendChild(lessonDiv);
+    
+    // Initialiser TinyMCE sur le nouveau textarea
+    const contentTextarea = lessonDiv.querySelector('.lesson-content-text-editor');
+    if (contentTextarea && typeof window.initTinyMCEOnTextarea === 'function') {
+        setTimeout(() => {
+            window.initTinyMCEOnTextarea(contentTextarea);
+        }, 100);
+    }
 }
 
 function removeLesson(button) {
@@ -2525,6 +2612,12 @@ document.addEventListener('DOMContentLoaded', function() {
         form.addEventListener('submit', function() {
             TempUploadManager.markSubmitting();
         });
+    }
+
+    // Initialiser les champs de paiement externe si nécessaire
+    const externalPaymentCheckbox = document.getElementById('use_external_payment');
+    if (externalPaymentCheckbox) {
+        toggleExternalPaymentFields();
     }
 
     document.querySelectorAll('[data-temp-upload-cancel]').forEach((cancelLink) => {

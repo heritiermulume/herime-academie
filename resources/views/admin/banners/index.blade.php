@@ -108,32 +108,130 @@
                                             {{ $banner->is_active ? 'Active' : 'Inactive' }}
                                         </span>
                                     </td>
-                                    <td class="text-center">
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button
-                                                type="button"
-                                                class="btn btn-light"
-                                                title="{{ $banner->is_active ? 'Désactiver' : 'Activer' }}"
-                                                data-action="{{ route('admin.banners.toggle-active', $banner) }}"
-                                                data-confirm="Confirmer le changement de statut de cette bannière ?"
-                                                data-success="Statut de la bannière mis à jour."
-                                                onclick="toggleBannerStatus(this)"
-                                            >
-                                                <i class="fas fa-toggle-{{ $banner->is_active ? 'on text-success' : 'off text-muted' }}"></i>
-                                            </button>
-                                            <a href="{{ route('admin.banners.edit', $banner) }}" class="btn btn-light" title="Modifier">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <button
-                                                type="button"
-                                                class="btn btn-light text-danger"
-                                                title="Supprimer"
-                                                data-action="{{ route('admin.banners.destroy', $banner) }}"
-                                                onclick="openDeleteBannerModal(this)"
-                                            >
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
+                                    <td class="text-center align-top">
+                                        @if($loop->first)
+                                            <div class="dropdown d-none d-md-block">
+                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $banner->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $banner->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="#" 
+                                                           data-action="{{ route('admin.banners.toggle-active', $banner) }}"
+                                                           data-confirm="Confirmer le changement de statut de cette bannière ?"
+                                                           data-success="Statut de la bannière mis à jour."
+                                                           onclick="toggleBannerStatus(this); return false;">
+                                                            <i class="fas fa-toggle-{{ $banner->is_active ? 'on' : 'off' }} me-2"></i>
+                                                            {{ $banner->is_active ? 'Désactiver' : 'Activer' }}
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.banners.edit', $banner) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.banners.destroy', $banner) }}"
+                                                           onclick="openDeleteBannerModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="dropdown d-md-none">
+                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $banner->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $banner->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="#" 
+                                                           data-action="{{ route('admin.banners.toggle-active', $banner) }}"
+                                                           data-confirm="Confirmer le changement de statut de cette bannière ?"
+                                                           data-success="Statut de la bannière mis à jour."
+                                                           onclick="toggleBannerStatus(this); return false;">
+                                                            <i class="fas fa-toggle-{{ $banner->is_active ? 'on' : 'off' }} me-2"></i>
+                                                            {{ $banner->is_active ? 'Désactiver' : 'Activer' }}
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.banners.edit', $banner) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.banners.destroy', $banner) }}"
+                                                           onclick="openDeleteBannerModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        @else
+                                            <div class="dropup d-none d-md-block">
+                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $banner->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $banner->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="#" 
+                                                           data-action="{{ route('admin.banners.toggle-active', $banner) }}"
+                                                           data-confirm="Confirmer le changement de statut de cette bannière ?"
+                                                           data-success="Statut de la bannière mis à jour."
+                                                           onclick="toggleBannerStatus(this); return false;">
+                                                            <i class="fas fa-toggle-{{ $banner->is_active ? 'on' : 'off' }} me-2"></i>
+                                                            {{ $banner->is_active ? 'Désactiver' : 'Activer' }}
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.banners.edit', $banner) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.banners.destroy', $banner) }}"
+                                                           onclick="openDeleteBannerModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="dropup d-md-none">
+                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $banner->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $banner->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="#" 
+                                                           data-action="{{ route('admin.banners.toggle-active', $banner) }}"
+                                                           data-confirm="Confirmer le changement de statut de cette bannière ?"
+                                                           data-success="Statut de la bannière mis à jour."
+                                                           onclick="toggleBannerStatus(this); return false;">
+                                                            <i class="fas fa-toggle-{{ $banner->is_active ? 'on' : 'off' }} me-2"></i>
+                                                            {{ $banner->is_active ? 'Désactiver' : 'Activer' }}
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.banners.edit', $banner) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.banners.destroy', $banner) }}"
+                                                           onclick="openDeleteBannerModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

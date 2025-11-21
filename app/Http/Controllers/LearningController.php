@@ -59,6 +59,21 @@ class LearningController extends Controller
 
         // Obtenir la leçon active (si une leçon est en cours de visualisation)
         $activeLessonId = session('active_lesson_id', null);
+        
+        // Toujours vérifier s'il y a une dernière leçon consultée pour rediriger
+        // (même si activeLessonId existe en session, car la session peut être expirée)
+        $lastLesson = $this->getLastLessonForUser($course);
+        
+        // Si on a trouvé une dernière leçon et qu'elle est différente de celle en session
+        // OU si aucune leçon n'est en session, rediriger vers la dernière leçon
+        if ($lastLesson && (!$activeLessonId || $activeLessonId != $lastLesson->id)) {
+            // Vérifier que la leçon a vraiment une progression (time_watched > 0)
+            $lastLessonProgress = $this->getLessonProgress($lastLesson);
+            if ($lastLessonProgress && $lastLessonProgress->time_watched > 0) {
+                // Rediriger automatiquement vers la dernière leçon consultée
+                return redirect()->route('learning.lesson', ['course' => $course->slug, 'lesson' => $lastLesson->id]);
+            }
+        }
 
         return view('learning.course', compact('course', 'enrollment', 'progress', 'courseStats', 'recommendedCourses', 'activeLessonId'));
     }
@@ -279,8 +294,24 @@ class LearningController extends Controller
     {
         $progress = LessonProgress::where('user_id', auth()->id())
             ->where('course_id', $course->id)
+            ->with(['lesson' => function ($query) {
+                // S'assurer que la relation lesson est bien chargée avec les champs nécessaires
+                $query->select('id', 'duration', 'title');
+            }])
             ->get()
             ->keyBy('lesson_id');
+
+        // S'assurer que la relation lesson est bien chargée pour chaque progression
+        // Charger les leçons manquantes si nécessaire
+        $lessonIds = $progress->pluck('lesson_id')->filter();
+        $lessons = $course->lessons()->whereIn('id', $lessonIds)->get()->keyBy('id');
+        
+        $progress->each(function ($progressItem) use ($lessons) {
+            // Si la relation lesson n'est pas chargée, la charger manuellement
+            if (!$progressItem->relationLoaded('lesson') && isset($lessons[$progressItem->lesson_id])) {
+                $progressItem->setRelation('lesson', $lessons[$progressItem->lesson_id]);
+            }
+        });
 
         $totalLessons = $course->lessons()->count();
         $completedLessons = $progress->where('is_completed', true)->count();
@@ -307,7 +338,72 @@ class LearningController extends Controller
     {
         return LessonProgress::where('user_id', auth()->id())
             ->where('lesson_id', $lesson->id)
+            ->with('lesson') // Charger la relation lesson pour le calcul de progress_percentage
             ->first();
+    }
+
+    /**
+     * Obtenir la dernière leçon consultée par l'utilisateur pour un cours
+     * Retourne la dernière leçon commencée mais non complétée, ou la première leçon non commencée
+     */
+    private function getLastLessonForUser(Course $course)
+    {
+        $userId = auth()->id();
+        
+        // Charger toutes les leçons du cours dans l'ordre
+        $allLessons = $course->lessons()
+            ->join('course_sections', 'course_lessons.section_id', '=', 'course_sections.id')
+            ->where('course_lessons.is_published', true)
+            ->orderBy('course_sections.sort_order')
+            ->orderBy('course_lessons.sort_order')
+            ->select('course_lessons.*')
+            ->get();
+        
+        if ($allLessons->isEmpty()) {
+            return null;
+        }
+        
+        // Obtenir toutes les progressions de l'utilisateur pour ce cours
+        $progresses = LessonProgress::where('user_id', $userId)
+            ->where('course_id', $course->id)
+            ->with('lesson')
+            ->get()
+            ->keyBy('lesson_id');
+        
+        // Chercher la dernière leçon consultée (avec progression mais non complétée)
+        // Utiliser updated_at car il est mis à jour à chaque progression (toutes les 10 secondes)
+        $lastViewedLesson = null;
+        $lastUpdatedAt = null;
+        
+        foreach ($allLessons as $lesson) {
+            $progress = $progresses->get($lesson->id);
+            
+            // Si la leçon a une progression (time_watched > 0) mais n'est pas complétée
+            if ($progress && $progress->time_watched > 0 && !$progress->is_completed) {
+                // Utiliser updated_at pour trouver la dernière leçon consultée
+                $updatedAt = $progress->updated_at ? $progress->updated_at->timestamp : 0;
+                if (!$lastUpdatedAt || $updatedAt > $lastUpdatedAt) {
+                    $lastUpdatedAt = $updatedAt;
+                    $lastViewedLesson = $lesson;
+                }
+            }
+        }
+        
+        // Si on a trouvé une leçon consultée mais non complétée, la retourner
+        if ($lastViewedLesson) {
+            return $lastViewedLesson;
+        }
+        
+        // Sinon, chercher la première leçon non commencée (sans progression)
+        foreach ($allLessons as $lesson) {
+            $progress = $progresses->get($lesson->id);
+            if (!$progress || ($progress->time_watched == 0 && !$progress->is_started)) {
+                return $lesson;
+            }
+        }
+        
+        // Si toutes les leçons sont complétées, retourner la dernière leçon
+        return $allLessons->last();
     }
 
     /**

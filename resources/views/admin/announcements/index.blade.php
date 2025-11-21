@@ -52,19 +52,94 @@
                                                 {{ $announcement->expires_at ? $announcement->expires_at->format('d/m/Y H:i') : 'Illimité' }}
                                             </small>
                                         </td>
-                                        <td>
-                                            <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-outline-warning" onclick="editAnnouncement({{ $announcement->id }})">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button type="button"
-                                                    class="btn btn-sm btn-outline-danger" 
-                                                    data-action="{{ route('admin.announcements.destroy', $announcement) }}"
-                                                    data-title="{{ $announcement->title }}"
-                                                    onclick="openDeleteAnnouncementModal(this)">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </div>
+                                        <td class="text-center align-top">
+                                            @if($loop->first)
+                                                <div class="dropdown d-none d-md-block">
+                                                    <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $announcement->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="fas fa-ellipsis-v"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $announcement->id }}">
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" onclick="editAnnouncement({{ $announcement->id }}); return false;">
+                                                                <i class="fas fa-edit me-2"></i>Modifier
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" href="#" 
+                                                               data-action="{{ route('admin.announcements.destroy', $announcement) }}"
+                                                               data-title="{{ $announcement->title }}"
+                                                               onclick="openDeleteAnnouncementModal(this); return false;">
+                                                                <i class="fas fa-trash me-2"></i>Supprimer
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <div class="dropdown d-md-none">
+                                                    <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $announcement->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="fas fa-ellipsis-v"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $announcement->id }}">
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" onclick="editAnnouncement({{ $announcement->id }}); return false;">
+                                                                <i class="fas fa-edit me-2"></i>Modifier
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" href="#" 
+                                                               data-action="{{ route('admin.announcements.destroy', $announcement) }}"
+                                                               data-title="{{ $announcement->title }}"
+                                                               onclick="openDeleteAnnouncementModal(this); return false;">
+                                                                <i class="fas fa-trash me-2"></i>Supprimer
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            @else
+                                                <div class="dropup d-none d-md-block">
+                                                    <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $announcement->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="fas fa-ellipsis-v"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $announcement->id }}">
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" onclick="editAnnouncement({{ $announcement->id }}); return false;">
+                                                                <i class="fas fa-edit me-2"></i>Modifier
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" href="#" 
+                                                               data-action="{{ route('admin.announcements.destroy', $announcement) }}"
+                                                               data-title="{{ $announcement->title }}"
+                                                               onclick="openDeleteAnnouncementModal(this); return false;">
+                                                                <i class="fas fa-trash me-2"></i>Supprimer
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <div class="dropup d-md-none">
+                                                    <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $announcement->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="fas fa-ellipsis-v"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $announcement->id }}">
+                                                        <li>
+                                                            <a class="dropdown-item" href="#" onclick="editAnnouncement({{ $announcement->id }}); return false;">
+                                                                <i class="fas fa-edit me-2"></i>Modifier
+                                                            </a>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li>
+                                                            <a class="dropdown-item text-danger" href="#" 
+                                                               data-action="{{ route('admin.announcements.destroy', $announcement) }}"
+                                                               data-title="{{ $announcement->title }}"
+                                                               onclick="openDeleteAnnouncementModal(this); return false;">
+                                                                <i class="fas fa-trash me-2"></i>Supprimer
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            @endif
                                         </td>
                                     </tr>
                                     @empty

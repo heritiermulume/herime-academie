@@ -563,7 +563,7 @@
                     </div>
                     <div class="course-structure__field">
                         <span>Contenu texte (optionnel)</span>
-                        <textarea name="sections[${sectionIndex}][lessons][${lessonIndex}][content_text]" rows="3" placeholder="Ajoutez un support écrit ou un résumé de la leçon"></textarea>
+                        <textarea class="lesson-content-text-editor" name="sections[${sectionIndex}][lessons][${lessonIndex}][content_text]" rows="3" placeholder="Ajoutez un support écrit ou un résumé de la leçon"></textarea>
                     </div>
                     <div class="course-structure__field">
                         <span>Lien externe (YouTube, Vimeo, Google Drive...)</span>

@@ -163,30 +163,134 @@
                                 <td class="d-none d-md-table-cell">
                                     <span class="admin-chip admin-chip--neutral">{{ $order->created_at ? $order->created_at->format('d/m/Y H:i') : '—' }}</span>
                                 </td>
-                                <td class="text-center">
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-light" title="Voir">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <button type="button"
-                                            class="btn btn-light"
-                                            title="Confirmer"
-                                            data-action-url="{{ route('admin.orders.confirm', $order) }}"
-                                            data-confirm="Confirmer cette commande ?"
-                                            data-success="Commande confirmée avec succès."
-                                            onclick="handleOrderAction(this)">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                        <button type="button"
-                                            class="btn btn-light text-danger"
-                                            title="Annuler"
-                                            data-action-url="{{ route('admin.orders.cancel', $order) }}"
-                                            data-confirm="Annuler cette commande ?"
-                                            data-success="Commande annulée."
-                                            onclick="handleOrderAction(this)">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
+                                <td class="text-center align-top">
+                                    @if($loop->first)
+                                        <div class="dropdown d-none d-md-block">
+                                            <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $order->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $order->id }}">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
+                                                        <i class="fas fa-eye me-2"></i>Voir
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       data-action-url="{{ route('admin.orders.confirm', $order) }}"
+                                                       data-confirm="Confirmer cette commande ?"
+                                                       data-success="Commande confirmée avec succès."
+                                                       onclick="handleOrderAction(this); return false;">
+                                                        <i class="fas fa-check me-2"></i>Confirmer
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger" href="#" 
+                                                       data-action-url="{{ route('admin.orders.cancel', $order) }}"
+                                                       data-confirm="Annuler cette commande ?"
+                                                       data-success="Commande annulée."
+                                                       onclick="handleOrderAction(this); return false;">
+                                                        <i class="fas fa-times me-2"></i>Annuler
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div class="dropdown d-md-none">
+                                            <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $order->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $order->id }}">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
+                                                        <i class="fas fa-eye me-2"></i>Voir
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       data-action-url="{{ route('admin.orders.confirm', $order) }}"
+                                                       data-confirm="Confirmer cette commande ?"
+                                                       data-success="Commande confirmée avec succès."
+                                                       onclick="handleOrderAction(this); return false;">
+                                                        <i class="fas fa-check me-2"></i>Confirmer
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger" href="#" 
+                                                       data-action-url="{{ route('admin.orders.cancel', $order) }}"
+                                                       data-confirm="Annuler cette commande ?"
+                                                       data-success="Commande annulée."
+                                                       onclick="handleOrderAction(this); return false;">
+                                                        <i class="fas fa-times me-2"></i>Annuler
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    @else
+                                        <div class="dropup d-none d-md-block">
+                                            <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $order->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $order->id }}">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
+                                                        <i class="fas fa-eye me-2"></i>Voir
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       data-action-url="{{ route('admin.orders.confirm', $order) }}"
+                                                       data-confirm="Confirmer cette commande ?"
+                                                       data-success="Commande confirmée avec succès."
+                                                       onclick="handleOrderAction(this); return false;">
+                                                        <i class="fas fa-check me-2"></i>Confirmer
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger" href="#" 
+                                                       data-action-url="{{ route('admin.orders.cancel', $order) }}"
+                                                       data-confirm="Annuler cette commande ?"
+                                                       data-success="Commande annulée."
+                                                       onclick="handleOrderAction(this); return false;">
+                                                        <i class="fas fa-times me-2"></i>Annuler
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div class="dropup d-md-none">
+                                            <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $order->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $order->id }}">
+                                                <li>
+                                                    <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
+                                                        <i class="fas fa-eye me-2"></i>Voir
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" 
+                                                       data-action-url="{{ route('admin.orders.confirm', $order) }}"
+                                                       data-confirm="Confirmer cette commande ?"
+                                                       data-success="Commande confirmée avec succès."
+                                                       onclick="handleOrderAction(this); return false;">
+                                                        <i class="fas fa-check me-2"></i>Confirmer
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item text-danger" href="#" 
+                                                       data-action-url="{{ route('admin.orders.cancel', $order) }}"
+                                                       data-confirm="Annuler cette commande ?"
+                                                       data-success="Commande annulée."
+                                                       onclick="handleOrderAction(this); return false;">
+                                                        <i class="fas fa-times me-2"></i>Annuler
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    @endif
                                 </td>
                             </tr>
                             @empty
