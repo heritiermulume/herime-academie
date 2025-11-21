@@ -3197,7 +3197,7 @@ window.cancelAllUploads = cancelAllUploads;
             readonly: false,
             // S'assurer que le document est en mode standards
             schema: 'html5',
-        setup: function(editor) {
+            setup: function(editor) {
             // Ajouter le sélecteur de taille de police
             editor.ui.registry.addMenuButton('fontsize', {
                 text: 'Taille',
@@ -3221,7 +3221,7 @@ window.cancelAllUploads = cancelAllUploads;
                     callback(items);
                 }
             });
-        };
+        }
 
         // Initialiser TinyMCE sur les textareas existants
         if (typeof tinymce !== 'undefined') {
