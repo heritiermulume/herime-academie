@@ -25,6 +25,26 @@ class ChunkUploadController extends Controller
     public function handle(Request $request): JsonResponse
     {
         try {
+            // Vérifier si post_max_size a été dépassé (PHP vide $_POST et $_FILES)
+            if (empty($request->all()) && empty($request->files->all()) && $request->header('Content-Length')) {
+                $contentLength = (int) $request->header('Content-Length');
+                $postMaxSize = $this->parseSize(ini_get('post_max_size'));
+                
+                Log::error('Chunk upload failed: post_max_size exceeded', [
+                    'content_length' => $contentLength,
+                    'post_max_size' => $postMaxSize,
+                    'post_max_size_ini' => ini_get('post_max_size'),
+                    'upload_max_filesize' => ini_get('upload_max_filesize'),
+                ]);
+
+                return response()->json([
+                    'message' => 'Le fichier est trop volumineux. La taille dépasse la limite du serveur (post_max_size: ' . ini_get('post_max_size') . '). Contactez l\'administrateur pour augmenter cette limite.',
+                    'error' => 'POST_MAX_SIZE_EXCEEDED',
+                    'content_length' => $contentLength,
+                    'post_max_size' => $postMaxSize,
+                ], 413);
+            }
+
             Log::debug('Chunk upload request received', [
                 'upload_type' => $request->input('upload_type'),
                 'chunk_number' => $request->input('resumableChunkNumber'),
@@ -34,6 +54,9 @@ class ChunkUploadController extends Controller
                 'file_name' => $request->input('resumableFilename'),
                 'content_length' => $request->headers->get('content-length'),
                 'user_id' => auth()->id(),
+                'has_files' => !empty($request->files->all()),
+                'php_upload_max_filesize' => ini_get('upload_max_filesize'),
+                'php_post_max_size' => ini_get('post_max_size'),
             ]);
 
             // Vérifier les permissions de base avant de commencer
@@ -248,6 +271,29 @@ class ChunkUploadController extends Controller
 
         // En développement, retourner le message complet
         return $message;
+    }
+
+    /**
+     * Convertir une taille PHP (ex: "100M") en octets
+     */
+    private function parseSize(string $size): int
+    {
+        $size = trim($size);
+        $last = strtolower($size[strlen($size) - 1] ?? '');
+        $size = (int) $size;
+
+        switch ($last) {
+            case 'g':
+                $size *= 1024;
+                // no break
+            case 'm':
+                $size *= 1024;
+                // no break
+            case 'k':
+                $size *= 1024;
+        }
+
+        return $size;
     }
 }
 

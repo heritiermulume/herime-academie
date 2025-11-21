@@ -37,5 +37,50 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Logger toutes les exceptions, même en production
+        $exceptions->report(function (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Exception caught', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'request_url' => request()->fullUrl(),
+                'request_method' => request()->method(),
+                'user_id' => auth()->id(),
+            ]);
+        });
+
+        // Pour les requêtes JSON/AJAX, retourner des erreurs JSON détaillées même en production
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+                $statusCode = method_exists($e, 'getStatusCode') 
+                    ? $e->getStatusCode() 
+                    : 500;
+
+                $message = $e->getMessage();
+                
+                // En production, ne pas exposer les détails techniques sauf pour certaines erreurs
+                if (config('app.env') === 'production' && $statusCode === 500) {
+                    // Logger l'erreur complète
+                    \Illuminate\Support\Facades\Log::error('Production error for JSON request', [
+                        'error' => $message,
+                        'trace' => $e->getTraceAsString(),
+                        'route' => $request->route()?->getName(),
+                    ]);
+
+                    // Retourner un message générique mais avec un code d'erreur utile
+                    return response()->json([
+                        'message' => 'Une erreur est survenue. Consultez les logs pour plus de détails.',
+                        'error' => class_basename($e),
+                        'status' => $statusCode,
+                    ], $statusCode);
+                }
+
+                return response()->json([
+                    'message' => $message,
+                    'error' => class_basename($e),
+                    'status' => $statusCode,
+                ], $statusCode);
+            }
+        });
     })->create();
