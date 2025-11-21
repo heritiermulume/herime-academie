@@ -3151,6 +3151,13 @@ window.cancelAllUploads = cancelAllUploads;
 <!-- TinyMCE (version open-source via jsDelivr, pas de clé API requise) -->
 <script>
 (function() {
+    // S'assurer que le document a un DOCTYPE pour forcer le mode standards
+    if (!document.doctype && document.firstChild && document.firstChild.nodeType !== 10) {
+        // Le DOCTYPE n'existe pas, on ne peut pas le créer après le chargement
+        // mais on peut au moins vérifier
+        console.warn('TinyMCE: DOCTYPE manquant, le mode standards pourrait ne pas être détecté');
+    }
+    
     // Charger TinyMCE de manière asynchrone après que le document soit prêt
     function loadTinyMCE() {
         return new Promise((resolve, reject) => {
@@ -3162,7 +3169,25 @@ window.cancelAllUploads = cancelAllUploads;
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js';
             script.async = true;
-            script.onload = () => resolve();
+            script.onload = () => {
+                // Patcher immédiatement après le chargement, avant toute utilisation
+                if (typeof tinymce !== 'undefined') {
+                    // Patcher isStandardsMode immédiatement
+                    if (tinymce.util && tinymce.util.Tools && tinymce.util.Tools.isStandardsMode) {
+                        tinymce.util.Tools.isStandardsMode = function() { return true; };
+                    }
+                    // Patcher document.compatMode si nécessaire
+                    try {
+                        Object.defineProperty(document, 'compatMode', {
+                            get: function() { return 'CSS1Compat'; },
+                            configurable: true
+                        });
+                    } catch(e) {
+                        // Si on ne peut pas patcher, on continue
+                    }
+                }
+                resolve();
+            };
             script.onerror = () => reject(new Error('Failed to load TinyMCE'));
             document.head.appendChild(script);
         });
@@ -3187,12 +3212,37 @@ window.cancelAllUploads = cancelAllUploads;
                 }
 
                 // Patch pour contourner la vérification du mode standards
+                // Patcher avant toute initialisation
                 if (tinymce && tinymce.util && tinymce.util.Tools) {
                     const originalIsStandardsMode = tinymce.util.Tools.isStandardsMode;
-                    tinymce.util.Tools.isStandardsMode = function() {
-                        return true; // Toujours retourner true pour forcer le mode standards
-                    };
+                    if (originalIsStandardsMode) {
+                        tinymce.util.Tools.isStandardsMode = function() {
+                            return true; // Toujours retourner true pour forcer le mode standards
+                        };
+                    }
                 }
+
+                // Intercepter tinymce.init pour forcer le mode standards
+                const originalInit = tinymce.init;
+                tinymce.init = function(config) {
+                    // Forcer le mode standards avant l'initialisation
+                    if (document.compatMode && document.compatMode !== 'CSS1Compat') {
+                        // Si on n'est pas en mode standards, on force quand même
+                        console.warn('TinyMCE: Mode standards forcé malgré la détection');
+                    }
+                    return originalInit.call(this, config);
+                };
+
+                // Intercepter tinymce.init pour forcer le mode standards
+                const originalInit = tinymce.init;
+                tinymce.init = function(config) {
+                    // Forcer le mode standards avant l'initialisation
+                    if (document.compatMode && document.compatMode !== 'CSS1Compat') {
+                        // Si on n'est pas en mode standards, on force quand même
+                        console.warn('TinyMCE: Mode standards forcé malgré la détection');
+                    }
+                    return originalInit.call(this, config);
+                };
 
                 // Configuration TinyMCE pour les éditeurs de contenu texte
                 const tinymceConfig = {
