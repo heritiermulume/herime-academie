@@ -3152,38 +3152,17 @@ window.cancelAllUploads = cancelAllUploads;
 <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
 <script>
 (function() {
-    let initAttempts = 0;
-    const MAX_INIT_ATTEMPTS = 10;
-
-    // Vérifier que le document est en mode standards
-    function isStandardsMode() {
-        // Vérifier document.compatMode (retourne 'CSS1Compat' en mode standards)
-        if (document.compatMode) {
-            return document.compatMode === 'CSS1Compat';
-        }
-        // Fallback: vérifier si le DOCTYPE existe
-        if (document.doctype) {
-            return true;
-        }
-        // Si aucun des deux n'est disponible, supposer que c'est OK (pour éviter les boucles infinies)
-        return true;
-    }
-
     function initTinyMCE() {
-        initAttempts++;
-        
-        // Limiter le nombre de tentatives pour éviter les boucles infinies
-        if (initAttempts > MAX_INIT_ATTEMPTS) {
-            console.error('TinyMCE: Nombre maximum de tentatives d\'initialisation atteint. Initialisation forcée.');
-            // Forcer l'initialisation même si le mode standards n'est pas détecté
-        } else {
-            // Vérifier le mode standards avant d'initialiser (seulement pour les premières tentatives)
-            if (!isStandardsMode() && initAttempts <= 3) {
-                console.warn('TinyMCE: Le document n\'est pas en mode standards. Tentative ' + initAttempts + '/' + MAX_INIT_ATTEMPTS);
-                // Réessayer après un court délai
-                setTimeout(initTinyMCE, 100);
-                return;
-            }
+        // Attendre que TinyMCE soit chargé
+        if (typeof tinymce === 'undefined') {
+            setTimeout(initTinyMCE, 50);
+            return;
+        }
+
+        // Vérifier que le DOM est prêt
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTinyMCE);
+            return;
         }
 
         // Configuration TinyMCE pour les éditeurs de contenu texte
@@ -3213,6 +3192,8 @@ window.cancelAllUploads = cancelAllUploads;
             readonly: false,
             // S'assurer que le document est en mode standards
             schema: 'html5',
+            // Désactiver la vérification stricte du mode standards
+            validate: false,
             setup: function(editor) {
                 // Ajouter le sélecteur de taille de police
                 editor.ui.registry.addMenuButton('fontsize', {
@@ -3251,11 +3232,6 @@ window.cancelAllUploads = cancelAllUploads;
 
         // Fonction pour initialiser TinyMCE sur un nouveau textarea
         window.initTinyMCEOnTextarea = function(textarea) {
-            if (!isStandardsMode()) {
-                console.warn('TinyMCE: Impossible d\'initialiser, le document n\'est pas en mode standards');
-                return;
-            }
-            
             if (typeof tinymce !== 'undefined' && textarea && !textarea.classList.contains('mce-initialized')) {
                 textarea.classList.add('mce-initialized');
                 try {
