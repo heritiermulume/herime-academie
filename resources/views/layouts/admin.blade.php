@@ -77,9 +77,9 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="admin-shell container-fluid py-4 px-0 px-lg-4">
+<div class="admin-shell container-fluid py-4 px-0 px-md-4">
     <div class="admin-shell__container">
-        <aside class="admin-shell__sidebar d-none d-md-flex flex-column">
+        <aside class="admin-shell__sidebar d-none d-lg-flex flex-column">
             <div class="admin-shell__brand">
                 <i class="fas fa-shield-alt me-2"></i>Administration
             </div>
@@ -105,7 +105,7 @@
         </aside>
 
         <main class="admin-shell__content">
-            <nav class="admin-shell__mobile-nav d-md-none" aria-label="Navigation d'administration">
+            <nav class="admin-shell__mobile-nav d-lg-none" aria-label="Navigation d'administration">
                 @foreach($navItems as $item)
                     @continue(isset($item['available']) && !$item['available'])
                     @php
@@ -118,13 +118,13 @@
                     </a>
                 @endforeach
             </nav>
-            <div class="admin-shell__mobile-nav-spacer d-md-none" aria-hidden="true"></div>
+            <div class="admin-shell__mobile-nav-spacer d-lg-none" aria-hidden="true"></div>
             @if($pageTitle !== '' || $pageActions !== '')
                 <header class="admin-content__header mb-4">
                     <div>
                         <h1 class="admin-content__title">{{ $pageTitle }}</h1>
                         @if($pageSubtitle !== '')
-                            <p class="admin-content__subtitle">{{ $pageSubtitle }}</p>
+                            <p class="admin-content__subtitle">{!! html_entity_decode($pageSubtitle, ENT_QUOTES | ENT_HTML5, 'UTF-8') !!}</p>
                         @endif
                     </div>
                     @if($pageActions !== '')
@@ -408,7 +408,7 @@
         display: none;
         height: 0;
     }
-    @media (max-width: 991px) {
+    @media (max-width: 991.98px) {
         .admin-shell__content {
             padding: 0 1.5rem 0.5rem;
         }
@@ -416,7 +416,7 @@
             flex-direction: column;
         }
         .admin-shell__sidebar {
-            display: none;
+            display: none !important;
         }
         .admin-shell__content {
             width: 100%;

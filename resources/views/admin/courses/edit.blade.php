@@ -54,7 +54,7 @@
 
 @section('title', 'Modifier un cours')
 @section('admin-title', 'Modifier un cours')
-@section('admin-subtitle', "Actualisez l'ensemble des informations du cours « " . Str::limit($course->title, 60) . " »")
+@section('admin-subtitle', "Actualisez l'ensemble des informations du cours « " . Str::limit(html_entity_decode($course->title, ENT_QUOTES, 'UTF-8'), 60) . " »")
 @section('admin-actions')
     <a href="{{ route('admin.courses') }}" class="btn btn-light" data-temp-upload-cancel>
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
@@ -1955,18 +1955,20 @@ function addLesson(sectionId, lessonData = null) {
                         </div>
                     </div>
                     <div class="lesson-existing-file alert alert-secondary d-none mt-3" id="lessonExistingFile-${lessonUniqueId}">
-                        <div class="lesson-existing-wrapper d-flex flex-column flex-lg-row align-items-center justify-content-center gap-3 w-100 text-center">
-                            <div class="lesson-existing-preview flex-shrink-0" data-lesson-existing-preview>
+                        <div class="lesson-existing-wrapper">
+                            <div class="lesson-existing-preview" data-lesson-existing-preview>
                                 <i class="fas fa-folder-open fa-2x text-primary"></i>
                             </div>
-                            <div class="lesson-existing-details flex-grow-1">
-                                <p class="mb-1 fw-semibold" data-lesson-existing-name>Fichier actuel</p>
-                                <a href="#" target="_blank" rel="noopener" class="small d-none" data-lesson-existing-link>Voir / télécharger</a>
-                            </div>
-                            <div class="lesson-existing-actions">
-                                <button type="button" class="btn btn-sm btn-outline-danger w-100 w-lg-auto" onclick="clearExistingLessonFile('${lessonUniqueId}')">
-                                    <i class="fas fa-trash me-1"></i>Retirer
-                                </button>
+                            <div class="lesson-existing-content">
+                                <div class="lesson-existing-details">
+                                    <p class="mb-1 fw-semibold" data-lesson-existing-name>Fichier actuel</p>
+                                    <a href="#" target="_blank" rel="noopener" class="small d-none" data-lesson-existing-link>Voir / télécharger</a>
+                                </div>
+                                <div class="lesson-existing-actions">
+                                    <button type="button" class="btn btn-sm btn-outline-danger w-100 w-lg-auto" onclick="clearExistingLessonFile('${lessonUniqueId}')">
+                                        <i class="fas fa-trash me-1"></i>Retirer
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2482,6 +2484,7 @@ function showLessonExistingFile(uniqueId, fileData = {}) {
 
     const nameEl = container.querySelector('[data-lesson-existing-name]');
     const linkEl = container.querySelector('[data-lesson-existing-link]');
+    const previewEl = container.querySelector('[data-lesson-existing-preview]');
 
     if (nameEl) {
         nameEl.textContent = name;
@@ -2494,6 +2497,54 @@ function showLessonExistingFile(uniqueId, fileData = {}) {
         } else {
             linkEl.href = '#';
             linkEl.classList.add('d-none');
+        }
+    }
+
+    // Afficher une prévisualisation appropriée selon le type de fichier
+    if (previewEl && url) {
+        const extension = (name.split('.').pop() || '').toLowerCase();
+        const isVideo = ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv'].includes(extension);
+        const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
+        const isPdf = extension === 'pdf';
+
+        previewEl.innerHTML = ''; // Nettoyer le contenu précédent
+
+        if (isVideo) {
+            const video = document.createElement('video');
+            video.src = url;
+            video.controls = true;
+            video.style.maxWidth = '100%';
+            video.style.maxHeight = '100%';
+            video.style.width = 'auto';
+            video.style.height = 'auto';
+            video.style.borderRadius = '8px';
+            video.style.objectFit = 'contain';
+            previewEl.appendChild(video);
+        } else if (isImage) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = name;
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            img.style.width = 'auto';
+            img.style.height = 'auto';
+            img.style.borderRadius = '8px';
+            img.style.objectFit = 'contain';
+            previewEl.appendChild(img);
+        } else if (isPdf) {
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.minHeight = '150px';
+            iframe.style.borderRadius = '8px';
+            iframe.style.border = 'none';
+            previewEl.appendChild(iframe);
+        } else {
+            // Icône par défaut pour les autres types de fichiers
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-file fa-3x text-primary';
+            previewEl.appendChild(icon);
         }
     }
 
@@ -3318,14 +3369,69 @@ if (!window.__tempUploadUnloadHook) {
 .lesson-existing-file {
     border: 1px dashed #94a3b8;
     background-color: #f8fafc;
+    padding: 1rem;
 }
 
 .lesson-existing-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+}
+
+.lesson-existing-preview {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 150px;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+
+.lesson-existing-preview video,
+.lesson-existing-preview img,
+.lesson-existing-preview iframe {
+    max-width: 100%;
+    max-height: 300px;
+    width: auto;
+    height: auto;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.lesson-existing-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+}
+
+.lesson-existing-details {
     text-align: center;
+    width: 100%;
 }
 
 .lesson-existing-details p {
     font-size: 1rem;
+    margin-bottom: 0.5rem;
+    word-break: break-word;
+}
+
+.lesson-existing-details a {
+    display: inline-block;
+    margin-top: 0.25rem;
+}
+
+.lesson-existing-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
 }
 
 @media (max-width: 575.98px) {
