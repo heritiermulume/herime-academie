@@ -3146,3 +3146,104 @@ window.cancelAllUploads = cancelAllUploads;
 }
 </style>
 @endpush
+
+@push('scripts')
+<!-- TinyMCE (version open-source via jsDelivr, pas de clé API requise) -->
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuration TinyMCE pour les éditeurs de contenu texte
+    const tinymceConfig = {
+        selector: '.lesson-content-text-editor',
+        height: 300,
+        menubar: false,
+        plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+            'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+            'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+        ],
+        toolbar: 'undo redo | formatselect | ' +
+            'bold italic underline strikethrough | forecolor backcolor | ' +
+            'alignleft aligncenter alignright alignjustify | ' +
+            'bullist numlist outdent indent | ' +
+            'removeformat | help | code',
+        content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }',
+        formats: {
+            bold: { inline: 'strong' },
+            italic: { inline: 'em' },
+            underline: { inline: 'u' },
+            strikethrough: { inline: 's' }
+        },
+        font_size_formats: '8pt 10pt 12pt 14pt 16pt 18pt 20pt 24pt 28pt 32pt 36pt 48pt 60pt 72pt',
+        // Désactiver le mode read-only
+        readonly: false,
+        // S'assurer que le document est en mode standards
+        schema: 'html5',
+        setup: function(editor) {
+            // Ajouter le sélecteur de taille de police
+            editor.ui.registry.addMenuButton('fontsize', {
+                text: 'Taille',
+                fetch: function(callback) {
+                    const items = [
+                        { type: 'menuitem', text: '8pt', onAction: () => editor.execCommand('FontSize', false, '8pt') },
+                        { type: 'menuitem', text: '10pt', onAction: () => editor.execCommand('FontSize', false, '10pt') },
+                        { type: 'menuitem', text: '12pt', onAction: () => editor.execCommand('FontSize', false, '12pt') },
+                        { type: 'menuitem', text: '14pt', onAction: () => editor.execCommand('FontSize', false, '14pt') },
+                        { type: 'menuitem', text: '16pt', onAction: () => editor.execCommand('FontSize', false, '16pt') },
+                        { type: 'menuitem', text: '18pt', onAction: () => editor.execCommand('FontSize', false, '18pt') },
+                        { type: 'menuitem', text: '20pt', onAction: () => editor.execCommand('FontSize', false, '20pt') },
+                        { type: 'menuitem', text: '24pt', onAction: () => editor.execCommand('FontSize', false, '24pt') },
+                        { type: 'menuitem', text: '28pt', onAction: () => editor.execCommand('FontSize', false, '28pt') },
+                        { type: 'menuitem', text: '32pt', onAction: () => editor.execCommand('FontSize', false, '32pt') },
+                        { type: 'menuitem', text: '36pt', onAction: () => editor.execCommand('FontSize', false, '36pt') },
+                        { type: 'menuitem', text: '48pt', onAction: () => editor.execCommand('FontSize', false, '48pt') },
+                        { type: 'menuitem', text: '60pt', onAction: () => editor.execCommand('FontSize', false, '60pt') },
+                        { type: 'menuitem', text: '72pt', onAction: () => editor.execCommand('FontSize', false, '72pt') }
+                    ];
+                    callback(items);
+                }
+            });
+        }
+    };
+
+    // Initialiser TinyMCE sur les textareas existants
+    if (typeof tinymce !== 'undefined') {
+        tinymce.init(tinymceConfig);
+    }
+
+    // Fonction pour initialiser TinyMCE sur un nouveau textarea
+    window.initTinyMCEOnTextarea = function(textarea) {
+        if (typeof tinymce !== 'undefined' && textarea && !textarea.classList.contains('mce-initialized')) {
+            textarea.classList.add('mce-initialized');
+            tinymce.init({
+                ...tinymceConfig,
+                target: textarea
+            });
+        }
+    };
+
+    // Observer pour initialiser TinyMCE sur les nouveaux textareas ajoutés dynamiquement
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) { // Element node
+                    const textareas = node.querySelectorAll ? node.querySelectorAll('.lesson-content-text-editor:not(.mce-initialized)') : [];
+                    textareas.forEach(function(textarea) {
+                        window.initTinyMCEOnTextarea(textarea);
+                    });
+                    // Si le node lui-même est un textarea
+                    if (node.classList && node.classList.contains('lesson-content-text-editor') && !node.classList.contains('mce-initialized')) {
+                        window.initTinyMCEOnTextarea(node);
+                    }
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});
+</script>
+@endpush

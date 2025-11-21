@@ -3345,8 +3345,8 @@ if (!window.__tempUploadUnloadHook) {
 @endpush
 
 @push('scripts')
-<!-- TinyMCE -->
-<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<!-- TinyMCE (version open-source via jsDelivr, pas de clé API requise) -->
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Configuration TinyMCE pour les éditeurs de contenu texte
@@ -3372,6 +3372,10 @@ document.addEventListener('DOMContentLoaded', function() {
             strikethrough: { inline: 's' }
         },
         font_size_formats: '8pt 10pt 12pt 14pt 16pt 18pt 20pt 24pt 28pt 32pt 36pt 48pt 60pt 72pt',
+        // Désactiver le mode read-only
+        readonly: false,
+        // S'assurer que le document est en mode standards
+        schema: 'html5',
         setup: function(editor) {
             // Ajouter le sélecteur de taille de police
             editor.ui.registry.addMenuButton('fontsize', {
