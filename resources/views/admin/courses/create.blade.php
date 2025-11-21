@@ -3149,24 +3149,53 @@ window.cancelAllUploads = cancelAllUploads;
 
 @push('scripts')
 <!-- TinyMCE (version open-source via jsDelivr, pas de clé API requise) -->
-<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
 <script>
 (function() {
+    // Charger TinyMCE de manière asynchrone après que le document soit prêt
+    function loadTinyMCE() {
+        return new Promise((resolve, reject) => {
+            if (typeof tinymce !== 'undefined') {
+                resolve();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js';
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load TinyMCE'));
+            document.head.appendChild(script);
+        });
+    }
+
     function initTinyMCE() {
-        // Attendre que TinyMCE soit chargé
-        if (typeof tinymce === 'undefined') {
-            setTimeout(initTinyMCE, 50);
-            return;
-        }
-
-        // Vérifier que le DOM est prêt
+        // S'assurer que le document est complètement chargé
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initTinyMCE);
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(initTinyMCE, 100);
+            });
             return;
         }
 
-        // Configuration TinyMCE pour les éditeurs de contenu texte
-        const tinymceConfig = {
+        // Charger TinyMCE si nécessaire
+        loadTinyMCE().then(() => {
+            // Attendre un peu pour que TinyMCE soit complètement initialisé
+            setTimeout(() => {
+                if (typeof tinymce === 'undefined') {
+                    console.error('TinyMCE n\'est pas disponible');
+                    return;
+                }
+
+                // Patch pour contourner la vérification du mode standards
+                if (tinymce && tinymce.util && tinymce.util.Tools) {
+                    const originalIsStandardsMode = tinymce.util.Tools.isStandardsMode;
+                    tinymce.util.Tools.isStandardsMode = function() {
+                        return true; // Toujours retourner true pour forcer le mode standards
+                    };
+                }
+
+                // Configuration TinyMCE pour les éditeurs de contenu texte
+                const tinymceConfig = {
             selector: '.lesson-content-text-editor',
             height: 300,
             menubar: false,
@@ -3218,20 +3247,20 @@ window.cancelAllUploads = cancelAllUploads;
                         callback(items);
                     }
                 });
-            }
-        };
+                }
+            };
 
-        // Initialiser TinyMCE sur les textareas existants
-        if (typeof tinymce !== 'undefined') {
-            try {
-                tinymce.init(tinymceConfig);
-            } catch (error) {
-                console.error('Erreur lors de l\'initialisation de TinyMCE:', error);
+            // Initialiser TinyMCE sur les textareas existants
+            if (typeof tinymce !== 'undefined') {
+                try {
+                    tinymce.init(tinymceConfig);
+                } catch (error) {
+                    console.error('Erreur lors de l\'initialisation de TinyMCE:', error);
+                }
             }
-        }
 
-        // Fonction pour initialiser TinyMCE sur un nouveau textarea
-        window.initTinyMCEOnTextarea = function(textarea) {
+            // Fonction pour initialiser TinyMCE sur un nouveau textarea
+            window.initTinyMCEOnTextarea = function(textarea) {
             if (typeof tinymce !== 'undefined' && textarea && !textarea.classList.contains('mce-initialized')) {
                 textarea.classList.add('mce-initialized');
                 try {
@@ -3243,29 +3272,33 @@ window.cancelAllUploads = cancelAllUploads;
                     console.error('Erreur lors de l\'initialisation de TinyMCE sur un textarea:', error);
                 }
             }
-        };
+            };
 
-        // Observer pour initialiser TinyMCE sur les nouveaux textareas ajoutés dynamiquement
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                mutation.addedNodes.forEach(function(node) {
-                    if (node.nodeType === 1) { // Element node
-                        const textareas = node.querySelectorAll ? node.querySelectorAll('.lesson-content-text-editor:not(.mce-initialized)') : [];
-                        textareas.forEach(function(textarea) {
-                            window.initTinyMCEOnTextarea(textarea);
+                // Observer pour initialiser TinyMCE sur les nouveaux textareas ajoutés dynamiquement
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1) { // Element node
+                                const textareas = node.querySelectorAll ? node.querySelectorAll('.lesson-content-text-editor:not(.mce-initialized)') : [];
+                                textareas.forEach(function(textarea) {
+                                    window.initTinyMCEOnTextarea(textarea);
+                                });
+                                // Si le node lui-même est un textarea
+                                if (node.classList && node.classList.contains('lesson-content-text-editor') && !node.classList.contains('mce-initialized')) {
+                                    window.initTinyMCEOnTextarea(node);
+                                }
+                            }
                         });
-                        // Si le node lui-même est un textarea
-                        if (node.classList && node.classList.contains('lesson-content-text-editor') && !node.classList.contains('mce-initialized')) {
-                            window.initTinyMCEOnTextarea(node);
-                        }
-                    }
+                    });
                 });
-            });
-        });
 
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            }, 100);
+        }).catch((error) => {
+            console.error('Erreur lors du chargement de TinyMCE:', error);
         });
     }
 
@@ -3274,7 +3307,7 @@ window.cancelAllUploads = cancelAllUploads;
         document.addEventListener('DOMContentLoaded', initTinyMCE);
     } else {
         // Le DOM est déjà chargé, attendre un peu pour être sûr
-        setTimeout(initTinyMCE, 50);
+        setTimeout(initTinyMCE, 100);
     }
 })();
 </script>
