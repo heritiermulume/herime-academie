@@ -95,9 +95,7 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div class="d-flex justify-content-center mt-4">
-                        {{ $testimonials->links() }}
-                    </div>
+                    <x-admin.pagination :paginator="$testimonials" />
                 </div>
             </div>
         </div>

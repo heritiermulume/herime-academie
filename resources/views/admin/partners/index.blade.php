@@ -92,11 +92,7 @@
                     </div>
 
                     <!-- Pagination -->
-                    @if(isset($partners) && $partners->hasPages())
-                    <div class="d-flex justify-content-center mt-4">
-                        {{ $partners->links() }}
-                    </div>
-                    @endif
+                    <x-admin.pagination :paginator="$partners ?? null" />
                 </div>
             </div>
         </div>

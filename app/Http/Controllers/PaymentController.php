@@ -8,7 +8,10 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Coupon;
 use App\Models\Affiliate;
+use App\Mail\InvoiceMail;
+use App\Services\EmailService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
@@ -201,12 +204,22 @@ class PaymentController extends Controller
 
         // Créer l'inscription de l'étudiant
         foreach ($order->orderItems as $item) {
-            \App\Models\Enrollment::create([
+            $enrollment = \App\Models\Enrollment::create([
                 'user_id' => $order->user_id,
                 'course_id' => $item->course_id,
                 'order_id' => $order->id,
                 'status' => 'active',
             ]);
+
+            // Envoyer l'email de confirmation d'inscription
+            try {
+                $course = $item->course;
+                if ($course && $order->user) {
+                    $order->user->notify(new \App\Notifications\CourseEnrolled($course));
+                }
+            } catch (\Exception $e) {
+                \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
+            }
 
             // Note: Le compteur d'étudiants est maintenant calculé dynamiquement via les enrollments
         }
@@ -215,6 +228,9 @@ class PaymentController extends Controller
         if ($order->coupon) {
             $order->coupon->increment('used_count');
         }
+
+        // Envoyer la facture par email
+        $this->sendInvoiceEmail($order);
 
         return view('payments.success', compact('order'));
     }
@@ -272,6 +288,51 @@ class PaymentController extends Controller
 
             $order = $payment->order;
             $order->update(['status' => 'paid']);
+
+            // Créer l'inscription de l'étudiant si pas déjà fait
+            if (!$order->enrollments()->exists()) {
+                foreach ($order->orderItems as $item) {
+                    $enrollment = \App\Models\Enrollment::create([
+                        'user_id' => $order->user_id,
+                        'course_id' => $item->course_id,
+                        'order_id' => $order->id,
+                        'status' => 'active',
+                    ]);
+
+                    // Envoyer l'email de confirmation d'inscription
+                    try {
+                        $course = $item->course;
+                        if ($course && $order->user && $order->user->email) {
+                            // Envoyer la notification CourseEnrolled (qui envoie l'email)
+                            $order->user->notify(new \App\Notifications\CourseEnrolled($course));
+                            
+                            // Enregistrer l'email et créer la notification EmailSentNotification
+                            $mailable = new \App\Mail\CourseEnrolledMail($course);
+                            \App\Services\EmailService::sendAndRecord(
+                                $order->user,
+                                $order->user->email,
+                                $mailable,
+                                'enrollment',
+                                [
+                                    'course_id' => $course->id,
+                                    'course_title' => $course->title,
+                                    'order_id' => $order->id,
+                                ]
+                            );
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
+                    }
+                }
+            }
+
+            // Mettre à jour le coupon si utilisé
+            if ($order->coupon) {
+                $order->coupon->increment('used_count');
+            }
+
+            // Envoyer la facture par email
+            $this->sendInvoiceEmail($order);
         }
     }
 
@@ -282,6 +343,40 @@ class PaymentController extends Controller
             $payment->update(['status' => 'failed']);
             $order = $payment->order;
             $order->update(['status' => 'failed']);
+        }
+    }
+
+    /**
+     * Envoyer la facture par email à l'utilisateur
+     */
+    private function sendInvoiceEmail(Order $order)
+    {
+        try {
+            // Charger les relations nécessaires
+            $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+
+            // Vérifier que l'utilisateur existe et a un email
+            if (!$order->user || !$order->user->email) {
+                \Log::warning("Impossible d'envoyer la facture : utilisateur ou email manquant pour la commande {$order->id}");
+                return;
+            }
+
+            // Envoyer l'email de facture avec enregistrement et notification
+            EmailService::sendAndRecord(
+                $order->user,
+                $order->user->email,
+                new InvoiceMail($order),
+                'invoice',
+                [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                ]
+            );
+
+            \Log::info("Facture envoyée avec succès pour la commande {$order->order_number} à {$order->user->email}");
+        } catch (\Exception $e) {
+            // Logger l'erreur mais ne pas faire échouer le processus de paiement
+            \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
         }
     }
 }

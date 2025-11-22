@@ -76,9 +76,7 @@
         </div>
     @endif
 
-    <div class="admin-panel">
-        <div class="admin-panel__body p-0">
-            <form action="{{ route('admin.courses.update', $course) }}" method="POST" id="courseForm" enctype="multipart/form-data">
+    <form action="{{ route('admin.courses.update', $course) }}" method="POST" id="courseForm" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 
@@ -727,8 +725,6 @@
                     </div>
                 </div>
             </form>
-        </div>
-    </div>
 
 @push('scripts')
     @once
@@ -3176,11 +3172,34 @@ if (!window.__tempUploadUnloadHook) {
     color: #ffffff !important;
 }
 
+/* Formulaire */
+#courseForm {
+    margin: 0;
+    padding: 0;
+}
+
 /* Cards */
 .card {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     border-radius: 12px;
     overflow: hidden;
+    margin-bottom: 1rem;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    padding: 0 !important;
+}
+
+.card.shadow-sm {
+    padding: 0 !important;
+}
+
+.card:first-child {
+    margin-top: 0;
+}
+
+.card:last-child {
+    margin-bottom: 0;
 }
 
 .card:hover {
@@ -3190,6 +3209,11 @@ if (!window.__tempUploadUnloadHook) {
 .card-header {
     border-radius: 12px 12px 0 0 !important;
     border-bottom: none;
+    margin: 0 !important;
+    margin-top: 0 !important;
+    padding: 0.75rem 1rem !important;
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
 }
 
 .card-header h5 {
@@ -3198,6 +3222,10 @@ if (!window.__tempUploadUnloadHook) {
 
 .card-header h6 {
     color: #003366;
+}
+
+.card-body {
+    padding: 1rem 1.25rem !important;
 }
 
 /* Form controls */
@@ -3446,6 +3474,361 @@ if (!window.__tempUploadUnloadHook) {
 
 .lesson-upload-zone .lesson-remove-btn {
     min-width: 140px;
+}
+
+.course-section-remove-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-radius: 50%;
+    transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.course-section-remove-icon:hover,
+.course-section-remove-icon:focus {
+    background: rgba(220, 53, 69, 0.2);
+    color: #a71d2a;
+    transform: scale(1.05);
+}
+
+.course-section-remove-icon i {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.course-lesson-card__header {
+    padding: 0.6rem 0.85rem;
+    background: #f8fafc;
+}
+
+.course-lesson-card__header h6 {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.course-lesson-remove-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    background: rgba(220, 53, 69, 0.12);
+    color: #dc3545;
+    border-radius: 50%;
+    transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.course-lesson-remove-icon:hover,
+.course-lesson-remove-icon:focus {
+    background: rgba(220, 53, 69, 0.22);
+    color: #a71d2a;
+    transform: scale(1.05);
+}
+
+.course-lesson-remove-icon i {
+    margin: 0;
+    font-size: 0.82rem;
+}
+
+.form-actions-card .card-body {
+    padding: 1rem 1.25rem;
+}
+
+.form-actions {
+    width: 100%;
+}
+
+.form-actions__btn {
+    flex: 1 1 auto;
+    font-weight: 600;
+}
+
+.form-actions__btn--primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-actions__btn i {
+    position: relative;
+    top: -1px;
+}
+
+/* Responsive spacing adjustments */
+@media (max-width: 991.98px) {
+    .card {
+        margin-bottom: 1rem;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-top: 0 !important;
+        padding: 0 !important;
+    }
+
+    .card-header {
+        padding: 0.7rem 0.9rem !important;
+        margin: 0 !important;
+        margin-top: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        border-top-left-radius: 12px !important;
+        border-top-right-radius: 12px !important;
+    }
+
+    .card-body {
+        padding: 0.85rem 1rem !important;
+    }
+
+    .course-content-card__body {
+        padding: 0.85rem 1rem;
+    }
+
+    .course-section-card__body {
+        padding: 0.75rem 0.95rem;
+    }
+
+    .course-lesson-card__body {
+        padding: 0.7rem 0.85rem;
+    }
+
+    .course-section-remove-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .course-lesson-card__header {
+        padding: 0.55rem 0.75rem;
+    }
+
+    .course-lesson-remove-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .course-lesson-remove-icon i {
+        font-size: 0.78rem;
+    }
+
+    .card-header h5 {
+        font-size: 1.05rem;
+    }
+
+    .card-header h6,
+    .course-lesson-card__header h6 {
+        font-size: 0.98rem;
+    }
+
+    .card-body .form-label {
+        font-size: 0.95rem;
+    }
+
+    .form-control,
+    .form-select,
+    textarea.form-control {
+        font-size: 0.95rem;
+        padding: 0.6rem 0.85rem;
+    }
+
+    .form-control-lg {
+        font-size: 1rem;
+        padding: 0.65rem 0.9rem;
+    }
+
+    .btn {
+        font-size: 0.95rem;
+        padding: 0.55rem 1.1rem;
+    }
+
+    .form-actions-card .card-body {
+        padding: 0.85rem 1rem;
+    }
+
+    .form-actions {
+        justify-content: space-between;
+    }
+
+    .form-actions__btn {
+        flex: 0 0 auto;
+        min-width: 150px;
+    }
+
+    .form-actions__btn--primary {
+        min-width: 170px;
+    }
+
+    /* Quill Editor - Adaptation tablette */
+    .quill-editor-container .ql-toolbar {
+        padding: 0.6rem;
+        flex-wrap: wrap;
+    }
+
+    .quill-editor-container .ql-toolbar .ql-formats {
+        margin-right: 0.6rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .quill-editor-container .ql-toolbar button {
+        width: 30px;
+        height: 30px;
+    }
+
+    .quill-editor-container .ql-toolbar button svg {
+        width: 17px;
+        height: 17px;
+    }
+
+    .quill-editor-container .ql-toolbar .ql-picker {
+        height: 30px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .card,
+    .card.shadow-sm {
+        margin-bottom: 1rem;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-top: 0 !important;
+        padding: 0 !important;
+    }
+
+    .card-header {
+        padding: 0.6rem 0.75rem !important;
+        margin: 0 !important;
+        margin-top: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-bottom: 0 !important;
+        border-top-left-radius: 12px !important;
+        border-top-right-radius: 12px !important;
+        position: relative;
+        top: 0;
+    }
+
+    .card-body {
+        padding: 0.7rem 0.85rem !important;
+    }
+
+    .course-content-card__body {
+        padding: 0.6rem 0.8rem;
+    }
+
+    .course-section-card__body {
+        padding: 0.55rem 0.75rem;
+    }
+
+    .course-lesson-card__body {
+        padding: 0.5rem 0.7rem;
+    }
+
+    .course-lesson-card__body .row {
+        row-gap: 0.75rem;
+    }
+
+    .course-section-remove-icon {
+        width: 26px;
+        height: 26px;
+    }
+
+    .course-section-remove-icon i {
+        font-size: 0.8rem;
+    }
+
+    .course-lesson-card__header {
+        padding: 0.5rem 0.65rem;
+    }
+
+    .course-lesson-remove-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .course-lesson-remove-icon i {
+        font-size: 0.72rem;
+    }
+
+    .card-header h5 {
+        font-size: 0.95rem;
+    }
+
+    .card-header h6,
+    .course-lesson-card__header h6 {
+        font-size: 0.88rem;
+    }
+
+    .card-body .form-label,
+    .form-label {
+        font-size: 0.88rem;
+    }
+
+    .card-body small,
+    .card-body .text-muted,
+    .upload-placeholder p,
+    .upload-info .badge {
+        font-size: 0.8rem;
+    }
+
+    .form-control,
+    .form-select,
+    textarea.form-control {
+        font-size: 0.88rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .form-control-lg {
+        font-size: 0.95rem;
+        padding: 0.55rem 0.8rem;
+    }
+
+    .btn {
+        font-size: 0.88rem;
+        padding: 0.45rem 0.7rem;
+    }
+
+    .form-actions-card .card-body {
+        padding: 0.7rem 0.85rem;
+    }
+
+    /* Quill Editor - Adaptation mobile/tablette */
+    .quill-editor-container .ql-toolbar {
+        padding: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .quill-editor-container .ql-toolbar .ql-formats {
+        margin-right: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .quill-editor-container .ql-toolbar button {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+    }
+
+    .quill-editor-container .ql-toolbar button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .quill-editor-container .ql-toolbar .ql-picker {
+        height: 28px;
+        font-size: 0.85rem;
+    }
+
+    .quill-editor-container .ql-toolbar .ql-picker-label {
+        padding: 0 0.5rem;
+    }
+
+    .quill-editor-container .ql-container {
+        font-size: 0.9rem;
+    }
 }
 </style>
 @endpush

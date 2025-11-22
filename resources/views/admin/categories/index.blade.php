@@ -10,7 +10,7 @@
 @endsection
 
 @section('admin-content')
-    <section class="admin-panel">
+    <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
                     <!-- Filtres -->
                     <x-admin.search-panel
@@ -89,9 +89,9 @@
                     </div>
 
                     <!-- Grille des catégories -->
-                    <div class="row">
+                    <div class="row g-3">
                         @forelse($categories as $category)
-                        <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="col-md-6 col-lg-4">
                             <div class="category-card-modern h-100">
                                 <div class="category-card-modern__badge" style="--category-color: {{ $category->color ?? '#003366' }};">
                                     <span>{{ strtoupper(Str::substr($category->name, 0, 1)) }}</span>
@@ -159,8 +159,8 @@
                                         <strong>{{ $category->created_at->format('d/m/Y') }}</strong>
                                     </div>
                                     <div class="category-card-modern__tags">
-                                        <span class="badge rounded-pill text-bg-light">
-                                            #{{ $category->slug }}
+                                        <span class="badge rounded-pill text-bg-light" title="#{{ $category->slug }}">
+                                            #{{ Str::limit($category->slug, 15) }}
                                         </span>
                                         <span class="badge rounded-pill text-bg-light">
                                             Ordre : {{ $category->sort_order ?? 0 }}
@@ -180,11 +180,7 @@
                     </div>
 
                     <!-- Pagination -->
-                    @if($categories->hasPages())
-                    <div class="admin-pagination">
-                        {{ $categories->links() }}
-                    </div>
-                    @endif
+                    <x-admin.pagination :paginator="$categories" />
         </div>
     </section>
 
@@ -442,14 +438,15 @@ function toggleCategorySubmitLabels(mode) {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 1.35rem;
+    gap: 0.875rem;
     background: #ffffff;
-    border-radius: 1.5rem;
-    padding: 1.75rem;
+    border-radius: 1.25rem;
+    padding: 1.125rem;
     border: 1px solid rgba(15, 23, 42, 0.08);
     box-shadow: 0 22px 45px -30px rgba(15, 23, 42, 0.35);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
     overflow: hidden;
+    height: 100%;
 }
 .category-card-modern::after {
     content: '';
@@ -464,67 +461,81 @@ function toggleCategorySubmitLabels(mode) {
 }
 .category-card-modern__badge {
     position: absolute;
-    top: -32px;
-    right: -32px;
-    width: 120px;
-    height: 120px;
+    top: -28px;
+    right: -28px;
+    width: 100px;
+    height: 100px;
     background: radial-gradient(circle at center, var(--category-color) 0%, rgba(15, 23, 42, 0) 70%);
     opacity: 0.22;
     pointer-events: none;
 }
 .category-card-modern__badge span {
     position: absolute;
-    bottom: 32px;
-    right: 40px;
-    font-size: 2.85rem;
+    bottom: 28px;
+    right: 35px;
+    font-size: 2.4rem;
     font-weight: 800;
     color: rgba(15, 23, 42, 0.08);
     letter-spacing: -0.04em;
 }
 .category-card-modern__header {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     align-items: flex-start;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 .category-card-modern__icon {
-    flex: 0 0 52px;
-    width: 52px;
-    height: 52px;
-    border-radius: 18px;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    font-size: 1.35rem;
+    font-size: 1.15rem;
     box-shadow: 0 12px 25px -18px rgba(15, 23, 42, 0.65);
 }
 .category-card-modern__title {
-    flex: 1 1 160px;
+    flex: 1 1 auto;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
 }
 .category-card-modern__title h5 {
     margin: 0;
     font-weight: 700;
     color: #0f172a;
+    font-size: 1rem;
+    line-height: 1.3;
+    word-wrap: break-word;
 }
 .category-card-modern__title p {
-    margin: 0.25rem 0 0;
+    margin: 0;
     color: #64748b;
-    font-size: 0.88rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .category-card-modern__menu {
     border: none;
     background: rgba(148, 163, 184, 0.18);
     color: #475569;
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s ease, color 0.2s ease;
     margin-left: auto;
+    flex-shrink: 0;
+    font-size: 0.875rem;
 }
 .category-card-modern__menu:hover {
     background: rgba(15, 23, 42, 0.1);
@@ -533,16 +544,16 @@ function toggleCategorySubmitLabels(mode) {
 .category-card-modern__metrics {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.85rem;
-    padding: 0.85rem;
+    gap: 0.65rem;
+    padding: 0.65rem;
     border-radius: 1rem;
     background: rgba(241, 245, 249, 0.6);
 }
 .category-card-modern__metrics > div {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.85rem 0.75rem;
+    gap: 0.25rem;
+    padding: 0.65rem 0.6rem;
     background: rgba(148, 163, 184, 0.08);
     border-radius: 0.9rem;
     border: 1px solid rgba(148, 163, 184, 0.12);
@@ -553,14 +564,14 @@ function toggleCategorySubmitLabels(mode) {
 }
 .category-card-modern__metric-label {
     display: block;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     color: #94a3b8;
     letter-spacing: 0.08em;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.25rem;
 }
 .category-card-modern__metric-value {
-    font-size: 1.3rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: #0f172a;
 }
@@ -587,7 +598,7 @@ function toggleCategorySubmitLabels(mode) {
     border-radius: 1.2rem;
     overflow: hidden;
     border: 1px solid rgba(148, 163, 184, 0.22);
-    max-height: 160px;
+    max-height: 120px;
 }
 .category-card-modern__media img {
     width: 100%;
@@ -597,44 +608,191 @@ function toggleCategorySubmitLabels(mode) {
 .category-card-modern__footer {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    padding-top: 0.75rem;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
     border-top: 1px dashed rgba(148, 163, 184, 0.4);
+    flex-wrap: wrap;
+}
+.category-card-modern__footer > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex-shrink: 0;
 }
 .category-card-modern__footer-label {
-    font-size: 0.75rem;
+    font-size: 0.6rem;
     color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
+    line-height: 1.1;
+    display: block;
+}
+.category-card-modern__footer strong {
+    font-size: 0.65rem;
+    color: #334155;
+    font-weight: 600;
+    line-height: 1.2;
+    display: block;
 }
 .category-card-modern__tags {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.3rem;
     flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 .category-card-modern__tags .badge {
     background: rgba(15, 23, 42, 0.05);
     color: #334155;
     border: 1px solid rgba(15, 23, 42, 0.08);
-    font-weight: 600;
+    font-weight: 500;
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
 }
 
-@media (max-width: 575px) {
-    .category-card-modern {
-        padding: 1.5rem;
+/* Styles responsives pour les paddings et margins */
+@media (max-width: 991.98px) {
+    /* Réduire les paddings et margins sur tablette */
+    .admin-panel {
+        margin-bottom: 1rem;
     }
+    
+    /* Padding uniquement pour la première section principale */
+    .admin-panel--main .admin-panel__body {
+        padding: 1rem !important;
+    }
+    
+    /* Pas de padding pour les autres sections */
+    .admin-panel:not(.admin-panel--main) .admin-panel__body {
+        padding: 0 !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .admin-stats-grid {
+        gap: 0.5rem !important;
+    }
+    
+    .admin-stat-card {
+        padding: 0.75rem 0.875rem !important;
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    
+    .admin-panel__body .row.g-3 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
+    }
+    
+    .admin-panel__body .row.mb-4 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-panel__body .row.mb-3 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-panel__body .row.mt-2 {
+        margin-top: 0.375rem !important;
+    }
+    
+    .category-card-modern {
+        padding: 1.25rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* Réduire encore plus les paddings et margins sur mobile */
+    .admin-panel {
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Padding uniquement pour la première section principale */
+    .admin-panel--main .admin-panel__body {
+        padding: 0.75rem !important;
+    }
+    
+    /* Pas de padding pour les autres sections */
+    .admin-panel:not(.admin-panel--main) .admin-panel__body {
+        padding: 0 !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.375rem 0.5rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 0.95rem;
+        margin-bottom: 0.125rem;
+    }
+    
+    .admin-stats-grid {
+        gap: 0.375rem !important;
+    }
+    
+    .admin-stat-card {
+        padding: 0.5rem 0.625rem !important;
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
+    }
+    
+    .admin-panel__body .row.g-3 {
+        --bs-gutter-x: 0.25rem;
+        --bs-gutter-y: 0.25rem;
+    }
+    
+    .admin-panel__body .row.mb-4 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-panel__body .row.mb-3 {
+        margin-bottom: 0.375rem !important;
+    }
+    
+    .admin-panel__body .row.mt-2 {
+        margin-top: 0.375rem !important;
+    }
+    
+    .category-card-modern {
+        padding: 1rem;
+    }
+    
     .category-card-modern__metrics {
         grid-template-columns: 1fr;
         gap: 0.75rem;
     }
+    
     .category-card-modern__badge {
         width: 90px;
         height: 90px;
     }
+    
     .category-card-modern__badge span {
         font-size: 2.2rem;
     }
+    
     .category-card-modern__footer {
         flex-direction: column;
         align-items: flex-start;

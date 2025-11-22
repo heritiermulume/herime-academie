@@ -16,6 +16,7 @@ use App\Models\Review;
 use App\Models\Setting;
 use App\Models\CourseDownload;
 use App\Models\InstructorApplication;
+use App\Models\Visitor;
 use App\Traits\DatabaseCompatibility;
 use App\Services\FileUploadService;
 use App\Notifications\AnnouncementPublished;
@@ -23,16 +24,23 @@ use App\Notifications\CategoryCreatedNotification;
 use App\Notifications\CourseModerationNotification;
 use App\Notifications\CoursePublishedNotification;
 use App\Notifications\InstructorApplicationStatusUpdated;
+use App\Mail\CustomAnnouncementMail;
+use App\Models\SentEmail;
+use App\Models\ScheduledEmail;
+use App\Notifications\EmailSentNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Bus\Queueable;
 
 class AdminController extends Controller
 {
@@ -67,7 +75,30 @@ class AdminController extends Controller
             ->where('created_at', '>=', now()->subMonths(6))
             ->groupBy('month')
             ->orderBy('month')
+            ->get()
+            ->map(function ($item) {
+                $item->month = $item->month ?? '';
+                return $item;
+            });
+
+        // Préparer les labels et valeurs pour le graphique de revenus
+        $revenueLabels = $revenueByMonth->pluck('month')->toArray();
+        $revenueValues = $revenueByMonth->pluck('revenue')->toArray();
+
+        // Revenus par catégorie
+        $revenueByCategory = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('categories', 'courses.category_id', '=', 'categories.id')
+            ->where('orders.status', 'paid')
+            ->select('categories.id', 'categories.name')
+            ->selectRaw('SUM(order_items.total) as revenue')
+            ->groupBy('categories.id', 'categories.name')
+            ->orderByDesc('revenue')
             ->get();
+
+        // Préparer les labels et valeurs pour le graphique de revenus par catégorie
+        $revenueByCategoryLabels = $revenueByCategory->pluck('name')->toArray();
+        $revenueByCategoryValues = $revenueByCategory->pluck('revenue')->toArray();
 
         // Cours les plus populaires
         $popularCourses = Course::published()
@@ -90,13 +121,21 @@ class AdminController extends Controller
             ->get();
 
         $baseCurrency = Setting::getBaseCurrency();
+        $currencyCode = $baseCurrency['code'] ?? 'USD';
+        
         return view('admin.dashboard', compact(
             'stats', 
-            'revenueByMonth', 
+            'revenueByMonth',
+            'revenueByCategory',
+            'revenueLabels',
+            'revenueValues',
+            'revenueByCategoryLabels',
+            'revenueByCategoryValues',
             'popularCourses', 
             'recentEnrollments', 
             'recentOrders',
-            'baseCurrency'
+            'baseCurrency',
+            'currencyCode'
         ));
     }
 
@@ -109,6 +148,13 @@ class AdminController extends Controller
             'total_orders' => Order::count(),
             'total_revenue' => Order::where('status', 'paid')->sum('total'),
             'total_enrollments' => Enrollment::count(),
+            'total_visits' => Visitor::count(), // Total de toutes les visites
+            'total_visitors' => Visitor::count(), // Alias pour compatibilité (total des visites)
+            'unique_visitors' => (int) Visitor::selectRaw('COUNT(DISTINCT ip_address) as count')->value('count') ?? 0, // Visiteurs uniques par IP
+            'visitors_today' => Visitor::today()->count(), // Total des visites aujourd'hui
+            'unique_visitors_today' => (int) Visitor::today()->selectRaw('COUNT(DISTINCT ip_address) as count')->value('count') ?? 0, // Visiteurs uniques aujourd'hui
+            'visitors_this_week' => Visitor::thisWeek()->count(),
+            'visitors_this_month' => Visitor::thisMonth()->count(),
         ];
 
         // Revenus par mois (6 derniers mois)
@@ -117,7 +163,95 @@ class AdminController extends Controller
             ->where('created_at', '>=', now()->subMonths(6))
             ->groupBy('month')
             ->orderBy('month')
+            ->get()
+            ->map(function ($item) {
+                // S'assurer que le mois est au format YYYY-MM
+                $item->month = $item->month ?? '';
+                return $item;
+            });
+
+        // Revenus par jour (30 derniers jours)
+        $revenueByDay = Order::where('status', 'paid')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(total) as revenue')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->map(function ($item) {
+                $item->date = $item->date ?? '';
+                return $item;
+            });
+
+        // Revenus par semaine (12 dernières semaines)
+        $driver = DB::getDriverName();
+        if ($driver === 'pgsql') {
+            $revenueByWeek = Order::where('status', 'paid')
+                ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(total) as revenue")
+                ->where('created_at', '>=', now()->subWeeks(12))
+                ->groupBy('week')
+                ->orderBy('week')
+                ->get()
+                ->map(function ($item) {
+                    $item->week = $item->week ?? '';
+                    return $item;
+                });
+        } else {
+            $revenueByWeek = Order::where('status', 'paid')
+                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(total) as revenue')
+                ->where('created_at', '>=', now()->subWeeks(12))
+                ->groupBy('week')
+                ->orderBy('week')
+                ->get()
+                ->map(function ($item) {
+                    $item->week = $item->week ?? '';
+                    return $item;
+                });
+        }
+
+        // Revenus par catégorie
+        $revenueByCategory = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('categories', 'courses.category_id', '=', 'categories.id')
+            ->where('orders.status', 'paid')
+            ->select('categories.id', 'categories.name')
+            ->selectRaw('SUM(order_items.total) as revenue')
+            ->groupBy('categories.id', 'categories.name')
+            ->orderByDesc('revenue')
             ->get();
+
+        // Revenus par cours (top 10)
+        $revenueByCourse = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->where('orders.status', 'paid')
+            ->select('courses.id', 'courses.title')
+            ->selectRaw('SUM(order_items.total) as revenue')
+            ->groupBy('courses.id', 'courses.title')
+            ->orderByDesc('revenue')
+            ->limit(10)
+            ->get();
+
+        // Revenus par formateur (top 10)
+        $revenueByInstructor = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->where('orders.status', 'paid')
+            ->select('users.id', 'users.name')
+            ->selectRaw('SUM(order_items.total) as revenue')
+            ->groupBy('users.id', 'users.name')
+            ->orderByDesc('revenue')
+            ->limit(10)
+            ->get();
+
+        // Revenus par année (pour le filtre)
+        $revenueByYear = Order::where('status', 'paid')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(total) as revenue')
+            ->groupBy('year')
+            ->orderBy('year')
+            ->get()
+            ->map(function ($item) {
+                $item->year = $item->year ?? '';
+                return $item;
+            });
 
         // Analytics détaillées
         $courseStats = Course::selectRaw('
@@ -136,7 +270,12 @@ class AdminController extends Controller
         ->where('created_at', '>=', now()->subMonths(12))
         ->groupBy('month')
         ->orderBy('month')
-        ->get();
+        ->get()
+        ->map(function ($item) {
+            // S'assurer que le mois est au format YYYY-MM
+            $item->month = $item->month ?? '';
+            return $item;
+        });
 
         $categoryStats = Category::withCount('courses')
             ->orderBy('courses_count', 'desc')
@@ -151,12 +290,12 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
 
-        // Cours les plus populaires
+        // Cours les plus populaires (limité à 8 pour l'affichage horizontal)
         $popularCourses = Course::published()
             ->with(['instructor', 'category'])
             ->withCount('enrollments')
             ->orderBy('enrollments_count', 'desc')
-            ->limit(5)
+            ->limit(8)
             ->get();
 
         // Paiements: répartition par statut et par méthode
@@ -170,10 +309,72 @@ class AdminController extends Controller
             ->groupBy('payment_method')
             ->get();
 
+        // Statistiques des visiteurs
+        $visitorStats = [
+            'by_device' => Visitor::select('device_type')
+                ->selectRaw('COUNT(*) as count')
+                ->groupBy('device_type')
+                ->get(),
+            'by_browser' => Visitor::select('browser')
+                ->selectRaw('COUNT(*) as count')
+                ->whereNotNull('browser')
+                ->groupBy('browser')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get(),
+            'by_os' => Visitor::select('os')
+                ->selectRaw('COUNT(*) as count')
+                ->whereNotNull('os')
+                ->groupBy('os')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get(),
+            'visitors_by_day' => Visitor::selectRaw($this->buildDateFormatSelect('visited_at', '%Y-%m-%d', 'date') . ', COUNT(*) as count')
+                ->where('visited_at', '>=', now()->subDays(30))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get()
+                ->map(function ($item) {
+                    // S'assurer que la date est au format YYYY-MM-DD
+                    $item->date = $item->date ?? '';
+                    return $item;
+                }),
+            'unique_visitors_by_day' => Visitor::selectRaw($this->buildDateFormatSelect('visited_at', '%Y-%m-%d', 'date') . ', COUNT(DISTINCT ip_address) as count')
+                ->where('visited_at', '>=', now()->subDays(30))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get()
+                ->map(function ($item) {
+                    // S'assurer que la date est au format YYYY-MM-DD
+                    $item->date = $item->date ?? '';
+                    return $item;
+                }),
+            'by_country' => Visitor::select('country')
+                ->selectRaw('COUNT(*) as count')
+                ->whereNotNull('country')
+                ->groupBy('country')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get(),
+            'by_city' => Visitor::select('city', 'country')
+                ->selectRaw('COUNT(*) as count')
+                ->whereNotNull('city')
+                ->groupBy('city', 'country')
+                ->orderByDesc('count')
+                ->limit(10)
+                ->get(),
+        ];
+
         $baseCurrency = Setting::getBaseCurrency();
         return view('admin.analytics', compact(
             'stats',
             'revenueByMonth',
+            'revenueByDay',
+            'revenueByWeek',
+            'revenueByYear',
+            'revenueByCategory',
+            'revenueByCourse',
+            'revenueByInstructor',
             'courseStats',
             'userGrowth',
             'categoryStats',
@@ -181,8 +382,151 @@ class AdminController extends Controller
             'popularCourses',
             'paymentsByStatus',
             'paymentsByMethod',
+            'visitorStats',
             'baseCurrency'
         ));
+    }
+
+    public function getRevenueData(Request $request)
+    {
+        $period = $request->input('period', 'month');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $query = Order::where('status', 'paid');
+
+        if ($startDate) {
+            $query->where('created_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->where('created_at', '<=', $endDate . ' 23:59:59');
+        }
+
+        $data = [];
+        $labels = [];
+
+        switch($period) {
+            case 'day':
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(total) as revenue')
+                    ->groupBy('date')
+                    ->orderBy('date')
+                    ->get()
+                    ->map(function ($item) {
+                        $item->date = $item->date ?? '';
+                        return $item;
+                    });
+                $data = $results->toArray();
+                break;
+            case 'week':
+                $driver = DB::getDriverName();
+                if ($driver === 'pgsql') {
+                    $results = $query->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(total) as revenue")
+                        ->groupBy('week')
+                        ->orderBy('week')
+                        ->get();
+                } else {
+                    $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(total) as revenue')
+                        ->groupBy('week')
+                        ->orderBy('week')
+                        ->get();
+                }
+                $data = $results->map(function ($item) {
+                    $item->week = $item->week ?? '';
+                    return $item;
+                })->toArray();
+                break;
+            case 'month':
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(total) as revenue')
+                    ->groupBy('month')
+                    ->orderBy('month')
+                    ->get()
+                    ->map(function ($item) {
+                        $item->month = $item->month ?? '';
+                        return $item;
+                    });
+                $data = $results->toArray();
+                break;
+            case 'year':
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(total) as revenue')
+                    ->groupBy('year')
+                    ->orderBy('year')
+                    ->get()
+                    ->map(function ($item) {
+                        $item->year = $item->year ?? '';
+                        return $item;
+                    });
+                $data = $results->toArray();
+                break;
+        }
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function getRevenueByCategory(Request $request)
+    {
+        $days = $request->input('days', 'all');
+        
+        $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('categories', 'courses.category_id', '=', 'categories.id')
+            ->where('orders.status', 'paid');
+
+        if ($days !== 'all') {
+            $query->where('orders.created_at', '>=', now()->subDays((int)$days));
+        }
+
+        $data = $query->select('categories.id', 'categories.name')
+            ->selectRaw('SUM(order_items.total) as revenue')
+            ->groupBy('categories.id', 'categories.name')
+            ->orderByDesc('revenue')
+            ->get();
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function getRevenueByCourse(Request $request)
+    {
+        $days = $request->input('days', 'all');
+        
+        $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->where('orders.status', 'paid');
+
+        if ($days !== 'all') {
+            $query->where('orders.created_at', '>=', now()->subDays((int)$days));
+        }
+
+        $data = $query->select('courses.id', 'courses.title')
+            ->selectRaw('SUM(order_items.total) as revenue')
+            ->groupBy('courses.id', 'courses.title')
+            ->orderByDesc('revenue')
+            ->limit(10)
+            ->get();
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function getRevenueByInstructor(Request $request)
+    {
+        $days = $request->input('days', 'all');
+        
+        $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->where('orders.status', 'paid');
+
+        if ($days !== 'all') {
+            $query->where('orders.created_at', '>=', now()->subDays((int)$days));
+        }
+
+        $data = $query->select('users.id', 'users.name')
+            ->selectRaw('SUM(order_items.total) as revenue')
+            ->groupBy('users.id', 'users.name')
+            ->orderByDesc('revenue')
+            ->limit(10)
+            ->get();
+
+        return response()->json(['data' => $data]);
     }
 
     // Gestion des utilisateurs
@@ -334,7 +678,19 @@ class AdminController extends Controller
 
     public function showUser(User $user)
     {
-        return view('admin.users.show', compact('user'));
+        // Charger les inscriptions avec les cours
+        $enrollments = $user->enrollments()
+            ->with(['course.instructor', 'course.category', 'order'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        // Charger tous les cours disponibles pour le modal d'ajout
+        $allCourses = Course::published()
+            ->with(['instructor', 'category'])
+            ->orderBy('title')
+            ->get();
+        
+        return view('admin.users.show', compact('user', 'enrollments', 'allCourses'));
     }
 
     public function destroyUser(User $user)
@@ -342,6 +698,84 @@ class AdminController extends Controller
         $user->delete();
         return redirect()->route('admin.users')
             ->with('success', 'Utilisateur supprimé avec succès.');
+    }
+
+    /**
+     * Donner accès gratuit à un cours payant à un utilisateur
+     */
+    public function grantCourseAccess(Request $request, User $user)
+    {
+        $request->validate([
+            'course_id' => 'required|exists:courses,id',
+        ]);
+
+        $course = Course::findOrFail($request->course_id);
+
+        // Vérifier si l'utilisateur n'est pas déjà inscrit
+        $existingEnrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->first();
+
+        if ($existingEnrollment) {
+            return redirect()->route('admin.users.show', $user)
+                ->with('error', 'L\'utilisateur a déjà accès à ce cours.');
+        }
+
+        // Créer l'inscription avec order_id null (accès gratuit)
+        Enrollment::create([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'order_id' => null, // Accès gratuit donné par l'admin
+            'status' => 'active',
+        ]);
+
+        // Envoyer une notification et un email à l'utilisateur
+        try {
+            $user->notify(new \App\Notifications\CourseEnrolled($course));
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
+        }
+
+        return redirect()->route('admin.users.show', $user)
+            ->with('success', "Accès gratuit au cours \"{$course->title}\" accordé avec succès. L'utilisateur a été notifié par email.");
+    }
+
+    /**
+     * Enlever l'accès à un cours (supprimer l'inscription)
+     */
+    public function revokeCourseAccess(User $user, Course $course)
+    {
+        $enrollment = Enrollment::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->first();
+
+        if (!$enrollment) {
+            return redirect()->route('admin.users.show', $user)
+                ->with('error', 'L\'utilisateur n\'a pas accès à ce cours.');
+        }
+
+        $courseTitle = $course->title;
+        
+        // Envoyer une notification et un email à l'utilisateur avant de supprimer l'inscription
+        try {
+            $user->notify(new \App\Notifications\CourseAccessRevoked($course));
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi de l'email de retrait d'accès: " . $e->getMessage());
+        }
+        
+        // Supprimer l'inscription après l'envoi de la notification
+        $enrollment->delete();
+
+        return redirect()->route('admin.users.show', $user)
+            ->with('success', "Accès au cours \"{$courseTitle}\" retiré avec succès. L'utilisateur a été notifié.");
+    }
+
+    /**
+     * Désinscrire l'utilisateur d'un cours (alias pour revokeCourseAccess)
+     */
+    public function unenrollUser(User $user, Course $course)
+    {
+        return $this->revokeCourseAccess($user, $course);
     }
 
     // Gestion des cours
@@ -1283,10 +1717,33 @@ class AdminController extends Controller
     }
 
     // Gestion des annonces
-    public function announcements()
+    public function announcements(Request $request)
     {
         $announcements = Announcement::latest()->paginate(15);
-        return view('admin.announcements.index', compact('announcements'));
+        
+        // Récupérer les emails récents (derniers 10 emails envoyés)
+        $recentSentEmails = SentEmail::with('user')
+            ->latest()
+            ->limit(10)
+            ->get();
+        
+        // Récupérer les emails programmés en attente
+        $pendingScheduledEmails = ScheduledEmail::with('creator')
+            ->where('status', 'pending')
+            ->where('scheduled_at', '>=', now())
+            ->orderBy('scheduled_at')
+            ->limit(10)
+            ->get();
+        
+        // Statistiques des emails
+        $emailStats = [
+            'total_sent' => SentEmail::count(),
+            'sent_today' => SentEmail::whereDate('sent_at', today())->count(),
+            'failed_today' => SentEmail::whereDate('created_at', today())->where('status', 'failed')->count(),
+            'pending_scheduled' => ScheduledEmail::where('status', 'pending')->count(),
+        ];
+        
+        return view('admin.announcements.index', compact('announcements', 'recentSentEmails', 'pendingScheduledEmails', 'emailStats'));
     }
 
     public function createAnnouncement()
@@ -1371,6 +1828,396 @@ class AdminController extends Controller
             ->chunk(200, function ($users) use ($announcement) {
                 Notification::send($users, new AnnouncementPublished($announcement));
             });
+    }
+
+    /**
+     * Afficher la page d'envoi d'email
+     */
+    public function showSendEmail()
+    {
+        return view('admin.announcements.send-email');
+    }
+
+    /**
+     * Rechercher des utilisateurs pour l'envoi d'email
+     */
+    public function searchUsers(Request $request)
+    {
+        $query = $request->get('q', '');
+        
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $users = User::where('is_active', true)
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->select('id', 'name', 'email')
+            ->limit(20)
+            ->get();
+
+        return response()->json($users);
+    }
+
+    /**
+     * Compter les utilisateurs selon les critères
+     */
+    public function countUsers(Request $request)
+    {
+        $type = $request->get('type', 'all');
+        
+        $query = User::where('is_active', true)->whereNotNull('email');
+
+        if ($type === 'role') {
+            $roles = explode(',', $request->get('roles', ''));
+            if (!empty($roles)) {
+                $query->whereIn('role', $roles);
+            }
+        }
+
+        $count = $query->count();
+
+        return response()->json(['count' => $count]);
+    }
+
+    /**
+     * Uploader une image pour TinyMCE
+     */
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|image|max:2048', // 2MB max
+        ]);
+
+        $file = $request->file('file');
+        $service = app(FileUploadService::class);
+        $path = $service->upload($file, 'email-images');
+
+        return response()->json([
+            'location' => $service->getUrl($path, 'email-images')
+        ]);
+    }
+
+    /**
+     * Envoyer un email personnalisé
+     */
+    public function sendEmail(Request $request)
+    {
+        $request->validate([
+            'recipient_type' => 'required|in:all,role,selected,single',
+            'subject' => 'required|string|max:255',
+            'content' => 'required|string',
+            'send_type' => 'required|in:now,scheduled',
+            'scheduled_at' => 'nullable|required_if:send_type,scheduled|date|after:now',
+            'roles' => 'nullable|required_if:recipient_type,role|array',
+            'roles.*' => 'in:student,instructor,admin,affiliate',
+            'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
+            'user_ids' => 'nullable|required_if:recipient_type,selected|string',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240', // 10MB max par fichier
+        ]);
+
+        $recipientType = $request->recipient_type;
+        $subject = $request->subject;
+        $content = $request->content;
+
+        // Gérer les pièces jointes
+        $attachmentPaths = [];
+        if ($request->hasFile('attachments')) {
+            $service = app(FileUploadService::class);
+            foreach ($request->file('attachments') as $file) {
+                $path = $service->upload($file, 'email-attachments');
+                $attachmentPaths[] = $path;
+            }
+        }
+
+        // Obtenir les destinataires
+        $users = $this->getEmailRecipients($request);
+
+        if ($users->isEmpty()) {
+            return redirect()->back()
+                ->with('error', 'Aucun destinataire trouvé pour cet envoi.')
+                ->withInput();
+        }
+
+        // Envoi immédiat ou programmé
+        if ($request->send_type === 'now') {
+            // S'assurer que $users est une Collection
+            if (!$users instanceof \Illuminate\Support\Collection) {
+                $users = collect($users);
+            }
+            
+            $sentCount = 0;
+            $failedCount = 0;
+            
+            // Envoyer immédiatement en lots
+            $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, $recipientType) {
+                foreach ($userChunk as $user) {
+                    try {
+                        Mail::to($user->email)->send(new CustomAnnouncementMail($subject, $content, $attachmentPaths));
+                        
+                        // Enregistrer l'email envoyé
+                        SentEmail::create([
+                            'user_id' => $user->id,
+                            'recipient_email' => $user->email,
+                            'recipient_name' => $user->name,
+                            'subject' => $subject,
+                            'content' => $content,
+                            'attachments' => $attachmentPaths ?: null,
+                            'type' => 'custom',
+                            'status' => 'sent',
+                            'sent_at' => now(),
+                            'metadata' => [
+                                'recipient_type' => $recipientType,
+                            ],
+                        ]);
+                        
+                        // Notifier l'utilisateur qu'un email lui a été envoyé
+                        $user->notify(new EmailSentNotification($subject, now()));
+                        
+                        $sentCount++;
+                    } catch (\Exception $e) {
+                        \Log::error("Erreur lors de l'envoi d'email à {$user->email}: " . $e->getMessage());
+                        
+                        // Enregistrer l'échec
+                        SentEmail::create([
+                            'user_id' => $user->id,
+                            'recipient_email' => $user->email,
+                            'recipient_name' => $user->name,
+                            'subject' => $subject,
+                            'content' => $content,
+                            'attachments' => $attachmentPaths ?: null,
+                            'type' => 'custom',
+                            'status' => 'failed',
+                            'error_message' => $e->getMessage(),
+                            'metadata' => [
+                                'recipient_type' => $recipientType,
+                            ],
+                        ]);
+                        
+                        $failedCount++;
+                    }
+                }
+            });
+
+            $message = "Email envoyé avec succès à {$sentCount} destinataire(s).";
+            if ($failedCount > 0) {
+                $message .= " {$failedCount} envoi(s) ont échoué.";
+            }
+        } else {
+            // Envoi programmé
+            $scheduledAt = Carbon::parse($request->scheduled_at);
+            
+            // Préparer la configuration des destinataires
+            $recipientConfig = [];
+            if ($recipientType === 'role') {
+                $recipientConfig['roles'] = $request->input('roles', []);
+            } elseif ($recipientType === 'selected') {
+                $userIdsString = $request->input('user_ids', '');
+                $recipientConfig['user_ids'] = array_filter(explode(',', $userIdsString), function($id) {
+                    return !empty(trim($id)) && is_numeric(trim($id));
+                });
+            } elseif ($recipientType === 'single') {
+                $recipientConfig['user_id'] = $request->input('single_user_id');
+            }
+            
+            // Créer l'email programmé
+            $scheduledEmail = ScheduledEmail::create([
+                'created_by' => Auth::id(),
+                'recipient_type' => $recipientType,
+                'recipient_config' => $recipientConfig,
+                'subject' => $subject,
+                'content' => $content,
+                'attachments' => $attachmentPaths ?: null,
+                'status' => 'pending',
+                'scheduled_at' => $scheduledAt,
+                'total_recipients' => $users->count(),
+            ]);
+            
+            $message = "Email programmé pour être envoyé le " . $scheduledAt->format('d/m/Y à H:i') . " à {$users->count()} destinataire(s).";
+        }
+
+        return redirect()->route('admin.announcements')
+            ->with('success', $message);
+    }
+
+    /**
+     * Obtenir les destinataires selon le type sélectionné
+     */
+    protected function getEmailRecipients(Request $request)
+    {
+        $type = $request->recipient_type;
+
+        $query = User::where('is_active', true)->whereNotNull('email');
+
+        switch ($type) {
+            case 'all':
+                // Tous les utilisateurs actifs avec email
+                break;
+
+            case 'role':
+                $roles = $request->input('roles', []);
+                if (!empty($roles)) {
+                    $query->whereIn('role', $roles);
+                }
+                break;
+
+            case 'selected':
+                $userIdsString = $request->input('user_ids', '');
+                if (empty($userIdsString)) {
+                    return collect();
+                }
+                $userIds = array_filter(explode(',', $userIdsString), function($id) {
+                    return !empty(trim($id)) && is_numeric(trim($id));
+                });
+                if (!empty($userIds)) {
+                    $query->whereIn('id', array_map('intval', $userIds));
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'single':
+                $userId = $request->single_user_id;
+                if ($userId) {
+                    $query->where('id', $userId);
+                } else {
+                    return collect();
+                }
+                break;
+        }
+
+        return $query->select('id', 'name', 'email')->get();
+    }
+
+    /**
+     * Afficher la liste des emails envoyés
+     */
+    public function sentEmails(Request $request)
+    {
+        $query = SentEmail::with('user')->latest();
+
+        // Recherche
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('subject', 'like', "%{$search}%")
+                  ->orWhere('recipient_email', 'like', "%{$search}%")
+                  ->orWhere('recipient_name', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtre par type
+        if ($request->filled('type')) {
+            $query->where('type', $request->get('type'));
+        }
+
+        // Filtre par statut
+        if ($request->filled('status')) {
+            $query->where('status', $request->get('status'));
+        }
+
+        // Filtre par date
+        if ($request->filled('date_from')) {
+            $query->whereDate('sent_at', '>=', $request->get('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('sent_at', '<=', $request->get('date_to'));
+        }
+
+        $emails = $query->paginate(20);
+
+        $stats = [
+            'total' => SentEmail::count(),
+            'sent' => SentEmail::where('status', 'sent')->count(),
+            'failed' => SentEmail::where('status', 'failed')->count(),
+            'pending' => SentEmail::where('status', 'pending')->count(),
+        ];
+
+        return view('admin.emails.sent', compact('emails', 'stats'));
+    }
+
+    /**
+     * Afficher la liste des emails programmés
+     */
+    public function scheduledEmails(Request $request)
+    {
+        $query = ScheduledEmail::with('creator')->latest();
+
+        // Recherche
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('subject', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtre par statut
+        if ($request->filled('status')) {
+            $query->where('status', $request->get('status'));
+        }
+
+        $emails = $query->paginate(20);
+
+        $stats = [
+            'total' => ScheduledEmail::count(),
+            'pending' => ScheduledEmail::where('status', 'pending')->count(),
+            'processing' => ScheduledEmail::where('status', 'processing')->count(),
+            'completed' => ScheduledEmail::where('status', 'completed')->count(),
+            'failed' => ScheduledEmail::where('status', 'failed')->count(),
+        ];
+
+        return view('admin.emails.scheduled', compact('emails', 'stats'));
+    }
+
+    /**
+     * Voir les détails d'un email envoyé
+     */
+    public function showSentEmail(SentEmail $sentEmail)
+    {
+        return view('admin.emails.sent-show', compact('sentEmail'));
+    }
+
+    /**
+     * Voir les détails d'un email programmé
+     */
+    public function showScheduledEmail(ScheduledEmail $scheduledEmail)
+    {
+        return view('admin.emails.scheduled-show', compact('scheduledEmail'));
+    }
+
+    /**
+     * Annuler un email programmé
+     */
+    public function destroySentEmail(SentEmail $sentEmail)
+    {
+        $sentEmail->delete();
+        
+        return redirect()->back()
+            ->with('success', 'Email supprimé avec succès.');
+    }
+
+    public function destroyScheduledEmail(ScheduledEmail $scheduledEmail)
+    {
+        $scheduledEmail->delete();
+        
+        return redirect()->back()
+            ->with('success', 'Email programmé supprimé avec succès.');
+    }
+
+    public function cancelScheduledEmail(ScheduledEmail $scheduledEmail)
+    {
+        if ($scheduledEmail->status !== 'pending') {
+            return redirect()->back()
+                ->with('error', 'Seuls les emails en attente peuvent être annulés.');
+        }
+
+        $scheduledEmail->update(['status' => 'cancelled']);
+
+        return redirect()->back()
+            ->with('success', 'Email programmé annulé avec succès.');
     }
 
     protected function generateUniqueCourseSlug(string $title, ?Course $ignoreCourse = null): string

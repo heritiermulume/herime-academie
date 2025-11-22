@@ -26,6 +26,8 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleUploadErrors::class,
             // Valider le token SSO à chaque chargement de page pour les utilisateurs authentifiés
             \App\Http\Middleware\ValidateSSOOnPageLoad::class,
+            // Tracker les visiteurs du site
+            \App\Http\Middleware\TrackVisitors::class,
         ]);
 
         // Faire confiance aux proxies pour que HTTPS soit correctement détecté (cookies secure)

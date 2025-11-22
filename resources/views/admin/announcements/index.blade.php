@@ -10,7 +10,7 @@
 @endsection
 
 @section('admin-content')
-    <section class="admin-panel">
+    <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
                     <div class="admin-table">
                         <div class="table-responsive">
@@ -157,9 +157,470 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div class="admin-pagination">
-                        {{ $announcements->links() }}
+                    <x-admin.pagination :paginator="$announcements" />
+        </div>
+    </section>
+
+    <!-- Section de gestion des emails -->
+    <section class="admin-panel mt-4">
+        <div class="admin-panel__header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0 flex-grow-1"><i class="fas fa-envelope me-2"></i>Gestion des emails</h3>
+            <!-- Icône pour envoyer un email -->
+            <a href="{{ route('admin.announcements.send-email') }}" class="email-send-icon-btn" title="Envoyer un email">
+                <i class="fas fa-envelope"></i>
+            </a>
+        </div>
+        <div class="admin-panel__body">
+            <!-- Statistiques des emails -->
+            <div class="row g-3 mb-3 email-stats-row">
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #e3f2fd;">
+                            <i class="fas fa-paper-plane text-primary"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($emailStats['total_sent'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Emails envoyés</div>
+                        </div>
                     </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #e8f5e9;">
+                            <i class="fas fa-calendar-day text-success"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($emailStats['sent_today'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Aujourd'hui</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #fff3e0;">
+                            <i class="fas fa-clock text-warning"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($emailStats['pending_scheduled'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">En attente</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #ffebee;">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($emailStats['failed_today'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Échecs aujourd'hui</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglets pour les emails -->
+            <ul class="nav nav-tabs mb-3" id="emailsTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="sent-emails-tab" data-bs-toggle="tab" data-bs-target="#sent-emails" type="button" role="tab">
+                        <i class="fas fa-paper-plane me-2"></i>Emails envoyés
+                        <span class="badge bg-primary ms-2">{{ count($recentSentEmails ?? []) }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="scheduled-emails-tab" data-bs-toggle="tab" data-bs-target="#scheduled-emails" type="button" role="tab">
+                        <i class="fas fa-clock me-2"></i>Emails programmés
+                        <span class="badge bg-warning ms-2">{{ count($pendingScheduledEmails ?? []) }}</span>
+                    </button>
+                </li>
+                <li class="nav-item ms-auto d-none d-md-block" role="presentation">
+                    <a href="{{ route('admin.emails.sent') }}" class="btn btn-sm btn-outline-primary mt-2">
+                        <i class="fas fa-list me-2"></i>Voir tout
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="emailsTabContent">
+                <!-- Onglet emails envoyés -->
+                <div class="tab-pane fade show active" id="sent-emails" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Destinataire</th>
+                                    <th>Sujet</th>
+                                    <th>Type</th>
+                                    <th>Statut</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($recentSentEmails ?? [] as $email)
+                                <tr>
+                                    <td>
+                                        <small>
+                                            {{ $email->recipient_name ?? 'N/A' }}<br>
+                                            <span class="text-muted">{{ $email->recipient_email }}</span>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small>{{ Str::limit($email->subject, 50) }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ ucfirst($email->type) }}</span>
+                                    </td>
+                                    <td>
+                                        @if($email->status === 'sent')
+                                            <span class="badge bg-success">Envoyé</span>
+                                        @elseif($email->status === 'failed')
+                                            <span class="badge bg-danger">Échoué</span>
+                                        @else
+                                            <span class="badge bg-secondary">En attente</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <small>{{ $email->sent_at ? $email->sent_at->format('d/m/Y H:i') : ($email->created_at->format('d/m/Y H:i')) }}</small>
+                                    </td>
+                                    <td class="text-center align-top">
+                                        @if($loop->first)
+                                            <div class="dropdown d-none d-md-block">
+                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="emailActionsDropdown{{ $email->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="emailActionsDropdown{{ $email->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.emails.sent.show', $email) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.sent.destroy', $email) }}"
+                                                           data-subject="{{ $email->subject }}"
+                                                           onclick="openDeleteEmailModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="dropdown d-md-none">
+                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="emailActionsDropdownMobile{{ $email->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="emailActionsDropdownMobile{{ $email->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.emails.sent.show', $email) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.sent.destroy', $email) }}"
+                                                           data-subject="{{ $email->subject }}"
+                                                           onclick="openDeleteEmailModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        @else
+                                            <div class="dropup d-none d-md-block">
+                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="emailActionsDropdown{{ $email->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="emailActionsDropdown{{ $email->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.emails.sent.show', $email) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.sent.destroy', $email) }}"
+                                                           data-subject="{{ $email->subject }}"
+                                                           onclick="openDeleteEmailModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="dropup d-md-none">
+                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="emailActionsDropdownMobile{{ $email->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="emailActionsDropdownMobile{{ $email->id }}">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.emails.sent.show', $email) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.sent.destroy', $email) }}"
+                                                           data-subject="{{ $email->subject }}"
+                                                           onclick="openDeleteEmailModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="6" class="text-center py-3 text-muted">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        <p class="mb-0">Aucun email envoyé récemment</p>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    @if(count($recentSentEmails ?? []) > 0)
+                    <div class="text-center mt-3">
+                        <a href="{{ route('admin.emails.sent') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-list me-2"></i>Voir tous les emails envoyés
+                        </a>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Onglet emails programmés -->
+                <div class="tab-pane fade" id="scheduled-emails" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sujet</th>
+                                    <th>Destinataires</th>
+                                    <th>Programmé pour</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($pendingScheduledEmails ?? [] as $scheduled)
+                                <tr>
+                                    <td>
+                                        <small><strong>{{ Str::limit($scheduled->subject, 50) }}</strong></small>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {{ $scheduled->total_recipients }} destinataire(s)
+                                            @if($scheduled->recipient_type === 'role' && isset($scheduled->recipient_config['roles']))
+                                                <br><span class="badge bg-secondary">{{ implode(', ', $scheduled->recipient_config['roles']) }}</span>
+                                            @endif
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small>{{ $scheduled->scheduled_at->format('d/m/Y à H:i') }}</small>
+                                    </td>
+                                    <td>
+                                        @if($scheduled->status === 'pending')
+                                            <span class="badge bg-warning">En attente</span>
+                                        @elseif($scheduled->status === 'processing')
+                                            <span class="badge bg-info">En cours</span>
+                                        @elseif($scheduled->status === 'completed')
+                                            <span class="badge bg-success">Terminé</span>
+                                        @elseif($scheduled->status === 'failed')
+                                            <span class="badge bg-danger">Échoué</span>
+                                        @else
+                                            <span class="badge bg-secondary">{{ ucfirst($scheduled->status) }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center align-top">
+                                        @if($loop->first)
+                                            <div class="dropdown d-none d-md-block">
+                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="scheduledActionsDropdown{{ $scheduled->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="scheduledActionsDropdown{{ $scheduled->id }}">
+                                                    @if($scheduled->status === 'pending')
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    @endif
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.emails.scheduled.show', $scheduled) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                        @if($scheduled->status === 'pending')
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
+                                                           data-subject="{{ $scheduled->subject }}"
+                                                           onclick="openCancelScheduledEmailModal(this); return false;">
+                                                            <i class="fas fa-times me-2"></i>Annuler
+                                                        </a>
+                                                    </li>
+                                                    @else
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
+                                                           data-subject="{{ $scheduled->subject }}"
+                                                           onclick="openDeleteEmailModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                    @endif
+                                                </ul>
+                                            </div>
+                                            <div class="dropdown d-md-none">
+                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="scheduledActionsDropdownMobile{{ $scheduled->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="scheduledActionsDropdownMobile{{ $scheduled->id }}">
+                                                    @if($scheduled->status === 'pending')
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    @endif
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.emails.scheduled.show', $scheduled) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    @if($scheduled->status === 'pending')
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
+                                                           data-subject="{{ $scheduled->subject }}"
+                                                           onclick="openCancelScheduledEmailModal(this); return false;">
+                                                            <i class="fas fa-times me-2"></i>Annuler
+                                                        </a>
+                                                    </li>
+                                                    @else
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
+                                                           data-subject="{{ $scheduled->subject }}"
+                                                           onclick="openDeleteEmailModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                    @endif
+                                                </ul>
+                                            </div>
+                                        @else
+                                            <div class="dropup d-none d-md-block">
+                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="scheduledActionsDropdown{{ $scheduled->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="scheduledActionsDropdown{{ $scheduled->id }}">
+                                                    @if($scheduled->status === 'pending')
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    @endif
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.emails.scheduled.show', $scheduled) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    @if($scheduled->status === 'pending')
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
+                                                           data-subject="{{ $scheduled->subject }}"
+                                                           onclick="openCancelScheduledEmailModal(this); return false;">
+                                                            <i class="fas fa-times me-2"></i>Annuler
+                                                        </a>
+                                                    </li>
+                                                    @else
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
+                                                           data-subject="{{ $scheduled->subject }}"
+                                                           onclick="openDeleteEmailModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                    @endif
+                                                </ul>
+                                            </div>
+                                            <div class="dropup d-md-none">
+                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="scheduledActionsDropdownMobile{{ $scheduled->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="scheduledActionsDropdownMobile{{ $scheduled->id }}">
+                                                    @if($scheduled->status === 'pending')
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}">
+                                                            <i class="fas fa-edit me-2"></i>Modifier
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    @endif
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ route('admin.emails.scheduled.show', $scheduled) }}">
+                                                            <i class="fas fa-eye me-2"></i>Voir
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    @if($scheduled->status === 'pending')
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
+                                                           data-subject="{{ $scheduled->subject }}"
+                                                           onclick="openCancelScheduledEmailModal(this); return false;">
+                                                            <i class="fas fa-times me-2"></i>Annuler
+                                                        </a>
+                                                    </li>
+                                                    @else
+                                                    <li>
+                                                        <a class="dropdown-item text-danger" href="#" 
+                                                           data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
+                                                           data-subject="{{ $scheduled->subject }}"
+                                                           onclick="openDeleteEmailModal(this); return false;">
+                                                            <i class="fas fa-trash me-2"></i>Supprimer
+                                                        </a>
+                                                    </li>
+                                                    @endif
+                                                </ul>
+                                            </div>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-3 text-muted">
+                                        <i class="fas fa-clock fa-2x mb-2"></i>
+                                        <p class="mb-0">Aucun email programmé</p>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    @if(count($pendingScheduledEmails ?? []) > 0)
+                    <div class="text-center mt-3">
+                        <a href="{{ route('admin.emails.scheduled') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-list me-2"></i>Voir tous les emails programmés
+                        </a>
+                    </div>
+                    @endif
+                </div>
+            </div>
         </div>
     </section>
 
@@ -360,7 +821,7 @@ function openDeleteAnnouncementModal(button) {
     const messageElement = document.getElementById('deleteAnnouncementMessage');
     if (messageElement) {
         messageElement.textContent = title
-            ? `Êtes-vous sûr de vouloir supprimer l’annonce « ${title} » ? Cette action est irréversible.`
+            ? `Êtes-vous sûr de vouloir supprimer l'annonce « ${title} » ? Cette action est irréversible.`
             : `Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.`;
     }
 
@@ -370,6 +831,64 @@ function openDeleteAnnouncementModal(button) {
     }
 
     const modalElement = document.getElementById('deleteAnnouncementModal');
+    if (!modalElement) {
+        return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
+function openDeleteEmailModal(button) {
+    const action = button?.dataset?.action;
+    if (!action) {
+        console.error('Aucune action de suppression fournie.');
+        return;
+    }
+
+    const subject = button.dataset.subject || '';
+    const messageElement = document.getElementById('deleteEmailMessage');
+    if (messageElement) {
+        messageElement.textContent = subject
+            ? `Êtes-vous sûr de vouloir supprimer l'email « ${subject} » ? Cette action est irréversible.`
+            : `Êtes-vous sûr de vouloir supprimer cet email ? Cette action est irréversible.`;
+    }
+
+    const form = document.getElementById('deleteEmailForm');
+    if (form) {
+        form.action = action;
+    }
+
+    const modalElement = document.getElementById('deleteEmailModal');
+    if (!modalElement) {
+        return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
+
+function openCancelScheduledEmailModal(button) {
+    const action = button?.dataset?.action;
+    if (!action) {
+        console.error('Aucune action d\'annulation fournie.');
+        return;
+    }
+
+    const subject = button.dataset.subject || '';
+    const messageElement = document.getElementById('cancelScheduledEmailMessage');
+    if (messageElement) {
+        messageElement.textContent = subject
+            ? `Êtes-vous sûr de vouloir annuler l'email programmé « ${subject} » ?`
+            : `Êtes-vous sûr de vouloir annuler cet email programmé ?`;
+    }
+
+    const form = document.getElementById('cancelScheduledEmailForm');
+    if (form) {
+        form.action = action;
+    }
+
+    const modalElement = document.getElementById('cancelScheduledEmailModal');
     if (!modalElement) {
         return;
     }
@@ -486,8 +1005,351 @@ function openDeleteAnnouncementModal(button) {
         width: 100%;
     }
 }
+
+@media (max-width: 991.98px) {
+    /* Réduire les paddings et margins sur tablette */
+    .admin-panel {
+        margin-bottom: 1rem;
+    }
+    
+    /* Padding uniquement pour la première section principale */
+    .admin-panel--main .admin-panel__body {
+        padding: 1rem !important;
+    }
+    
+    /* Pas de padding pour les autres sections */
+    .admin-panel:not(.admin-panel--main) .admin-panel__body {
+        padding: 0 !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .admin-stats-grid {
+        gap: 0.5rem !important;
+    }
+    
+    .admin-stat-card {
+        padding: 0.75rem 0.875rem !important;
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    
+    .admin-panel__body .row.g-3 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
+    }
+    
+    .admin-panel__body .row.mb-4 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-panel__body .row.mt-2 {
+        margin-top: 0.375rem !important;
+    }
+    
+    .admin-card__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-card__body {
+        padding: 0.5rem;
+    }
+    
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* Réduire encore plus les paddings et margins sur mobile */
+    .admin-panel {
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Padding uniquement pour la première section principale */
+    .admin-panel--main .admin-panel__body {
+        padding: 0.75rem !important;
+    }
+    
+    /* Pas de padding pour les autres sections */
+    .admin-panel:not(.admin-panel--main) .admin-panel__body {
+        padding: 0 !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.375rem 0.5rem;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .admin-panel__header h3 i {
+        font-size: 0.75rem;
+    }
+    
+    /* Icône pour envoyer un email dans la section emails */
+    .email-send-icon-btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        flex-shrink: 0;
+        margin-left: 0.5rem;
+        color: #198754;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    
+    .email-send-icon-btn:hover {
+        color: #157347;
+        background-color: rgba(25, 135, 84, 0.1);
+        transform: scale(1.1);
+    }
+    
+    .email-send-icon-btn i {
+        margin: 0;
+        font-size: 1rem;
+    }
+    
+    @media (min-width: 768px) {
+        .email-send-icon-btn {
+            width: 36px;
+            height: 36px;
+        }
+        
+        .email-send-icon-btn i {
+            font-size: 1.1rem;
+        }
+    }
+    
+    /* Espacement des statistiques emails */
+    .email-stats-row {
+        padding-top: 0.75rem;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    @media (min-width: 768px) {
+        .email-stats-row {
+            padding-top: 1rem;
+            margin-bottom: 1rem !important;
+        }
+    }
+    
+    /* Adaptation des cartes de statistiques pour mobile */
+    .admin-stats-grid {
+        gap: 0.375rem !important;
+    }
+    
+    .admin-stat-card {
+        padding: 0.5rem 0.5rem !important;
+    }
+    
+    .admin-stat-card__icon {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+    }
+    
+    .admin-stat-card__icon i {
+        font-size: 0.875rem !important;
+    }
+    
+    .admin-stat-card__value {
+        font-size: 1rem !important;
+        line-height: 1.2;
+    }
+    
+    .admin-stat-card__label {
+        font-size: 0.7rem !important;
+        line-height: 1.2;
+        margin-top: 0.125rem;
+    }
+    
+    /* Adaptation des onglets pour mobile */
+    .nav-tabs {
+        font-size: 0.75rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .nav-tabs .nav-link i {
+        font-size: 0.7rem;
+        margin-right: 0.25rem;
+    }
+    
+    .nav-tabs .badge {
+        font-size: 0.65rem;
+        padding: 0.15em 0.4em;
+        margin-left: 0.25rem !important;
+    }
+    
+    .nav-tabs .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        margin-top: 0.25rem !important;
+    }
+    
+    .nav-tabs .btn-sm i {
+        font-size: 0.65rem;
+        margin-right: 0.25rem;
+    }
+    
+    /* Adaptation des tableaux pour mobile */
+    .table {
+        font-size: 0.8rem;
+    }
+    
+    .table thead th {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.25rem;
+        font-weight: 600;
+    }
+    
+    .table tbody td {
+        padding: 0.375rem 0.25rem;
+        vertical-align: middle;
+    }
+    
+    .table tbody td small {
+        font-size: 0.75rem;
+        line-height: 1.3;
+    }
+    
+    .table .badge {
+        font-size: 0.65rem;
+        padding: 0.2em 0.4em;
+    }
+    
+    .table .btn-sm {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.7rem;
+    }
+    
+    .table .btn-sm i {
+        font-size: 0.7rem;
+    }
+    
+    /* Adaptation des boutons d'action pour mobile */
+    .table tbody td .btn-group {
+        display: flex;
+        gap: 0.25rem;
+    }
+    
+    /* Adaptation des messages vides pour mobile */
+    .table tbody td .fa-2x {
+        font-size: 1.5rem !important;
+    }
+    
+    .table tbody td p {
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Adaptation des boutons "Voir tout" pour mobile */
+    .text-center .btn-sm {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .text-center .btn-sm i {
+        font-size: 0.65rem;
+        margin-right: 0.25rem;
+    }
+    
+    /* Marges et hauteur pour les tab-pane */
+    .tab-content .tab-pane {
+        margin-left: 0.5rem;
+        margin-right: 0.5rem;
+        min-height: 600px;
+    }
+    
+    @media (min-width: 768px) {
+        .tab-content .tab-pane {
+            margin-left: 0.75rem;
+            margin-right: 0.75rem;
+            min-height: 700px;
+        }
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
+    }
+    
+    .admin-panel__body .row.g-3 {
+        --bs-gutter-x: 0.25rem;
+        --bs-gutter-y: 0.25rem;
+    }
+    
+    .admin-panel__body .row.mb-4 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-panel__body .row.mt-2 {
+        margin-top: 0.375rem !important;
+    }
+    
+    .admin-card__header {
+        padding: 0.5rem 0.625rem;
+    }
+    
+    .admin-card__body {
+        padding: 0.375rem;
+    }
+    
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
 </style>
 @endpush
+
 <!-- Modal de suppression -->
 <div class="modal fade" id="deleteAnnouncementModal" tabindex="-1" aria-labelledby="deleteAnnouncementModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -506,6 +1368,55 @@ function openDeleteAnnouncementModal(button) {
                     @method('DELETE')
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de suppression d'email -->
+<div class="modal fade" id="deleteEmailModal" tabindex="-1" aria-labelledby="deleteEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteEmailModalLabel">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteEmailMessage">Êtes-vous sûr de vouloir supprimer cet email ? Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deleteEmailForm" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal d'annulation d'email programmé -->
+<div class="modal fade" id="cancelScheduledEmailModal" tabindex="-1" aria-labelledby="cancelScheduledEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelScheduledEmailModalLabel">Confirmer l'annulation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p id="cancelScheduledEmailMessage">Êtes-vous sûr de vouloir annuler cet email programmé ?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="cancelScheduledEmailForm" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-times me-2"></i>Annuler l'email
                     </button>
                 </form>
             </div>

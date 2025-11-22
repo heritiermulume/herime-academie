@@ -27,10 +27,59 @@
     padding-top: 0;
 }
 
+/* Supprimer tout margin-top et padding-top du body sur cette page */
+body:has(.course-details-page),
+body.has-global-announcement:has(.course-details-page) {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* Ajouter un padding-top pour desktop pour compenser la hauteur de la navbar fixe (réduit) */
+@media (min-width: 992px) {
+    .course-details-page {
+        padding-top: calc(var(--site-navbar-height, 64px) - 35px) !important;
+    }
+    
+    /* Si une annonce globale existe, ajouter sa hauteur */
+    body.has-global-announcement .course-details-page {
+        padding-top: calc(var(--site-navbar-height, 64px) + var(--announcement-height, 0px) - 35px) !important;
+    }
+    
+    /* Le premier élément (hero) doit commencer juste après le padding-top */
+    .course-details-page > *:first-child,
+    .course-details-page > section:first-child {
+        margin-top: 0 !important;
+    }
+}
+
 @media (max-width: 991.98px) {
+    /* Ajouter un padding-top pour compenser la hauteur de la navbar fixe */
     .course-details-page {
         margin-top: 0 !important;
+        padding-top: var(--site-navbar-height, 60px) !important;
+    }
+    
+    /* Si une annonce globale existe, ajouter sa hauteur */
+    body.has-global-announcement .course-details-page {
+        padding-top: calc(var(--site-navbar-height, 60px) + var(--announcement-height, 0px)) !important;
+    }
+    
+    /* Supprimer tout margin-top et padding-top du body sur mobile/tablette */
+    body:has(.course-details-page) {
+        margin-top: 0 !important;
         padding-top: 0 !important;
+    }
+    
+    /* Le premier élément (hero) doit commencer juste après le padding-top */
+    .course-details-page > *:first-child,
+    .course-details-page > section:first-child {
+        margin-top: 0 !important;
+    }
+    
+    /* Ajouter des paddings gauche/droite au conteneur d'en-tête */
+    .course-hero .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
 }
 
@@ -43,6 +92,22 @@
     position: relative;
     overflow: hidden;
     margin-top: 0;
+}
+
+/* Supprimer tout espace avant le hero sur mobile/tablette */
+@media (max-width: 991.98px) {
+    .course-details-page > section.course-hero:first-child,
+    .course-details-page > .course-hero:first-child,
+    .course-details-page section:first-child,
+    .course-details-page > *:first-child {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    
+    /* Supprimer aussi le padding-top du container dans le hero */
+    .course-hero .container:first-child {
+        padding-top: 0 !important;
+    }
 }
 
 @media (max-width: 991.98px) {
@@ -207,6 +272,7 @@
     padding-bottom: 3rem;
 }
 
+
 .content-card {
     background: white;
     border-radius: 16px;
@@ -246,6 +312,40 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     cursor: pointer;
     transition: all 0.3s ease;
+}
+
+/* Réduire les paddings des cartes contenant l'image/vidéo sur mobile/tablette */
+@media (max-width: 991.98px) {
+    .content-card:has(.video-preview-wrapper),
+    .content-card:has(img.img-fluid.rounded) {
+        padding: 0.125rem !important;
+    }
+    
+    /* Fallback pour les navigateurs qui ne supportent pas :has() */
+    .content-card[style*="padding: 0.5rem"] {
+        padding: 0.125rem !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .content-card:has(.video-preview-wrapper),
+    .content-card:has(img.img-fluid.rounded) {
+        padding: 0.0625rem !important;
+    }
+    
+    /* Fallback pour les navigateurs qui ne supportent pas :has() */
+    .content-card[style*="padding: 0.5rem"] {
+        padding: 0.0625rem !important;
+    }
+    
+    /* Réduire aussi les marges de l'image elle-même */
+    .video-preview-wrapper {
+        margin: 0;
+    }
+    
+    .content-card img.img-fluid.rounded {
+        margin: 0;
+    }
 }
 
 .video-preview-wrapper:hover {
@@ -989,22 +1089,6 @@
     white-space: nowrap;
 }
 
-.mobile-countdown {
-    font-size: 0.7rem;
-    background: transparent;
-    border: none;
-    padding: 0.25rem 0;
-    margin-top: 0.25rem;
-}
-
-.mobile-countdown .countdown-text {
-    font-size: 0.7rem;
-    gap: 0.125rem;
-}
-
-.mobile-countdown .countdown-text span {
-    min-width: auto;
-}
 
 .course-features-list {
     list-style: none;
@@ -1111,196 +1195,260 @@
 }
 
 /* Mobile Payment Button */
-.mobile-payment-btn {
+/* Modern Mobile Price Slider */
+.mobile-price-slider {
     position: fixed;
-    bottom: 60px; /* Au-dessus de la navigation mobile en bas */
+    bottom: 60px;
     left: 0;
     right: 0;
-    background: white;
-    border-top: 2px solid var(--border-color);
-    padding: 0.625rem 1rem;
-    z-index: 999; /* Sous la navigation mobile mais au-dessus du contenu */
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 0.5rem 0.75rem;
+    z-index: 999;
+    box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
     display: none;
-    box-sizing: border-box;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
-@media (max-width: 991.98px) {
-    .mobile-payment-btn {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-}
-
-@media (max-width: 575.98px) {
-    .mobile-payment-btn {
-        padding-left: 0.75rem !important;
-        padding-right: 0.75rem !important;
-    }
-}
-
-.mobile-payment-btn .container-fluid {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.mobile-payment-btn .row {
-    margin-left: 0;
-    margin-right: 0;
-    width: 100%;
+.mobile-price-slider__content {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    max-width: 100%;
 }
 
-.mobile-price-col {
-    flex: 1;
+.mobile-price-slider__price {
+    flex: 0 0 auto;
     min-width: 0;
-    padding-left: 0;
-    padding-right: 0.75rem;
+    margin-right: auto;
 }
 
-.mobile-btn-col {
-    flex-shrink: 0;
-    padding-left: 0;
-    padding-right: 0;
-    margin-left: auto;
+.mobile-price-slider__label {
+    font-size: 0.6rem;
+    color: #6c757d;
+    margin-bottom: 0.15rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.mobile-price {
-    width: 100%;
-}
-
-.mobile-price-label {
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    margin-bottom: 0.125rem;
-    display: block;
-    line-height: 1.2;
-}
-
-.mobile-price-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    line-height: 1.3;
-}
-
-.mobile-price-value {
-    font-size: 1.35rem;
+.mobile-price-slider__value {
+    font-size: 1.1rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--primary-color, #003366);
     line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-.mobile-price-original {
-    font-size: 0.85rem;
-    color: var(--text-muted);
+.mobile-price-slider__prices {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.mobile-price-slider__current {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-color, #003366);
+    line-height: 1.2;
+}
+
+.mobile-price-slider__original {
+    font-size: 0.75rem;
+    color: #6c757d;
     text-decoration: line-through;
     line-height: 1.2;
 }
 
-.mobile-price-discount {
-    font-size: 0.7rem;
-    color: var(--danger-color);
+.mobile-price-slider__badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    font-size: 0.65rem;
     font-weight: 600;
-    margin-top: 0.125rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 12px;
     line-height: 1.2;
 }
 
-.mobile-payment-btn .btn {
-    flex-shrink: 0;
-    white-space: nowrap;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.7rem;
-    min-width: 100px;
-    max-width: 130px;
-    width: 100%;
-    text-align: center;
-    line-height: 1.2;
-    overflow: visible;
-    text-overflow: clip;
-    height: 38px;
+.mobile-price-slider__countdown {
     display: flex;
     align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
+    gap: 0.3rem;
+    margin-top: 0.25rem;
+    font-size: 0.6rem;
+    color: #dc3545;
+    font-weight: 600;
 }
 
-.mobile-payment-btn .btn i {
-    font-size: 0.7rem;
-    flex-shrink: 0;
-    margin-right: 0.3rem;
-}
-
-.mobile-payment-btn .btn,
-.mobile-payment-btn .btn-group,
-.mobile-payment-btn .d-grid {
-    max-width: 130px;
-    min-width: 100px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.mobile-payment-btn .btn-group .btn,
-.mobile-payment-btn .d-grid .btn {
+.mobile-price-slider__countdown i {
     font-size: 0.65rem;
-    padding: 0.4rem 0.6rem;
-    min-width: auto;
-    max-width: 100%;
-    white-space: nowrap;
-    line-height: 1.2;
-    height: 36px;
-    overflow: visible;
-    text-overflow: clip;
-    box-sizing: border-box;
 }
 
-.mobile-payment-btn .d-grid {
-    gap: 0.3rem !important;
+.mobile-price-slider__countdown .countdown-text {
+    font-size: 0.6rem;
 }
 
-/* S'assurer que les boutons ne dépassent pas */
-.mobile-payment-btn > .container > div:last-child,
-.mobile-payment-btn .mobile-btn-col {
-    max-width: 130px;
-    min-width: 100px;
+.mobile-price-slider__actions {
     flex-shrink: 0;
-    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     margin-left: auto;
 }
 
-/* Forcer le respect des marges */
-.mobile-payment-btn * {
+.mobile-price-slider__form {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.mobile-price-slider__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    width: 83px;
+    height: 29px;
+    padding: 0;
+    font-size: 0.5rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    flex: 0 0 auto;
     box-sizing: border-box;
+}
+
+.mobile-price-slider__btn i {
+    font-size: 0.5rem;
+    flex-shrink: 0;
+}
+
+.mobile-price-slider__btn--primary {
+    background: linear-gradient(135deg, var(--primary-color, #003366) 0%, #004080 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 51, 102, 0.3);
+}
+
+.mobile-price-slider__btn--primary:hover,
+.mobile-price-slider__btn--primary:active {
+    background: linear-gradient(135deg, #004080 0%, #003366 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.4);
+    color: white;
+}
+
+.mobile-price-slider__btn--success {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.mobile-price-slider__btn--success:hover,
+.mobile-price-slider__btn--success:active {
+    background: linear-gradient(135deg, #218838 0%, #28a745 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    color: white;
+}
+
+.mobile-price-slider__btn--outline {
+    background: white;
+    color: var(--primary-color, #003366);
+    border: 1.5px solid var(--primary-color, #003366);
+}
+
+.mobile-price-slider__btn--outline:hover,
+.mobile-price-slider__btn--outline:active {
+    background: var(--primary-color, #003366);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.mobile-price-slider__btn-group {
+    display: flex;
+    flex-direction: row;
+    gap: 0.2rem;
+    align-items: center;
+}
+
+.mobile-price-slider__btn-group .mobile-price-slider__btn {
+    flex: 0 0 auto;
+    width: 83px;
+    height: 29px;
+    padding: 0;
+    font-size: 0.5rem;
+    white-space: nowrap;
+    gap: 0.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-price-slider__btn-group .mobile-price-slider__btn i {
+    font-size: 0.5rem;
 }
 
 /* Responsive Design */
 @media (max-width: 991.98px) {
+    .mobile-price-slider {
+        display: flex !important;
+    }
+    
     .main-content {
         padding-bottom: 140px; /* Espace pour le bouton de paiement (80px) + navigation mobile (60px) */
     }
     
+    /* Réduire les marges latérales du container */
+    .main-content.container {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+    
+    /* Réduire les espacements des colonnes */
+    .main-content .row {
+        margin-left: -0.125rem;
+        margin-right: -0.125rem;
+    }
+    
+    .main-content .row > [class*="col-"] {
+        padding-left: 0.125rem;
+        padding-right: 0.125rem;
+    }
+    
+    /* Réduire les paddings et margins sur tablette */
     .course-hero {
-        padding: 0.75rem 0 1.5rem;
-        margin-bottom: 1.5rem;
+        padding: 0.125rem 0 0.75rem;
+        margin-bottom: 0.375rem;
         margin-top: 0 !important;
+    }
+    
+    /* Ajouter des paddings gauche/droite au conteneur d'en-tête sur tablette */
+    .course-hero .container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
         padding-top: 0 !important;
+    }
+    
+    .breadcrumb-modern {
+        margin-top: 0 !important;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
     }
     
     .course-title-hero {
         font-size: 1.25rem;
         line-height: 1.3;
-        margin-bottom: 0.625rem;
+        margin-bottom: 0.3125rem;
     }
     
     .course-stats-hero {
-        gap: 0.75rem;
+        gap: 0.375rem;
     }
     
     .course-stat-item {
@@ -1312,24 +1460,46 @@
     }
     
     .breadcrumb-modern {
-        padding: 0.5rem 0.75rem;
-        margin-bottom: 0.75rem;
-        margin-top: 0.5rem;
+        padding: 0.25rem 0.375rem;
+        margin-bottom: 0.375rem;
+        margin-top: 0.25rem;
         font-size: 0.75rem;
     }
     
     .course-badges {
-        gap: 0.4rem;
-        margin-bottom: 0.875rem;
+        gap: 0.2rem;
+        margin-bottom: 0.4375rem;
     }
     
     .course-badge {
-        padding: 0.35rem 0.75rem;
+        padding: 0.175rem 0.375rem;
         font-size: 0.7rem;
     }
     
-    .mobile-payment-btn {
-        display: flex;
+    .content-card {
+        padding: 0.375rem;
+        margin-bottom: 0.1875rem;
+    }
+    
+    /* Réduire fortement les paddings des cartes contenant l'image/vidéo */
+    .content-card:has(.video-preview-wrapper),
+    .content-card:has(img.img-fluid.rounded) {
+        padding: 0.125rem !important;
+    }
+    
+    /* Fallback pour les navigateurs qui ne supportent pas :has() */
+    .content-card[style*="padding: 0.5rem"] {
+        padding: 0.125rem !important;
+    }
+    
+    .section-title-modern {
+        font-size: 1rem;
+        margin-bottom: 0.375rem;
+        padding-bottom: 0.25rem;
+    }
+    
+    .mobile-price-slider {
+        display: flex !important;
     }
     
     .course-sidebar {
@@ -1338,8 +1508,8 @@
     }
     
     .sidebar-card {
-        margin-bottom: 1rem;
-        padding: 1rem;
+        margin-bottom: 0.1875rem;
+        padding: 0.3125rem;
     }
     
     .sidebar-card .btn,
@@ -1351,7 +1521,7 @@
     }
     
     .sidebar-card .d-grid {
-        gap: 0.5rem !important;
+        gap: 0.25rem !important;
     }
     
     .sidebar-card .d-grid .btn {
@@ -1360,8 +1530,8 @@
     }
     
     .price-display {
-        padding-bottom: 1rem;
-        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
     }
     
     .price-current {
@@ -1386,35 +1556,152 @@
         flex-direction: column;
         text-align: center;
     }
+    
+    /* Réduire les espacements des grilles */
+    .row.g-4 {
+        --bs-gutter-x: 0.1875rem;
+        --bs-gutter-y: 0.1875rem;
+    }
+    
+    .row.g-3 {
+        --bs-gutter-x: 0.125rem;
+        --bs-gutter-y: 0.125rem;
+    }
+    
+    /* Réduire les paddings des éléments de liste */
+    .learning-item,
+    .requirement-item {
+        padding: 0.3125rem;
+        margin-bottom: 0.09375rem;
+    }
+    
+    .review-card {
+        padding: 0.4375rem;
+        margin-bottom: 0.1875rem;
+    }
+    
+    .curriculum-section-header {
+        padding: 0.4375rem;
+    }
+    
+    .lesson-item {
+        padding: 0.3125rem 0.4375rem;
+    }
+    
+    /* Réduire les paddings des cartes de cours liés */
+    .related-course-card-body {
+        padding: 0.5rem;
+    }
+    
+    .related-course-title {
+        font-size: 0.95rem;
+        margin-bottom: 0.3125rem;
+    }
+    
+    .related-course-price {
+        font-size: 1.125rem;
+    }
+    
+    /* Réduire les paddings des listes de fonctionnalités */
+    .course-features-list li {
+        padding: 0.25rem 0;
+        font-size: 0.8125rem;
+    }
+    
+    .course-features-list i {
+        font-size: 0.875rem;
+    }
 }
 
 @media (max-width: 767.98px) {
+    /* Ajouter un padding-top pour compenser la hauteur de la navbar fixe */
+    .course-details-page {
+        padding-top: var(--site-navbar-height, 60px) !important;
+    }
+    
+    body.has-global-announcement .course-details-page {
+        padding-top: calc(var(--site-navbar-height, 60px) + var(--announcement-height, 0px)) !important;
+    }
+    
+    /* Réduire encore plus les marges latérales du container */
+    .main-content.container {
+        padding-left: 0.1875rem;
+        padding-right: 0.1875rem;
+    }
+    
+    /* Réduire encore plus les espacements des colonnes */
+    .main-content .row {
+        margin-left: -0.09375rem;
+        margin-right: -0.09375rem;
+    }
+    
+    .main-content .row > [class*="col-"] {
+        padding-left: 0.09375rem;
+        padding-right: 0.09375rem;
+    }
+    
+    /* Réduire encore plus les paddings et margins sur mobile */
     .course-hero {
-        padding: 1.25rem 0 1.75rem;
+        padding: 0.0625rem 0 0.625rem;
+        margin-bottom: 0.3125rem;
+        margin-top: 0 !important;
+    }
+    
+    /* Ajouter des paddings gauche/droite au conteneur d'en-tête sur mobile */
+    .course-hero .container {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+        padding-top: 0 !important;
+    }
+    
+    .breadcrumb-modern {
+        margin-top: 0 !important;
+        padding-top: 0.1875rem;
+        padding-bottom: 0.1875rem;
     }
     
     .course-title-hero {
-        font-size: 1.5rem;
-        margin-bottom: 0.75rem;
+        font-size: 1.25rem;
+        margin-bottom: 0.25rem;
     }
     
     .content-card {
-        padding: 1rem;
-        margin-bottom: 1.25rem;
+        padding: 0.3125rem;
+        margin-bottom: 0.125rem;
+    }
+    
+    /* Réduire fortement les paddings des cartes contenant l'image/vidéo */
+    .content-card:has(.video-preview-wrapper),
+    .content-card:has(img.img-fluid.rounded) {
+        padding: 0.0625rem !important;
+    }
+    
+    /* Fallback pour les navigateurs qui ne supportent pas :has() */
+    .content-card[style*="padding: 0.5rem"] {
+        padding: 0.0625rem !important;
     }
     
     .section-title-modern {
-        font-size: 1rem;
-        margin-bottom: 0.875rem;
-        padding-bottom: 0.5rem;
+        font-size: 0.95rem;
+        margin-bottom: 0.3125rem;
+        padding-bottom: 0.1875rem;
+    }
+    
+    .section-title-modern i {
+        font-size: 0.9rem;
     }
     
     .video-preview-wrapper {
         margin-bottom: 0;
+        margin: 0;
+    }
+    
+    .content-card img.img-fluid.rounded {
+        margin: 0;
     }
     
     .course-stats-hero {
-        gap: 0.625rem;
+        gap: 0.1875rem;
         flex-direction: row;
         justify-content: flex-start;
     }
@@ -1423,8 +1710,14 @@
         font-size: 0.75rem;
     }
     
+    .course-stat-item i {
+        font-size: 0.8rem;
+    }
+    
     .breadcrumb-modern {
-        padding: 0.5rem 0.625rem;
+        padding: 0.1875rem 0.25rem;
+        margin-bottom: 0.25rem;
+        margin-top: 0.1875rem;
         font-size: 0.75rem;
     }
     
@@ -1433,7 +1726,7 @@
     }
     
     .course-badge {
-        padding: 0.3rem 0.625rem;
+        padding: 0.125rem 0.25rem;
         font-size: 0.65rem;
     }
     
@@ -1445,96 +1738,10 @@
         flex: 0 0 auto;
     }
     
-    .mobile-payment-btn {
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        padding-top: 0.625rem;
-        padding-bottom: 0.625rem;
-    }
     
-    .mobile-payment-btn .container-fluid {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-    
-    .mobile-payment-btn .row {
-        justify-content: space-between;
-    }
-    
-    .mobile-price-col {
-        padding-right: 0.75rem;
-        flex: 1;
-        min-width: 0;
-        max-width: calc(100% - 140px);
-    }
-    
-    .mobile-btn-col {
-        flex-shrink: 0;
-        margin-left: auto;
-        min-width: 100px;
-        max-width: 130px;
-    }
-    
-    .mobile-payment-btn .btn,
-    .mobile-payment-btn .btn-group,
-    .mobile-payment-btn .d-grid {
-        max-width: 130px;
-        min-width: 100px;
-        width: 100%;
-    }
-    
-    .mobile-price {
-        width: 100%;
-    }
-    
-    .mobile-price-value {
-        font-size: 1.25rem;
-    }
-    
-    .mobile-price-original {
-        font-size: 0.8rem;
-    }
-    
-    .mobile-price-discount {
-        font-size: 0.65rem;
-    }
-    
-    .mobile-payment-btn .btn {
-        padding: 0.45rem 0.65rem;
-        font-size: 0.68rem;
-        min-width: 115px;
-        max-width: 135px;
-        white-space: nowrap;
-        line-height: 1.2;
-        height: 36px;
-        overflow: visible;
-        text-overflow: clip;
-    }
-    
-    .mobile-payment-btn .btn i {
-        font-size: 0.68rem;
-        margin-right: 0.25rem;
-    }
-    
-    .mobile-payment-btn .btn-group,
-    .mobile-payment-btn .d-grid {
-        max-width: 135px;
-        min-width: 115px;
-    }
-    
-    .mobile-payment-btn .btn-group .btn,
-    .mobile-payment-btn .d-grid .btn {
-        font-size: 0.62rem;
-        padding: 0.35rem 0.55rem;
-        white-space: nowrap;
-        line-height: 1.2;
-        height: 34px;
-        overflow: visible;
-        text-overflow: clip;
-    }
     
     .promotion-countdown {
-        padding: 0.625rem 0.75rem;
+        padding: 0.5rem 0.625rem;
     }
     
     .countdown-label {
@@ -1547,7 +1754,8 @@
     }
     
     .sidebar-card {
-        padding: 1rem;
+        padding: 0.3125rem;
+        margin-bottom: 0.125rem;
     }
     
     .sidebar-card .btn,
@@ -1563,30 +1771,146 @@
     }
     
     .sidebar-card .d-grid {
-        gap: 0.75rem !important;
+        gap: 0.1875rem !important;
     }
     
     .sidebar-card .d-grid .btn {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.85rem;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
     }
     
     .price-display {
-        padding-bottom: 1.25rem;
-        margin-bottom: 1.25rem;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
     }
     
     .price-current {
-        font-size: 2rem;
+        font-size: 1.75rem;
     }
     
     .price-original {
-        font-size: 1rem;
+        font-size: 0.9rem;
     }
     
     .price-discount {
-        padding: 0.4rem 0.75rem;
-        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+        font-size: 0.7rem;
+    }
+    
+    /* Réduire encore plus les espacements des grilles */
+    .row.g-4 {
+        --bs-gutter-x: 0.125rem;
+        --bs-gutter-y: 0.125rem;
+    }
+    
+    .row.g-3 {
+        --bs-gutter-x: 0.09375rem;
+        --bs-gutter-y: 0.09375rem;
+    }
+    
+    /* Réduire les paddings des éléments de liste */
+    .learning-item,
+    .requirement-item {
+        padding: 0.25rem;
+        margin-bottom: 0.09375rem;
+    }
+    
+    .learning-item i,
+    .requirement-item i {
+        font-size: 0.9rem;
+    }
+    
+    .review-card {
+        padding: 0.375rem;
+        margin-bottom: 0.1875rem;
+    }
+    
+    .review-header {
+        margin-bottom: 0.1875rem;
+    }
+    
+    .curriculum-section-header {
+        padding: 0.375rem;
+    }
+    
+    .curriculum-section-header h5 {
+        font-size: 0.9rem;
+    }
+    
+    .lesson-item {
+        padding: 0.25rem 0.375rem;
+    }
+    
+    .lesson-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.875rem;
+    }
+    
+    .instructor-card {
+        gap: 1rem;
+    }
+    
+    .instructor-avatar {
+        width: 80px !important;
+        height: 80px !important;
+    }
+    
+    .instructor-stats {
+        gap: 1rem;
+        font-size: 0.8125rem;
+    }
+    
+    .rating-summary {
+        gap: 0.75rem;
+    }
+    
+    .rating-score {
+        font-size: 1.75rem;
+    }
+    
+    .rating-stars {
+        font-size: 1rem;
+    }
+    
+    .rating-bar-item {
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .rating-bar-label {
+        min-width: 70px;
+        font-size: 0.8125rem;
+    }
+    
+    .rating-bar-count {
+        min-width: 25px;
+        font-size: 0.8125rem;
+    }
+    
+    /* Réduire les paddings des cartes de cours liés */
+    .related-course-card-body {
+        padding: 0.5rem;
+    }
+    
+    .related-course-title {
+        font-size: 0.9rem;
+        margin-bottom: 0.3125rem;
+    }
+    
+    .related-course-price {
+        font-size: 1.125rem;
+    }
+    
+    /* Réduire les paddings des listes de fonctionnalités */
+    .course-features-list li {
+        padding: 0.25rem 0;
+        font-size: 0.8125rem;
+    }
+    
+    .course-features-list i {
+        font-size: 0.875rem;
+        width: 18px;
     }
 }
 
@@ -1684,131 +2008,74 @@
         height: 80px;
     }
     
-    .mobile-payment-btn {
-        padding: 0.5rem 0.75rem !important;
+    .mobile-price-slider {
+        padding: 0.4rem 0.625rem;
         bottom: 60px;
     }
     
-    .mobile-payment-btn .container-fluid {
-        padding-left: 0px !important;
-        padding-right: 0px !important;
+    .mobile-price-slider__content {
+        gap: 0.5rem;
     }
     
-    .mobile-payment-btn .row {
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .mobile-price-col {
-        padding-right: 0.5rem;
-        flex: 1;
-        min-width: 0;
-        max-width: calc(100% - 140px);
-    }
-    
-    .mobile-btn-col {
-        flex-shrink: 0;
-        margin-left: auto;
-        min-width: 100px;
-        max-width: 130px;
-    }
-    
-    .mobile-price {
-        width: 100%;
-    }
-    
-    .mobile-price-label {
-        font-size: 0.65rem;
+    .mobile-price-slider__label {
+        font-size: 0.55rem;
         margin-bottom: 0.1rem;
     }
     
-    .mobile-price-value {
-        font-size: 1.25rem;
+    .mobile-price-slider__value,
+    .mobile-price-slider__current {
+        font-size: 0.95rem;
     }
     
-    .mobile-price-original {
-        font-size: 0.8rem;
+    .mobile-price-slider__original {
+        font-size: 0.7rem;
     }
     
-    .mobile-price-discount {
-        font-size: 0.65rem;
-        margin-top: 0.1rem;
-    }
-    
-    .mobile-countdown {
-        font-size: 0.65rem;
-        margin-top: 0.15rem;
-    }
-    
-    .mobile-countdown .countdown-text {
-        font-size: 0.65rem;
-    }
-    
-    .mobile-payment-btn .btn {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.65rem;
-        width: 100%;
-        min-width: 100px;
-        max-width: 130px;
-        white-space: nowrap;
-        line-height: 1.2;
-        height: 36px;
-        overflow: visible;
-        text-overflow: clip;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-sizing: border-box;
-    }
-    
-    .mobile-payment-btn .btn i {
-        font-size: 0.65rem;
-        margin-right: 0.2rem;
-        flex-shrink: 0;
-    }
-    
-    .mobile-payment-btn .btn-group,
-    .mobile-payment-btn .d-grid {
-        max-width: 130px;
-        min-width: 100px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    .mobile-payment-btn .btn-group .btn,
-    .mobile-payment-btn .d-grid .btn {
+    .mobile-price-slider__badge {
         font-size: 0.6rem;
-        padding: 0.3rem 0.5rem;
-        min-width: auto;
-        max-width: 100%;
-        white-space: nowrap;
-        line-height: 1.2;
-        height: 30px;
-        overflow: visible;
-        text-overflow: clip;
-        box-sizing: border-box;
+        padding: 0.1rem 0.35rem;
     }
     
-    .mobile-payment-btn .d-grid {
-        gap: 0.25rem !important;
+    .mobile-price-slider__countdown {
+        font-size: 0.55rem;
+        margin-top: 0.2rem;
+        gap: 0.25rem;
     }
     
-    .mobile-payment-btn .d-grid .btn i {
+    .mobile-price-slider__countdown i {
         font-size: 0.6rem;
-        margin-right: 0.2rem;
     }
     
-    .promotion-countdown {
-        padding: 0.5rem 0.625rem;
+    .mobile-price-slider__countdown .countdown-text {
+        font-size: 0.55rem;
     }
     
-    .countdown-label {
-        font-size: 0.65rem;
-        margin-bottom: 0.375rem;
+    .mobile-price-slider__btn {
+        width: 83px;
+        height: 29px;
+        padding: 0;
+        font-size: 0.5rem;
+        gap: 0.2rem;
     }
     
-    .countdown-text {
-        font-size: 0.8rem;
+    .mobile-price-slider__btn i {
+        font-size: 0.5rem;
+    }
+    
+    .mobile-price-slider__btn-group {
+        gap: 0.2rem;
+    }
+    
+    .mobile-price-slider__btn-group .mobile-price-slider__btn {
+        width: 83px;
+        height: 29px;
+        padding: 0;
+        font-size: 0.5rem;
+    }
+    
+    .mobile-price-slider__btn-group .mobile-price-slider__btn i {
+        font-size: 0.5rem;
+    }
         gap: 0.125rem;
     }
     
@@ -2456,117 +2723,121 @@
     </div>
 </div>
 
-<!-- Mobile Payment Button -->
-<div class="mobile-payment-btn">
-    <div class="container-fluid">
-        <div class="row align-items-center g-2" style="justify-content: space-between;">
-            <div class="col mobile-price-col" style="flex: 1; min-width: 0;">
-                <div class="mobile-price">
+<!-- Mobile Payment Slider -->
+<div class="mobile-price-slider">
+    <div class="mobile-price-slider__content">
+        <div class="mobile-price-slider__price">
             @if($course->is_free)
-                <div class="mobile-price-label">Prix</div>
-                <div class="mobile-price-value">Gratuit</div>
+                <div class="mobile-price-slider__label">Prix</div>
+                <div class="mobile-price-slider__value">Gratuit</div>
             @else
                 @if($course->is_sale_active && $course->active_sale_price !== null)
-                    <div class="mobile-price-label">Prix promotionnel</div>
-                    <div class="mobile-price-wrapper">
-                        <div class="mobile-price-value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</div>
-                        <div class="mobile-price-original">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
+                    <div class="mobile-price-slider__label">Prix promotionnel</div>
+                    <div class="mobile-price-slider__prices">
+                        <span class="mobile-price-slider__current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</span>
+                        <span class="mobile-price-slider__original">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                         @if($course->sale_discount_percentage)
-                        <div class="mobile-price-discount">
-                            -{{ $course->sale_discount_percentage }}% de réduction
-                        </div>
+                            <span class="mobile-price-slider__badge">-{{ $course->sale_discount_percentage }}%</span>
                         @endif
                     </div>
                     @if($course->is_sale_active && $course->sale_end_at)
-                    <div class="promotion-countdown mobile-countdown text-danger mt-1" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
-                        <i class="fas fa-clock me-1"></i>
-                        <span class="countdown-text">
-                            <span class="countdown-days">0</span>j 
-                            <span class="countdown-hours">00</span>h 
-                            <span class="countdown-minutes">00</span>min
-                        </span>
-                    </div>
+                        <div class="mobile-price-slider__countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                            <i class="fas fa-fire"></i>
+                            <span class="countdown-text">
+                                <span class="countdown-days">0</span>j 
+                                <span class="countdown-hours">00</span>h 
+                                <span class="countdown-minutes">00</span>min
+                            </span>
+                        </div>
                     @endif
                 @else
-                    <div class="mobile-price-label">Prix</div>
-                    <div class="mobile-price-value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
+                    <div class="mobile-price-slider__label">Prix</div>
+                    <div class="mobile-price-slider__value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
                 @endif
             @endif
-                </div>
-            </div>
-            <div class="col-auto mobile-btn-col" style="flex-shrink: 0;">
-                @if(!$user)
-                    @php
-                        $finalLoginCourse2 = url()->full();
-                        $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
-                        $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
-                    @endphp
-                    <a href="{{ $ssoLoginUrlCourse2 }}" class="btn btn-primary w-100">
-                        <i class="fas fa-sign-in-alt me-2"></i>Se connecter
-                    </a>
-                @else
-                    @if($course->is_free)
-                        @if($course->is_downloadable)
-                            @if($canDownloadCourse)
-                                <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary w-100">
-                                    <i class="fas fa-download me-2"></i>Télécharger
-                                </a>
-                            @else
-                                <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="redirect_to" value="download">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="fas fa-download me-2"></i>Télécharger
-                                    </button>
-                                </form>
-                            @endif
-                        @else
-                            @if($canAccessCourse)
-                                <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success w-100">
-                                    <i class="fas fa-play me-2"></i>Apprendre
-                                </a>
-                            @else
-                                <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="redirect_to" value="learn">
-                                    <button type="submit" class="btn btn-primary w-100">
-                                        <i class="fas fa-user-plus me-2"></i>S'inscrire
-                                    </button>
-                                </form>
-                            @endif
-                        @endif
-                    @else
-                        @if($isEnrolled)
-                            @if($course->is_downloadable && $canDownloadCourse)
-                                <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary w-100">
-                                    <i class="fas fa-download me-2"></i>Télécharger
-                                </a>
-                            @else
-                            <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success w-100">
-                                <i class="fas fa-play me-2"></i>Apprendre
+        </div>
+        <div class="mobile-price-slider__actions">
+            @if(!$user)
+                @php
+                    $finalLoginCourse2 = url()->full();
+                    $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
+                    $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
+                @endphp
+                <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Se connecter</span>
+                </a>
+            @else
+                @if($course->is_free)
+                    @if($course->is_downloadable)
+                        @if($canDownloadCourse)
+                            <a href="{{ route('courses.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                                <i class="fas fa-download"></i>
+                                <span>Télécharger</span>
                             </a>
-                            @endif
-                        @elseif($hasPurchased)
-                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                        @else
+                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
                                 @csrf
-                                <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'dashboard' : 'learn' }}">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-user-plus me-2"></i>S'inscrire
+                                <input type="hidden" name="redirect_to" value="download">
+                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                                    <i class="fas fa-download"></i>
+                                    <span>Télécharger</span>
                                 </button>
                             </form>
+                        @endif
+                    @else
+                        @if($canAccessCourse)
+                            <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success">
+                                <i class="fas fa-play"></i>
+                                <span>Apprendre</span>
+                            </a>
                         @else
-                            <div class="d-grid gap-2">
-                                <button type="button" class="btn btn-outline-primary w-100" onclick="addToCart({{ $course->id }})">
-                                    <i class="fas fa-shopping-cart me-2"></i>Ajouter
+                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                @csrf
+                                <input type="hidden" name="redirect_to" value="learn">
+                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>S'inscrire</span>
                                 </button>
-                                <button type="button" class="btn btn-success w-100" onclick="proceedToCheckout({{ $course->id }})">
-                                    <i class="fas fa-credit-card me-2"></i>Payer
-                                </button>
-                            </div>
+                            </form>
                         @endif
                     @endif
+                @else
+                    @if($isEnrolled)
+                        @if($course->is_downloadable && $canDownloadCourse)
+                            <a href="{{ route('courses.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                                <i class="fas fa-download"></i>
+                                <span>Télécharger</span>
+                            </a>
+                        @else
+                            <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success">
+                                <i class="fas fa-play"></i>
+                                <span>Apprendre</span>
+                            </a>
+                        @endif
+                    @elseif($hasPurchased)
+                        <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                            @csrf
+                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'dashboard' : 'learn' }}">
+                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                                <i class="fas fa-user-plus"></i>
+                                <span>S'inscrire</span>
+                            </button>
+                        </form>
+                    @else
+                        <div class="mobile-price-slider__btn-group">
+                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--outline" onclick="addToCart({{ $course->id }})">
+                                <i class="fas fa-shopping-cart"></i>
+                                <span>Panier</span>
+                            </button>
+                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--success" onclick="proceedToCheckout({{ $course->id }})">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Payer</span>
+                            </button>
+                        </div>
+                    @endif
                 @endif
-            </div>
+            @endif
         </div>
     </div>
 </div>

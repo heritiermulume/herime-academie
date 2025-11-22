@@ -182,11 +182,18 @@ class StudentController extends Controller
         }
 
         // Créer l'inscription si le cours est gratuit ou si l'achat est confirmé
-        Enrollment::create([
+        $enrollment = Enrollment::create([
             'user_id' => $student->id,
             'course_id' => $course->id,
             'status' => 'active',
         ]);
+
+        // Envoyer l'email de confirmation d'inscription
+        try {
+            $student->notify(new \App\Notifications\CourseEnrolled($course));
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
+        }
 
         $successMessage = $redirectTo === 'download'
             ? 'Inscription réussie ! Téléchargement en cours...'

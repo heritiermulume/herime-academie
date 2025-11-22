@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\Enrollment;
+use App\Mail\InvoiceMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
@@ -182,13 +184,23 @@ class OrderController extends Controller
                         ->first();
                     
                     if (!$existingEnrollment) {
-                        Enrollment::create([
+                        $enrollment = Enrollment::create([
                             'user_id' => $order->user_id,
                             'course_id' => $item['course_id'],
                             'order_id' => $order->id,
                             'status' => 'active',
                             'enrolled_at' => now(),
                         ]);
+
+                        // Envoyer l'email de confirmation d'inscription
+                        try {
+                            $course = \App\Models\Course::find($item['course_id']);
+                            if ($course && $order->user) {
+                                $order->user->notify(new \App\Notifications\CourseEnrolled($course));
+                            }
+                        } catch (\Exception $e) {
+                            \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
+                        }
                     } else {
                         // Mettre à jour l'inscription existante avec l'order_id
                         $existingEnrollment->update([
@@ -228,6 +240,16 @@ class OrderController extends Controller
             'notes' => $request->notes,
             'paid_at' => now(),
         ]);
+
+        // Envoyer la facture par email
+        try {
+            $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+            if ($order->user && $order->user->email) {
+                Mail::to($order->user->email)->send(new InvoiceMail($order));
+            }
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

@@ -102,13 +102,23 @@ class WhatsAppOrderController extends Controller
 
         // Créer les inscriptions pour chaque cours
         foreach ($order->order_items as $item) {
-            Enrollment::create([
+            $enrollment = Enrollment::create([
                 'user_id' => $order->user_id,
                 'course_id' => $item['course_id'],
                 'order_id' => $order->id,
                 'status' => 'active',
                 'enrolled_at' => now(),
             ]);
+
+            // Envoyer l'email de confirmation d'inscription
+            try {
+                $course = \App\Models\Course::find($item['course_id']);
+                if ($course && $order->user) {
+                    $order->user->notify(new \App\Notifications\CourseEnrolled($course));
+                }
+            } catch (\Exception $e) {
+                \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
+            }
         }
 
         // Vider le panier de l'utilisateur
@@ -129,6 +139,17 @@ class WhatsAppOrderController extends Controller
             'status' => 'paid',
             'paid_at' => now(),
         ]);
+
+        // Envoyer la facture par email
+        try {
+            $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+            if ($order->user && $order->user->email) {
+                \Illuminate\Support\Facades\Mail::to($order->user->email)
+                    ->send(new \App\Mail\InvoiceMail($order));
+            }
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

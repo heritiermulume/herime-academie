@@ -210,6 +210,17 @@ class MaxiCashController extends Controller
                 $this->enrollUserInCourse($course['id']);
             }
         }
+
+        // Envoyer la facture par email
+        try {
+            $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+            if ($order->user && $order->user->email) {
+                \Illuminate\Support\Facades\Mail::to($order->user->email)
+                    ->send(new \App\Mail\InvoiceMail($order));
+            }
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
+        }
         
         return $order;
     }
@@ -232,6 +243,17 @@ class MaxiCashController extends Controller
                 'course_id' => $courseId,
                 'status' => 'active',
             ]);
+
+            // Envoyer l'email de confirmation d'inscription
+            try {
+                $course = app('App\Models\Course')::find($courseId);
+                $user = Auth::user();
+                if ($course && $user) {
+                    $user->notify(new \App\Notifications\CourseEnrolled($course));
+                }
+            } catch (\Exception $e) {
+                \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
+            }
         }
     }
 }

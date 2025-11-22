@@ -115,9 +115,7 @@
                 </table>
             </div>
 
-            <div class="mt-3">
-                {{ $payments->links() }}
-            </div>
+            <x-admin.pagination :paginator="$payments" />
         </div>
     </div>
 </div>

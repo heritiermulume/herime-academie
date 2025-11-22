@@ -122,7 +122,7 @@
             @if($pageTitle !== '' || $pageActions !== '')
                 <header class="admin-content__header mb-4">
                     <div>
-                        <h1 class="admin-content__title">{{ $pageTitle }}</h1>
+                        <h1 class="admin-content__title">{!! html_entity_decode($pageTitle, ENT_QUOTES | ENT_HTML5, 'UTF-8') !!}</h1>
                         @if($pageSubtitle !== '')
                             <p class="admin-content__subtitle">{!! html_entity_decode($pageSubtitle, ENT_QUOTES | ENT_HTML5, 'UTF-8') !!}</p>
                         @endif
@@ -231,14 +231,41 @@
         display: flex;
         align-items: flex-end;
         gap: 1rem;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+    }
+    
+    /* Sur toutes les tailles sauf desktop (>= 1200px), utiliser le layout mobile */
+    @media (max-width: 1199.98px) {
+        .admin-search-panel__primary {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.75rem !important;
+        }
+        
+        .admin-search-panel__search {
+            width: 100% !important;
+            flex: none !important;
+        }
+        
+        .admin-search-panel__actions {
+            width: 100% !important;
+            display: flex !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+        }
+        
+        .admin-search-panel__actions .btn {
+            flex: 1 1 50% !important;
+            white-space: nowrap !important;
+        }
     }
     .admin-search-panel__submit-label,
     .admin-search-panel__filters-label {
         display: inline;
     }
     .admin-search-panel__search {
-        flex: 1 1 320px;
+        flex: 1 1 auto;
+        min-width: 0;
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
@@ -289,7 +316,8 @@
         display: flex;
         align-items: center;
         gap: 0.65rem;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        flex-shrink: 0;
     }
     .admin-search-panel__actions .btn {
         border-radius: 999px;
@@ -300,6 +328,8 @@
         gap: 0.45rem;
         padding: 0.6rem 1.3rem;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
     .admin-search-panel__actions .btn:active {
         transform: translateY(1px);
@@ -427,20 +457,54 @@
         .admin-search-panel__primary {
             flex-direction: column;
             align-items: stretch;
-            gap: 0.65rem;
+            gap: 0.75rem;
         }
         .admin-search-panel__actions {
             width: 100%;
+            display: flex;
+            gap: 0.5rem;
         }
         .admin-search-panel__actions .btn {
-            flex: 1;
-            width: 100%;
+            flex: 1 1 50%;
+            white-space: nowrap;
         }
         .admin-shell__mobile-nav-spacer {
             display: block;
             height: calc(var(--site-navbar-height, 64px) + 0.75rem);
         }
     }
+    /* Styles spécifiques pour tablette - utiliser le layout mobile */
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .admin-search-panel {
+            padding: 1.05rem 1.1rem;
+        }
+        
+        .admin-search-panel__search-box {
+            padding: 0.6rem 0.9rem;
+        }
+        
+        .admin-search-panel__actions .btn {
+            font-size: 0.85rem;
+            padding: 0.45rem 0.75rem;
+        }
+    }
+    
+    /* Point de rupture où le slider remonte - utiliser le layout mobile */
+    @media (min-width: 992px) and (max-width: 1199.98px) {
+        .admin-search-panel {
+            padding: 1.05rem 1.1rem;
+        }
+        
+        .admin-search-panel__search-box {
+            padding: 0.65rem 0.95rem;
+        }
+        
+        .admin-search-panel__actions .btn {
+            font-size: 0.85rem;
+            padding: 0.5rem 0.8rem;
+        }
+    }
+
     @media (max-width: 767px) {
         .admin-shell {
             padding-bottom: 5rem;
@@ -449,28 +513,24 @@
             padding: 0.95rem 1rem;
         }
         .admin-search-panel__primary {
-            flex-direction: row;
+            flex-direction: column;
             align-items: stretch;
-            gap: 0.6rem;
-            flex-wrap: wrap;
+            gap: 0.75rem;
         }
         .admin-search-panel__search {
-            flex: 1 1 100%;
+            width: 100%;
         }
         .admin-search-panel__search-box {
             padding: 0.5rem 0.8rem;
         }
         .admin-search-panel__actions {
-            flex: 1 1 60%;
+            width: 100%;
             display: flex;
-            gap: 0.45rem;
-            justify-content: flex-end;
-            margin-top: 0;
-            flex-wrap: nowrap;
+            gap: 0.5rem;
         }
         .admin-search-panel__actions .btn {
-            flex: 0 1 auto;
-            min-width: 120px;
+            flex: 1 1 50%;
+            white-space: nowrap;
             height: 42px;
         }
         .admin-dashboard-table {
@@ -684,8 +744,67 @@
     }
     .admin-pagination {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
         margin-top: 1.5rem;
+        padding: 1rem 1.25rem;
+        background-color: #ffffff;
+        border-radius: 0.75rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .admin-pagination__info {
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+    
+    @media (min-width: 768px) {
+        .admin-pagination__info {
+            padding-left: 1rem;
+        }
+    }
+    
+    .admin-pagination__links {
+        display: flex;
+        justify-content: flex-end;
+        flex: 1;
+    }
+    
+    .admin-pagination .pagination {
+        margin-bottom: 0;
+    }
+    
+    .admin-pagination nav {
+        padding: 0.5rem 0;
+    }
+    
+    @media (max-width: 767.98px) {
+        .admin-pagination {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+        }
+        
+        .admin-pagination__info {
+            text-align: center;
+            font-size: 0.8rem;
+            padding-left: 0;
+        }
+        
+        .admin-pagination__links {
+            justify-content: center;
+        }
+        
+        .admin-pagination .pagination {
+            justify-content: center;
+        }
+        
+        .admin-pagination nav {
+            padding: 0.375rem 0;
+        }
     }
     .admin-card-grid {
         display: grid;
@@ -881,6 +1000,98 @@
         .dropdown.d-md-none .dropdown-divider,
         .dropup .dropdown-divider {
             margin: 0.3rem 0 !important;
+        }
+    }
+
+    /* Styles pour les boutons "Effacer tous les filtres" dans les alertes */
+    @media (max-width: 991.98px) {
+        .alert-info .btn-sm.btn-outline-danger,
+        .alert-info .btn-sm.btn-outline-primary {
+            font-size: 0.7rem;
+            padding: 0.4rem 0.65rem;
+            white-space: nowrap;
+            border-width: 1.5px;
+            border-style: solid;
+            font-weight: 500;
+        }
+
+        .alert-info .btn-sm.btn-outline-danger {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .alert-info .btn-sm.btn-outline-danger:hover {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: #fff;
+        }
+
+        .alert-info .btn-sm.btn-outline-primary {
+            border-color: #0d6efd;
+            color: #0d6efd;
+        }
+
+        .alert-info .btn-sm.btn-outline-primary:hover {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+
+        .alert-info .btn-sm.btn-outline-danger i,
+        .alert-info .btn-sm.btn-outline-primary i {
+            font-size: 0.65rem;
+            margin-right: 0.3rem;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .alert-info .btn-sm.btn-outline-danger,
+        .alert-info .btn-sm.btn-outline-primary {
+            font-size: 0.65rem;
+            padding: 0.35rem 0.55rem;
+            border-width: 1.5px;
+        }
+
+        .alert-info .btn-sm.btn-outline-danger i,
+        .alert-info .btn-sm.btn-outline-primary i {
+            font-size: 0.6rem;
+            margin-right: 0.25rem;
+        }
+
+        .alert-info.d-flex.justify-content-between {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .alert-info.d-flex.justify-content-between > div {
+            flex: 1 1 100%;
+            min-width: 0;
+        }
+
+        .alert-info.d-flex.justify-content-between .btn {
+            flex: 0 0 auto;
+            align-self: flex-start;
+            width: 100%;
+            text-align: center;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .alert-info .btn-sm.btn-outline-danger,
+        .alert-info .btn-sm.btn-outline-primary {
+            font-size: 0.6rem;
+            padding: 0.3rem 0.5rem;
+            border-width: 1.5px;
+        }
+
+        .alert-info .btn-sm.btn-outline-danger i,
+        .alert-info .btn-sm.btn-outline-primary i {
+            font-size: 0.55rem;
+            margin-right: 0.2rem;
+        }
+
+        .alert-info.d-flex.justify-content-between {
+            gap: 0.4rem;
         }
     }
 </style>

@@ -454,11 +454,22 @@ class MokoController extends Controller
         foreach ($order->items as $item) {
             if ($item->course) {
                 // Créer l'inscription
-                \App\Models\Enrollment::create([
+                $enrollment = \App\Models\Enrollment::create([
                     'user_id' => $order->user_id,
                     'course_id' => $item->course_id,
                     'enrolled_at' => now(),
                 ]);
+
+                // Envoyer l'email de confirmation d'inscription
+                try {
+                    $course = $item->course;
+                    $user = $order->user;
+                    if ($course && $user) {
+                        $user->notify(new \App\Notifications\CourseEnrolled($course));
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
+                }
             }
         }
     }

@@ -3,9 +3,11 @@
 namespace App\Notifications;
 
 use App\Models\Course;
+use App\Mail\CourseEnrolledMail;
+use App\Services\EmailService;
+use App\Notifications\EmailSentNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class CourseEnrolled extends Notification
@@ -35,15 +37,10 @@ class CourseEnrolled extends Notification
     /**
      * Get the mail representation of the notification.
      */
-    public function toMail(object $notifiable): MailMessage
+    public function toMail(object $notifiable)
     {
-        return (new MailMessage)
-            ->subject('Inscription confirmée - ' . $this->course->title)
-            ->greeting('Félicitations !')
-            ->line('Vous êtes maintenant inscrit au cours : ' . $this->course->title)
-            ->line('Vous pouvez commencer à apprendre dès maintenant.')
-            ->action('Commencer le cours', route('student.courses.learn', $this->course->slug))
-            ->line('Merci d\'utiliser Herime Academie !');
+        // Utiliser le Mailable personnalisé pour l'email HTML avec la charte graphique
+        return new CourseEnrolledMail($this->course);
     }
 
     /**

@@ -5,7 +5,7 @@
 @section('admin-subtitle', 'Suivez, examinez et validez les demandes d’accès au statut de formateur')
 
 @section('admin-content')
-    <section class="admin-panel">
+    <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
             <div class="admin-stats-grid mb-4">
                 <div class="admin-stat-card">
@@ -137,9 +137,7 @@
                 </div>
             </div>
 
-            <div class="admin-pagination mt-3">
-                {{ $applications->appends(request()->query())->links() }}
-            </div>
+            <x-admin.pagination :paginator="$applications" />
         </div>
     </section>
 @endsection
@@ -153,6 +151,154 @@
     object-fit: cover;
     flex-shrink: 0;
     box-shadow: 0 6px 12px -6px rgba(15, 23, 42, 0.35);
+}
+
+@media (max-width: 991.98px) {
+    /* Réduire les paddings et margins sur tablette */
+    .admin-panel {
+        margin-bottom: 1rem;
+    }
+    
+    /* Padding uniquement pour la première section principale */
+    .admin-panel--main .admin-panel__body {
+        padding: 1rem !important;
+    }
+    
+    /* Pas de padding pour les autres sections */
+    .admin-panel:not(.admin-panel--main) .admin-panel__body {
+        padding: 0 !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .admin-stats-grid {
+        gap: 0.5rem !important;
+    }
+    
+    .admin-stat-card {
+        padding: 0.75rem 0.875rem !important;
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    
+    .admin-panel__body .row.g-3 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
+    }
+    
+    .admin-panel__body .row.mb-4 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-panel__body .row.mt-2 {
+        margin-top: 0.375rem !important;
+    }
+    
+    .admin-card__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-card__body {
+        padding: 0.5rem;
+    }
+    
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* Réduire encore plus les paddings et margins sur mobile */
+    .admin-panel {
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Padding uniquement pour la première section principale */
+    .admin-panel--main .admin-panel__body {
+        padding: 0.75rem !important;
+    }
+    
+    /* Pas de padding pour les autres sections */
+    .admin-panel:not(.admin-panel--main) .admin-panel__body {
+        padding: 0 !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.375rem 0.5rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 0.95rem;
+        margin-bottom: 0.125rem;
+    }
+    
+    .admin-stats-grid {
+        gap: 0.375rem !important;
+    }
+    
+    .admin-stat-card {
+        padding: 0.5rem 0.625rem !important;
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
+    }
+    
+    .admin-panel__body .row.g-3 {
+        --bs-gutter-x: 0.25rem;
+        --bs-gutter-y: 0.25rem;
+    }
+    
+    .admin-panel__body .row.mb-4 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-panel__body .row.mt-2 {
+        margin-top: 0.375rem !important;
+    }
+    
+    .admin-card__header {
+        padding: 0.5rem 0.625rem;
+    }
+    
+    .admin-card__body {
+        padding: 0.375rem;
+    }
+    
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 </style>
 @endpush

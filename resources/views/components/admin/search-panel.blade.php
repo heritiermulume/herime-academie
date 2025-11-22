@@ -79,6 +79,120 @@
 
 @pushOnce('styles', 'admin-search-panel-styles')
 <style>
+    /* Desktop styles - Réduction de la taille du contenu */
+    .admin-filter-offcanvas .offcanvas-header {
+        padding: 0.875rem 1.125rem;
+    }
+
+    .admin-filter-offcanvas .offcanvas-title {
+        font-size: 1rem;
+    }
+
+    .admin-filter-offcanvas .offcanvas-body {
+        padding: 0.875rem;
+        overflow-y: auto;
+        max-height: calc(100vh - 150px);
+    }
+
+    .admin-filter-offcanvas .form-label {
+        font-size: 0.85rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .admin-filter-offcanvas .form-select,
+    .admin-filter-offcanvas .form-control {
+        font-size: 0.85rem;
+        padding: 0.45rem 0.65rem;
+    }
+
+    .admin-filter-offcanvas .btn {
+        font-size: 0.85rem;
+        padding: 0.45rem 0.75rem;
+    }
+
+    .admin-filter-offcanvas .offcanvas-footer {
+        padding: 0.75rem 1.125rem;
+    }
+
+    .admin-filter-offcanvas .mb-3 {
+        margin-bottom: 0.875rem !important;
+    }
+
+    .admin-form-grid.admin-form-grid--two {
+        gap: 0.75rem;
+    }
+
+    .admin-filter-offcanvas .row {
+        --bs-gutter-y: 0.75rem;
+        --bs-gutter-x: 0.75rem;
+    }
+
+    .admin-filter-offcanvas .gap-2 {
+        gap: 0.5rem !important;
+    }
+
+    .admin-filter-offcanvas .d-flex.justify-content-between {
+        gap: 0.75rem;
+    }
+
+    .admin-filter-offcanvas .text-muted.small {
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+
+    .admin-filter-offcanvas .alert {
+        padding: 0.6rem 0.875rem;
+        font-size: 0.8rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .admin-filter-offcanvas .btn-outline-secondary {
+        font-size: 0.85rem;
+        padding: 0.45rem 0.75rem;
+    }
+
+    /* Sur toutes les tailles sauf desktop (>= 1200px), utiliser le layout mobile */
+    @media (max-width: 1199.98px) {
+        .admin-search-panel__primary {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.75rem !important;
+        }
+
+        .admin-search-panel__search {
+            width: 100% !important;
+            flex: none !important;
+        }
+
+        .admin-search-panel__actions {
+            width: 100% !important;
+            display: flex !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .admin-search-panel__actions .btn {
+            flex: 1 1 50% !important;
+            white-space: nowrap !important;
+        }
+    }
+    
+    /* Styles spécifiques pour tablette */
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .admin-search-panel__actions .btn {
+            font-size: 0.85rem;
+            padding: 0.45rem 0.75rem;
+        }
+    }
+    
+    /* Styles pour la plage où le slider remonte */
+    @media (min-width: 992px) and (max-width: 1199.98px) {
+        .admin-search-panel__actions .btn {
+            font-size: 0.85rem;
+            padding: 0.5rem 0.8rem;
+        }
+    }
+
     @media (max-width: 768px) {
         .admin-search-panel__primary {
             flex-direction: column;
@@ -111,23 +225,56 @@
             display: inline;
         }
 
+        .admin-filter-offcanvas .offcanvas-header {
+            padding: 0.75rem 1rem;
+        }
+
+        .admin-filter-offcanvas .offcanvas-title {
+            font-size: 0.95rem;
+        }
+
         .admin-filter-offcanvas .offcanvas-body {
-            padding: 1rem;
+            padding: 0.75rem;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
         }
 
         .admin-filter-offcanvas .form-label {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            margin-bottom: 0.35rem;
         }
 
         .admin-filter-offcanvas .form-select,
         .admin-filter-offcanvas .form-control {
-            font-size: 0.85rem;
-            padding: 0.45rem 0.6rem;
+            font-size: 0.8rem;
+            padding: 0.4rem 0.55rem;
         }
 
         .admin-filter-offcanvas .btn {
-            font-size: 0.85rem;
-            padding: 0.45rem 0.75rem;
+            font-size: 0.8rem;
+            padding: 0.4rem 0.65rem;
+        }
+
+        .admin-filter-offcanvas .mb-3 {
+            margin-bottom: 0.75rem !important;
+        }
+
+        .admin-form-grid.admin-form-grid--two {
+            gap: 0.5rem;
+        }
+
+        .admin-filter-offcanvas .row {
+            --bs-gutter-y: 0.5rem;
+            --bs-gutter-x: 0.5rem;
+        }
+
+        .admin-filter-offcanvas .gap-2 {
+            gap: 0.4rem !important;
+        }
+
+        .admin-filter-offcanvas .d-flex.justify-content-between {
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
     }
 
@@ -141,27 +288,144 @@
             max-width: 140px;
         }
 
+        .admin-filter-offcanvas .offcanvas-header {
+            padding: 0.5rem 0.75rem;
+        }
+
         .admin-filter-offcanvas .offcanvas-title {
-            font-size: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .admin-filter-offcanvas .offcanvas-body {
+            padding: 0.5rem;
+            max-height: calc(100vh - 120px);
+        }
+
+        .admin-filter-offcanvas .form-label {
+            font-size: 0.75rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .admin-filter-offcanvas .form-select,
+        .admin-filter-offcanvas .form-control {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.5rem;
         }
 
         .admin-filter-offcanvas .btn {
             width: 100%;
-        }
-
-        .admin-filter-offcanvas .offcanvas-body {
-            overflow-y: auto;
-            max-height: calc(100vh - 160px);
+            font-size: 0.75rem;
+            padding: 0.35rem 0.6rem;
         }
 
         .admin-filter-offcanvas .offcanvas-footer {
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.4rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .admin-filter-offcanvas .mb-3 {
+            margin-bottom: 0.5rem !important;
         }
 
         .admin-form-grid.admin-form-grid--two {
             grid-template-columns: 1fr;
-            gap: 0.75rem;
+            gap: 0.5rem;
+        }
+
+        .admin-filter-offcanvas .d-flex.justify-content-between {
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .admin-filter-offcanvas .text-muted.small {
+            font-size: 0.7rem;
+            line-height: 1.3;
+        }
+
+        .admin-filter-offcanvas .alert {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-filter-offcanvas .row {
+            --bs-gutter-y: 0.4rem;
+            --bs-gutter-x: 0.4rem;
+        }
+
+        .admin-filter-offcanvas .gap-2 {
+            gap: 0.3rem !important;
+        }
+
+        .admin-filter-offcanvas .btn-outline-secondary {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.6rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .admin-filter-offcanvas .offcanvas-header {
+            padding: 0.4rem 0.6rem;
+        }
+
+        .admin-filter-offcanvas .offcanvas-title {
+            font-size: 0.85rem;
+        }
+
+        .admin-filter-offcanvas .offcanvas-body {
+            padding: 0.4rem;
+            max-height: calc(100vh - 110px);
+        }
+
+        .admin-filter-offcanvas .offcanvas-footer {
+            padding: 0.4rem 0.6rem;
+        }
+
+        .admin-filter-offcanvas .form-label {
+            font-size: 0.7rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .admin-filter-offcanvas .form-select,
+        .admin-filter-offcanvas .form-control {
+            font-size: 0.7rem;
+            padding: 0.3rem 0.45rem;
+        }
+
+        .admin-filter-offcanvas .btn {
+            font-size: 0.7rem;
+            padding: 0.3rem 0.5rem;
+        }
+
+        .admin-filter-offcanvas .mb-3 {
+            margin-bottom: 0.4rem !important;
+        }
+
+        .admin-form-grid.admin-form-grid--two {
+            gap: 0.4rem;
+        }
+
+        .admin-filter-offcanvas .row {
+            --bs-gutter-y: 0.3rem;
+            --bs-gutter-x: 0.3rem;
+        }
+
+        .admin-filter-offcanvas .gap-2 {
+            gap: 0.25rem !important;
+        }
+
+        .admin-filter-offcanvas .d-flex.justify-content-between {
+            gap: 0.3rem;
+        }
+
+        .admin-filter-offcanvas .text-muted.small {
+            font-size: 0.65rem;
+        }
+
+        .admin-filter-offcanvas .btn-outline-secondary {
+            font-size: 0.7rem;
+            padding: 0.3rem 0.5rem;
         }
     }
 

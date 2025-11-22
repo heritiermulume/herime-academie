@@ -289,15 +289,62 @@
     }
 
 
-    @media (max-width: 992px) {
-        .admin-panel__body {
-            padding: 1.25rem;
+    /* Styles responsives pour les paddings et margins */
+    @media (max-width: 991.98px) {
+        /* Réduire les paddings et margins sur tablette */
+        .admin-panel {
+            margin-bottom: 1rem;
+        }
+        
+        /* Padding uniquement pour la première section principale */
+        .admin-panel--main .admin-panel__body {
+            padding: 1rem !important;
+        }
+        
+        /* Pas de padding pour les autres sections */
+        .admin-panel:not(.admin-panel--main) .admin-panel__body {
+            padding: 0 !important;
+        }
+        
+        .admin-panel__header {
+            padding: 0.5rem 0.75rem;
+        }
+        
+        .admin-panel__header h3 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .admin-stats-grid {
+            gap: 0.5rem !important;
+        }
+        
+        .admin-stat-card {
+            padding: 0.75rem 0.875rem !important;
+        }
+        
+        .admin-panel__body .row.g-4 {
+            --bs-gutter-x: 0.5rem;
+            --bs-gutter-y: 0.5rem;
+        }
+        
+        .admin-panel__body .row.g-3 {
+            --bs-gutter-x: 0.375rem;
+            --bs-gutter-y: 0.375rem;
+        }
+        
+        .admin-panel__body .row.mb-4 {
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .admin-panel__body .row.mt-2 {
+            margin-top: 0.375rem !important;
         }
 
         .admin-form-grid.admin-form-grid--two {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1rem 1.25rem;
+            gap: 0.75rem 1rem;
         }
 
         .admin-table .table thead th,
@@ -311,27 +358,68 @@
         }
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 767.98px) {
+        /* Réduire encore plus les paddings et margins sur mobile */
         .admin-panel {
-            margin-bottom: 1.25rem;
+            margin-bottom: 0.75rem;
         }
-
-        .admin-panel__body {
-            padding: 0;
-            overflow: hidden;
+        
+        /* Padding uniquement pour la première section principale */
+        .admin-panel--main .admin-panel__body {
+            padding: 0.75rem !important;
+        }
+        
+        /* Pas de padding pour les autres sections */
+        .admin-panel:not(.admin-panel--main) .admin-panel__body {
+            padding: 0 !important;
+        }
+        
+        .admin-panel__header {
+            padding: 0.375rem 0.5rem;
+        }
+        
+        .admin-panel__header h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.125rem;
+        }
+        
+        .admin-stats-grid {
+            gap: 0.375rem !important;
+        }
+        
+        .admin-stat-card {
+            padding: 0.5rem 0.625rem !important;
+        }
+        
+        .admin-panel__body .row.g-4 {
+            --bs-gutter-x: 0.375rem;
+            --bs-gutter-y: 0.375rem;
+        }
+        
+        .admin-panel__body .row.g-3 {
+            --bs-gutter-x: 0.25rem;
+            --bs-gutter-y: 0.25rem;
+        }
+        
+        .admin-panel__body .row.mb-4 {
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .admin-panel__body .row.mt-2 {
+            margin-top: 0.375rem !important;
         }
 
         .admin-stats-grid .admin-stat-card__value {
-            font-size: 1.55rem;
+            font-size: 1.35rem;
         }
 
         .admin-stats-grid {
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         }
 
         .admin-form-grid.admin-form-grid--two {
             grid-template-columns: 1fr;
+            gap: 0.5rem;
         }
 
         .admin-form-grid.admin-form-grid--two .form-label {
@@ -342,22 +430,6 @@
         .admin-form-grid.admin-form-grid--two .form-control {
             font-size: 0.85rem;
             padding: 0.45rem 0.65rem;
-        }
-
-    }
-
-    @media (max-width: 576px) {
-        .admin-panel__body {
-            padding: 0;
-            overflow: hidden;
-        }
-
-        .admin-stats-grid {
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        }
-
-        .admin-stats-grid .admin-stat-card__value {
-            font-size: 1.35rem;
         }
 
         .admin-table .table {
@@ -373,41 +445,15 @@
             font-size: 0.7rem;
         }
 
-        .admin-form-grid.admin-form-grid--two .form-select,
-        .admin-form-grid.admin-form-grid--two .form-control {
-            font-size: 0.8rem;
-            padding: 0.4rem 0.6rem;
-        }
-
         .admin-table .table-responsive {
             margin: 0;
-        }
-
-    }
-
-    @media (max-width: 576px) {
-        .admin-panel__body {
-            padding: 0.85rem;
-        }
-
-        .admin-stats-grid {
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        }
-
-        .admin-table .table {
-            font-size: 0.9rem;
-        }
-
-        .admin-table img {
-            width: 44px;
-            height: 32px;
         }
     }
 </style>
 @endpush
 
 @section('admin-content')
-    <section class="admin-panel">
+    <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
             <div class="admin-stats-grid mb-4">
                 <div class="admin-stat-card">
@@ -514,7 +560,7 @@
                         @endif
                     </div>
                     <a href="{{ route('admin.courses') }}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-times me-1"></i>Effacer
+                        <i class="fas fa-times me-1"></i>Effacer tous les filtres
                     </a>
                 </div>
             @endif
@@ -722,9 +768,7 @@
                 </div>
             </div>
 
-            <div class="admin-pagination">
-                {{ $courses->withQueryString()->onEachSide(1)->links() }}
-            </div>
+            <x-admin.pagination :paginator="$courses" />
         </div>
     </section>
 @endsection

@@ -306,6 +306,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
+        Route::get('/analytics/revenue-data', [AdminController::class, 'getRevenueData'])->name('analytics.revenue-data');
+        Route::get('/analytics/revenue-by-category', [AdminController::class, 'getRevenueByCategory'])->name('analytics.revenue-by-category');
+        Route::get('/analytics/revenue-by-course', [AdminController::class, 'getRevenueByCourse'])->name('analytics.revenue-by-course');
+        Route::get('/analytics/revenue-by-instructor', [AdminController::class, 'getRevenueByInstructor'])->name('analytics.revenue-by-instructor');
         Route::get('/statistics', [AdminController::class, 'statistics'])->name('statistics');
         Route::post('/courses/{course}/recalculate-stats', [AdminController::class, 'recalculateCourseStats'])
             ->middleware('sso.validate')
@@ -331,6 +335,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])
             ->middleware('sso.validate')
             ->name('users.destroy');
+        
+        // Gestion des accès aux cours
+        Route::post('/users/{user}/grant-course-access', [AdminController::class, 'grantCourseAccess'])
+            ->middleware('sso.validate')
+            ->name('users.grant-course-access');
+        Route::delete('/users/{user}/courses/{course}/revoke-access', [AdminController::class, 'revokeCourseAccess'])
+            ->middleware('sso.validate')
+            ->name('users.revoke-course-access');
+        Route::delete('/users/{user}/courses/{course}/unenroll', [AdminController::class, 'unenrollUser'])
+            ->middleware('sso.validate')
+            ->name('users.unenroll');
         
         // Instructor Applications management
         Route::get('/instructor-applications', [AdminController::class, 'instructorApplications'])->name('instructor-applications');
@@ -381,6 +396,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/announcements/{announcement}', [AdminController::class, 'destroyAnnouncement'])
             ->middleware('sso.validate')
             ->name('announcements.destroy');
+        
+        // Email sending from announcements
+        Route::get('/announcements/send-email', [AdminController::class, 'showSendEmail'])
+            ->name('announcements.send-email');
+        Route::post('/announcements/send-email', [AdminController::class, 'sendEmail'])
+            ->middleware('sso.validate')
+            ->name('announcements.send-email.post');
+        Route::get('/announcements/search-users', [AdminController::class, 'searchUsers'])
+            ->name('announcements.search-users');
+        Route::get('/announcements/count-users', [AdminController::class, 'countUsers'])
+            ->name('announcements.count-users');
+        Route::post('/announcements/upload-image', [AdminController::class, 'uploadImage'])
+            ->middleware('sso.validate')
+            ->name('announcements.upload-image');
+        
+        // Email management
+        Route::get('/emails/sent', [AdminController::class, 'sentEmails'])->name('emails.sent');
+        Route::get('/emails/sent/{sentEmail}', [AdminController::class, 'showSentEmail'])->name('emails.sent.show');
+        Route::delete('/emails/sent/{sentEmail}', [AdminController::class, 'destroySentEmail'])
+            ->middleware('sso.validate')
+            ->name('emails.sent.destroy');
+        Route::get('/emails/scheduled', [AdminController::class, 'scheduledEmails'])->name('emails.scheduled');
+        Route::get('/emails/scheduled/{scheduledEmail}', [AdminController::class, 'showScheduledEmail'])->name('emails.scheduled.show');
+        Route::post('/emails/scheduled/{scheduledEmail}/cancel', [AdminController::class, 'cancelScheduledEmail'])
+            ->middleware('sso.validate')
+            ->name('emails.scheduled.cancel');
+        Route::delete('/emails/scheduled/{scheduledEmail}', [AdminController::class, 'destroyScheduledEmail'])
+            ->middleware('sso.validate')
+            ->name('emails.scheduled.destroy');
         
         // Partners management
         Route::get('/partners', [AdminController::class, 'partners'])->name('partners');

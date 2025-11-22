@@ -29,10 +29,10 @@ trait DatabaseCompatibility
         $driver = DB::getDriverName();
         
         return match($driver) {
-            'mysql' => str_replace('%', '', $format),
+            'mysql' => $format, // MySQL DATE_FORMAT nécessite les %
             'sqlite' => $format,
-            'pgsql' => str_replace('%Y', 'YYYY', str_replace('%m', 'MM', $format)),
-            default => str_replace('%', '', $format)
+            'pgsql' => str_replace(['%Y', '%m', '%d', '%u'], ['YYYY', 'MM', 'DD', 'WW'], $format),
+            default => $format
         };
     }
 

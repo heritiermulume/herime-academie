@@ -7,11 +7,13 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Enrollment;
 use App\Models\CartItem;
+use App\Mail\InvoiceMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Mail;
 use App\Notifications\PaymentReceived;
 use Illuminate\Support\Facades\Validator;
 
@@ -768,6 +770,20 @@ class PawaPayController extends Controller
                     ]);
                     $enrollmentsCreated++;
                     
+                    // Envoyer l'email de confirmation d'inscription
+                    try {
+                        $course = $orderItem->course;
+                        if ($course && $order->user) {
+                            $order->user->notify(new \App\Notifications\CourseEnrolled($course));
+                            \Log::info('pawaPay: Course enrollment email sent', [
+                                'user_id' => $order->user_id,
+                                'course_id' => $orderItem->course_id,
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error('pawaPay: Failed to send enrollment email: ' . $e->getMessage());
+                    }
+                    
                     \Log::info('pawaPay: Enrollment created', [
                         'enrollment_id' => $enrollment->id,
                         'order_id' => $order->id,
@@ -828,6 +844,26 @@ class PawaPayController extends Controller
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
+                ]);
+            }
+
+            // Envoyer la facture par email
+            try {
+                $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+                if ($order->user && $order->user->email) {
+                    Mail::to($order->user->email)->send(new InvoiceMail($order));
+                    \Log::info('pawaPay: Invoice email sent', [
+                        'user_id' => $order->user_id,
+                        'order_id' => $order->id,
+                        'email' => $order->user->email,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // Logger l'erreur mais ne pas faire échouer la finalisation
+                \Log::error('pawaPay: Failed to send invoice email', [
+                    'user_id' => $order->user_id,
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
                 ]);
             }
             
