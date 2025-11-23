@@ -30,83 +30,81 @@
                         {{ count($cartItems) }} cours dans votre panier
                     </h2>
                 </div>
-                <div class="cart-items-list" id="cart-items-container">
+                <div class="cart-items-list recommended-courses" id="cart-items-container">
                         @foreach($cartItems as $item)
-                    <div class="udemy-cart-item" id="cart-item-{{ $item['course']->id }}">
-                        <div class="cart-item-content">
-                            <!-- Course Image -->
-                            <div class="cart-item-image-container">
-                                <img src="{{ $item['course']->thumbnail ? $item['course']->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
-                                     alt="{{ $item['course']->title }}" 
-                                     class="cart-item-image">
-                                @if($item['course']->is_featured || $item['course']->is_free || $item['course']->is_sale_active)
-                                <div class="course-badges">
-                                    @if($item['course']->is_featured)
-                                    <span class="course-badge featured">En vedette</span>
-                                    @endif
-                                    @if($item['course']->is_free)
-                                    <span class="course-badge free">Gratuit</span>
-                                    @endif
-                                    @if($item['course']->sale_discount_percentage)
-                                    <span class="course-badge sale">
-                                        -{{ $item['course']->sale_discount_percentage }}%
-                                    </span>
-                                    @endif
+                    <div class="recommended-item cart-item-wrapper" id="cart-item-{{ $item['course']->id }}">
+                        <!-- Course Image -->
+                        <div class="recommended-thumb">
+                            <img src="{{ $item['course']->thumbnail ? $item['course']->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
+                                 alt="{{ $item['course']->title }}">
+                        </div>
+                        
+                        <!-- Course Details -->
+                        <div class="recommended-content flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start mb-0">
+                                <h6 class="flex-grow-1 mb-0">
+                                    <a href="{{ route('courses.show', $item['course']->slug) }}" class="text-decoration-none">
+                                        {{ $item['course']->title }}
+                                    </a>
+                                </h6>
+                                <!-- Price on mobile - top right -->
+                                <div class="cart-item-price-mobile">
+                                    <div class="price-container">
+                                        <span class="current-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Formateur, niveau et prix barré sur la même ligne -->
+                            <div class="recommended-meta-with-price d-flex justify-content-between align-items-center mb-0">
+                                <div class="recommended-meta">
+                                    <span><i class="fas fa-user me-1"></i>{{ $item['course']->instructor->name }}</span>
+                                    <span><i class="fas fa-signal me-1"></i>{{ ucfirst($item['course']->level) }}</span>
+                                </div>
+                                @if($item['course']->is_sale_active && $item['course']->active_sale_price !== null)
+                                <div class="original-price-inline">
+                                    <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['course']->price) }}</span>
                                 </div>
                                 @endif
                             </div>
                             
-                            <!-- Course Details -->
-                            <div class="cart-item-details">
-                                <h3 class="cart-item-title">
-                                    <a href="{{ route('courses.show', $item['course']->slug) }}">
-                                        {{ $item['course']->title }}
-                                    </a>
-                                </h3>
-                                
-                                <div class="cart-item-meta">
-                                    <div class="instructor-info">
-                                        <span class="instructor-name">{{ $item['course']->instructor->name }}</span>
-                                    </div>
-                                    <div class="course-rating">
-                                        <div class="rating-stars">
-                                            <i class="fas fa-star"></i>
-                                            <i class="fas fa-star"></i>
-                                            <i class="fas fa-star"></i>
-                                            <i class="fas fa-star"></i>
-                                            <i class="fas fa-star"></i>
-                                        </div>
-                                        <span class="rating-text">{{ number_format($item['course']->stats['average_rating'] ?? 0, 1) }} ({{ $item['course']->stats['total_reviews'] ?? 0 }} avis)</span>
-                                    </div>
-                                    <div class="course-level">
-                                        <span class="level-badge">{{ ucfirst($item['course']->level) }}</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="cart-item-actions">
-                                    <button type="button" 
-                                            class="remove-btn" 
-                                            onclick="removeItem({{ $item['course']->id }})"
-                                            title="Supprimer du panier">
-                                        <i class="fas fa-trash"></i>
-                                        Supprimer
-                                    </button>
-                                    <a href="{{ route('courses.show', $item['course']->slug) }}" 
-                                       class="view-btn">
-                                        <i class="fas fa-eye"></i>
-                                        Voir le cours
-                                    </a>
-                                </div>
+                            <div class="recommended-actions">
+                                <span class="badge bg-primary bg-opacity-10 text-info border-0">
+                                    {{ $item['course']->stats['total_lessons'] ?? 0 }} leçons
+                                </span>
+                                <span class="badge bg-primary bg-opacity-10 text-warning border-0">
+                                    {{ number_format($item['course']->stats['average_rating'] ?? 0, 1) }}/5
+                                </span>
                             </div>
                             
-                            <!-- Price -->
-                            <div class="cart-item-price">
-                                <div class="price-container">
-                                    <span class="current-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}</span>
-                                    @if($item['course']->is_sale_active && $item['course']->active_sale_price !== null)
-                                    <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['course']->price) }}</span>
-                                    @endif
-                                </div>
+                            <!-- Cart Actions -->
+                            <div class="cart-item-actions mt-1">
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-danger remove-btn" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#removeItemModal"
+                                        data-course-id="{{ $item['course']->id }}"
+                                        data-course-title="{{ $item['course']->title }}"
+                                        title="Supprimer du panier">
+                                    <i class="fas fa-trash"></i>
+                                    <span class="btn-text">Supprimer</span>
+                                </button>
+                                <a href="{{ route('courses.show', $item['course']->slug) }}" 
+                                   class="btn btn-sm btn-outline-primary view-btn"
+                                   title="Voir le cours">
+                                    <i class="fas fa-eye"></i>
+                                    <span class="btn-text">Voir le cours</span>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Price on desktop - right side -->
+                        <div class="cart-item-price">
+                            <div class="price-container">
+                                <span class="current-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}</span>
+                                @if($item['course']->is_sale_active && $item['course']->active_sale_price !== null)
+                                <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['course']->price) }}</span>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -115,7 +113,7 @@
                 
                 <!-- Clear Cart Button -->
                 <div class="clear-cart-section">
-                    <button type="button" class="clear-cart-btn" onclick="clearCart()">
+                    <button type="button" class="clear-cart-btn" data-bs-toggle="modal" data-bs-target="#clearCartModal">
                         <i class="fas fa-trash"></i>
                         Vider le panier
                     </button>
@@ -240,6 +238,58 @@
     </div>
 </div>
 
+<!-- Modal pour supprimer un cours -->
+<div class="modal fade" id="removeItemModal" tabindex="-1" aria-labelledby="removeItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modern-modal">
+            <div class="modal-header modern-modal-header remove-item-header">
+                <div class="modal-icon-wrapper">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h5 class="modal-title" id="removeItemModalLabel">Supprimer le cours</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body modern-modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer <strong id="removeItemCourseTitle"></strong> de votre panier ?</p>
+            </div>
+            <div class="modal-footer modern-modal-footer">
+                <button type="button" class="btn btn-secondary cancel-remove-btn" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmRemoveItemBtn">
+                    <i class="fas fa-trash me-2"></i>Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour vider le panier -->
+<div class="modal fade" id="clearCartModal" tabindex="-1" aria-labelledby="clearCartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modern-modal">
+            <div class="modal-header modern-modal-header">
+                <div class="modal-icon-wrapper">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h5 class="modal-title" id="clearCartModalLabel">Vider le panier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body modern-modal-body">
+                <p>Êtes-vous sûr de vouloir vider votre panier ? Cette action est irréversible et tous les cours seront supprimés.</p>
+            </div>
+            <div class="modal-footer modern-modal-footer">
+                <button type="button" class="btn btn-secondary cancel-clear-btn" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmClearCartBtn" onclick="confirmClearCart(event)">
+                    <i class="fas fa-trash me-2"></i>Vider le panier
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 /* Udemy-inspired Cart Styles with Site Colors */
 .udemy-cart-container {
@@ -348,220 +398,183 @@
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
-.cart-items-list {
-    padding: 0;
-}
-
-/* Individual Cart Item */
-.udemy-cart-item {
-    border-bottom: 1px solid #e5e5e5;
-    transition: all 0.2s ease;
-}
-
-.udemy-cart-item:last-child {
-    border-bottom: none;
-}
-
-.udemy-cart-item:hover {
-    background-color: #f7f9fa;
-}
-
-.cart-item-content {
+/* Cart Items List - Using recommended-courses design */
+.cart-items-list.recommended-courses {
     display: grid;
-    grid-template-columns: 240px 1fr auto;
-    gap: 24px;
+    gap: 0.75rem;
     padding: 24px;
-    align-items: start;
+}
+
+.cart-items-list .recommended-item.cart-item-wrapper {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 51, 102, 0.15);
+    background: linear-gradient(135deg, rgba(0, 51, 102, 0.05) 0%, rgba(0, 51, 102, 0.1) 100%);
+    transition: border 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    align-items: flex-start;
+}
+
+.cart-items-list .recommended-item.cart-item-wrapper:hover {
+    border-color: rgba(0, 51, 102, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.1);
 }
 
 /* Course Image */
-.cart-item-image-container {
-    position: relative;
-    border-radius: 8px;
+.cart-items-list .recommended-thumb {
+    width: 72px;
+    height: 72px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
 }
 
-.cart-item-image {
+.cart-items-list .recommended-thumb img {
     width: 100%;
-    height: 135px;
+    height: 100%;
     object-fit: cover;
-    display: block;
-}
-
-.course-badges {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.course-badge {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.course-badge.featured {
-    background-color: #ffcc33;
-    color: #1c1d1f;
-}
-
-.course-badge.free {
-    background-color: #0f5132;
-    color: white;
-}
-
-.course-badge.sale {
-    background-color: #dc3545;
-    color: white;
 }
 
 /* Course Details */
-.cart-item-details {
+.cart-items-list .recommended-content {
     flex: 1;
     min-width: 0;
 }
 
-.cart-item-title {
-    margin: 0 0 12px 0;
-    font-size: 18px;
-    font-weight: 700;
+.cart-items-list .recommended-content h6 {
+    margin-bottom: 0.1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #1c1d1f;
+    flex: 1;
+    min-width: 0;
     line-height: 1.3;
 }
 
-.cart-item-title a {
+.cart-items-list .recommended-content h6 a {
     color: #1c1d1f;
     text-decoration: none;
     transition: color 0.2s ease;
 }
 
-.cart-item-title a:hover {
+.cart-items-list .recommended-content h6 a:hover {
     color: #003366;
 }
 
-.cart-item-meta {
-    margin-bottom: 16px;
-}
-
-.instructor-info {
-    margin-bottom: 8px;
-}
-
-.instructor-name {
-    font-size: 14px;
-    color: #6a6f73;
-    font-weight: 400;
-}
-
-.course-rating {
+.cart-items-list .cart-item-price-mobile .price-container {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.rating-stars {
-    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
     gap: 2px;
 }
 
-.rating-stars i {
-    color: #ffcc33;
-    font-size: 12px;
+.cart-items-list .cart-item-price-mobile .current-price {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #003366;
+    white-space: nowrap;
 }
 
-.rating-text {
-    font-size: 14px;
+.cart-items-list .cart-item-price-mobile .original-price {
+    font-size: 0.65rem;
     color: #6a6f73;
+    text-decoration: line-through;
+    white-space: nowrap;
 }
 
-.course-level {
-    margin-bottom: 8px;
-}
-
-.level-badge {
-    display: inline-block;
-    padding: 4px 8px;
-    background-color: #e3f2fd;
-    color: #1976d2;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.cart-item-actions {
+.cart-items-list .recommended-meta {
+    font-size: 0.75rem;
+    color: #6a6f73;
     display: flex;
-    gap: 12px;
-    margin-top: 16px;
+    gap: 0.65rem;
+    margin-bottom: 0;
 }
 
-.remove-btn, .view-btn {
+.cart-items-list .recommended-meta-with-price {
+    margin-bottom: 0.3rem;
+    gap: 0.5rem;
+}
+
+.cart-items-list .original-price-inline {
+    flex-shrink: 0;
+}
+
+.cart-items-list .original-price-inline .original-price {
+    font-size: 0.75rem;
+    color: #6a6f73;
+    text-decoration: line-through;
+    white-space: nowrap;
+}
+
+.cart-items-list .recommended-actions {
+    margin-top: 0.4rem;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.cart-items-list .recommended-actions .badge {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 10px;
+}
+
+.cart-items-list .cart-item-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.cart-items-list .cart-item-actions .remove-btn,
+.cart-items-list .cart-item-actions .view-btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 10px;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    border: none;
-    cursor: pointer;
-}
-
-.remove-btn {
-    background-color: transparent;
-    color: #dc3545;
-    border: 1px solid #dc3545;
-}
-
-.remove-btn:hover {
-    background-color: #dc3545;
-    color: white;
-}
-
-.view-btn {
-    background-color: transparent;
-    color: #003366;
-    border: 1px solid #003366;
-}
-
-.view-btn:hover {
-    background-color: #003366;
-    color: white;
-    text-decoration: none;
+    gap: 0.25rem;
 }
 
 /* Price Section */
-.cart-item-price {
+.cart-items-list .cart-item-price {
     text-align: right;
-    min-width: 120px;
+    min-width: 100px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
 }
 
-.price-container {
+.cart-items-list .cart-item-price-mobile {
+    display: none; /* Hidden on desktop by default */
+}
+
+.cart-items-list .price-container {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 4px;
 }
 
-.current-price {
-    font-size: 20px;
+.cart-items-list .current-price {
+    font-size: 1.1rem;
     font-weight: 700;
-    color: #1c1d1f;
+    color: #003366;
 }
 
-.original-price {
-    font-size: 14px;
+.cart-items-list .original-price {
+    font-size: 0.75rem;
     color: #6a6f73;
     text-decoration: line-through;
+}
+
+/* Button text - visible on desktop */
+.cart-items-list .btn-text {
+    display: inline;
 }
 
 /* Clear Cart Button */
@@ -717,9 +730,18 @@
         gap: 24px;
     }
     
-    .cart-item-content {
-        grid-template-columns: 200px 1fr auto;
-        gap: 20px;
+    .cart-items-list.recommended-courses {
+        padding: 16px;
+    }
+    
+    .cart-items-list .recommended-item.cart-item-wrapper {
+        flex-wrap: wrap;
+    }
+    
+    .cart-items-list .cart-item-price {
+        width: 100%;
+        margin-top: 0.5rem;
+        justify-content: flex-end;
     }
 }
 
@@ -760,60 +782,98 @@
         font-size: 16px;
     }
     
-    .cart-item-content {
-        grid-template-columns: 100px 1fr auto;
-        gap: 12px;
-        padding: 12px;
+    .cart-items-list.recommended-courses {
+        padding: 16px;
+        gap: 0.5rem;
     }
     
-    .cart-item-image {
-        height: 80px;
+    .cart-items-list .recommended-item.cart-item-wrapper {
+        padding: 0.5rem;
+        gap: 0.5rem;
     }
     
-    .cart-item-title {
-        font-size: 14px;
-        margin-bottom: 4px;
-        line-height: 1.3;
+    .cart-items-list .recommended-thumb {
+        width: 60px;
+        height: 60px;
     }
     
-    .cart-item-meta {
-        margin-bottom: 8px;
+    .cart-items-list .recommended-content h6 {
+        font-size: 0.8rem;
     }
     
-    .instructor-name {
-        font-size: 12px;
+    .cart-items-list .recommended-meta {
+        font-size: 0.7rem;
+        gap: 0.5rem;
     }
     
-    .rating-text {
-        font-size: 11px;
+    .cart-items-list .recommended-meta-with-price {
+        gap: 0.3rem;
+        margin-bottom: 0.25rem;
     }
     
-    .cart-item-actions {
-        flex-direction: column;
-        gap: 6px;
-        margin-top: 8px;
+    .cart-items-list .original-price-inline .original-price {
+        font-size: 0.7rem;
     }
     
-    .remove-btn, .view-btn {
-        font-size: 12px;
-        padding: 4px 8px;
+    .cart-items-list .recommended-actions .badge {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
     }
     
-    .current-price {
-        font-size: 16px;
+    .cart-items-list .cart-item-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+        gap: 0.4rem;
     }
     
-    .original-price {
-        font-size: 12px;
+    /* Hide button text and make buttons icon-only on tablet */
+    .cart-items-list .cart-item-actions .btn-text {
+        display: none !important;
     }
     
-    .level-badge {
-        font-size: 10px;
-        padding: 2px 6px;
+    .cart-items-list .cart-item-actions .remove-btn,
+    .cart-items-list .cart-item-actions .view-btn {
+        font-size: 0.875rem;
+        padding: 0;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        min-height: 36px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
     }
     
-    .rating-stars i {
-        font-size: 10px;
+    .cart-items-list .cart-item-actions .remove-btn i,
+    .cart-items-list .cart-item-actions .view-btn i {
+        margin: 0 !important;
+        font-size: 0.875rem;
+    }
+    
+    /* Hide desktop price on tablet */
+    .cart-items-list .cart-item-price {
+        display: none;
+    }
+    
+    /* Show mobile price on tablet */
+    .cart-items-list .cart-item-price-mobile {
+        display: block;
+        margin-left: 0.5rem;
+        flex-shrink: 0;
+    }
+    
+    .cart-items-list .cart-item-price-mobile .price-container {
+        align-items: flex-end;
+    }
+    
+    .cart-items-list .current-price {
+        font-size: 1rem;
+    }
+    
+    .cart-items-list .original-price {
+        font-size: 0.7rem;
     }
 }
 
@@ -847,79 +907,108 @@
         font-size: 14px;
     }
     
-    /* Ajustements pour très petits écrans - Version ultra compacte */
-    .cart-item-content {
-        padding: 8px;
-        gap: 8px;
-        grid-template-columns: 70px 1fr auto;
+    .cart-items-list.recommended-courses {
+        padding: 12px;
+        gap: 0.5rem;
     }
     
-    .cart-item-image-container {
-        width: 70px;
-        height: 70px;
+    .cart-items-list .recommended-item.cart-item-wrapper {
+        padding: 0.5rem;
+        gap: 0.5rem;
+        flex-wrap: wrap;
     }
     
-    .cart-item-image {
-        height: 70px;
+    .cart-items-list .recommended-thumb {
+        width: 56px;
+        height: 56px;
     }
     
-    .cart-item-title {
-        font-size: 12px;
-        margin-bottom: 2px;
-        line-height: 1.2;
+    .cart-items-list .recommended-content h6 {
+        font-size: 0.75rem;
+        margin-bottom: 0.1rem;
     }
     
-    .cart-item-title a {
-        -webkit-line-clamp: 1;
+    .cart-items-list .recommended-meta {
+        font-size: 0.65rem;
+        gap: 0.4rem;
+        flex-wrap: wrap;
     }
     
-    .cart-item-meta {
-        margin-bottom: 4px;
+    .cart-items-list .recommended-meta-with-price {
+        gap: 0.3rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.25rem;
     }
     
-    .instructor-name {
-        font-size: 10px;
+    .cart-items-list .original-price-inline .original-price {
+        font-size: 0.65rem;
     }
     
-    .rating-text {
-        font-size: 9px;
+    .cart-items-list .recommended-actions {
+        margin-top: 0.3rem;
+        gap: 0.3rem;
     }
     
-    .rating-stars i {
-        font-size: 8px;
+    .cart-items-list .recommended-actions .badge {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.4rem;
     }
     
-    .level-badge {
-        font-size: 8px;
-        padding: 1px 4px;
+    .cart-items-list .cart-item-actions {
+        flex-direction: row;
+        justify-content: flex-end;
+        gap: 0.3rem;
+        margin-top: 0.3rem;
     }
     
-    .current-price {
-        font-size: 14px;
+    /* Hide button text and make buttons icon-only on mobile */
+    .cart-items-list .cart-item-actions .btn-text {
+        display: none !important;
     }
     
-    .original-price {
-        font-size: 10px;
+    .cart-items-list .cart-item-actions .remove-btn,
+    .cart-items-list .cart-item-actions .view-btn {
+        font-size: 0.8rem;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
     }
     
-    .cart-item-actions {
-        gap: 4px;
-        margin-top: 4px;
+    .cart-items-list .cart-item-actions .remove-btn i,
+    .cart-items-list .cart-item-actions .view-btn i {
+        margin: 0 !important;
+        font-size: 0.8rem;
     }
     
-    .remove-btn,
-    .view-btn {
-        padding: 4px 6px;
-        font-size: 10px;
-    }
-    
-    .btn-text {
+    /* Hide desktop price on mobile */
+    .cart-items-list .cart-item-price {
         display: none;
     }
     
-    .remove-btn i,
-    .view-btn i {
-        margin-right: 0;
+    /* Show mobile price on mobile - top right */
+    .cart-items-list .cart-item-price-mobile {
+        display: block;
+        margin-left: 0.5rem;
+        flex-shrink: 0;
+    }
+    
+    .cart-items-list .cart-item-price-mobile .price-container {
+        align-items: flex-end;
+    }
+    
+    .cart-items-list .current-price {
+        font-size: 0.85rem;
+    }
+    
+    .cart-items-list .original-price {
+        font-size: 0.6rem;
     }
     
     .summary-content {
@@ -944,19 +1033,17 @@
     }
 }
 
-.udemy-cart-item {
+.cart-items-list .recommended-item.cart-item-wrapper {
     animation: fadeInUp 0.5s ease-out;
 }
 
 /* Hover effects */
-.udemy-cart-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.cart-items-list .recommended-thumb img {
+    transition: transform 0.3s ease;
 }
 
-.cart-item-image:hover {
+.cart-items-list .recommended-item.cart-item-wrapper:hover .recommended-thumb img {
     transform: scale(1.05);
-    transition: transform 0.3s ease;
 }
 
 /* Focus states */
@@ -1023,24 +1110,191 @@
     border-left: 4px solid #17a2b8;
 }
 
+/* Modern Modal Styles */
+.modern-modal {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.modern-modal-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border-bottom: none;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.modern-modal-header .modal-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.modern-modal-header .modal-icon-wrapper i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.modern-modal-header .modal-title {
+    color: white;
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin: 0;
+    flex: 1;
+}
+
+.modern-modal-header .btn-close {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    opacity: 1;
+    padding: 0.5rem;
+    width: 32px;
+    height: 32px;
+    transition: all 0.2s ease;
+}
+
+.modern-modal-header .btn-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.modern-modal-header.remove-item-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.modern-modal-body {
+    padding: 1.5rem;
+    font-size: 1rem;
+    color: #1c1d1f;
+    line-height: 1.6;
+}
+
+.modern-modal-footer {
+    border-top: 1px solid #e5e5e5;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.modern-modal-footer .btn {
+    padding: 0.625rem 1.25rem;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.modern-modal-footer .btn-secondary {
+    background-color: #f7f9fa;
+    border: 1px solid #e5e5e5;
+    color: #1c1d1f;
+}
+
+.modern-modal-footer .btn-secondary:hover {
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.modern-modal-footer .btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    color: white;
+}
+
+.modern-modal-footer .btn-danger:hover {
+    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
 /* Styles harmonisés - utilisent les styles globaux de app.blade.php */
 </style>
 
 <script>
+// Fonction pour confirmer la suppression d'un cours (appelée depuis le modal)
+function confirmRemoveItem() {
+    const confirmBtn = document.getElementById('confirmRemoveItemBtn');
+    if (!confirmBtn) {
+        console.error('Confirm button not found');
+        showNotification('Erreur: Bouton de confirmation introuvable', 'error');
+        return;
+    }
+    
+    // Récupérer l'ID du cours depuis le dataset ou l'attribut
+    let courseId = confirmBtn.dataset.courseId || confirmBtn.getAttribute('data-course-id');
+    if (!courseId) {
+        console.error('Course ID not found in button dataset');
+        showNotification('Erreur: ID du cours introuvable', 'error');
+        return;
+    }
+    
+    // Retirer le focus du bouton avant de fermer le modal
+    confirmBtn.blur();
+    
+    // Fermer le modal
+    const modalElement = document.getElementById('removeItemModal');
+    if (modalElement && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            // Écouter l'événement de fermeture complète du modal
+            modalElement.addEventListener('hidden.bs.modal', function handler() {
+                // Supprimer le cours après que le modal soit complètement fermé
+                removeItem(courseId);
+                // Retirer l'écouteur après utilisation
+                modalElement.removeEventListener('hidden.bs.modal', handler);
+            }, { once: true });
+            modal.hide();
+        } else {
+            const bsModal = new bootstrap.Modal(modalElement);
+            modalElement.addEventListener('hidden.bs.modal', function handler() {
+                removeItem(courseId);
+                modalElement.removeEventListener('hidden.bs.modal', handler);
+            }, { once: true });
+            bsModal.hide();
+        }
+    } else {
+        // Si Bootstrap n'est pas disponible, supprimer directement
+        removeItem(courseId);
+    }
+}
+
 // Fonction pour supprimer un article du panier
 function removeItem(courseId) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce cours de votre panier ?')) {
-        fetch('{{ route("cart.remove") }}', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                course_id: courseId
-            })
+    // S'assurer que courseId est un nombre
+    courseId = parseInt(courseId);
+    if (isNaN(courseId)) {
+        console.error('Invalid course ID:', courseId);
+        showNotification('Erreur: ID du cours invalide', 'error');
+        return;
+    }
+    
+    fetch('{{ route("cart.remove") }}', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            course_id: courseId
         })
-        .then(response => response.json())
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur réseau');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Supprimer l'élément spécifique du DOM
@@ -1053,7 +1307,7 @@ function removeItem(courseId) {
                 updateCartCount();
                 
                 // Vérifier si le panier est maintenant vide
-                const remainingItems = document.querySelectorAll('.cart-item-modern');
+                const remainingItems = document.querySelectorAll('.recommended-item.cart-item-wrapper');
                 if (remainingItems.length === 0) {
                     // Le panier est vide, recharger la page pour afficher l'état vide
                     showNotification('Cours supprimé du panier', 'success');
@@ -1063,49 +1317,87 @@ function removeItem(courseId) {
                 } else {
                     // Le panier n'est pas vide, mettre à jour le résumé via AJAX
                     updateCartSummary();
-                showNotification('Cours supprimé du panier', 'success');
+                    showNotification('Cours supprimé du panier', 'success');
                 }
             } else {
-                showNotification(data.message, 'error');
+                showNotification(data.message || 'Erreur lors de la suppression', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('Une erreur est survenue', 'error');
+            showNotification('Une erreur est survenue lors de la suppression', 'error');
         });
+}
+
+// Fonction pour confirmer le vidage du panier (appelée depuis le modal)
+function confirmClearCart(event) {
+    // Retirer le focus du bouton avant de fermer le modal
+    const confirmBtn = event?.target?.closest('button') || document.getElementById('confirmClearCartBtn') || document.querySelector('#clearCartModal .btn-danger');
+    if (confirmBtn && typeof confirmBtn.blur === 'function') {
+        confirmBtn.blur();
+    }
+    
+    // Fermer le modal
+    const modalElement = document.getElementById('clearCartModal');
+    if (modalElement && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            // Écouter l'événement de fermeture complète du modal
+            modalElement.addEventListener('hidden.bs.modal', function handler() {
+                // Vider le panier après que le modal soit complètement fermé
+                clearCart();
+                // Retirer l'écouteur après utilisation
+                modalElement.removeEventListener('hidden.bs.modal', handler);
+            }, { once: true });
+            modal.hide();
+        } else {
+            const bsModal = new bootstrap.Modal(modalElement);
+            modalElement.addEventListener('hidden.bs.modal', function handler() {
+                clearCart();
+                modalElement.removeEventListener('hidden.bs.modal', handler);
+            }, { once: true });
+            bsModal.hide();
+        }
+    } else {
+        // Si Bootstrap n'est pas disponible, vider directement
+        clearCart();
     }
 }
 
 // Fonction pour vider le panier
 function clearCart() {
-    if (confirm('Êtes-vous sûr de vouloir vider votre panier ?')) {
-        fetch('{{ route("cart.clear") }}', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Mettre à jour le compteur
-                updateCartCount();
-                
-                // Recharger la page pour afficher l'état du panier vide
-                showNotification('Panier vidé', 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                showNotification(data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Une erreur est survenue', 'error');
-        });
-    }
+    fetch('{{ route("cart.clear") }}', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Erreur réseau');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Mettre à jour le compteur
+            updateCartCount();
+            
+            // Recharger la page pour afficher l'état du panier vide
+            showNotification('Panier vidé', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification(data.message || 'Erreur lors du vidage du panier', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Une erreur est survenue lors du vidage du panier', 'error');
+    });
 }
 
 // Fonction pour procéder au checkout
@@ -1116,7 +1408,6 @@ function proceedToCheckout() {
 // Fonction pour mettre à jour les recommandations
 function updateRecommendations() {
     // Cette fonction peut être étendue pour mettre à jour les recommandations dynamiquement
-    console.log('Updating recommendations...');
 }
 
 // Fonction utilitaire pour masquer l'état du panier vide (utilisée lors de l'ajout d'articles)
@@ -1187,11 +1478,8 @@ function updateCartSummary() {
 
 // Fonction pour ajouter un article au panier (version spécifique à la page panier)
 function addToCartFromCartPage(courseId) {
-    console.log('Tentative d\'ajout du cours:', courseId);
-    
     // Vérifier si une requête est déjà en cours
     if (window.addingToCart) {
-        console.log('Une requête est déjà en cours, ignorer');
         return;
     }
     
@@ -1204,9 +1492,6 @@ function addToCartFromCartPage(courseId) {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Ajout...';
     }
-    
-    // Masquer l'état du panier vide si visible
-    hideEmptyCartState();
     
     // Faire la requête AJAX
     fetch('{{ route("cart.add") }}', {
@@ -1221,14 +1506,15 @@ function addToCartFromCartPage(courseId) {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Réponse du serveur:', data);
-        
         if (data.success) {
-            // Succès - recharger immédiatement la page
+            // Mettre à jour le compteur du panier
+            updateCartCount();
+            
+            // Succès - recharger immédiatement la page pour afficher le nouveau cours
             showNotification('Cours ajouté au panier', 'success');
             setTimeout(() => {
                 window.location.reload();
-            }, 1000);
+            }, 500);
         } else {
             // Erreur - afficher le message d'erreur
             showNotification(data.message || 'Erreur lors de l\'ajout', 'error');
@@ -1304,8 +1590,6 @@ function updateCartCount() {
         const currentCount = parseInt(element.textContent) || 0;
         element.textContent = currentCount + 1;
     });
-    
-    console.log('Cart count updated');
 }
 
 // Fonction supprimée - plus nécessaire avec la nouvelle approche
@@ -1314,6 +1598,90 @@ function updateCartCount() {
 document.addEventListener('DOMContentLoaded', function() {
     // Mettre à jour le compteur du panier au chargement
     updateCartCount();
+    
+    // Initialiser le modal de suppression d'un cours
+    const removeItemModal = document.getElementById('removeItemModal');
+    if (removeItemModal) {
+        removeItemModal.addEventListener('show.bs.modal', function(event) {
+            // Bouton qui a déclenché le modal
+            const button = event.relatedTarget;
+            if (!button) {
+                console.error('Button not found in event');
+                return;
+            }
+            
+            // Extraire les informations depuis les attributs data-*
+            const courseId = button.getAttribute('data-course-id');
+            const courseTitle = button.getAttribute('data-course-title');
+            
+            // Mettre à jour le contenu du modal
+            const modalTitle = removeItemModal.querySelector('#removeItemCourseTitle');
+            if (modalTitle) {
+                modalTitle.textContent = courseTitle || 'ce cours';
+            }
+            
+            // Stocker l'ID du cours dans le bouton de confirmation
+            const confirmBtn = document.getElementById('confirmRemoveItemBtn');
+            if (confirmBtn) {
+                confirmBtn.setAttribute('data-course-id', courseId);
+                confirmBtn.dataset.courseId = courseId;
+            } else {
+                console.error('Confirm button not found');
+            }
+        });
+        
+        // Gestionnaire pour le bouton Annuler - retirer le focus avant la fermeture
+        const cancelRemoveBtn = removeItemModal.querySelector('.cancel-remove-btn');
+        if (cancelRemoveBtn) {
+            cancelRemoveBtn.addEventListener('click', function(e) {
+                // Retirer le focus immédiatement
+                this.blur();
+            });
+        }
+        
+        // Écouter l'événement hide.bs.modal pour retirer le focus de tous les éléments focusables
+        removeItemModal.addEventListener('hide.bs.modal', function() {
+            const activeElement = document.activeElement;
+            if (activeElement && removeItemModal.contains(activeElement)) {
+                activeElement.blur();
+            }
+        });
+    }
+    
+    // Gestionnaire d'événement pour le bouton de confirmation de suppression
+    const confirmRemoveBtn = document.getElementById('confirmRemoveItemBtn');
+    if (confirmRemoveBtn) {
+        confirmRemoveBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            confirmRemoveItem();
+        });
+    } else {
+        console.error('Confirm remove button not found in DOM');
+    }
+    
+    // Initialiser le modal Bootstrap si disponible
+    const clearCartModal = document.getElementById('clearCartModal');
+    if (clearCartModal && typeof bootstrap !== 'undefined') {
+        // Le modal sera initialisé automatiquement par Bootstrap via data-bs-toggle
+        
+        // Gestionnaire pour le bouton Annuler - retirer le focus avant la fermeture
+        const cancelClearBtn = clearCartModal.querySelector('.cancel-clear-btn');
+        if (cancelClearBtn) {
+            cancelClearBtn.addEventListener('click', function(e) {
+                // Retirer le focus immédiatement
+                this.blur();
+            });
+        }
+        
+        // Écouter l'événement hide.bs.modal pour retirer le focus de tous les éléments focusables
+        clearCartModal.addEventListener('hide.bs.modal', function() {
+            const activeElement = document.activeElement;
+            if (activeElement && clearCartModal.contains(activeElement)) {
+                activeElement.blur();
+            }
+        });
+    }
     
     // Ajouter des gestionnaires d'événements pour les boutons d'ajout au panier
     document.addEventListener('click', function(e) {

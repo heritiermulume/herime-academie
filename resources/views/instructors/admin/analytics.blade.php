@@ -4,130 +4,103 @@
 @section('admin-subtitle', 'Mesurez l’impact de vos cours, le volume d’inscriptions et la satisfaction de vos étudiants.')
 
 @section('admin-actions')
-    <a href="{{ url('/instructor/courses') }}" class="btn btn-outline-primary">
+    <a href="{{ url('/instructor/courses') }}" class="admin-btn outline">
         <i class="fas fa-chalkboard me-2"></i>Retour aux cours
     </a>
 @endsection
 
 @section('admin-content')
-    <section class="dashboard-grid">
-        <article class="admin-card">
-            <div class="analytics-metric">
-                <span>Total de cours</span>
-                <strong>{{ $courseStats->total_courses ?? 0 }}</strong>
-                <small>{{ $courseStats->published_courses ?? 0 }} publiés</small>
-            </div>
-        </article>
-        <article class="admin-card">
-            <div class="analytics-metric">
-                <span>Étudiants inscrits</span>
-                <strong>{{ number_format($courseStats->total_students ?? 0) }}</strong>
-                <small>Sur l’ensemble de vos formations</small>
-            </div>
-        </article>
-        <article class="admin-card">
-            <div class="analytics-metric">
-                <span>Note moyenne</span>
-                <strong>{{ number_format($courseStats->average_rating ?? 0, 1) }}/5</strong>
-                <small>{{ number_format($totalReviews) }} avis reçus</small>
-            </div>
-        </article>
-        <article class="admin-card">
-            <div class="analytics-metric">
-                <span>Revenus estimés (30 j)</span>
-                <strong>{{ $estimatedRevenue }}</strong>
-                <small>Calcul basé sur vos ventes confirmées</small>
-            </div>
-        </article>
-    </section>
+    <div class="admin-stats-grid">
+        <div class="admin-stat-card">
+            <p class="admin-stat-card__label">Total de cours</p>
+            <p class="admin-stat-card__value">{{ $courseStats->total_courses ?? 0 }}</p>
+            <p class="admin-stat-card__muted">{{ $courseStats->published_courses ?? 0 }} publiés</p>
+        </div>
+        <div class="admin-stat-card">
+            <p class="admin-stat-card__label">Étudiants inscrits</p>
+            <p class="admin-stat-card__value">{{ number_format($courseStats->total_students ?? 0) }}</p>
+            <p class="admin-stat-card__muted">Sur l'ensemble de vos formations</p>
+        </div>
+        <div class="admin-stat-card">
+            <p class="admin-stat-card__label">Note moyenne</p>
+            <p class="admin-stat-card__value">{{ number_format($courseStats->average_rating ?? 0, 1) }}/5</p>
+            <p class="admin-stat-card__muted">{{ number_format($totalReviews) }} avis reçus</p>
+        </div>
+        <div class="admin-stat-card">
+            <p class="admin-stat-card__label">Revenus estimés (30 j)</p>
+            <p class="admin-stat-card__value">{{ $estimatedRevenue }}</p>
+            <p class="admin-stat-card__muted">Calcul basé sur vos ventes confirmées</p>
+        </div>
+    </div>
 
-    <section class="dashboard-columns">
-        <article class="admin-card dashboard-columns__main">
-            <div class="admin-card__header">
-                <div>
-                    <h2 class="admin-card__title">Évolution des inscriptions</h2>
-                    <p class="admin-card__subtitle">Nombre d’étudiants inscrits par mois.</p>
-                </div>
-            </div>
+    <article class="admin-panel">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-chart-line me-2"></i>Évolution des inscriptions
+            </h3>
+        </div>
+        <div class="admin-panel__body">
             <div class="analytics-chart">
                 <canvas id="enrollments-chart" height="280"></canvas>
                 @if($enrollmentsByMonth->isEmpty())
                     <div class="analytics-empty">Pas encore de données suffisantes pour afficher une courbe.</div>
                 @endif
             </div>
-        </article>
-        <aside class="dashboard-columns__side">
-            <article class="admin-card">
-                <div class="admin-card__header">
-                    <div>
-                        <h2 class="admin-card__title">Cours les plus performants</h2>
-                        <p class="admin-card__subtitle">Top 5 selon le nombre d’inscriptions.</p>
-                    </div>
-                </div>
-                <ul class="analytics-top">
-                    @forelse($popularCourses as $course)
-                        <li class="analytics-top__item">
-                            <div>
-                                <strong>{{ $course->title }}</strong>
-                                <span>{{ number_format($course->enrollments_count) }} étudiants</span>
-                            </div>
-                            <div class="analytics-top__stats">
-                                <span><i class="fas fa-star"></i> {{ number_format($course->reviews_avg_rating ?? 0, 1) }}</span>
-                                <a href="{{ route('instructor.courses.edit', $course) }}" class="btn btn-outline-primary btn-sm">Gérer</a>
-                            </div>
-                        </li>
-                    @empty
-                        <li class="analytics-top__empty">Publiez plusieurs cours pour voir vos statistiques détaillées.</li>
-                    @endforelse
-                </ul>
-            </article>
+        </div>
+    </article>
 
-            <article class="admin-card">
-                <div class="admin-card__header">
-                    <div>
-                        <h2 class="admin-card__title">À explorer</h2>
-                        <p class="admin-card__subtitle">Conseils personnalisés pour améliorer vos performances.</p>
-                    </div>
-                </div>
-                <ul class="analytics-insights">
-                    @foreach($insights as $insight)
-                        <li class="analytics-insights__item">
-                            <span class="analytics-insights__badge {{ $insight['type'] }}">{{ ucfirst($insight['type']) }}</span>
-                            <div>
-                                <strong>{{ $insight['title'] }}</strong>
-                                <p>{{ $insight['description'] }}</p>
-                            </div>
-                        </li>
-                    @endforeach
-                </ul>
-            </article>
-        </aside>
-    </section>
+    <article class="admin-panel">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-trophy me-2"></i>Cours les plus performants
+            </h3>
+        </div>
+        <div class="admin-panel__body">
+            <ul class="analytics-top">
+                @forelse($popularCourses as $course)
+                    <li class="analytics-top__item">
+                        <div>
+                            <strong>{{ $course->title }}</strong>
+                            <span>{{ number_format($course->enrollments_count) }} étudiants</span>
+                        </div>
+                        <div class="analytics-top__stats">
+                            <span><i class="fas fa-star"></i> {{ number_format($course->reviews_avg_rating ?? 0, 1) }}</span>
+                            <a href="{{ route('instructor.courses.edit', $course) }}" class="admin-btn outline sm">Gérer</a>
+                        </div>
+                    </li>
+                @empty
+                    <li class="analytics-top__empty">Publiez plusieurs cours pour voir vos statistiques détaillées.</li>
+                @endforelse
+            </ul>
+        </div>
+    </article>
+
+    <article class="admin-panel">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-lightbulb me-2"></i>À explorer
+            </h3>
+        </div>
+        <div class="admin-panel__body">
+            <ul class="analytics-insights">
+                @foreach($insights as $insight)
+                    <li class="analytics-insights__item">
+                        <span class="analytics-insights__badge {{ $insight['type'] }}">{{ ucfirst($insight['type']) }}</span>
+                        <div>
+                            <strong>{{ $insight['title'] }}</strong>
+                            <p>{{ $insight['description'] }}</p>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    </article>
 @endsection
 
 @push('styles')
 <style>
-    .analytics-metric {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-    .analytics-metric span {
-        font-size: 0.82rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #64748b;
-        font-weight: 700;
-    }
-    .analytics-metric strong {
-        font-size: 1.9rem;
-        color: #0f172a;
-    }
-    .analytics-metric small {
-        color: #94a3b8;
-    }
     .analytics-chart {
-        padding: 0 1.5rem 1.5rem;
+        padding: 0;
     }
     .analytics-empty {
         margin-top: 1rem;
@@ -139,7 +112,7 @@
     }
     .analytics-top {
         list-style: none;
-        padding: 0 1.5rem 1.5rem;
+        padding: 0;
         margin: 0;
         display: flex;
         flex-direction: column;
@@ -181,7 +154,7 @@
     .analytics-insights {
         list-style: none;
         margin: 0;
-        padding: 0 1.5rem 1.5rem;
+        padding: 0;
         display: flex;
         flex-direction: column;
         gap: 0.9rem;
@@ -223,6 +196,40 @@
         margin: 0;
         color: #64748b;
         font-size: 0.88rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .analytics-chart {
+            padding: 0;
+        }
+
+        .analytics-top__item {
+            padding: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        .analytics-top__stats {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .analytics-top__stats .admin-btn {
+            width: 100%;
+        }
+
+        .analytics-insights__item {
+            padding: 0.75rem;
+            gap: 0.65rem;
+        }
+
+        .analytics-empty {
+            padding: 1rem;
+        }
+
+        .analytics-top__empty {
+            padding: 1rem;
+        }
     }
 </style>
 @endpush

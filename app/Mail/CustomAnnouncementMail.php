@@ -71,3 +71,4 @@ class CustomAnnouncementMail extends Mailable
     }
 }
 
+

@@ -386,10 +386,53 @@
     border: 1px solid rgba(148, 163, 184, 0.18);
     background: #040913;
     margin-bottom: clamp(0.75rem, 0.6rem + 0.6vw, 1.2rem);
+    /* Fixer la taille du conteneur pour qu'il garde toujours la même taille */
+    aspect-ratio: 16 / 9 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 450px !important;
+    max-height: 600px !important;
 }
 
 .player-shell .ratio {
-    width: 100%;
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    padding-bottom: 0 !important; /* Désactiver le padding-bottom du ratio Bootstrap */
+}
+
+/* S'assurer que les lecteurs vidéo remplissent le conteneur sans changer sa taille */
+.player-shell .plyr-player-wrapper,
+.player-shell .plyr-player-container,
+.player-shell video,
+.player-shell .plyr__video-embed,
+.player-shell iframe {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+}
+
+/* S'assurer que les messages par défaut (pas de vidéo) respectent aussi la taille fixe */
+.player-shell .text-center,
+.player-shell .d-flex.flex-column.align-items-center,
+.player-shell .d-flex.align-items-center.justify-content-center {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 450px !important;
 }
 
 .lesson-cta-row {
@@ -763,6 +806,21 @@
 
     .player-shell {
         margin-bottom: 1rem;
+        min-height: 300px !important;
+        max-height: 400px !important;
+        aspect-ratio: 16 / 9 !important;
+    }
+    
+    /* S'assurer que les vidéos s'adaptent sur mobile */
+    .player-shell .plyr-player-wrapper,
+    .player-shell .plyr-player-container,
+    .player-shell video,
+    .player-shell .plyr__video-embed,
+    .player-shell iframe {
+        position: absolute !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important;
     }
 
     .lesson-cta-row {
@@ -1096,7 +1154,16 @@
     }
 
     .player-shell .ratio {
-        position: relative;
+        position: absolute !important;
+        width: 100% !important;
+        height: 100% !important;
+        padding-bottom: 0 !important;
+    }
+    
+    /* S'assurer que le conteneur garde une taille fixe sur tablette */
+    .player-shell {
+        min-height: 400px !important;
+        max-height: 550px !important;
     }
 
     .player-shell .text-viewer-container .text-content {
@@ -1800,6 +1867,43 @@
     font-size: 0.5rem !important;
 }
 
+/* Options de vitesse (4x, 2x, 1.75x, etc.) - taille ultra réduite */
+.plyr__menu__container .plyr__control[role="menuitemradio"] span,
+.plyr__menu__container .plyr__control[role="menuitem"] span {
+    font-size: 0.45rem !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    letter-spacing: -0.3px !important; /* Réduire l'espacement entre les lettres */
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Cibler spécifiquement les options de vitesse (qui contiennent "x" ou des nombres décimaux) */
+.plyr__menu__container .plyr__control[role="menuitemradio"] span:not(:empty),
+.plyr__menu__container .plyr__control[role="menuitem"] span:not(:empty) {
+    font-size: 0.4rem !important;
+    transform: scale(0.85) !important; /* Réduire encore plus via scale */
+}
+
+/* Réduire drastiquement la taille des options de vitesse (4x, 2x, 1.75x, etc.) */
+.plyr__menu__container .plyr__control[role="menuitemradio"] span,
+.plyr__menu__container .plyr__control[role="menuitem"] span {
+    font-size: 0.45rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+}
+
+/* Options de vitesse spécifiquement - taille ultra réduite */
+.plyr__menu__container .plyr__control span:contains('x'),
+.plyr__menu__container .plyr__control[aria-label*='x'] span {
+    font-size: 0.4rem !important;
+}
+
+/* Tooltips en français - forcer via CSS si possible */
+.plyr__tooltip {
+    font-size: 0.75rem !important;
+}
+
 /* Bouton settings */
 .plyr__control[data-plyr="settings"] {
     color: #fff !important;
@@ -1809,7 +1913,14 @@
     color: #ffcc33 !important;
 }
 
-/* Bouton play central - s'assurer qu'il est rond sur tous les écrans */
+/* Sur desktop : réduire l'espacement sous le lecteur */
+@media (min-width: 992px) {
+    .player-shell.mb-4 {
+        margin-bottom: 1rem !important; /* Réduit de 1.5rem (mb-4) à 1rem sur desktop */
+    }
+}
+
+/* Bouton play central - s'assurer qu'il est rond et centré sur tous les écrans */
 .plyr__control--overlaid,
 .plyr__control.plyr__control--overlaid {
     border-radius: 50% !important;
@@ -1822,6 +1933,11 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 10 !important;
 }
 
 /* Icône play à l'intérieur du bouton central */
@@ -1842,7 +1958,79 @@
 
 /* Styles pour le lecteur Plyr sur mobile */
 @media (max-width: 991.98px) {
-    /* Bouton play central - rond sur mobile */
+    /* Barre de contrôles Plyr - adapter pour mobile */
+    .plyr__controls {
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+    }
+    
+    /* Boutons de contrôle - taille adaptée pour mobile */
+    .plyr__control {
+        padding: 6px !important;
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 4px !important;
+    }
+    
+    /* Icônes dans les boutons - taille réduite pour mobile */
+    .plyr__control svg {
+        width: 16px !important;
+        height: 16px !important;
+    }
+    
+    .plyr__control .plyr__icon {
+        width: 16px !important;
+        height: 16px !important;
+        font-size: 16px !important;
+    }
+    
+    /* Contrôle de volume - adapté pour mobile */
+    .plyr__volume {
+        min-width: 60px !important;
+    }
+    
+    .plyr__volume input[type="range"] {
+        height: 4px !important;
+    }
+    
+    /* Éléments de contrôle individuels */
+    .plyr__controls__item {
+        margin: 0 2px !important;
+    }
+    
+    /* Bouton fullscreen */
+    .plyr__control[data-plyr="fullscreen"],
+    .plyr__control[data-plyr="pip"] {
+        padding: 6px !important;
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+    }
+    
+    /* Affichage du temps - taille réduite pour mobile */
+    .plyr__time {
+        font-size: 11px !important;
+        padding: 0 4px !important;
+    }
+    
+    /* Barre de progression - taille réduite pour mobile */
+    .plyr__progress {
+        height: 4px !important;
+    }
+    
+    .plyr__progress__buffer,
+    .plyr__progress__played {
+        height: 4px !important;
+    }
+    
+    /* Tooltip - taille adaptée pour mobile */
+    .plyr__tooltip {
+        font-size: 10px !important;
+        padding: 4px 6px !important;
+    }
+    
+    /* Bouton play central - parfaitement rond et centré sur mobile (cercle, pas ovale) */
     .plyr__control--overlaid,
     .plyr__control.plyr__control--overlaid {
         border-radius: 50% !important;
@@ -1852,6 +2040,22 @@
         min-height: 70px !important;
         max-width: 70px !important;
         max-height: 70px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        aspect-ratio: 1 / 1 !important; /* Force un cercle parfait */
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important; /* Centre le bouton */
+        z-index: 10 !important;
+        scale: 1 !important;
     }
     
     /* Icône play à l'intérieur du bouton central sur mobile */
@@ -1861,6 +2065,8 @@
         height: 35px !important;
         min-width: 35px !important;
         min-height: 35px !important;
+        max-width: 35px !important;
+        max-height: 35px !important;
     }
     
     .plyr__control--overlaid .plyr__icon,
@@ -1868,6 +2074,7 @@
         width: 35px !important;
         height: 35px !important;
         font-size: 35px !important;
+        line-height: 1 !important;
     }
     /* Réduire la taille des items de settings sur mobile */
     .plyr__menu__container {
@@ -1932,22 +2139,76 @@
 }
 
 @media (max-width: 767.98px) {
-    /* Réduire encore plus sur tablette */
+    /* Barre de contrôles Plyr - encore plus réduite sur tablette */
+    .plyr__controls {
+        padding: 6px 8px !important;
+        font-size: 11px !important;
+    }
+    
+    /* Boutons de contrôle - taille réduite sur tablette */
+    .plyr__control {
+        padding: 5px !important;
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+    }
+    
+    /* Icônes dans les boutons - taille réduite sur tablette */
+    .plyr__control svg {
+        width: 14px !important;
+        height: 14px !important;
+    }
+    
+    .plyr__control .plyr__icon {
+        width: 14px !important;
+        height: 14px !important;
+        font-size: 14px !important;
+    }
+    
+    /* Contrôle de volume - adapté pour tablette */
+    .plyr__volume {
+        min-width: 50px !important;
+    }
+    
+    /* Affichage du temps - taille réduite sur tablette */
+    .plyr__time {
+        font-size: 10px !important;
+        padding: 0 3px !important;
+    }
+    
+    /* Tooltip - taille adaptée pour tablette */
+    .plyr__tooltip {
+        font-size: 9px !important;
+        padding: 3px 5px !important;
+    }
+    
+    /* Réduire encore plus sur tablette - taille de police réduite pour les paramètres */
     .plyr__menu__container {
-        font-size: 0.45rem !important;
-        min-width: 80px !important;
-        max-width: 110px !important;
-        padding: 0.15rem 0 !important;
+        font-size: 0.5rem !important; /* Taille réduite pour mobile */
+        min-width: 70px !important;
+        max-width: 95px !important;
+        padding: 0.1rem 0 !important;
     }
     
     .plyr__menu__container .plyr__control {
-        padding: 0.15rem 0.35rem !important;
-        font-size: 0.45rem !important;
+        padding: 0.2rem 0.35rem !important;
+        font-size: 0.5rem !important; /* Taille réduite pour mobile */
         line-height: 1.1 !important;
+        min-height: 22px !important;
     }
     
     .plyr__menu__container .plyr__control span {
-        font-size: 0.45rem !important;
+        font-size: 0.5rem !important; /* Taille réduite pour mobile */
+        white-space: nowrap !important;
+    }
+    
+    /* Options de vitesse - taille ultra réduite sur tablette */
+    .plyr__menu__container .plyr__control[role="menuitemradio"] span,
+    .plyr__menu__container .plyr__control[role="menuitem"] span {
+        font-size: 0.4rem !important;
+        transform: scale(0.85) !important; /* Réduire encore plus via scale */
+        letter-spacing: -0.3px !important;
+        padding: 0 !important;
     }
     
     /* Bouton play central - rond sur tablette */
@@ -1985,23 +2246,137 @@
         padding-top: 0 !important;
     }
     
-    /* Réduire encore plus les items de settings sur très petit mobile */
+    /* Barre de contrôles Plyr - taille minimale pour très petit mobile */
+    .plyr__controls {
+        padding: 5px 6px !important;
+        font-size: 10px !important;
+    }
+    
+    /* Boutons de contrôle - taille minimale pour très petit mobile */
+    .plyr__control {
+        padding: 4px !important;
+        min-width: 24px !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    /* Icônes dans les boutons - taille minimale pour très petit mobile */
+    .plyr__control svg {
+        width: 12px !important;
+        height: 12px !important;
+    }
+    
+    .plyr__control .plyr__icon {
+        width: 12px !important;
+        height: 12px !important;
+        font-size: 12px !important;
+    }
+    
+    /* Contrôle de volume - taille minimale pour très petit mobile */
+    .plyr__volume {
+        min-width: 40px !important;
+    }
+    
+    .plyr__volume input[type="range"] {
+        height: 3px !important;
+    }
+    
+    /* Éléments de contrôle individuels - très petit mobile */
+    .plyr__controls__item {
+        margin: 0 1px !important;
+    }
+    
+    /* Bouton fullscreen - très petit mobile */
+    .plyr__control[data-plyr="fullscreen"],
+    .plyr__control[data-plyr="pip"] {
+        padding: 4px !important;
+        min-width: 24px !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    /* Affichage du temps - taille minimale pour très petit mobile */
+    .plyr__time {
+        font-size: 9px !important;
+        padding: 0 2px !important;
+    }
+    
+    /* Barre de progression - taille minimale pour très petit mobile */
+    .plyr__progress {
+        height: 3px !important;
+    }
+    
+    .plyr__progress__buffer,
+    .plyr__progress__played {
+        height: 3px !important;
+    }
+    
+    /* Tooltip - taille minimale pour très petit mobile */
+    .plyr__tooltip {
+        font-size: 8px !important;
+        padding: 2px 4px !important;
+    }
+    
+    /* Bouton play central - taille réduite pour très petit mobile, parfaitement rond et centré */
+    .plyr__control--overlaid,
+    .plyr__control.plyr__control--overlaid {
+        border-radius: 50% !important;
+        width: 50px !important;
+        height: 50px !important;
+        min-width: 50px !important;
+        min-height: 50px !important;
+        max-width: 50px !important;
+        max-height: 50px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        aspect-ratio: 1 / 1 !important; /* Force un cercle parfait */
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important; /* Centre le bouton */
+        z-index: 10 !important;
+    }
+    
+    /* Icône play à l'intérieur du bouton central sur très petit mobile */
+    .plyr__control--overlaid svg,
+    .plyr__control.plyr__control--overlaid svg {
+        width: 25px !important;
+        height: 25px !important;
+        min-width: 25px !important;
+        min-height: 25px !important;
+        max-width: 25px !important;
+        max-height: 25px !important;
+    }
+    
+    .plyr__control--overlaid .plyr__icon,
+    .plyr__control.plyr__control--overlaid .plyr__icon {
+        width: 25px !important;
+        height: 25px !important;
+        font-size: 25px !important;
+        line-height: 1 !important;
+    }
+    
+    /* Items de settings sur très petit mobile - taille ultra réduite pour mobile */
     .plyr__menu__container {
-        font-size: 0.4rem !important;
-        min-width: 70px !important;
-        max-width: 100px !important;
+        font-size: 0.45rem !important; /* Taille ultra réduite pour mobile */
+        min-width: 60px !important;
+        max-width: 85px !important;
         padding: 0.1rem 0 !important;
         background-color: #001a33 !important; /* Bleu très sombre */
         border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        border-radius: 3px !important;
+        border-radius: 4px !important;
     }
     
     .plyr__menu__container .plyr__control {
-        padding: 0.1rem 0.3rem !important;
+        padding: 0.15rem 0.3rem !important;
         margin: 0 !important;
-        font-size: 0.4rem !important;
+        font-size: 0.45rem !important; /* Taille ultra réduite pour mobile */
         line-height: 1.1 !important;
-        min-height: auto !important;
+        min-height: 20px !important;
         height: auto !important;
     }
     
@@ -2033,7 +2408,18 @@
     
     .plyr__menu__container .plyr__control span {
         color: inherit !important;
-        font-size: 0.4rem !important;
+        font-size: 0.45rem !important; /* Taille ultra réduite pour mobile */
+        white-space: nowrap !important;
+    }
+    
+    /* Options de vitesse - taille ultra réduite sur très petit mobile */
+    .plyr__menu__container .plyr__control[role="menuitemradio"] span,
+    .plyr__menu__container .plyr__control[role="menuitem"] span {
+        font-size: 0.35rem !important; /* Taille encore plus petite pour les vitesses */
+        transform: scale(0.8) !important; /* Réduire drastiquement via scale */
+        letter-spacing: -0.5px !important; /* Réduire l'espacement entre les lettres */
+        padding: 0 !important;
+        margin: 0 !important;
     }
     
     /* Bouton play central - rond sur très petit mobile */
@@ -3676,5 +4062,95 @@ if (document.getElementById('tab-notes')?.classList.contains('active')) {
     loadNotes();
 }
 @endisset
+
+// Script global pour forcer les tooltips Plyr en français
+(function() {
+    'use strict';
+    
+    let isUpdatingTooltips = false; // Flag pour éviter les boucles infinies
+    
+    // Fonction pour mettre à jour tous les tooltips en français
+    function updateAllPlyrTooltips() {
+        if (isUpdatingTooltips) return; // Éviter les appels simultanés
+        isUpdatingTooltips = true;
+        
+        try {
+            const tooltipMap = {
+                'Play': 'Lire',
+                'Pause': 'Pause',
+                'Restart': 'Redémarrer',
+                'Rewind': 'Rembobiner',
+                'Fast forward': 'Avance rapide',
+                'Mute': 'Couper le son',
+                'Unmute': 'Activer le son',
+                'Volume': 'Volume',
+                'Enter fullscreen': 'Plein écran',
+                'Exit fullscreen': 'Quitter le plein écran',
+                'Settings': 'Paramètres',
+                'Picture in picture': 'Image dans l\'image',
+                'Download': 'Télécharger',
+                'Captions': 'Sous-titres',
+                'Enable captions': 'Activer les sous-titres',
+                'Disable captions': 'Désactiver les sous-titres',
+                'Quality': 'Qualité',
+                'Speed': 'Vitesse',
+                'Normal': 'Normal'
+            };
+            
+            // Mettre à jour tous les boutons Plyr (seulement si pas déjà en français)
+            document.querySelectorAll('.plyr__control[data-plyr]').forEach(function(control) {
+                const ariaLabel = control.getAttribute('aria-label');
+                if (ariaLabel && tooltipMap[ariaLabel] && ariaLabel !== tooltipMap[ariaLabel]) {
+                    control.setAttribute('aria-label', tooltipMap[ariaLabel]);
+                    control.setAttribute('title', tooltipMap[ariaLabel]);
+                }
+            });
+            
+            // Mettre à jour tous les tooltips générés par Plyr (seulement si pas déjà en français)
+            document.querySelectorAll('.plyr__tooltip').forEach(function(tooltip) {
+                const text = tooltip.textContent.trim();
+                for (const [key, value] of Object.entries(tooltipMap)) {
+                    if (text === key && text !== value) {
+                        tooltip.textContent = value;
+                        break;
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Erreur lors de la mise à jour des tooltips:', e);
+        } finally {
+            isUpdatingTooltips = false;
+        }
+    }
+    
+    // Exécuter quand le DOM est prêt
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(updateAllPlyrTooltips, 500);
+        });
+    } else {
+        setTimeout(updateAllPlyrTooltips, 500);
+    }
+    
+    // Observer les changements du DOM pour mettre à jour les tooltips quand ils apparaissent (avec debounce)
+    let tooltipUpdateTimeout;
+    const observer = new MutationObserver(function() {
+        clearTimeout(tooltipUpdateTimeout);
+        tooltipUpdateTimeout = setTimeout(updateAllPlyrTooltips, 100);
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false // Ne pas observer les attributs pour éviter les boucles
+    });
+    
+    // Mettre à jour aussi quand les menus s'ouvrent
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.plyr__control[data-plyr="settings"]')) {
+            setTimeout(updateAllPlyrTooltips, 100);
+        }
+    });
+})();
 </script>
 @endpush

@@ -15,6 +15,50 @@ use Illuminate\Support\Carbon;
 
 class Course extends Model
 {
+    /**
+     * Résoudre le binding de route pour les routes publiques
+     * Ne retourner que les cours publiés pour les routes publiques
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $route = request()->route();
+        $routeName = $route ? $route->getName() : null;
+        $routeUri = $route ? $route->uri() : '';
+        
+        // Si on est dans une route admin ou instructor, ne pas filtrer et utiliser l'ID
+        $isAdminRoute = $routeName && (
+            str_starts_with($routeName, 'admin.') || 
+            str_contains($routeName, 'admin')
+        );
+        $isInstructorRoute = $routeName && (
+            str_starts_with($routeName, 'instructor.') ||
+            str_contains($routeName, 'instructor')
+        );
+        $isAdminPath = str_contains(request()->path(), '/admin/') || str_contains(request()->path(), 'admin/');
+        $isInstructorPath = str_contains(request()->path(), '/instructor/') || str_contains(request()->path(), 'instructor/');
+        
+        if ($isAdminRoute || $isInstructorRoute || $isAdminPath || $isInstructorPath) {
+            // Pour les routes admin/instructor, utiliser l'ID si c'est numérique, sinon le slug
+            if (is_numeric($value)) {
+                return static::where('id', $value)->firstOrFail();
+            }
+            return static::where('slug', $value)->firstOrFail();
+        }
+        
+        // Pour les routes publiques, utiliser le slug et ne retourner que les cours publiés
+        $field = $field ?? $this->getRouteKeyName();
+        return static::where($field, $value)
+            ->where('is_published', true)
+            ->firstOrFail();
+    }
+
+    /**
+     * Obtenir le nom de la clé de route (slug)
+     */
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
     protected $fillable = [
         'instructor_id',
         'category_id',
@@ -652,61 +696,27 @@ class Course extends Model
         
         switch ($state) {
             case 'enrolled':
-                // Si le cours est téléchargeable ET que l'utilisateur a payé, afficher uniquement le bouton tableau de bord
-                if ($this->is_downloadable && $userId) {
-                    $hasPurchased = false;
-                    if (!$this->is_free) {
-                        $hasPurchased = \App\Models\Order::where('user_id', $userId)
-                            ->where('status', 'paid')
-                            ->whereHas('orderItems', function($query) {
-                                $query->where('course_id', $this->id);
-                            })
-                            ->exists();
-                    } else {
-                        // Pour les cours gratuits, considérer comme "payé" si l'utilisateur est inscrit
-                        $hasPurchased = true;
-                    }
-                    
-                    if ($hasPurchased) {
-                        return [
-                            'type' => 'link',
-                            'url' => route('student.dashboard'),
-                            'class' => 'btn btn-primary',
-                            'text' => 'Accéder au tableau de bord',
-                            'icon' => 'fas fa-tachometer-alt'
-                        ];
-                    }
-                }
-                
-                // Si le cours est téléchargeable mais non payé, proposer deux options : apprentissage ou téléchargement
+                // Si le cours est téléchargeable, afficher le bouton "Télécharger"
                 if ($this->is_downloadable) {
                     return [
-                        'type' => 'buttons',
-                        'buttons' => [
-                            [
-                                'type' => 'link',
-                                'url' => route('learning.course', $this->slug),
-                                'class' => 'btn btn-success',
-                                'text' => 'Apprendre',
-                                'icon' => 'fas fa-play'
-                            ],
-                            [
-                                'type' => 'link',
-                                'url' => route('student.courses'),
-                                'class' => 'btn btn-outline-primary',
-                                'text' => 'Tableau de bord',
-                                'icon' => 'fas fa-th-large'
-                            ]
-                        ]
+                        'type' => 'link',
+                        'url' => route('courses.download', $this->slug),
+                        'class' => 'btn btn-primary',
+                        'text' => 'Télécharger',
+                        'icon' => 'fas fa-download'
                     ];
                 }
                 
-                // Sinon, juste le bouton pour accéder au cours
+                // Pour les cours non téléchargeables, afficher "Commencer" ou "Continuer" selon la progression
+                $enrollment = $this->getEnrollmentFor($userId);
+                $progress = $enrollment ? ($enrollment->progress ?? 0) : 0;
+                $buttonText = $progress > 0 ? 'Continuer' : 'Commencer';
+                
                 return [
                     'type' => 'link',
                     'url' => route('learning.course', $this->slug),
                     'class' => 'btn btn-success',
-                    'text' => 'Apprendre',
+                    'text' => $buttonText,
                     'icon' => 'fas fa-play'
                 ];
                 
@@ -717,7 +727,7 @@ class Course extends Model
                         'type' => 'form',
                         'action' => route('student.courses.enroll', $this->slug),
                         'class' => 'btn btn-primary',
-                        'text' => 'S\'inscrire au cours',
+                        'text' => 'S\'inscrire',
                         'icon' => 'fas fa-user-plus'
                     ];
                 }
@@ -727,21 +737,22 @@ class Course extends Model
                     'type' => 'form',
                     'action' => route('student.courses.enroll', $this->slug),
                     'class' => 'btn btn-primary',
-                    'text' => 'S\'inscrire au cours',
+                    'text' => 'S\'inscrire',
                     'icon' => 'fas fa-user-plus'
                 ];
                 
             case 'free':
-                // Pour les cours gratuits, proposer l'inscription directe
+                // Pour les cours gratuits non inscrits, afficher le bouton "S'inscrire" (bleu foncé)
                 return [
                     'type' => 'form',
                     'action' => route('student.courses.enroll', $this->slug),
                     'class' => 'btn btn-primary',
-                    'text' => 'S\'inscrire au cours',
+                    'text' => 'S\'inscrire',
                     'icon' => 'fas fa-user-plus'
                 ];
                 
             case 'purchase':
+                // Pour les cours payants non inscrits, afficher 2 boutons : "Ajouter au panier" et "Procéder au paiement"
                 return [
                     'type' => 'buttons',
                     'buttons' => [
@@ -754,7 +765,7 @@ class Course extends Model
                         ],
                         [
                             'type' => 'button',
-                            'class' => 'btn btn-success',
+                            'class' => 'btn btn-primary',
                             'text' => 'Procéder au paiement',
                             'icon' => 'fas fa-credit-card',
                             'onclick' => 'proceedToCheckout(' . $this->id . ')'

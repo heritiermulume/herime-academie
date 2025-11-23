@@ -17,6 +17,11 @@ class DownloadController extends Controller
      */
     public function course(Course $course)
     {
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            abort(404, 'Ce cours n\'est pas disponible.');
+        }
+
         // Vérifier si l'utilisateur est connecté
         if (!Auth::check()) {
             return redirect()->route('login')->with('error', 'Vous devez être connecté pour télécharger ce cours.');
@@ -216,6 +221,11 @@ class DownloadController extends Controller
      */
     public function lesson(Course $course, CourseLesson $lesson)
     {
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            abort(404, 'Ce cours n\'est pas disponible.');
+        }
+
         // Vérifier si l'utilisateur est connecté
         if (!Auth::check()) {
             return redirect()->route('login')->with('error', 'Vous devez être connecté pour télécharger ce fichier.');
@@ -282,20 +292,28 @@ class DownloadController extends Controller
         // Pour les cours payants, vérifier d'abord l'inscription
         $enrollment = $course->enrollments()
             ->where('user_id', $userId)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'completed'])
             ->first();
 
         if ($enrollment) {
-            // Si l'utilisateur est inscrit, vérifier que la commande associée est payée
+            // Si l'utilisateur est inscrit, il a accès au téléchargement
+            // Vérifier si la commande associée est payée (si elle existe)
             if ($enrollment->order_id) {
                 $order = $enrollment->order;
-                return $order && $order->status === 'paid';
+                // Si la commande existe et est payée, accès autorisé
+                if ($order && in_array($order->status, ['paid', 'completed'])) {
+                    return true;
+                }
+            } else {
+                // Si pas d'order_id mais enrollment existe, c'est probablement un cours gratuit ou inscription manuelle
+                // Autoriser l'accès
+                return true;
             }
         }
 
         // Si pas d'inscription, vérifier si l'utilisateur a acheté le cours via une commande payée
         $hasPurchased = \App\Models\Order::where('user_id', $userId)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($query) use ($course) {
                 $query->where('course_id', $course->id);
             })

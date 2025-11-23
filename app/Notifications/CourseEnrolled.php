@@ -7,7 +7,6 @@ use App\Mail\CourseEnrolledMail;
 use App\Services\EmailService;
 use App\Notifications\EmailSentNotification;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
 class CourseEnrolled extends Notification
@@ -50,12 +49,18 @@ class CourseEnrolled extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        // Charger les relations nécessaires si elles ne sont pas déjà chargées
+        if (!$this->course->relationLoaded('instructor')) {
+            $this->course->load('instructor');
+        }
+
         return [
             'course_id' => $this->course->id,
             'course_title' => $this->course->title,
             'course_slug' => $this->course->slug,
-            'instructor_name' => $this->course->instructor->name,
+            'instructor_name' => $this->course->instructor?->name ?? 'Instructeur inconnu',
             'message' => 'Vous êtes maintenant inscrit au cours : ' . $this->course->title,
+            'type' => 'course_enrolled',
         ];
     }
 }

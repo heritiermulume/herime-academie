@@ -56,3 +56,4 @@ Pour tester la configuration, vous pouvez utiliser une commande artisan ou simpl
 
 Le mot de passe contient des caractères spéciaux. Assurez-vous qu'il est bien entre guillemets dans le fichier `.env` si nécessaire.
 
+

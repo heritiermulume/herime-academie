@@ -272,8 +272,9 @@
                                             </td>
                                         </tr>
                                     @endforeach
-                                @elseif($order->order_items && count($order->order_items) > 0)
-                                    @foreach($order->order_items as $item)
+                                @elseif($order->orderItems && $order->orderItems->count() > 0)
+                                    @foreach($order->orderItems as $item)
+                                        @php($course = $item->course)
                                         <tr>
                                             <td>
                                                 <div class="d-flex align-items-center">
@@ -281,19 +282,19 @@
                                                         <i class="fas fa-play-circle fa-2x text-primary"></i>
                                                     </div>
                                                     <div>
-                                                        <h6 class="mb-1">{{ $item['course_title'] ?? 'Cours supprimé' }}</h6>
+                                                        <h6 class="mb-1">{{ $course->title ?? 'Cours supprimé' }}</h6>
                                                         <p class="text-muted mb-0 small">
-                                                            <i class="fas fa-user me-1"></i>{{ $item['instructor_name'] ?? 'Instructeur inconnu' }}
+                                                            <i class="fas fa-user me-1"></i>{{ $course->instructor->name ?? 'Instructeur inconnu' }}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td class="text-center">
-                                                <span class="badge bg-light text-dark">Quantité: {{ $item['quantity'] ?? 1 }}</span>
+                                                <span class="badge bg-light text-dark">Quantité: 1</span>
                                             </td>
                                             <td class="text-end">
                                                 <div class="fw-bold text-success">
-                                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['price'] ?? 0, $order->currency) }}
+                                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0, $order->currency) }}
                                                 </div>
                                             </td>
                                         </tr>

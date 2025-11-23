@@ -46,7 +46,7 @@ class CourseEnrolledMail extends Mailable
             view: 'emails.course-enrolled',
             with: [
                 'course' => $this->course,
-                'courseUrl' => route('student.courses.learn', $this->course->slug),
+                'courseUrl' => route('learning.course', $this->course->slug),
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],
         );
@@ -62,4 +62,5 @@ class CourseEnrolledMail extends Mailable
         return [];
     }
 }
+
 

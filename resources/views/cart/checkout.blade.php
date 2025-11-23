@@ -1223,10 +1223,6 @@ document.addEventListener('DOMContentLoaded', function() {
         margin-bottom: 20px;
     }
     
-    .maxicash-form,
-    .whatsapp-form {
-        width: 100%;
-    }
     
     .form-section {
         padding: 0;

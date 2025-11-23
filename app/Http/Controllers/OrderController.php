@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Enrollment;
 use App\Mail\InvoiceMail;
+use App\Notifications\PaymentReceived;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -22,7 +23,20 @@ class OrderController extends Controller
         $search = $request->get('q');
 
         $ordersQuery = Order::where('user_id', $user->id)
-            ->with(['enrollments.course'])
+            ->with([
+                'enrollments' => function($q) {
+                    $q->whereHas('course', function($q2) {
+                        $q2->where('is_published', true);
+                    });
+                },
+                'enrollments.course',
+                'orderItems' => function($q) {
+                    $q->whereHas('course', function($q2) {
+                        $q2->where('is_published', true);
+                    });
+                },
+                'orderItems.course'
+            ])
             ->latest();
 
         if ($status !== 'all') {
@@ -74,7 +88,22 @@ class OrderController extends Controller
             abort(403, 'Accès non autorisé à cette commande.');
         }
 
-        $order->load(['enrollments.course', 'user']);
+        $order->load([
+            'enrollments' => function($q) {
+                $q->whereHas('course', function($q2) {
+                    $q2->where('is_published', true);
+                });
+            },
+            'enrollments.course',
+            'user',
+            'orderItems' => function($q) {
+                $q->whereHas('course', function($q2) {
+                    $q2->where('is_published', true);
+                });
+            },
+            'orderItems.course.instructor',
+            'orderItems.course.category'
+        ]);
         
         return view('orders.show', compact('order'));
     }
@@ -140,7 +169,7 @@ class OrderController extends Controller
      */
     public function adminShow(Order $order)
     {
-        $order->load(['user', 'enrollments.course', 'orderItems.course']);
+        $order->load(['user', 'enrollments.course', 'orderItems.course.instructor', 'orderItems.course.category']);
         
         return view('admin.orders.show', compact('order'));
     }
@@ -176,38 +205,31 @@ class OrderController extends Controller
             ]);
 
             // Créer les inscriptions pour chaque cours (si pas déjà inscrit)
-            if (is_array($order->order_items)) {
-                foreach ($order->order_items as $item) {
-                    // Vérifier si l'utilisateur est déjà inscrit à ce cours
-                    $existingEnrollment = Enrollment::where('user_id', $order->user_id)
-                        ->where('course_id', $item['course_id'])
-                        ->first();
-                    
-                    if (!$existingEnrollment) {
-                        $enrollment = Enrollment::create([
-                            'user_id' => $order->user_id,
-                            'course_id' => $item['course_id'],
-                            'order_id' => $order->id,
-                            'status' => 'active',
-                            'enrolled_at' => now(),
-                        ]);
-
-                        // Envoyer l'email de confirmation d'inscription
-                        try {
-                            $course = \App\Models\Course::find($item['course_id']);
-                            if ($course && $order->user) {
-                                $order->user->notify(new \App\Notifications\CourseEnrolled($course));
-                            }
-                        } catch (\Exception $e) {
-                            \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
-                        }
-                    } else {
-                        // Mettre à jour l'inscription existante avec l'order_id
-                        $existingEnrollment->update([
-                            'order_id' => $order->id,
-                            'status' => 'active',
-                        ]);
-                    }
+            // Charger les orderItems si pas déjà chargés
+            if (!$order->relationLoaded('orderItems')) {
+                $order->load('orderItems');
+            }
+            
+            foreach ($order->orderItems as $item) {
+                // Vérifier si l'utilisateur est déjà inscrit à ce cours
+                $existingEnrollment = Enrollment::where('user_id', $order->user_id)
+                    ->where('course_id', $item->course_id)
+                    ->first();
+                
+                if (!$existingEnrollment) {
+                    // La méthode createAndNotify envoie automatiquement les notifications et emails
+                    $enrollment = Enrollment::createAndNotify([
+                        'user_id' => $order->user_id,
+                        'course_id' => $item->course_id,
+                        'order_id' => $order->id,
+                        'status' => 'active',
+                    ]);
+                } else {
+                    // Mettre à jour l'inscription existante avec l'order_id
+                    $existingEnrollment->update([
+                        'order_id' => $order->id,
+                        'status' => 'active',
+                    ]);
                 }
             }
 
@@ -236,16 +258,37 @@ class OrderController extends Controller
 
         $order->update([
             'status' => 'paid',
-            'payment_reference' => $request->payment_reference,
-            'notes' => $request->notes,
+            'payment_reference' => $request->payment_reference ?? $order->payment_reference,
+            'notes' => $request->notes ?? $order->notes,
             'paid_at' => now(),
         ]);
 
+        // Charger les relations nécessaires pour les emails et notifications
+        $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+
+        // Envoyer la notification de confirmation de paiement
+        try {
+            if ($order->user) {
+                // Vérifier si la notification n'a pas déjà été envoyée
+                $alreadyNotified = $order->user->notifications()
+                    ->where('type', PaymentReceived::class)
+                    ->where('data->order_id', $order->id)
+                    ->exists();
+
+                if (!$alreadyNotified) {
+                    $order->user->notify(new PaymentReceived($order));
+                    \Log::info("Notification de confirmation de paiement envoyée pour la commande {$order->order_number}");
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi de la notification de confirmation de paiement pour la commande {$order->id}: " . $e->getMessage());
+        }
+
         // Envoyer la facture par email
         try {
-            $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
             if ($order->user && $order->user->email) {
                 Mail::to($order->user->email)->send(new InvoiceMail($order));
+                \Log::info("Facture envoyée pour la commande {$order->order_number}");
             }
         } catch (\Exception $e) {
             \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
@@ -480,7 +523,6 @@ class OrderController extends Controller
             'paypal' => 'PayPal',
             'mobile' => 'Mobile Money',
             'bank' => 'Virement bancaire',
-            'whatsapp' => 'WhatsApp',
             default => ucfirst($method ?? 'Non défini')
         };
     }

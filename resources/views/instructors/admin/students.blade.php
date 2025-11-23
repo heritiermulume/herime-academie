@@ -4,27 +4,33 @@
 @section('admin-subtitle', 'Analysez l’engagement de vos apprenants, contactez-les et suivez leur progression globale.')
 
 @section('admin-actions')
-    <a href="{{ url('/instructor/courses') }}" class="btn btn-outline-primary">
+    <a href="{{ url('/instructor/courses') }}" class="admin-btn outline">
         <i class="fas fa-chalkboard me-2"></i>Gérer mes cours
     </a>
 @endsection
 
 @section('admin-content')
-    <section class="admin-card">
-        <div class="students-summary">
-            <div class="students-summary__item">
-                <span>Total d’inscriptions</span>
-                <strong>{{ number_format($enrollments->total()) }}</strong>
-            </div>
-            <div class="students-summary__item">
-                <span>Progression moyenne</span>
-                <strong>{{ number_format($averageProgress, 1) }}%</strong>
-            </div>
-            <div class="students-summary__item">
-                <span>Étudiants actifs (30 j)</span>
-                <strong>{{ number_format($activeStudents) }}</strong>
-            </div>
+    <section class="admin-panel">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-users me-2"></i>Étudiants & progrès
+            </h3>
         </div>
+        <div class="admin-panel__body">
+            <div class="admin-stats-grid">
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Total d'inscriptions</p>
+                    <p class="admin-stat-card__value">{{ number_format($enrollments->total()) }}</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Progression moyenne</p>
+                    <p class="admin-stat-card__value">{{ number_format($averageProgress, 1) }}%</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Étudiants actifs (30 j)</p>
+                    <p class="admin-stat-card__value">{{ number_format($activeStudents) }}</p>
+                </div>
+            </div>
 
         <div class="students-table">
             <div class="students-table__head">
@@ -60,7 +66,7 @@
                     </div>
                     <div data-label="Inscription">{{ $enrollment->created_at->format('d/m/Y H:i') }}</div>
                     <div class="text-end">
-                        <a href="{{ route('courses.show', $enrollment->course?->slug) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                        <a href="{{ route('courses.show', $enrollment->course?->slug) }}" class="admin-btn outline sm" target="_blank">
                             <i class="fas fa-eye"></i>
                         </a>
                     </div>
@@ -73,39 +79,19 @@
             @endforelse
         </div>
 
-        <div class="mt-3">
-            {{ $enrollments->links() }}
+            <div class="mt-3">
+                {{ $enrollments->links() }}
+            </div>
         </div>
     </section>
 @endsection
 
 @push('styles')
 <style>
-    .students-summary {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 1rem;
+    .admin-stats-grid {
         margin-bottom: 1.5rem;
-    }
-    .students-summary__item {
-        padding: 1.25rem 1.5rem;
-        border-radius: 1.1rem;
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(2, 132, 199, 0.08));
-        color: #0f172a;
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-    .students-summary__item span {
-        font-size: 0.82rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #64748b;
-        font-weight: 700;
-    }
-    .students-summary__item strong {
-        font-size: 1.4rem;
-        font-weight: 700;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.7);
     }
 
     .students-table {
@@ -209,6 +195,11 @@
         }
     }
     @media (max-width: 768px) {
+        .admin-stats-grid {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+        }
+
         .students-table__head {
             display: none;
         }
@@ -234,6 +225,17 @@
         .students-progress {
             flex-direction: column;
             align-items: flex-start;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .students-table__head,
+        .students-table__row {
+            padding: 0.5rem;
+        }
+
+        .students-table__empty {
+            padding: 1.5rem 0.75rem;
         }
     }
 </style>

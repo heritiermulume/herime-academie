@@ -69,7 +69,7 @@
             </div>
             <div class="student-order-show__actions">
                 @if(in_array($order->status, ['paid', 'completed']) && $order->enrollments->isNotEmpty())
-                    <a href="{{ route('student.courses.learn', optional($order->enrollments->first()->course)->slug) }}" class="admin-btn primary sm">
+                    <a href="{{ route('learning.course', optional($order->enrollments->first()->course)->slug) }}" class="admin-btn success sm">
                         <i class="fas fa-play me-1"></i>Commencer un cours
                     </a>
                 @endif
@@ -113,32 +113,43 @@
             <p class="admin-card__subtitle">Liste des cours associés à cette commande.</p>
         </div>
 
-        @if($order->order_items && count($order->order_items) > 0)
+        @if($order->orderItems && $order->orderItems->count() > 0)
             <div class="student-order-show__courses">
-                @foreach($order->order_items as $item)
+                @foreach($order->orderItems as $item)
+                    @php($course = $item->course)
                     <div class="order-course-card">
                         <div class="order-course-card__meta">
-                            <h4>{{ $item['course_title'] ?? 'Cours supprimé' }}</h4>
+                            <h4>{{ $course->title ?? 'Cours supprimé' }}</h4>
                             <p>
-                                {{ $item['instructor_name'] ?? 'Formateur inconnu' }}
-                                @if(!empty($item['category_name']))
-                                    · {{ $item['category_name'] }}
+                                {{ $course->instructor->name ?? 'Formateur inconnu' }}
+                                @if($course && $course->category)
+                                    · {{ $course->category->name }}
                                 @endif
                             </p>
                         </div>
                         <div class="order-course-card__info">
                             <span class="order-course-card__price">
-                                {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['price'] ?? 0) }}
+                                {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0) }}
                             </span>
-                            <span class="order-course-card__quantity">Quantité : {{ $item['quantity'] ?? 1 }}</span>
+                            <span class="order-course-card__quantity">Quantité : 1</span>
                         </div>
+                        @if($course)
+                            <div class="order-course-card__actions">
+                                <a href="{{ route('courses.show', $course->slug) }}" class="admin-btn ghost sm">
+                                    <i class="fas fa-eye me-1"></i>Voir le cours
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>
         @else
             <div class="admin-empty-state">
                 <i class="fas fa-tags"></i>
-                <p>Aucun détail de cours enregistré pour cette commande.</p>
+                <p>Aucun cours enregistré pour cette commande.</p>
+                @if($order->status === 'pending')
+                    <small class="text-muted">Les cours seront ajoutés une fois le paiement confirmé.</small>
+                @endif
             </div>
         @endif
     </div>
@@ -161,7 +172,7 @@
                             </p>
                         </div>
                         @if($course)
-                            <a href="{{ route('student.courses.learn', $course->slug) }}" class="admin-btn primary sm">
+                            <a href="{{ route('learning.course', $course->slug) }}" class="admin-btn success sm">
                                 <i class="fas fa-play me-1"></i>Commencer
                             </a>
                         @endif
@@ -207,6 +218,18 @@
     .admin-btn.primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 26px 44px -28px rgba(37, 99, 235, 0.45);
+    }
+
+    .admin-btn.success {
+        background: linear-gradient(90deg, #22c55e, #16a34a);
+        color: #ffffff;
+        box-shadow: 0 22px 38px -28px rgba(34, 197, 94, 0.55);
+    }
+
+    .admin-btn.success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 26px 44px -28px rgba(34, 197, 94, 0.45);
+        background: linear-gradient(90deg, #16a34a, #15803d);
     }
 
     .admin-btn.ghost {

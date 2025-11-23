@@ -14,32 +14,32 @@
 @endsection
 
 @section('admin-actions')
-    <a href="{{ route('instructor.courses.edit', $course) }}" class="btn btn-outline-primary">
+    <a href="{{ route('instructor.courses.edit', $course) }}" class="admin-btn outline">
         <i class="fas fa-pen me-2"></i>Modifier les informations du cours
     </a>
-    <a href="{{ route('instructor.courses.index') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('instructor.courses.index') }}" class="admin-btn soft">
         <i class="fas fa-arrow-left me-2"></i>Retour à mes cours
     </a>
 @endsection
 
 @section('admin-content')
-    <section class="course-lessons-metrics">
-        <div class="course-lessons-metric">
-            <span class="course-lessons-metric__label">Sections</span>
-            <strong class="course-lessons-metric__value">{{ $sectionsCount }}</strong>
-            <small class="course-lessons-metric__hint">Regroupez vos contenus par grands chapitres</small>
+    <div class="admin-stats-grid">
+        <div class="admin-stat-card">
+            <p class="admin-stat-card__label">Sections</p>
+            <p class="admin-stat-card__value">{{ $sectionsCount }}</p>
+            <p class="admin-stat-card__muted">Regroupez vos contenus par grands chapitres</p>
         </div>
-        <div class="course-lessons-metric">
-            <span class="course-lessons-metric__label">Leçons</span>
-            <strong class="course-lessons-metric__value">{{ $lessonsCount }}</strong>
-            <small class="course-lessons-metric__hint">Vidéos, ressources et quiz publiés</small>
+        <div class="admin-stat-card">
+            <p class="admin-stat-card__label">Leçons</p>
+            <p class="admin-stat-card__value">{{ $lessonsCount }}</p>
+            <p class="admin-stat-card__muted">Vidéos, ressources et quiz publiés</p>
         </div>
-        <div class="course-lessons-metric">
-            <span class="course-lessons-metric__label">Durée estimée</span>
-            <strong class="course-lessons-metric__value">{{ $formattedDuration }}</strong>
-            <small class="course-lessons-metric__hint">Temps total cumulé des leçons</small>
+        <div class="admin-stat-card">
+            <p class="admin-stat-card__label">Durée estimée</p>
+            <p class="admin-stat-card__value">{{ $formattedDuration }}</p>
+            <p class="admin-stat-card__muted">Temps total cumulé des leçons</p>
         </div>
-    </section>
+    </div>
 
     <section class="course-lessons-details">
         @if($sections->isEmpty())
@@ -47,7 +47,7 @@
                 <i class="fas fa-layer-group"></i>
                 <h3>Aucune section définie</h3>
                 <p>Ajoutez votre première section depuis la page d’édition du cours pour commencer à structurer votre formation.</p>
-                <a href="{{ route('instructor.courses.edit', $course) }}" class="btn btn-primary">
+                <a href="{{ route('instructor.courses.edit', $course) }}" class="admin-btn primary">
                     <i class="fas fa-plus me-2"></i>Créer une section
                 </a>
             </div>
@@ -111,7 +111,7 @@
                                     </div>
                                 </div>
                                 <div class="course-lesson__actions">
-                                    <a href="{{ route('instructor.courses.edit', $course) }}#lesson-{{ $lesson->id }}" class="btn btn-sm btn-outline-primary">
+                                    <a href="{{ route('instructor.courses.edit', $course) }}#lesson-{{ $lesson->id }}" class="admin-btn outline sm">
                                         <i class="fas fa-pen"></i>
                                     </a>
                                 </div>
@@ -119,7 +119,7 @@
                         @empty
                             <div class="course-lesson course-lesson--empty">
                                 <p>Aucune leçon dans cette section pour le moment.</p>
-                                <a href="{{ route('instructor.courses.edit', $course) }}" class="btn btn-sm btn-primary">
+                                <a href="{{ route('instructor.courses.edit', $course) }}" class="admin-btn primary sm">
                                     <i class="fas fa-plus me-1"></i>Ajouter une leçon
                                 </a>
                             </div>
@@ -133,42 +133,6 @@
 
 @push('styles')
 <style>
-    .course-lessons-metrics {
-        display: grid;
-        gap: 1.2rem;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        margin-bottom: 1.8rem;
-    }
-
-    .course-lessons-metric {
-        background: #ffffff;
-        border-radius: 18px;
-        padding: 1.35rem 1.5rem;
-        box-shadow: 0 20px 45px -35px rgba(15, 23, 42, 0.3);
-        border: 1px solid rgba(226, 232, 240, 0.7);
-        display: flex;
-        flex-direction: column;
-        gap: 0.4rem;
-    }
-
-    .course-lessons-metric__label {
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #64748b;
-        font-weight: 700;
-    }
-
-    .course-lessons-metric__value {
-        font-size: clamp(1.6rem, 1.4rem + 1vw, 2.2rem);
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .course-lessons-metric__hint {
-        color: #94a3b8;
-        font-size: 0.85rem;
-    }
 
     .course-lessons-details {
         display: flex;
@@ -355,7 +319,7 @@
         color: #3730a3;
     }
 
-    .course-lesson__actions .btn {
+    .course-lesson__actions .admin-btn {
         min-width: 36px;
     }
 
@@ -390,6 +354,23 @@
         }
         .course-lesson__actions {
             justify-self: stretch;
+        }
+        .course-lesson__actions .admin-btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .course-section {
+            padding: 0.75rem;
+        }
+
+        .course-lesson {
+            padding: 0.75rem;
+        }
+
+        .course-lessons-empty {
+            padding: 1.5rem 0.75rem;
         }
     }
 </style>

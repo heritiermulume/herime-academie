@@ -148,15 +148,15 @@ class PawaPayController extends Controller
 
         // Récupérer les articles du panier
         $cartItems = $user->cartItems()->with('course')->get();
-        // Filtrer les items invalides (cours supprimés)
+        // Filtrer les items invalides (cours supprimés ou non publiés)
         $cartItems = $cartItems->filter(function ($item) {
-            return $item->course !== null;
+            return $item->course !== null && $item->course->is_published;
         })->values();
         
         if ($cartItems->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Votre panier est vide.'
+                'message' => 'Votre panier est vide ou contient uniquement des cours non disponibles.'
             ], 400);
         }
 
@@ -762,27 +762,14 @@ class PawaPayController extends Controller
                     ->first();
 
                 if (!$existingEnrollment) {
-                    $enrollment = Enrollment::create([
+                    // La méthode createAndNotify envoie automatiquement les notifications et emails
+                    $enrollment = Enrollment::createAndNotify([
                         'user_id' => $order->user_id,
                         'course_id' => $orderItem->course_id,
                         'order_id' => $order->id,
                         'status' => 'active',
                     ]);
                     $enrollmentsCreated++;
-                    
-                    // Envoyer l'email de confirmation d'inscription
-                    try {
-                        $course = $orderItem->course;
-                        if ($course && $order->user) {
-                            $order->user->notify(new \App\Notifications\CourseEnrolled($course));
-                            \Log::info('pawaPay: Course enrollment email sent', [
-                                'user_id' => $order->user_id,
-                                'course_id' => $orderItem->course_id,
-                            ]);
-                        }
-                    } catch (\Exception $e) {
-                        \Log::error('pawaPay: Failed to send enrollment email: ' . $e->getMessage());
-                    }
                     
                     \Log::info('pawaPay: Enrollment created', [
                         'enrollment_id' => $enrollment->id,

@@ -3,9 +3,10 @@
 @php
     $instructor = auth()->user();
     $currentRouteName = optional(request()->route())->getName();
+
     $navItems = [
         [
-            'label' => 'Vue d’ensemble',
+            'label' => 'Vue d\'ensemble',
             'icon' => 'fas fa-gauge-high',
             'route' => 'instructor.dashboard',
             'url' => url('/instructor/dashboard'),
@@ -41,6 +42,16 @@
         ],
     ];
 
+    if (\Illuminate\Support\Facades\Route::has('profile.edit')) {
+        $navItems[] = [
+            'label' => 'Profil',
+            'icon' => 'fas fa-user-circle',
+            'route' => 'profile.edit',
+            'url' => route('profile.edit'),
+            'active' => ['profile.edit'],
+        ];
+    }
+
     $pageTitle = trim($__env->yieldContent('admin-title')) ?: 'Espace formateur';
     $pageSubtitle = trim($__env->yieldContent('admin-subtitle'));
     $pageActions = trim($__env->yieldContent('admin-actions'));
@@ -50,34 +61,37 @@
 <div class="instructor-admin-shell">
     <aside class="admin-sidebar-wrapper">
         <div class="admin-sidebar">
-        <div class="admin-sidebar__brand">
-            <div class="admin-sidebar__avatar">
-                <img src="{{ $instructor?->avatar_url ?? asset('images/default-avatar.png') }}" alt="{{ $instructor?->name }}">
+            <div class="admin-sidebar__brand">
+                <div class="admin-sidebar__avatar">
+                    <img src="{{ $instructor?->avatar_url ?? asset('images/default-avatar.png') }}" alt="{{ $instructor?->name }}">
+                </div>
+                <div class="admin-sidebar__meta">
+                    <span class="admin-sidebar__role">Formateur</span>
+                    <strong class="admin-sidebar__name">{{ $instructor?->name }}</strong>
+                    @if($instructor?->email)
+                        <small class="admin-sidebar__email">{{ $instructor->email }}</small>
+                    @endif
+                </div>
             </div>
-            <div class="admin-sidebar__meta">
-                <span class="admin-sidebar__role">Formateur</span>
-                <strong class="admin-sidebar__name">{{ $instructor?->name }}</strong>
-            </div>
-        </div>
-        <nav class="admin-sidebar__nav">
-            @foreach($navItems as $item)
-                @php
-                    $isActive = $currentRouteName === $item['route'] || request()->routeIs($item['route']);
-                    if (!empty($item['active'])) {
-                        foreach ((array) $item['active'] as $pattern) {
-                            if (request()->routeIs($pattern)) {
-                                $isActive = true;
-                                break;
+            <nav class="admin-sidebar__nav">
+                @foreach($navItems as $item)
+                    @php
+                        $isActive = $currentRouteName === $item['route'] || request()->routeIs($item['route']);
+                        if (!empty($item['active'])) {
+                            foreach ((array) $item['active'] as $pattern) {
+                                if (request()->routeIs($pattern)) {
+                                    $isActive = true;
+                                    break;
+                                }
                             }
                         }
-                    }
-                @endphp
-                <a href="{{ $item['url'] }}" class="admin-sidebar__link {{ $isActive ? 'is-active' : '' }}">
-                    <i class="{{ $item['icon'] }}"></i>
-                    <span>{{ $item['label'] }}</span>
-                </a>
-            @endforeach
-        </nav>
+                    @endphp
+                    <a href="{{ $item['url'] }}" class="admin-sidebar__link {{ $isActive ? 'is-active' : '' }}">
+                        <i class="{{ $item['icon'] }}"></i>
+                        <span>{{ $item['label'] }}</span>
+                    </a>
+                @endforeach
+            </nav>
         </div>
     </aside>
 
@@ -97,6 +111,26 @@
         </header>
 
         <section class="admin-content">
+            @if(session('success') || session('status'))
+                <div class="admin-alert success">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>Succès</strong>
+                        <p>{{ session('success') ?? session('status') }}</p>
+                    </div>
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="admin-alert error">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <div>
+                        <strong>Erreur</strong>
+                        <p>{{ session('error') }}</p>
+                    </div>
+                </div>
+            @endif
+
             @yield('admin-content')
         </section>
     </main>
@@ -107,10 +141,12 @@
 <style>
     :root {
         --instructor-primary: #003366;
-        --instructor-primary-dark: #022447;
-        --instructor-secondary: #0ea5e9;
-        --instructor-bg: #f4f7fb;
+        --instructor-primary-dark: #002244;
+        --instructor-secondary: #38bdf8;
+        --instructor-accent: #22c55e;
+        --instructor-bg: #f5f7fb;
         --instructor-card-bg: #ffffff;
+        --instructor-muted: #64748b;
     }
 
     .instructor-admin-shell {
@@ -130,7 +166,7 @@
     }
 
     .admin-sidebar {
-        background: linear-gradient(180deg, var(--instructor-primary) 0%, var(--instructor-primary-dark) 100%);
+        background: var(--instructor-primary);
         color: #ffffff;
         padding: 2.2rem 1.75rem 2rem;
         display: flex;
@@ -141,14 +177,14 @@
         left: 0;
         width: 280px;
         height: calc(100vh - var(--site-navbar-height, 64px));
-        border-radius: 0 24px 24px 0;
-        box-shadow: 0 24px 55px -40px rgba(0, 51, 102, 0.45);
+        border-radius: 0;
+        box-shadow: 0 24px 55px -40px rgba(30, 58, 138, 0.45);
     }
 
     .admin-sidebar__brand {
         display: flex;
-        align-items: center;
         gap: 1rem;
+        align-items: center;
     }
 
     .admin-sidebar__avatar {
@@ -157,6 +193,7 @@
         border-radius: 16px;
         overflow: hidden;
         border: 3px solid rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.1);
     }
 
     .admin-sidebar__avatar img {
@@ -169,12 +206,18 @@
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        opacity: 0.75;
+        opacity: 0.65;
     }
 
     .admin-sidebar__name {
         font-size: 1.1rem;
         font-weight: 700;
+    }
+
+    .admin-sidebar__email {
+        font-size: 0.8rem;
+        opacity: 0.75;
+        display: block;
     }
 
     .admin-sidebar__nav {
@@ -236,7 +279,7 @@
 
     .admin-header__subtitle {
         margin: 0.5rem 0 0;
-        color: #64748b;
+        color: var(--instructor-muted);
         max-width: 640px;
         font-size: 0.98rem;
     }
@@ -251,6 +294,33 @@
         display: flex;
         flex-direction: column;
         gap: 2rem;
+    }
+
+    .admin-alert {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-radius: 1rem;
+        border: 1px solid transparent;
+        font-size: 0.95rem;
+        box-shadow: 0 12px 24px -20px rgba(15, 23, 42, 0.35);
+    }
+
+    .admin-alert i {
+        font-size: 1.4rem;
+    }
+
+    .admin-alert.success {
+        background: rgba(34, 197, 94, 0.12);
+        border-color: rgba(34, 197, 94, 0.25);
+        color: #15803d;
+    }
+
+    .admin-alert.error {
+        background: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.25);
+        color: #b91c1c;
     }
 
     .admin-card {
@@ -270,8 +340,319 @@
 
     .admin-card__subtitle {
         margin: 0;
-        color: #64748b;
+        color: var(--instructor-muted);
         font-size: 0.9rem;
+    }
+
+    .admin-card__actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .admin-table thead th {
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        color: var(--instructor-muted);
+        font-weight: 700;
+        padding-bottom: 0.75rem;
+    }
+
+    .admin-table tbody tr {
+        border-top: 1px solid rgba(226, 232, 240, 0.7);
+    }
+
+    .admin-table tbody tr:first-child {
+        border-top: none;
+    }
+
+    .admin-table tbody td {
+        padding: 0.95rem 0 0.95rem 0;
+        vertical-align: middle;
+        font-size: 0.95rem;
+        color: #0f172a;
+    }
+
+    .admin-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
+        background: rgba(30, 58, 138, 0.1);
+        color: var(--instructor-primary);
+    }
+
+    .admin-badge.success {
+        background: rgba(34, 197, 94, 0.15);
+        color: #15803d;
+    }
+
+    .admin-badge.warning {
+        background: rgba(234, 179, 8, 0.18);
+        color: #b45309;
+    }
+
+    .admin-badge.info {
+        background: rgba(14, 165, 233, 0.15);
+        color: #0f172a;
+    }
+
+    .admin-empty-state {
+        padding: 3rem 1.5rem;
+        text-align: center;
+        color: var(--instructor-muted);
+        border: 1px dashed rgba(148, 163, 184, 0.35);
+        border-radius: 1.25rem;
+        background: rgba(255, 255, 255, 0.65);
+    }
+
+    .admin-empty-state i {
+        font-size: 2.2rem;
+        margin-bottom: 1rem;
+        color: rgba(30, 58, 138, 0.35);
+    }
+
+    /* Button styles */
+    .admin-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border-radius: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        padding: 0.65rem 1.2rem;
+        border: 1px solid transparent;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.2s ease;
+        color: inherit;
+    }
+
+    .admin-btn.primary {
+        background: linear-gradient(90deg, var(--instructor-primary), #004080);
+        color: #ffffff;
+        box-shadow: 0 22px 38px -28px rgba(0, 51, 102, 0.55);
+    }
+
+    .admin-btn.primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 26px 44px -28px rgba(0, 51, 102, 0.45);
+    }
+
+    .admin-btn.outline {
+        border-color: rgba(0, 51, 102, 0.32);
+        color: var(--instructor-primary);
+        background: rgba(0, 51, 102, 0.08);
+    }
+
+    .admin-btn.soft {
+        border-color: rgba(148, 163, 184, 0.4);
+        background: rgba(148, 163, 184, 0.12);
+        color: var(--instructor-primary-dark);
+        padding: 0.55rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .admin-btn.ghost {
+        border-color: rgba(0, 51, 102, 0.3);
+        color: #ffffff;
+        background: var(--instructor-primary);
+    }
+
+    .admin-btn.ghost:hover {
+        background: rgba(0, 51, 102, 0.9);
+        border-color: var(--instructor-primary);
+    }
+
+    .admin-btn.sm {
+        padding: 0.5rem 0.9rem;
+        border-radius: 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .admin-btn.lg {
+        padding: 0.82rem 1.65rem;
+        font-size: 1.02rem;
+        border-radius: 1rem;
+    }
+
+    /* Panel styles */
+    .admin-panel {
+        margin-bottom: 1.5rem;
+        background: var(--instructor-card-bg);
+        border-radius: 1.25rem;
+        box-shadow: 0 22px 45px -35px rgba(15, 23, 42, 0.25);
+        border: 1px solid rgba(226, 232, 240, 0.7);
+    }
+
+    .admin-panel__header {
+        padding: 1.25rem 1.75rem;
+        background: linear-gradient(135deg, var(--instructor-primary) 0%, #004080 100%);
+        color: #ffffff;
+        border-radius: 1.25rem 1.25rem 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .admin-panel__header h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .admin-panel__header i {
+        font-size: 1.1rem;
+    }
+
+    .admin-panel__actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .admin-panel__actions .admin-btn.soft {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .admin-panel__actions .admin-btn.soft:hover {
+        background: rgba(255, 255, 255, 0.25);
+        border-color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .admin-panel__body {
+        padding: 1.75rem;
+    }
+
+    .admin-panel--main {
+        margin-bottom: 2rem;
+    }
+
+    /* Stats grid */
+    .admin-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .admin-stat-card {
+        background: var(--instructor-card-bg);
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        box-shadow: 0 22px 45px -35px rgba(15, 23, 42, 0.25);
+        border: 1px solid rgba(226, 232, 240, 0.7);
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+        overflow: hidden;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .admin-stat-card__label {
+        font-size: 0.85rem;
+        color: var(--instructor-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+        order: 1;
+    }
+
+    .admin-stat-card__value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--instructor-primary);
+        margin-bottom: 0.25rem;
+        line-height: 1.2;
+        order: 2;
+    }
+
+    .admin-stat-card__muted {
+        font-size: 0.8rem;
+        color: var(--instructor-muted);
+        margin-top: auto;
+        order: 3;
+        line-height: 1.4;
+    }
+
+    /* Pagination styles */
+    .instructor-pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding: 1rem 1.25rem;
+        background-color: #ffffff;
+        border-radius: 0.75rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .instructor-pagination__info {
+        font-size: 0.875rem;
+        white-space: nowrap;
+        color: var(--instructor-muted);
+    }
+    
+    @media (min-width: 768px) {
+        .instructor-pagination__info {
+            padding-left: 1rem;
+        }
+    }
+    
+    .instructor-pagination__links {
+        display: flex;
+        justify-content: flex-end;
+        flex: 1;
+    }
+
+    /* Bootstrap 5 pagination styles */
+    .pagination {
+        margin-bottom: 0;
+    }
+
+    .page-link {
+        color: var(--instructor-primary);
+        border-color: rgba(30, 58, 138, 0.2);
+        padding: 0.5rem 0.75rem;
+        transition: all 0.2s ease;
+    }
+
+    .page-link:hover {
+        color: var(--instructor-secondary);
+        background-color: rgba(30, 58, 138, 0.05);
+        border-color: rgba(30, 58, 138, 0.3);
+    }
+
+    .page-item.active .page-link {
+        background-color: var(--instructor-primary);
+        border-color: var(--instructor-primary);
+        color: #ffffff;
+    }
+
+    .page-item.disabled .page-link {
+        color: var(--instructor-muted);
+        background-color: #f8f9fa;
+        border-color: rgba(30, 58, 138, 0.1);
+        cursor: not-allowed;
     }
 
     @media (max-width: 1024px) {
@@ -281,12 +662,14 @@
             padding-top: calc(var(--site-navbar-height, 64px) + 2.6rem);
             margin-top: 0;
         }
+
         .admin-sidebar-wrapper {
             position: static;
             width: auto;
             height: auto;
             min-height: 0;
         }
+
         .admin-sidebar {
             position: fixed;
             top: var(--site-navbar-height, 64px);
@@ -298,33 +681,44 @@
             align-items: center;
             justify-content: center;
             gap: 1rem;
-            border-radius: 0 0 18px 18px;
-            box-shadow: 0 12px 25px -20px rgba(14, 165, 233, 0.45);
+            border-radius: 0;
+            box-shadow: 0 12px 25px -20px rgba(30, 64, 175, 0.45);
             z-index: 1020;
             margin-top: 0;
             width: auto;
         }
+
         .admin-sidebar__brand {
             display: none;
         }
+
         .admin-sidebar__nav {
             flex-direction: row;
             gap: 0.2rem;
             background: rgba(255, 255, 255, 0.15);
             padding: 0.35rem;
-            border-radius: 999px;
+            border-radius: 0;
+            justify-content: center;
         }
+
         .admin-sidebar__link {
             padding: 0.4rem 0.6rem;
             gap: 0.4rem;
             border-radius: 12px;
             font-size: 0.75rem;
         }
+
         .admin-sidebar__link i {
             font-size: 0.85rem;
         }
+
         .admin-main {
-            padding: 0.15rem 1.2rem 1.4rem;
+            padding: 0.75rem 0.85rem 1.6rem;
+        }
+
+        .admin-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
         }
     }
 
@@ -336,9 +730,10 @@
             gap: 0.6rem;
             padding: 0.75rem 1rem 1rem;
             margin-top: 0;
-            border-radius: 18px;
+            border-radius: 0;
             width: auto;
         }
+
         .admin-sidebar__nav {
             width: 100%;
             display: flex;
@@ -347,7 +742,9 @@
             padding: 0.3rem 0;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            justify-content: center;
         }
+
         .admin-sidebar__link {
             border-radius: 10px;
             justify-content: center;
@@ -355,15 +752,147 @@
             padding: 0.45rem 0.5rem;
             flex: 0 0 auto;
         }
+
         .admin-sidebar__link i {
             display: none;
         }
+
         .admin-header {
             flex-direction: column;
             align-items: stretch;
         }
+
         .admin-main {
-            padding: 0.18rem 0.9rem 1.1rem;
+            padding: 0.18rem 0.6rem 1.1rem;
+        }
+
+        .admin-panel {
+            margin-bottom: 0.75rem;
+        }
+
+        .admin-panel--main .admin-panel__body {
+            padding: 0.75rem 0.25rem !important;
+        }
+
+        .admin-panel__body {
+            padding: 0.5rem 0.25rem !important;
+        }
+
+        .admin-panel__header {
+            padding: 0.5rem 0.75rem;
+        }
+
+        .admin-panel__header h3 {
+            font-size: 0.95rem;
+        }
+
+        .admin-card {
+            margin-bottom: 0.75rem;
+        }
+
+        .admin-card__header {
+            padding: 0.5rem 0.75rem;
+        }
+
+        .admin-card__header .admin-card__title {
+            font-size: 0.95rem;
+        }
+
+        .admin-card__body {
+            padding: 0.5rem;
+        }
+
+        .instructor-pagination {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin-top: 1rem;
+        }
+
+        .instructor-pagination__info {
+            text-align: center;
+            padding-left: 0;
+            font-size: 0.8rem;
+        }
+
+        .instructor-pagination__links {
+            justify-content: center;
+        }
+
+        .pagination {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .page-link {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.875rem;
+        }
+
+        .admin-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.375rem !important;
+        }
+
+        .admin-stat-card {
+            padding: 0.5rem 0.625rem !important;
+        }
+
+        .admin-stat-card__label {
+            font-size: 0.75rem;
+        }
+
+        .admin-stat-card__value {
+            font-size: 1.5rem;
+        }
+
+        .admin-stat-card__muted {
+            font-size: 0.7rem;
+        }
+
+        .admin-empty-state {
+            padding: 1.5rem 0.75rem;
+        }
+
+        .admin-empty-state i {
+            font-size: 1.5rem;
+        }
+
+        .admin-empty-state p {
+            font-size: 0.85rem;
+        }
+
+        .admin-btn {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        .admin-btn.sm {
+            padding: 0.4rem 0.7rem;
+            font-size: 0.75rem;
+        }
+
+        .admin-btn.lg {
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+        }
+
+        .admin-panel__actions .admin-btn {
+            width: auto;
+            font-size: 0.75rem;
+            padding: 0.4rem 0.7rem;
+        }
+
+        .admin-header .admin-btn {
+            width: 100%;
+            font-size: 0.8rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .admin-header .admin-btn i {
+            font-size: 0.75rem;
         }
     }
 </style>

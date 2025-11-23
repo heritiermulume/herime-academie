@@ -261,7 +261,8 @@ class InstructorController extends Controller
 
         $coursesQuery = $instructor->courses()
             ->with(['category'])
-            ->withCount(['enrollments', 'reviews']);
+            ->withCount(['enrollments', 'reviews'])
+            ->withAvg('reviews', 'rating');
 
         if ($status === 'published') {
             $coursesQuery->where('is_published', true);
@@ -272,15 +273,14 @@ class InstructorController extends Controller
         $courses = $coursesQuery
             ->orderByDesc('created_at')
             ->paginate(10)
-            ->through(function ($course) {
-                $course->stats = $course->getCourseStats();
-                return $course;
-            })
             ->withQueryString();
+
+        $baseCurrency = \App\Models\Setting::getBaseCurrency();
 
         return view('instructors.admin.courses', [
             'courses' => $courses,
             'status' => $status,
+            'baseCurrency' => $baseCurrency,
         ]);
     }
 

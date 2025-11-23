@@ -81,7 +81,7 @@
 @endphp
 
 @if($isYoutube || $isInternalVideo)
-<div class="plyr-player-wrapper {{ $isYoutube ? 'plyr-external-video' : 'plyr-internal-video' }} position-absolute top-0 start-0 w-100 h-100" id="wrapper-{{ $playerId }}" style="margin: 0; padding: 0;">
+<div class="plyr-player-wrapper {{ $isYoutube ? 'plyr-external-video' : 'plyr-internal-video' }} position-absolute top-0 start-0 w-100 h-100" id="wrapper-{{ $playerId }}" style="margin: 0; padding: 0; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; max-width: 100% !important; max-height: 100% !important; overflow: hidden;">
     <!-- Watermark overlay dynamique -->
     @if(auth()->check() && !$isPreview)
     <div class="video-watermark position-absolute" id="watermark-{{ $playerId }}">
@@ -105,7 +105,7 @@
     @endif
 </div>
 @else
-<div class="text-center py-5">
+<div class="text-center py-5 position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="min-height: 450px;">
     <i class="fas fa-video fa-3x text-muted mb-3"></i>
     <p class="text-muted">Aucune vidéo disponible</p>
 </div>
@@ -190,6 +190,8 @@
             resetOnEnd: false,
             disableContextMenu: true,
             download: false,
+            // Forcer la langue française
+            locale: 'fr',
             i18n: {
                 restart: 'Redémarrer',
                 rewind: 'Rembobiner',
@@ -255,6 +257,85 @@
         let player;
         try {
             player = new Plyr(playerElement, plyrConfig);
+            
+            // Forcer la langue française après l'initialisation et mettre à jour les tooltips
+            if (player) {
+                // Mettre à jour la langue
+                if (typeof player.language !== 'undefined') {
+                    player.language = 'fr';
+                }
+                
+                // Forcer la mise à jour des tooltips en français
+                if (player.config && player.config.i18n) {
+                    // Les traductions sont déjà dans la config, mais on s'assure qu'elles sont appliquées
+                    player.config.i18n = plyrConfig.i18n;
+                }
+                
+                // Forcer la mise à jour des tooltips après que le lecteur soit prêt
+                player.on('ready', function() {
+                    // Fonction pour mettre à jour les tooltips
+                    const updateTooltips = function() {
+                        const tooltipMap = {
+                            'play': 'Lire',
+                            'pause': 'Pause',
+                            'restart': 'Redémarrer',
+                            'rewind': 'Rembobiner',
+                            'fastForward': 'Avance rapide',
+                            'mute': 'Couper le son',
+                            'unmute': 'Activer le son',
+                            'volume': 'Volume',
+                            'enterFullscreen': 'Plein écran',
+                            'exitFullscreen': 'Quitter le plein écran',
+                            'settings': 'Paramètres',
+                            'pip': 'Image dans l\'image',
+                            'download': 'Télécharger',
+                            'captions': 'Sous-titres'
+                        };
+                        
+                        // Mettre à jour les attributs aria-label et title des boutons
+                        const controls = player.media.parentElement.querySelectorAll('.plyr__control');
+                        controls.forEach(function(control) {
+                            const action = control.getAttribute('data-plyr');
+                            if (action && tooltipMap[action]) {
+                                control.setAttribute('aria-label', tooltipMap[action]);
+                                control.setAttribute('title', tooltipMap[action]);
+                            }
+                        });
+                        
+                        // Mettre à jour les tooltips directement (Plyr les génère dynamiquement)
+                        const tooltips = player.media.parentElement.querySelectorAll('.plyr__tooltip');
+                        tooltips.forEach(function(tooltip) {
+                            const text = tooltip.textContent.toLowerCase().trim();
+                            for (const [key, value] of Object.entries(tooltipMap)) {
+                                if (text.includes(key) || text === key) {
+                                    tooltip.textContent = value;
+                                    break;
+                                }
+                            }
+                        });
+                    };
+                    
+                    // Exécuter immédiatement et périodiquement pour attraper les tooltips générés dynamiquement
+                    updateTooltips();
+                    setTimeout(updateTooltips, 200);
+                    setTimeout(updateTooltips, 500);
+                    setTimeout(updateTooltips, 1000);
+                    
+                    // Observer les changements du DOM pour mettre à jour les tooltips quand ils apparaissent
+                    const observer = new MutationObserver(function(mutations) {
+                        updateTooltips();
+                    });
+                    
+                    if (player.media && player.media.parentElement) {
+                        observer.observe(player.media.parentElement, {
+                            childList: true,
+                            subtree: true,
+                            attributes: true,
+                            attributeFilter: ['aria-label', 'title']
+                        });
+                    }
+                });
+            }
             
             // Sauvegarder la référence
             window['plyr_' + playerId] = player;

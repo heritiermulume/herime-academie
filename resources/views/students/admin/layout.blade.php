@@ -133,8 +133,8 @@
 @push('styles')
 <style>
     :root {
-        --student-primary: #1e3a8a;
-        --student-primary-dark: #0f172a;
+        --student-primary: #003366;
+        --student-primary-dark: #002244;
         --student-secondary: #38bdf8;
         --student-accent: #22c55e;
         --student-bg: #f5f7fb;
@@ -159,7 +159,7 @@
     }
 
     .admin-sidebar {
-        background: linear-gradient(180deg, var(--student-primary) 0%, var(--student-primary-dark) 100%);
+        background: var(--student-primary);
         color: #ffffff;
         padding: 2.2rem 1.75rem 2rem;
         display: flex;
@@ -170,7 +170,7 @@
         left: 0;
         width: 280px;
         height: calc(100vh - var(--site-navbar-height, 64px));
-        border-radius: 0 24px 24px 0;
+        border-radius: 0;
         box-shadow: 0 24px 55px -40px rgba(30, 58, 138, 0.45);
     }
 
@@ -414,6 +414,69 @@
         color: rgba(30, 58, 138, 0.35);
     }
 
+    /* Pagination styles */
+    .student-pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding: 1rem 1.25rem;
+        background-color: #ffffff;
+        border-radius: 0.75rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .student-pagination__info {
+        font-size: 0.875rem;
+        white-space: nowrap;
+        color: var(--student-muted);
+    }
+    
+    @media (min-width: 768px) {
+        .student-pagination__info {
+            padding-left: 1rem;
+        }
+    }
+    
+    .student-pagination__links {
+        display: flex;
+        justify-content: flex-end;
+        flex: 1;
+    }
+
+    /* Bootstrap 5 pagination styles */
+    .pagination {
+        margin-bottom: 0;
+    }
+
+    .page-link {
+        color: var(--student-primary);
+        border-color: rgba(30, 58, 138, 0.2);
+        padding: 0.5rem 0.75rem;
+        transition: all 0.2s ease;
+    }
+
+    .page-link:hover {
+        color: var(--student-secondary);
+        background-color: rgba(30, 58, 138, 0.05);
+        border-color: rgba(30, 58, 138, 0.3);
+    }
+
+    .page-item.active .page-link {
+        background-color: var(--student-primary);
+        border-color: var(--student-primary);
+        color: #ffffff;
+    }
+
+    .page-item.disabled .page-link {
+        color: var(--student-muted);
+        background-color: #f8f9fa;
+        border-color: rgba(30, 58, 138, 0.1);
+        cursor: not-allowed;
+    }
+
     @media (max-width: 1024px) {
         .student-admin-shell {
             grid-template-columns: 1fr;
@@ -440,7 +503,7 @@
             align-items: center;
             justify-content: center;
             gap: 1rem;
-            border-radius: 0 0 18px 18px;
+            border-radius: 0;
             box-shadow: 0 12px 25px -20px rgba(30, 64, 175, 0.45);
             z-index: 1020;
             margin-top: 0;
@@ -456,7 +519,8 @@
             gap: 0.2rem;
             background: rgba(255, 255, 255, 0.15);
             padding: 0.35rem;
-            border-radius: 999px;
+            border-radius: 0;
+            justify-content: center;
         }
 
         .admin-sidebar__link {
@@ -483,7 +547,7 @@
             gap: 0.6rem;
             padding: 0.75rem 1rem 1rem;
             margin-top: 0;
-            border-radius: 18px;
+            border-radius: 0;
             width: auto;
         }
 
@@ -495,6 +559,7 @@
             padding: 0.3rem 0;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            justify-content: center;
         }
 
         .admin-sidebar__link {
@@ -516,6 +581,34 @@
 
         .admin-main {
             padding: 0.18rem 0.6rem 1.1rem;
+        }
+
+        .student-pagination {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            margin-top: 1rem;
+        }
+
+        .student-pagination__info {
+            text-align: center;
+            padding-left: 0;
+            font-size: 0.8rem;
+        }
+
+        .student-pagination__links {
+            justify-content: center;
+        }
+
+        .pagination {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .page-link {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.875rem;
         }
     }
 </style>

@@ -29,13 +29,6 @@ DB_DATABASE=herime_academie  # REMPLACEZ PAR VOTRE BASE
 DB_USERNAME=votre_username    # REMPLACEZ
 DB_PASSWORD=votre_password   # REMPLACEZ
 
-# MaxiCash Production
-MAXICASH_MERCHANT_ID=votre_merchant_id
-MAXICASH_MERCHANT_PASSWORD=votre_password
-MAXICASH_SANDBOX=false
-MAXICASH_API_URL=https://api.maxicashapp.com/Merchant/api.asmx
-MAXICASH_GATEWAY_URL=https://api.maxicashapp.com/PayEntryPost
-
 # Mail O2Switch
 MAIL_MAILER=smtp
 MAIL_HOST=smtp.o2switch.net
@@ -171,9 +164,8 @@ chmod -R 755 public/
 **Prochaines étapes :**
 
 1. **Créer un compte administrateur** pour gérer le site
-2. **Configurer MaxiCash** avec vos vraies credentials
-3. **Ajouter vos premiers cours** depuis l'interface admin
-4. **Tester les paiements** avec MaxiCash en mode sandbox puis production
+2. **Ajouter vos premiers cours** depuis l'interface admin
+3. **Tester les paiements** avec les méthodes de paiement configurées
 
 ---
 

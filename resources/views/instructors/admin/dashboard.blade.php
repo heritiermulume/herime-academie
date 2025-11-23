@@ -1,13 +1,13 @@
 @extends('instructors.admin.layout')
 
-@section('admin-title', 'Tableau de bord')
+@section('admin-title', 'Tableau de bord formateur')
 @section('admin-subtitle', 'Suivez vos performances, vos cours et l’engagement de vos étudiants en temps réel.')
 
 @section('admin-actions')
-    <a href="{{ url('/instructor/courses/create') }}" class="btn btn-primary">
+    <a href="{{ url('/instructor/courses/create') }}" class="admin-btn primary">
         <i class="fas fa-plus me-2"></i>Créer un cours
     </a>
-    <a href="{{ url('/instructor/analytics') }}" class="btn btn-outline-primary">
+    <a href="{{ url('/instructor/analytics') }}" class="admin-btn outline">
         <i class="fas fa-chart-line me-2"></i>Voir les analytics
     </a>
 @endsection
@@ -33,14 +33,13 @@
         @endforeach
     </section>
 
-    <section class="dashboard-columns">
-        <article class="admin-card dashboard-columns__main">
-            <div class="admin-card__header">
-                <div>
-                    <h2 class="admin-card__title">Activité récente</h2>
-                    <p class="admin-card__subtitle">Les derniers cours publiés et les inscriptions les plus récentes.</p>
-                </div>
-            </div>
+    <article class="admin-panel">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-clock me-2"></i>Activité récente
+            </h3>
+        </div>
+        <div class="admin-panel__body">
             <div class="dashboard-activity">
                 <div class="dashboard-activity__list">
                     <h3 class="dashboard-activity__title">Nouveaux cours</h3>
@@ -75,59 +74,59 @@
                     </ul>
                 </div>
             </div>
-        </article>
+        </div>
+    </article>
 
-        <aside class="dashboard-columns__side">
-            <article class="admin-card">
-                <div class="admin-card__header">
-                    <div>
-                        <h2 class="admin-card__title">Actions rapides</h2>
-                        <p class="admin-card__subtitle">Accédez rapidement aux tâches importantes.</p>
-                    </div>
-                </div>
-                <div class="dashboard-actions">
-                    <a href="{{ url('/instructor/courses/create') }}" class="dashboard-actions__item">
-                        <i class="fas fa-rocket"></i>
-                        <span>Lancer un nouveau cours</span>
-                    </a>
-                    <a href="{{ url('/instructor/students') }}" class="dashboard-actions__item">
-                        <i class="fas fa-user-graduate"></i>
-                        <span>Voir mes étudiants</span>
-                    </a>
-                    <a href="{{ url('/instructor/analytics') }}" class="dashboard-actions__item">
-                        <i class="fas fa-chart-pie"></i>
-                        <span>Performance des cours</span>
-                    </a>
-                    <a href="{{ url('/notifications') }}" class="dashboard-actions__item">
-                        <i class="fas fa-envelope-open-text"></i>
-                        <span>Centre de notifications</span>
-                    </a>
-                </div>
-            </article>
+    <article class="admin-panel">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-bolt me-2"></i>Actions rapides
+            </h3>
+        </div>
+        <div class="admin-panel__body">
+            <div class="dashboard-actions">
+                <a href="{{ url('/instructor/courses/create') }}" class="dashboard-actions__item">
+                    <i class="fas fa-rocket"></i>
+                    <span>Lancer un nouveau cours</span>
+                </a>
+                <a href="{{ url('/instructor/students') }}" class="dashboard-actions__item">
+                    <i class="fas fa-user-graduate"></i>
+                    <span>Voir mes étudiants</span>
+                </a>
+                <a href="{{ url('/instructor/analytics') }}" class="dashboard-actions__item">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Performance des cours</span>
+                </a>
+                <a href="{{ url('/notifications') }}" class="dashboard-actions__item">
+                    <i class="fas fa-envelope-open-text"></i>
+                    <span>Centre de notifications</span>
+                </a>
+            </div>
+        </div>
+    </article>
 
-            <article class="admin-card">
-                <div class="admin-card__header">
-                    <div>
-                        <h2 class="admin-card__title">Tâches à suivre</h2>
-                        <p class="admin-card__subtitle">Points d’attention générés automatiquement.</p>
-                    </div>
-                </div>
-                <ul class="dashboard-tasks">
-                    @forelse($pendingTasks as $task)
-                        <li class="dashboard-tasks__item">
-                            <div>
-                                <strong>{{ $task['title'] }}</strong>
-                                <span>{{ $task['description'] }}</span>
-                            </div>
-                            <span class="dashboard-tasks__badge {{ $task['type'] }}">{{ ucfirst($task['type']) }}</span>
-                        </li>
-                    @empty
-                        <li class="dashboard-tasks__empty">Aucune action urgente. Continuez sur cette lancée !</li>
-                    @endforelse
-                </ul>
-            </article>
-        </aside>
-    </section>
+    <article class="admin-panel">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-tasks me-2"></i>Tâches à suivre
+            </h3>
+        </div>
+        <div class="admin-panel__body">
+            <ul class="dashboard-tasks">
+                @forelse($pendingTasks as $task)
+                    <li class="dashboard-tasks__item">
+                        <div>
+                            <strong>{{ $task['title'] }}</strong>
+                            <span>{{ $task['description'] }}</span>
+                        </div>
+                        <span class="dashboard-tasks__badge {{ $task['type'] }}">{{ ucfirst($task['type']) }}</span>
+                    </li>
+                @empty
+                    <li class="dashboard-tasks__empty">Aucune action urgente. Continuez sur cette lancée !</li>
+                @endforelse
+            </ul>
+        </div>
+    </article>
 @endsection
 
 @push('styles')
@@ -179,31 +178,11 @@
         color: #dc2626;
     }
 
-    .dashboard-columns {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
-        gap: 1.5rem;
-    }
-    .dashboard-columns__main {
-        padding: 0;
-    }
-    .dashboard-columns__side {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-    .admin-card__header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 1rem;
-        padding: 1.75rem 1.75rem 0;
-    }
     .dashboard-activity {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         gap: 1.25rem;
-        padding: 0 1.75rem 1.75rem;
+        padding: 0;
     }
     .dashboard-activity__list {
         display: flex;
@@ -283,7 +262,7 @@
     .dashboard-tasks {
         list-style: none;
         margin: 0;
-        padding: 0 1.5rem 1.5rem;
+        padding: 0;
         display: flex;
         flex-direction: column;
         gap: 0.85rem;
@@ -335,9 +314,170 @@
         font-size: 0.9rem;
     }
 
-    @media (max-width: 1024px) {
-        .dashboard-columns {
+
+    @media (max-width: 640px) {
+        .dashboard-grid {
             grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .dashboard-metric {
+            gap: 0.85rem;
+        }
+
+        .dashboard-metric__icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.2rem;
+        }
+
+        .dashboard-metric__label {
+            font-size: 0.7rem;
+        }
+
+        .dashboard-metric__value {
+            font-size: 1.5rem;
+        }
+
+        .dashboard-metric__trend {
+            font-size: 0.75rem;
+        }
+
+
+        .dashboard-activity {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            padding: 0;
+        }
+
+        .dashboard-activity__title {
+            font-size: 0.9rem;
+        }
+
+        .dashboard-activity__item {
+            padding: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        .dashboard-activity__item strong {
+            font-size: 0.85rem;
+        }
+
+        .dashboard-activity__item span {
+            font-size: 0.75rem;
+        }
+
+        .dashboard-activity__meta {
+            font-size: 0.7rem;
+        }
+
+        .dashboard-activity__empty {
+            padding: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .dashboard-actions {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+
+        .dashboard-actions__item {
+            padding: 0.65rem 0.85rem;
+            font-size: 0.85rem;
+        }
+
+        .dashboard-actions__item i {
+            font-size: 1rem;
+        }
+
+        .dashboard-tasks {
+            padding: 0 1rem 1rem;
+            gap: 0.65rem;
+        }
+
+        .dashboard-tasks__item {
+            padding: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        .dashboard-tasks__item strong {
+            font-size: 0.85rem;
+        }
+
+        .dashboard-tasks__item span {
+            font-size: 0.75rem;
+        }
+
+        .dashboard-tasks__badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .dashboard-tasks__empty {
+            padding: 1rem;
+            font-size: 0.85rem;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        /* Réduire encore plus les paddings et margins sur mobile */
+        .admin-panel {
+            margin-bottom: 0.75rem;
+        }
+
+        .dashboard-columns {
+            gap: 0.75rem;
+        }
+
+
+        .admin-panel__header {
+            padding: 0.5rem 0.75rem;
+        }
+
+        .admin-panel__header h3 {
+            font-size: 0.95rem;
+        }
+
+        .dashboard-activity {
+            gap: 0.5rem;
+        }
+
+        .dashboard-activity__list {
+            gap: 0.75rem;
+        }
+
+        .dashboard-activity__items {
+            gap: 0.5rem;
+        }
+
+        .dashboard-activity__item {
+            padding: 0.5rem;
+            gap: 0.5rem;
+        }
+
+        .dashboard-activity__empty {
+            padding: 0.75rem;
+        }
+
+        .dashboard-actions {
+            gap: 0.375rem;
+        }
+
+        .dashboard-actions__item {
+            padding: 0.5rem 0.65rem;
+        }
+
+        .dashboard-tasks {
+            gap: 0.5rem;
+        }
+
+        .dashboard-tasks__item {
+            padding: 0.5rem;
+            gap: 0.5rem;
+        }
+
+        .dashboard-tasks__empty {
+            padding: 0.75rem;
         }
     }
 </style>

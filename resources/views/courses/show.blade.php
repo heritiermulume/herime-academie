@@ -582,10 +582,30 @@ body.has-global-announcement:has(.course-details-page) {
     left: 0;
     width: 100%;
     height: 100%;
+    overflow: hidden;
 }
 
 .preview-player-wrapper:not(.active) {
     display: none !important;
+}
+
+/* Fixer la taille du conteneur vidéo pour qu'elle ne change pas */
+#previewVideoContainer {
+    position: relative !important;
+    width: 100% !important;
+}
+
+#previewVideoContainer.ratio {
+    aspect-ratio: 16 / 9 !important;
+    height: auto !important;
+}
+
+/* Desktop: hauteur fixe minimale */
+@media (min-width: 992px) {
+    #previewVideoContainer.ratio {
+        min-height: 450px !important;
+        max-height: 600px !important;
+    }
 }
 
 
@@ -604,6 +624,112 @@ body.has-global-announcement:has(.course-details-page) {
     flex-direction: column;
     height: calc(95vh - 73px);
     max-height: calc(95vh - 73px);
+}
+
+/* Styles pour le bouton de fermeture du modal - cacher les pseudo-éléments Bootstrap partout */
+#coursePreviewModal .modal-header .btn-close::before,
+#coursePreviewModal .modal-header .btn-close::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Forcer la couleur blanche pour le bouton de fermeture */
+#coursePreviewModal .modal-header .btn-close,
+#coursePreviewModal .modal-header .btn-close.btn-close-white {
+    color: #ffffff !important;
+    filter: brightness(0) invert(1) !important; /* Force blanc si nécessaire */
+}
+
+/* Afficher l'icône Font Awesome partout - FORCER BLANC */
+#coursePreviewModal .modal-header .btn-close i,
+#coursePreviewModal .modal-header .btn-close.btn-close-white i,
+#coursePreviewModal .modal-header .btn-close i.fas,
+#coursePreviewModal .modal-header .btn-close i.fa-times {
+    display: block !important;
+    color: #ffffff !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    fill: #ffffff !important;
+    stroke: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    text-fill-color: #ffffff !important;
+}
+
+/* Styles pour le bouton de fermeture du modal sur desktop */
+@media (min-width: 992px) {
+    #coursePreviewModal .modal-header .btn-close {
+        width: 1em !important;
+        height: 1em !important;
+        padding: 0.25em 0.25em !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: none !important;
+        background-image: none !important;
+        color: #ffffff !important;
+    }
+    
+    #coursePreviewModal .modal-header .btn-close i,
+    #coursePreviewModal .modal-header .btn-close i.fas,
+    #coursePreviewModal .modal-header .btn-close i.fa-times {
+        font-size: 1.25rem !important;
+        color: #ffffff !important;
+    }
+}
+
+/* Styles pour le bouton de fermeture du modal sur mobile */
+@media (max-width: 991.98px) {
+    #coursePreviewModal .modal-header .btn-close {
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px !important;
+        min-height: 28px !important;
+        max-width: 28px !important;
+        max-height: 28px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        opacity: 1 !important;
+        background: none !important;
+        background-image: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 4px !important;
+        transition: background-color 0.2s ease !important;
+    }
+    
+    #coursePreviewModal .modal-header .btn-close:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    #coursePreviewModal .modal-header .btn-close i,
+    #coursePreviewModal .modal-header .btn-close i.fas,
+    #coursePreviewModal .modal-header .btn-close i.fa-times {
+        font-size: 1rem !important;
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    #coursePreviewModal .modal-header .btn-close {
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        min-height: 24px !important;
+        max-width: 24px !important;
+        max-height: 24px !important;
+    }
+    
+    #coursePreviewModal .modal-header .btn-close i,
+    #coursePreviewModal .modal-header .btn-close i.fas,
+    #coursePreviewModal .modal-header .btn-close i.fa-times {
+        font-size: 0.875rem !important;
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+    }
 }
 
 /* Desktop: lecteur fixe, liste scrollable */
@@ -641,32 +767,75 @@ body.has-global-announcement:has(.course-details-page) {
         padding: 1rem !important;
         display: flex !important;
         flex-direction: column !important;
-        gap: 0.75rem !important;
+        gap: 0 !important; /* Supprimé complètement pour remonter au maximum le texte */
     }
     
-    /* Conteneur vidéo - prend l'espace nécessaire */
+    /* Conteneur vidéo - taille fixe pour maintenir la même hauteur */
     .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer {
         flex: 0 0 auto !important;
         width: 100% !important;
-        margin-bottom: 0.75rem !important;
+        margin-bottom: 0 !important; /* Supprimé car le gap du parent gère déjà l'espacement */
+        aspect-ratio: 16 / 9 !important; /* Forcer le ratio 16:9 - maintiendra la proportion */
+        height: auto !important; /* La hauteur sera calculée automatiquement selon le ratio et la largeur */
+        min-height: 450px !important; /* Hauteur minimale pour éviter qu'il devienne trop petit */
+        max-height: 600px !important; /* Hauteur maximale pour éviter qu'il devienne trop grand */
+        overflow: hidden !important; /* Éviter le débordement du contenu vidéo */
     }
     
-    /* Forcer le ratio à ne pas dépasser une certaine hauteur */
+    /* Forcer le ratio à maintenir la taille fixe - s'assure que le conteneur ne change pas de taille */
     .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer.ratio {
-        max-height: 70vh !important;
-        overflow: visible !important; /* Permettre au menu de s'afficher */
+        aspect-ratio: 16 / 9 !important;
+        height: auto !important;
+        min-height: 450px !important;
+        max-height: 600px !important;
+        overflow: hidden !important;
+        padding-bottom: 0 !important; /* Désactiver le padding-bottom du ratio Bootstrap qui pourrait créer des variations */
+        position: relative !important; /* S'assurer que les enfants absolus sont positionnés correctement */
     }
     
-    /* S'assurer que le ratio ne coupe pas le menu */
+    /* S'assurer que les lecteurs remplissent le conteneur sans changer sa taille */
     .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer.ratio .plyr-player-container,
     .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer.ratio .plyr-player-wrapper {
-        overflow: visible !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
     }
     
-    /* Info de la leçon - hauteur flexible mais limitée */
+    /* S'assurer que les vidéos s'adaptent au conteneur sans changer sa taille */
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer video,
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer .plyr__video-embed {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain !important; /* S'adapter au conteneur sans le déformer */
+        max-width: 100% !important;
+        max-height: 100% !important;
+    }
+    
+    /* S'assurer que les wrappers de preview remplissent le conteneur */
+    .modal-fixed-height .modal-body .col-lg-8 #previewVideoContainer .preview-player-wrapper {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+    }
+    
+    /* Info de la leçon - hauteur flexible mais limitée, pas d'espace vide en haut */
     .modal-fixed-height .modal-body .col-lg-8 #previewLessonInfo {
         flex: 0 0 auto !important;
         flex-shrink: 0 !important;
+        margin-top: 0.25rem !important; /* Espacement minimal pour séparer du lecteur */
+        margin-bottom: 0 !important; /* Pas d'espace en bas */
+        padding-top: 0.5rem !important; /* Padding supérieur minimal */
+        padding-bottom: 0.75rem !important; /* Padding inférieur */
     }
     
     /* Colonne de la liste - flex column avec hauteur fixe */
@@ -744,6 +913,135 @@ body.has-global-announcement:has(.course-details-page) {
     
     .modal-fixed-height .modal-body #previewVideoContainer {
         scroll-margin-top: 20px;
+        aspect-ratio: 16 / 9 !important;
+        min-height: 250px !important;
+        max-height: 50vh !important;
+        height: auto !important;
+        overflow: hidden !important;
+    }
+    
+    .modal-fixed-height .modal-body #previewVideoContainer.ratio {
+        padding-bottom: 0 !important;
+    }
+    
+    /* Styles pour les contrôles Plyr dans le modal de preview sur mobile - bouton centré */
+    .modal-fixed-height .modal-body #previewVideoContainer .plyr__control--overlaid,
+    .modal-fixed-height .modal-body #previewVideoContainer .plyr__control.plyr__control--overlaid {
+        border-radius: 50% !important;
+        width: 70px !important;
+        height: 70px !important;
+        min-width: 70px !important;
+        min-height: 70px !important;
+        max-width: 70px !important;
+        max-height: 70px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        aspect-ratio: 1 / 1 !important;
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important; /* Centre le bouton */
+        z-index: 10 !important;
+        scale: 1 !important;
+    }
+    
+    /* Styles pour les contrôles Plyr dans le modal de preview sur mobile (très petit) */
+    @media (max-width: 575.98px) {
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__controls {
+            padding: 5px 6px !important;
+            font-size: 10px !important;
+        }
+        
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__control {
+            padding: 4px !important;
+            min-width: 24px !important;
+            width: 24px !important;
+            height: 24px !important;
+        }
+        
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__control svg,
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__control .plyr__icon {
+            width: 12px !important;
+            height: 12px !important;
+            font-size: 12px !important;
+        }
+        
+        /* Bouton play central - parfaitement rond et centré dans le modal de preview sur très petit mobile */
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__control--overlaid,
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__control.plyr__control--overlaid {
+            width: 50px !important;
+            height: 50px !important;
+            min-width: 50px !important;
+            min-height: 50px !important;
+            max-width: 50px !important;
+            max-height: 50px !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important; /* Centre le bouton */
+            z-index: 10 !important;
+        }
+        
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__time {
+            font-size: 9px !important;
+            padding: 0 2px !important;
+        }
+        
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__tooltip {
+            font-size: 8px !important;
+            padding: 2px 4px !important;
+        }
+        
+        /* Options de vitesse - taille ultra réduite dans le modal de preview sur très petit mobile */
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__menu__container {
+            font-size: 0.45rem !important;
+            min-width: 60px !important;
+            max-width: 85px !important;
+            padding: 0.1rem 0 !important;
+        }
+        
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__menu__container .plyr__control {
+            padding: 0.15rem 0.3rem !important;
+            font-size: 0.45rem !important;
+            min-height: 20px !important;
+        }
+        
+        .modal-fixed-height .modal-body #previewVideoContainer .plyr__menu__container .plyr__control span {
+            font-size: 0.35rem !important;
+            transform: scale(0.8) !important;
+            letter-spacing: -0.5px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+    }
+    
+    /* Styles pour les options de vitesse dans le modal de preview sur mobile */
+    .modal-fixed-height .modal-body #previewVideoContainer .plyr__menu__container {
+        font-size: 0.5rem !important;
+        min-width: 70px !important;
+        max-width: 95px !important;
+        padding: 0.1rem 0 !important;
+    }
+    
+    .modal-fixed-height .modal-body #previewVideoContainer .plyr__menu__container .plyr__control {
+        padding: 0.2rem 0.35rem !important;
+        font-size: 0.5rem !important;
+        min-height: 22px !important;
+    }
+    
+    .modal-fixed-height .modal-body #previewVideoContainer .plyr__menu__container .plyr__control span {
+        font-size: 0.4rem !important;
+        transform: scale(0.85) !important;
+        letter-spacing: -0.3px !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
     
     /* Réduire l'espacement entre le titre et la liste des previews sur mobile */
@@ -2617,21 +2915,24 @@ body.has-global-announcement:has(.course-details-page) {
                                     @if($course->is_downloadable)
                                         @if($canDownloadCourse)
                                             <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
-                                                <i class="fas fa-download me-2"></i>Télécharger le cours
+                                                <i class="fas fa-download me-2"></i>Télécharger
                                             </a>
                                         @else
                                             <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="d-grid gap-2">
                                                 @csrf
                                                 <input type="hidden" name="redirect_to" value="download">
                                                 <button type="submit" class="btn btn-primary btn-lg w-100">
-                                                    <i class="fas fa-download me-2"></i>Télécharger le cours
+                                                    <i class="fas fa-download me-2"></i>Télécharger
                                                 </button>
                                             </form>
                                         @endif
                                     @else
                                         @if($canAccessCourse)
+                                            @php
+                                                $progress = $enrollment->progress ?? 0;
+                                            @endphp
                                             <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
-                                                <i class="fas fa-play me-2"></i>Apprendre
+                                                <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
                                             </a>
                                         @else
                                             <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
@@ -2647,11 +2948,14 @@ body.has-global-announcement:has(.course-details-page) {
                                     @if($isEnrolled)
                                         @if($course->is_downloadable && $canDownloadCourse)
                                             <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
-                                                <i class="fas fa-download me-2"></i>Télécharger le cours
+                                                <i class="fas fa-download me-2"></i>Télécharger
                                             </a>
                                         @else
-                                        <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
-                                            <i class="fas fa-play me-2"></i>Apprendre
+                                            @php
+                                                $progress = $enrollment->progress ?? 0;
+                                            @endphp
+                                            <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
+                                                <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
                                             </a>
                                         @endif
                                     @elseif($hasPurchased)
@@ -2787,9 +3091,12 @@ body.has-global-announcement:has(.course-details-page) {
                         @endif
                     @else
                         @if($canAccessCourse)
+                            @php
+                                $progress = $enrollment->progress ?? 0;
+                            @endphp
                             <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success">
                                 <i class="fas fa-play"></i>
-                                <span>Apprendre</span>
+                                <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
                             </a>
                         @else
                             <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
@@ -2810,9 +3117,12 @@ body.has-global-announcement:has(.course-details-page) {
                                 <span>Télécharger</span>
                             </a>
                         @else
+                            @php
+                                $progress = $enrollment->progress ?? 0;
+                            @endphp
                             <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success">
                                 <i class="fas fa-play"></i>
-                                <span>Apprendre</span>
+                                <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
                             </a>
                         @endif
                     @elseif($hasPurchased)
@@ -2851,7 +3161,9 @@ body.has-global-announcement:has(.course-details-page) {
                 <h5 class="modal-title fw-bold" id="coursePreviewModalLabel">
                     <i class="fas fa-play-circle me-2"></i>Aperçus du cours
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer">
+                    <i class="fas fa-times" style="color: #ffffff !important;"></i>
+                </button>
             </div>
             <div class="modal-body p-0">
                 <div class="row g-0 h-100">
@@ -2881,8 +3193,8 @@ body.has-global-announcement:has(.course-details-page) {
                                 
                                 {{-- Les wrappers pour les leçons d'aperçu seront créés dynamiquement via JavaScript --}}
                             </div>
-                            <div class="bg-light rounded p-3" id="previewLessonInfo">
-                                <h6 class="fw-bold mb-2" style="color: #003366;">Aperçu du cours</h6>
+                            <div class="bg-light rounded p-3" id="previewLessonInfo" style="margin-top: 0.25rem !important; padding-top: 0.5rem !important; padding-bottom: 0.75rem !important;">
+                                <h6 class="fw-bold mb-2" style="color: #003366; margin-top: 0;">Aperçu du cours</h6>
                                 <p class="text-muted small mb-0" id="previewLessonTitle">{{ $course->title }}</p>
                                 <p class="text-muted small mb-0" id="previewLessonSection" style="display: none;"></p>
                             </div>
@@ -2909,7 +3221,7 @@ body.has-global-announcement:has(.course-details-page) {
 <script>
     window.coursePreviewData = {
         courseId: {{ $course->id }},
-        previewUrl: '{{ route("courses.preview-data", $course->id) }}'
+        previewUrl: '{{ route("courses.preview-data", $course->slug) }}'
     };
 </script>
 @endif
@@ -4157,6 +4469,92 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.addEventListener('shown.bs.modal', function() {
             setTimeout(disableContextMenuOnPlayers, 100);
         });
+    }
+    
+    // Script global pour forcer les tooltips Plyr en français dans le modal de preview
+    let isUpdatingTooltips = false; // Flag pour éviter les boucles infinies
+    function updateAllPlyrTooltips() {
+        if (isUpdatingTooltips) return; // Éviter les appels simultanés
+        isUpdatingTooltips = true;
+        
+        try {
+            const tooltipMap = {
+                'Play': 'Lire',
+                'Pause': 'Pause',
+                'Restart': 'Redémarrer',
+                'Rewind': 'Rembobiner',
+                'Fast forward': 'Avance rapide',
+                'Mute': 'Couper le son',
+                'Unmute': 'Activer le son',
+                'Volume': 'Volume',
+                'Enter fullscreen': 'Plein écran',
+                'Exit fullscreen': 'Quitter le plein écran',
+                'Settings': 'Paramètres',
+                'Picture in picture': 'Image dans l\'image',
+                'Download': 'Télécharger',
+                'Captions': 'Sous-titres',
+                'Enable captions': 'Activer les sous-titres',
+                'Disable captions': 'Désactiver les sous-titres',
+                'Quality': 'Qualité',
+                'Speed': 'Vitesse',
+                'Normal': 'Normal'
+            };
+            
+            // Mettre à jour tous les boutons Plyr (seulement si pas déjà en français)
+            document.querySelectorAll('.plyr__control[data-plyr]').forEach(function(control) {
+                const ariaLabel = control.getAttribute('aria-label');
+                if (ariaLabel && tooltipMap[ariaLabel] && ariaLabel !== tooltipMap[ariaLabel]) {
+                    control.setAttribute('aria-label', tooltipMap[ariaLabel]);
+                    control.setAttribute('title', tooltipMap[ariaLabel]);
+                }
+            });
+            
+            // Mettre à jour tous les tooltips générés par Plyr (seulement si pas déjà en français)
+            document.querySelectorAll('.plyr__tooltip').forEach(function(tooltip) {
+                const text = tooltip.textContent.trim();
+                for (const [key, value] of Object.entries(tooltipMap)) {
+                    if (text === key && text !== value) {
+                        tooltip.textContent = value;
+                        break;
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Erreur lors de la mise à jour des tooltips:', e);
+        } finally {
+            isUpdatingTooltips = false;
+        }
+    }
+    
+    // Exécuter quand le modal est ouvert
+    const previewModal = document.getElementById('coursePreviewModal');
+    if (previewModal) {
+        previewModal.addEventListener('shown.bs.modal', function() {
+            setTimeout(updateAllPlyrTooltips, 200);
+            setTimeout(updateAllPlyrTooltips, 500);
+        });
+    }
+    
+    // Observer les changements du DOM pour mettre à jour les tooltips (avec debounce)
+    let tooltipUpdateTimeout;
+    const tooltipObserver = new MutationObserver(function() {
+        clearTimeout(tooltipUpdateTimeout);
+        tooltipUpdateTimeout = setTimeout(updateAllPlyrTooltips, 100);
+    });
+    
+    tooltipObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false // Ne pas observer les attributs pour éviter les boucles
+    });
+    
+    // Exécuter aussi au chargement initial
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(updateAllPlyrTooltips, 500);
+        });
+    } else {
+        setTimeout(updateAllPlyrTooltips, 500);
     }
 });
 </script>

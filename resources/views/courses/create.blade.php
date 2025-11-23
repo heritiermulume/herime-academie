@@ -8,7 +8,7 @@
 @section('admin-subtitle', 'Définissez les informations essentielles de votre formation avant de la publier.')
 
 @section('admin-actions')
-    <a href="{{ route('instructor.courses.index') }}" class="btn btn-outline-primary" data-temp-upload-cancel="true">
+    <a href="{{ route('instructor.courses.index') }}" class="admin-btn outline" data-temp-upload-cancel="true">
         <i class="fas fa-arrow-left me-2"></i>Retour à mes cours
     </a>
 @endsection
@@ -17,17 +17,19 @@
 
 @section('admin-content')
     @if ($errors->any())
-        <div class="admin-card create-course__alert">
-            <div class="create-course__alert-icon">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div>
-                <h3>Veuillez corriger les éléments suivants :</h3>
-                <ul>
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
+        <div class="admin-panel" style="background: rgba(254, 226, 226, 0.65); border: 1px solid rgba(248, 113, 113, 0.3); margin-bottom: 1.5rem;">
+            <div class="admin-panel__body" style="display: flex; gap: 1rem; align-items: flex-start;">
+                <div style="width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: rgba(248, 113, 113, 0.15); font-size: 1.3rem; color: #991b1b; flex-shrink: 0;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0 0 0.5rem; color: #991b1b; font-size: 1.1rem;">Veuillez corriger les éléments suivants :</h3>
+                    <ul style="margin: 0; padding-left: 1.5rem; color: #991b1b;">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
             </div>
         </div>
     @endif
@@ -35,15 +37,13 @@
     <form action="{{ route('instructor.courses.store') }}" method="POST" enctype="multipart/form-data" class="create-course__form" id="courseForm">
         @csrf
 
-        <section class="admin-card">
-            <header class="create-course__section-head">
-                <div>
-                    <h2>Informations principales</h2>
-                    <p>Posez les bases de votre formation pour guider les futurs étudiants.</p>
-                </div>
-            </header>
-
-            <div class="create-course__grid">
+        <section class="admin-panel">
+            <div class="admin-panel__header">
+                <h3><i class="fas fa-info-circle me-2"></i>Informations principales</h3>
+            </div>
+            <div class="admin-panel__body">
+                <p style="margin: 0 0 1.5rem; color: var(--instructor-muted); font-size: 0.95rem;">Posez les bases de votre formation pour guider les futurs étudiants.</p>
+                <div class="create-course__grid">
                 <div class="create-course__field">
                     <label for="title">Titre du cours <span class="required">*</span></label>
                     <input type="text" id="title" name="title" value="{{ old('title') }}" placeholder="Ex : Maîtriser Laravel en 30 jours" required>
@@ -96,17 +96,16 @@
                     @error('language') <span class="create-course__error">{{ $message }}</span> @enderror
                 </div>
             </div>
+            </div>
         </section>
 
-        <section class="admin-card">
-            <header class="create-course__section-head">
-                <div>
-                    <h2>Médias et présentation</h2>
-                    <p>Mettez en valeur votre cours grâce à une image et une vidéo attrayantes.</p>
-                </div>
-            </header>
-
-            <div class="create-course__media">
+        <section class="admin-panel">
+            <div class="admin-panel__header">
+                <h3><i class="fas fa-photo-video me-2"></i>Médias et présentation</h3>
+            </div>
+            <div class="admin-panel__body">
+                <p style="margin: 0 0 1.5rem; color: var(--instructor-muted); font-size: 0.95rem;">Mettez en valeur votre cours grâce à une image et une vidéo attrayantes.</p>
+                <div class="create-course__media">
                 <div class="create-course__upload" data-media="thumbnail">
                     <label for="thumbnail">Image de couverture</label>
                     <input type="file"
@@ -188,17 +187,16 @@
                     @error('video_preview_path') <span class="create-course__error">{{ $message }}</span> @enderror
                 </div>
             </div>
+            </div>
         </section>
 
-        <section class="admin-card">
-            <header class="create-course__section-head">
-                <div>
-                    <h2>Tarification</h2>
-                    <p>Fixez un tarif cohérent avec la valeur du contenu proposé.</p>
-                </div>
-            </header>
-
-            <div class="create-course__grid">
+        <section class="admin-panel">
+            <div class="admin-panel__header">
+                <h3><i class="fas fa-dollar-sign me-2"></i>Tarification</h3>
+            </div>
+            <div class="admin-panel__body">
+                <p style="margin: 0 0 1.5rem; color: var(--instructor-muted); font-size: 0.95rem;">Fixez un tarif cohérent avec la valeur du contenu proposé.</p>
+                <div class="create-course__grid">
                 <div class="create-course__field">
                     <label for="price">Prix (FCFA) <span class="required">*</span></label>
                     <input type="number" id="price" name="price" value="{{ old('price') }}" min="0" step="0.01" placeholder="Ex : 45000" required>
@@ -225,17 +223,16 @@
                     @error('sale_end_at') <span class="create-course__error">{{ $message }}</span> @enderror
                 </div>
             </div>
+            </div>
         </section>
 
-        <section class="admin-card">
-            <header class="create-course__section-head">
-                <div>
-                    <h2>Contenu pédagogique</h2>
-                    <p>Clarifiez ce que les apprenants doivent savoir et ce qu’ils obtiendront.</p>
-                </div>
-            </header>
-
-            <div class="create-course__lists">
+        <section class="admin-panel">
+            <div class="admin-panel__header">
+                <h3><i class="fas fa-target me-2"></i>Contenu pédagogique</h3>
+            </div>
+            <div class="admin-panel__body">
+                <p style="margin: 0 0 1.5rem; color: var(--instructor-muted); font-size: 0.95rem;">Clarifiez ce que les apprenants doivent savoir et ce qu'ils obtiendront.</p>
+                <div class="create-course__lists">
                 <div class="create-course__list">
                     <div class="create-course__list-head">
                         <h3>Prérequis</h3>
@@ -299,36 +296,38 @@
                     @error('tags') <span class="create-course__error">{{ $message }}</span> @enderror
                 </div>
             </div>
+            </div>
         </section>
 
-        <section class="admin-card">
-            <header class="create-course__section-head">
-                <div>
-                    <h2>Structure du cours</h2>
-                    <p>Organisez les sections et leurs leçons. Ajoutez des fichiers, du texte ou des liens selon le format de chaque leçon.</p>
-                </div>
-                <button type="button" class="btn btn-primary" id="add-section-btn">
+        <section class="admin-panel">
+            <div class="admin-panel__header">
+                <h3><i class="fas fa-list me-2"></i>Structure du cours</h3>
+                <button type="button" class="admin-btn primary sm" id="add-section-btn">
                     <i class="fas fa-plus me-2"></i>Ajouter une section
                 </button>
-            </header>
-
-            <div class="course-structure">
+            </div>
+            <div class="admin-panel__body">
+                <p style="margin: 0 0 1.5rem; color: var(--instructor-muted); font-size: 0.95rem;">Organisez les sections et leurs leçons. Ajoutez des fichiers, du texte ou des liens selon le format de chaque leçon.</p>
+                <div class="course-structure">
                 <div class="course-structure__empty" id="course-structure-empty">
                     <i class="fas fa-layer-group"></i>
                     <p>Ajoutez votre première section pour commencer à structurer le cours.</p>
                 </div>
                 <div class="course-structure__sections" id="course-structure-sections"></div>
             </div>
+            </div>
         </section>
 
-        <section class="admin-card create-course__submit">
-            <div class="create-course__submit-actions">
-                <a href="{{ route('instructor.courses.index') }}" class="btn btn-outline-secondary">
-                    Annuler
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-check me-2"></i>Enregistrer le cours
-                </button>
+        <section class="admin-panel">
+            <div class="admin-panel__body">
+                <div class="create-course__submit-actions">
+                    <a href="{{ route('instructor.courses.index') }}" class="admin-btn outline">
+                        Annuler
+                    </a>
+                    <button type="submit" class="admin-btn primary">
+                        <i class="fas fa-check me-2"></i>Enregistrer le cours
+                    </button>
+                </div>
             </div>
         </section>
     </form>
@@ -339,7 +338,7 @@
     .create-course__form {
         display: flex;
         flex-direction: column;
-        gap: 2rem;
+        gap: 1.5rem;
     }
 
     .create-course__alert {
@@ -361,31 +360,11 @@
         font-size: 1.3rem;
     }
 
-    .create-course__section-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .create-course__section-head h2 {
-        margin: 0;
-        font-size: 1.35rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .create-course__section-head p {
-        margin: 0.3rem 0 0;
-        color: #64748b;
-        font-size: 0.95rem;
-    }
 
     .create-course__grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1.5rem;
+        gap: 1.25rem;
     }
 
     .create-course__field {
@@ -404,11 +383,12 @@
     .create-course__field select,
     .create-course__field textarea {
         border: 1px solid rgba(148, 163, 184, 0.35);
-        border-radius: 14px;
-        padding: 0.85rem 1rem;
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
         font-size: 0.95rem;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        background: rgba(255, 255, 255, 0.95);
+        background: #ffffff;
+        width: 100%;
     }
 
     .create-course__field input:focus,
@@ -992,17 +972,27 @@
     }
 
     @media (max-width: 1024px) {
+        .create-course__form {
+            gap: 1.25rem;
+        }
         .create-course__grid {
             grid-template-columns: 1fr;
+            gap: 1rem;
         }
         .create-course__media {
             grid-template-columns: 1fr;
+            gap: 1.25rem;
         }
         .create-course__lists {
             grid-template-columns: 1fr;
+            gap: 1.25rem;
         }
         .create-course__submit-actions {
             justify-content: center;
+            flex-direction: column;
+        }
+        .create-course__submit-actions .admin-btn {
+            width: 100%;
         }
         .course-structure__lesson-grid {
             grid-template-columns: 1fr;
@@ -1010,25 +1000,63 @@
         .course-structure__lesson-meta {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+        .admin-panel__header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        .admin-panel__header .admin-btn {
+            width: 100%;
+        }
     }
 
     @media (max-width: 640px) {
         .create-course__form {
-            gap: 1.5rem;
+            gap: 1rem;
         }
-        .create-course__section-head {
-            flex-direction: column;
-            align-items: flex-start;
+        .create-course__grid {
+            gap: 0.875rem;
+        }
+        .create-course__field {
+            gap: 0.35rem;
+        }
+        .create-course__field input,
+        .create-course__field select,
+        .create-course__field textarea {
+            padding: 0.65rem 0.875rem;
+            font-size: 0.9rem;
+        }
+        .create-course__field label {
+            font-size: 0.9rem;
         }
         .create-course__list-item {
             flex-direction: column;
             align-items: stretch;
+            padding: 0.625rem;
         }
         .create-course__list-item button {
             align-self: flex-end;
         }
+        .create-course__list-item input {
+            font-size: 0.9rem;
+        }
         .course-structure__lesson-meta {
             grid-template-columns: 1fr;
+        }
+        .course-structure__section {
+            padding: 1rem;
+        }
+        .admin-panel__header h3 {
+            font-size: 1.1rem;
+        }
+        .admin-panel__body {
+            padding: 1rem;
+        }
+        .create-course__upload-box {
+            padding: 1.25rem;
+        }
+        .create-course__upload-placeholder i {
+            font-size: 1.5rem;
         }
     }
 </style>

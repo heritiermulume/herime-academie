@@ -4004,16 +4004,21 @@
                     // Mettre à jour le compteur du panier
                     updateCartCount();
                     
-                    // Vérifier si on est sur la page du panier
-                    const isOnCartPage = document.getElementById('cart-main-container') !== null;
+                    // Vérifier si on est sur la page du panier (vérifier plusieurs éléments possibles)
+                    const isOnCartPage = document.getElementById('cart-main-container') !== null 
+                        || document.getElementById('empty-cart-container') !== null
+                        || window.location.pathname.includes('/cart');
                     
                     if (isOnCartPage) {
-                        // Si on est sur la page du panier, gérer la transition
-                        handleCartPageTransition();
+                        // Si on est sur la page du panier, recharger la page pour afficher le nouveau cours
+                        showNotification('Cours ajouté au panier !', 'success');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 500);
+                    } else {
+                        // Si on n'est pas sur la page du panier, juste afficher la notification
+                        showNotification('Cours ajouté au panier !', 'success');
                     }
-                    
-                    // Afficher la notification de succès
-                    showNotification('Cours ajouté au panier !', 'success');
                 } else {
                     showNotification(data.message || 'Erreur lors de l\'ajout au panier', 'error');
                 }

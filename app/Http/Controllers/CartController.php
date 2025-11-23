@@ -51,6 +51,14 @@ class CartController extends Controller
         $courseId = $request->course_id;
         $course = Course::findOrFail($courseId);
 
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ce cours n\'est pas disponible.'
+            ], 404);
+        }
+
         // Vérifier si le cours est gratuit
         if ($course->is_free) {
             return response()->json([
@@ -631,7 +639,8 @@ class CartController extends Controller
 
         foreach ($cart as $courseId => $quantity) {
             $course = Course::find($courseId);
-            if ($course) {
+            // Ne pas inclure les cours non publiés
+            if ($course && $course->is_published) {
                 $cartItems[] = [
                     'id' => $course->id,
                     'title' => $course->title,
@@ -707,7 +716,8 @@ class CartController extends Controller
                 'sections.lessons'
             ])->find($courseId);
             
-            if ($course) {
+            // Ne pas inclure les cours non publiés
+            if ($course && $course->is_published) {
                 // Ajouter les statistiques calculées avec vérifications
                 $course->stats = [
                     'total_lessons' => $course->sections ? $course->sections->sum(function($section) {

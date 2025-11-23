@@ -148,7 +148,7 @@
                         </h2>
                         <p class="mb-3">Nous pouvons partager vos données avec :</p>
                         <ul class="list-unstyled">
-                            <li class="mb-2"><i class="fas fa-building text-primary me-2"></i><strong>Prestataires de paiement</strong> (MaxiCash, PayPal) pour le traitement des transactions</li>
+                            <li class="mb-2"><i class="fas fa-building text-primary me-2"></i><strong>Prestataires de paiement</strong> (PayPal) pour le traitement des transactions</li>
                             <li class="mb-2"><i class="fas fa-cloud text-primary me-2"></i><strong>Hébergeurs et services cloud</strong> pour le fonctionnement de la plateforme</li>
                             <li class="mb-0"><i class="fas fa-gavel text-primary me-2"></i><strong>Autorités légales</strong> si la loi l'exige</li>
                         </ul>

@@ -16,6 +16,11 @@ class LearningController extends Controller
      */
     public function learn(Course $course)
     {
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            abort(404, 'Ce cours n\'est pas disponible.');
+        }
+
         // Vérifier que l'utilisateur est inscrit au cours
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
             return redirect()->route('courses.show', $course)
@@ -83,6 +88,11 @@ class LearningController extends Controller
      */
     public function lesson(Course $course, CourseLesson $lesson)
     {
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            abort(404, 'Ce cours n\'est pas disponible.');
+        }
+
         // Vérifier que l'utilisateur est inscrit au cours
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
             return redirect()->route('courses.show', $course)

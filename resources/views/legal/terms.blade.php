@@ -77,8 +77,6 @@
                         <p class="mb-3">Les prix des formations sont indiqués en dollars américains (USD) et sont valables tant qu'ils sont visibles sur le site.</p>
                         <p class="mb-2"><strong>Les moyens de paiement acceptés sont :</strong></p>
                         <ul class="list-unstyled">
-                            <li class="mb-2"><i class="fas fa-mobile-alt text-primary me-2"></i>MaxiCash (Mobile Money, Cartes bancaires, PayPal)</li>
-                            <li class="mb-0"><i class="fab fa-whatsapp text-primary me-2"></i>Commande via WhatsApp (paiement manuel)</li>
                         </ul>
                         <p class="mb-0 mt-3">Le paiement s'effectue de manière sécurisée via notre partenaire de paiement.</p>
                     </div>

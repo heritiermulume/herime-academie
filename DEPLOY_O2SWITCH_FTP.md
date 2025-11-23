@@ -93,13 +93,6 @@ FILESYSTEM_DISK=local
 QUEUE_CONNECTION=sync
 SESSION_DRIVER=file
 
-# MaxiCash Production
-MAXICASH_MERCHANT_ID=votre_merchant_id
-MAXICASH_MERCHANT_PASSWORD=votre_password
-MAXICASH_SANDBOX=false
-MAXICASH_API_URL=https://api.maxicashapp.com/Merchant/api.asmx
-MAXICASH_GATEWAY_URL=https://api.maxicashapp.com/PayEntryPost
-
 # Mail O2Switch
 MAIL_MAILER=smtp
 MAIL_HOST=smtp.o2switch.net
@@ -176,7 +169,7 @@ chmod -R 644 .env
 
 1. **Tester l'accès** : https://academie.herime.com
 2. **Vérifier les logs** : `storage/logs/laravel.log`
-3. **Tester le paiement MaxiCash** (avec sandbox d'abord)
+3. **Tester les paiements** avec les méthodes configurées
 
 ## 🔄 Mise à jour du site
 

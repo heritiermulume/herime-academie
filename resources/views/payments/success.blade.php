@@ -70,7 +70,7 @@
                             </div>
                             <div class="col-md-3 text-end">
                                 <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total) }}</div>
-                                <a href="{{ route('student.courses.learn', $item->course->slug) }}" 
+                                <a href="{{ route('learning.course', $item->course->slug) }}" 
                                    class="btn btn-primary btn-sm mt-2">
                                     <i class="fas fa-play me-1"></i>Commencer
                                 </a>

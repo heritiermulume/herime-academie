@@ -41,7 +41,7 @@ return [
             'transport' => 'smtp',
             'host' => env('MAIL_HOST', 'herime.com'),
             'port' => env('MAIL_PORT', 465),
-            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
+            'encryption' => env('MAIL_ENCRYPTION', 'ssl'),
             'username' => env('MAIL_USERNAME', 'academie@herime.com'),
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,

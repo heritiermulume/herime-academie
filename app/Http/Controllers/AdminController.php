@@ -722,19 +722,13 @@ class AdminController extends Controller
         }
 
         // Créer l'inscription avec order_id null (accès gratuit)
-        Enrollment::create([
+        // La méthode createAndNotify envoie automatiquement les notifications et emails
+        Enrollment::createAndNotify([
             'user_id' => $user->id,
             'course_id' => $course->id,
             'order_id' => null, // Accès gratuit donné par l'admin
             'status' => 'active',
         ]);
-
-        // Envoyer une notification et un email à l'utilisateur
-        try {
-            $user->notify(new \App\Notifications\CourseEnrolled($course));
-        } catch (\Exception $e) {
-            \Log::error("Erreur lors de l'envoi de l'email d'inscription: " . $e->getMessage());
-        }
 
         return redirect()->route('admin.users.show', $user)
             ->with('success', "Accès gratuit au cours \"{$course->title}\" accordé avec succès. L'utilisateur a été notifié par email.");

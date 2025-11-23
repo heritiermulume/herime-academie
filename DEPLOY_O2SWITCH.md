@@ -116,13 +116,6 @@ QUEUE_CONNECTION=sync
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 
-# MaxiCash Configuration
-MAXICASH_MERCHANT_ID=votre_merchant_id
-MAXICASH_MERCHANT_PASSWORD=votre_merchant_password
-MAXICASH_SANDBOX=false
-MAXICASH_API_URL=https://api.maxicashapp.com/Merchant/api.asmx
-MAXICASH_GATEWAY_URL=https://api.maxicashapp.com/PayEntryPost
-
 # Mail Configuration
 MAIL_MAILER=smtp
 MAIL_HOST=smtp.o2switch.net
@@ -215,14 +208,6 @@ MAIL_USERNAME=votre-email@votre-domaine
 MAIL_PASSWORD=votre-password-email
 ```
 
-## 13. URLs MaxiCash
-
-En production, utilisez les URLs Live de MaxiCash :
-```
-MAXICASH_API_URL=https://api.maxicashapp.com/Merchant/api.asmx
-MAXICASH_GATEWAY_URL=https://api.maxicashapp.com/PayEntryPost
-MAXICASH_SANDBOX=false
-```
 
 ## 14. Checklist de déploiement
 
@@ -235,7 +220,7 @@ MAXICASH_SANDBOX=false
 - [ ] Migration de base de données exécutée
 - [ ] Lien symbolique de storage créé
 - [ ] Tests de connexion à la base de données
-- [ ] Tests de paiement MaxiCash
+- [ ] Tests de paiement
 - [ ] Tests d'envoi d'email
 
 ## 15. Optimisation de performance
@@ -290,5 +275,4 @@ php artisan optimize
 Une fois déployé, votre site sera accessible sur :
 **https://votre-domaine.com**
 
-N'oubliez pas de configurer vos variables MaxiCash en production avec les vraies credentials !
 

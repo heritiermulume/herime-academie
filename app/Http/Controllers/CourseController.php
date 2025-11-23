@@ -176,6 +176,11 @@ class CourseController extends Controller
 
     public function show(Course $course)
     {
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            abort(404, 'Ce cours n\'est pas disponible.');
+        }
+
         // Charger toutes les relations nécessaires
         $course->load([
             'instructor' => function($query) {
@@ -626,6 +631,11 @@ class CourseController extends Controller
 
     public function lesson(Course $course, CourseLesson $lesson)
     {
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            abort(404, 'Ce cours n\'est pas disponible.');
+        }
+
         // Vérifier que la leçon appartient au cours
         if ($lesson->course_id !== $course->id) {
             abort(404);
@@ -930,6 +940,11 @@ class CourseController extends Controller
 
     public function previewData(Course $course)
     {
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            abort(404, 'Ce cours n\'est pas disponible.');
+        }
+
         try {
             $fileHelper = app(\App\Helpers\FileHelper::class);
             // Récupérer uniquement les leçons vidéo d'aperçu publiées qui ont du contenu vidéo

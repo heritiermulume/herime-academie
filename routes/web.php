@@ -19,10 +19,7 @@ use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\LearningController;
 use App\Http\Controllers\YouTubeAccessController;
-use App\Http\Controllers\WhatsAppOrderController;
 use App\Http\Controllers\FilterController;
-// use App\Http\Controllers\MokoController; // désactivé
-// use App\Http\Controllers\MaxiCashController; // désactivé
 use App\Http\Controllers\PawaPayController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\TemporaryUploadController;
@@ -86,7 +83,7 @@ Route::get('/test-categories-view', function() {
 });
 Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
 Route::get('/courses/{course:slug}', [CourseController::class, 'show'])->name('courses.show');
-Route::get('/courses/{course}/preview-data', [CourseController::class, 'previewData'])->name('courses.preview-data');
+Route::get('/courses/{course:slug}/preview-data', [CourseController::class, 'previewData'])->name('courses.preview-data');
 Route::get('/courses/{course:slug}/lesson/{lesson}', [CourseController::class, 'lesson'])->name('courses.lesson');
 Route::get('/categories/{category:slug}', [CourseController::class, 'byCategory'])->name('courses.category');
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
@@ -105,12 +102,6 @@ Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])
 Route::post('/newsletter/unsubscribe', [NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
 Route::get('/newsletter/confirm/{token}', [NewsletterController::class, 'confirm'])->name('newsletter.confirm');
 
-// WhatsApp Order routes - avec validation SSO
-Route::middleware('auth')->group(function () {
-    Route::post('/whatsapp-order/create', [WhatsAppOrderController::class, 'createOrder'])
-        ->middleware('sso.validate')
-        ->name('whatsapp.order.create');
-});
 
 
 // Order management routes - avec validation SSO pour les actions de modification
@@ -243,7 +234,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('student')->name('student.')->middleware('role:student')->group(function () {
         Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
         Route::get('/courses', [StudentController::class, 'courses'])->name('courses');
-        Route::get('/courses/{course:slug}/learn', [StudentController::class, 'learn'])->name('courses.learn');
         Route::get('/certificates', [StudentController::class, 'certificates'])->name('certificates');
     });
     
@@ -685,24 +675,7 @@ Route::post('/admin/uploads/chunk', [ChunkUploadController::class, 'handle'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('admin.uploads.chunk');
 
-// MOKO Afrika Payment Routes (désactivées)
-// Route::prefix('moko')->name('moko.')->group(function () {
-//     Route::get('/payment', [MokoController::class, 'showPaymentForm'])->name('payment');
-//     Route::post('/initiate', [MokoController::class, 'initiatePayment'])->name('initiate');
-//     Route::get('/status/{reference}', [MokoController::class, 'checkStatus'])->name('status');
-//     Route::get('/success', [MokoController::class, 'success'])->name('success');
-//     Route::get('/failure', [MokoController::class, 'failure'])->name('failure');
-//     Route::post('/callback', [MokoController::class, 'handleCallback'])->name('callback')->withoutMiddleware(['web']);
-// });
 
-// MaxiCash payment routes (désactivées)
-// Route::prefix('maxicash')->name('maxicash.')->middleware('auth')->group(function () {
-//     Route::post('/process', [MaxiCashController::class, 'process'])->name('process');
-//     Route::get('/success', [MaxiCashController::class, 'success'])->name('success');
-//     Route::get('/cancel', [MaxiCashController::class, 'cancel'])->name('cancel');
-//     Route::get('/failure', [MaxiCashController::class, 'failure'])->name('failure');
-//     Route::post('/notify', [MaxiCashController::class, 'notify'])->name('notify')->withoutMiddleware(['web']);
-// });
 
 // pawaPay routes
 Route::prefix('pawapay')->name('pawapay.')->group(function () {

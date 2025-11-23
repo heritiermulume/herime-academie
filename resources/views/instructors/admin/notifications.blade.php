@@ -4,13 +4,19 @@
 @section('admin-subtitle', 'Consultez vos notifications récentes et marquez-les comme lues en un clic.')
 
 @section('admin-actions')
-    <button type="button" class="btn btn-outline-primary" onclick="markAllAsRead()">
+    <button type="button" class="admin-btn outline" onclick="markAllAsRead()">
         <i class="fas fa-check-double me-2"></i>Tout marquer comme lu
     </button>
 @endsection
 
 @section('admin-content')
-    <section class="admin-card">
+    <section class="admin-panel">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-bell me-2"></i>Centre de notifications
+            </h3>
+        </div>
+        <div class="admin-panel__body">
         <div class="notifications-list">
             @forelse($notifications as $notification)
                 @php
@@ -40,14 +46,14 @@
                         <p>{{ $message }}</p>
                         <div class="notifications-item__actions">
                             @if($ctaUrl)
-                                <a href="{{ $ctaUrl }}" class="btn btn-outline-primary btn-sm" target="_blank">{{ $ctaText }}</a>
+                                <a href="{{ $ctaUrl }}" class="admin-btn outline sm" target="_blank">{{ $ctaText }}</a>
                             @endif
                             @if(!$notification->read_at)
-                                <button class="btn btn-link btn-sm" onclick="markAsRead('{{ $notification->id }}')">
+                                <button class="admin-btn soft sm" onclick="markAsRead('{{ $notification->id }}')">
                                     <i class="fas fa-check me-1"></i>Marquer comme lu
                                 </button>
                             @endif
-                            <button class="btn btn-link btn-sm text-danger" onclick="deleteNotification('{{ $notification->id }}')">
+                            <button class="admin-btn soft sm" style="color: #dc2626;" onclick="deleteNotification('{{ $notification->id }}')">
                                 <i class="fas fa-trash me-1"></i>Supprimer
                             </button>
                         </div>
@@ -61,8 +67,9 @@
             @endforelse
         </div>
 
-        <div class="mt-3">
-            {{ $notifications->links() }}
+            <div class="mt-3">
+                {{ $notifications->links() }}
+            </div>
         </div>
     </section>
 @endsection
@@ -124,9 +131,11 @@
         gap: 0.5rem;
         align-items: center;
     }
-    .notifications-item__actions .btn-link {
-        padding: 0.25rem 0.5rem;
-        font-weight: 600;
+    .notifications-item__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
     }
     .notifications-empty {
         text-align: center;
@@ -138,10 +147,24 @@
     @media (max-width: 640px) {
         .notifications-item {
             grid-template-columns: 1fr;
+            padding: 0.75rem;
         }
         .notifications-item__icon {
             width: 40px;
             height: 40px;
+        }
+        .notifications-item__actions {
+            flex-direction: column;
+            width: 100%;
+        }
+        .notifications-item__actions .admin-btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .notifications-empty {
+            padding: 1.5rem 0.75rem;
         }
     }
 </style>
