@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\CartController;
 use App\Services\SSOService;
-use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,29 +15,42 @@ class AuthenticatedSessionController extends Controller
 {
     /**
      * Display the login view (local).
+     * Redirige maintenant vers SSO - l'authentification locale est désactivée.
      */
-    public function create(Request $request): RedirectResponse|View
+    public function create(Request $request): RedirectResponse
     {
         if (Auth::check()) {
             return redirect()->intended(route('dashboard'));
         }
-        return view('auth.login');
+        
+        // Rediriger vers SSO
+        $ssoService = app(SSOService::class);
+        $redirectUrl = $request->query('redirect') 
+            ?: $request->header('Referer') 
+            ?: url()->previous() 
+            ?: route('dashboard');
+        
+        $callbackUrl = route('sso.callback', ['redirect' => $redirectUrl]);
+        $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl);
+        
+        return redirect()->away($ssoLoginUrl);
     }
 
     /**
      * Handle an incoming authentication request.
+     * Redirige maintenant vers SSO - l'authentification locale est désactivée.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        $request->authenticate();
-
-        $request->session()->regenerate();
-
-        // Synchroniser le panier de session avec la base de données
-        $cartController = new CartController();
-        $cartController->syncSessionToDatabase();
-
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Rediriger vers SSO au lieu d'authentifier localement
+        $ssoService = app(SSOService::class);
+        $redirectUrl = $request->query('redirect') 
+            ?: route('dashboard');
+        
+        $callbackUrl = route('sso.callback', ['redirect' => $redirectUrl]);
+        $ssoLoginUrl = $ssoService->getLoginUrl($callbackUrl);
+        
+        return redirect()->away($ssoLoginUrl);
     }
 
     /**

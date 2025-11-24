@@ -8,30 +8,33 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\SSOController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('register', [RegisteredUserController::class, 'create'])
+    // Rediriger toutes les tentatives de connexion/inscription vers SSO
+    Route::get('register', [SSOController::class, 'redirectToSSORegister'])
         ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    Route::post('register', [SSOController::class, 'redirectToSSORegister']);
 
-    Route::get('login', [AuthenticatedSessionController::class, 'create'])
+    Route::get('login', [SSOController::class, 'redirectToSSO'])
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    Route::post('login', [SSOController::class, 'redirectToSSO']);
 
-    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
+    // Rediriger les routes de mot de passe oublié vers SSO (géré par compte.herime.com)
+    Route::get('forgot-password', [SSOController::class, 'redirectToSSO'])
         ->name('password.request');
 
-    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+    Route::post('forgot-password', [SSOController::class, 'redirectToSSO'])
         ->name('password.email');
 
-    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
+    Route::get('reset-password/{token}', [SSOController::class, 'redirectToSSO'])
         ->name('password.reset');
 
-    Route::post('reset-password', [NewPasswordController::class, 'store'])
+    Route::post('reset-password', [SSOController::class, 'redirectToSSO'])
         ->name('password.store');
 });
 

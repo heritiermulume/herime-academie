@@ -24,18 +24,14 @@ class RoleMiddleware
     public function handle(Request $request, Closure $next, string $role): Response
     {
         if (!auth()->check()) {
-            // Si SSO est activé, rediriger vers le SSO
-            if (config('services.sso.enabled', true)) {
-                $currentUrl = $request->fullUrl();
-                $callbackUrl = route('sso.callback', [
-                    'redirect' => $currentUrl
-                ]);
-                $ssoLoginUrl = $this->ssoService->getLoginUrl($callbackUrl);
-                
-                return redirect($ssoLoginUrl);
-            }
+            // Rediriger vers le SSO (authentification locale désactivée)
+            $currentUrl = $request->fullUrl();
+            $callbackUrl = route('sso.callback', [
+                'redirect' => $currentUrl
+            ]);
+            $ssoLoginUrl = $this->ssoService->getLoginUrl($callbackUrl);
             
-            return redirect()->route('login');
+            return redirect($ssoLoginUrl);
         }
 
         $user = auth()->user();
