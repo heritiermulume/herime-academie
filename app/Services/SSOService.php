@@ -72,6 +72,17 @@ class SSOService
                             if (!isset($user['name']) && isset($user['full_name'])) {
                                 $user['name'] = $user['full_name'];
                             }
+                            
+                            // Normaliser le rôle (peut être dans role, privilege, ou privileges)
+                            if (!isset($user['role'])) {
+                                if (isset($user['privilege'])) {
+                                    $user['role'] = $user['privilege'];
+                                } elseif (isset($user['privileges'])) {
+                                    $user['role'] = is_array($user['privileges']) 
+                                        ? ($user['privileges'][0] ?? 'student')
+                                        : $user['privileges'];
+                                }
+                            }
                         }
                         
                         return $user;
@@ -125,6 +136,17 @@ class SSOService
                                 $first = $user['first_name'] ?? '';
                                 $last = $user['last_name'] ?? '';
                                 $user['name'] = trim($first . ' ' . $last) ?: null;
+                            }
+                        }
+                        
+                        // Normaliser le rôle (peut être dans role, privilege, ou privileges)
+                        if (!isset($user['role'])) {
+                            if (isset($user['privilege'])) {
+                                $user['role'] = $user['privilege'];
+                            } elseif (isset($user['privileges'])) {
+                                $user['role'] = is_array($user['privileges']) 
+                                    ? ($user['privileges'][0] ?? 'student')
+                                    : $user['privileges'];
                             }
                         }
                     }

@@ -63,6 +63,15 @@ class SSOCallbackController extends Controller
 
             $email = data_get($remoteUser, 'email');
             $name  = data_get($remoteUser, 'name') ?? trim((string) data_get($remoteUser, 'first_name').' '.(string) data_get($remoteUser, 'last_name'));
+            
+            // Récupérer le rôle depuis les données SSO (peut être dans role, privilege, ou privileges)
+            $ssoRole = data_get($remoteUser, 'role') 
+                ?? data_get($remoteUser, 'privilege') 
+                ?? data_get($remoteUser, 'privileges')
+                ?? 'student';
+            
+            // Normaliser le rôle
+            $role = $this->normalizeRole($ssoRole);
 
             if (!$email) {
                 Log::warning('SSO callback: missing email in /api/me response');
@@ -72,14 +81,43 @@ class SSOCallbackController extends Controller
                 return redirect()->away($loginUrl);
             }
 
-            // Upsert utilisateur local minimal
+            // Upsert utilisateur local avec le rôle depuis SSO
             $user = User::firstOrCreate(
                 ['email' => $email],
                 [
                     'name' => $name ?: $email,
                     'password' => bcrypt(Str::random(32)),
+                    'role' => $role, // Assigner le rôle depuis SSO
                 ]
             );
+            
+            // Mettre à jour le rôle et autres informations si l'utilisateur existe déjà
+            if ($user->wasRecentlyCreated === false) {
+                $updateData = [
+                    'name' => $name ?: $user->name,
+                    'role' => $role, // Mettre à jour le rôle depuis SSO
+                    'last_login_at' => now(),
+                ];
+                
+                // Mettre à jour l'avatar si fourni
+                $avatar = data_get($remoteUser, 'avatar') 
+                    ?? data_get($remoteUser, 'photo') 
+                    ?? data_get($remoteUser, 'picture')
+                    ?? null;
+                if ($avatar !== null) {
+                    $updateData['avatar'] = $avatar;
+                }
+                
+                // Mettre à jour is_verified et is_active si fournis
+                if (isset($remoteUser['is_verified'])) {
+                    $updateData['is_verified'] = (bool) $remoteUser['is_verified'];
+                }
+                if (isset($remoteUser['is_active'])) {
+                    $updateData['is_active'] = (bool) $remoteUser['is_active'];
+                }
+                
+                $user->update($updateData);
+            }
 
             // Connexion locale + sécurisation de session
             Auth::login($user, true);
@@ -94,6 +132,8 @@ class SSOCallbackController extends Controller
             Log::info('SSO callback: authenticated locally and redirecting', [
                 'user_id' => $user->id,
                 'email' => $user->email,
+                'role' => $user->role,
+                'sso_role' => $ssoRole,
                 'final_redirect' => $finalRedirect,
             ]);
 
@@ -108,6 +148,38 @@ class SSOCallbackController extends Controller
             ]);
             return redirect()->to(url('/'));
         }
+    }
+
+    /**
+     * Normaliser le rôle utilisateur depuis SSO
+     * Conserve super_user comme tel (il a accès à l'admin via isAdmin())
+     *
+     * @param string|null $role
+     * @return string
+     */
+    private function normalizeRole(?string $role): string
+    {
+        $validRoles = ['student', 'instructor', 'admin', 'affiliate', 'super_user'];
+        
+        // Si aucun rôle fourni, retourner student par défaut
+        if (empty($role)) {
+            return 'student';
+        }
+        
+        // Normaliser la casse
+        $role = strtolower(trim($role));
+        
+        // Conserver super_user tel quel (il aura accès à l'admin via isAdmin())
+        // S'assurer que le rôle est valide
+        if (!in_array($role, $validRoles)) {
+            Log::warning('SSO callback: Invalid role provided, defaulting to student', [
+                'invalid_role' => $role,
+                'valid_roles' => $validRoles
+            ]);
+            return 'student';
+        }
+        
+        return $role;
     }
 
     private function safeRedirect(string $url): string
