@@ -6,6 +6,7 @@ use App\Notifications\OrderStatusUpdated;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Notification;
 
 class Order extends Model
 {
@@ -130,7 +131,8 @@ class Order extends Model
         }
 
         if ($this->user) {
-            $this->user->notify(new OrderStatusUpdated($this, $status, $message));
+            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            Notification::sendNow($this->user, new OrderStatusUpdated($this, $status, $message));
         }
     }
 }

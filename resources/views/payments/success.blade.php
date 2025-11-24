@@ -173,3 +173,31 @@
 }
 </style>
 @endpush
+
+@push('scripts')
+<script>
+    // Rafraîchir immédiatement les notifications après un paiement réussi
+    document.addEventListener('DOMContentLoaded', function() {
+        // Déclencher l'événement personnalisé pour notifier que des notifications ont été créées
+        document.dispatchEvent(new CustomEvent('notification-created'));
+        
+        // Attendre un court délai pour que les notifications soient créées côté serveur
+        setTimeout(function() {
+            if (typeof window.loadNotifications === 'function') {
+                window.loadNotifications();
+            } else if (typeof window.refreshNotificationsNow === 'function') {
+                window.refreshNotificationsNow();
+            }
+        }, 1000);
+        
+        // Rafraîchir à nouveau après 3 secondes pour être sûr
+        setTimeout(function() {
+            if (typeof window.loadNotifications === 'function') {
+                window.loadNotifications();
+            } else if (typeof window.refreshNotificationsNow === 'function') {
+                window.refreshNotificationsNow();
+            }
+        }, 3000);
+    });
+</script>
+@endpush

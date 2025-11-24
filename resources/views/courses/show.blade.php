@@ -4347,6 +4347,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const curriculumHeaders = document.querySelectorAll('.curriculum-section-header');
     curriculumHeaders.forEach(function(header) {
         const sectionId = header.getAttribute('data-section-id');
+        // Vérifier que sectionId existe et n'est pas vide avant d'utiliser querySelector
+        if (!sectionId || sectionId.trim() === '') return;
+        
         const targetElement = document.querySelector('#' + sectionId);
         
         if (!targetElement) return;

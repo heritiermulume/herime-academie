@@ -271,6 +271,30 @@
 </section>
 @endsection
 
+@push('scripts')
+<script>
+    // Rafraîchir les notifications après une inscription réussie
+    document.addEventListener('DOMContentLoaded', function() {
+        // Vérifier si on vient d'une inscription (message de succès présent)
+        const successMessage = document.querySelector('.alert-success, [role="alert"].alert-success');
+        if (successMessage && (successMessage.textContent.includes('Inscription') || successMessage.textContent.includes('inscrit'))) {
+            // Déclencher l'événement personnalisé pour rafraîchir les notifications
+            document.dispatchEvent(new CustomEvent('notification-created'));
+            
+            // Rafraîchir immédiatement puis à nouveau après un court délai
+            if (typeof window.loadNotifications === 'function') {
+                setTimeout(function() {
+                    window.loadNotifications();
+                }, 1000);
+                setTimeout(function() {
+                    window.loadNotifications();
+                }, 3000);
+            }
+        }
+    });
+</script>
+@endpush
+
 @push('styles')
 <style>
     * {

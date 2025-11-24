@@ -752,7 +752,21 @@ class AdminController extends Controller
         
         // Envoyer une notification et un email à l'utilisateur avant de supprimer l'inscription
         try {
-            $user->notify(new \App\Notifications\CourseAccessRevoked($course));
+            // Envoyer l'email directement de manière synchrone
+            try {
+                Mail::to($user->email)->send(new \App\Mail\CourseAccessRevokedMail($course));
+                \Log::info("Email CourseAccessRevokedMail envoyé directement à {$user->email} pour le cours {$course->id}");
+            } catch (\Exception $emailException) {
+                \Log::error("Erreur lors de l'envoi de l'email CourseAccessRevokedMail", [
+                    'user_id' => $user->id,
+                    'course_id' => $course->id,
+                    'error' => $emailException->getMessage(),
+                ]);
+            }
+            
+            // Envoyer la notification en base de données (sans email car déjà envoyé)
+            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            Notification::sendNow($user, new \App\Notifications\CourseAccessRevoked($course));
         } catch (\Exception $e) {
             \Log::error("Erreur lors de l'envoi de l'email de retrait d'accès: " . $e->getMessage());
         }
@@ -1817,10 +1831,11 @@ class AdminController extends Controller
         }
 
         // Envoi de la notification en lots pour éviter de charger tous les utilisateurs en mémoire
+        // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
         User::where('is_active', true)
             ->select('id', 'name', 'email')
             ->chunk(200, function ($users) use ($announcement) {
-                Notification::send($users, new AnnouncementPublished($announcement));
+                Notification::sendNow($users, new AnnouncementPublished($announcement));
             });
     }
 
@@ -1950,6 +1965,8 @@ class AdminController extends Controller
             $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, $recipientType) {
                 foreach ($userChunk as $user) {
                     try {
+                        // Envoyer l'email de manière synchrone (immédiate)
+                        // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
                         Mail::to($user->email)->send(new CustomAnnouncementMail($subject, $content, $attachmentPaths));
                         
                         // Enregistrer l'email envoyé
@@ -1969,7 +1986,8 @@ class AdminController extends Controller
                         ]);
                         
                         // Notifier l'utilisateur qu'un email lui a été envoyé
-                        $user->notify(new EmailSentNotification($subject, now()));
+                        // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+                        Notification::sendNow($user, new EmailSentNotification($subject, now()));
                         
                         $sentCount++;
                     } catch (\Exception $e) {
@@ -2233,18 +2251,20 @@ class AdminController extends Controller
 
     protected function notifyUsersOfNewCategory(Category $category): void
     {
+        // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
         User::where('is_active', true)
             ->chunk(200, function ($users) use ($category) {
-                Notification::send($users, new CategoryCreatedNotification($category));
+                Notification::sendNow($users, new CategoryCreatedNotification($category));
             });
     }
 
     protected function notifyStudentsOfNewCourse(Course $course): void
     {
+        // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
         User::students()
             ->where('is_active', true)
             ->chunk(200, function ($users) use ($course) {
-                Notification::send($users, new CoursePublishedNotification($course));
+                Notification::sendNow($users, new CoursePublishedNotification($course));
             });
     }
 
@@ -2255,7 +2275,8 @@ class AdminController extends Controller
             return;
         }
 
-        $instructor->notify(new CourseModerationNotification($course, $status));
+        // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+        Notification::sendNow($instructor, new CourseModerationNotification($course, $status));
     }
 
     // Gestion des partenaires
@@ -2754,7 +2775,8 @@ class AdminController extends Controller
         }
 
         if ($application->user) {
-            $application->user->notify(new InstructorApplicationStatusUpdated($application));
+            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            Notification::sendNow($application->user, new InstructorApplicationStatusUpdated($application));
         }
 
         return redirect()->route('admin.instructor-applications.show', $application)

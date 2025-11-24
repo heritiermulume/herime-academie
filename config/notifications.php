@@ -14,7 +14,8 @@ return [
     'channels' => [
         'mail' => [
             'driver' => 'mail',
-            'queue' => 'default',
+            // Ne pas utiliser la queue pour les emails - envoi immédiat
+            // 'queue' => 'default', // Désactivé pour envoi immédiat
         ],
         
         'database' => [

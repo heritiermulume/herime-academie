@@ -8,6 +8,7 @@ use App\Notifications\EmailSentNotification;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 class EmailService
 {
@@ -41,7 +42,8 @@ class EmailService
         }
         
         try {
-            // Envoyer l'email
+            // Envoyer l'email de manière synchrone (immédiate)
+            // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
             Mail::to($email)->send($mailable);
             
             // Enregistrer l'email envoyé
@@ -59,9 +61,10 @@ class EmailService
             ]);
             
             // Notifier l'utilisateur qu'un email lui a été envoyé (si utilisateur connecté)
-            if ($user) {
-                try {
-                    $user->notify(new EmailSentNotification($subject, now()));
+                    // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+                    if ($user) {
+                        try {
+                            Notification::sendNow($user, new EmailSentNotification($subject, now()));
                 } catch (\Exception $e) {
                     Log::error("Erreur lors de la création de la notification pour l'utilisateur {$user->id}: " . $e->getMessage());
                 }

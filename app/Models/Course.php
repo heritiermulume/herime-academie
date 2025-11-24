@@ -794,7 +794,8 @@ class Course extends Model
         }
 
         if ($this->instructor) {
-            $this->instructor->notify(new CourseModerationNotification($this, $status));
+            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            Notification::sendNow($this->instructor, new CourseModerationNotification($this, $status));
         }
     }
 
@@ -802,9 +803,10 @@ class Course extends Model
     {
         $freshCourse = $this->fresh(['instructor', 'category']);
 
+        // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
         User::where('is_active', true)
             ->chunk(200, function ($users) use ($freshCourse) {
-                Notification::send($users, new CoursePublishedNotification($freshCourse));
+                Notification::sendNow($users, new CoursePublishedNotification($freshCourse));
             });
     }
 }

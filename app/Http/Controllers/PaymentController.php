@@ -13,6 +13,7 @@ use App\Notifications\PaymentReceived;
 use App\Services\EmailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
@@ -360,8 +361,22 @@ class PaymentController extends Controller
                 ->exists();
 
             if (!$alreadyNotified) {
-                // Envoyer la notification de confirmation de paiement
-                $order->user->notify(new PaymentReceived($order));
+                // Envoyer l'email directement de manière synchrone
+                try {
+                    Mail::to($order->user->email)->send(new \App\Mail\PaymentReceivedMail($order));
+                    \Log::info("Email PaymentReceivedMail envoyé directement à {$order->user->email} pour la commande {$order->order_number}");
+                } catch (\Exception $emailException) {
+                    \Log::error("Erreur lors de l'envoi de l'email PaymentReceivedMail", [
+                        'order_id' => $order->id,
+                        'user_id' => $order->user->id,
+                        'error' => $emailException->getMessage(),
+                        'trace' => $emailException->getTraceAsString(),
+                    ]);
+                }
+                
+                // Envoyer la notification en base de données (sans email car déjà envoyé)
+                // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+                Notification::sendNow($order->user, new PaymentReceived($order));
                 
                 \Log::info("Notification de confirmation de paiement envoyée pour la commande {$order->order_number} à l'utilisateur {$order->user->id}");
             } else {

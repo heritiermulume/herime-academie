@@ -28,7 +28,9 @@ class CourseAccessRevoked extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        // Ne pas utiliser 'mail' ici car l'email est envoyé directement dans AdminController::unenrollUser()
+        // Cela évite d'envoyer l'email deux fois
+        return ['database'];
     }
 
     /**

@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Notifications\CourseEnrolled;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 class Enrollment extends Model
 {
@@ -132,14 +134,48 @@ class Enrollment extends Model
                 $course->load('category');
             }
 
-            // Envoyer la notification (qui envoie aussi l'email via CourseEnrolledMail)
-            $user->notify(new CourseEnrolled($course));
-
-            \Log::info("Notification CourseEnrolled envoyée à l'utilisateur {$user->id} pour le cours {$course->id}", [
-                'enrollment_id' => $this->id,
-                'course_id' => $course->id,
-                'user_id' => $user->id,
-            ]);
+            // Envoyer l'email directement de manière synchrone pour garantir l'envoi immédiat
+            try {
+                Mail::to($user->email)->send(new \App\Mail\CourseEnrolledMail($course));
+                \Log::info("Email CourseEnrolledMail envoyé directement à {$user->email} pour le cours {$course->id}", [
+                    'enrollment_id' => $this->id,
+                    'course_id' => $course->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                ]);
+            } catch (\Exception $emailException) {
+                \Log::error("Erreur lors de l'envoi direct de l'email CourseEnrolledMail", [
+                    'enrollment_id' => $this->id,
+                    'course_id' => $course->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $emailException->getMessage(),
+                    'trace' => $emailException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer l'inscription
+            }
+            
+            // Envoyer la notification (pour la base de données et l'affichage dans la navbar)
+            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            try {
+                Notification::sendNow($user, new CourseEnrolled($course));
+                
+                \Log::info("Notification CourseEnrolled envoyée à l'utilisateur {$user->id} pour le cours {$course->id}", [
+                    'enrollment_id' => $this->id,
+                    'course_id' => $course->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                ]);
+            } catch (\Exception $notifException) {
+                \Log::error("Erreur lors de l'envoi de la notification CourseEnrolled", [
+                    'enrollment_id' => $this->id,
+                    'course_id' => $course->id,
+                    'user_id' => $user->id,
+                    'error' => $notifException->getMessage(),
+                    'trace' => $notifException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer l'inscription
+            }
         } catch (\Exception $e) {
             \Log::error("Erreur lors de l'envoi de la notification d'inscription", [
                 'enrollment_id' => $this->id,

@@ -3705,8 +3705,14 @@
         // Smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                // Ignorer les liens avec href="#" ou href="#!" (liens vides)
+                if (!href || href === '#' || href === '#!') {
+                    return; // Ne pas empêcher le comportement par défaut pour les liens vides
+                }
+                
                 e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
+                const target = document.querySelector(href);
                 if (target) {
                     target.scrollIntoView({
                         behavior: 'smooth',
@@ -3797,10 +3803,12 @@
                     fetch(NOTIFICATIONS_RECENT_URL, {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },
                         credentials: 'same-origin',
+                        cache: 'no-cache', // Empêcher le cache pour avoir les dernières notifications
                     }),
                     fetch(NOTIFICATIONS_COUNT_URL, {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },
                         credentials: 'same-origin',
+                        cache: 'no-cache', // Empêcher le cache pour avoir le bon compteur
                     })
                 ]);
 
@@ -3833,6 +3841,11 @@
                     renderNotifications('notifications-list-mobile', []);
                 }
             }
+        }
+        
+        // Fonction pour déclencher un rafraîchissement immédiat des notifications
+        function refreshNotificationsNow() {
+            loadNotifications(true);
         }
 
         function initNotificationDropdowns() {
@@ -3939,8 +3952,129 @@
                 });
             }
             
-            // Refresh notifications every 30 seconds
-            setInterval(loadNotifications, 30000);
+            // Refresh notifications every 5 seconds for immediate updates
+            setInterval(loadNotifications, 5000);
+            
+            // Refresh notifications when user returns to the tab (for immediate visibility)
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    loadNotifications();
+                }
+            });
+            
+            // Écouter les événements personnalisés pour rafraîchir les notifications
+            // Peut être déclenché depuis n'importe quelle page après une action
+            document.addEventListener('notification-created', function() {
+                // Rafraîchir immédiatement puis à nouveau après un court délai
+                loadNotifications();
+                setTimeout(loadNotifications, 1000);
+                setTimeout(loadNotifications, 3000);
+            });
+            
+            // Détecter les messages de succès (Laravel flash messages) et rafraîchir les notifications
+            // Les messages de succès indiquent souvent qu'une action a été effectuée
+            const checkForSuccessMessages = function() {
+                // Vérifier les alertes Bootstrap
+                const successAlerts = document.querySelectorAll('.alert-success, .alert.alert-success, [role="alert"].alert-success');
+                if (successAlerts.length > 0) {
+                    // Un message de succès est présent, rafraîchir les notifications
+                    setTimeout(function() {
+                        loadNotifications();
+                    }, 500);
+                    setTimeout(function() {
+                        loadNotifications();
+                    }, 2000);
+                }
+                
+                // Vérifier les toasts de succès
+                const successToasts = document.querySelectorAll('.toast.show .text-success, .toast.show[data-bs-type="success"]');
+                if (successToasts.length > 0) {
+                    setTimeout(function() {
+                        loadNotifications();
+                    }, 500);
+                }
+            };
+            
+            // Vérifier immédiatement au chargement de la page
+            checkForSuccessMessages();
+            
+            // Observer les changements dans le DOM pour détecter les nouveaux messages de succès
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1) { // Element node
+                                if (node.classList && (
+                                    node.classList.contains('alert-success') ||
+                                    node.classList.contains('alert') && node.textContent.includes('succès') ||
+                                    node.querySelector && node.querySelector('.alert-success')
+                                )) {
+                                    setTimeout(function() {
+                                        loadNotifications();
+                                    }, 500);
+                                    setTimeout(function() {
+                                        loadNotifications();
+                                    }, 2000);
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // Observer le body pour détecter les nouveaux messages
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            // Rafraîchir après toute soumission de formulaire (pour capturer les actions admin, etc.)
+            document.addEventListener('submit', function(e) {
+                // Attendre un court délai pour que le serveur traite la requête
+                setTimeout(function() {
+                    loadNotifications();
+                    checkForSuccessMessages();
+                }, 1500);
+            });
+            
+            // Rafraîchir après les redirections (détecter les changements d'URL)
+            let lastUrl = location.href;
+            new MutationObserver(function() {
+                const url = location.href;
+                if (url !== lastUrl) {
+                    lastUrl = url;
+                    // Une redirection a eu lieu, rafraîchir les notifications
+                    setTimeout(function() {
+                        loadNotifications();
+                        checkForSuccessMessages();
+                    }, 1000);
+                }
+            }).observe(document, {subtree: true, childList: true});
+            
+            // Rafraîchir après les clics sur les boutons d'action (inscription, etc.)
+            document.addEventListener('click', function(e) {
+                const target = e.target.closest('button[type="submit"], a[href*="enroll"], a[href*="purchase"], form button, button.btn-success');
+                if (target) {
+                    const text = target.textContent.toLowerCase();
+                    if (text.includes('inscrire') || 
+                        text.includes('acheter') || 
+                        text.includes('payer') ||
+                        text.includes('envoyer') ||
+                        text.includes('créer') ||
+                        text.includes('publier') ||
+                        text.includes('modérer') ||
+                        text.includes('accorder') ||
+                        text.includes('retirer')) {
+                        setTimeout(function() {
+                            loadNotifications();
+                        }, 2000);
+                    }
+                }
+            });
+            
+            // Expose loadNotifications and refreshNotificationsNow globally
+            window.loadNotifications = loadNotifications;
+            window.refreshNotificationsNow = refreshNotificationsNow;
         });
 
         // Control mobile menu on window resize

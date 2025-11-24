@@ -31,7 +31,8 @@ class NewsletterController extends Controller
             'status' => 'active',
         ]);
 
-        // Envoyer un email de bienvenue
+        // Envoyer un email de bienvenue de manière synchrone (immédiate)
+        // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
         try {
             Mail::to($subscriber->email)->send(new NewsletterWelcome($subscriber));
         } catch (\Exception $e) {

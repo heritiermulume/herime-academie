@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Mail;
 use App\Notifications\PaymentReceived;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Controller pour gérer les paiements pawaPay
@@ -813,7 +814,22 @@ class PawaPayController extends Controller
                         ->exists()
                     : false;
                 if (!$alreadyNotified) {
-                    $order->user->notify(new PaymentReceived($order));
+                    // Envoyer l'email directement de manière synchrone
+                    try {
+                        Mail::to($order->user->email)->send(new \App\Mail\PaymentReceivedMail($order));
+                        \Log::info("Email PaymentReceivedMail envoyé directement à {$order->user->email} pour la commande {$order->order_number}");
+                    } catch (\Exception $emailException) {
+                        \Log::error("Erreur lors de l'envoi de l'email PaymentReceivedMail", [
+                            'order_id' => $order->id,
+                            'user_id' => $order->user->id,
+                            'error' => $emailException->getMessage(),
+                            'trace' => $emailException->getTraceAsString(),
+                        ]);
+                    }
+                    
+                    // Envoyer la notification en base de données (sans email car déjà envoyé)
+                    // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+                    Notification::sendNow($order->user, new PaymentReceived($order));
                     \Log::info('pawaPay: Payment confirmation notification sent', [
                         'user_id' => $order->user_id,
                         'order_id' => $order->id,
@@ -838,6 +854,8 @@ class PawaPayController extends Controller
             try {
                 $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
                 if ($order->user && $order->user->email) {
+                    // Envoyer l'email de manière synchrone (immédiate)
+                    // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
                     Mail::to($order->user->email)->send(new InvoiceMail($order));
                     \Log::info('pawaPay: Invoice email sent', [
                         'user_id' => $order->user_id,
@@ -974,7 +992,23 @@ class PawaPayController extends Controller
                                     ->exists()
                                 : false;
                             if (!$alreadyNotified) {
-                                $orderFresh->user->notify(new PaymentReceived($orderFresh));
+                                // Envoyer l'email directement de manière synchrone
+                                try {
+                                    $notification = new PaymentReceived($orderFresh);
+                                    $mailable = $notification->toMail($orderFresh->user);
+                                    Mail::to($orderFresh->user->email)->send($mailable);
+                                    \Log::info("Email PaymentReceived envoyé directement à {$orderFresh->user->email} pour la commande {$orderFresh->order_number}");
+                                } catch (\Exception $emailException) {
+                                    \Log::error("Erreur lors de l'envoi de l'email PaymentReceived", [
+                                        'order_id' => $orderFresh->id,
+                                        'user_id' => $orderFresh->user->id,
+                                        'error' => $emailException->getMessage(),
+                                    ]);
+                                }
+                                
+                                // Envoyer la notification en base de données (sans email car déjà envoyé)
+                                // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+                                Notification::sendNow($orderFresh->user, new PaymentReceived($orderFresh));
                                 \Log::info('pawaPay: Payment confirmation notification sent on redirect', [
                                     'user_id' => $orderFresh->user_id,
                                     'order_id' => $orderFresh->id,

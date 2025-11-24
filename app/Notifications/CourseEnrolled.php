@@ -30,7 +30,9 @@ class CourseEnrolled extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        // Ne pas utiliser 'mail' ici car l'email est envoyé directement dans Enrollment::sendEnrollmentNotifications()
+        // Cela évite d'envoyer l'email deux fois
+        return ['database'];
     }
 
     /**
@@ -38,8 +40,36 @@ class CourseEnrolled extends Notification
      */
     public function toMail(object $notifiable)
     {
-        // Utiliser le Mailable personnalisé pour l'email HTML avec la charte graphique
-        return new CourseEnrolledMail($this->course);
+        try {
+            // Charger les relations nécessaires si elles ne sont pas déjà chargées
+            if (!$this->course->relationLoaded('instructor')) {
+                $this->course->load('instructor');
+            }
+            if (!$this->course->relationLoaded('category')) {
+                $this->course->load('category');
+            }
+            
+            // Utiliser le Mailable personnalisé pour l'email HTML avec la charte graphique
+            $mailable = new CourseEnrolledMail($this->course);
+            
+            \Log::info("CourseEnrolled::toMail() appelé", [
+                'user_id' => $notifiable->id,
+                'user_email' => $notifiable->email,
+                'course_id' => $this->course->id,
+                'course_title' => $this->course->title,
+            ]);
+            
+            return $mailable;
+        } catch (\Exception $e) {
+            \Log::error("Erreur dans CourseEnrolled::toMail()", [
+                'user_id' => $notifiable->id ?? null,
+                'user_email' => $notifiable->email ?? null,
+                'course_id' => $this->course->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
     }
 
     /**
