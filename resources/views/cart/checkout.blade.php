@@ -335,7 +335,6 @@ document.addEventListener('DOMContentLoaded', function() {
             validateAmount();
             updatePayButtonState();
         } catch (error) {
-            console.error('Erreur conversion:', error);
             // En cas d'erreur, garder le montant original
             amountInput.value = baseAmount.toFixed(2);
             validateAmount();
@@ -378,7 +377,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             return rate;
         } catch (error) {
-            console.error('Erreur récupération taux:', error);
             throw error;
         }
     }
@@ -637,7 +635,6 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 const res = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
                 if (!res.ok) {
-                    console.error('Status check failed:', res.status);
                     setTimeout(poll, 2000);
                     return;
                 }
@@ -645,9 +642,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await res.json();
                 const status = data.status;
                 const nextStep = data.nextStep;
-                
-                console.log('pawaPay status:', status, 'nextStep:', nextStep, 'full data:', data);
-                
                 // Gérer le cas NOT_FOUND
                 if (status === 'NOT_FOUND') {
                     stopped = true;
@@ -665,7 +659,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Détecter si le statut a changé
                 if (status !== lastStatus) {
                     lastStatus = status;
-                    console.log('Status changed from', lastStatus, 'to', status);
                 }
                 
                 // Gérer tous les statuts possibles selon la documentation pawaPay
@@ -712,11 +705,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                 } else {
                     // Statut inconnu : continuer à poller
-                    console.warn('Unknown status:', status);
                     setTimeout(poll, 2000);
                 }
             } catch (error) {
-                console.error('Error polling status:', error);
                 setTimeout(poll, 2000);
             }
         };

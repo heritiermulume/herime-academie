@@ -42,71 +42,105 @@ class CartController extends Controller
     /**
      * Ajouter un cours au panier
      */
-    public function add(Request $request)
+public function add(Request $request)
     {
-        $request->validate([
-            'course_id' => 'required|exists:courses,id'
-        ]);
-
-        $courseId = $request->course_id;
-        $course = Course::findOrFail($courseId);
-
-        // Vérifier que le cours est publié
-        if (!$course->is_published) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ce cours n\'est pas disponible.'
-            ], 404);
-        }
-
-        // Vérifier si le cours est gratuit
-        if ($course->is_free) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Les cours gratuits ne peuvent pas être ajoutés au panier. Inscrivez-vous directement.'
-            ]);
-        }
-
-        // Vérifier si l'utilisateur est déjà inscrit
-        if (auth()->check() && $course->isEnrolledBy(auth()->id())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous êtes déjà inscrit à ce cours.'
-            ]);
-        }
-
-        if (auth()->check()) {
-            // Vérifier si le cours est déjà dans le panier
-            if (auth()->user()->cartItems()->where('course_id', $courseId)->exists()) {
+        try {
+            // Validation des données
+            try {
+                $request->validate([
+                    'course_id' => 'required|exists:courses,id'
+                ]);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                // Retourner une réponse JSON même en cas d'erreur de validation
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ce cours est déjà dans votre panier.'
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors()
+                ], 422);
+            }
+
+            $courseId = $request->course_id;
+            
+            // Récupérer le cours
+            try {
+                $course = Course::findOrFail($courseId);
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cours introuvable.'
+                ], 404);
+            }
+
+            // Vérifier que le cours est publié
+            if (!$course->is_published) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce cours n\'est pas disponible.'
+                ], 404);
+            }
+
+            // Vérifier si le cours est gratuit
+            if ($course->is_free) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Les cours gratuits ne peuvent pas être ajoutés au panier. Inscrivez-vous directement.'
                 ]);
             }
 
-            // Utilisateur connecté : sauvegarder en base de données
-            $this->addToDatabaseCart($courseId);
-            $cartCount = auth()->user()->cartItems()->count();
-        } else {
-            // Vérifier si le cours est déjà dans le panier de session
-            $cart = $this->getSessionCart();
-            if (isset($cart[$courseId])) {
+            // Vérifier si l'utilisateur est déjà inscrit
+            if (auth()->check() && $course->isEnrolledBy(auth()->id())) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ce cours est déjà dans votre panier.'
+                    'message' => 'Vous êtes déjà inscrit à ce cours.'
                 ]);
             }
 
-            // Utilisateur non connecté : utiliser la session
-            $this->addToSessionCart($courseId);
-            $cartCount = count($cart) + 1;
-        }
+            if (auth()->check()) {
+                // Vérifier si le cours est déjà dans le panier
+                if (auth()->user()->cartItems()->where('course_id', $courseId)->exists()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ce cours est déjà dans votre panier.'
+                    ]);
+                }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cours ajouté au panier avec succès.',
-            'cart_count' => $cartCount
-        ]);
+                // Utilisateur connecté : sauvegarder en base de données
+                $this->addToDatabaseCart($courseId);
+                $cartCount = auth()->user()->cartItems()->count();
+            } else {
+                // Vérifier si le cours est déjà dans le panier de session
+                $cart = $this->getSessionCart();
+                if (isset($cart[$courseId])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ce cours est déjà dans votre panier.'
+                    ]);
+                }
+
+                // Utilisateur non connecté : utiliser la session
+                $this->addToSessionCart($courseId);
+                $cartCount = count($cart) + 1;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cours ajouté au panier avec succès.',
+                'cart_count' => $cartCount
+            ]);
+        } catch (\Exception $e) {
+            // Gérer toutes les autres erreurs potentielles
+            \Log::error('Error adding course to cart', [
+                'error' => $e->getMessage(),
+                'course_id' => $request->course_id ?? null,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors de l\'ajout au panier. Veuillez réessayer.'
+            ], 500);
+        }
     }
 
 
@@ -170,18 +204,32 @@ class CartController extends Controller
      */
     public function count()
     {
-        if (auth()->check()) {
-            // Utilisateur connecté : compter depuis la base de données
-            $count = auth()->user()->cartItems()->count();
-        } else {
-            // Utilisateur non connecté : compter depuis la session
-            $cart = $this->getSessionCart();
-            $count = count($cart);
-        }
+        try {
+            if (auth()->check()) {
+                // Utilisateur connecté : compter depuis la base de données
+                $count = auth()->user()->cartItems()->count();
+            } else {
+                // Utilisateur non connecté : compter depuis la session
+                $cart = $this->getSessionCart();
+                $count = is_array($cart) ? count($cart) : 0;
+            }
 
-        return response()->json([
-            'count' => $count
-        ]);
+            return response()->json([
+                'count' => $count
+            ]);
+        } catch (\Exception $e) {
+            // Logger l'erreur pour le débogage
+            \Log::error('Error getting cart count', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Retourner 0 en cas d'erreur pour éviter de casser l'interface
+            return response()->json([
+                'count' => 0
+            ], 200);
+        }
     }
 
     /**

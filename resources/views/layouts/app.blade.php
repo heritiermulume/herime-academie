@@ -3863,22 +3863,80 @@
 
         // Load cart count
         function loadCartCount() {
-            fetch('{{ route("cart.count") }}')
-                .then(response => response.json())
-                .then(data => {
-                    const cartCount = document.getElementById('cart-count');
-                    const cartCountMobile = document.getElementById('cart-count-mobile');
-                    
-                    if (cartCount) {
-                        cartCount.textContent = data.count;
+            fetch('{{ route("cart.count") }}', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(async response => {
+                // Vérifier le Content-Type de la réponse
+                const contentType = response.headers.get('content-type');
+                
+                // Si ce n'est pas du JSON, c'est probablement une erreur HTML
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Réponse non-JSON reçue pour cart count:', text.substring(0, 200));
+                    // Retourner un count de 0 par défaut
+                    return { count: 0 };
+                }
+                
+                // Si le statut n'est pas OK, essayer de parser le JSON d'erreur ou retourner 0
+                if (!response.ok) {
+                    try {
+                        const errorData = await response.json();
+                        console.error('Error loading cart count:', errorData);
+                    } catch (e) {
+                        console.error('Error loading cart count:', response.status, response.statusText);
                     }
-                    if (cartCountMobile) {
-                        cartCountMobile.textContent = data.count;
+                    // Retourner un count de 0 par défaut en cas d'erreur
+                    return { count: 0 };
+                }
+                
+                // Parser le JSON seulement si tout est OK
+                return response.json();
+            })
+            .then(data => {
+                const cartCount = document.getElementById('cart-count');
+                const cartCountMobile = document.getElementById('cart-count-mobile');
+                
+                // S'assurer que data.count existe, sinon utiliser 0
+                const count = data && typeof data.count !== 'undefined' ? data.count : 0;
+                
+                if (cartCount) {
+                    cartCount.textContent = count;
+                    // Masquer le badge si le count est 0
+                    if (count === 0) {
+                        cartCount.style.display = 'none';
+                    } else {
+                        cartCount.style.display = 'inline-block';
                     }
-                })
-                .catch(error => {
-                    console.error('Error loading cart count:', error);
-                });
+                }
+                if (cartCountMobile) {
+                    cartCountMobile.textContent = count;
+                    // Masquer le badge si le count est 0
+                    if (count === 0) {
+                        cartCountMobile.style.display = 'none';
+                    } else {
+                        cartCountMobile.style.display = 'inline-block';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading cart count:', error);
+                // En cas d'erreur, masquer les badges ou les mettre à 0
+                const cartCount = document.getElementById('cart-count');
+                const cartCountMobile = document.getElementById('cart-count-mobile');
+                
+                if (cartCount) {
+                    cartCount.textContent = '0';
+                    cartCount.style.display = 'none';
+                }
+                if (cartCountMobile) {
+                    cartCountMobile.textContent = '0';
+                    cartCountMobile.style.display = 'none';
+                }
+            });
         }
 
 
@@ -4126,13 +4184,46 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({
                     course_id: courseId
                 })
             })
-            .then(response => response.json())
+            .then(async response => {
+                // Vérifier le Content-Type de la réponse
+                const contentType = response.headers.get('content-type');
+                
+                // Si ce n'est pas du JSON, c'est probablement une erreur HTML
+                if (!contentType || !contentType.includes('application/json')) {
+                    // Si c'est une redirection ou une erreur, essayer de récupérer le texte
+                    const text = await response.text();
+                    console.error('Réponse non-JSON reçue:', text.substring(0, 200));
+                    
+                    // Si c'est une erreur 401/403, c'est probablement une session expirée
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
+                    }
+                    
+                    throw new Error('Une erreur est survenue. Veuillez réessayer.');
+                }
+                
+                // Si le statut n'est pas OK, essayer de parser le JSON d'erreur
+                if (!response.ok) {
+                    try {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || `Erreur ${response.status}`);
+                    } catch (e) {
+                        // Si on ne peut pas parser le JSON, utiliser le message d'erreur par défaut
+                        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+                    }
+                }
+                
+                // Parser le JSON seulement si tout est OK
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     // Mettre à jour le compteur du panier
@@ -4159,7 +4250,15 @@
             })
             .catch(error => {
                 console.error('Error adding to cart:', error);
-                showNotification('Erreur lors de l\'ajout au panier', 'error');
+                const errorMessage = error.message || 'Erreur lors de l\'ajout au panier';
+                showNotification(errorMessage, 'error');
+                
+                // Si c'est une erreur de session, rediriger vers la page de connexion après un délai
+                if (errorMessage.includes('session') || errorMessage.includes('Session')) {
+                    setTimeout(() => {
+                        window.location.href = '{{ route("login") }}';
+                    }, 2000);
+                }
             });
         }
 
@@ -4181,11 +4280,39 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({ course_id: courseId })
             })
-            .then(response => response.json())
+            .then(async response => {
+                // Vérifier le Content-Type de la réponse
+                const contentType = response.headers.get('content-type');
+                
+                // Si ce n'est pas du JSON, c'est probablement une erreur HTML
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Réponse non-JSON reçue:', text.substring(0, 200));
+                    
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
+                    }
+                    
+                    throw new Error('Une erreur est survenue. Veuillez réessayer.');
+                }
+                
+                if (!response.ok) {
+                    try {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || `Erreur ${response.status}`);
+                    } catch (e) {
+                        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+                    }
+                }
+                
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     updateCartCount();
@@ -4233,31 +4360,9 @@
             }
         }
 
-        // Fonction pour mettre à jour le compteur du panier
+        // Fonction pour mettre à jour le compteur du panier (réutilise loadCartCount pour garder la même logique)
         function updateCartCount() {
-            fetch('{{ route("cart.count") }}', {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Mettre à jour le compteur desktop
-                const cartCount = document.getElementById('cart-count');
-                if (cartCount) {
-                    cartCount.textContent = data.count;
-                }
-                
-                // Mettre à jour le compteur mobile
-                const cartCountMobile = document.getElementById('cart-count-mobile');
-                if (cartCountMobile) {
-                    cartCountMobile.textContent = data.count;
-                }
-            })
-            .catch(error => {
-                console.error('Error updating cart count:', error);
-            });
+            loadCartCount();
         }
 
         // Fonction pour mettre à jour seulement les articles du panier (sans toucher au résumé)

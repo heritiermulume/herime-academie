@@ -3258,11 +3258,9 @@ let previewListLoaded = false;
 function loadPreviewList() {
     // Éviter les chargements multiples
     if (isLoadingPreviewList) {
-        console.log('⏳ Chargement déjà en cours, ignore...');
         return;
     }
     
-    console.log('=== loadPreviewList() appelée ===');
     const container = document.getElementById('previewListContainer');
     if (!container) {
         console.error('❌ Container previewListContainer manquant');
@@ -3270,7 +3268,6 @@ function loadPreviewList() {
         setTimeout(function() {
             const retryContainer = document.getElementById('previewListContainer');
             if (retryContainer) {
-                console.log('✅ Container trouvé après retry');
                 loadPreviewList();
             } else {
                 console.error('❌ Container toujours manquant après retry');
@@ -3279,17 +3276,7 @@ function loadPreviewList() {
         return;
     }
     
-    console.log('✅ Container trouvé:', container);
-    console.log('Container parent:', container.parentElement);
-    console.log('Container visible:', container.offsetHeight > 0, 'height:', container.offsetHeight);
     const computedStyle = window.getComputedStyle(container);
-    console.log('Container computed style:', {
-        display: computedStyle.display,
-        visibility: computedStyle.visibility,
-        opacity: computedStyle.opacity,
-        height: computedStyle.height,
-        flex: computedStyle.flex
-    });
     
     if (!window.coursePreviewData || !window.coursePreviewData.previewUrl) {
         console.error('❌ coursePreviewData ou previewUrl manquant', window.coursePreviewData);
@@ -3309,7 +3296,6 @@ function loadPreviewList() {
     // Afficher le spinner
     let contentWrapper = document.getElementById('previewListContent');
     if (!contentWrapper) {
-        console.log('Création du contentWrapper...');
         contentWrapper = document.createElement('div');
         contentWrapper.id = 'previewListContent';
         contentWrapper.className = 'px-4 pb-4';
@@ -3325,11 +3311,9 @@ function loadPreviewList() {
                 </div>
             </div>
         `;
-        console.log('✅ Spinner affiché');
     }
     
     isLoadingPreviewList = true;
-    console.log('📡 Chargement des aperçus depuis:', window.coursePreviewData.previewUrl);
     fetch(window.coursePreviewData.previewUrl, {
         headers: {
             'Accept': 'application/json',
@@ -3339,7 +3323,6 @@ function loadPreviewList() {
         credentials: 'same-origin'
     })
         .then(response => {
-            console.log('📥 Réponse reçue:', response.status, response.statusText);
             if (!response.ok) {
                 return response.json().then(err => {
                     throw new Error(err.message || err.error || 'Erreur HTTP: ' + response.status);
@@ -3350,7 +3333,6 @@ function loadPreviewList() {
             return response.json();
         })
         .then(data => {
-            console.log('✅ Données reçues:', data);
             isLoadingPreviewList = false;
             previewListLoaded = true;
             
@@ -3372,12 +3354,9 @@ function loadPreviewList() {
             }
             
             if (!data.preview || data.preview.length === 0) {
-                console.log('Aucun aperçu disponible');
                 contentWrapper.innerHTML = '<p class="text-muted text-center py-4">Aucun aperçu disponible</p>';
                 return;
             }
-            
-            console.log('Chargement de', data.preview.length, 'aperçus');
             
             // Créer les wrappers de players pour les leçons d'aperçu qui n'existent pas encore
             const previewVideoContainer = document.getElementById('previewVideoContainer');
@@ -3405,7 +3384,6 @@ function loadPreviewList() {
                             previewVideoContainer.appendChild(wrapper);
                             
                             // Initialiser Plyr quand le wrapper sera affiché
-                            console.log('Plyr wrapper created for lesson', preview.id, 'with YouTube ID:', preview.youtube_id);
                         } else if (preview.video_url) {
                             // Pour les vidéos directes, créer un player Plyr
                             const playerId = 'plyr-player-' + preview.id;
@@ -3434,7 +3412,6 @@ function loadPreviewList() {
                                             disableContextMenu: true
                                         });
                                         window['plyr_' + playerId] = player;
-                                        console.log('✅ Plyr initialized for video:', playerId);
                                     } catch (error) {
                                         console.error('❌ Error initializing Plyr for video:', error);
                                     }
@@ -3523,8 +3500,6 @@ function loadPreviewList() {
                 mainItem.classList.add('active');
             }
             
-            console.log('✅ Liste des aperçus chargée avec succès:', data.preview.length, 'aperçus');
-            
             // Recalculer la hauteur du conteneur après le chargement du contenu
             setTimeout(function() {
                 const container = document.getElementById('previewListContainer');
@@ -3538,10 +3513,6 @@ function loadPreviewList() {
                     if (availableHeight > 0) {
                         container.style.maxHeight = availableHeight + 'px';
                         container.style.height = availableHeight + 'px';
-                        console.log('✅ Hauteur recalculée après chargement:', availableHeight + 'px');
-                        console.log('Container scrollHeight:', container.scrollHeight);
-                        console.log('Container clientHeight:', container.clientHeight);
-                        console.log('Scroll nécessaire:', container.scrollHeight > container.clientHeight);
                     }
                 }
             }, 100);
@@ -3633,7 +3604,6 @@ function initializePreviewPlayer(lessonId, youtubeId, isUnlisted) {
             return false;
         });
         
-        console.log('✅ Plyr player initialized for:', playerId);
     } catch (error) {
         console.error('❌ Error initializing Plyr player:', error);
     }
@@ -3781,7 +3751,6 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                         });
                                     }
                                     
-                                    console.log('✅ Plyr initialized for video:', playerId);
                                 } catch (error) {
                                     console.error('❌ Error initializing Plyr for video:', error);
                                 }
@@ -3859,7 +3828,6 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                     });
                                 }
                                 
-                                console.log('✅ Plyr initialized for video:', playerId);
                             } catch (error) {
                                 console.error('❌ Error initializing Plyr for video:', error);
                             }
@@ -3915,7 +3883,6 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                 });
                             }
                             
-                            console.log('✅ Plyr initialized for video:', playerId);
                         } catch (error) {
                             console.error('❌ Error initializing Plyr for video:', error);
                         }
@@ -3958,7 +3925,6 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                             const youtubeId = lessonElementData.getAttribute('data-preview-youtube-id') || '';
                             const isUnlisted = lessonElementData.getAttribute('data-preview-is-unlisted') === '1';
                             if (youtubeId) {
-                                console.log('Initializing Plyr player for lesson', lessonId, 'with YouTube ID:', youtubeId);
                                 initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
                             } else {
                                 console.warn('No YouTube ID found for lesson', lessonId);
@@ -3980,7 +3946,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                         try {
                             existingPlayer.pause();
                         } catch (e) {
-                            console.log('Could not pause player:', e);
+                            console.error('Could not pause player:', e);
                         }
                     }
                 }
@@ -4058,7 +4024,6 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                                 });
                                             }
                                             
-                                            console.log('✅ Plyr initialized for video:', playerId);
                                         } catch (error) {
                                             console.error('❌ Error initializing Plyr for video:', error);
                                         }
@@ -4135,7 +4100,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modal) {
         // Écouter l'événement 'shown.bs.modal' (après que le modal soit complètement affiché)
         modal.addEventListener('shown.bs.modal', function() {
-            console.log('🎬 Modal complètement ouvert, chargement de la liste des aperçus...');
             
             // Initialiser Plyr pour le lecteur principal (ID 0) s'il existe
             setTimeout(function() {
@@ -4191,7 +4155,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 });
                             }
                             
-                            console.log('✅ Plyr initialized for main player');
                         } catch (error) {
                             console.error('❌ Error initializing Plyr for main player:', error);
                         }
@@ -4203,46 +4166,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const contentWrapper = document.getElementById('previewListContent');
             const colLg4 = container ? container.closest('.col-lg-4') : null;
             
-            console.log('Container trouvé:', !!container);
-            console.log('ContentWrapper trouvé:', !!contentWrapper);
-            console.log('Col-lg-4 trouvé:', !!colLg4);
-            
             if (container && colLg4) {
                 // Calculer la hauteur disponible pour le conteneur
                 const headerHeight = colLg4.querySelector('div:first-child')?.offsetHeight || 0;
                 const colHeight = colLg4.offsetHeight;
                 const availableHeight = colHeight - headerHeight;
                 
-                console.log('Header height:', headerHeight);
-                console.log('Column height:', colHeight);
-                console.log('Available height:', availableHeight);
-                console.log('Container height avant:', container.offsetHeight);
-                console.log('Container computed height:', window.getComputedStyle(container).height);
-                console.log('Container scrollHeight:', container.scrollHeight);
-                console.log('Container clientHeight:', container.clientHeight);
-                
                 // Forcer une hauteur maximale pour permettre le scroll
                 if (availableHeight > 0) {
                     container.style.maxHeight = availableHeight + 'px';
                     container.style.height = availableHeight + 'px';
-                    console.log('✅ Hauteur définie sur le conteneur:', availableHeight + 'px');
                 }
             }
             
             // Charger la liste des aperçus seulement si elle n'a pas déjà été chargée
             if (!previewListLoaded) {
                 setTimeout(function() {
-            loadPreviewList();
+                    loadPreviewList();
                 }, 300);
-            } else {
-                console.log('✅ Liste déjà chargée, pas de rechargement');
             }
         });
         
         // Écouter 'show.bs.modal' pour certaines actions
         modal.addEventListener('show.bs.modal', function() {
-            console.log('🎭 Modal en cours d\'ouverture...');
-            
             @if($course->video_preview_url && !$course->video_preview_youtube_id)
                 const video = document.getElementById('coursePreviewVideo');
                 if (video) {

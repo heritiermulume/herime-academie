@@ -1283,16 +1283,36 @@ function removeItem(courseId) {
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         },
         body: JSON.stringify({
             course_id: courseId
         })
     })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erreur réseau');
+        .then(async response => {
+            const contentType = response.headers.get('content-type');
+
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Réponse non-JSON (removeItem):', text.substring(0, 200));
+
+                if (response.status === 401 || response.status === 403) {
+                    throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
+                }
+
+                throw new Error('Erreur inattendue. Veuillez réessayer.');
             }
+
+            if (!response.ok) {
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Erreur ${response.status}`);
+                } catch (e) {
+                    throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+                }
+            }
+
             return response.json();
         })
         .then(data => {
@@ -1325,7 +1345,13 @@ function removeItem(courseId) {
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('Une erreur est survenue lors de la suppression', 'error');
+            showNotification(error.message || 'Une erreur est survenue lors de la suppression', 'error');
+
+            if (error.message && error.message.toLowerCase().includes('session')) {
+                setTimeout(() => {
+                    window.location.href = '{{ route("login") }}';
+                }, 1500);
+            }
         });
 }
 
@@ -1371,13 +1397,33 @@ function clearCart() {
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         }
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Erreur réseau');
+    .then(async response => {
+        const contentType = response.headers.get('content-type');
+
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Réponse non-JSON (clearCart):', text.substring(0, 200));
+
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
+            }
+
+            throw new Error('Erreur inattendue. Veuillez réessayer.');
         }
+
+        if (!response.ok) {
+            try {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Erreur ${response.status}`);
+            } catch (e) {
+                throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+            }
+        }
+
         return response.json();
     })
     .then(data => {
@@ -1396,7 +1442,13 @@ function clearCart() {
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('Une erreur est survenue lors du vidage du panier', 'error');
+        showNotification(error.message || 'Une erreur est survenue lors du vidage du panier', 'error');
+
+        if (error.message && error.message.toLowerCase().includes('session')) {
+            setTimeout(() => {
+                window.location.href = '{{ route("login") }}';
+            }, 1500);
+        }
     });
 }
 
@@ -1498,13 +1550,41 @@ function addToCartFromCartPage(courseId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         },
         body: JSON.stringify({
             course_id: courseId
         })
     })
-    .then(response => response.json())
+    .then(async response => {
+        // Vérifier le Content-Type de la réponse
+        const contentType = response.headers.get('content-type');
+        
+        // Si ce n'est pas du JSON, c'est probablement une erreur HTML
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Réponse non-JSON reçue:', text.substring(0, 200));
+            
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
+            }
+            
+            throw new Error('Une erreur est survenue. Veuillez réessayer.');
+        }
+        
+        if (!response.ok) {
+            try {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Erreur ${response.status}`);
+            } catch (e) {
+                throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+            }
+        }
+        
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Mettre à jour le compteur du panier
@@ -1528,7 +1608,13 @@ function addToCartFromCartPage(courseId) {
     })
     .catch(error => {
         console.error('Erreur AJAX:', error);
-        showNotification('Erreur de connexion', 'error');
+        showNotification(error.message || 'Erreur lors de l\'ajout au panier', 'error');
+        
+        if (error.message && error.message.toLowerCase().includes('session')) {
+            setTimeout(() => {
+                window.location.href = '{{ route("login") }}';
+            }, 1500);
+        }
         
         // Réactiver le bouton en cas d'erreur
         if (button) {
