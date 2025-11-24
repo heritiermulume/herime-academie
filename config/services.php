@@ -56,6 +56,9 @@ return [
         // Si true, la déconnexion se fera uniquement localement sans passer par le SSO
         // Utile si le SSO ne redirige pas correctement après déconnexion
         'force_local_logout' => env('SSO_FORCE_LOCAL_LOGOUT', false),
+        // Si true, désactive la validation stricte du token SSO
+        // La validation locale sera utilisée même si l'API SSO est disponible
+        'skip_strict_validation' => env('SSO_SKIP_STRICT_VALIDATION', false),
     ],
 
 ];

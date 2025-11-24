@@ -7,10 +7,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Address;
 use Illuminate\Queue\SerializesModels;
 
-class InvoiceMail extends Mailable
+class OrderDeletedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -30,8 +29,8 @@ class InvoiceMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('academie@herime.com', 'Herime Académie'),
-            subject: 'Facture - ' . $this->order->order_number . ' - Herime Académie',
+            from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Académie'),
+            subject: 'Commande supprimée - ' . $this->order->order_number . ' - Herime Académie',
         );
     }
 
@@ -41,15 +40,12 @@ class InvoiceMail extends Mailable
     public function content(): Content
     {
         // Charger les relations nécessaires
-        $this->order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+        $this->order->load(['orderItems.course', 'user']);
 
         return new Content(
-            view: 'emails.invoice',
+            view: 'emails.order-deleted',
             with: [
                 'order' => $this->order,
-                'user' => $this->order->user,
-                'orderItems' => $this->order->orderItems,
-                'payment' => $this->order->payments()->where('status', 'completed')->first(),
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],
         );

@@ -38,6 +38,11 @@ class ValidateSSOOnPageLoad
                 return $next($request);
             }
 
+            // Si la validation stricte est désactivée, laisser passer
+            if (config('services.sso.skip_strict_validation', false)) {
+                return $next($request);
+            }
+
             // Exclure certaines routes qui ne nécessitent pas de validation SSO
             $excludedRoutes = [
                 'sso.callback',
@@ -111,72 +116,54 @@ class ValidateSSOOnPageLoad
                 return $next($request);
             }
 
-            // Utiliser un cache pour éviter de valider le token à chaque requête
-            // La validation est mise en cache pour 30 secondes pour améliorer les performances
-            $cacheKey = 'sso_token_valid_' . md5($ssoToken . '_' . $user->id);
-            $cacheTtl = 30; // 30 secondes
-            
-            // Essayer de récupérer depuis le cache
-            $cachedValidation = cache()->get($cacheKey);
-            
-            if ($cachedValidation !== null) {
-                // Utiliser la valeur en cache
-                $isValid = (bool) $cachedValidation;
-                Log::debug('SSO token validation from cache', [
-                    'user_id' => $user->id,
-                    'is_valid' => $isValid,
-                ]);
-            } else {
-                // Pas de cache, valider le token via /api/me
-                try {
-                    $isValid = $this->validateSSOSession($ssoToken);
-                    
-                    // Mettre en cache le résultat (30 secondes)
-                    cache()->put($cacheKey, $isValid ? 1 : 0, $cacheTtl);
-                    
-                    Log::debug('SSO session validation performed', [
-                        'user_id' => $user->id,
-                        'is_valid' => $isValid,
-                    ]);
-                } catch (\Throwable $e) {
-                    // Capturer toutes les exceptions et erreurs
-                    Log::debug('SSO token validation exception in page load', [
+            // TOUJOURS vérifier d'abord la validation locale
+            // Si le token est valide localement (pas expiré, format correct), on fait confiance
+            // même si l'API SSO échoue
+            try {
+                $localValidation = $this->ssoService->validateToken($ssoToken);
+                if ($localValidation !== null) {
+                    // Le token est valide localement - on fait TOUJOURS confiance
+                    // Même si l'API SSO échoue, on autorise la requête
+                    Log::debug('SSO token valid locally on page load - allowing request (trusting local validation)', [
                         'user_id' => $user->id ?? null,
                         'method' => $request->method(),
                         'route' => $routeName,
-                        'error' => $e->getMessage(),
-                        'type' => get_class($e),
+                        'user_email' => $localValidation['email'] ?? 'unknown',
                     ]);
-                    
-                    // En cas d'erreur d'API, on peut être permissif ou strict selon la config
-                    $failOnError = config('services.sso.fail_on_api_error', false);
-                    
-                    if ($failOnError) {
-                        // En mode strict, une erreur API = token invalide
-                        // Invalider le cache pour forcer une nouvelle vérification au prochain appel
-                        cache()->forget($cacheKey);
-                        return $this->handleInvalidToken($request);
-                    }
-                    
-                    // Sinon, laisser passer (l'API SSO pourrait être temporairement indisponible)
-                    // Ne pas mettre en cache en cas d'erreur pour permettre une nouvelle tentative
                     return $next($request);
                 }
-            }
-
-            // Si le token est invalide, invalider le cache et déconnecter
-            if (!$isValid) {
-                cache()->forget($cacheKey);
-                
-                Log::warning('SSO token validation failed on page load', [
-                    'user_id' => $user->id ?? null,
-                    'method' => $request->method(),
-                    'route' => $routeName,
+            } catch (\Throwable $localException) {
+                Log::debug('SSO local validation failed on page load', [
+                    'error' => $localException->getMessage(),
                 ]);
-
-                // Token invalide, déconnecter l'utilisateur
-                return $this->handleInvalidToken($request);
             }
+
+            // Si la validation locale échoue, essayer l'API mais ne jamais déconnecter
+            // si l'API échoue aussi (on considère que c'est un problème d'API)
+            try {
+                $isValid = $this->ssoService->checkToken($ssoToken);
+                if ($isValid) {
+                    return $next($request);
+                }
+            } catch (\Throwable $e) {
+                // En cas d'erreur API, on laisse passer (l'API pourrait être indisponible)
+                Log::debug('SSO API validation error on page load - allowing request anyway', [
+                    'user_id' => $user->id ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+                return $next($request);
+            }
+
+            // Seulement déconnecter si la validation locale ET l'API échouent
+            // Mais seulement si on est sûr que le token est vraiment invalide
+            Log::warning('SSO token validation failed both locally and via API on page load - disconnecting user', [
+                'user_id' => $user->id ?? null,
+                'method' => $request->method(),
+                'route' => $routeName,
+            ]);
+
+            // Token vraiment invalide, déconnecter l'utilisateur
+            return $this->handleInvalidToken($request);
 
             return $next($request);
         } catch (\Throwable $e) {

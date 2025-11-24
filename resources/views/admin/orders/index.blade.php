@@ -176,20 +176,16 @@
                                                 </li>
                                                 <li>
                                                     <a class="dropdown-item" href="#" 
-                                                       data-action-url="{{ route('admin.orders.confirm', $order) }}"
-                                                       data-confirm="Confirmer cette commande ?"
-                                                       data-success="Commande confirmée avec succès."
-                                                       onclick="handleOrderAction(this); return false;">
+                                                       data-order-id="{{ $order->id }}"
+                                                       onclick="openConfirmOrderModal(this.dataset.orderId); return false;">
                                                         <i class="fas fa-check me-2"></i>Confirmer
                                                     </a>
                                                 </li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <a class="dropdown-item text-danger" href="#" 
-                                                       data-action-url="{{ route('admin.orders.cancel', $order) }}"
-                                                       data-confirm="Annuler cette commande ?"
-                                                       data-success="Commande annulée."
-                                                       onclick="handleOrderAction(this); return false;">
+                                                       data-order-id="{{ $order->id }}"
+                                                       onclick="openCancelOrderModal(this.dataset.orderId); return false;">
                                                         <i class="fas fa-times me-2"></i>Annuler
                                                     </a>
                                                 </li>
@@ -207,20 +203,16 @@
                                                 </li>
                                                 <li>
                                                     <a class="dropdown-item" href="#" 
-                                                       data-action-url="{{ route('admin.orders.confirm', $order) }}"
-                                                       data-confirm="Confirmer cette commande ?"
-                                                       data-success="Commande confirmée avec succès."
-                                                       onclick="handleOrderAction(this); return false;">
+                                                       data-order-id="{{ $order->id }}"
+                                                       onclick="openConfirmOrderModal(this.dataset.orderId); return false;">
                                                         <i class="fas fa-check me-2"></i>Confirmer
                                                     </a>
                                                 </li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <a class="dropdown-item text-danger" href="#" 
-                                                       data-action-url="{{ route('admin.orders.cancel', $order) }}"
-                                                       data-confirm="Annuler cette commande ?"
-                                                       data-success="Commande annulée."
-                                                       onclick="handleOrderAction(this); return false;">
+                                                       data-order-id="{{ $order->id }}"
+                                                       onclick="openCancelOrderModal(this.dataset.orderId); return false;">
                                                         <i class="fas fa-times me-2"></i>Annuler
                                                     </a>
                                                 </li>
@@ -239,20 +231,16 @@
                                                 </li>
                                                 <li>
                                                     <a class="dropdown-item" href="#" 
-                                                       data-action-url="{{ route('admin.orders.confirm', $order) }}"
-                                                       data-confirm="Confirmer cette commande ?"
-                                                       data-success="Commande confirmée avec succès."
-                                                       onclick="handleOrderAction(this); return false;">
+                                                       data-order-id="{{ $order->id }}"
+                                                       onclick="openConfirmOrderModal(this.dataset.orderId); return false;">
                                                         <i class="fas fa-check me-2"></i>Confirmer
                                                     </a>
                                                 </li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <a class="dropdown-item text-danger" href="#" 
-                                                       data-action-url="{{ route('admin.orders.cancel', $order) }}"
-                                                       data-confirm="Annuler cette commande ?"
-                                                       data-success="Commande annulée."
-                                                       onclick="handleOrderAction(this); return false;">
+                                                       data-order-id="{{ $order->id }}"
+                                                       onclick="openCancelOrderModal(this.dataset.orderId); return false;">
                                                         <i class="fas fa-times me-2"></i>Annuler
                                                     </a>
                                                 </li>
@@ -270,20 +258,16 @@
                                                 </li>
                                                 <li>
                                                     <a class="dropdown-item" href="#" 
-                                                       data-action-url="{{ route('admin.orders.confirm', $order) }}"
-                                                       data-confirm="Confirmer cette commande ?"
-                                                       data-success="Commande confirmée avec succès."
-                                                       onclick="handleOrderAction(this); return false;">
+                                                       data-order-id="{{ $order->id }}"
+                                                       onclick="openConfirmOrderModal(this.dataset.orderId); return false;">
                                                         <i class="fas fa-check me-2"></i>Confirmer
                                                     </a>
                                                 </li>
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <a class="dropdown-item text-danger" href="#" 
-                                                       data-action-url="{{ route('admin.orders.cancel', $order) }}"
-                                                       data-confirm="Annuler cette commande ?"
-                                                       data-success="Commande annulée."
-                                                       onclick="handleOrderAction(this); return false;">
+                                                       data-order-id="{{ $order->id }}"
+                                                       onclick="openCancelOrderModal(this.dataset.orderId); return false;">
                                                         <i class="fas fa-times me-2"></i>Annuler
                                                     </a>
                                                 </li>
@@ -309,6 +293,111 @@
 
         </div>
     </section>
+
+    <!-- Confirm Order Modal -->
+    <div class="modal fade" id="confirmOrderModal" tabindex="-1" aria-labelledby="confirmOrderModalLabel" data-bs-backdrop="static" data-bs-keyboard="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title" id="confirmOrderModalLabel">
+                        <i class="fas fa-check-circle text-success me-2"></i>Confirmer la commande
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <form id="confirmOrderForm">
+                    <div class="modal-body pt-3">
+                        <div class="alert alert-info d-flex align-items-start mb-3" role="alert">
+                            <i class="fas fa-info-circle me-2 mt-1"></i>
+                            <div>
+                                En confirmant cette commande, l'utilisateur aura accès aux cours commandés.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmPaymentReference" class="form-label fw-semibold">
+                                Référence de paiement <span class="text-danger">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="confirmPaymentReference" 
+                                name="payment_reference" 
+                                class="form-control" 
+                                required 
+                                placeholder="Entrez la référence de paiement"
+                            >
+                            <div class="form-text">Cette référence sera enregistrée pour référence.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmNotes" class="form-label fw-semibold">Notes</label>
+                            <textarea 
+                                id="confirmNotes" 
+                                name="notes" 
+                                class="form-control" 
+                                rows="3" 
+                                placeholder="Notes optionnelles sur cette commande"
+                                style="resize: vertical;"
+                            ></textarea>
+                            <div class="form-text">Ces notes seront enregistrées avec la commande.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" tabindex="-1">
+                            <i class="fas fa-times me-2"></i>Fermer
+                        </button>
+                        <button type="submit" class="btn btn-success" id="confirmOrderSubmitBtn" tabindex="-1">
+                            <i class="fas fa-check me-2"></i>Confirmer la commande
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Order Modal -->
+    <div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" data-bs-backdrop="static" data-bs-keyboard="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title" id="cancelOrderModalLabel">
+                        <i class="fas fa-exclamation-triangle text-danger me-2"></i>Annuler la commande
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <form id="cancelOrderForm">
+                    <div class="modal-body pt-3">
+                        <div class="alert alert-danger d-flex align-items-start mb-3" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
+                            <div>
+                                <strong>Attention !</strong> Cette commande sera annulée et l'accès aux cours sera révoqué.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="cancelReason" class="form-label fw-semibold">
+                                Raison de l'annulation <span class="text-danger">*</span>
+                            </label>
+                            <textarea 
+                                id="cancelReason" 
+                                name="reason" 
+                                class="form-control" 
+                                rows="4" 
+                                required 
+                                placeholder="Expliquez pourquoi cette commande est annulée"
+                                style="resize: vertical;"
+                            ></textarea>
+                            <div class="form-text">Cette information sera enregistrée pour référence.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" tabindex="-1">
+                            <i class="fas fa-times me-2"></i>Fermer
+                        </button>
+                        <button type="submit" class="btn btn-danger" id="cancelOrderSubmitBtn" tabindex="-1">
+                            <i class="fas fa-ban me-2"></i>Annuler la commande
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -363,6 +452,341 @@ function exportOrders() {
     }, 2000);
 }
 
+let currentConfirmOrderId = null;
+let currentCancelOrderId = null;
+
+function openConfirmOrderModal(orderId) {
+    currentConfirmOrderId = parseInt(orderId, 10);
+    if (!currentConfirmOrderId || isNaN(currentConfirmOrderId)) {
+        alert('Erreur: ID de commande invalide.');
+        return;
+    }
+    const form = document.getElementById('confirmOrderForm');
+    if (form) {
+        form.reset();
+    }
+    const modalElement = document.getElementById('confirmOrderModal');
+    if (modalElement) {
+        // Retirer aria-hidden avant d'afficher le modal
+        modalElement.removeAttribute('aria-hidden');
+        
+        // Observer les changements d'attribut aria-hidden pour le retirer immédiatement
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+                    // Si aria-hidden est ajouté et vaut "true" pendant que le modal est visible, le retirer
+                    if (modalElement.getAttribute('aria-hidden') === 'true' && 
+                        modalElement.classList.contains('show')) {
+                        // Utiliser requestAnimationFrame pour s'assurer que c'est après le rendu
+                        requestAnimationFrame(() => {
+                            if (modalElement.classList.contains('show')) {
+                                modalElement.removeAttribute('aria-hidden');
+                            }
+                        });
+                    }
+                }
+            });
+        });
+        
+        // Observer les changements d'attributs sur le modal
+        observer.observe(modalElement, {
+            attributes: true,
+            attributeFilter: ['aria-hidden']
+        });
+        
+        // Gérer le focus après que le modal soit complètement affiché
+        const handleModalShown = function() {
+            // S'assurer que aria-hidden est bien retiré
+            modalElement.removeAttribute('aria-hidden');
+            
+            // Arrêter l'observer
+            observer.disconnect();
+            
+            // Réactiver les tabindex des boutons
+            const closeBtn = modalElement.querySelector('.btn-secondary[data-bs-dismiss="modal"]');
+            const submitBtn = document.getElementById('confirmOrderSubmitBtn');
+            if (closeBtn) closeBtn.removeAttribute('tabindex');
+            if (submitBtn) submitBtn.removeAttribute('tabindex');
+            
+            // Mettre le focus sur le champ de référence de paiement
+            const paymentRefInput = document.getElementById('confirmPaymentReference');
+            if (paymentRefInput) {
+                // Utiliser un double requestAnimationFrame pour s'assurer que tout est rendu
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        paymentRefInput.focus();
+                    });
+                });
+            }
+            
+            // Nettoyer l'écouteur
+            modalElement.removeEventListener('shown.bs.modal', handleModalShown);
+        };
+        
+        // Gérer la fermeture du modal pour nettoyer l'observer
+        const handleModalHidden = function() {
+            observer.disconnect();
+            modalElement.removeEventListener('hidden.bs.modal', handleModalHidden);
+        };
+        
+        // Ajouter les écouteurs
+        modalElement.addEventListener('shown.bs.modal', handleModalShown, { once: true });
+        modalElement.addEventListener('hidden.bs.modal', handleModalHidden, { once: true });
+        
+        // Créer et afficher le modal
+        const modal = new bootstrap.Modal(modalElement, {
+            focus: false, // Désactiver le focus automatique de Bootstrap
+            keyboard: true
+        });
+        modal.show();
+    }
+}
+
+function openCancelOrderModal(orderId) {
+    currentCancelOrderId = parseInt(orderId, 10);
+    if (!currentCancelOrderId || isNaN(currentCancelOrderId)) {
+        alert('Erreur: ID de commande invalide.');
+        return;
+    }
+    const form = document.getElementById('cancelOrderForm');
+    if (form) {
+        form.reset();
+    }
+    const modalElement = document.getElementById('cancelOrderModal');
+    if (modalElement) {
+        // Retirer aria-hidden avant d'afficher le modal
+        modalElement.removeAttribute('aria-hidden');
+        
+        // Observer les changements d'attribut aria-hidden pour le retirer immédiatement
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+                    // Si aria-hidden est ajouté et vaut "true" pendant que le modal est visible, le retirer
+                    if (modalElement.getAttribute('aria-hidden') === 'true' && 
+                        modalElement.classList.contains('show')) {
+                        // Utiliser requestAnimationFrame pour s'assurer que c'est après le rendu
+                        requestAnimationFrame(() => {
+                            if (modalElement.classList.contains('show')) {
+                                modalElement.removeAttribute('aria-hidden');
+                            }
+                        });
+                    }
+                }
+            });
+        });
+        
+        // Observer les changements d'attributs sur le modal
+        observer.observe(modalElement, {
+            attributes: true,
+            attributeFilter: ['aria-hidden']
+        });
+        
+        // Gérer le focus après que le modal soit complètement affiché
+        const handleModalShown = function() {
+            // S'assurer que aria-hidden est bien retiré
+            modalElement.removeAttribute('aria-hidden');
+            
+            // Arrêter l'observer
+            observer.disconnect();
+            
+            // Réactiver les tabindex des boutons
+            const closeBtn = modalElement.querySelector('.btn-secondary[data-bs-dismiss="modal"]');
+            const submitBtn = document.getElementById('cancelOrderSubmitBtn');
+            if (closeBtn) closeBtn.removeAttribute('tabindex');
+            if (submitBtn) submitBtn.removeAttribute('tabindex');
+            
+            // Mettre le focus sur le textarea
+            const textarea = document.getElementById('cancelReason');
+            if (textarea) {
+                // Utiliser un double requestAnimationFrame pour s'assurer que tout est rendu
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        textarea.focus();
+                    });
+                });
+            }
+            
+            // Nettoyer l'écouteur
+            modalElement.removeEventListener('shown.bs.modal', handleModalShown);
+        };
+        
+        // Gérer la fermeture du modal pour nettoyer l'observer
+        const handleModalHidden = function() {
+            observer.disconnect();
+            modalElement.removeEventListener('hidden.bs.modal', handleModalHidden);
+        };
+        
+        // Ajouter les écouteurs
+        modalElement.addEventListener('shown.bs.modal', handleModalShown, { once: true });
+        modalElement.addEventListener('hidden.bs.modal', handleModalHidden, { once: true });
+        
+        // Créer et afficher le modal
+        const modal = new bootstrap.Modal(modalElement, {
+            focus: false, // Désactiver le focus automatique de Bootstrap
+            keyboard: true
+        });
+        modal.show();
+    }
+}
+
+// Gérer la soumission du formulaire de confirmation
+const confirmOrderForm = document.getElementById('confirmOrderForm');
+if (confirmOrderForm) {
+    confirmOrderForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!currentConfirmOrderId) {
+        alert('Erreur: Aucune commande sélectionnée.');
+        return;
+    }
+
+    const formData = new FormData(this);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    if (!csrfToken) {
+        alert('Jeton CSRF introuvable. Veuillez rafraîchir la page.');
+        return;
+    }
+
+    formData.append('_token', csrfToken);
+    
+    const submitBtn = document.getElementById('confirmOrderSubmitBtn');
+    const originalHtml = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+
+    fetch(`/admin/orders/${currentConfirmOrderId}/confirm`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+        },
+    })
+    .then(async response => {
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (error) {
+            data = null;
+        }
+
+        if (!response.ok) {
+            const message = data?.message || 'Une erreur est survenue lors de la confirmation.';
+            throw new Error(message);
+        }
+
+        // Fermer le modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmOrderModal'));
+        if (modal) {
+            modal.hide();
+        }
+
+        // Afficher un message de succès
+        const successMessage = data?.message || 'Commande confirmée avec succès.';
+        
+        // Utiliser une notification moderne si disponible, sinon alert
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(successMessage, 'success');
+        } else {
+            alert(successMessage);
+        }
+
+        // Recharger la page après un court délai
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    })
+    .catch(error => {
+        console.error(error);
+        alert(error.message || 'Impossible de confirmer la commande.');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHtml;
+    });
+    });
+}
+
+// Gérer la soumission du formulaire d'annulation
+const cancelOrderForm = document.getElementById('cancelOrderForm');
+if (cancelOrderForm) {
+    cancelOrderForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!currentCancelOrderId) {
+        alert('Erreur: Aucune commande sélectionnée.');
+        return;
+    }
+
+    const formData = new FormData(this);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    if (!csrfToken) {
+        alert('Jeton CSRF introuvable. Veuillez rafraîchir la page.');
+        return;
+    }
+
+    formData.append('_token', csrfToken);
+    
+    const submitBtn = document.getElementById('cancelOrderSubmitBtn');
+    const originalHtml = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+
+    fetch(`/admin/orders/${currentCancelOrderId}/cancel`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+        },
+    })
+    .then(async response => {
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (error) {
+            data = null;
+        }
+
+        if (!response.ok) {
+            const message = data?.message || 'Une erreur est survenue lors de l\'annulation.';
+            throw new Error(message);
+        }
+
+        // Fermer le modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('cancelOrderModal'));
+        if (modal) {
+            modal.hide();
+        }
+
+        // Afficher un message de succès
+        const successMessage = data?.message || 'Commande annulée avec succès.';
+        
+        // Utiliser une notification moderne si disponible, sinon alert
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(successMessage, 'success');
+        } else {
+            alert(successMessage);
+        }
+
+        // Recharger la page après un court délai
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    })
+    .catch(error => {
+        console.error(error);
+        alert(error.message || 'Impossible d\'annuler la commande.');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHtml;
+    });
+    });
+}
+
 function handleOrderAction(button) {
     if (!button || button.disabled) {
         return;
@@ -370,7 +794,7 @@ function handleOrderAction(button) {
 
     const url = button.dataset.actionUrl;
     if (!url) {
-        console.error('Aucune URL d’action disponible pour ce bouton.');
+        console.error('Aucune URL d\'action disponible pour ce bouton.');
         return;
     }
 
@@ -419,7 +843,7 @@ function handleOrderAction(button) {
     })
     .catch(error => {
         console.error(error);
-        alert(error.message || 'Impossible d’exécuter l’action demandée.');
+        alert(error.message || 'Impossible d\'exécuter l\'action demandée.');
     })
     .finally(() => {
         button.disabled = false;

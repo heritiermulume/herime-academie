@@ -10,17 +10,27 @@
             padding: 0;
             box-sizing: border-box;
         }
+        /* Réinitialiser max-width pour les éléments qui doivent pouvoir dépasser */
+        html, body {
+            max-width: none;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #2c3e50;
             background-color: #f8f9fa;
+            width: 100%;
+            overflow-x: hidden;
+            word-wrap: break-word;
         }
         .container {
             max-width: 600px;
+            width: 100%;
             margin: 0 auto;
             background-color: #ffffff;
             padding: 40px;
+            box-sizing: border-box;
+            overflow-x: hidden;
         }
         .header {
             text-align: center;
@@ -61,28 +71,94 @@
             border-radius: 12px;
             margin-bottom: 30px;
             border-left: 4px solid #003366;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            overflow: hidden;
         }
         .course-card h2 {
             color: #003366;
             font-size: 22px;
             margin-bottom: 15px;
             font-weight: 700;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+        .course-description {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 51, 102, 0.1);
+            color: #2c3e50;
+            font-size: 14px;
+            line-height: 1.6;
+            max-height: 200px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .course-description p {
+            margin-bottom: 10px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+        .course-description * {
+            max-width: 100% !important;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            box-sizing: border-box;
+        }
+        /* Limiter tous les éléments HTML dans la description */
+        .course-description img {
+            max-width: 100% !important;
+            height: auto !important;
+        }
+        .course-description table {
+            max-width: 100% !important;
+            width: 100% !important;
+            table-layout: fixed;
+        }
+        .course-description pre,
+        .course-description code {
+            max-width: 100% !important;
+            overflow-x: auto;
+            word-wrap: break-word;
+            white-space: pre-wrap;
         }
         .course-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .course-meta-table {
+            width: 100%;
+            border-collapse: collapse;
             font-size: 14px;
             color: #2c3e50;
         }
-        .course-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .course-meta-table tr {
+            border-bottom: 1px solid rgba(0, 51, 102, 0.1);
         }
-        .course-meta-item strong {
+        .course-meta-table tr:last-child {
+            border-bottom: none;
+        }
+        .course-meta-table td {
+            padding: 10px 0;
+            vertical-align: top;
+        }
+        .course-meta-table td:first-child {
             color: #003366;
-            min-width: 100px;
+            font-weight: 600;
+            width: 35%;
+            padding-right: 15px;
+        }
+        .course-meta-table td:last-child {
+            color: #2c3e50;
+            width: 65%;
         }
         .message {
             background: linear-gradient(135deg, rgba(255, 204, 51, 0.1) 0%, rgba(255, 204, 51, 0.05) 100%);
@@ -96,6 +172,9 @@
             font-size: 15px;
             margin: 0;
             line-height: 1.8;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
         }
         .button-container {
             text-align: center;
@@ -166,15 +245,68 @@
             color: #003366;
             font-size: 16px;
         }
+        /* Styles pour éviter le débordement - appliqués à tous les éléments */
+        html {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: hidden !important;
+        }
+        img {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block;
+        }
+        table {
+            max-width: 100% !important;
+            width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse;
+        }
+        td, th {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 0;
+        }
+        /* Assurer que le texte ne déborde pas */
+        p, div, span, a, li {
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            max-width: 100% !important;
+        }
+        /* Limiter la largeur des éléments inline */
+        pre, code {
+            max-width: 100% !important;
+            overflow-x: auto;
+            word-wrap: break-word !important;
+            white-space: pre-wrap !important;
+        }
+        /* Limiter les éléments de liste */
+        ul, ol {
+            max-width: 100% !important;
+            padding-left: 20px;
+        }
+        /* Limiter les éléments de formulaire */
+        input, textarea, select {
+            max-width: 100% !important;
+        }
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
+                width: 100% !important;
             }
             .logo-container img {
                 max-width: 150px;
             }
             .course-card {
                 padding: 20px;
+                width: 100% !important;
+            }
+            .course-card h2 {
+                font-size: 18px;
+            }
+            .course-description {
+                max-height: 150px;
+                font-size: 13px;
             }
         }
     </style>
@@ -184,7 +316,7 @@
         <div class="header">
             @if(isset($logoUrl))
             <div class="logo-container">
-                <img src="{{ $logoUrl }}" alt="Herime Academie Logo" />
+                <img src="{{ $logoUrl }}" alt="Herime Académie Logo" />
             </div>
             @endif
             <h1>Félicitations !</h1>
@@ -195,30 +327,44 @@
         <div class="course-card">
             <h2>{{ $course->title }}</h2>
             <div class="course-meta">
-                @if($course->instructor)
-                <div class="course-meta-item">
-                    <strong>Formateur :</strong>
-                    <span>{{ $course->instructor->name }}</span>
-                </div>
-                @endif
-                @if($course->category)
-                <div class="course-meta-item">
-                    <strong>Catégorie :</strong>
-                    <span>{{ $course->category->name }}</span>
-                </div>
-                @endif
-                @if($course->duration)
-                <div class="course-meta-item">
-                    <strong>Durée :</strong>
-                    <span>{{ $course->duration }}</span>
-                </div>
-                @endif
-                @if($course->level)
-                <div class="course-meta-item">
-                    <strong>Niveau :</strong>
-                    <span>{{ ucfirst($course->level) }}</span>
-                </div>
-                @endif
+                <table class="course-meta-table">
+                    @if($course->instructor)
+                    <tr>
+                        <td>Formateur</td>
+                        <td>{{ $course->instructor->name }}</td>
+                    </tr>
+                    @endif
+                    @if($course->category)
+                    <tr>
+                        <td>Catégorie</td>
+                        <td>{{ $course->category->name }}</td>
+                    </tr>
+                    @endif
+                    @if($course->duration)
+                    <tr>
+                        <td>Durée</td>
+                        <td>{{ $course->duration }}</td>
+                    </tr>
+                    @endif
+                    @if($course->level)
+                    <tr>
+                        <td>Niveau</td>
+                        <td>{{ ucfirst($course->level) }}</td>
+                    </tr>
+                    @endif
+                    @if($course->short_description || $course->description)
+                    <tr>
+                        <td>Description</td>
+                        <td>
+                            @if($course->short_description)
+                                {{ Str::limit(strip_tags($course->short_description), 200) }}
+                            @elseif($course->description)
+                                {{ Str::limit(strip_tags($course->description), 200) }}
+                            @endif
+                        </td>
+                    </tr>
+                    @endif
+                </table>
             </div>
         </div>
 
@@ -230,7 +376,7 @@
         </div>
 
         <div class="button-container">
-            <a href="{{ $courseUrl }}" class="button">Commencer le cours maintenant</a>
+            <a href="{{ $courseUrl }}" class="button">{{ $buttonText ?? 'Commencer le cours maintenant' }}</a>
         </div>
 
         <div class="features">
@@ -245,7 +391,7 @@
         </div>
 
         <div class="footer">
-            <p><strong>Herime Academie</strong></p>
+            <p><strong>Herime Académie</strong></p>
             <p>Merci de votre confiance et bon apprentissage !</p>
             <p>Pour toute question, n'hésitez pas à nous contacter.</p>
             <p style="margin-top: 15px; font-size: 12px; color: #6c757d;">

@@ -125,6 +125,43 @@
     </div>
 </div>
 
+<!-- Delete Order Modal -->
+<div class="modal fade" id="deleteOrderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Supprimer définitivement la commande
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Attention !</strong> Cette action est irréversible.
+                </div>
+                <p>Vous êtes sur le point de supprimer définitivement cette commande. Cette action va :</p>
+                <ul>
+                    <li>Supprimer complètement la commande de la base de données</li>
+                    <li>Retirer l'accès à tous les cours associés à cette commande</li>
+                    <li>Supprimer toutes les inscriptions liées à cette commande</li>
+                    <li>Supprimer tous les paiements associés</li>
+                </ul>
+                <p class="mb-0 text-danger fw-bold">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Cette action fonctionne même si la commande était déjà payée.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteOrder()">
+                    <i class="fas fa-trash me-2"></i>Supprimer définitivement
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let currentOrderId = null;
 
@@ -248,6 +285,83 @@ document.getElementById('cancelOrderForm').addEventListener('submit', function(e
         alert('Une erreur est survenue');
     });
 });
+
+// Delete Order
+function deleteOrder(orderId) {
+    currentOrderId = orderId;
+    new bootstrap.Modal(document.getElementById('deleteOrderModal')).show();
+}
+
+function confirmDeleteOrder() {
+    const formData = new FormData();
+    formData.append('_token', '{{ csrf_token() }}');
+    
+    fetch(`/admin/orders/${currentOrderId}/delete`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        // Vérifier le type de contenu de la réponse
+        const contentType = response.headers.get('content-type');
+        
+        if (!contentType || !contentType.includes('application/json')) {
+            // Si ce n'est pas du JSON, c'est probablement une redirection HTML
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Session expirée. Veuillez vous reconnecter.');
+            }
+            return response.text().then(text => {
+                // Si c'est du HTML, c'est probablement une page d'erreur ou de redirection
+                if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<!doctype')) {
+                    throw new Error('La session a expiré. Veuillez recharger la page et réessayer.');
+                }
+                throw new Error(`Réponse inattendue du serveur (${response.status})`);
+            });
+        }
+        
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || `Erreur HTTP ${response.status}`);
+            });
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        // Vérifier si la session a expiré
+        if (data && data.session_expired) {
+            alert(data.message || 'Votre session a expiré. Vous allez être redirigé vers la page de connexion.');
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                window.location.reload();
+            }
+            return;
+        }
+        
+        if (data && data.success) {
+            // Rediriger vers la liste des commandes après suppression
+            window.location.href = '{{ route("admin.orders.index") }}';
+        } else {
+            alert('Erreur: ' + (data?.message || 'Erreur inconnue'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        const errorMessage = error.message || 'Une erreur est survenue lors de la suppression';
+        alert(errorMessage);
+        
+        // Si c'est une erreur de session, recharger la page
+        if (errorMessage.includes('session') || errorMessage.includes('Session') || errorMessage.includes('expiré')) {
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    });
+}
 </script>
 
 

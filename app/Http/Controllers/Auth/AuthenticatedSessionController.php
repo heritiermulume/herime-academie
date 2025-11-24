@@ -67,7 +67,7 @@ class AuthenticatedSessionController extends Controller
      * Utilisée quand le token SSO est invalide - l'utilisateur voit une notification et peut choisir de se reconnecter.
      * 
      * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public static function performLocalLogoutWithNotification(Request $request)
     {
@@ -91,6 +91,16 @@ class AuthenticatedSessionController extends Controller
             Log::debug('Error during local logout with notification', [
                 'error' => $e->getMessage(),
             ]);
+        }
+
+        // Pour les requêtes AJAX, retourner une réponse JSON
+        if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Votre session a expiré. Veuillez vous reconnecter pour continuer.',
+                'session_expired' => true,
+                'redirect' => route('home')
+            ], 401);
         }
 
         // Rediriger vers la page d'accueil où la notification sera affichée

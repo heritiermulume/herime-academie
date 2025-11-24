@@ -29,8 +29,8 @@ class CourseEnrolledMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Academie'),
-            subject: 'Inscription confirmée - ' . $this->course->title . ' - Herime Academie',
+            from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Académie'),
+            subject: 'Inscription confirmée - ' . $this->course->title . ' - Herime Académie',
         );
     }
 
@@ -42,11 +42,23 @@ class CourseEnrolledMail extends Mailable
         // Charger les relations nécessaires
         $this->course->load(['instructor', 'category']);
 
+        // Déterminer l'URL appropriée selon le type de cours
+        // Pour les cours téléchargeables, rediriger vers la page de détails du cours
+        // Pour les cours normaux, rediriger vers la page learning
+        if ($this->course->is_downloadable) {
+            $courseUrl = route('courses.show', $this->course->slug);
+            $buttonText = 'Télécharger le cours maintenant';
+        } else {
+            $courseUrl = route('learning.course', $this->course->slug);
+            $buttonText = 'Commencer le cours maintenant';
+        }
+
         return new Content(
             view: 'emails.course-enrolled',
             with: [
                 'course' => $this->course,
-                'courseUrl' => route('learning.course', $this->course->slug),
+                'courseUrl' => $courseUrl,
+                'buttonText' => $buttonText,
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],
         );

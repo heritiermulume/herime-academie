@@ -136,23 +136,63 @@ class Enrollment extends Model
 
             // Envoyer l'email directement de manière synchrone pour garantir l'envoi immédiat
             try {
-                Mail::to($user->email)->send(new \App\Mail\CourseEnrolledMail($course));
-                \Log::info("Email CourseEnrolledMail envoyé directement à {$user->email} pour le cours {$course->id}", [
+                // Vérifier que l'email de l'utilisateur est valide
+                if (empty($user->email) || !filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+                    \Log::error("Email invalide pour l'utilisateur - impossible d'envoyer CourseEnrolledMail", [
+                        'enrollment_id' => $this->id,
+                        'course_id' => $course->id,
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                    ]);
+                    return;
+                }
+
+                // Envoyer l'email et capturer les erreurs SMTP
+                $mailable = new \App\Mail\CourseEnrolledMail($course);
+                Mail::to($user->email)->send($mailable);
+                
+                \Log::info("Email CourseEnrolledMail envoyé avec succès à {$user->email} pour le cours {$course->id}", [
                     'enrollment_id' => $this->id,
                     'course_id' => $course->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
+                    'course_title' => $course->title,
                 ]);
+            } catch (\Swift_TransportException $transportException) {
+                // Erreur de transport SMTP (connexion, authentification, etc.)
+                \Log::error("Erreur SMTP lors de l'envoi de l'email CourseEnrolledMail", [
+                    'enrollment_id' => $this->id,
+                    'course_id' => $course->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $transportException->getMessage(),
+                    'error_code' => $transportException->getCode(),
+                    'trace' => $transportException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer l'inscription
             } catch (\Exception $emailException) {
-                \Log::error("Erreur lors de l'envoi direct de l'email CourseEnrolledMail", [
+                // Autres erreurs (validation, template, etc.)
+                \Log::error("Erreur lors de l'envoi de l'email CourseEnrolledMail", [
                     'enrollment_id' => $this->id,
                     'course_id' => $course->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                     'error' => $emailException->getMessage(),
+                    'error_class' => get_class($emailException),
                     'trace' => $emailException->getTraceAsString(),
                 ]);
                 // Ne pas relancer l'exception pour ne pas bloquer l'inscription
+            } catch (\Throwable $throwable) {
+                // Capturer toutes les erreurs fatales
+                \Log::error("Erreur fatale lors de l'envoi de l'email CourseEnrolledMail", [
+                    'enrollment_id' => $this->id,
+                    'course_id' => $course->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $throwable->getMessage(),
+                    'error_class' => get_class($throwable),
+                    'trace' => $throwable->getTraceAsString(),
+                ]);
             }
             
             // Envoyer la notification (pour la base de données et l'affichage dans la navbar)

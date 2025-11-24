@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Enrollment;
 use App\Models\CartItem;
 use App\Mail\InvoiceMail;
+use App\Mail\PaymentFailedMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
@@ -246,6 +247,7 @@ class PawaPayController extends Controller
             if (!$response->successful()) {
                 // Réponse d'échec: annuler la commande et marquer paiement failed
                 $error = $response->json();
+                $failureReason = $error['message'] ?? 'Échec de l\'initialisation fournisseur';
                 Payment::create([
                     'order_id' => $order->id,
                     'payment_method' => 'pawapay',
@@ -254,13 +256,27 @@ class PawaPayController extends Controller
                     'amount' => $paymentAmount,
                     'currency' => $paymentCurrency,
                     'status' => 'failed',
-                    'failure_reason' => $error['message'] ?? 'Échec de l\'initialisation fournisseur',
+                    'failure_reason' => $failureReason,
                     'payment_data' => [
                         'request' => $payload,
                         'response' => $error,
                     ],
                 ]);
                 $order->update(['status' => 'cancelled']);
+                
+                // Charger les relations nécessaires pour l'email
+                $order->load(['user', 'orderItems.course', 'payments']);
+                
+                // Envoyer l'email d'échec de paiement
+                try {
+                    if ($order->user && $order->user->email) {
+                        Mail::to($order->user->email)->send(new PaymentFailedMail($order, $failureReason));
+                        \Log::info("Email d'échec d'initialisation envoyé pour la commande {$order->order_number} à {$order->user->email}");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Erreur lors de l'envoi de l'email d'échec d'initialisation pour la commande {$order->id}: " . $e->getMessage());
+                }
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Échec de l\'initialisation du paiement.',
@@ -321,6 +337,7 @@ class PawaPayController extends Controller
             return response()->json($out, 200, ['Content-Type' => 'application/json; charset=utf-8']);
         } catch (\Throwable $e) {
             // Erreur technique: annuler et marquer failed
+            $failureReason = 'Erreur technique lors de l\'initialisation';
             Payment::create([
                 'order_id' => $order->id,
                 'payment_method' => 'pawapay',
@@ -329,7 +346,7 @@ class PawaPayController extends Controller
                 'amount' => $paymentAmount,
                 'currency' => $paymentCurrency,
                 'status' => 'failed',
-                'failure_reason' => 'Erreur technique lors de l\'initialisation',
+                'failure_reason' => $failureReason,
                 'payment_data' => [
                     'request' => $payload,
                     'exception' => [
@@ -339,6 +356,20 @@ class PawaPayController extends Controller
                 ],
             ]);
             $order->update(['status' => 'cancelled']);
+            
+            // Charger les relations nécessaires pour l'email
+            $order->load(['user', 'orderItems.course', 'payments']);
+            
+            // Envoyer l'email d'échec de paiement
+            try {
+                if ($order->user && $order->user->email) {
+                    Mail::to($order->user->email)->send(new PaymentFailedMail($order, $failureReason));
+                    \Log::info("Email d'échec technique envoyé pour la commande {$order->order_number} à {$order->user->email}");
+                }
+            } catch (\Exception $emailException) {
+                \Log::error("Erreur lors de l'envoi de l'email d'échec technique pour la commande {$order->id}: " . $emailException->getMessage());
+            }
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de communication avec le fournisseur. La commande a été annulée.',
@@ -564,6 +595,19 @@ class PawaPayController extends Controller
                     $payment->order->update(['status' => 'cancelled']);
                 }
                 
+                // Charger les relations nécessaires pour l'email
+                $payment->order->load(['user', 'orderItems.course', 'payments']);
+                
+                // Envoyer l'email d'échec de paiement
+                try {
+                    if ($payment->order->user && $payment->order->user->email) {
+                        Mail::to($payment->order->user->email)->send(new PaymentFailedMail($payment->order, $failureReason));
+                        \Log::info("Email d'échec de paiement envoyé pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Erreur lors de l'envoi de l'email d'échec de paiement pour la commande {$payment->order->id}: " . $e->getMessage());
+                }
+                
                 \Log::info('pawaPay: Order cancelled after failed payment', [
                     'order_id' => $payment->order->id,
                     'depositId' => $depositId,
@@ -635,13 +679,27 @@ class PawaPayController extends Controller
 
         // Annuler uniquement si le statut est encore pending
         if ($payment->status === 'pending') {
+            $failureReason = 'Annulation par l\'utilisateur';
             $payment->update([
                 'status' => 'failed',
-                'failure_reason' => 'Annulation par l\'utilisateur',
+                'failure_reason' => $failureReason,
             ]);
 
             if ($payment->order) {
                 $payment->order->update(['status' => 'cancelled']);
+                
+                // Charger les relations nécessaires pour l'email
+                $payment->order->load(['user', 'orderItems.course', 'payments']);
+                
+                // Envoyer l'email d'annulation de paiement
+                try {
+                    if ($payment->order->user && $payment->order->user->email) {
+                        Mail::to($payment->order->user->email)->send(new PaymentFailedMail($payment->order, $failureReason));
+                        \Log::info("Email d'annulation envoyé pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Erreur lors de l'envoi de l'email d'annulation pour la commande {$payment->order->id}: " . $e->getMessage());
+                }
             }
             
             \Log::info('pawaPay: Payment cancelled by user', [
@@ -805,72 +863,8 @@ class PawaPayController extends Controller
 				'session_cart_cleared' => true,
 			]);
             
-            // Envoyer une notification de paiement confirmé à l'utilisateur (éviter doublons)
-            try {
-                $alreadyNotified = method_exists($order->user, 'notifications')
-                    ? $order->user->notifications()
-                        ->where('type', PaymentReceived::class)
-                        ->where('data->order_id', $order->id)
-                        ->exists()
-                    : false;
-                if (!$alreadyNotified) {
-                    // Envoyer l'email directement de manière synchrone
-                    try {
-                        Mail::to($order->user->email)->send(new \App\Mail\PaymentReceivedMail($order));
-                        \Log::info("Email PaymentReceivedMail envoyé directement à {$order->user->email} pour la commande {$order->order_number}");
-                    } catch (\Exception $emailException) {
-                        \Log::error("Erreur lors de l'envoi de l'email PaymentReceivedMail", [
-                            'order_id' => $order->id,
-                            'user_id' => $order->user->id,
-                            'error' => $emailException->getMessage(),
-                            'trace' => $emailException->getTraceAsString(),
-                        ]);
-                    }
-                    
-                    // Envoyer la notification en base de données (sans email car déjà envoyé)
-                    // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-                    Notification::sendNow($order->user, new PaymentReceived($order));
-                    \Log::info('pawaPay: Payment confirmation notification sent', [
-                        'user_id' => $order->user_id,
-                        'order_id' => $order->id,
-                    ]);
-                } else {
-                    \Log::info('pawaPay: Payment confirmation notification skipped (already sent)', [
-                        'user_id' => $order->user_id,
-                        'order_id' => $order->id,
-                    ]);
-                }
-            } catch (\Throwable $e) {
-                // Logger l'erreur mais ne pas faire échouer la finalisation
-                \Log::error('pawaPay: Failed to send payment notification', [
-                    'user_id' => $order->user_id,
-                    'order_id' => $order->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
-
-            // Envoyer la facture par email
-            try {
-                $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
-                if ($order->user && $order->user->email) {
-                    // Envoyer l'email de manière synchrone (immédiate)
-                    // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
-                    Mail::to($order->user->email)->send(new InvoiceMail($order));
-                    \Log::info('pawaPay: Invoice email sent', [
-                        'user_id' => $order->user_id,
-                        'order_id' => $order->id,
-                        'email' => $order->user->email,
-                    ]);
-                }
-            } catch (\Throwable $e) {
-                // Logger l'erreur mais ne pas faire échouer la finalisation
-                \Log::error('pawaPay: Failed to send invoice email', [
-                    'user_id' => $order->user_id,
-                    'order_id' => $order->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            // Envoyer les emails de paiement (même logique que Enrollment::sendEnrollmentNotifications)
+            $this->sendPaymentEmails($order);
             
             \Log::info('pawaPay: Finalization completed successfully', [
                 'order_id' => $order->id,
@@ -969,7 +963,8 @@ class PawaPayController extends Controller
 						$payment->order->update($updates);
                         
                         // Finaliser la commande si pas déjà fait
-                        if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                        $orderWasAlreadyPaid = in_array($payment->order->status, ['paid', 'completed']);
+                        if (!$orderWasAlreadyPaid) {
                             $this->finalizeOrderAfterPayment($payment->order);
                         }
 
@@ -982,45 +977,11 @@ class PawaPayController extends Controller
                             \Session::forget('cart');
                         }
                         
-                        // Assurer la notification en contexte redirection si non envoyée
-                        try {
-                            $orderFresh = $payment->order->fresh(['user']);
-                            $alreadyNotified = method_exists($orderFresh->user, 'notifications')
-                                ? $orderFresh->user->notifications()
-                                    ->where('type', PaymentReceived::class)
-                                    ->where('data->order_id', $orderFresh->id)
-                                    ->exists()
-                                : false;
-                            if (!$alreadyNotified) {
-                                // Envoyer l'email directement de manière synchrone
-                                try {
-                                    $notification = new PaymentReceived($orderFresh);
-                                    $mailable = $notification->toMail($orderFresh->user);
-                                    Mail::to($orderFresh->user->email)->send($mailable);
-                                    \Log::info("Email PaymentReceived envoyé directement à {$orderFresh->user->email} pour la commande {$orderFresh->order_number}");
-                                } catch (\Exception $emailException) {
-                                    \Log::error("Erreur lors de l'envoi de l'email PaymentReceived", [
-                                        'order_id' => $orderFresh->id,
-                                        'user_id' => $orderFresh->user->id,
-                                        'error' => $emailException->getMessage(),
-                                    ]);
-                                }
-                                
-                                // Envoyer la notification en base de données (sans email car déjà envoyé)
-                                // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-                                Notification::sendNow($orderFresh->user, new PaymentReceived($orderFresh));
-                                \Log::info('pawaPay: Payment confirmation notification sent on redirect', [
-                                    'user_id' => $orderFresh->user_id,
-                                    'order_id' => $orderFresh->id,
-                                ]);
-                            }
-                        } catch (\Throwable $e) {
-                            \Log::error('pawaPay: Failed to send payment notification on redirect', [
-                                'user_id' => $payment->order->user_id,
-                                'order_id' => $payment->order->id,
-                                'error' => $e->getMessage(),
-                            ]);
-                        }
+                        // TOUJOURS assurer l'envoi des emails en contexte redirection (même si commande déjà payée)
+                        // Car le webhook peut ne pas avoir envoyé les emails ou avoir échoué
+                        // Utiliser la même logique que Enrollment::sendEnrollmentNotifications
+                        $orderFresh = $payment->order->fresh();
+                        $this->sendPaymentEmails($orderFresh);
 
                         $order = $payment->order->fresh();
                         return view('payments.pawapay.success', compact('order'));
@@ -1038,6 +999,19 @@ class PawaPayController extends Controller
                         
                         if (!in_array($payment->order->status, ['paid', 'completed'])) {
                             $payment->order->update(['status' => 'cancelled']);
+                        }
+                        
+                        // Charger les relations nécessaires pour l'email
+                        $payment->order->load(['user', 'orderItems.course', 'payments']);
+                        
+                        // Envoyer l'email d'échec de paiement
+                        try {
+                            if ($payment->order->user && $payment->order->user->email) {
+                                Mail::to($payment->order->user->email)->send(new PaymentFailedMail($payment->order, $failureReason));
+                                \Log::info("Email d'échec envoyé sur redirect pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
+                            }
+                        } catch (\Exception $e) {
+                            \Log::error("Erreur lors de l'envoi de l'email d'échec sur redirect pour la commande {$payment->order->id}: " . $e->getMessage());
                         }
                         
                         \Log::warning('pawaPay: Redirected to failed page', [
@@ -1107,13 +1081,27 @@ class PawaPayController extends Controller
 
             if ($payment && $payment->order) {
                 // Marquer le paiement comme échoué si encore en attente
+                $failureReason = 'Annulation par l\'utilisateur (redirect)';
                 if ($payment->status === 'pending') {
-                    $payment->update(['status' => 'failed', 'failure_reason' => 'Annulation par l’utilisateur (redirect)']);
+                    $payment->update(['status' => 'failed', 'failure_reason' => $failureReason]);
                 }
 
                 // Annuler la commande si elle n'est pas déjà payée/terminée
                 if (!in_array($payment->order->status, ['paid', 'completed'])) {
                     $payment->order->update(['status' => 'cancelled']);
+                }
+
+                // Charger les relations nécessaires pour l'email
+                $payment->order->load(['user', 'orderItems.course', 'payments']);
+                
+                // Envoyer l'email d'échec de paiement (vérifier qu'il n'a pas déjà été envoyé)
+                try {
+                    if ($payment->order->user && $payment->order->user->email) {
+                        Mail::to($payment->order->user->email)->send(new PaymentFailedMail($payment->order, $failureReason));
+                        \Log::info("Email d'échec envoyé sur failedRedirect pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Erreur lors de l'envoi de l'email d'échec sur failedRedirect pour la commande {$payment->order->id}: " . $e->getMessage());
                 }
 
                 \Log::info('pawaPay: Order/payment marked cancelled/failed on failed redirect', [
@@ -1131,6 +1119,107 @@ class PawaPayController extends Controller
         return view('payments.pawapay.failed');
     }
 
+    /**
+     * Envoyer les emails de paiement (même logique que Enrollment::sendEnrollmentNotifications)
+     * Cette méthode envoie directement les emails de manière synchrone
+     */
+    private function sendPaymentEmails(Order $order): void
+    {
+        try {
+            // Charger les relations nécessaires
+            if (!$order->relationLoaded('user')) {
+                $order->load('user');
+            }
+            if (!$order->relationLoaded('orderItems')) {
+                $order->load('orderItems.course');
+            }
+            if (!$order->relationLoaded('coupon')) {
+                $order->load('coupon');
+            }
+            if (!$order->relationLoaded('affiliate')) {
+                $order->load('affiliate');
+            }
+            if (!$order->relationLoaded('payments')) {
+                $order->load('payments');
+            }
+
+            $user = $order->user;
+
+            if (!$user || !$user->email) {
+                \Log::warning("Impossible d'envoyer les emails de paiement: utilisateur ou email manquant", [
+                    'order_id' => $order->id,
+                    'user_id' => $order->user_id,
+                ]);
+                return;
+            }
+
+            // Envoyer l'email PaymentReceivedMail directement de manière synchrone (comme CourseEnrolledMail)
+            try {
+                Mail::to($user->email)->send(new \App\Mail\PaymentReceivedMail($order));
+                \Log::info("Email PaymentReceivedMail envoyé directement à {$user->email} pour la commande {$order->order_number}", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                ]);
+            } catch (\Exception $emailException) {
+                \Log::error("Erreur lors de l'envoi direct de l'email PaymentReceivedMail", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $emailException->getMessage(),
+                    'trace' => $emailException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer le processus
+            }
+            
+            // Envoyer la notification (pour la base de données et l'affichage dans la navbar)
+            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            try {
+                Notification::sendNow($user, new PaymentReceived($order));
+                
+                \Log::info("Notification PaymentReceived envoyée à l'utilisateur {$user->id} pour la commande {$order->id}", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                ]);
+            } catch (\Exception $notifException) {
+                \Log::error("Erreur lors de l'envoi de la notification PaymentReceived", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'error' => $notifException->getMessage(),
+                    'trace' => $notifException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer le processus
+            }
+
+            // Envoyer la facture par email (comme pour les inscriptions)
+            try {
+                Mail::to($user->email)->send(new InvoiceMail($order));
+                \Log::info("Email InvoiceMail envoyé directement à {$user->email} pour la commande {$order->order_number}", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                ]);
+            } catch (\Exception $invoiceException) {
+                \Log::error("Erreur lors de l'envoi direct de l'email InvoiceMail", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $invoiceException->getMessage(),
+                    'trace' => $invoiceException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer le processus
+            }
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi des emails de paiement", [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
     private function autoCancelStale(int $userId): void
     {
         $timeoutMinutes = (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30));
@@ -1138,6 +1227,7 @@ class PawaPayController extends Controller
         $orders = Order::where('user_id', $userId)
             ->where('status', 'pending')
             ->where('created_at', '<', $threshold)
+            ->with(['user', 'orderItems.course', 'payments'])
             ->get();
         foreach ($orders as $order) {
             $order->update(['status' => 'cancelled']);
@@ -1147,6 +1237,17 @@ class PawaPayController extends Controller
                     'status' => 'failed',
                     'failure_reason' => 'Annulation automatique après délai',
                 ]);
+            
+            // Envoyer l'email d'annulation automatique
+            try {
+                if ($order->user && $order->user->email) {
+                    $failureReason = 'Annulation automatique après délai d\'attente';
+                    Mail::to($order->user->email)->send(new PaymentFailedMail($order, $failureReason));
+                    \Log::info("Email d'annulation automatique envoyé pour la commande {$order->order_number} à {$order->user->email}");
+                }
+            } catch (\Exception $e) {
+                \Log::error("Erreur lors de l'envoi de l'email d'annulation automatique pour la commande {$order->id}: " . $e->getMessage());
+            }
         }
     }
 }

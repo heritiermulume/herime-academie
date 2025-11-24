@@ -461,22 +461,32 @@ class SSOService
             }
 
             // Si l'API n'est pas disponible ou retourne une erreur,
-            // utiliser la validation locale comme fallback
-            // MAIS seulement si le token n'est pas expiré localement
-            Log::debug('SSO checkToken: API unavailable, falling back to local validation');
+            // TOUJOURS utiliser la validation locale comme fallback
+            // C'est la source de vérité si l'API est indisponible
+            Log::debug('SSO checkToken: API unavailable or error, falling back to local validation', [
+                'api_status' => $response->status() ?? 'unknown',
+                'response_preview' => substr($response->body() ?? '', 0, 100)
+            ]);
+            
             $localResult = $this->validateTokenLocally($token);
             
             if ($localResult !== null) {
                 // Le token est valide localement (format correct, pas expiré)
-                // Mais comme on n'a pas pu vérifier via l'API, on le considère comme valide
-                // avec un avertissement dans les logs
-                Log::warning('SSO checkToken: API unavailable, using local validation (may be inaccurate)', [
+                // On fait TOUJOURS confiance à la validation locale si l'API échoue
+                // Cela évite les déconnexions intempestives quand l'API est indisponible
+                Log::info('SSO checkToken: API unavailable/error, trusting local validation (token valid locally)', [
                     'token_preview' => substr($token, 0, 20) . '...',
-                    'user_email' => $localResult['email'] ?? 'unknown'
+                    'user_email' => $localResult['email'] ?? 'unknown',
+                    'api_status' => $response->status() ?? 'unknown'
                 ]);
                 return true;
             }
             
+            // Si la validation locale échoue aussi, le token est vraiment invalide
+            Log::warning('SSO checkToken: Both API and local validation failed - token is invalid', [
+                'token_preview' => substr($token, 0, 20) . '...',
+                'api_status' => $response->status() ?? 'unknown'
+            ]);
             return false;
 
         } catch (\Exception $e) {
@@ -487,19 +497,27 @@ class SSOService
             ]);
             
             // Fallback: validation locale rapide
+            // En cas d'exception API, on fait TOUJOURS confiance à la validation locale
             try {
                 $localResult = $this->validateTokenLocally($token);
                 if ($localResult !== null) {
-                    Log::warning('SSO checkToken: API exception, using local validation (may be inaccurate)', [
+                    // Si l'API a une exception mais que le token est valide localement,
+                    // on le considère TOUJOURS comme valide pour éviter les déconnexions intempestives
+                    Log::info('SSO checkToken: API exception, trusting local validation (token valid locally)', [
                         'token_preview' => substr($token, 0, 20) . '...',
                         'user_email' => $localResult['email'] ?? 'unknown',
                         'api_error' => $e->getMessage()
                     ]);
                     return true;
                 }
+                // Si la validation locale échoue, le token est vraiment invalide
+                Log::warning('SSO checkToken: API exception and local validation failed - token is invalid', [
+                    'token_preview' => substr($token, 0, 20) . '...',
+                    'api_error' => $e->getMessage()
+                ]);
                 return false;
             } catch (\Exception $localException) {
-                Log::warning('SSO checkToken: both API and local validation failed', [
+                Log::warning('SSO checkToken: both API and local validation failed with exceptions', [
                     'api_error' => $e->getMessage(),
                     'local_error' => $localException->getMessage(),
                 ]);

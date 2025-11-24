@@ -26,6 +26,9 @@
                     @elseif($order->status === 'paid')
                         <button class="btn btn-outline-success" onclick="markAsCompleted({{ $order->id }})"><i class="fas fa-check-double me-2"></i>Terminer</button>
                     @endif
+                    <button class="btn btn-danger" onclick="deleteOrder({{ $order->id }})" title="Supprimer définitivement cette commande">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
                 </div>
             </div>
 
@@ -381,6 +384,9 @@
                                 <i class="fas fa-check-double me-2"></i>Marquer comme terminée
                             </button>
                         @endif
+                        <button class="list-group-item list-group-item-action text-danger" onclick="deleteOrder({{ $order->id }})">
+                            <i class="fas fa-trash me-2"></i>Supprimer définitivement
+                        </button>
                     </div>
                 </div>
             </div>

@@ -25,7 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleUploadErrors::class,
             // Valider le token SSO à chaque chargement de page pour les utilisateurs authentifiés
-            \App\Http\Middleware\ValidateSSOOnPageLoad::class,
+            // DÉSACTIVÉ TEMPORAIREMENT pour éviter les boucles de redirection
+            // \App\Http\Middleware\ValidateSSOOnPageLoad::class,
             // Tracker les visiteurs du site
             \App\Http\Middleware\TrackVisitors::class,
         ]);

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Enrollment;
 use App\Mail\InvoiceMail;
+use App\Mail\CourseAccessRevokedMail;
 use App\Notifications\PaymentReceived;
+use App\Notifications\CourseAccessRevoked;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
@@ -371,6 +373,97 @@ class OrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'annulation: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Supprimer complètement une commande (administrateur)
+     * Cette méthode supprime la commande même si elle était payée
+     */
+    public function destroy(Request $request, Order $order)
+    {
+        try {
+            // Vérifier que l'utilisateur est admin ou super_user
+            if (!auth()->check() || !auth()->user()->isAdmin()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Accès non autorisé. Vous devez être administrateur ou super utilisateur.',
+                ], 403);
+            }
+
+            $orderNumber = $order->order_number;
+            $userId = $order->user_id;
+            $orderId = $order->id;
+
+            // Charger les relations nécessaires
+            $order->load(['enrollments.course', 'enrollments.user', 'orderItems.course', 'payments', 'user']);
+
+            // Envoyer l'email de notification de suppression de commande à l'utilisateur
+            if ($order->user && $order->user->email) {
+                try {
+                    Mail::to($order->user->email)->send(new \App\Mail\OrderDeletedMail($order));
+                    \Log::info("Email OrderDeletedMail envoyé à {$order->user->email} pour la commande {$orderNumber}", [
+                        'order_id' => $orderId,
+                        'user_id' => $userId,
+                        'user_email' => $order->user->email,
+                    ]);
+                } catch (\Exception $emailException) {
+                    \Log::error("Erreur lors de l'envoi de l'email OrderDeletedMail", [
+                        'order_id' => $orderId,
+                        'user_id' => $userId,
+                        'user_email' => $order->user->email,
+                        'error' => $emailException->getMessage(),
+                        'trace' => $emailException->getTraceAsString(),
+                    ]);
+                    // Ne pas bloquer la suppression si l'email échoue
+                }
+            }
+
+            // Supprimer toutes les inscriptions associées à cette commande
+            foreach ($order->enrollments as $enrollment) {
+                // Envoyer une notification à l'utilisateur si nécessaire
+                try {
+                    if ($enrollment->course && $enrollment->user) {
+                        // Envoyer l'email de notification
+                        Mail::to($enrollment->user->email)->send(new CourseAccessRevokedMail($enrollment->course));
+                        // Envoyer la notification
+                        Notification::sendNow($enrollment->user, new CourseAccessRevoked($enrollment->course));
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Erreur lors de l'envoi de notification de suppression d'inscription: " . $e->getMessage());
+                }
+                
+                $enrollment->delete();
+            }
+
+            // Supprimer les orderItems
+            $order->orderItems()->delete();
+
+            // Supprimer les paiements associés
+            $order->payments()->delete();
+
+            // Supprimer la commande elle-même
+            $order->delete();
+
+            \Log::info("Commande {$orderNumber} supprimée par l'administrateur", [
+                'order_id' => $orderId,
+                'user_id' => $userId,
+                'admin_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Commande supprimée avec succès. Toutes les inscriptions associées ont été retirées.',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la suppression de la commande: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la suppression: ' . $e->getMessage(),
             ], 500);
         }
     }

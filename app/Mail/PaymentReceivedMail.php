@@ -29,7 +29,7 @@ class PaymentReceivedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Academie'),
+            from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Académie'),
             subject: 'Paiement confirmé - ' . config('app.name'),
         );
     }

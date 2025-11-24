@@ -242,7 +242,7 @@
         <div class="header">
             @if(isset($logoUrl))
             <div class="logo-container">
-                <img src="{{ $logoUrl }}" alt="Herime Academie Logo" />
+                <img src="{{ $logoUrl }}" alt="Herime Académie Logo" />
             </div>
             @endif
             <h1>FACTURE</h1>
@@ -388,7 +388,7 @@
         </div>
 
         <div class="footer">
-            <p><strong>Herime Academie</strong></p>
+            <p><strong>Herime Académie</strong></p>
             <p>Merci d'avoir choisi nos formations en ligne !</p>
             <p>Pour toute question concernant cette facture, n'hésitez pas à nous contacter.</p>
             <p style="margin-top: 15px; font-size: 12px; color: #6c757d;">

@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\Coupon;
 use App\Models\Affiliate;
 use App\Mail\InvoiceMail;
+use App\Mail\PaymentFailedMail;
 use App\Notifications\PaymentReceived;
 use App\Services\EmailService;
 use Illuminate\Http\Request;
@@ -260,6 +261,12 @@ class PaymentController extends Controller
             $payment->update(['status' => 'cancelled']);
         }
 
+        // Charger les relations nécessaires pour l'email
+        $order->load(['user', 'orderItems.course', 'payments']);
+        
+        // Envoyer l'email d'annulation de paiement
+        $this->sendPaymentFailureEmail($order, 'Paiement annulé par l\'utilisateur');
+
         return view('payments.cancel', compact('order'));
     }
 
@@ -336,55 +343,97 @@ class PaymentController extends Controller
     {
         $payment = Payment::where('payment_id', $paymentIntent->id)->first();
         if ($payment) {
-            $payment->update(['status' => 'failed']);
+            $failureReason = $paymentIntent->last_payment_error->message ?? 'Paiement refusé par la banque';
+            $payment->update([
+                'status' => 'failed',
+                'failure_reason' => $failureReason,
+            ]);
             $order = $payment->order;
             $order->update(['status' => 'failed']);
+            
+            // Charger les relations nécessaires pour l'email
+            $order->load(['user', 'orderItems.course', 'payments']);
+            
+            // Envoyer l'email d'échec de paiement
+            $this->sendPaymentFailureEmail($order, $failureReason);
         }
     }
 
     /**
-     * Envoyer la notification de confirmation de paiement
+     * Envoyer les emails de paiement (même logique que Enrollment::sendEnrollmentNotifications)
+     * Cette méthode envoie directement les emails de manière synchrone
      */
     private function sendPaymentConfirmation(Order $order)
     {
         try {
-            // Vérifier que l'utilisateur existe
-            if (!$order->user) {
-                \Log::warning("Impossible d'envoyer la confirmation de paiement : utilisateur manquant pour la commande {$order->id}");
+            // Charger les relations nécessaires
+            if (!$order->relationLoaded('user')) {
+                $order->load('user');
+            }
+            if (!$order->relationLoaded('orderItems')) {
+                $order->load('orderItems.course');
+            }
+            if (!$order->relationLoaded('coupon')) {
+                $order->load('coupon');
+            }
+            if (!$order->relationLoaded('affiliate')) {
+                $order->load('affiliate');
+            }
+            if (!$order->relationLoaded('payments')) {
+                $order->load('payments');
+            }
+
+            $user = $order->user;
+
+            if (!$user || !$user->email) {
+                \Log::warning("Impossible d'envoyer les emails de paiement: utilisateur ou email manquant", [
+                    'order_id' => $order->id,
+                    'user_id' => $order->user_id,
+                ]);
                 return;
             }
 
-            // Vérifier si la notification n'a pas déjà été envoyée (éviter doublons)
-            $alreadyNotified = $order->user->notifications()
-                ->where('type', PaymentReceived::class)
-                ->where('data->order_id', $order->id)
-                ->exists();
-
-            if (!$alreadyNotified) {
-                // Envoyer l'email directement de manière synchrone
-                try {
-                    Mail::to($order->user->email)->send(new \App\Mail\PaymentReceivedMail($order));
-                    \Log::info("Email PaymentReceivedMail envoyé directement à {$order->user->email} pour la commande {$order->order_number}");
-                } catch (\Exception $emailException) {
-                    \Log::error("Erreur lors de l'envoi de l'email PaymentReceivedMail", [
-                        'order_id' => $order->id,
-                        'user_id' => $order->user->id,
-                        'error' => $emailException->getMessage(),
-                        'trace' => $emailException->getTraceAsString(),
-                    ]);
-                }
+            // Envoyer l'email PaymentReceivedMail directement de manière synchrone (comme CourseEnrolledMail)
+            try {
+                Mail::to($user->email)->send(new \App\Mail\PaymentReceivedMail($order));
+                \Log::info("Email PaymentReceivedMail envoyé directement à {$user->email} pour la commande {$order->order_number}", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                ]);
+            } catch (\Exception $emailException) {
+                \Log::error("Erreur lors de l'envoi direct de l'email PaymentReceivedMail", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $emailException->getMessage(),
+                    'trace' => $emailException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer le processus
+            }
+            
+            // Envoyer la notification (pour la base de données et l'affichage dans la navbar)
+            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            try {
+                Notification::sendNow($user, new PaymentReceived($order));
                 
-                // Envoyer la notification en base de données (sans email car déjà envoyé)
-                // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-                Notification::sendNow($order->user, new PaymentReceived($order));
-                
-                \Log::info("Notification de confirmation de paiement envoyée pour la commande {$order->order_number} à l'utilisateur {$order->user->id}");
-            } else {
-                \Log::info("Notification de confirmation de paiement déjà envoyée pour la commande {$order->order_number}, ignorée");
+                \Log::info("Notification PaymentReceived envoyée à l'utilisateur {$user->id} pour la commande {$order->id}", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                ]);
+            } catch (\Exception $notifException) {
+                \Log::error("Erreur lors de l'envoi de la notification PaymentReceived", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'error' => $notifException->getMessage(),
+                    'trace' => $notifException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer le processus
             }
         } catch (\Exception $e) {
             // Logger l'erreur mais ne pas faire échouer le processus de paiement
-            \Log::error("Erreur lors de l'envoi de la notification de confirmation de paiement pour la commande {$order->id}: " . $e->getMessage());
+            \Log::error("Erreur lors de l'envoi des emails de paiement pour la commande {$order->id}: " . $e->getMessage());
             \Log::error("Stack trace: " . $e->getTraceAsString());
         }
     }
@@ -422,6 +471,34 @@ class PaymentController extends Controller
         } catch (\Exception $e) {
             // Logger l'erreur mais ne pas faire échouer le processus de paiement
             \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
+            \Log::error("Stack trace: " . $e->getTraceAsString());
+        }
+    }
+
+    /**
+     * Envoyer l'email d'échec de paiement
+     */
+    private function sendPaymentFailureEmail(Order $order, ?string $failureReason = null)
+    {
+        try {
+            // Charger les relations nécessaires si pas déjà chargées
+            if (!$order->relationLoaded('user')) {
+                $order->load(['user', 'orderItems.course', 'payments']);
+            }
+
+            // Vérifier que l'utilisateur existe et a un email
+            if (!$order->user || !$order->user->email) {
+                \Log::warning("Impossible d'envoyer l'email d'échec : utilisateur ou email manquant pour la commande {$order->id}");
+                return;
+            }
+
+            // Envoyer l'email d'échec de manière synchrone (immédiate)
+            Mail::to($order->user->email)->send(new PaymentFailedMail($order, $failureReason));
+
+            \Log::info("Email d'échec de paiement envoyé pour la commande {$order->order_number} à {$order->user->email}");
+        } catch (\Exception $e) {
+            // Logger l'erreur mais ne pas faire échouer le processus
+            \Log::error("Erreur lors de l'envoi de l'email d'échec de paiement pour la commande {$order->id}: " . $e->getMessage());
             \Log::error("Stack trace: " . $e->getTraceAsString());
         }
     }

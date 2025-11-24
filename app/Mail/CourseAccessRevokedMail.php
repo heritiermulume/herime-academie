@@ -29,8 +29,8 @@ class CourseAccessRevokedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Academie'),
-            subject: 'Accès retiré - ' . $this->course->title . ' - Herime Academie',
+            from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Académie'),
+            subject: 'Accès retiré - ' . $this->course->title . ' - Herime Académie',
         );
     }
 

@@ -460,6 +460,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/orders/{order}/mark-completed', [App\Http\Controllers\OrderController::class, 'markAsCompleted'])
             ->middleware('sso.validate')
             ->name('orders.mark-completed');
+        Route::post('/orders/{order}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])
+            ->middleware('sso.validate')
+            ->name('orders.cancel');
+        Route::post('/orders/{order}/delete', [App\Http\Controllers\OrderController::class, 'destroy'])
+            ->middleware('sso.validate')
+            ->name('orders.destroy');
 
         // Payments (transactions) management
         Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
@@ -471,9 +477,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/uploads/video-preview', [AdminController::class, 'uploadVideoPreview'])
             ->middleware('sso.validate')
             ->name('uploads.video-preview');
-        Route::post('/orders/{order}/cancel', [App\Http\Controllers\OrderController::class, 'cancel'])
-            ->middleware('sso.validate')
-            ->name('orders.cancel');
         Route::get('/orders/filter', [App\Http\Controllers\OrderController::class, 'filter'])->name('orders.filter');
         Route::get('/orders/export', [App\Http\Controllers\OrderController::class, 'export'])->name('orders.export');
         
