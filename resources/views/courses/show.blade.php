@@ -1302,6 +1302,202 @@ body.has-global-announcement:has(.course-details-page) {
     line-height: 1.6;
 }
 
+/* Preview Reviews Horizontal */
+.reviews-preview-horizontal {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.reviews-preview-horizontal::-webkit-scrollbar {
+    height: 6px;
+}
+
+.reviews-preview-horizontal::-webkit-scrollbar-track {
+    background: var(--light-color, #f8f9fa);
+    border-radius: 3px;
+}
+
+.reviews-preview-horizontal::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.reviews-preview-horizontal::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.reviews-preview-container {
+    display: flex;
+    gap: 1rem;
+    padding-bottom: 0.5rem;
+}
+
+.review-card-preview {
+    min-width: 280px;
+    max-width: 320px;
+    background: var(--light-color, #f8f9fa);
+    border-radius: 10px;
+    padding: 1.25rem;
+    border: 1px solid var(--border-color, #e0e0e0);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.review-card-preview:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.review-card-preview .review-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.review-card-preview .review-avatar {
+    width: 45px !important;
+    height: 45px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    flex-shrink: 0;
+    display: block;
+    aspect-ratio: 1 / 1 !important;
+}
+
+.review-card-preview .review-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+.review-card-preview .review-author {
+    flex: 1;
+    min-width: 0;
+}
+
+.review-card-preview .review-author-name {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.review-card-preview .review-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.review-card-preview .review-comment-preview {
+    color: var(--text-color);
+    line-height: 1.5;
+    font-size: 0.85rem;
+    flex: 1;
+}
+
+/* Horizontal Reviews Scroll */
+.reviews-horizontal-scroll {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 1rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.reviews-horizontal-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+
+.reviews-horizontal-scroll::-webkit-scrollbar-track {
+    background: var(--light-color, #f8f9fa);
+    border-radius: 4px;
+}
+
+.reviews-horizontal-scroll::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.reviews-horizontal-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.reviews-container {
+    display: flex;
+    gap: 1.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.review-card-horizontal {
+    min-width: 320px;
+    max-width: 380px;
+    background: var(--light-color, #f8f9fa);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color, #e0e0e0);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.review-card-horizontal .review-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.review-card-horizontal .review-avatar {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    flex-shrink: 0;
+    display: block;
+    aspect-ratio: 1 / 1 !important;
+}
+
+.review-card-horizontal .review-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
+.review-card-horizontal .review-author {
+    flex: 1;
+    min-width: 0;
+}
+
+.review-card-horizontal .review-author-name {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.review-card-horizontal .review-date {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.review-card-horizontal .review-comment {
+    color: var(--text-color);
+    line-height: 1.6;
+    font-size: 0.9rem;
+    flex: 1;
+}
+
 /* Rating Input Styles */
 .rating-input-wrapper {
     margin-bottom: 1rem;
@@ -2655,6 +2851,15 @@ button.mobile-price-slider__btn--download i,
         'ja' => 'Japonais', 'ko' => 'Coréen', 'ru' => 'Russe', 'nl' => 'Néerlandais',
     ];
     $displayLanguage = $languageNames[$course->language] ?? $course->language ?? 'Non spécifiée';
+    
+    // Charger les reviews approuvées pour les statistiques
+    // Utiliser directement la requête pour calculer la moyenne (plus fiable)
+    $approvedReviewsQuery = $course->reviews()->where('is_approved', true);
+    $averageRatingApproved = round((float)($approvedReviewsQuery->avg('rating') ?? 0), 1);
+    $reviewsCountApproved = $approvedReviewsQuery->count();
+    
+    // Charger les reviews pour l'affichage
+    $approvedReviews = $course->reviews ?? collect();
 @endphp
 
 <div class="course-details-page">
@@ -2676,8 +2881,26 @@ button.mobile-price-slider__btn--download i,
 
             <div class="course-stats-hero">
                 <div class="course-stat-item">
-                    <i class="fas fa-star"></i>
-                    <span>{{ number_format($course->reviews->avg('rating') ?? 0, 1) }} ({{ $course->reviews->count() }} avis)</span>
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                        <div class="d-flex align-items-center gap-1" style="margin-right: 0.25rem;">
+                            @php
+                                // Calculer le nombre d'étoiles pleines basé sur la note moyenne
+                                $ratingValue = (float)$averageRatingApproved;
+                                $fullStars = floor($ratingValue);
+                                $hasHalfStar = ($ratingValue - $fullStars) >= 0.5;
+                            @endphp
+                            @for($i = 1; $i <= 5; $i++)
+                                @if($i <= $fullStars)
+                                    <i class="fas fa-star" style="color: #ffc107; font-size: 0.85rem;"></i>
+                                @elseif($i == ($fullStars + 1) && $hasHalfStar)
+                                    <i class="fas fa-star-half-alt" style="color: #ffc107; font-size: 0.85rem;"></i>
+                                @else
+                                    <i class="far fa-star" style="color: rgba(255, 255, 255, 0.5); font-size: 0.85rem;"></i>
+                                @endif
+                            @endfor
+                        </div>
+                        <span>{{ $averageRatingApproved > 0 ? number_format($averageRatingApproved, 1) : '0.0' }} ({{ $reviewsCountApproved }} avis)</span>
+                    </div>
                 </div>
                 <div class="course-stat-item">
                     <i class="fas fa-clock"></i>
@@ -2739,84 +2962,6 @@ button.mobile-price-slider__btn--download i,
                          alt="{{ $course->title }}" 
                          class="img-fluid rounded" 
                          style="width: 100%; height: auto; border-radius: 12px;">
-                </div>
-                @endif
-
-                <!-- Rating and Review Section -->
-                @php
-                    $userReview = null;
-                    if ($user) {
-                        // Charger l'avis de l'utilisateur directement depuis la base de données
-                        $userReview = \App\Models\Review::where('user_id', $user->id)
-                            ->where('course_id', $course->id)
-                            ->first();
-                    }
-                    $hasUserReview = $userReview !== null;
-                @endphp
-                @if($user && ($isEnrolled || $course->is_free))
-                <div class="content-card">
-                    <h2 class="section-title-modern">
-                        <i class="fas fa-star"></i>
-                        {{ $hasUserReview ? 'Modifier votre avis' : 'Noter ce cours' }}
-                    </h2>
-                    <form id="courseReviewForm" action="{{ route('courses.review.store', $course->slug) }}" method="POST">
-                        @csrf
-                        
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold mb-3">Votre note</label>
-                            <div class="rating-input-wrapper">
-                                <div class="rating-stars-input" data-rating="{{ $hasUserReview ? $userReview->rating : 0 }}">
-                                    @for($i = 1; $i <= 5; $i++)
-                                    <i class="fas fa-star rating-star {{ $hasUserReview && $i <= $userReview->rating ? 'active' : '' }}" 
-                                       data-value="{{ $i }}"
-                                       style="font-size: 2rem; color: #ddd; cursor: pointer; transition: all 0.2s; margin-right: 0.5rem;"></i>
-                                    @endfor
-                                </div>
-                                <input type="hidden" name="rating" id="ratingInput" value="{{ $hasUserReview ? $userReview->rating : 0 }}" required>
-                                <div class="rating-value-text mt-2 text-muted">
-                                    <span id="ratingText">{{ $hasUserReview ? $userReview->rating . ' étoile' . ($userReview->rating > 1 ? 's' : '') : 'Sélectionnez une note' }}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="reviewComment" class="form-label fw-semibold mb-2">Votre avis</label>
-                            <textarea class="form-control" 
-                                      id="reviewComment" 
-                                      name="comment" 
-                                      rows="5" 
-                                      placeholder="Partagez votre expérience avec ce cours...">{{ $hasUserReview ? $userReview->comment : '' }}</textarea>
-                            <div class="form-text">Votre avis aidera d'autres étudiants à prendre une décision.</div>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane me-2"></i>
-                                {{ $hasUserReview ? 'Mettre à jour mon avis' : 'Publier mon avis' }}
-                            </button>
-                            @if($hasUserReview)
-                            <button type="button" class="btn btn-outline-danger" id="deleteReviewBtn">
-                                <i class="fas fa-trash me-2"></i>
-                                Supprimer mon avis
-                            </button>
-                            @endif
-                        </div>
-                    </form>
-                </div>
-                @elseif(!$user)
-                <div class="content-card">
-                    <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Connectez-vous</strong> pour noter ce cours et donner votre avis.
-                        <a href="{{ route('login') }}" class="alert-link ms-2">Se connecter</a>
-                    </div>
-                </div>
-                @elseif(!$isEnrolled && !$course->is_free)
-                <div class="content-card">
-                    <div class="alert alert-warning mb-0">
-                        <i class="fas fa-exclamation-circle me-2"></i>
-                        Vous devez être <strong>inscrit à ce cours</strong> pour pouvoir le noter et donner votre avis.
-                    </div>
                 </div>
                 @endif
 
@@ -2997,76 +3142,206 @@ button.mobile-price-slider__btn--download i,
                     </div>
                 </div>
 
-                <!-- Reviews -->
-                @if($course->reviews->count() > 0)
+                <!-- Rating and Review Section -->
+                @php
+                    $userReview = null;
+                    if ($user) {
+                        // Charger l'avis de l'utilisateur directement depuis la base de données
+                        $userReview = \App\Models\Review::where('user_id', $user->id)
+                            ->where('course_id', $course->id)
+                            ->first();
+                    }
+                    $hasUserReview = $userReview !== null;
+                @endphp
+                @if($user && ($isEnrolled || $course->is_free))
                 <div class="content-card">
+                    <h2 class="section-title-modern">
+                        <i class="fas fa-star"></i>
+                        {{ $hasUserReview ? 'Modifier votre avis' : 'Noter ce cours' }}
+                    </h2>
+                    <form id="courseReviewForm" action="{{ route('courses.review.store', $course->slug) }}" method="POST">
+                        @csrf
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold mb-3">Votre note</label>
+                            <div class="rating-input-wrapper">
+                                <div class="rating-stars-input" data-rating="{{ $hasUserReview ? $userReview->rating : 0 }}">
+                                    @for($i = 1; $i <= 5; $i++)
+                                    <i class="fas fa-star rating-star {{ $hasUserReview && $i <= $userReview->rating ? 'active' : '' }}" 
+                                       data-value="{{ $i }}"
+                                       style="font-size: 2rem; color: #ddd; cursor: pointer; transition: all 0.2s; margin-right: 0.5rem;"></i>
+                                    @endfor
+                                </div>
+                                <input type="hidden" name="rating" id="ratingInput" value="{{ $hasUserReview ? $userReview->rating : 0 }}" required>
+                                <div class="rating-value-text mt-2 text-muted">
+                                    <span id="ratingText">{{ $hasUserReview ? $userReview->rating . ' étoile' . ($userReview->rating > 1 ? 's' : '') : 'Sélectionnez une note' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="reviewComment" class="form-label fw-semibold mb-2">Votre avis</label>
+                            <textarea class="form-control" 
+                                      id="reviewComment" 
+                                      name="comment" 
+                                      rows="5" 
+                                      placeholder="Partagez votre expérience avec ce cours...">{{ $hasUserReview ? $userReview->comment : '' }}</textarea>
+                            <div class="form-text">Votre avis aidera d'autres étudiants à prendre une décision.</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                {{ $hasUserReview ? 'Mettre à jour mon avis' : 'Publier mon avis' }}
+                            </button>
+                            @if($hasUserReview)
+                            <button type="button" class="btn btn-outline-danger" id="deleteReviewBtn">
+                                <i class="fas fa-trash me-2"></i>
+                                Supprimer mon avis
+                            </button>
+                            @endif
+                        </div>
+                    </form>
+                </div>
+                @elseif(!$user)
+                <div class="content-card">
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Connectez-vous</strong> pour noter ce cours et donner votre avis.
+                        <a href="{{ route('login') }}" class="alert-link ms-2">Se connecter</a>
+                    </div>
+                </div>
+                @elseif(!$isEnrolled && !$course->is_free)
+                <div class="content-card">
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Vous devez être <strong>inscrit à ce cours</strong> pour pouvoir le noter et donner votre avis.
+                    </div>
+                </div>
+                @endif
+
+                <!-- Preview Reviews Section -->
+                @php
+                    // Les reviews sont déjà filtrées par is_approved = true dans le contrôleur
+                    if (!isset($approvedReviews)) {
+                        $approvedReviews = $course->reviews && $course->reviews->count() > 0 ? $course->reviews : collect();
+                    }
+                    $previewReviews = $approvedReviews && $approvedReviews->count() > 0 ? $approvedReviews->take(3) : collect(); // Afficher seulement 3 avis
+                @endphp
+                @if($approvedReviews->count() > 0)
+                <div class="content-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="mb-0" style="font-size: 1.25rem; font-weight: 600;">
+                            <i class="fas fa-comments me-2"></i>
+                            Avis récents
+                        </h3>
+                        <a href="#all-reviews" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('all-reviews').scrollIntoView({behavior: 'smooth'}); return false;">
+                            <i class="fas fa-eye me-1"></i>
+                            Voir tous les avis ({{ $approvedReviews->count() }})
+                        </a>
+                    </div>
+                    <div class="reviews-preview-horizontal">
+                        <div class="reviews-preview-container">
+                            @foreach($previewReviews as $review)
+                            <div class="review-card-preview">
+                                <div class="review-header">
+                                    @if($review->user && $review->user->avatar_url)
+                                        <div class="review-avatar">
+                                            <img src="{{ $review->user->avatar_url }}" 
+                                                 alt="{{ $review->user->name }}">
+                                        </div>
+                                    @else
+                                        <div class="review-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 0.9rem; font-weight: bold; border-radius: 50%; min-width: 45px; min-height: 45px;">
+                                            {{ strtoupper(substr($review->user->name ?? 'U', 0, 1)) }}
+                                        </div>
+                                    @endif
+                                    <div class="review-author">
+                                        <div class="review-author-name">{{ $review->user->name ?? 'Utilisateur' }}</div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <div class="rating-stars" style="font-size: 0.8rem;">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                <i class="fas fa-star {{ $i <= $review->rating ? '' : 'far' }}" style="color: {{ $i <= $review->rating ? '#ffc107' : '#ddd' }};"></i>
+                                                @endfor
+                                            </div>
+                                        </div>
+                                        <div class="review-date" style="font-size: 0.75rem;">{{ $review->created_at->format('d/m/Y') }}</div>
+                                    </div>
+                                </div>
+                                @if($review->comment)
+                                <div class="review-comment-preview">{{ Str::limit($review->comment, 150) }}</div>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                <!-- All Reviews Section -->
+                @php
+                    // S'assurer que $approvedReviews est défini (déjà défini plus haut, mais on le recharge au cas où)
+                    if (!isset($approvedReviews)) {
+                        $approvedReviews = $course->reviews && $course->reviews->count() > 0 ? $course->reviews : collect();
+                    }
+                    $averageRating = $approvedReviews->count() > 0 ? round($approvedReviews->avg('rating'), 1) : 0;
+                @endphp
+                @if(isset($approvedReviews) && $approvedReviews->count() > 0)
+                <div class="content-card" id="all-reviews">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h2 class="section-title-modern mb-0">
                             <i class="fas fa-star"></i>
-                            Avis des étudiants
+                            Tous les avis des étudiants
                         </h2>
                         <div class="rating-summary">
-                            <div class="rating-score">{{ number_format($course->reviews->avg('rating') ?? 0, 1) }}</div>
+                            <div class="rating-score">{{ number_format($averageRating, 1) }}</div>
                             <div>
                                 <div class="rating-stars">
                                     @for($i = 1; $i <= 5; $i++)
-                                    <i class="fas fa-star {{ $i <= floor($course->reviews->avg('rating') ?? 0) ? '' : 'far' }}"></i>
+                                    @php
+                                        $filledStar = $i <= round($averageRating, 0);
+                                    @endphp
+                                    <i class="fas fa-star {{ $filledStar ? '' : 'far' }}"></i>
                                     @endfor
                                 </div>
-                                <div class="rating-count">({{ $course->reviews->count() }} avis)</div>
+                                <div class="rating-count">({{ $approvedReviews->count() }} avis)</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Rating Distribution -->
-                    <div class="rating-distribution mb-4">
-                        @for($i = 5; $i >= 1; $i--)
-                        @php
-                            $ratingCount = $course->reviews->where('rating', $i)->count();
-                            $percentage = $course->reviews->count() > 0 ? ($ratingCount / $course->reviews->count()) * 100 : 0;
-                        @endphp
-                        <div class="rating-bar-item">
-                            <div class="rating-bar-label">{{ $i }} étoiles</div>
-                            <div class="rating-bar">
-                                <div class="rating-bar-fill" style="width: {{ $percentage }}%"></div>
-                            </div>
-                            <div class="rating-bar-count">{{ $ratingCount }}</div>
-                        </div>
-                        @endfor
-                    </div>
-
-                    <!-- Recent Reviews -->
-                    <div class="recent-reviews">
-                        @foreach($course->reviews->take(5) as $review)
-                        <div class="review-card">
-                            <div class="review-header">
-                                @if($review->user)
-                                    <div class="review-avatar">
-                                        <img src="{{ $review->user->avatar_url }}" 
-                                             alt="{{ $review->user->name }}">
-                                    </div>
-                                @else
-                                    <div class="review-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 1.25rem; font-weight: bold; border-radius: 50%; min-width: 50px; min-height: 50px;">
-                                        {{ strtoupper(substr($review->user->name ?? 'U', 0, 1)) }}
-                                    </div>
-                                @endif
-                                <div class="review-author">
-                                    <div class="review-author-name">{{ $review->user->name }}</div>
-                                    <div class="d-flex align-items-center gap-2 mb-2">
-                                        <div class="rating-stars" style="font-size: 0.875rem;">
-                                            @for($i = 1; $i <= 5; $i++)
-                                            <i class="fas fa-star {{ $i <= $review->rating ? '' : 'far' }}"></i>
-                                            @endfor
+                    <!-- Horizontal Reviews Scroll -->
+                    <div class="reviews-horizontal-scroll">
+                        <div class="reviews-container">
+                            @foreach($approvedReviews as $review)
+                            <div class="review-card-horizontal">
+                                <div class="review-header">
+                                    @if($review->user && $review->user->avatar_url)
+                                        <div class="review-avatar">
+                                            <img src="{{ $review->user->avatar_url }}" 
+                                                 alt="{{ $review->user->name }}">
                                         </div>
+                                    @else
+                                        <div class="review-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 1rem; font-weight: bold; border-radius: 50%; min-width: 50px; min-height: 50px;">
+                                            {{ strtoupper(substr($review->user->name ?? 'U', 0, 1)) }}
+                                        </div>
+                                    @endif
+                                    <div class="review-author">
+                                        <div class="review-author-name">{{ $review->user->name ?? 'Utilisateur' }}</div>
+                                        <div class="d-flex align-items-center gap-2 mb-2">
+                                            <div class="rating-stars" style="font-size: 0.875rem;">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                <i class="fas fa-star {{ $i <= $review->rating ? '' : 'far' }}"></i>
+                                                @endfor
+                                            </div>
+                                        </div>
+                                        <div class="review-date">{{ $review->created_at->format('d/m/Y') }}</div>
                                     </div>
-                                    <div class="review-date">{{ $review->created_at->format('d/m/Y') }}</div>
                                 </div>
+                                @if($review->comment)
+                                <div class="review-comment">{{ Str::limit($review->comment, 200) }}</div>
+                                @endif
                             </div>
-                            @if($review->comment)
-                            <div class="review-comment">{{ $review->comment }}</div>
-                            @endif
+                            @endforeach
                         </div>
-                        @endforeach
                     </div>
                 </div>
                 @endif
@@ -4911,4 +5186,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
+
 

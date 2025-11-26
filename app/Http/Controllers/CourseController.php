@@ -197,7 +197,7 @@ class CourseController extends Controller
                 $query->where('is_published', true)->orderBy('sort_order');
             },
             'reviews' => function($query) {
-                $query->with('user')->latest()->limit(10);
+                $query->where('is_approved', true)->with('user')->latest();
             },
             'enrollments' => function($query) {
                 $query->where('status', 'active');
