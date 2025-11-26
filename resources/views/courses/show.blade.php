@@ -1770,6 +1770,35 @@ button.mobile-price-slider__btn--download i,
         display: flex !important;
     }
     
+    /* Forcer l'alignement des boutons à droite */
+    .mobile-price-slider__content {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+    }
+    
+    .mobile-price-slider__price {
+        margin-right: auto !important;
+        margin-left: 0 !important;
+        order: 1 !important;
+    }
+    
+    .mobile-price-slider__actions {
+        margin-left: auto !important;
+        margin-right: 0 !important;
+        order: 2 !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+    }
+    
+    .mobile-price-slider__btn-group {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-end !important;
+        margin-left: auto !important;
+    }
+    
     .main-content {
         padding-bottom: 140px; /* Espace pour le bouton de paiement (80px) + navigation mobile (60px) */
     }
