@@ -3036,40 +3036,35 @@ button.mobile-price-slider__btn--download i,
                         @else
                             <div class="d-grid gap-2">
                                 @if($course->is_free)
-                                    @if($course->is_downloadable)
-                                        @if($canDownloadCourse)
+                                    {{-- Cours gratuit --}}
+                                    @if($isEnrolled)
+                                        {{-- Utilisateur inscrit au cours gratuit --}}
+                                        @if($course->is_downloadable && $canDownloadCourse)
                                             <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
                                                 <i class="fas fa-download me-2"></i>Télécharger
                                             </a>
                                         @else
-                                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="d-grid gap-2">
-                                                @csrf
-                                                <input type="hidden" name="redirect_to" value="download">
-                                                <button type="submit" class="btn btn-primary btn-lg w-100">
-                                                    <i class="fas fa-download me-2"></i>Télécharger
-                                                </button>
-                                            </form>
-                                        @endif
-                                    @else
-                                        @if($canAccessCourse)
                                             @php
                                                 $progress = $enrollment->progress ?? 0;
                                             @endphp
                                             <a href="{{ route('learning.course', $course->slug) }}" class="btn btn-success btn-lg w-100">
                                                 <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
                                             </a>
-                                        @else
-                                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
-                                                @csrf
-                                                <input type="hidden" name="redirect_to" value="learn">
-                                                <button type="submit" class="btn btn-primary btn-lg w-100">
-                                                    <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
-                                                </button>
-                                            </form>
                                         @endif
+                                    @else
+                                        {{-- Utilisateur pas encore inscrit au cours gratuit --}}
+                                        <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                                            @csrf
+                                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
+                                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
+                                            </button>
+                                        </form>
                                     @endif
                                 @else
+                                    {{-- Cours payant --}}
                                     @if($isEnrolled)
+                                        {{-- Utilisateur inscrit au cours payant --}}
                                         @if($course->is_downloadable && $canDownloadCourse)
                                             <a href="{{ route('courses.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
                                                 <i class="fas fa-download me-2"></i>Télécharger
@@ -3083,6 +3078,7 @@ button.mobile-price-slider__btn--download i,
                                             </a>
                                         @endif
                                     @elseif($hasPurchased)
+                                        {{-- Utilisateur a acheté mais pas encore inscrit --}}
                                         <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
                                             @csrf
                                             <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
@@ -3091,6 +3087,7 @@ button.mobile-price-slider__btn--download i,
                                             </button>
                                         </form>
                                     @else
+                                        {{-- Utilisateur n'a pas encore acheté --}}
                                         <button type="button" class="btn btn-outline-primary btn-lg w-100" onclick="addToCart({{ $course->id }})">
                                             <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
                                         </button>
@@ -3197,24 +3194,15 @@ button.mobile-price-slider__btn--download i,
                 </a>
             @else
                 @if($course->is_free)
-                    @if($course->is_downloadable)
-                        @if($canDownloadCourse)
+                    {{-- Cours gratuit --}}
+                    @if($isEnrolled)
+                        {{-- Utilisateur inscrit au cours gratuit --}}
+                        @if($course->is_downloadable && $canDownloadCourse)
                             <a href="{{ route('courses.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                 <i class="fas fa-download"></i>
                                 <span>Télécharger</span>
                             </a>
                         @else
-                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
-                                @csrf
-                                <input type="hidden" name="redirect_to" value="download">
-                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
-                                    <i class="fas fa-download"></i>
-                                    <span>Télécharger</span>
-                                </button>
-                            </form>
-                        @endif
-                    @else
-                        @if($canAccessCourse)
                             @php
                                 $progress = $enrollment->progress ?? 0;
                             @endphp
@@ -3222,19 +3210,22 @@ button.mobile-price-slider__btn--download i,
                                 <i class="fas fa-play"></i>
                                 <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
                             </a>
-                        @else
-                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
-                                @csrf
-                                <input type="hidden" name="redirect_to" value="learn">
-                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
-                                    <i class="fas fa-user-plus"></i>
-                                    <span>S'inscrire</span>
-                                </button>
-                            </form>
                         @endif
+                    @else
+                        {{-- Utilisateur pas encore inscrit au cours gratuit --}}
+                        <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                            @csrf
+                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
+                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                <i class="fas fa-user-plus"></i>
+                                <span>S'inscrire</span>
+                            </button>
+                        </form>
                     @endif
                 @else
+                    {{-- Cours payant --}}
                     @if($isEnrolled)
+                        {{-- Utilisateur inscrit au cours payant --}}
                         @if($course->is_downloadable && $canDownloadCourse)
                             <a href="{{ route('courses.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                 <i class="fas fa-download"></i>
@@ -3250,6 +3241,7 @@ button.mobile-price-slider__btn--download i,
                             </a>
                         @endif
                     @elseif($hasPurchased)
+                        {{-- Utilisateur a acheté mais pas encore inscrit --}}
                         <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
                             @csrf
                             <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
@@ -3259,6 +3251,7 @@ button.mobile-price-slider__btn--download i,
                             </button>
                         </form>
                     @else
+                        {{-- Utilisateur n'a pas encore acheté --}}
                         <div class="mobile-price-slider__btn-group">
                             <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--outline" onclick="addToCart({{ $course->id }})">
                                 <i class="fas fa-shopping-cart"></i>
