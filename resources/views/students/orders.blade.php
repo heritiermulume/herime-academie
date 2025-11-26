@@ -168,10 +168,19 @@
                                 <i class="fas fa-eye me-1"></i>Détails
                             </a>
                             @if(in_array($order->status, ['paid', 'completed']) && $order->enrollments->isNotEmpty())
-                                <a href="{{ route('learning.course', optional($order->enrollments->first()->course)->slug) }}"
-                                   class="admin-btn success sm">
-                                    <i class="fas fa-play me-1"></i>Commencer un cours
-                                </a>
+                                @php
+                                    $firstCourse = optional($order->enrollments->first()->course);
+                                @endphp
+                                @if($firstCourse && $firstCourse->is_downloadable)
+                                    <a href="{{ route('courses.show', $firstCourse->slug) }}" class="admin-btn primary sm">
+                                        <i class="fas fa-eye me-1"></i>Voir le cours
+                                    </a>
+                                @else
+                                    <a href="{{ route('learning.course', $firstCourse->slug) }}"
+                                       class="admin-btn success sm">
+                                        <i class="fas fa-play me-1"></i>Commencer un cours
+                                    </a>
+                                @endif
                             @endif
                         </div>
                     </article>

@@ -180,21 +180,37 @@
                     
                     @if($activeEnrollments->count() > 0)
                         @foreach($activeEnrollments as $enrollment)
-                            <div class="course-item d-flex align-items-center mb-3 p-2 border rounded">
-                                <div class="course-icon me-3">
-                                    <i class="fas fa-play-circle fa-2x text-primary"></i>
+                            @php
+                                $course = $enrollment->course;
+                            @endphp
+                            @if($course)
+                                <div class="course-item d-flex align-items-center mb-3 p-2 border rounded">
+                                    <div class="course-icon me-3">
+                                        @if($course->is_downloadable)
+                                            <i class="fas fa-download fa-2x text-primary"></i>
+                                        @else
+                                            <i class="fas fa-play-circle fa-2x text-primary"></i>
+                                        @endif
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ $course->title ?? 'Cours supprimé' }}</h6>
+                                        <p class="text-muted small mb-0">
+                                            Inscrit le {{ $enrollment->enrolled_at->format('d/m/Y') }}
+                                        </p>
+                                    </div>
+                                    @if($course->is_downloadable)
+                                        <a href="{{ route('courses.download', $course->slug) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    @else
+                                        <a href="{{ route('learning.course', $course->slug) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-play"></i>
+                                        </a>
+                                    @endif
                                 </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1">{{ $enrollment->course->title ?? 'Cours supprimé' }}</h6>
-                                    <p class="text-muted small mb-0">
-                                        Inscrit le {{ $enrollment->enrolled_at->format('d/m/Y') }}
-                                    </p>
-                                </div>
-                                <a href="{{ route('learning.course', $enrollment->course_id) }}" 
-                                   class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-play"></i>
-                                </a>
-                            </div>
+                            @endif
                         @endforeach
                         
                         @if(auth()->user()->enrollments()->where('status', 'active')->count() > 5)

@@ -69,9 +69,18 @@
             </div>
             <div class="student-order-show__actions">
                 @if(in_array($order->status, ['paid', 'completed']) && $order->enrollments->isNotEmpty())
-                    <a href="{{ route('learning.course', optional($order->enrollments->first()->course)->slug) }}" class="admin-btn success sm">
-                        <i class="fas fa-play me-1"></i>Commencer un cours
-                    </a>
+                    @php
+                        $firstCourse = optional($order->enrollments->first()->course);
+                    @endphp
+                    @if($firstCourse && $firstCourse->is_downloadable)
+                        <a href="{{ route('courses.show', $firstCourse->slug) }}" class="admin-btn primary sm">
+                            <i class="fas fa-eye me-1"></i>Voir le cours
+                        </a>
+                    @else
+                        <a href="{{ route('learning.course', $firstCourse->slug) }}" class="admin-btn success sm">
+                            <i class="fas fa-play me-1"></i>Commencer un cours
+                        </a>
+                    @endif
                 @endif
                 <a href="{{ route('orders.index') }}" class="admin-btn soft sm">
                     Voir toutes les commandes
@@ -172,9 +181,15 @@
                             </p>
                         </div>
                         @if($course)
-                            <a href="{{ route('learning.course', $course->slug) }}" class="admin-btn success sm">
-                                <i class="fas fa-play me-1"></i>Commencer
-                            </a>
+                            @if($course->is_downloadable)
+                                <a href="{{ route('courses.download', $course->slug) }}" class="admin-btn primary sm">
+                                    <i class="fas fa-download me-1"></i>Télécharger
+                                </a>
+                            @else
+                                <a href="{{ route('learning.course', $course->slug) }}" class="admin-btn success sm">
+                                    <i class="fas fa-play me-1"></i>Commencer
+                                </a>
+                            @endif
                         @endif
                     </div>
                 @endforeach

@@ -1603,34 +1603,71 @@ body.has-global-announcement:has(.course-details-page) {
 }
 
 .mobile-price-slider__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.2rem;
-    width: 83px;
-    height: 29px;
-    padding: 0;
-    font-size: 0.5rem;
-    font-weight: 600;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.2rem !important;
+    width: 85px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
     border: none;
-    border-radius: 10px;
+    border-radius: 10px !important;
     cursor: pointer;
     transition: all 0.2s ease;
-    white-space: nowrap;
-    text-decoration: none;
-    flex: 0 0 auto;
-    box-sizing: border-box;
+    white-space: nowrap !important;
+    text-decoration: none !important;
+    flex: 0 0 auto !important;
+    box-sizing: border-box !important;
 }
 
 .mobile-price-slider__btn i {
-    font-size: 0.5rem;
-    flex-shrink: 0;
+    font-size: 0.8rem !important;
+    flex-shrink: 0 !important;
+}
+
+/* Boutons avec texte long (Se connecter, Télécharger) - Priorité maximale */
+.mobile-price-slider__actions .mobile-price-slider__btn--download,
+.mobile-price-slider__actions a.mobile-price-slider__btn--download,
+.mobile-price-slider__actions button.mobile-price-slider__btn--download,
+.mobile-price-slider__form .mobile-price-slider__btn--download,
+.mobile-price-slider__btn--login,
+.mobile-price-slider__btn--download {
+    width: 110px !important;
+    min-width: 110px !important;
+    max-width: 110px !important;
+    height: 42px !important;
+    font-size: 0.8rem !important;
+}
+
+.mobile-price-slider__actions .mobile-price-slider__btn--download i,
+.mobile-price-slider__actions a.mobile-price-slider__btn--download i,
+.mobile-price-slider__actions button.mobile-price-slider__btn--download i,
+.mobile-price-slider__form .mobile-price-slider__btn--download i,
+.mobile-price-slider__btn--login i,
+.mobile-price-slider__btn--download i {
+    font-size: 0.8rem !important;
+}
+
+/* Boutons avec texte moyen (S'inscrire, Commencer, Continuer) */
+.mobile-price-slider__btn--medium {
+    width: 100px !important;
+    min-width: 100px !important;
+    height: 42px !important;
+    font-size: 0.8rem !important;
+}
+
+.mobile-price-slider__btn--medium i {
+    font-size: 0.8rem !important;
 }
 
 .mobile-price-slider__btn--primary {
     background: linear-gradient(135deg, var(--primary-color, #003366) 0%, #004080 100%);
-    color: white;
+    color: white !important;
     box-shadow: 0 2px 8px rgba(0, 51, 102, 0.3);
+    height: 42px !important;
+    font-size: 0.8rem !important;
 }
 
 .mobile-price-slider__btn--primary:hover,
@@ -1638,13 +1675,37 @@ body.has-global-announcement:has(.course-details-page) {
     background: linear-gradient(135deg, #004080 0%, #003366 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 51, 102, 0.4);
-    color: white;
+    color: white !important;
+}
+
+.mobile-price-slider__btn--primary i {
+    font-size: 0.8rem !important;
+}
+
+/* Force spécifique pour le bouton Télécharger */
+a.mobile-price-slider__btn--download,
+button.mobile-price-slider__btn--download,
+.mobile-price-slider__btn.mobile-price-slider__btn--download,
+.mobile-price-slider__btn--primary.mobile-price-slider__btn--download {
+    width: 110px !important;
+    min-width: 110px !important;
+    height: 42px !important;
+    font-size: 0.8rem !important;
+}
+
+a.mobile-price-slider__btn--download i,
+button.mobile-price-slider__btn--download i,
+.mobile-price-slider__btn.mobile-price-slider__btn--download i,
+.mobile-price-slider__btn--primary.mobile-price-slider__btn--download i {
+    font-size: 0.8rem !important;
 }
 
 .mobile-price-slider__btn--success {
     background: linear-gradient(135deg, #28a745 0%, #218838 100%);
-    color: white;
+    color: white !important;
     box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    height: 42px !important;
+    font-size: 0.8rem !important;
 }
 
 .mobile-price-slider__btn--success:hover,
@@ -1652,20 +1713,30 @@ body.has-global-announcement:has(.course-details-page) {
     background: linear-gradient(135deg, #218838 0%, #28a745 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-    color: white;
+    color: white !important;
+}
+
+.mobile-price-slider__btn--success i {
+    font-size: 0.8rem !important;
 }
 
 .mobile-price-slider__btn--outline {
     background: white;
-    color: var(--primary-color, #003366);
+    color: var(--primary-color, #003366) !important;
     border: 1.5px solid var(--primary-color, #003366);
+    height: 42px !important;
+    font-size: 0.8rem !important;
 }
 
 .mobile-price-slider__btn--outline:hover,
 .mobile-price-slider__btn--outline:active {
     background: var(--primary-color, #003366);
-    color: white;
+    color: white !important;
     transform: translateY(-1px);
+}
+
+.mobile-price-slider__btn--outline i {
+    font-size: 0.8rem !important;
 }
 
 .mobile-price-slider__btn-group {
@@ -1676,20 +1747,20 @@ body.has-global-announcement:has(.course-details-page) {
 }
 
 .mobile-price-slider__btn-group .mobile-price-slider__btn {
-    flex: 0 0 auto;
-    width: 83px;
-    height: 29px;
-    padding: 0;
-    font-size: 0.5rem;
-    white-space: nowrap;
-    gap: 0.2rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    flex: 0 0 auto !important;
+    width: 85px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    font-size: 0.8rem !important;
+    white-space: nowrap !important;
+    gap: 0.2rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .mobile-price-slider__btn-group .mobile-price-slider__btn i {
-    font-size: 0.5rem;
+    font-size: 0.8rem !important;
 }
 
 /* Responsive Design */
@@ -2349,30 +2420,83 @@ body.has-global-announcement:has(.course-details-page) {
     }
     
     .mobile-price-slider__btn {
-        width: 83px;
-        height: 29px;
-        padding: 0;
-        font-size: 0.5rem;
-        gap: 0.2rem;
+        width: 85px !important;
+        height: 42px !important;
+        padding: 0 !important;
+        font-size: 0.8rem !important;
+        gap: 0.2rem !important;
     }
     
     .mobile-price-slider__btn i {
-        font-size: 0.5rem;
+        font-size: 0.8rem !important;
+    }
+    
+    /* Boutons avec texte long (Se connecter, Télécharger) - Priorité maximale en mobile */
+    .mobile-price-slider__actions .mobile-price-slider__btn--download,
+    .mobile-price-slider__actions a.mobile-price-slider__btn--download,
+    .mobile-price-slider__actions button.mobile-price-slider__btn--download,
+    .mobile-price-slider__form .mobile-price-slider__btn--download,
+    .mobile-price-slider__btn--login,
+    .mobile-price-slider__btn--download {
+        width: 110px !important;
+        min-width: 110px !important;
+        max-width: 110px !important;
+        height: 42px !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .mobile-price-slider__actions .mobile-price-slider__btn--download i,
+    .mobile-price-slider__actions a.mobile-price-slider__btn--download i,
+    .mobile-price-slider__actions button.mobile-price-slider__btn--download i,
+    .mobile-price-slider__form .mobile-price-slider__btn--download i,
+    .mobile-price-slider__btn--login i,
+    .mobile-price-slider__btn--download i {
+        font-size: 0.8rem !important;
+    }
+    
+    /* Boutons avec texte moyen (S'inscrire, Commencer, Continuer) */
+    .mobile-price-slider__btn--medium {
+        width: 100px !important;
+        min-width: 100px !important;
+        height: 42px !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .mobile-price-slider__btn--medium i {
+        font-size: 0.8rem !important;
+    }
+    
+    /* Force spécifique pour le bouton Télécharger en mobile */
+    a.mobile-price-slider__btn--download,
+    button.mobile-price-slider__btn--download,
+    .mobile-price-slider__btn.mobile-price-slider__btn--download,
+    .mobile-price-slider__btn--primary.mobile-price-slider__btn--download {
+        width: 110px !important;
+        min-width: 110px !important;
+        height: 42px !important;
+        font-size: 0.8rem !important;
+    }
+    
+    a.mobile-price-slider__btn--download i,
+    button.mobile-price-slider__btn--download i,
+    .mobile-price-slider__btn.mobile-price-slider__btn--download i,
+    .mobile-price-slider__btn--primary.mobile-price-slider__btn--download i {
+        font-size: 0.8rem !important;
     }
     
     .mobile-price-slider__btn-group {
-        gap: 0.2rem;
+        gap: 0.2rem !important;
     }
     
     .mobile-price-slider__btn-group .mobile-price-slider__btn {
-        width: 83px;
-        height: 29px;
-        padding: 0;
-        font-size: 0.5rem;
+        width: 85px !important;
+        height: 42px !important;
+        padding: 0 !important;
+        font-size: 0.8rem !important;
     }
     
     .mobile-price-slider__btn-group .mobile-price-slider__btn i {
-        font-size: 0.5rem;
+        font-size: 0.8rem !important;
     }
         gap: 0.125rem;
     }
@@ -2961,7 +3085,7 @@ body.has-global-announcement:has(.course-details-page) {
                                     @elseif($hasPurchased)
                                         <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
                                             @csrf
-                                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'dashboard' : 'learn' }}">
+                                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
                                             <button type="submit" class="btn btn-primary btn-lg w-100">
                                                 <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
                                             </button>
@@ -3067,7 +3191,7 @@ body.has-global-announcement:has(.course-details-page) {
                     $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
                     $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
                 @endphp
-                <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
                     <i class="fas fa-sign-in-alt"></i>
                     <span>Se connecter</span>
                 </a>
@@ -3075,7 +3199,7 @@ body.has-global-announcement:has(.course-details-page) {
                 @if($course->is_free)
                     @if($course->is_downloadable)
                         @if($canDownloadCourse)
-                            <a href="{{ route('courses.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                            <a href="{{ route('courses.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                 <i class="fas fa-download"></i>
                                 <span>Télécharger</span>
                             </a>
@@ -3083,7 +3207,7 @@ body.has-global-announcement:has(.course-details-page) {
                             <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
                                 @csrf
                                 <input type="hidden" name="redirect_to" value="download">
-                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                     <i class="fas fa-download"></i>
                                     <span>Télécharger</span>
                                 </button>
@@ -3094,7 +3218,7 @@ body.has-global-announcement:has(.course-details-page) {
                             @php
                                 $progress = $enrollment->progress ?? 0;
                             @endphp
-                            <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success">
+                            <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success mobile-price-slider__btn--medium">
                                 <i class="fas fa-play"></i>
                                 <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
                             </a>
@@ -3102,7 +3226,7 @@ body.has-global-announcement:has(.course-details-page) {
                             <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
                                 @csrf
                                 <input type="hidden" name="redirect_to" value="learn">
-                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
                                     <i class="fas fa-user-plus"></i>
                                     <span>S'inscrire</span>
                                 </button>
@@ -3112,7 +3236,7 @@ body.has-global-announcement:has(.course-details-page) {
                 @else
                     @if($isEnrolled)
                         @if($course->is_downloadable && $canDownloadCourse)
-                            <a href="{{ route('courses.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                            <a href="{{ route('courses.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                 <i class="fas fa-download"></i>
                                 <span>Télécharger</span>
                             </a>
@@ -3120,7 +3244,7 @@ body.has-global-announcement:has(.course-details-page) {
                             @php
                                 $progress = $enrollment->progress ?? 0;
                             @endphp
-                            <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success">
+                            <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success mobile-price-slider__btn--medium">
                                 <i class="fas fa-play"></i>
                                 <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
                             </a>
@@ -3128,8 +3252,8 @@ body.has-global-announcement:has(.course-details-page) {
                     @elseif($hasPurchased)
                         <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
                             @csrf
-                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'dashboard' : 'learn' }}">
-                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary">
+                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
+                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
                                 <i class="fas fa-user-plus"></i>
                                 <span>S'inscrire</span>
                             </button>

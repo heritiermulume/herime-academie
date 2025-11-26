@@ -305,6 +305,11 @@ class StudentController extends Controller
         $student = auth()->user();
         $redirectTo = $request->input('redirect_to', 'learn');
         
+        // Pour les cours téléchargeables, ne pas rediriger vers learning, mais vers la page du cours
+        if ($course->is_downloadable && $redirectTo === 'learn') {
+            $redirectTo = 'course';
+        }
+        
         // Vérifier si l'étudiant n'est pas déjà inscrit
         if ($course->isEnrolledBy($student->id)) {
             return $this->redirectAfterEnrollment(
@@ -354,8 +359,8 @@ class StudentController extends Controller
             'status' => 'active',
         ]);
 
-        $successMessage = $redirectTo === 'download'
-            ? 'Inscription réussie ! Téléchargement en cours...'
+        $successMessage = $course->is_downloadable 
+            ? 'Inscription réussie ! Vous pouvez maintenant télécharger le cours.'
             : 'Inscription réussie ! Vous pouvez commencer à apprendre.';
 
         return $this->redirectAfterEnrollment($course, $redirectTo, $successMessage);
@@ -366,6 +371,7 @@ class StudentController extends Controller
         $route = match ($redirectTo) {
             'download' => ['name' => 'courses.download', 'params' => ['course' => $course->slug]],
             'dashboard' => ['name' => 'student.courses', 'params' => []],
+            'course' => ['name' => 'courses.show', 'params' => ['course' => $course->slug]],
             default => ['name' => 'learning.course', 'params' => ['course' => $course->slug]],
         };
 
