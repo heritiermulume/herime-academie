@@ -739,6 +739,30 @@
             font-weight: 700;
             color: #dc2626;
         }
+        
+        /* Sur mobile : masquer années et mois dans les cartes de cours */
+        @media (max-width: 767.98px) {
+            /* Masquer les années */
+            .course-card .promotion-countdown .countdown-years {
+                display: none !important;
+            }
+            .course-card .promotion-countdown .countdown-years + span {
+                display: none !important;
+            }
+            
+            /* Masquer les mois */
+            .course-card .promotion-countdown .countdown-months {
+                display: none !important;
+            }
+            .course-card .promotion-countdown .countdown-months + span {
+                display: none !important;
+            }
+            
+            /* Format compact sur mobile : jour, heure, minute */
+            .course-card .promotion-countdown .countdown-text {
+                font-size: 0.75rem !important;
+            }
+        }
 
         /* Harmoniser tous les boutons des cartes de cours - Taille augmentée */
         .course-card .btn,
