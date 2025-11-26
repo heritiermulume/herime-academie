@@ -1515,13 +1515,12 @@ body.has-global-announcement:has(.course-details-page) {
     justify-content: space-between;
     gap: 0.75rem;
     max-width: 100%;
-    flex-direction: row-reverse;
 }
 
 .mobile-price-slider__price {
     flex: 0 0 auto;
     min-width: 0;
-    order: 2;
+    margin-right: auto;
 }
 
 .mobile-price-slider__label {
@@ -1595,7 +1594,7 @@ body.has-global-announcement:has(.course-details-page) {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    order: 1;
+    margin-left: auto;
 }
 
 .mobile-price-slider__form {
@@ -1742,9 +1741,10 @@ button.mobile-price-slider__btn--download i,
 
 .mobile-price-slider__btn-group {
     display: flex;
-    flex-direction: row-reverse;
+    flex-direction: row;
     gap: 0.2rem;
     align-items: center;
+    justify-content: flex-end;
 }
 
 .mobile-price-slider__btn-group .mobile-price-slider__btn {
