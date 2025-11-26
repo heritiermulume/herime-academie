@@ -1813,6 +1813,45 @@ button.mobile-price-slider__btn--download i,
         gap: 0.2rem !important;
     }
     
+    /* FORCER LES TAILLES DE TEXTE DES PRIX */
+    .mobile-price-slider__label {
+        font-size: 0.7rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+    
+    .mobile-price-slider__value {
+        font-size: 1.3rem !important;
+        font-weight: 700 !important;
+    }
+    
+    .mobile-price-slider__current {
+        font-size: 1.3rem !important;
+        font-weight: 700 !important;
+    }
+    
+    .mobile-price-slider__original {
+        font-size: 0.85rem !important;
+    }
+    
+    .mobile-price-slider__badge {
+        font-size: 0.75rem !important;
+        padding: 0.2rem 0.45rem !important;
+    }
+    
+    .mobile-price-slider__countdown {
+        font-size: 0.7rem !important;
+        gap: 0.35rem !important;
+        margin-top: 0.3rem !important;
+    }
+    
+    .mobile-price-slider__countdown i {
+        font-size: 0.75rem !important;
+    }
+    
+    .mobile-price-slider__countdown .countdown-text {
+        font-size: 0.7rem !important;
+    }
+    
     .main-content {
         padding-bottom: 140px; /* Espace pour le bouton de paiement (80px) + navigation mobile (60px) */
     }
