@@ -681,6 +681,16 @@
             align-items: center !important;
             justify-content: center !important;
             text-align: center !important;
+            vertical-align: middle !important;
+        }
+        
+        /* Forcer le centrage du contenu des boutons */
+        .course-card .card-actions .btn *,
+        .course-card .card-actions button *,
+        .course-card .card-actions a.btn *,
+        .course-card .card-actions form button * {
+            vertical-align: middle !important;
+            text-align: center !important;
         }
         
         /* Harmoniser le conteneur de boutons dynamiques */
@@ -773,6 +783,7 @@
             align-items: center !important;
             justify-content: center !important;
             text-align: center !important;
+            vertical-align: middle !important;
             flex-wrap: nowrap;
         }
         
@@ -793,6 +804,7 @@
             margin-right: 0.5rem !important;
             vertical-align: middle !important;
             line-height: 1 !important;
+            flex-shrink: 0 !important;
         }
         
         .course-card .btn span,
@@ -801,17 +813,30 @@
         .course-card .btn-primary span,
         .course-card .btn-outline-primary span,
         .course-card .btn-success span {
-            display: inline-block;
-            vertical-align: middle;
-            text-align: center;
-            line-height: 1.5;
+            display: inline-block !important;
+            vertical-align: middle !important;
+            text-align: center !important;
+            line-height: 1.5 !important;
         }
         
         /* Assurer le centrage du contenu des boutons */
         .course-card .btn > *,
         .course-card .btn-sm > *,
         .course-card .btn-lg > * {
-            vertical-align: middle;
+            vertical-align: middle !important;
+            text-align: center !important;
+        }
+        
+        /* Forcer le centrage complet du texte dans les boutons */
+        .course-card .btn,
+        .course-card .btn-sm,
+        .course-card .btn-lg {
+            text-align: center !important;
+        }
+        
+        .course-card .btn::before,
+        .course-card .btn::after {
+            content: none !important;
         }
         
         /* Surcharger les styles Bootstrap pour les cartes de cours */
@@ -926,6 +951,16 @@
                 align-items: center !important;
                 justify-content: center !important;
                 text-align: center !important;
+                vertical-align: middle !important;
+            }
+            
+            /* Forcer le centrage du contenu des boutons sur desktop */
+            .course-card .card-actions .btn *,
+            .course-card .card-actions button *,
+            .course-card .card-actions a.btn *,
+            .course-card .card-actions form button * {
+                vertical-align: middle !important;
+                text-align: center !important;
             }
             
             /* Harmoniser le conteneur de boutons dynamiques sur desktop */
@@ -964,6 +999,7 @@
                 align-items: center !important;
                 justify-content: center !important;
                 text-align: center !important;
+                vertical-align: middle !important;
             }
             
             /* Centrer les icônes et le texte sur desktop */
@@ -976,8 +1012,19 @@
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                margin-right: 0.5rem;
-                vertical-align: middle;
+                margin-right: 0.5rem !important;
+                vertical-align: middle !important;
+                flex-shrink: 0 !important;
+            }
+            
+            /* Forcer le centrage du texte sur desktop */
+            .course-card .btn span,
+            .course-card .btn-sm span,
+            .course-card .btn-lg span {
+                display: inline-block !important;
+                vertical-align: middle !important;
+                text-align: center !important;
+                line-height: 1.5 !important;
             }
             
             .course-card .btn-sm {
