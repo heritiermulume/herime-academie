@@ -1524,16 +1524,16 @@ body.has-global-announcement:has(.course-details-page) {
 }
 
 .mobile-price-slider__label {
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     color: #6c757d;
-    margin-bottom: 0.15rem;
+    margin-bottom: 0.2rem;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .mobile-price-slider__value {
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--primary-color, #003366);
     line-height: 1.2;
@@ -1547,14 +1547,14 @@ body.has-global-announcement:has(.course-details-page) {
 }
 
 .mobile-price-slider__current {
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--primary-color, #003366);
     line-height: 1.2;
 }
 
 .mobile-price-slider__original {
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     color: #6c757d;
     text-decoration: line-through;
     line-height: 1.2;
@@ -1564,9 +1564,9 @@ body.has-global-announcement:has(.course-details-page) {
     display: inline-block;
     background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
     color: white;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    padding: 0.15rem 0.4rem;
+    padding: 0.2rem 0.45rem;
     border-radius: 12px;
     line-height: 1.2;
 }
@@ -1574,19 +1574,19 @@ body.has-global-announcement:has(.course-details-page) {
 .mobile-price-slider__countdown {
     display: flex;
     align-items: center;
-    gap: 0.3rem;
-    margin-top: 0.25rem;
-    font-size: 0.6rem;
+    gap: 0.35rem;
+    margin-top: 0.3rem;
+    font-size: 0.7rem;
     color: #dc3545;
     font-weight: 600;
 }
 
 .mobile-price-slider__countdown i {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
 }
 
 .mobile-price-slider__countdown .countdown-text {
-    font-size: 0.6rem;
+    font-size: 0.7rem;
 }
 
 .mobile-price-slider__actions {
