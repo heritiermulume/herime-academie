@@ -1768,26 +1768,39 @@ button.mobile-price-slider__btn--download i,
 @media (max-width: 991.98px) {
     .mobile-price-slider {
         display: flex !important;
+        flex-direction: column !important;
+        padding: 0.5rem 0.75rem !important;
     }
     
-    /* Forcer l'alignement des boutons à droite */
+    /* Forcer l'alignement des boutons à droite - RÈGLES ULTRA PRIORITAIRES */
     .mobile-price-slider__content {
         display: flex !important;
         flex-direction: row !important;
-        justify-content: space-between !important;
+        justify-content: flex-start !important;
         align-items: center !important;
+        width: 100% !important;
+        gap: 0.5rem !important;
     }
     
     .mobile-price-slider__price {
-        margin-right: auto !important;
+        flex: 0 0 auto !important;
+        margin-right: 0 !important;
         margin-left: 0 !important;
         order: 1 !important;
     }
     
     .mobile-price-slider__actions {
+        flex: 1 1 auto !important;
         margin-left: auto !important;
         margin-right: 0 !important;
         order: 2 !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+    }
+    
+    .mobile-price-slider__form {
+        margin-left: auto !important;
         display: flex !important;
         justify-content: flex-end !important;
     }
@@ -1797,6 +1810,7 @@ button.mobile-price-slider__btn--download i,
         flex-direction: row !important;
         justify-content: flex-end !important;
         margin-left: auto !important;
+        gap: 0.2rem !important;
     }
     
     .main-content {
