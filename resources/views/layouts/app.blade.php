@@ -675,13 +675,17 @@
             margin-right: 0 !important;
             font-size: 0.8125rem !important;
             padding: 0.5rem 0.75rem !important;
-            line-height: 1.5 !important;
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+            line-height: 1 !important;
             min-height: 2.25rem !important;
+            height: auto !important;
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
             text-align: center !important;
             vertical-align: middle !important;
+            box-sizing: border-box !important;
         }
         
         /* Forcer le centrage du contenu des boutons */
@@ -691,6 +695,7 @@
         .course-card .card-actions form button * {
             vertical-align: middle !important;
             text-align: center !important;
+            line-height: 1 !important;
         }
         
         /* Harmoniser le conteneur de boutons dynamiques */
@@ -771,8 +776,11 @@
             font-weight: 600;
             font-size: 0.8125rem !important;
             padding: 0.5rem 0.75rem !important;
-            line-height: 1.5 !important;
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+            line-height: 1 !important;
             min-height: 2.25rem !important;
+            height: auto !important;
             transition: all 0.2s ease;
             text-transform: none;
             white-space: nowrap;
@@ -785,6 +793,7 @@
             text-align: center !important;
             vertical-align: middle !important;
             flex-wrap: nowrap;
+            box-sizing: border-box !important;
         }
         
         /* Centrer les icônes et le texte dans les boutons */
@@ -816,7 +825,9 @@
             display: inline-block !important;
             vertical-align: middle !important;
             text-align: center !important;
-            line-height: 1.5 !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         
         /* Assurer le centrage du contenu des boutons */
@@ -825,6 +836,7 @@
         .course-card .btn-lg > * {
             vertical-align: middle !important;
             text-align: center !important;
+            line-height: 1 !important;
         }
         
         /* Forcer le centrage complet du texte dans les boutons */
@@ -837,6 +849,28 @@
         .course-card .btn::before,
         .course-card .btn::after {
             content: none !important;
+        }
+        
+        /* FORCER LE CENTRAGE VERTICAL PARFAIT */
+        .course-card .btn,
+        .course-card .btn-sm,
+        .course-card .btn-lg,
+        .course-card .card-actions .btn,
+        .course-card .card-actions button,
+        .course-card .card-actions a.btn {
+            align-items: center !important;
+            align-content: center !important;
+            justify-items: center !important;
+        }
+        
+        /* Supprimer tout espacement vertical dans le contenu */
+        .course-card .btn *,
+        .course-card .btn-sm *,
+        .course-card .btn-lg * {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
         }
         
         /* Surcharger les styles Bootstrap pour les cartes de cours */
@@ -946,12 +980,17 @@
                 margin-right: 0 !important;
                 font-size: 0.875rem !important;
                 padding: 0.5625rem 0.875rem !important;
+                padding-top: 0.5625rem !important;
+                padding-bottom: 0.5625rem !important;
+                line-height: 1 !important;
                 min-height: 2.5rem !important;
+                height: auto !important;
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 text-align: center !important;
                 vertical-align: middle !important;
+                box-sizing: border-box !important;
             }
             
             /* Forcer le centrage du contenu des boutons sur desktop */
@@ -961,6 +1000,7 @@
             .course-card .card-actions form button * {
                 vertical-align: middle !important;
                 text-align: center !important;
+                line-height: 1 !important;
             }
             
             /* Harmoniser le conteneur de boutons dynamiques sur desktop */
@@ -993,13 +1033,17 @@
             .course-card a.btn {
                 font-size: 0.875rem !important;
                 padding: 0.5625rem 0.875rem !important;
-                line-height: 1.5 !important;
+                padding-top: 0.5625rem !important;
+                padding-bottom: 0.5625rem !important;
+                line-height: 1 !important;
                 min-height: 2.5rem !important;
+                height: auto !important;
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 text-align: center !important;
                 vertical-align: middle !important;
+                box-sizing: border-box !important;
             }
             
             /* Centrer les icônes et le texte sur desktop */
@@ -1015,6 +1059,7 @@
                 margin-right: 0.5rem !important;
                 vertical-align: middle !important;
                 flex-shrink: 0 !important;
+                line-height: 1 !important;
             }
             
             /* Forcer le centrage du texte sur desktop */
@@ -1024,7 +1069,31 @@
                 display: inline-block !important;
                 vertical-align: middle !important;
                 text-align: center !important;
-                line-height: 1.5 !important;
+                line-height: 1 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            /* FORCER LE CENTRAGE VERTICAL PARFAIT SUR DESKTOP */
+            .course-card .btn,
+            .course-card .btn-sm,
+            .course-card .btn-lg,
+            .course-card .card-actions .btn,
+            .course-card .card-actions button,
+            .course-card .card-actions a.btn {
+                align-items: center !important;
+                align-content: center !important;
+                justify-items: center !important;
+            }
+            
+            /* Supprimer tout espacement vertical dans le contenu sur desktop */
+            .course-card .btn *,
+            .course-card .btn-sm *,
+            .course-card .btn-lg * {
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
             }
             
             .course-card .btn-sm {

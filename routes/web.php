@@ -25,6 +25,7 @@ use App\Http\Controllers\FileController;
 use App\Http\Controllers\TemporaryUploadController;
 use App\Http\Controllers\Auth\SSOController;
 use App\Http\Controllers\SSOCallbackController;
+use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -235,6 +236,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/student/courses/{course:slug}/enroll', [StudentController::class, 'enroll'])
         ->middleware('sso.validate')
         ->name('student.courses.enroll');
+
+    // Review routes (accessible to all authenticated users who are enrolled)
+    Route::post('/courses/{course:slug}/review', [ReviewController::class, 'store'])
+        ->middleware('sso.validate')
+        ->name('courses.review.store');
+    Route::delete('/courses/{course:slug}/review', [ReviewController::class, 'destroy'])
+        ->middleware('sso.validate')
+        ->name('courses.review.destroy');
 
     // Instructor Application routes (accessible to authenticated users) - avec validation SSO pour les POST
     Route::middleware('auth')->group(function () {

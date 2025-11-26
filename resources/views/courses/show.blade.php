@@ -1302,6 +1302,42 @@ body.has-global-announcement:has(.course-details-page) {
     line-height: 1.6;
 }
 
+/* Rating Input Styles */
+.rating-input-wrapper {
+    margin-bottom: 1rem;
+}
+
+.rating-stars-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.rating-star {
+    font-size: 2rem;
+    color: #ddd;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 0.5rem;
+}
+
+.rating-star:hover,
+.rating-star.active {
+    color: var(--warning-color, #ffc107);
+    transform: scale(1.1);
+}
+
+.rating-star.active {
+    color: var(--warning-color, #ffc107);
+}
+
+.rating-value-text {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+}
+
 /* Sidebar */
 .course-sidebar {
     position: sticky;
@@ -2703,6 +2739,84 @@ button.mobile-price-slider__btn--download i,
                          alt="{{ $course->title }}" 
                          class="img-fluid rounded" 
                          style="width: 100%; height: auto; border-radius: 12px;">
+                </div>
+                @endif
+
+                <!-- Rating and Review Section -->
+                @php
+                    $userReview = null;
+                    if ($user) {
+                        // Charger l'avis de l'utilisateur directement depuis la base de données
+                        $userReview = \App\Models\Review::where('user_id', $user->id)
+                            ->where('course_id', $course->id)
+                            ->first();
+                    }
+                    $hasUserReview = $userReview !== null;
+                @endphp
+                @if($user && ($isEnrolled || $course->is_free))
+                <div class="content-card">
+                    <h2 class="section-title-modern">
+                        <i class="fas fa-star"></i>
+                        {{ $hasUserReview ? 'Modifier votre avis' : 'Noter ce cours' }}
+                    </h2>
+                    <form id="courseReviewForm" action="{{ route('courses.review.store', $course->slug) }}" method="POST">
+                        @csrf
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold mb-3">Votre note</label>
+                            <div class="rating-input-wrapper">
+                                <div class="rating-stars-input" data-rating="{{ $hasUserReview ? $userReview->rating : 0 }}">
+                                    @for($i = 1; $i <= 5; $i++)
+                                    <i class="fas fa-star rating-star {{ $hasUserReview && $i <= $userReview->rating ? 'active' : '' }}" 
+                                       data-value="{{ $i }}"
+                                       style="font-size: 2rem; color: #ddd; cursor: pointer; transition: all 0.2s; margin-right: 0.5rem;"></i>
+                                    @endfor
+                                </div>
+                                <input type="hidden" name="rating" id="ratingInput" value="{{ $hasUserReview ? $userReview->rating : 0 }}" required>
+                                <div class="rating-value-text mt-2 text-muted">
+                                    <span id="ratingText">{{ $hasUserReview ? $userReview->rating . ' étoile' . ($userReview->rating > 1 ? 's' : '') : 'Sélectionnez une note' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="reviewComment" class="form-label fw-semibold mb-2">Votre avis</label>
+                            <textarea class="form-control" 
+                                      id="reviewComment" 
+                                      name="comment" 
+                                      rows="5" 
+                                      placeholder="Partagez votre expérience avec ce cours...">{{ $hasUserReview ? $userReview->comment : '' }}</textarea>
+                            <div class="form-text">Votre avis aidera d'autres étudiants à prendre une décision.</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                {{ $hasUserReview ? 'Mettre à jour mon avis' : 'Publier mon avis' }}
+                            </button>
+                            @if($hasUserReview)
+                            <button type="button" class="btn btn-outline-danger" id="deleteReviewBtn">
+                                <i class="fas fa-trash me-2"></i>
+                                Supprimer mon avis
+                            </button>
+                            @endif
+                        </div>
+                    </form>
+                </div>
+                @elseif(!$user)
+                <div class="content-card">
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Connectez-vous</strong> pour noter ce cours et donner votre avis.
+                        <a href="{{ route('login') }}" class="alert-link ms-2">Se connecter</a>
+                    </div>
+                </div>
+                @elseif(!$isEnrolled && !$course->is_free)
+                <div class="content-card">
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        Vous devez être <strong>inscrit à ce cours</strong> pour pouvoir le noter et donner votre avis.
+                    </div>
                 </div>
                 @endif
 
@@ -4704,6 +4818,95 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     } else {
         setTimeout(updateAllPlyrTooltips, 500);
+    }
+});
+
+// Rating System JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    const ratingStars = document.querySelectorAll('.rating-star');
+    const ratingInput = document.getElementById('ratingInput');
+    const ratingText = document.getElementById('ratingText');
+    
+    if (ratingStars.length > 0 && ratingInput && ratingText) {
+        let currentRating = parseInt(ratingInput.value) || 0;
+        
+        // Fonction pour mettre à jour l'affichage des étoiles
+        function updateStars(rating) {
+            ratingStars.forEach((star, index) => {
+                const starValue = index + 1;
+                if (starValue <= rating) {
+                    star.classList.add('active');
+                    star.style.color = 'var(--warning-color, #ffc107)';
+                } else {
+                    star.classList.remove('active');
+                    star.style.color = '#ddd';
+                }
+            });
+        }
+        
+        // Fonction pour mettre à jour le texte
+        function updateRatingText(rating) {
+            if (rating === 0) {
+                ratingText.textContent = 'Sélectionnez une note';
+            } else {
+                ratingText.textContent = rating + ' étoile' + (rating > 1 ? 's' : '');
+            }
+        }
+        
+        // Initialiser l'affichage
+        updateStars(currentRating);
+        updateRatingText(currentRating);
+        
+        // Ajouter les événements sur chaque étoile
+        ratingStars.forEach((star, index) => {
+            const starValue = index + 1;
+            
+            star.addEventListener('click', function() {
+                currentRating = starValue;
+                ratingInput.value = currentRating;
+                updateStars(currentRating);
+                updateRatingText(currentRating);
+            });
+            
+            star.addEventListener('mouseenter', function() {
+                updateStars(starValue);
+            });
+        });
+        
+        // Réinitialiser au survol de la zone
+        const ratingWrapper = document.querySelector('.rating-stars-input');
+        if (ratingWrapper) {
+            ratingWrapper.addEventListener('mouseleave', function() {
+                updateStars(currentRating);
+            });
+        }
+    }
+    
+    // Gestion de la suppression d'avis
+    const deleteReviewBtn = document.getElementById('deleteReviewBtn');
+    if (deleteReviewBtn) {
+        deleteReviewBtn.addEventListener('click', function() {
+            if (confirm('Êtes-vous sûr de vouloir supprimer votre avis ? Cette action est irréversible.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ route("courses.review.destroy", $course->slug) }}';
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = '{{ csrf_token() }}';
+                
+                const methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'DELETE';
+                
+                form.appendChild(csrfInput);
+                form.appendChild(methodInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
     }
 });
 </script>
