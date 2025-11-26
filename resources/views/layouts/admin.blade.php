@@ -53,6 +53,13 @@
             'available' => Route::has('admin.banners.index')
         ],
         [
+            'label' => 'Témoignages',
+            'icon' => 'fas fa-quote-left',
+            'route' => 'admin.testimonials',
+            'active' => ['admin.testimonials', 'admin.testimonials.*'],
+            'available' => Route::has('admin.testimonials')
+        ],
+        [
             'label' => 'Annonces',
             'icon' => 'fas fa-bullhorn',
             'route' => 'admin.announcements',

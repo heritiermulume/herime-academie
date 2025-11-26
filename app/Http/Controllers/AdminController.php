@@ -19,6 +19,7 @@ use App\Models\InstructorApplication;
 use App\Models\Visitor;
 use App\Traits\DatabaseCompatibility;
 use App\Services\FileUploadService;
+use App\Helpers\FileHelper;
 use App\Notifications\AnnouncementPublished;
 use App\Notifications\CategoryCreatedNotification;
 use App\Notifications\CourseModerationNotification;
@@ -2395,13 +2396,42 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'title' => 'nullable|string|max:255',
             'company' => 'nullable|string|max:255',
-            'photo' => 'nullable|url',
+            'photo' => 'nullable|string|max:2048',
+            'photo_chunk_path' => 'nullable|string|max:2048',
+            'photo_chunk_name' => 'nullable|string|max:255',
+            'photo_chunk_size' => 'nullable|integer|min:0',
             'testimonial' => 'required|string',
             'rating' => 'required|integer|min:1|max:5',
             'is_active' => 'boolean',
         ]);
 
-        Testimonial::create($request->all());
+        $data = $request->only([
+            'name',
+            'title',
+            'company',
+            'testimonial',
+            'rating',
+        ]);
+        $data['is_active'] = $request->boolean('is_active', true);
+
+        // Gérer l'upload de la photo via système de chunks
+        $photoPath = null;
+        if ($request->filled('photo_chunk_path')) {
+            $chunkPath = $this->sanitizeUploadedPath($request->input('photo_chunk_path'));
+            if ($chunkPath) {
+                $photoPath = $this->fileUploadService->promoteTemporaryFile(
+                    $chunkPath,
+                    'testimonials/photos'
+                );
+            }
+        } elseif ($request->filled('photo')) {
+            // Compatibilité au cas où une URL serait encore envoyée
+            $photoPath = $this->normalizeNullableString($request->input('photo'));
+        }
+
+        $data['photo'] = $photoPath;
+
+        Testimonial::create($data);
 
         return redirect()->route('admin.testimonials')
             ->with('success', 'Témoignage ajouté avec succès.');
@@ -2409,7 +2439,24 @@ class AdminController extends Controller
 
     public function editTestimonial(Testimonial $testimonial)
     {
-        return response()->json($testimonial);
+        $photoUrl = null;
+        if ($testimonial->photo) {
+            $photoUrl = str_starts_with($testimonial->photo, 'http')
+                ? $testimonial->photo
+                : FileHelper::url($testimonial->photo);
+        }
+
+        return response()->json([
+            'id' => $testimonial->id,
+            'name' => $testimonial->name,
+            'title' => $testimonial->title,
+            'company' => $testimonial->company,
+            'testimonial' => $testimonial->testimonial,
+            'rating' => $testimonial->rating,
+            'is_active' => $testimonial->is_active,
+            'photo' => $testimonial->photo,
+            'photo_url' => $photoUrl,
+        ]);
     }
 
     public function updateTestimonial(Request $request, Testimonial $testimonial)
@@ -2418,13 +2465,42 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'title' => 'nullable|string|max:255',
             'company' => 'nullable|string|max:255',
-            'photo' => 'nullable|url',
+            'photo' => 'nullable|string|max:2048',
+            'photo_chunk_path' => 'nullable|string|max:2048',
+            'photo_chunk_name' => 'nullable|string|max:255',
+            'photo_chunk_size' => 'nullable|integer|min:0',
             'testimonial' => 'required|string',
             'rating' => 'required|integer|min:1|max:5',
             'is_active' => 'boolean',
         ]);
 
-        $testimonial->update($request->all());
+        $data = $request->only([
+            'name',
+            'title',
+            'company',
+            'testimonial',
+            'rating',
+        ]);
+        $data['is_active'] = $request->boolean('is_active', $testimonial->is_active);
+
+        // Gérer la mise à jour de la photo
+        if ($request->filled('photo_chunk_path')) {
+            $chunkPath = $this->sanitizeUploadedPath($request->input('photo_chunk_path'));
+            if ($chunkPath) {
+                $newPhotoPath = $this->fileUploadService->promoteTemporaryFile(
+                    $chunkPath,
+                    'testimonials/photos'
+                );
+                if ($newPhotoPath) {
+                    $data['photo'] = $newPhotoPath;
+                }
+            }
+        } elseif ($request->filled('photo')) {
+            // Toujours accepter une URL manuelle si fournie
+            $data['photo'] = $this->normalizeNullableString($request->input('photo'));
+        }
+
+        $testimonial->update($data);
 
         return redirect()->route('admin.testimonials')
             ->with('success', 'Témoignage mis à jour avec succès.');
