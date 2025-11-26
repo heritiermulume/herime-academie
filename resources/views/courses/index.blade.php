@@ -214,8 +214,8 @@
                                                     <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
                                                         <i class="fas fa-fire me-1 text-danger"></i>
                                                         <span class="countdown-text">
-                                                            <span class="countdown-years">0</span>a 
-                                                            <span class="countdown-months">0</span>m 
+                                                            <span class="countdown-years">0</span><span>a</span> 
+                                                            <span class="countdown-months">0</span><span>m</span> 
                                                             <span class="countdown-days">0</span>j 
                                                             <span class="countdown-hours">0</span>h 
                                                             <span class="countdown-minutes">0</span>min
@@ -822,8 +822,8 @@ function createCourseElement(course) {
                             `<div class="promotion-countdown" data-sale-end="${course.sale_end_at}">
                                 <i class="fas fa-fire me-1 text-danger"></i>
                                 <span class="countdown-text">
-                                    <span class="countdown-years">0</span>a 
-                                    <span class="countdown-months">0</span>m 
+                                    <span class="countdown-years">0</span><span>a</span> 
+                                    <span class="countdown-months">0</span><span>m</span> 
                                     <span class="countdown-days">0</span>j 
                                     <span class="countdown-hours">0</span>h 
                                     <span class="countdown-minutes">0</span>min

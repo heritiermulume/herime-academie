@@ -740,25 +740,9 @@
             color: #dc2626;
         }
         
-        /* Sur mobile : masquer années et mois dans les cartes de cours */
+        /* Sur mobile : format compact du compteur */
         @media (max-width: 767.98px) {
-            /* Masquer les années */
-            .course-card .promotion-countdown .countdown-years {
-                display: none !important;
-            }
-            .course-card .promotion-countdown .countdown-years + span {
-                display: none !important;
-            }
-            
-            /* Masquer les mois */
-            .course-card .promotion-countdown .countdown-months {
-                display: none !important;
-            }
-            .course-card .promotion-countdown .countdown-months + span {
-                display: none !important;
-            }
-            
-            /* Format compact sur mobile : jour, heure, minute */
+            /* Format compact sur mobile */
             .course-card .promotion-countdown .countdown-text {
                 font-size: 0.75rem !important;
             }
@@ -4641,12 +4625,24 @@
             if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
             if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
             
-            // Masquer les unités à zéro (sauf minutes)
-            if (yearsEl && yearsEl.parentElement) {
-                yearsEl.parentElement.style.display = years > 0 ? 'inline' : 'none';
+            // Masquer les années si zéro (masquer l'élément et son unité "a")
+            if (yearsEl) {
+                const displayYears = years > 0 ? 'inline' : 'none';
+                yearsEl.style.display = displayYears;
+                // Masquer aussi le span "a" qui suit
+                if (yearsEl.nextElementSibling && yearsEl.nextElementSibling.tagName === 'SPAN') {
+                    yearsEl.nextElementSibling.style.display = displayYears;
+                }
             }
-            if (monthsEl && monthsEl.parentElement) {
-                monthsEl.parentElement.style.display = months > 0 || years > 0 ? 'inline' : 'none';
+            
+            // Masquer les mois si zéro (masquer l'élément et son unité "m")
+            if (monthsEl) {
+                const displayMonths = months > 0 ? 'inline' : 'none';
+                monthsEl.style.display = displayMonths;
+                // Masquer aussi le span "m" qui suit
+                if (monthsEl.nextElementSibling && monthsEl.nextElementSibling.tagName === 'SPAN') {
+                    monthsEl.nextElementSibling.style.display = displayMonths;
+                }
             }
             if (daysEl && daysEl.parentElement) {
                 daysEl.parentElement.style.display = days > 0 || months > 0 || years > 0 ? 'inline' : 'none';
