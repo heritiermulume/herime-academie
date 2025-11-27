@@ -451,6 +451,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('testimonials.destroy');
         
+        // Reviews management
+        Route::get('/reviews', [AdminController::class, 'reviews'])->name('reviews');
+        Route::post('/reviews/{review}/approve', [AdminController::class, 'approveReview'])
+            ->middleware('sso.validate')
+            ->name('reviews.approve');
+        Route::post('/reviews/{review}/reject', [AdminController::class, 'rejectReview'])
+            ->middleware('sso.validate')
+            ->name('reviews.reject');
+        Route::delete('/reviews/{review}', [AdminController::class, 'deleteReview'])
+            ->middleware('sso.validate')
+            ->name('reviews.delete');
+        
         // Banners management
         Route::resource('banners', BannerController::class)->middleware('sso.validate');
         Route::post('/banners/{banner}/toggle-active', [BannerController::class, 'toggleActive'])

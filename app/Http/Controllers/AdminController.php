@@ -3430,4 +3430,136 @@ class AdminController extends Controller
 
         return null;
     }
+
+    /**
+     * Afficher la liste des avis (reviews)
+     */
+    public function reviews(Request $request)
+    {
+        $query = Review::with(['user', 'course.instructor', 'course.category']);
+
+        // Recherche par nom d'utilisateur, titre de cours ou commentaire
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('comment', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', "%{$search}%")
+                               ->orWhere('email', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('course', function ($courseQuery) use ($search) {
+                      $courseQuery->where('title', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filtre par statut (approuvé/en attente)
+        if ($request->filled('status')) {
+            $status = $request->get('status');
+            if ($status === 'approved') {
+                $query->where('is_approved', true);
+            } elseif ($status === 'pending') {
+                $query->where('is_approved', false);
+            }
+        }
+
+        // Filtre par note (étoiles)
+        if ($request->filled('rating')) {
+            $rating = $request->get('rating');
+            $query->where('rating', $rating);
+        }
+
+        // Filtre par cours
+        if ($request->filled('course_id')) {
+            $query->where('course_id', $request->get('course_id'));
+        }
+
+        // Tri
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        $query->orderBy($sortBy, $sortDirection);
+
+        $reviews = $query->paginate(20)->withQueryString();
+
+        // Statistiques
+        $stats = [
+            'total' => Review::count(),
+            'approved' => Review::where('is_approved', true)->count(),
+            'pending' => Review::where('is_approved', false)->count(),
+            'average_rating' => Review::where('is_approved', true)->avg('rating'),
+            'by_rating' => Review::where('is_approved', true)
+                ->selectRaw('rating, COUNT(*) as count')
+                ->groupBy('rating')
+                ->orderBy('rating', 'desc')
+                ->get(),
+        ];
+
+        // Liste des cours pour le filtre
+        $courses = Course::published()
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        return view('admin.reviews.index', compact('reviews', 'stats', 'courses'));
+    }
+
+    /**
+     * Approuver un avis
+     */
+    public function approveReview(Review $review)
+    {
+        $review->update(['is_approved' => true]);
+
+        // Recalculer la note moyenne du cours
+        $this->recalculateCourseRating($review->course_id);
+
+        return redirect()->route('admin.reviews')
+            ->with('success', 'Avis approuvé avec succès.');
+    }
+
+    /**
+     * Rejeter un avis (désapprouver)
+     */
+    public function rejectReview(Review $review)
+    {
+        $review->update(['is_approved' => false]);
+
+        // Recalculer la note moyenne du cours
+        $this->recalculateCourseRating($review->course_id);
+
+        return redirect()->route('admin.reviews')
+            ->with('success', 'Avis rejeté avec succès.');
+    }
+
+    /**
+     * Supprimer un avis
+     */
+    public function deleteReview(Review $review)
+    {
+        $courseId = $review->course_id;
+        $review->delete();
+
+        // Recalculer la note moyenne du cours
+        $this->recalculateCourseRating($courseId);
+
+        return redirect()->route('admin.reviews')
+            ->with('success', 'Avis supprimé avec succès.');
+    }
+
+    /**
+     * Recalculer la note moyenne et le nombre d'avis d'un cours
+     */
+    private function recalculateCourseRating($courseId)
+    {
+        $course = Course::find($courseId);
+        if (!$course) {
+            return;
+        }
+
+        $approvedReviews = $course->reviews()->approved()->get();
+
+        $course->update([
+            'rating' => round($approvedReviews->avg('rating') ?? 0, 2),
+            'reviews_count' => $approvedReviews->count(),
+        ]);
+    }
 }

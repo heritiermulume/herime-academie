@@ -66,6 +66,13 @@
             'available' => Route::has('admin.testimonials')
         ],
         [
+            'label' => 'Avis et évaluations',
+            'icon' => 'fas fa-star',
+            'route' => 'admin.reviews',
+            'active' => ['admin.reviews', 'admin.reviews.*'],
+            'available' => Route::has('admin.reviews')
+        ],
+        [
             'label' => 'Annonces',
             'icon' => 'fas fa-bullhorn',
             'route' => 'admin.announcements',
