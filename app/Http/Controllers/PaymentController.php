@@ -8,11 +8,14 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Coupon;
 use App\Models\Affiliate;
+use App\Models\Setting;
 use App\Mail\InvoiceMail;
 use App\Mail\PaymentFailedMail;
 use App\Notifications\PaymentReceived;
 use App\Services\EmailService;
+use App\Services\PawaPayService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -244,6 +247,9 @@ class PaymentController extends Controller
         // Envoyer la facture par email
         $this->sendInvoiceEmail($order);
 
+        // Payer les formateurs externes si nécessaire
+        $this->processExternalInstructorPayouts($order);
+
         return view('payments.success', compact('order'));
     }
 
@@ -336,6 +342,9 @@ class PaymentController extends Controller
 
             // Envoyer la facture par email
             $this->sendInvoiceEmail($order);
+
+            // Payer les formateurs externes si nécessaire
+            $this->processExternalInstructorPayouts($order);
         }
     }
 
@@ -500,6 +509,132 @@ class PaymentController extends Controller
             // Logger l'erreur mais ne pas faire échouer le processus
             \Log::error("Erreur lors de l'envoi de l'email d'échec de paiement pour la commande {$order->id}: " . $e->getMessage());
             \Log::error("Stack trace: " . $e->getTraceAsString());
+        }
+    }
+
+    /**
+     * Traiter les paiements aux formateurs externes après un paiement réussi
+     */
+    private function processExternalInstructorPayouts(Order $order)
+    {
+        try {
+            // Charger les orderItems avec les cours et leurs formateurs
+            $order->load(['orderItems.course.instructor']);
+
+            foreach ($order->orderItems as $orderItem) {
+                $course = $orderItem->course;
+                $instructor = $course->instructor;
+
+                // Vérifier que le formateur existe
+                if (!$instructor) {
+                    Log::warning("Formateur introuvable pour le cours", [
+                        'course_id' => $course->id,
+                        'order_id' => $order->id,
+                    ]);
+                    continue;
+                }
+
+                // Vérifier que c'est un formateur externe (is_external_instructor activé ET role = instructor)
+                if (!$instructor->isExternalInstructor()) {
+                    Log::info("Formateur non externe ou paiements automatiques non activés - paiement ignoré", [
+                        'instructor_id' => $instructor->id,
+                        'instructor_name' => $instructor->name,
+                        'instructor_role' => $instructor->role,
+                        'is_external_instructor' => $instructor->is_external_instructor,
+                        'course_id' => $course->id,
+                        'course_title' => $course->title,
+                        'order_id' => $order->id,
+                        'message' => $instructor->role !== 'instructor' 
+                            ? 'L\'utilisateur n\'est pas un formateur' 
+                            : 'Le formateur n\'a pas activé l\'option "Activer les paiements automatiques" dans ses paramètres de paiement',
+                    ]);
+                    continue;
+                }
+
+                // Vérifier que toutes les informations pawaPay sont configurées
+                if (!$instructor->pawapay_phone || !$instructor->pawapay_provider || !$instructor->pawapay_country) {
+                    Log::warning("Formateur avec paiements automatiques activés mais informations pawaPay incomplètes", [
+                        'instructor_id' => $instructor->id,
+                        'instructor_name' => $instructor->name,
+                        'course_id' => $course->id,
+                        'course_title' => $course->title,
+                        'order_id' => $order->id,
+                        'has_phone' => !empty($instructor->pawapay_phone),
+                        'has_provider' => !empty($instructor->pawapay_provider),
+                        'has_country' => !empty($instructor->pawapay_country),
+                        'message' => 'Le formateur a activé les paiements automatiques mais n\'a pas fourni toutes les informations de paiement nécessaires',
+                    ]);
+                    continue;
+                }
+
+                // Vérifier si un payout n'a pas déjà été créé pour cette commande et ce cours
+                $existingPayout = \App\Models\InstructorPayout::where('order_id', $order->id)
+                    ->where('course_id', $course->id)
+                    ->first();
+
+                if ($existingPayout) {
+                    Log::info("Payout déjà créé pour ce cours et cette commande", [
+                        'payout_id' => $existingPayout->payout_id,
+                        'order_id' => $order->id,
+                        'course_id' => $course->id,
+                    ]);
+                    continue;
+                }
+
+                // Calculer le montant à payer au formateur
+                $coursePrice = $orderItem->total; // Prix payé par l'étudiant (après réduction)
+                $commissionPercentage = Setting::get('external_instructor_commission_percentage', 20);
+                $commissionAmount = ($coursePrice * $commissionPercentage) / 100;
+                $payoutAmount = $coursePrice - $commissionAmount;
+
+                // Utiliser la devise de la commande
+                $currency = $order->currency ?? Setting::getBaseCurrency();
+
+                // Initier le payout via pawaPay
+                $pawaPayService = new PawaPayService();
+                $result = $pawaPayService->initiatePayout(
+                    $instructor->id,
+                    $order->id,
+                    $course->id,
+                    $payoutAmount,
+                    $currency,
+                    $instructor->pawapay_phone,
+                    $instructor->pawapay_provider,
+                    $instructor->pawapay_country
+                );
+
+                if ($result['success']) {
+                    // Mettre à jour le payout avec les informations de commission
+                    $payout = $result['payout'];
+                    $payout->update([
+                        'commission_percentage' => $commissionPercentage,
+                        'commission_amount' => $commissionAmount,
+                    ]);
+
+                    Log::info("Payout initié avec succès pour le formateur externe", [
+                        'payout_id' => $result['payout_id'],
+                        'instructor_id' => $instructor->id,
+                        'course_id' => $course->id,
+                        'order_id' => $order->id,
+                        'amount' => $payoutAmount,
+                        'commission' => $commissionAmount,
+                    ]);
+                } else {
+                    Log::error("Échec de l'initiation du payout pour le formateur externe", [
+                        'instructor_id' => $instructor->id,
+                        'course_id' => $course->id,
+                        'order_id' => $order->id,
+                        'error' => $result['error'] ?? 'Erreur inconnue',
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Logger l'erreur mais ne pas faire échouer le processus de paiement
+            Log::error("Erreur lors du traitement des payouts aux formateurs externes", [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
     }
 }
