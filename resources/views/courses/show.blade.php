@@ -1338,16 +1338,19 @@ body.has-global-announcement:has(.course-details-page) {
 }
 
 .review-card-preview {
-    min-width: 280px;
-    max-width: 320px;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    max-height: 200px;
     background: var(--light-color, #f8f9fa);
     border-radius: 10px;
-    padding: 1.25rem;
+    padding: 1rem;
     border: 1px solid var(--border-color, #e0e0e0);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
 }
 
 .review-card-preview:hover {
@@ -1358,13 +1361,14 @@ body.has-global-announcement:has(.course-details-page) {
 .review-card-preview .review-header {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
+    gap: 0.625rem;
+    margin-bottom: 0.625rem;
+    flex-shrink: 0;
 }
 
 .review-card-preview .review-avatar {
-    width: 45px !important;
-    height: 45px !important;
+    width: 40px !important;
+    height: 40px !important;
     border-radius: 50% !important;
     overflow: hidden !important;
     flex-shrink: 0;
@@ -1387,8 +1391,12 @@ body.has-global-announcement:has(.course-details-page) {
 .review-card-preview .review-author-name {
     font-weight: 600;
     color: var(--text-color);
-    margin-bottom: 0.25rem;
-    font-size: 0.9rem;
+    margin-bottom: 0.2rem;
+    font-size: 0.85rem;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .review-card-preview .review-date {
@@ -1398,9 +1406,14 @@ body.has-global-announcement:has(.course-details-page) {
 
 .review-card-preview .review-comment-preview {
     color: var(--text-color);
-    line-height: 1.5;
-    font-size: 0.85rem;
+    line-height: 1.4;
+    font-size: 0.8125rem;
     flex: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    max-height: 4.5em;
 }
 
 /* Horizontal Reviews Scroll */
@@ -2664,9 +2677,11 @@ button.mobile-price-slider__btn--download i,
     }
     
     .review-card-preview {
-        min-width: 220px !important;
-        max-width: 280px !important;
-        padding: 1.125rem !important;
+        width: 240px !important;
+        min-width: 240px !important;
+        max-width: 240px !important;
+        max-height: 180px !important;
+        padding: 0.875rem !important;
     }
     
     .review-card-horizontal {
@@ -2958,9 +2973,11 @@ button.mobile-price-slider__btn--download i,
     }
     
     .review-card-preview {
-        min-width: 280px !important;
-        max-width: 85vw !important;
-        padding: 1rem !important;
+        width: 240px !important;
+        min-width: 240px !important;
+        max-width: 240px !important;
+        max-height: 180px !important;
+        padding: 0.875rem !important;
     }
     
     .review-card-horizontal {
@@ -2978,8 +2995,8 @@ button.mobile-price-slider__btn--download i,
     }
     
     .review-card-preview .review-header {
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
+        gap: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
     }
     
     .review-card-horizontal .review-header {
@@ -2988,8 +3005,8 @@ button.mobile-price-slider__btn--download i,
     }
     
     .review-card-preview .review-avatar {
-        width: 40px !important;
-        height: 40px !important;
+        width: 36px !important;
+        height: 36px !important;
     }
     
     .review-card-horizontal .review-avatar {
@@ -2998,7 +3015,7 @@ button.mobile-price-slider__btn--download i,
     }
     
     .review-card-preview .review-author-name {
-        font-size: 0.85rem !important;
+        font-size: 0.8125rem !important;
     }
     
     .review-card-horizontal .review-author-name {
@@ -3006,7 +3023,9 @@ button.mobile-price-slider__btn--download i,
     }
     
     .review-card-preview .review-comment-preview {
-        font-size: 0.8rem !important;
+        font-size: 0.75rem !important;
+        -webkit-line-clamp: 3 !important;
+        max-height: 3.5em !important;
     }
     
     .review-card-horizontal .review-comment {
