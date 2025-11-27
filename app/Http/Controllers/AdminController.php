@@ -1211,7 +1211,10 @@ class AdminController extends Controller
     public function createCourse()
     {
         $categories = Category::active()->ordered()->get();
-        $instructors = User::instructors()->get();
+        // Inclure les instructeurs et les administrateurs dans la liste
+        $instructors = User::whereIn('role', ['instructor', 'admin', 'super_user'])
+            ->orderBy('name')
+            ->get();
         $baseCurrency = Setting::getBaseCurrency();
         return view('admin.courses.create', compact('categories', 'instructors', 'baseCurrency'));
     }
@@ -1513,7 +1516,10 @@ class AdminController extends Controller
     public function editCourse(Course $course)
     {
         $categories = Category::active()->ordered()->get();
-        $instructors = User::instructors()->get();
+        // Inclure les instructeurs et les administrateurs dans la liste
+        $instructors = User::whereIn('role', ['instructor', 'admin', 'super_user'])
+            ->orderBy('name')
+            ->get();
         $baseCurrency = Setting::getBaseCurrency();
         return view('admin.courses.edit', compact('course', 'categories', 'instructors', 'baseCurrency'));
     }

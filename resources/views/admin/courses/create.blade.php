@@ -58,7 +58,12 @@
                                     <option value="">Sélectionner un instructeur</option>
                                     @foreach($instructors as $instructor)
                                         <option value="{{ $instructor->id }}" {{ old('instructor_id') == $instructor->id ? 'selected' : '' }}>
-                                            {{ $instructor->name }}
+                                            {{ $instructor->name }} 
+                                            @if($instructor->role === 'admin' || $instructor->role === 'super_user')
+                                                ({{ $instructor->role === 'super_user' ? 'Super Admin' : 'Admin' }})
+                                            @else
+                                                (Formateur)
+                                            @endif
                                         </option>
                                     @endforeach
                                 </select>
