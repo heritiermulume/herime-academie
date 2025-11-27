@@ -1220,6 +1220,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
+            'short_description' => 'nullable|string|max:500',
             'description' => 'required|string',
             'instructor_id' => 'required|exists:users,id',
             'category_id' => 'required|exists:categories,id',
@@ -1289,7 +1290,7 @@ class AdminController extends Controller
         try {
             // Créer le cours
             $courseData = $request->only([
-                'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
+                'title', 'short_description', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
                 'sale_start_at', 'sale_end_at',
                 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
@@ -1297,6 +1298,7 @@ class AdminController extends Controller
                 'external_payment_url', 'external_payment_text'
             ]);
 
+            $courseData['short_description'] = $this->normalizeNullableString($courseData['short_description'] ?? null);
             $courseData['video_preview'] = $this->normalizeNullableString($courseData['video_preview'] ?? null);
             $courseData['meta_description'] = $this->normalizeNullableString($courseData['meta_description'] ?? null);
             $courseData['meta_keywords'] = $this->normalizeCommaSeparatedString($courseData['meta_keywords'] ?? null);
@@ -1520,6 +1522,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
+            'short_description' => 'nullable|string|max:500',
             'description' => 'required|string',
             'instructor_id' => 'required|exists:users,id',
             'category_id' => 'required|exists:categories,id',
@@ -1578,7 +1581,7 @@ class AdminController extends Controller
 
         try {
             $data = $request->only([
-                'title', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
+                'title', 'short_description', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
                 'sale_start_at', 'sale_end_at',
                 'use_external_payment', 'external_payment_url', 'external_payment_text',
                 'level', 'language',
@@ -1586,6 +1589,7 @@ class AdminController extends Controller
                 'video_preview_youtube_id', 'video_preview_is_unlisted'
             ]);
 
+            $data['short_description'] = $this->normalizeNullableString($data['short_description'] ?? null);
             $data['video_preview'] = $this->normalizeNullableString($data['video_preview'] ?? null);
             $data['meta_description'] = $this->normalizeNullableString($data['meta_description'] ?? null);
             $data['meta_keywords'] = $this->normalizeCommaSeparatedString($data['meta_keywords'] ?? null);

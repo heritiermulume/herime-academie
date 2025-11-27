@@ -1534,6 +1534,43 @@ body.has-global-announcement:has(.course-details-page) {
     margin-top: 0.5rem;
 }
 
+/* Compact Review Form Styles */
+.content-card:has(#courseReviewForm) {
+    padding: 1rem;
+}
+
+.content-card:has(#courseReviewForm) .section-title-modern {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+}
+
+#courseReviewForm {
+    padding: 0;
+}
+
+#courseReviewForm .form-label {
+    margin-bottom: 0.75rem;
+}
+
+#courseReviewForm .mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+#courseReviewForm .mb-4 {
+    margin-bottom: 1.25rem !important;
+}
+
+#courseReviewForm .btn {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+}
+
+#courseReviewForm .btn-sm {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.75rem;
+}
+
 /* Sidebar */
 .course-sidebar {
     position: sticky;
@@ -2607,40 +2644,28 @@ button.mobile-price-slider__btn--download i,
         font-size: 1.125rem !important;
     }
     
-    /* Styles responsives pour la section "Tous les avis des étudiants" sur tablettes */
-    #all-reviews .d-flex.justify-content-between.align-items-center {
-        flex-wrap: wrap;
-        gap: 1rem;
+    /* Styles pour les boutons d'avis sur tablettes - forcer la taille */
+    #courseReviewForm .d-flex.gap-2 {
+        flex-wrap: nowrap !important;
     }
     
-    /* Styles pour les boutons d'avis sur tablettes - masquer le texte, garder les icônes */
     #courseReviewForm .d-flex.gap-2 .btn {
-        min-width: auto;
-        padding: 0.5rem 0.75rem;
-        font-size: 0;
-        line-height: 1;
-        position: relative;
-        text-indent: -9999px;
-        overflow: hidden;
-        white-space: nowrap;
+        width: auto !important;
+        min-width: auto !important;
+        flex: 0 0 auto !important;
+        padding: 0.5rem 0.875rem !important;
+        font-size: 0.875rem !important;
+        white-space: nowrap !important;
     }
     
-    #courseReviewForm .d-flex.gap-2 .btn i {
-        margin-right: 0 !important;
-        margin-left: 0 !important;
-        font-size: 1rem;
-        display: inline-block;
-        line-height: 1;
-        text-indent: 0;
-    }
-    
-    #courseReviewForm .d-flex.gap-2 .btn:not(:only-child) {
-        flex: 0 0 auto;
+    #courseReviewForm .d-flex.gap-2 .btn-sm {
+        padding: 0.4375rem 0.75rem !important;
+        font-size: 0.8125rem !important;
     }
     
     .review-card-preview {
-        min-width: 250px !important;
-        max-width: 100% !important;
+        min-width: 220px !important;
+        max-width: 280px !important;
         padding: 1.125rem !important;
     }
     
@@ -2898,46 +2923,43 @@ button.mobile-price-slider__btn--download i,
         justify-content: center;
     }
     
-    /* Styles responsives pour la section "Tous les avis des étudiants" */
-    #all-reviews .d-flex.justify-content-between.align-items-center {
-        flex-direction: column;
-        align-items: flex-start !important;
-        gap: 1rem;
+    /* Styles pour les boutons d'avis sur mobile - forcer la taille */
+    #courseReviewForm .d-flex.gap-2 {
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
     }
     
-    #all-reviews .rating-summary {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    /* Styles pour les boutons d'avis sur mobile - masquer le texte, garder les icônes */
     #courseReviewForm .d-flex.gap-2 .btn {
-        min-width: auto;
-        padding: 0.5rem 0.75rem;
-        font-size: 0;
-        line-height: 1;
-        position: relative;
-        text-indent: -9999px;
-        overflow: hidden;
-        white-space: nowrap;
+        width: auto !important;
+        min-width: auto !important;
+        max-width: none !important;
+        flex: 0 0 auto !important;
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.8125rem !important;
+        line-height: 1.5 !important;
+        white-space: nowrap !important;
     }
     
     #courseReviewForm .d-flex.gap-2 .btn i {
-        margin-right: 0 !important;
+        margin-right: 0.375rem !important;
         margin-left: 0 !important;
-        font-size: 1rem;
-        display: inline-block;
-        line-height: 1;
-        text-indent: 0;
+        font-size: 0.875rem !important;
+        display: inline-block !important;
     }
     
-    #courseReviewForm .d-flex.gap-2 .btn:not(:only-child) {
-        flex: 0 0 auto;
+    #courseReviewForm .d-flex.gap-2 .btn-sm {
+        padding: 0.375rem 0.625rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    #courseReviewForm .d-flex.gap-2 .btn-sm i {
+        margin-right: 0.25rem !important;
+        font-size: 0.8125rem !important;
     }
     
     .review-card-preview {
-        min-width: calc(100vw - 3rem) !important;
-        max-width: 100% !important;
+        min-width: 280px !important;
+        max-width: 85vw !important;
         padding: 1rem !important;
     }
     
@@ -3344,42 +3366,43 @@ button.mobile-price-slider__btn--download i,
                     <form id="courseReviewForm" action="{{ route('courses.review.store', $course->slug) }}" method="POST">
                         @csrf
                         
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold mb-3">Votre note</label>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold mb-2" style="font-size: 0.9375rem;">Votre note</label>
                             <div class="rating-input-wrapper">
                                 <div class="rating-stars-input" data-rating="{{ $hasUserReview ? $userReview->rating : 0 }}">
                                     @for($i = 1; $i <= 5; $i++)
                                     <i class="fas fa-star rating-star {{ $hasUserReview && $i <= $userReview->rating ? 'active' : '' }}" 
                                        data-value="{{ $i }}"
-                                       style="font-size: 2rem; color: #ddd; cursor: pointer; transition: all 0.2s; margin-right: 0.5rem;"></i>
+                                       style="font-size: 1.5rem; color: #ddd; cursor: pointer; transition: all 0.2s; margin-right: 0.375rem;"></i>
                                     @endfor
                                 </div>
                                 <input type="hidden" name="rating" id="ratingInput" value="{{ $hasUserReview ? $userReview->rating : 0 }}" required>
-                                <div class="rating-value-text mt-2 text-muted">
+                                <div class="rating-value-text mt-2 text-muted" style="font-size: 0.8125rem;">
                                     <span id="ratingText">{{ $hasUserReview ? $userReview->rating . ' étoile' . ($userReview->rating > 1 ? 's' : '') : 'Sélectionnez une note' }}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label for="reviewComment" class="form-label fw-semibold mb-2">Votre avis</label>
+                        <div class="mb-3">
+                            <label for="reviewComment" class="form-label fw-semibold mb-2" style="font-size: 0.9375rem;">Votre avis</label>
                             <textarea class="form-control" 
                                       id="reviewComment" 
                                       name="comment" 
-                                      rows="5" 
+                                      rows="3" 
+                                      style="font-size: 0.9375rem;"
                                       placeholder="Partagez votre expérience avec ce cours...">{{ $hasUserReview ? $userReview->comment : '' }}</textarea>
-                            <div class="form-text">Votre avis aidera d'autres étudiants à prendre une décision.</div>
+                            <div class="form-text" style="font-size: 0.8125rem;">Votre avis aidera d'autres étudiants à prendre une décision.</div>
                         </div>
 
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane me-2"></i>
-                                {{ $hasUserReview ? 'Mettre à jour mon avis' : 'Publier mon avis' }}
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fas fa-paper-plane me-1"></i>
+                                {{ $hasUserReview ? 'Mettre à jour' : 'Publier' }}
                             </button>
                             @if($hasUserReview)
-                            <button type="button" class="btn btn-outline-danger" id="deleteReviewBtn">
-                                <i class="fas fa-trash me-2"></i>
-                                Supprimer mon avis
+                            <button type="button" class="btn btn-outline-danger btn-sm" id="deleteReviewBtn">
+                                <i class="fas fa-trash me-1"></i>
+                                Supprimer
                             </button>
                             @endif
                         </div>
@@ -3414,9 +3437,9 @@ button.mobile-price-slider__btn--download i,
                             <i class="fas fa-comments me-2"></i>
                             Avis récents
                         </h3>
-                        <a href="{{ route('courses.reviews', $course->slug) }}" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-eye me-1"></i>
-                            Voir tous les avis ({{ $approvedReviews->count() }})
+                        <a href="{{ route('courses.reviews', $course->slug) }}" class="btn btn-outline-primary" style="font-size: 0.75rem; padding: 0.25rem 0.625rem; line-height: 1.4;">
+                            <i class="fas fa-eye me-1" style="font-size: 0.6875rem;"></i>
+                            Voir tous ({{ $approvedReviews->count() }})
                         </a>
                     </div>
                     <div class="reviews-preview-horizontal">
@@ -3456,67 +3479,6 @@ button.mobile-price-slider__btn--download i,
                 </div>
                 @endif
 
-                <!-- All Reviews Section -->
-                @if($approvedReviews->count() > 0)
-                <div class="content-card" id="all-reviews">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h2 class="section-title-modern mb-0">
-                            <i class="fas fa-star"></i>
-                            Tous les avis des étudiants
-                        </h2>
-                        <div class="rating-summary">
-                            <div class="rating-score">{{ number_format($averageRatingApproved, 1) }}</div>
-                            <div>
-                                <div class="rating-stars">
-                                    @for($i = 1; $i <= 5; $i++)
-                                    @php
-                                        $filledStar = $i <= round($averageRatingApproved, 0);
-                                    @endphp
-                                    <i class="fas fa-star {{ $filledStar ? '' : 'far' }}"></i>
-                                    @endfor
-                                </div>
-                                <div class="rating-count">({{ $approvedReviews->count() }} avis)</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Horizontal Reviews Scroll -->
-                    <div class="reviews-horizontal-scroll">
-                        <div class="reviews-container">
-                            @foreach($approvedReviews as $review)
-                            <div class="review-card-horizontal">
-                                <div class="review-header">
-                                    @if($review->user && $review->user->avatar_url)
-                                        <div class="review-avatar">
-                                            <img src="{{ $review->user->avatar_url }}" 
-                                                 alt="{{ $review->user->name }}">
-                                        </div>
-                                    @else
-                                        <div class="review-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 1rem; font-weight: bold; border-radius: 50%; min-width: 50px; min-height: 50px;">
-                                            {{ strtoupper(substr($review->user->name ?? 'U', 0, 1)) }}
-                                        </div>
-                                    @endif
-                                    <div class="review-author">
-                                        <div class="review-author-name">{{ $review->user->name ?? 'Utilisateur' }}</div>
-                                        <div class="d-flex align-items-center gap-2 mb-2">
-                                            <div class="rating-stars" style="font-size: 0.875rem;">
-                                                @for($i = 1; $i <= 5; $i++)
-                                                <i class="fas fa-star {{ $i <= $review->rating ? '' : 'far' }}"></i>
-                                                @endfor
-                                            </div>
-                                        </div>
-                                        <div class="review-date">{{ $review->created_at->format('d/m/Y') }}</div>
-                                    </div>
-                                </div>
-                                @if($review->comment)
-                                <div class="review-comment">{{ Str::limit($review->comment, 200) }}</div>
-                                @endif
-                            </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-                @endif
 
                 <!-- Related Courses -->
                 @if($relatedCourses->count() > 0)

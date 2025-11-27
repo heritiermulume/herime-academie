@@ -162,6 +162,19 @@
                             </div>
                             
                             <div class="col-12">
+                                <label for="short_description" class="form-label fw-bold">Résumé</label>
+                                <textarea class="form-control @error('short_description') is-invalid @enderror" 
+                                          id="short_description" 
+                                          name="short_description" 
+                                          rows="3"
+                                          placeholder="Une introduction concise affichée dans la liste des cours">{{ old('short_description', $course->short_description) }}</textarea>
+                                <small class="form-text text-muted">Une introduction courte qui sera visible dans les listes de cours</small>
+                                @error('short_description')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            
+                            <div class="col-12">
                                 <label for="description" class="form-label fw-bold">Description <span class="text-danger">*</span></label>
                                 <textarea class="form-control @error('description') is-invalid @enderror" 
                                           id="description" 
