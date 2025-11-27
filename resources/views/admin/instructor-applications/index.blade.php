@@ -109,7 +109,11 @@
                                         </span>
                                     </td>
                                     <td>
-                                        @if($application->reviewer)
+                                        @if(isset($application->is_virtual) && $application->is_virtual)
+                                            <span class="admin-chip admin-chip--success">
+                                                <i class="fas fa-user-shield me-1"></i>Nommé par admin
+                                            </span>
+                                        @elseif($application->reviewer)
                                             <span class="admin-chip admin-chip--info">
                                                 <i class="fas fa-user-check me-1"></i>{{ $application->reviewer->name }}
                                             </span>
@@ -118,10 +122,17 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        <a href="{{ route('admin.instructor-applications.show', $application) }}"
-                                           class="btn btn-light btn-sm" title="Voir">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
+                                        @if(isset($application->is_virtual) && $application->is_virtual)
+                                            <a href="{{ route('admin.users.show', $application->user) }}"
+                                               class="btn btn-light btn-sm" title="Voir le formateur">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        @else
+                                            <a href="{{ route('admin.instructor-applications.show', $application) }}"
+                                               class="btn btn-light btn-sm" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

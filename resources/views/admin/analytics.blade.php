@@ -31,9 +31,9 @@ Analyses & Statistiques
                     <p class="admin-stat-card__muted">Transactions enregistrées</p>
                 </div>
                 <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Revenus</p>
+                    <p class="admin-stat-card__label">Revenus totaux</p>
                     <p class="admin-stat-card__value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}</p>
-                    <p class="admin-stat-card__muted">Cumul sur la période</p>
+                    <p class="admin-stat-card__muted">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['internal_revenue'] ?? 0) }} internes + {{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['commissions_revenue'] ?? 0) }} commissions</p>
                 </div>
                 <div class="admin-stat-card">
                     <p class="admin-stat-card__label">Visiteurs uniques</p>
@@ -61,12 +61,43 @@ Analyses & Statistiques
             </h3>
         </div>
         <div class="admin-panel__body">
+            <!-- Graphique des différents revenus -->
+            <div class="row g-4 mb-4">
+                <div class="col-12">
+                    <div class="admin-card shadow-sm h-100">
+                        <div class="admin-card__header">
+                            <h5 class="admin-card__title mb-1">
+                                <i class="fas fa-chart-area me-2"></i>Évolution des différents revenus
+                            </h5>
+                            <div class="d-flex gap-2 flex-wrap align-items-center">
+                                <select id="revenueBreakdownPeriodFilter" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
+                                    <option value="day">Par jour</option>
+                                    <option value="week">Par semaine</option>
+                                    <option value="month" selected>Par mois</option>
+                                    <option value="year">Par année</option>
+                                </select>
+                                <input type="date" id="revenueBreakdownStartDate" class="form-control form-control-sm" style="width: auto; min-width: 140px;">
+                                <input type="date" id="revenueBreakdownEndDate" class="form-control form-control-sm" style="width: auto; min-width: 140px;">
+                                <button type="button" class="form-control form-control-sm d-inline-flex align-items-center justify-content-center gap-2" onclick="updateRevenueBreakdownChart()" title="Filtrer" style="width: auto; min-width: 140px; padding: 0.25rem 0.5rem; cursor: pointer; background-color: #fff; border: 1px solid #ced4da; border-radius: 0.375rem;">
+                                    <i class="fas fa-filter" style="font-size: 0.875rem; color: #495057;"></i>
+                                    <span class="filter-text">Filtrer</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="admin-card__body">
+                            <div class="chart-container">
+                                <canvas id="revenueBreakdownChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="row g-4">
                 <div class="col-12">
                     <div class="admin-card shadow-sm h-100">
                         <div class="admin-card__header">
                             <h5 class="admin-card__title mb-1">
-                                <i class="fas fa-chart-bar me-2"></i>Évolution des revenus
+                                <i class="fas fa-chart-bar me-2"></i>Évolution des revenus totaux
                             </h5>
                             <div class="d-flex gap-2 flex-wrap align-items-center">
                                 <select id="revenuePeriodFilter" class="form-select form-select-sm" style="width: auto; min-width: 120px;">
@@ -596,6 +627,18 @@ const revenueData = @json($revenueByMonth ?? []);
 const revenueByDayData = @json($revenueByDay ?? []);
 const revenueByWeekData = @json($revenueByWeek ?? []);
 const revenueByYearData = @json($revenueByYear ?? []);
+
+// Données pour les revenus détaillés
+const internalRevenueByMonthData = @json($internalRevenueByMonth ?? []);
+const internalRevenueByDayData = @json($internalRevenueByDay ?? []);
+const internalRevenueByWeekData = @json($internalRevenueByWeek ?? []);
+const internalRevenueByYearData = @json($internalRevenueByYear ?? []);
+
+const commissionsByMonthData = @json($commissionsByMonth ?? []);
+const commissionsByDayData = @json($commissionsByDay ?? []);
+const commissionsByWeekData = @json($commissionsByWeek ?? []);
+const commissionsByYearData = @json($commissionsByYear ?? []);
+
 const revenueByCategoryData = @json($revenueByCategory ?? []);
 const revenueByCourseData = @json($revenueByCourse ?? []);
 const revenueByInstructorData = @json($revenueByInstructor ?? []);
@@ -603,6 +646,7 @@ const userGrowthData = @json($userGrowth ?? []);
 
 // Variables globales pour les graphiques
 let revenueChartInstance = null;
+let revenueBreakdownChartInstance = null;
 let revenueByCategoryChartInstance = null;
 let revenueByCourseChartInstance = null;
 let revenueByInstructorChartInstance = null;
@@ -768,7 +812,178 @@ function getRevenueDataByPeriod(period, startDate, endDate) {
     return { data, labels };
 }
 
-// Initialiser les dates par défaut et le graphique de revenus
+// Fonction pour obtenir les données de revenus détaillés par période
+function getRevenueBreakdownDataByPeriod(period, startDate, endDate) {
+    let internalData = [];
+    let commissionsData = [];
+    let allKeys = new Set();
+    
+    switch(period) {
+        case 'day':
+            internalData = [...internalRevenueByDayData];
+            commissionsData = [...commissionsByDayData];
+            if (startDate && endDate) {
+                internalData = internalData.filter(item => {
+                    const dateValue = item.date || '';
+                    return dateValue >= startDate && dateValue <= endDate;
+                });
+                commissionsData = commissionsData.filter(item => {
+                    const dateValue = item.date || '';
+                    return dateValue >= startDate && dateValue <= endDate;
+                });
+            }
+            internalData.forEach(item => allKeys.add(item.date || ''));
+            commissionsData.forEach(item => allKeys.add(item.date || ''));
+            break;
+        case 'week':
+            internalData = [...internalRevenueByWeekData];
+            commissionsData = [...commissionsByWeekData];
+            internalData.forEach(item => allKeys.add(item.week || ''));
+            commissionsData.forEach(item => allKeys.add(item.week || ''));
+            break;
+        case 'month':
+            internalData = [...internalRevenueByMonthData];
+            commissionsData = [...commissionsByMonthData];
+            if (startDate && endDate) {
+                internalData = internalData.filter(item => {
+                    const monthValue = item.month || '';
+                    return monthValue >= startDate.substring(0, 7) && monthValue <= endDate.substring(0, 7);
+                });
+                commissionsData = commissionsData.filter(item => {
+                    const monthValue = item.month || '';
+                    return monthValue >= startDate.substring(0, 7) && monthValue <= endDate.substring(0, 7);
+                });
+            }
+            internalData.forEach(item => allKeys.add(item.month || ''));
+            commissionsData.forEach(item => allKeys.add(item.month || ''));
+            break;
+        case 'year':
+            internalData = [...internalRevenueByYearData];
+            commissionsData = [...commissionsByYearData];
+            if (startDate && endDate) {
+                internalData = internalData.filter(item => {
+                    const yearValue = item.year || '';
+                    return yearValue >= startDate.substring(0, 4) && yearValue <= endDate.substring(0, 4);
+                });
+                commissionsData = commissionsData.filter(item => {
+                    const yearValue = item.year || '';
+                    return yearValue >= startDate.substring(0, 4) && yearValue <= endDate.substring(0, 4);
+                });
+            }
+            internalData.forEach(item => allKeys.add(item.year || ''));
+            commissionsData.forEach(item => allKeys.add(item.year || ''));
+            break;
+    }
+    
+    // Trier les clés
+    const sortedKeys = Array.from(allKeys).sort();
+    
+    // Créer des maps pour faciliter la recherche
+    const internalMap = new Map();
+    internalData.forEach(item => {
+        const key = item.date || item.week || item.month || item.year || '';
+        internalMap.set(key, parseFloat(item.revenue || 0));
+    });
+    
+    const commissionsMap = new Map();
+    commissionsData.forEach(item => {
+        const key = item.date || item.week || item.month || item.year || '';
+        commissionsMap.set(key, parseFloat(item.revenue || 0));
+    });
+    
+    // Créer les labels et valeurs
+    const labels = sortedKeys.map(key => {
+        if (period === 'day') return formatDayLabel(key);
+        if (period === 'week') return formatWeekLabel(key);
+        if (period === 'month') return formatMonthLabel(key);
+        if (period === 'year') return formatYearLabel(key);
+        return key;
+    });
+    
+    const internalValues = sortedKeys.map(key => internalMap.get(key) || 0);
+    const commissionsValues = sortedKeys.map(key => commissionsMap.get(key) || 0);
+    const totalValues = sortedKeys.map(key => (internalMap.get(key) || 0) + (commissionsMap.get(key) || 0));
+    
+    return { labels, internalValues, commissionsValues, totalValues };
+}
+
+// Fonction pour mettre à jour le graphique de décomposition des revenus
+function updateRevenueBreakdownChart() {
+    const period = document.getElementById('revenueBreakdownPeriodFilter').value;
+    const startDate = document.getElementById('revenueBreakdownStartDate').value;
+    const endDate = document.getElementById('revenueBreakdownEndDate').value;
+    
+    const { labels, internalValues, commissionsValues, totalValues } = getRevenueBreakdownDataByPeriod(period, startDate, endDate);
+    
+    const ctx = document.getElementById('revenueBreakdownChart');
+    
+    if (revenueBreakdownChartInstance) {
+        revenueBreakdownChartInstance.destroy();
+    }
+    
+    revenueBreakdownChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Revenus internes',
+                    data: internalValues,
+                    borderColor: '#003366',
+                    backgroundColor: 'rgba(0, 51, 102, 0.1)',
+                    tension: 0.4,
+                    fill: false
+                },
+                {
+                    label: 'Commissions',
+                    data: commissionsValues,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.4,
+                    fill: false
+                },
+                {
+                    label: 'Revenu total',
+                    data: totalValues,
+                    borderColor: '#ffc107',
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    tension: 0.4,
+                    fill: false,
+                    borderDash: [5, 5]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat('fr-FR', {
+                                style: 'currency',
+                                currency: '{{ $baseCurrency ?? "USD" }}'
+                            }).format(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialiser les dates par défaut et les graphiques de revenus
 document.addEventListener('DOMContentLoaded', function() {
     const endDate = new Date();
     const startDate = new Date();
@@ -776,6 +991,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const startDateInput = document.getElementById('revenueStartDate');
     const endDateInput = document.getElementById('revenueEndDate');
+    const breakdownStartDateInput = document.getElementById('revenueBreakdownStartDate');
+    const breakdownEndDateInput = document.getElementById('revenueBreakdownEndDate');
     
     if (startDateInput) {
         startDateInput.value = startDate.toISOString().split('T')[0];
@@ -783,9 +1000,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (endDateInput) {
         endDateInput.value = endDate.toISOString().split('T')[0];
     }
+    if (breakdownStartDateInput) {
+        breakdownStartDateInput.value = startDate.toISOString().split('T')[0];
+    }
+    if (breakdownEndDateInput) {
+        breakdownEndDateInput.value = endDate.toISOString().split('T')[0];
+    }
     
-    // Initialiser le graphique de revenus avec les données par défaut
+    // Initialiser les graphiques avec les données par défaut
     updateRevenueChart();
+    updateRevenueBreakdownChart();
 });
 
 // Fonction pour mettre à jour le graphique de revenus
@@ -1674,6 +1898,13 @@ function refreshAnalytics() {
     justify-content: center;
 }
 
+/* Premier conteneur de statistiques - 2 colonnes sur desktop */
+@media (min-width: 992px) {
+    .admin-panel--main .admin-stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
 .chart-container canvas {
     max-width: 100%;
     max-height: 100%;
@@ -1804,11 +2035,14 @@ function refreshAnalytics() {
     
     /* Uniformiser tous les combobox de filtres sur mobile */
     #revenuePeriodFilter,
+    #revenueBreakdownPeriodFilter,
     #categoryPeriodFilter,
     #coursePeriodFilter,
     #instructorPeriodFilter,
     #revenueStartDate,
-    #revenueEndDate {
+    #revenueEndDate,
+    #revenueBreakdownStartDate,
+    #revenueBreakdownEndDate {
         min-width: 75px !important;
         max-width: 85px !important;
         font-size: 0.7rem !important;
@@ -1817,6 +2051,7 @@ function refreshAnalytics() {
     }
     
     #revenuePeriodFilter,
+    #revenueBreakdownPeriodFilter,
     #categoryPeriodFilter,
     #coursePeriodFilter,
     #instructorPeriodFilter {
@@ -1825,18 +2060,23 @@ function refreshAnalytics() {
     }
     
     #revenueStartDate,
-    #revenueEndDate {
+    #revenueEndDate,
+    #revenueBreakdownStartDate,
+    #revenueBreakdownEndDate {
         min-width: 80px !important;
         max-width: 90px !important;
     }
     
     /* Uniformiser tous les combobox de filtres sur tablette */
     #revenuePeriodFilter,
+    #revenueBreakdownPeriodFilter,
     #categoryPeriodFilter,
     #coursePeriodFilter,
     #instructorPeriodFilter,
     #revenueStartDate,
-    #revenueEndDate {
+    #revenueEndDate,
+    #revenueBreakdownStartDate,
+    #revenueBreakdownEndDate {
         min-width: 75px !important;
         max-width: 85px !important;
         font-size: 0.7rem !important;
@@ -1845,6 +2085,7 @@ function refreshAnalytics() {
     }
     
     #revenuePeriodFilter,
+    #revenueBreakdownPeriodFilter,
     #categoryPeriodFilter,
     #coursePeriodFilter,
     #instructorPeriodFilter {
@@ -1853,7 +2094,9 @@ function refreshAnalytics() {
     }
     
     #revenueStartDate,
-    #revenueEndDate {
+    #revenueEndDate,
+    #revenueBreakdownStartDate,
+    #revenueBreakdownEndDate {
         min-width: 80px !important;
         max-width: 90px !important;
     }
@@ -2364,6 +2607,67 @@ function refreshAnalytics() {
     background: #f1f5f9;
     font-weight: 600;
     border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.revenue-detail-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.revenue-detail-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.revenue-detail-card__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.revenue-detail-card__content {
+    flex: 1;
+}
+
+.revenue-detail-card__label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin: 0 0 0.25rem 0;
+    font-weight: 500;
+}
+
+.revenue-detail-card__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: #212529;
+}
+
+@media (max-width: 768px) {
+    .revenue-detail-card {
+        padding: 0.75rem;
+    }
+
+    .revenue-detail-card__icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+
+    .revenue-detail-card__value {
+        font-size: 1.25rem;
+    }
 }
 </style>
 @endpush

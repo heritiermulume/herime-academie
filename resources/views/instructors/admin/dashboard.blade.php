@@ -97,6 +97,10 @@
                     <i class="fas fa-chart-pie"></i>
                     <span>Performance des cours</span>
                 </a>
+                <a href="{{ route('instructor.payment-settings') }}" class="dashboard-actions__item">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Configuration de paiement</span>
+                </a>
                 <a href="{{ url('/notifications') }}" class="dashboard-actions__item">
                     <i class="fas fa-envelope-open-text"></i>
                     <span>Centre de notifications</span>

@@ -44,7 +44,7 @@ class ReviewController extends Controller
             $existingReview->update([
                 'rating' => $validated['rating'],
                 'comment' => $validated['comment'] ?? null,
-                'is_approved' => false, // Réapprouver après modification
+                'is_approved' => true, // Approuver automatiquement après modification
             ]);
 
             return redirect()->route('courses.show', $course)
@@ -56,11 +56,11 @@ class ReviewController extends Controller
                 'course_id' => $course->id,
                 'rating' => $validated['rating'],
                 'comment' => $validated['comment'] ?? null,
-                'is_approved' => false, // Nécessite l'approbation de l'admin
+                'is_approved' => true, // Approuver automatiquement
             ]);
 
             return redirect()->route('courses.show', $course)
-                ->with('success', 'Votre avis a été soumis avec succès et sera publié après modération.');
+                ->with('success', 'Votre avis a été publié avec succès.');
         }
     }
 

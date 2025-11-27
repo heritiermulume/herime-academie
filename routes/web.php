@@ -21,6 +21,7 @@ use App\Http\Controllers\LearningController;
 use App\Http\Controllers\YouTubeAccessController;
 use App\Http\Controllers\FilterController;
 use App\Http\Controllers\PawaPayController;
+use App\Http\Controllers\PawaPayPayoutController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\TemporaryUploadController;
 use App\Http\Controllers\Auth\SSOController;
@@ -84,6 +85,7 @@ Route::get('/test-categories-view', function() {
 });
 Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
 Route::get('/courses/{course:slug}', [CourseController::class, 'show'])->name('courses.show');
+Route::get('/courses/{course:slug}/reviews', [CourseController::class, 'reviews'])->name('courses.reviews');
 Route::get('/courses/{course:slug}/preview-data', [CourseController::class, 'previewData'])->name('courses.preview-data');
 Route::get('/courses/{course:slug}/lesson/{lesson}', [CourseController::class, 'lesson'])->name('courses.lesson');
 Route::get('/categories/{category:slug}', [CourseController::class, 'byCategory'])->name('courses.category');
@@ -282,6 +284,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/students', [InstructorController::class, 'students'])->name('students');
         Route::get('/analytics', [InstructorController::class, 'analytics'])->name('analytics');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
+        Route::get('/payment-settings', [InstructorController::class, 'paymentSettings'])->name('payment-settings');
+        Route::post('/payment-settings', [InstructorController::class, 'updatePaymentSettings'])
+            ->middleware('sso.validate')
+            ->name('payment-settings.update');
         
         // Lesson Resources management
         Route::post('/lessons/{lesson}/resources', [App\Http\Controllers\LessonResourceController::class, 'store'])
@@ -488,6 +494,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings', [AdminController::class, 'updateSettings'])
             ->middleware('sso.validate')
             ->name('settings.update');
+        
+        // Instructor payouts management
+        Route::get('/instructor-payouts', [AdminController::class, 'instructorPayouts'])->name('instructor-payouts');
     });
 
     // Profile routes - avec validation SSO pour les modifications
@@ -702,5 +711,19 @@ Route::prefix('pawapay')->name('pawapay.')->group(function () {
     Route::post('/webhook', [PawaPayController::class, 'webhook'])
         ->name('webhook')
         ->withoutMiddleware(['web']);
+});
+
+// pawaPay Payout routes (pour les paiements aux formateurs externes)
+Route::prefix('api/pawapay/payout')->name('pawapay.payout.')->group(function () {
+    // Callback pour les payouts (pas de CSRF car appelé par pawaPay)
+    Route::post('/callback', [PawaPayPayoutController::class, 'callback'])
+        ->name('callback')
+        ->withoutMiddleware(['web']);
+
+    // Vérifier le statut d'un payout (nécessite auth pour l'admin)
+    Route::middleware('auth')->group(function () {
+        Route::get('/status/{payoutId}', [PawaPayPayoutController::class, 'checkStatus'])
+            ->name('status');
+    });
 });
 

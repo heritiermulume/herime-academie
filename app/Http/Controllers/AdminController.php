@@ -16,6 +16,7 @@ use App\Models\Review;
 use App\Models\Setting;
 use App\Models\CourseDownload;
 use App\Models\InstructorApplication;
+use App\Models\InstructorPayout;
 use App\Models\Visitor;
 use App\Traits\DatabaseCompatibility;
 use App\Services\FileUploadService;
@@ -33,9 +34,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -56,6 +58,37 @@ class AdminController extends Controller
 
     public function dashboard()
     {
+        // Calculer les revenus des cours internes (formateurs internes)
+        // IMPORTANT: Exclure explicitement tous les revenus des formateurs externes
+        // Ce sont uniquement les commandes payées pour les cours dont le formateur n'est PAS externe
+        // Un formateur externe est identifié par: is_external_instructor = true
+        $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->where('orders.status', 'paid')
+            ->where(function($query) {
+                // Exclure explicitement les formateurs externes (is_external_instructor = true)
+                // Inclure uniquement les formateurs internes:
+                //   - is_external_instructor = false (formateur interne explicite)
+                //   - is_external_instructor = null (formateur non configuré comme externe = interne par défaut)
+                $query->where(function($q) {
+                    $q->where('users.is_external_instructor', false)
+                      ->orWhereNull('users.is_external_instructor');
+                });
+            })
+            ->sum('order_items.total');
+
+        // Calculer les commissions retenues sur les formateurs externes
+        $commissionsRevenue = InstructorPayout::where('status', 'completed')
+            ->sum('commission_amount');
+
+        // Revenu total = revenus internes + commissions
+        $totalRevenue = $internalRevenue + $commissionsRevenue;
+
+        // Revenus des formateurs externes (montants payés aux formateurs, avant commission)
+        $externalInstructorPayouts = InstructorPayout::where('status', 'completed')
+            ->sum('amount');
+
         // Statistiques générales
         $stats = [
             'total_users' => User::count(),
@@ -66,7 +99,10 @@ class AdminController extends Controller
             'total_orders' => Order::count(),
             'pending_orders' => Order::where('status', 'pending')->count(),
             'paid_orders' => Order::where('status', 'paid')->count(),
-            'total_revenue' => Order::where('status', 'paid')->sum('total'),
+            'total_revenue' => $totalRevenue, // Revenu total (internes + commissions)
+            'internal_revenue' => $internalRevenue, // Revenus des cours internes
+            'commissions_revenue' => $commissionsRevenue, // Commissions retenues
+            'external_payouts' => $externalInstructorPayouts, // Montants payés aux formateurs externes
             'total_enrollments' => Enrollment::count(),
         ];
 
@@ -142,12 +178,41 @@ class AdminController extends Controller
 
     public function analytics()
     {
+        // Calculer les revenus des cours internes (formateurs internes)
+        // IMPORTANT: Exclure explicitement tous les revenus des formateurs externes
+        $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->where('orders.status', 'paid')
+            ->where(function($query) {
+                // Exclure explicitement les formateurs externes (is_external_instructor = true)
+                $query->where(function($q) {
+                    $q->where('users.is_external_instructor', false)
+                      ->orWhereNull('users.is_external_instructor');
+                });
+            })
+            ->sum('order_items.total');
+
+        // Calculer les commissions retenues sur les formateurs externes
+        $commissionsRevenue = InstructorPayout::where('status', 'completed')
+            ->sum('commission_amount');
+
+        // Revenu total = revenus internes + commissions
+        $totalRevenue = $internalRevenue + $commissionsRevenue;
+
+        // Revenus des formateurs externes (montants payés aux formateurs, avant commission)
+        $externalInstructorPayouts = InstructorPayout::where('status', 'completed')
+            ->sum('amount');
+
         // Statistiques générales
         $stats = [
             'total_users' => User::count(),
             'total_courses' => Course::count(),
             'total_orders' => Order::count(),
-            'total_revenue' => Order::where('status', 'paid')->sum('total'),
+            'total_revenue' => $totalRevenue, // Revenu total (internes + commissions)
+            'internal_revenue' => $internalRevenue, // Revenus des cours internes
+            'commissions_revenue' => $commissionsRevenue, // Commissions retenues
+            'external_payouts' => $externalInstructorPayouts, // Montants payés aux formateurs externes
             'total_enrollments' => Enrollment::count(),
             'total_visits' => Visitor::count(), // Total de toutes les visites
             'total_visitors' => Visitor::count(), // Alias pour compatibilité (total des visites)
@@ -158,7 +223,7 @@ class AdminController extends Controller
             'visitors_this_month' => Visitor::thisMonth()->count(),
         ];
 
-        // Revenus par mois (6 derniers mois)
+        // Revenus par mois (6 derniers mois) - TOTAL
         $revenueByMonth = Order::where('status', 'paid')
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(total) as revenue')
             ->where('created_at', '>=', now()->subMonths(6))
@@ -166,12 +231,44 @@ class AdminController extends Controller
             ->orderBy('month')
             ->get()
             ->map(function ($item) {
-                // S'assurer que le mois est au format YYYY-MM
                 $item->month = $item->month ?? '';
                 return $item;
             });
 
-        // Revenus par jour (30 derniers jours)
+        // Revenus internes par mois (6 derniers mois)
+        $internalRevenueByMonth = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->where('orders.status', 'paid')
+            ->where(function($query) {
+                $query->where(function($q) {
+                    $q->where('users.is_external_instructor', false)
+                      ->orWhereNull('users.is_external_instructor');
+                });
+            })
+            ->where('orders.created_at', '>=', now()->subMonths(6))
+            ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y-%m', 'month') . ', SUM(order_items.total) as revenue')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(function ($item) {
+                $item->month = $item->month ?? '';
+                return $item;
+            });
+
+        // Commissions par mois (6 derniers mois)
+        $commissionsByMonth = InstructorPayout::where('status', 'completed')
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(function ($item) {
+                $item->month = $item->month ?? '';
+                return $item;
+            });
+
+        // Revenus par jour (30 derniers jours) - TOTAL
         $revenueByDay = Order::where('status', 'paid')
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(total) as revenue')
             ->where('created_at', '>=', now()->subDays(30))
@@ -183,7 +280,40 @@ class AdminController extends Controller
                 return $item;
             });
 
-        // Revenus par semaine (12 dernières semaines)
+        // Revenus internes par jour (30 derniers jours)
+        $internalRevenueByDay = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->where('orders.status', 'paid')
+            ->where(function($query) {
+                $query->where(function($q) {
+                    $q->where('users.is_external_instructor', false)
+                      ->orWhereNull('users.is_external_instructor');
+                });
+            })
+            ->where('orders.created_at', '>=', now()->subDays(30))
+            ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y-%m-%d', 'date') . ', SUM(order_items.total) as revenue')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->map(function ($item) {
+                $item->date = $item->date ?? '';
+                return $item;
+            });
+
+        // Commissions par jour (30 derniers jours)
+        $commissionsByDay = InstructorPayout::where('status', 'completed')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(commission_amount) as revenue')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->map(function ($item) {
+                $item->date = $item->date ?? '';
+                return $item;
+            });
+
+        // Revenus par semaine (12 dernières semaines) - TOTAL
         $driver = DB::getDriverName();
         if ($driver === 'pgsql') {
             $revenueByWeek = Order::where('status', 'paid')
@@ -200,6 +330,74 @@ class AdminController extends Controller
             $revenueByWeek = Order::where('status', 'paid')
                 ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(total) as revenue')
                 ->where('created_at', '>=', now()->subWeeks(12))
+                ->groupBy('week')
+                ->orderBy('week')
+                ->get()
+                ->map(function ($item) {
+                    $item->week = $item->week ?? '';
+                    return $item;
+                });
+        }
+
+        // Revenus internes par semaine (12 dernières semaines)
+        if ($driver === 'pgsql') {
+            $internalRevenueByWeek = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->join('courses', 'order_items.course_id', '=', 'courses.id')
+                ->join('users', 'courses.instructor_id', '=', 'users.id')
+                ->where('orders.status', 'paid')
+                ->where(function($query) {
+                    $query->where(function($q) {
+                        $q->where('users.is_external_instructor', false)
+                          ->orWhereNull('users.is_external_instructor');
+                    });
+                })
+                ->where('orders.created_at', '>=', now()->subWeeks(12))
+                ->selectRaw("to_char(orders.created_at, 'IYYY-IW') as week, SUM(order_items.total) as revenue")
+                ->groupBy('week')
+                ->orderBy('week')
+                ->get()
+                ->map(function ($item) {
+                    $item->week = $item->week ?? '';
+                    return $item;
+                });
+        } else {
+            $internalRevenueByWeek = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->join('courses', 'order_items.course_id', '=', 'courses.id')
+                ->join('users', 'courses.instructor_id', '=', 'users.id')
+                ->where('orders.status', 'paid')
+                ->where(function($query) {
+                    $query->where(function($q) {
+                        $q->where('users.is_external_instructor', false)
+                          ->orWhereNull('users.is_external_instructor');
+                    });
+                })
+                ->where('orders.created_at', '>=', now()->subWeeks(12))
+                ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y-%u', 'week') . ', SUM(order_items.total) as revenue')
+                ->groupBy('week')
+                ->orderBy('week')
+                ->get()
+                ->map(function ($item) {
+                    $item->week = $item->week ?? '';
+                    return $item;
+                });
+        }
+
+        // Commissions par semaine (12 dernières semaines)
+        if ($driver === 'pgsql') {
+            $commissionsByWeek = InstructorPayout::where('status', 'completed')
+                ->where('created_at', '>=', now()->subWeeks(12))
+                ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(commission_amount) as revenue")
+                ->groupBy('week')
+                ->orderBy('week')
+                ->get()
+                ->map(function ($item) {
+                    $item->week = $item->week ?? '';
+                    return $item;
+                });
+        } else {
+            $commissionsByWeek = InstructorPayout::where('status', 'completed')
+                ->where('created_at', '>=', now()->subWeeks(12))
+                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(commission_amount) as revenue')
                 ->groupBy('week')
                 ->orderBy('week')
                 ->get()
@@ -243,9 +441,40 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
 
-        // Revenus par année (pour le filtre)
+        // Revenus par année (pour le filtre) - TOTAL
         $revenueByYear = Order::where('status', 'paid')
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(total) as revenue')
+            ->groupBy('year')
+            ->orderBy('year')
+            ->get()
+            ->map(function ($item) {
+                $item->year = $item->year ?? '';
+                return $item;
+            });
+
+        // Revenus internes par année
+        $internalRevenueByYear = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->where('orders.status', 'paid')
+            ->where(function($query) {
+                $query->where(function($q) {
+                    $q->where('users.is_external_instructor', false)
+                      ->orWhereNull('users.is_external_instructor');
+                });
+            })
+            ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y', 'year') . ', SUM(order_items.total) as revenue')
+            ->groupBy('year')
+            ->orderBy('year')
+            ->get()
+            ->map(function ($item) {
+                $item->year = $item->year ?? '';
+                return $item;
+            });
+
+        // Commissions par année
+        $commissionsByYear = InstructorPayout::where('status', 'completed')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(commission_amount) as revenue')
             ->groupBy('year')
             ->orderBy('year')
             ->get()
@@ -370,9 +599,17 @@ class AdminController extends Controller
         return view('admin.analytics', compact(
             'stats',
             'revenueByMonth',
+            'internalRevenueByMonth',
+            'commissionsByMonth',
             'revenueByDay',
+            'internalRevenueByDay',
+            'commissionsByDay',
             'revenueByWeek',
+            'internalRevenueByWeek',
+            'commissionsByWeek',
             'revenueByYear',
+            'internalRevenueByYear',
+            'commissionsByYear',
             'revenueByCategory',
             'revenueByCourse',
             'revenueByInstructor',
@@ -589,7 +826,117 @@ class AdminController extends Controller
 
     public function editUser(User $user)
     {
-        return view('admin.users.edit', compact('user'));
+        // Récupérer les données pawaPay (pays et providers)
+        $pawapayData = $this->getPawaPayConfiguration();
+        
+        return view('admin.users.edit', compact('user', 'pawapayData'));
+    }
+
+    /**
+     * Récupérer la configuration pawaPay (pays et providers)
+     * Selon la documentation: https://docs.pawapay.io/v2/docs/payouts
+     * Utilise l'endpoint /v2/active-conf pour récupérer les configurations actives pour les PAYOUTS
+     * Même logique que PawaPayController::activeConf mais avec operationType=PAYOUT
+     */
+    private function getPawaPayConfiguration(): array
+    {
+        try {
+            $baseUrl = rtrim(config('services.pawapay.base_url'), '/');
+            $apiKey = config('services.pawapay.api_key');
+            
+            if (!$apiKey) {
+                Log::warning('pawaPay API key not configured');
+                return ['countries' => [], 'providers' => []];
+            }
+
+            // Utiliser l'endpoint active-conf selon la documentation pawaPay
+            // https://docs.pawapay.io/v2/docs/payouts
+            // IMPORTANT: Utiliser operationType=PAYOUT pour les payouts (pas DEPOSIT)
+            // Utiliser le même format d'authentification que PawaPayController
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ])->get("{$baseUrl}/active-conf", [
+                'operationType' => 'PAYOUT',
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                Log::info('pawaPay configuration retrieved', [
+                    'has_countries' => isset($data['countries']),
+                    'countries_count' => isset($data['countries']) ? count($data['countries']) : 0,
+                ]);
+                
+                // Extraire les pays et providers selon la structure de la réponse
+                $countries = [];
+                $providers = [];
+                
+                if (isset($data['countries']) && is_array($data['countries'])) {
+                    foreach ($data['countries'] as $country) {
+                        $countryCode = $country['country'] ?? '';
+                        $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $countryCode;
+                        
+                        $countries[] = [
+                            'code' => $countryCode,
+                            'name' => $countryName,
+                            'prefix' => $country['prefix'] ?? '',
+                            'flag' => $country['flag'] ?? '',
+                        ];
+                        
+                        // Extraire les providers pour ce pays
+                        if (isset($country['providers']) && is_array($country['providers'])) {
+                            foreach ($country['providers'] as $provider) {
+                                $providerCode = $provider['provider'] ?? '';
+                                $providerName = $provider['displayName'] ?? $provider['name'] ?? $providerCode;
+                                
+                                $providers[] = [
+                                    'code' => $providerCode,
+                                    'name' => $providerName,
+                                    'country' => $countryCode,
+                                    'logo' => $provider['logo'] ?? '',
+                                ];
+                            }
+                        }
+                    }
+                }
+                
+                // Trier les pays par nom
+                usort($countries, function($a, $b) {
+                    return strcmp($a['name'], $b['name']);
+                });
+                
+                // Trier les providers par nom
+                usort($providers, function($a, $b) {
+                    return strcmp($a['name'], $b['name']);
+                });
+                
+                Log::info('pawaPay configuration processed', [
+                    'countries_count' => count($countries),
+                    'providers_count' => count($providers),
+                ]);
+                
+                return [
+                    'countries' => $countries,
+                    'providers' => $providers,
+                ];
+            } else {
+                Log::warning('Échec de la récupération de la configuration pawaPay', [
+                    'status' => $response->status(),
+                    'response' => $response->body(),
+                    'url' => "{$apiUrl}/active-conf",
+                    'operationType' => 'PAYOUT',
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération de la configuration pawaPay', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+        
+        return ['countries' => [], 'providers' => []];
     }
 
     /**
@@ -606,6 +953,10 @@ class AdminController extends Controller
         $request->validate([
             'role' => 'required|in:student,instructor,admin,affiliate,super_user',
             'is_active' => 'boolean',
+            'is_external_instructor' => 'boolean',
+            'pawapay_phone' => 'nullable|string|max:20',
+            'pawapay_provider' => 'nullable|string|max:50',
+            'pawapay_country' => 'nullable|string|size:3',
             // Note: Les autres champs (name, email, avatar) sont gérés par le SSO
         ]);
 
@@ -613,6 +964,10 @@ class AdminController extends Controller
         $user->update([
             'role' => $request->role,
             'is_active' => $request->has('is_active'),
+            'is_external_instructor' => $request->has('is_external_instructor'),
+            'pawapay_phone' => $request->pawapay_phone,
+            'pawapay_provider' => $request->pawapay_provider,
+            'pawapay_country' => $request->pawapay_country,
         ]);
 
             return redirect()->route('admin.users')
@@ -2698,6 +3053,7 @@ class AdminController extends Controller
     {
         $settings = Setting::all()->keyBy('key');
         $baseCurrency = Setting::getBaseCurrency();
+        $commissionPercentage = Setting::get('external_instructor_commission_percentage', 20);
         
         // Liste des devises courantes
         $currencies = [
@@ -2715,7 +3071,7 @@ class AdminController extends Controller
             'ZAR' => 'ZAR - Rand sud-africain',
         ];
         
-        return view('admin.settings.index', compact('baseCurrency', 'currencies', 'settings'));
+        return view('admin.settings.index', compact('baseCurrency', 'currencies', 'settings', 'commissionPercentage'));
     }
 
     /**
@@ -2725,12 +3081,76 @@ class AdminController extends Controller
     {
         $request->validate([
             'base_currency' => 'required|string|size:3|uppercase',
+            'external_instructor_commission_percentage' => 'nullable|numeric|min:0|max:100',
         ]);
 
         Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
+        
+        if ($request->has('external_instructor_commission_percentage')) {
+            Setting::set('external_instructor_commission_percentage', $request->external_instructor_commission_percentage, 'number', 'Pourcentage de commission retenu sur les paiements aux formateurs externes');
+        }
 
         return redirect()->route('admin.settings')
             ->with('success', 'Paramètres mis à jour avec succès.');
+    }
+
+    /**
+     * Afficher la liste des payouts aux formateurs externes
+     */
+    public function instructorPayouts(Request $request)
+    {
+        $query = InstructorPayout::with(['instructor', 'order', 'course']);
+
+        // Filtre par statut
+        if ($request->filled('status')) {
+            $query->where('status', $request->get('status'));
+        }
+
+        // Filtre par formateur
+        if ($request->filled('instructor_id')) {
+            $query->where('instructor_id', $request->get('instructor_id'));
+        }
+
+        // Recherche par payout_id ou order_number
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('payout_id', 'like', "%{$search}%")
+                  ->orWhereHas('order', function($orderQuery) use ($search) {
+                      $orderQuery->where('order_number', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Tri
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        if (in_array($sortBy, ['amount', 'status', 'created_at', 'processed_at'])) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->latest();
+        }
+
+        $payouts = $query->paginate(20)->withQueryString();
+
+        // Statistiques
+        $stats = [
+            'total' => InstructorPayout::count(),
+            'pending' => InstructorPayout::where('status', 'pending')->count(),
+            'processing' => InstructorPayout::where('status', 'processing')->count(),
+            'completed' => InstructorPayout::where('status', 'completed')->count(),
+            'failed' => InstructorPayout::where('status', 'failed')->count(),
+            'total_amount' => InstructorPayout::where('status', 'completed')->sum('amount'),
+            'total_commission' => InstructorPayout::where('status', 'completed')->sum('commission_amount'),
+        ];
+
+        // Liste des formateurs externes pour le filtre
+        $instructors = User::where('is_external_instructor', true)
+            ->where('role', 'instructor')
+            ->get();
+
+        return view('admin.instructor-payouts.index', compact('payouts', 'stats', 'instructors'));
     }
 
     /**
@@ -2773,19 +3193,49 @@ class AdminController extends Controller
      */
     public function instructorApplications(Request $request)
     {
-        $query = InstructorApplication::with(['user', 'reviewer']);
-
-        // Filtre par statut
-        if ($request->filled('status')) {
-            $query->where('status', $request->get('status'));
-        }
+        // Récupérer tous les formateurs (avec ou sans candidature)
+        $instructorsQuery = User::where('role', 'instructor')
+            ->with(['instructorApplication.reviewer']);
 
         // Recherche par nom ou email
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->whereHas('user', function($q) use ($search) {
+            $instructorsQuery->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $allInstructors = $instructorsQuery->get();
+
+        // Créer une collection combinée de candidatures réelles et formateurs sans candidature
+        $combinedApplications = collect();
+
+        foreach ($allInstructors as $instructor) {
+            if ($instructor->instructorApplication) {
+                // Formateur avec candidature - utiliser la candidature réelle
+                $combinedApplications->push($instructor->instructorApplication);
+            } else {
+                // Formateur nommé directement par admin - créer un objet virtuel
+                $virtualApplication = new InstructorApplication();
+                $virtualApplication->id = 'virtual_' . $instructor->id;
+                $virtualApplication->user_id = $instructor->id;
+                $virtualApplication->user = $instructor;
+                $virtualApplication->status = 'approved'; // Les formateurs nommés sont considérés comme approuvés
+                $virtualApplication->created_at = $instructor->created_at;
+                $virtualApplication->reviewed_at = $instructor->created_at;
+                $virtualApplication->reviewed_by = null;
+                $virtualApplication->reviewer = null;
+                $virtualApplication->is_virtual = true; // Marqueur pour identifier les candidatures virtuelles
+                $combinedApplications->push($virtualApplication);
+            }
+        }
+
+        // Filtre par statut
+        if ($request->filled('status')) {
+            $status = $request->get('status');
+            $combinedApplications = $combinedApplications->filter(function($app) use ($status) {
+                return $app->status === $status;
             });
         }
 
@@ -2793,21 +3243,49 @@ class AdminController extends Controller
         $sortBy = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
         
-        if (in_array($sortBy, ['created_at', 'status', 'reviewed_at'])) {
-            $query->orderBy($sortBy, $sortDirection);
-        } else {
-            $query->latest();
-        }
+        $combinedApplications = $combinedApplications->sort(function($a, $b) use ($sortBy, $sortDirection) {
+            $valueA = match($sortBy) {
+                'created_at' => $a->created_at?->timestamp ?? 0,
+                'status' => $a->status ?? '',
+                'reviewed_at' => $a->reviewed_at?->timestamp ?? 0,
+                default => $a->created_at?->timestamp ?? 0,
+            };
+            
+            $valueB = match($sortBy) {
+                'created_at' => $b->created_at?->timestamp ?? 0,
+                'status' => $b->status ?? '',
+                'reviewed_at' => $b->reviewed_at?->timestamp ?? 0,
+                default => $b->created_at?->timestamp ?? 0,
+            };
+            
+            if ($sortDirection === 'asc') {
+                return $valueA <=> $valueB;
+            } else {
+                return $valueB <=> $valueA;
+            }
+        })->values();
 
-        $applications = $query->paginate(20)->withQueryString();
+        // Pagination manuelle
+        $page = $request->get('page', 1);
+        $perPage = 20;
+        $total = $combinedApplications->count();
+        $items = $combinedApplications->slice(($page - 1) * $perPage, $perPage)->values();
+        
+        $applications = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
-        // Statistiques
+        // Statistiques (incluant les formateurs nommés directement)
         $stats = [
-            'total' => InstructorApplication::count(),
-            'pending' => InstructorApplication::where('status', 'pending')->count(),
-            'under_review' => InstructorApplication::where('status', 'under_review')->count(),
-            'approved' => InstructorApplication::where('status', 'approved')->count(),
-            'rejected' => InstructorApplication::where('status', 'rejected')->count(),
+            'total' => $allInstructors->count(),
+            'pending' => $combinedApplications->where('status', 'pending')->count(),
+            'under_review' => $combinedApplications->where('status', 'under_review')->count(),
+            'approved' => $combinedApplications->where('status', 'approved')->count(),
+            'rejected' => $combinedApplications->where('status', 'rejected')->count(),
         ];
 
         return view('admin.instructor-applications.index', compact('applications', 'stats'));

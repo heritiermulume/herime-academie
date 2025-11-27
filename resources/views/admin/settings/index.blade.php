@@ -45,6 +45,27 @@
                                     </div>
                                 </div>
 
+                                <div>
+                                    <label for="external_instructor_commission_percentage" class="form-label fw-semibold">
+                                        Pourcentage de commission (formateurs externes)
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" 
+                                               name="external_instructor_commission_percentage" 
+                                               id="external_instructor_commission_percentage" 
+                                               class="form-control form-control-lg" 
+                                               value="{{ \App\Models\Setting::get('external_instructor_commission_percentage', 20) }}"
+                                               min="0" 
+                                               max="100" 
+                                               step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-text mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Pourcentage retenu sur les paiements aux formateurs externes. Le reste sera envoyé via pawaPay.
+                                    </div>
+                                </div>
+
                                 <div class="alert alert-info mb-0">
                                     <i class="fas fa-lightbulb me-2"></i>
                                     <strong>Note :</strong> Les prix sont désormais stockés et affichés dans la devise de base du site. Lors du paiement, le montant peut être débité dans une autre devise selon l’opérateur sélectionné, avec conversion appliquée depuis la devise de base.

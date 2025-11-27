@@ -39,6 +39,10 @@ class User extends Authenticatable
         'sso_id',
         'sso_provider',
         'sso_metadata',
+        'is_external_instructor',
+        'pawapay_phone',
+        'pawapay_provider',
+        'pawapay_country',
     ];
 
     /**
@@ -206,5 +210,15 @@ class User extends Authenticatable
     public function isAffiliate()
     {
         return $this->role === 'affiliate';
+    }
+
+    public function isExternalInstructor()
+    {
+        return $this->is_external_instructor && $this->isInstructor();
+    }
+
+    public function instructorPayouts()
+    {
+        return $this->hasMany(InstructorPayout::class, 'instructor_id');
     }
 }

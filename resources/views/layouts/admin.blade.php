@@ -33,6 +33,12 @@
             'active' => ['admin.orders.*']
         ],
         [
+            'label' => 'Paiements formateurs',
+            'icon' => 'fas fa-money-bill-wave',
+            'route' => 'admin.instructor-payouts',
+            'active' => ['admin.instructor-payouts', 'admin.instructor-payouts.*']
+        ],
+        [
             'label' => 'Utilisateurs',
             'icon' => 'fas fa-users-cog',
             'route' => 'admin.users',

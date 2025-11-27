@@ -9,6 +9,8 @@ use App\Traits\DatabaseCompatibility;
 use App\Traits\CourseStatistics;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class InstructorController extends Controller
 {
@@ -364,5 +366,148 @@ class InstructorController extends Controller
         }
 
         abort(403);
+    }
+
+    /**
+     * Afficher la page de configuration de moyen de règlement
+     */
+    public function paymentSettings()
+    {
+        $instructor = auth()->user();
+        
+        // Récupérer les données pawaPay
+        $pawapayData = $this->getPawaPayConfiguration();
+        
+        return view('instructors.admin.payment-settings', [
+            'instructor' => $instructor,
+            'pawapayData' => $pawapayData,
+        ]);
+    }
+
+    /**
+     * Mettre à jour la configuration de moyen de règlement
+     */
+    public function updatePaymentSettings(Request $request)
+    {
+        $instructor = auth()->user();
+        
+        $request->validate([
+            'is_external_instructor' => 'boolean',
+            'pawapay_phone' => 'nullable|string|max:20',
+            'pawapay_provider' => 'nullable|string|max:50',
+            'pawapay_country' => 'nullable|string|size:3',
+        ]);
+
+        // Mettre à jour les champs pawaPay
+        $instructor->update([
+            'is_external_instructor' => $request->has('is_external_instructor'),
+            'pawapay_phone' => $request->pawapay_phone,
+            'pawapay_provider' => $request->pawapay_provider,
+            'pawapay_country' => $request->pawapay_country,
+        ]);
+
+        return redirect()->route('instructor.payment-settings')
+            ->with('success', 'Configuration de paiement mise à jour avec succès.');
+    }
+
+    /**
+     * Récupérer la configuration pawaPay (pays et providers)
+     */
+    private function getPawaPayConfiguration(): array
+    {
+        $apiUrl = config('services.pawapay.api_url', config('services.pawapay.base_url', 'https://api.sandbox.pawapay.io/v2'));
+        $apiKey = config('services.pawapay.api_key');
+        
+        if (!$apiKey) {
+            Log::error('PAWAPAY_API_KEY non configurée.');
+            return ['countries' => [], 'providers' => []];
+        }
+
+        try {
+            // Utiliser l'endpoint active-conf selon la documentation pawaPay
+            // https://docs.pawapay.io/v2/docs/payouts
+            // IMPORTANT: Utiliser operationType=PAYOUT pour les payouts (pas DEPOSIT)
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+            ])->get("{$apiUrl}/active-conf", [
+                'operationType' => 'PAYOUT',
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                Log::info('pawaPay configuration retrieved', [
+                    'has_countries' => isset($data['countries']),
+                    'countries_count' => isset($data['countries']) ? count($data['countries']) : 0,
+                ]);
+                
+                // Extraire les pays et providers selon la structure de la réponse
+                $countries = [];
+                $providers = [];
+                
+                if (isset($data['countries']) && is_array($data['countries'])) {
+                    foreach ($data['countries'] as $country) {
+                        $countryCode = $country['country'] ?? '';
+                        $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $countryCode;
+                        
+                        $countries[] = [
+                            'code' => $countryCode,
+                            'name' => $countryName,
+                            'prefix' => $country['prefix'] ?? '',
+                            'flag' => $country['flag'] ?? '',
+                        ];
+                        
+                        // Extraire les providers pour ce pays
+                        if (isset($country['providers']) && is_array($country['providers'])) {
+                            foreach ($country['providers'] as $provider) {
+                                $providerCode = $provider['provider'] ?? '';
+                                $providerName = $provider['displayName'] ?? $provider['name'] ?? $providerCode;
+                                
+                                $providers[] = [
+                                    'code' => $providerCode,
+                                    'name' => $providerName,
+                                    'country' => $countryCode,
+                                    'logo' => $provider['logo'] ?? '',
+                                ];
+                            }
+                        }
+                    }
+                }
+                
+                // Trier les pays par nom
+                usort($countries, function($a, $b) {
+                    return strcmp($a['name'], $b['name']);
+                });
+                
+                // Trier les providers par nom
+                usort($providers, function($a, $b) {
+                    return strcmp($a['name'], $b['name']);
+                });
+                
+                Log::info('pawaPay configuration processed', [
+                    'countries_count' => count($countries),
+                    'providers_count' => count($providers),
+                ]);
+                
+                return [
+                    'countries' => $countries,
+                    'providers' => $providers,
+                ];
+            } else {
+                Log::warning('Échec de la récupération de la configuration pawaPay', [
+                    'status' => $response->status(),
+                    'response' => $response->body(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la récupération de la configuration pawaPay', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+        
+        return ['countries' => [], 'providers' => []];
     }
 }

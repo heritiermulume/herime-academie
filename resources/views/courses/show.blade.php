@@ -2596,6 +2596,67 @@ button.mobile-price-slider__btn--download i,
         font-size: 0.875rem;
         width: 18px;
     }
+    
+    /* Styles responsives pour les cartes d'avis sur tablettes */
+    .content-card .d-flex.justify-content-between.align-items-center {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    
+    .content-card .d-flex.justify-content-between.align-items-center h3 {
+        font-size: 1.125rem !important;
+    }
+    
+    /* Styles responsives pour la section "Tous les avis des étudiants" sur tablettes */
+    #all-reviews .d-flex.justify-content-between.align-items-center {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    /* Styles pour les boutons d'avis sur tablettes - masquer le texte, garder les icônes */
+    #courseReviewForm .d-flex.gap-2 .btn {
+        min-width: auto;
+        padding: 0.5rem 0.75rem;
+        font-size: 0;
+        line-height: 1;
+        position: relative;
+        text-indent: -9999px;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    
+    #courseReviewForm .d-flex.gap-2 .btn i {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        font-size: 1rem;
+        display: inline-block;
+        line-height: 1;
+        text-indent: 0;
+    }
+    
+    #courseReviewForm .d-flex.gap-2 .btn:not(:only-child) {
+        flex: 0 0 auto;
+    }
+    
+    .review-card-preview {
+        min-width: 250px !important;
+        max-width: 100% !important;
+        padding: 1.125rem !important;
+    }
+    
+    .review-card-horizontal {
+        min-width: 280px !important;
+        max-width: 100% !important;
+        padding: 1.25rem !important;
+    }
+    
+    .reviews-preview-container {
+        gap: 0.875rem;
+    }
+    
+    .reviews-container {
+        gap: 1rem;
+    }
 }
 
 @media (max-width: 575.98px) {
@@ -2819,6 +2880,116 @@ button.mobile-price-slider__btn--download i,
     .countdown-text span {
         font-size: inherit;
     }
+    
+    /* Styles responsives pour les cartes d'avis */
+    .content-card .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+    
+    .content-card .d-flex.justify-content-between.align-items-center h3 {
+        font-size: 1rem !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .content-card .d-flex.justify-content-between.align-items-center .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Styles responsives pour la section "Tous les avis des étudiants" */
+    #all-reviews .d-flex.justify-content-between.align-items-center {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1rem;
+    }
+    
+    #all-reviews .rating-summary {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    /* Styles pour les boutons d'avis sur mobile - masquer le texte, garder les icônes */
+    #courseReviewForm .d-flex.gap-2 .btn {
+        min-width: auto;
+        padding: 0.5rem 0.75rem;
+        font-size: 0;
+        line-height: 1;
+        position: relative;
+        text-indent: -9999px;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    
+    #courseReviewForm .d-flex.gap-2 .btn i {
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+        font-size: 1rem;
+        display: inline-block;
+        line-height: 1;
+        text-indent: 0;
+    }
+    
+    #courseReviewForm .d-flex.gap-2 .btn:not(:only-child) {
+        flex: 0 0 auto;
+    }
+    
+    .review-card-preview {
+        min-width: calc(100vw - 3rem) !important;
+        max-width: 100% !important;
+        padding: 1rem !important;
+    }
+    
+    .review-card-horizontal {
+        min-width: calc(100vw - 3rem) !important;
+        max-width: 100% !important;
+        padding: 1rem !important;
+    }
+    
+    .reviews-preview-container {
+        gap: 0.75rem;
+    }
+    
+    .reviews-container {
+        gap: 0.75rem;
+    }
+    
+    .review-card-preview .review-header {
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .review-card-horizontal .review-header {
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .review-card-preview .review-avatar {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    .review-card-horizontal .review-avatar {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    .review-card-preview .review-author-name {
+        font-size: 0.85rem !important;
+    }
+    
+    .review-card-horizontal .review-author-name {
+        font-size: 0.85rem !important;
+    }
+    
+    .review-card-preview .review-comment-preview {
+        font-size: 0.8rem !important;
+    }
+    
+    .review-card-horizontal .review-comment {
+        font-size: 0.85rem !important;
+    }
 }
 </style>
 @endpush
@@ -2852,14 +3023,25 @@ button.mobile-price-slider__btn--download i,
     ];
     $displayLanguage = $languageNames[$course->language] ?? $course->language ?? 'Non spécifiée';
     
-    // Charger les reviews approuvées pour les statistiques
-    // Utiliser directement la requête pour calculer la moyenne (plus fiable)
-    $approvedReviewsQuery = $course->reviews()->where('is_approved', true);
-    $averageRatingApproved = round((float)($approvedReviewsQuery->avg('rating') ?? 0), 1);
-    $reviewsCountApproved = $approvedReviewsQuery->count();
+    // Charger les reviews approuvées pour les statistiques et l'affichage
+    // Utiliser directement le modèle Review pour garantir les bonnes données depuis la base de données
     
-    // Charger les reviews pour l'affichage
-    $approvedReviews = $course->reviews ?? collect();
+    // Calculer les statistiques directement depuis la base de données (requêtes séparées)
+    $averageRatingValue = \App\Models\Review::where('course_id', $course->id)
+        ->where('is_approved', true)
+        ->avg('rating');
+    $averageRatingApproved = $averageRatingValue !== null ? round((float)$averageRatingValue, 1) : 0;
+    
+    $reviewsCountApproved = \App\Models\Review::where('course_id', $course->id)
+        ->where('is_approved', true)
+        ->count();
+    
+    // Charger les reviews pour l'affichage avec les relations
+    $approvedReviews = \App\Models\Review::where('course_id', $course->id)
+        ->where('is_approved', true)
+        ->with('user')
+        ->latest()
+        ->get();
 @endphp
 
 <div class="course-details-page">
@@ -3222,10 +3404,7 @@ button.mobile-price-slider__btn--download i,
 
                 <!-- Preview Reviews Section -->
                 @php
-                    // Les reviews sont déjà filtrées par is_approved = true dans le contrôleur
-                    if (!isset($approvedReviews)) {
-                        $approvedReviews = $course->reviews && $course->reviews->count() > 0 ? $course->reviews : collect();
-                    }
+                    // Utiliser $approvedReviews déjà définie en haut du fichier
                     $previewReviews = $approvedReviews && $approvedReviews->count() > 0 ? $approvedReviews->take(3) : collect(); // Afficher seulement 3 avis
                 @endphp
                 @if($approvedReviews->count() > 0)
@@ -3235,7 +3414,7 @@ button.mobile-price-slider__btn--download i,
                             <i class="fas fa-comments me-2"></i>
                             Avis récents
                         </h3>
-                        <a href="#all-reviews" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('all-reviews').scrollIntoView({behavior: 'smooth'}); return false;">
+                        <a href="{{ route('courses.reviews', $course->slug) }}" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-eye me-1"></i>
                             Voir tous les avis ({{ $approvedReviews->count() }})
                         </a>
@@ -3278,14 +3457,7 @@ button.mobile-price-slider__btn--download i,
                 @endif
 
                 <!-- All Reviews Section -->
-                @php
-                    // S'assurer que $approvedReviews est défini (déjà défini plus haut, mais on le recharge au cas où)
-                    if (!isset($approvedReviews)) {
-                        $approvedReviews = $course->reviews && $course->reviews->count() > 0 ? $course->reviews : collect();
-                    }
-                    $averageRating = $approvedReviews->count() > 0 ? round($approvedReviews->avg('rating'), 1) : 0;
-                @endphp
-                @if(isset($approvedReviews) && $approvedReviews->count() > 0)
+                @if($approvedReviews->count() > 0)
                 <div class="content-card" id="all-reviews">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h2 class="section-title-modern mb-0">
@@ -3293,12 +3465,12 @@ button.mobile-price-slider__btn--download i,
                             Tous les avis des étudiants
                         </h2>
                         <div class="rating-summary">
-                            <div class="rating-score">{{ number_format($averageRating, 1) }}</div>
+                            <div class="rating-score">{{ number_format($averageRatingApproved, 1) }}</div>
                             <div>
                                 <div class="rating-stars">
                                     @for($i = 1; $i <= 5; $i++)
                                     @php
-                                        $filledStar = $i <= round($averageRating, 0);
+                                        $filledStar = $i <= round($averageRatingApproved, 0);
                                     @endphp
                                     <i class="fas fa-star {{ $filledStar ? '' : 'far' }}"></i>
                                     @endfor

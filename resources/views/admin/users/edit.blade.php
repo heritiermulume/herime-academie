@@ -68,7 +68,7 @@
                         <div class="admin-form-grid">
                             <div>
                                 <label for="role" class="form-label fw-bold">Rôle <span class="text-danger">*</span></label>
-                                <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required>
+                                <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required onchange="toggleExternalInstructorFields()">
                                     <option value="">Sélectionner un rôle</option>
                                     <option value="student" {{ old('role', $user->role) == 'student' ? 'selected' : '' }}>Étudiant</option>
                                     <option value="instructor" {{ old('role', $user->role) == 'instructor' ? 'selected' : '' }}>Formateur</option>
@@ -85,12 +85,100 @@
                                     <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_active">Utilisateur actif</label>
                                 </div>
-                                <small class="text-muted">Désactivez pour bloquer l’accès à la plateforme.</small>
+                                <small class="text-muted">Désactivez pour bloquer l'accès à la plateforme.</small>
                                 <div class="mt-3">
                                     <span class="admin-chip {{ $user->is_verified ? 'admin-chip--success' : 'admin-chip--warning' }}">
                                         <i class="fas fa-{{ $user->is_verified ? 'check' : 'clock' }} me-1"></i>Email {{ $user->is_verified ? 'vérifié' : 'non vérifié' }}
                                     </span>
                                     <small class="text-muted ms-2">(Géré par Compte Herime)</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="external-instructor-section" class="mt-4 pt-3 border-top" style="display: {{ $user->role === 'instructor' ? 'block' : 'none' }};">
+                            <h6 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>Formateur externe (pawaPay)</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="is_external_instructor" name="is_external_instructor" value="1" 
+                                       {{ old('is_external_instructor', $user->is_external_instructor) ? 'checked' : '' }}
+                                       onchange="toggleExternalInstructorFields()"
+                                       {{ $user->role !== 'instructor' ? 'disabled' : '' }}>
+                                <label class="form-check-label fw-bold" for="is_external_instructor">
+                                    Formateur externe
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mb-3">
+                                Si activé, ce formateur recevra automatiquement ses paiements via pawaPay après chaque vente de cours.
+                            </small>
+                            
+                            <div id="pawapay-fields" style="display: {{ old('is_external_instructor', $user->is_external_instructor) && $user->role === 'instructor' ? 'block' : 'none' }};">
+                                @php
+                                    $countries = $pawapayData['countries'] ?? [];
+                                    $providers = $pawapayData['providers'] ?? [];
+                                    $selectedCountry = old('pawapay_country', $user->pawapay_country);
+                                @endphp
+                                
+                                @if(empty($countries) && empty($providers))
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        Impossible de charger les données pawaPay. Veuillez vérifier la configuration de l'API.
+                                    </div>
+                                @endif
+                                
+                                <div class="admin-form-grid">
+                                    <div>
+                                        <label for="pawapay_country" class="form-label fw-bold">Pays</label>
+                                        <select class="form-select @error('pawapay_country') is-invalid @enderror" 
+                                                id="pawapay_country" 
+                                                name="pawapay_country"
+                                                onchange="updateProviders()">
+                                            <option value="">Sélectionner un pays</option>
+                                            @foreach($countries as $country)
+                                                <option value="{{ $country['code'] }}" 
+                                                        {{ $selectedCountry == $country['code'] ? 'selected' : '' }}>
+                                                    {{ $country['name'] }} ({{ $country['code'] }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('pawapay_country')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <small class="text-muted">Sélectionnez le pays du formateur</small>
+                                    </div>
+                                    <div>
+                                        <label for="pawapay_provider" class="form-label fw-bold">Fournisseur</label>
+                                        <select class="form-select @error('pawapay_provider') is-invalid @enderror" 
+                                                id="pawapay_provider" 
+                                                name="pawapay_provider"
+                                                onchange="updatePhoneField()">
+                                            <option value="">Sélectionner un provider</option>
+                                            @foreach($providers as $provider)
+                                                <option value="{{ $provider['code'] }}" 
+                                                        data-country="{{ $provider['country'] }}"
+                                                        style="display: {{ empty($selectedCountry) || $provider['country'] == $selectedCountry ? 'block' : 'none' }};"
+                                                        {{ old('pawapay_provider', $user->pawapay_provider) == $provider['code'] && (empty($selectedCountry) || $provider['country'] == $selectedCountry) ? 'selected' : '' }}>
+                                                    {{ $provider['name'] }} ({{ $provider['code'] }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('pawapay_provider')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <small class="text-muted">Sélectionnez le provider mobile money</small>
+                                    </div>
+                                    <div>
+                                        <label for="pawapay_phone" class="form-label fw-bold">Numéro de téléphone pawaPay</label>
+                                        <input type="text" 
+                                               class="form-control @error('pawapay_phone') is-invalid @enderror" 
+                                               id="pawapay_phone" 
+                                               name="pawapay_phone" 
+                                               value="{{ old('pawapay_phone', $user->pawapay_phone) }}"
+                                               placeholder="820000000"
+                                               disabled>
+                                        @error('pawapay_phone')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <small class="text-muted">Numéro sans indicatif pays (ex: 820000000 pour la RDC)</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -371,5 +459,186 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
+
+// Afficher/masquer les champs pawaPay et la section complète
+function toggleExternalInstructorFields() {
+    const roleSelect = document.getElementById('role');
+    const role = roleSelect ? roleSelect.value : '';
+    const isExternal = document.getElementById('is_external_instructor');
+    const pawapayFields = document.getElementById('pawapay-fields');
+    const externalInstructorSection = document.getElementById('external-instructor-section');
+    
+    // Si le rôle n'est pas "instructor", masquer toute la section et désactiver la checkbox
+    if (role !== 'instructor') {
+        if (externalInstructorSection) {
+            externalInstructorSection.style.display = 'none';
+        }
+        if (isExternal) {
+            isExternal.disabled = true;
+            isExternal.checked = false;
+        }
+        if (pawapayFields) {
+            pawapayFields.style.display = 'none';
+        }
+        return;
+    }
+    
+    // Si le rôle est "instructor", afficher la section et activer la checkbox
+    if (externalInstructorSection) {
+        externalInstructorSection.style.display = 'block';
+    }
+    if (isExternal) {
+        isExternal.disabled = false;
+    }
+    
+    // Afficher/masquer les champs pawaPay selon l'état de la checkbox
+    if (isExternal && pawapayFields) {
+        if (isExternal.checked) {
+            pawapayFields.style.display = 'block';
+        } else {
+            pawapayFields.style.display = 'none';
+        }
+    }
+}
+
+// Mettre à jour les providers selon le pays sélectionné (comme sur la page de paiement)
+function updateProviders() {
+    const countrySelect = document.getElementById('pawapay_country');
+    const providerSelect = document.getElementById('pawapay_provider');
+    
+    if (!countrySelect || !providerSelect) return;
+    
+    const selectedCountry = countrySelect.value;
+    const currentValue = providerSelect.value;
+    
+    // Récupérer toutes les options de providers
+    const allOptions = Array.from(providerSelect.querySelectorAll('option[data-country]'));
+    
+    // Filtrer et afficher/masquer les options selon le pays sélectionné
+    allOptions.forEach(option => {
+        const optionCountry = option.getAttribute('data-country');
+        
+        if (!selectedCountry || optionCountry === selectedCountry) {
+            // Afficher l'option si elle correspond au pays sélectionné
+            option.style.display = 'block';
+        } else {
+            // Masquer l'option si elle ne correspond pas
+            option.style.display = 'none';
+            // Désélectionner si elle était sélectionnée
+            if (option.selected) {
+                option.selected = false;
+            }
+        }
+    });
+    
+    // Si le provider actuellement sélectionné ne correspond pas au nouveau pays, le réinitialiser
+    if (currentValue) {
+        const selectedOption = providerSelect.querySelector(`option[value="${currentValue}"]`);
+        if (selectedOption && selectedOption.style.display === 'none') {
+            providerSelect.value = '';
+            // Effacer aussi le numéro si le provider est réinitialisé
+            const phoneInput = document.getElementById('pawapay_phone');
+            if (phoneInput) {
+                phoneInput.value = '';
+            }
+        }
+    }
+    
+    // Si aucun provider visible, réinitialiser
+    const visibleOptions = allOptions.filter(opt => opt.style.display !== 'none');
+    if (visibleOptions.length === 0) {
+        providerSelect.value = '';
+        // Effacer aussi le numéro si aucun provider n'est disponible
+        const phoneInput = document.getElementById('pawapay_phone');
+        if (phoneInput) {
+            phoneInput.value = '';
+        }
+    }
+    
+    // Mettre à jour l'état des champs
+    updateFieldsState();
+}
+
+// Mettre à jour l'état du champ numéro selon le provider sélectionné
+function updatePhoneField() {
+    updateFieldsState();
+}
+
+// Mettre à jour l'état de tous les champs selon les sélections
+function updateFieldsState() {
+    const countrySelect = document.getElementById('pawapay_country');
+    const providerSelect = document.getElementById('pawapay_provider');
+    const phoneInput = document.getElementById('pawapay_phone');
+    
+    if (!countrySelect || !providerSelect || !phoneInput) return;
+    
+    const hasCountry = countrySelect.value !== '';
+    const hasProvider = providerSelect.value !== '';
+    
+    // Désactiver le champ provider si aucun pays n'est sélectionné
+    const wasProviderDisabled = providerSelect.disabled;
+    providerSelect.disabled = !hasCountry;
+    
+    // Si le provider vient d'être désactivé, effacer sa valeur
+    if (!wasProviderDisabled && providerSelect.disabled) {
+        providerSelect.value = '';
+    }
+    
+    // Désactiver le champ numéro si aucun pays OU aucun provider n'est sélectionné
+    const wasPhoneDisabled = phoneInput.disabled;
+    phoneInput.disabled = !hasCountry || !hasProvider;
+    
+    // Si le numéro vient d'être désactivé, effacer sa valeur
+    if (!wasPhoneDisabled && phoneInput.disabled) {
+        phoneInput.value = '';
+    }
+    
+    // Ajouter un style visuel pour indiquer que le champ est désactivé
+    if (providerSelect.disabled) {
+        providerSelect.classList.add('bg-light');
+        providerSelect.style.cursor = 'not-allowed';
+    } else {
+        providerSelect.classList.remove('bg-light');
+        providerSelect.style.cursor = 'pointer';
+    }
+    
+    if (phoneInput.disabled) {
+        phoneInput.classList.add('bg-light');
+        phoneInput.style.cursor = 'not-allowed';
+    } else {
+        phoneInput.classList.remove('bg-light');
+        phoneInput.style.cursor = 'text';
+    }
+}
+
+// Initialiser au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    toggleExternalInstructorFields();
+    
+    // Initialiser les providers selon le pays sélectionné
+    updateProviders();
+    
+    // Initialiser l'état des champs
+    updateFieldsState();
+    
+    // Écouter les changements de rôle
+    const roleSelect = document.getElementById('role');
+    if (roleSelect) {
+        roleSelect.addEventListener('change', function() {
+            toggleExternalInstructorFields();
+            // Réinitialiser les champs pawaPay si le rôle change
+            const countrySelect = document.getElementById('pawapay_country');
+            const providerSelect = document.getElementById('pawapay_provider');
+            const phoneInput = document.getElementById('pawapay_phone');
+            
+            if (this.value !== 'instructor') {
+                // Si le rôle n'est plus "instructor", effacer tous les champs pawaPay
+                if (countrySelect) countrySelect.value = '';
+                if (providerSelect) providerSelect.value = '';
+                if (phoneInput) phoneInput.value = '';
+            }
+        });
+    }
+});
 </script>
 @endpush

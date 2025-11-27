@@ -34,6 +34,14 @@
             'active' => ['instructor.analytics'],
         ],
         [
+            'label' => 'Configuration de paiement',
+            'label_mobile' => 'Configuration',
+            'icon' => 'fas fa-money-bill-wave',
+            'route' => 'instructor.payment-settings',
+            'url' => url('/instructor/payment-settings'),
+            'active' => ['instructor.payment-settings'],
+        ],
+        [
             'label' => 'Notifications',
             'icon' => 'fas fa-bell',
             'route' => 'instructor.notifications',
@@ -86,9 +94,10 @@
                             }
                         }
                     @endphp
-                    <a href="{{ $item['url'] }}" class="admin-sidebar__link {{ $isActive ? 'is-active' : '' }}">
+                    <a href="{{ $item['url'] }}" class="admin-sidebar__link {{ $isActive ? 'is-active' : '' }}" 
+                       @if(isset($item['label_mobile'])) data-label-desktop="{{ $item['label'] }}" data-label-mobile="{{ $item['label_mobile'] }}" @endif>
                         <i class="{{ $item['icon'] }}"></i>
-                        <span>{{ $item['label'] }}</span>
+                        <span class="admin-sidebar__link-text">{{ $item['label'] }}</span>
                     </a>
                 @endforeach
             </nav>
@@ -237,6 +246,7 @@
         font-weight: 600;
         transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
     }
+    
 
     .admin-sidebar__link i {
         width: 20px;
@@ -896,4 +906,36 @@
         }
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function updateMenuLabels() {
+        const links = document.querySelectorAll('.admin-sidebar__link[data-label-mobile]');
+        const isMobile = window.innerWidth <= 1024;
+        
+        links.forEach(link => {
+            const textSpan = link.querySelector('.admin-sidebar__link-text');
+            if (textSpan) {
+                if (isMobile) {
+                    textSpan.textContent = link.getAttribute('data-label-mobile');
+                } else {
+                    textSpan.textContent = link.getAttribute('data-label-desktop');
+                }
+            }
+        });
+    }
+    
+    // Mettre à jour au chargement
+    updateMenuLabels();
+    
+    // Mettre à jour lors du redimensionnement
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(updateMenuLabels, 100);
+    });
+});
+</script>
 @endpush

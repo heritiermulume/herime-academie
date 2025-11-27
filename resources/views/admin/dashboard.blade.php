@@ -40,7 +40,7 @@
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
             <div class="row g-3 mb-4">
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-lg-6">
             <div class="insight-card shadow-sm">
                 <div class="insight-card__icon bg-primary-subtle text-primary">
                     <i class="fas fa-users"></i>
@@ -54,7 +54,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-lg-6">
             <div class="insight-card shadow-sm">
                 <div class="insight-card__icon bg-success-subtle text-success">
                     <i class="fas fa-graduation-cap"></i>
@@ -68,7 +68,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-lg-6">
             <div class="insight-card shadow-sm">
                 <div class="insight-card__icon bg-warning-subtle text-warning">
                     <i class="fas fa-shopping-basket"></i>
@@ -82,16 +82,16 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-lg-3">
+        <div class="col-12 col-lg-6">
             <div class="insight-card shadow-sm">
                 <div class="insight-card__icon bg-info-subtle text-info">
                     <i class="fas fa-wallet"></i>
                 </div>
                 <div class="insight-card__content">
-                    <p class="insight-card__label">Revenus</p>
+                    <p class="insight-card__label">Revenus totaux</p>
                     <h3 class="insight-card__value">{{ $formatCurrency($stats['total_revenue']) }}</h3>
                     <p class="insight-card__supplement">
-                        Croissance {{ ($growth ?? 0) >= 0 ? '+' : '-' }}{{ number_format(abs($growth ?? 0), 1) }}%
+                        {{ $formatCurrency($stats['internal_revenue']) }} internes + {{ $formatCurrency($stats['commissions_revenue']) }} commissions
                     </p>
                 </div>
             </div>
@@ -132,6 +132,70 @@
                         <div class="admin-card__body">
                             <div class="chart-container chart-container--revenue">
                                 <canvas id="revenueByCategoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4 mt-2">
+                <!-- Détail des revenus -->
+                <div class="col-12">
+                    <div class="admin-card shadow-sm">
+                        <div class="admin-card__header">
+                            <h5 class="admin-card__title">
+                                <i class="fas fa-chart-pie me-2"></i>Détail des revenus
+                            </h5>
+                        </div>
+                        <div class="admin-card__body">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6 col-lg-6">
+                                    <div class="revenue-detail-card">
+                                        <div class="revenue-detail-card__icon bg-primary-subtle text-primary">
+                                            <i class="fas fa-home"></i>
+                                        </div>
+                                        <div class="revenue-detail-card__content">
+                                            <p class="revenue-detail-card__label">Revenus internes</p>
+                                            <h4 class="revenue-detail-card__value">{{ $formatCurrency($stats['internal_revenue']) }}</h4>
+                                            <small class="text-muted">Cours des formateurs internes</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-6">
+                                    <div class="revenue-detail-card">
+                                        <div class="revenue-detail-card__icon bg-success-subtle text-success">
+                                            <i class="fas fa-percentage"></i>
+                                        </div>
+                                        <div class="revenue-detail-card__content">
+                                            <p class="revenue-detail-card__label">Commissions</p>
+                                            <h4 class="revenue-detail-card__value">{{ $formatCurrency($stats['commissions_revenue']) }}</h4>
+                                            <small class="text-muted">Retenues sur formateurs externes</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-6">
+                                    <div class="revenue-detail-card">
+                                        <div class="revenue-detail-card__icon bg-warning-subtle text-warning">
+                                            <i class="fas fa-money-bill-wave"></i>
+                                        </div>
+                                        <div class="revenue-detail-card__content">
+                                            <p class="revenue-detail-card__label">Payouts externes</p>
+                                            <h4 class="revenue-detail-card__value">{{ $formatCurrency($stats['external_payouts']) }}</h4>
+                                            <small class="text-muted">Payés aux formateurs externes</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-6">
+                                    <div class="revenue-detail-card">
+                                        <div class="revenue-detail-card__icon bg-info-subtle text-info">
+                                            <i class="fas fa-calculator"></i>
+                                        </div>
+                                        <div class="revenue-detail-card__content">
+                                            <p class="revenue-detail-card__label">Revenu total</p>
+                                            <h4 class="revenue-detail-card__value">{{ $formatCurrency($stats['total_revenue']) }}</h4>
+                                            <small class="text-muted">Internes + Commissions</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -850,6 +914,68 @@
         .table-responsive {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+        }
+    }
+
+    /* Styles pour les cartes de détail des revenus */
+    .revenue-detail-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+
+    .revenue-detail-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .revenue-detail-card__icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .revenue-detail-card__content {
+        flex: 1;
+    }
+
+    .revenue-detail-card__label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin: 0 0 0.25rem 0;
+        font-weight: 500;
+    }
+
+    .revenue-detail-card__value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+        color: #212529;
+    }
+
+    @media (max-width: 768px) {
+        .revenue-detail-card {
+            padding: 0.75rem;
+        }
+
+        .revenue-detail-card__icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+        }
+
+        .revenue-detail-card__value {
+            font-size: 1.25rem;
         }
     }
 </style>

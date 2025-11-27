@@ -287,6 +287,38 @@ class CourseController extends Controller
         return view('courses.category', compact('courses', 'category', 'otherCategories'));
     }
 
+    /**
+     * Afficher tous les avis d'un cours avec pagination
+     */
+    public function reviews(Course $course, Request $request)
+    {
+        // Vérifier que le cours est publié
+        if (!$course->is_published) {
+            abort(404, 'Ce cours n\'est pas disponible.');
+        }
+
+        // Charger les informations de base du cours
+        $course->load(['instructor', 'category']);
+
+        // Charger les avis approuvés avec pagination
+        $reviews = \App\Models\Review::where('course_id', $course->id)
+            ->where('is_approved', true)
+            ->with('user')
+            ->latest()
+            ->paginate(10);
+
+        // Calculer les statistiques des avis
+        $averageRating = round((float)(\App\Models\Review::where('course_id', $course->id)
+            ->where('is_approved', true)
+            ->avg('rating') ?? 0), 1);
+        
+        $totalReviews = \App\Models\Review::where('course_id', $course->id)
+            ->where('is_approved', true)
+            ->count();
+
+        return view('courses.reviews', compact('course', 'reviews', 'averageRating', 'totalReviews'));
+    }
+
     public function create()
     {
         $categories = Category::active()->ordered()->get();

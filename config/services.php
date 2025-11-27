@@ -39,10 +39,13 @@ return [
 
     'pawapay' => [
         'base_url' => env('PAWAPAY_BASE_URL', 'https://api.sandbox.pawapay.io/v2'),
+        'api_url' => env('PAWAPAY_API_URL', 'https://api.sandbox.pawapay.io/v2'),
         'api_key' => env('PAWAPAY_API_KEY'),
+        'api_token' => env('PAWAPAY_API_TOKEN'), // Token pour les payouts
         'webhook_secret' => env('PAWAPAY_WEBHOOK_SECRET'), // Secret pour valider les signatures webhook
         'default_country' => env('PAWAPAY_DEFAULT_COUNTRY', 'COD'),
         'default_currency' => env('PAWAPAY_DEFAULT_CURRENCY', 'CDF'),
+        'callback_url' => env('PAWAPAY_CALLBACK_URL', env('APP_URL') . '/api/pawapay/payout/callback'),
         // Public URLs where the provider can redirect after auth (Wave, etc.)
         'successful_url' => env('PAWAPAY_SUCCESSFUL_URL', env('APP_URL') . '/payments/pawapay/success'),
         'failed_url' => env('PAWAPAY_FAILED_URL', env('APP_URL') . '/payments/pawapay/failed'),
