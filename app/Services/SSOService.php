@@ -73,6 +73,15 @@ class SSOService
                                 $user['name'] = $user['full_name'];
                             }
                             
+                            // Normaliser le bio (peut être dans bio, biography, ou about)
+                            if (!isset($user['bio'])) {
+                                if (isset($user['biography'])) {
+                                    $user['bio'] = $user['biography'];
+                                } elseif (isset($user['about'])) {
+                                    $user['bio'] = $user['about'];
+                                }
+                            }
+                            
                             // Normaliser le rôle (peut être dans role, privilege, ou privileges)
                             if (!isset($user['role'])) {
                                 if (isset($user['privilege'])) {
@@ -136,6 +145,15 @@ class SSOService
                                 $first = $user['first_name'] ?? '';
                                 $last = $user['last_name'] ?? '';
                                 $user['name'] = trim($first . ' ' . $last) ?: null;
+                            }
+                        }
+                        
+                        // Normaliser le bio (peut être dans bio, biography, ou about)
+                        if (!isset($user['bio'])) {
+                            if (isset($user['biography'])) {
+                                $user['bio'] = $user['biography'];
+                            } elseif (isset($user['about'])) {
+                                $user['bio'] = $user['about'];
                             }
                         }
                         
@@ -234,6 +252,8 @@ class SSOService
                 'is_active' => $payload['is_active'] ?? true,
                 // Récupérer l'avatar/photo depuis le SSO
                 'avatar' => $payload['avatar'] ?? $payload['photo'] ?? $payload['picture'] ?? $payload['image'] ?? null,
+                // Récupérer le bio depuis le SSO
+                'bio' => $payload['bio'] ?? $payload['biography'] ?? $payload['about'] ?? null,
             ];
 
             // Vérifier que les données essentielles sont présentes

@@ -81,6 +81,12 @@ class SSOCallbackController extends Controller
                 return redirect()->away($loginUrl);
             }
 
+            // Récupérer le bio depuis SSO
+            $bio = data_get($remoteUser, 'bio') 
+                ?? data_get($remoteUser, 'biography') 
+                ?? data_get($remoteUser, 'about')
+                ?? null;
+
             // Upsert utilisateur local avec le rôle depuis SSO
             $user = User::firstOrCreate(
                 ['email' => $email],
@@ -88,6 +94,7 @@ class SSOCallbackController extends Controller
                     'name' => $name ?: $email,
                     'password' => bcrypt(Str::random(32)),
                     'role' => $role, // Assigner le rôle depuis SSO
+                    'bio' => $bio, // Ajouter le bio depuis SSO
                 ]
             );
             
@@ -106,6 +113,11 @@ class SSOCallbackController extends Controller
                     ?? null;
                 if ($avatar !== null) {
                     $updateData['avatar'] = $avatar;
+                }
+                
+                // Mettre à jour le bio si fourni
+                if ($bio !== null) {
+                    $updateData['bio'] = $bio;
                 }
                 
                 // Mettre à jour is_verified et is_active si fournis
