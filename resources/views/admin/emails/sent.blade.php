@@ -94,6 +94,7 @@
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
+                                <th style="width: 50px; min-width: 50px;"></th>
                                 <th>Destinataire</th>
                                 <th>Sujet</th>
                                 <th>Type</th>
@@ -105,6 +106,21 @@
                         <tbody>
                             @forelse($emails as $email)
                             <tr>
+                                <td class="align-middle" style="width: 50px; min-width: 50px; padding: 0.5rem; vertical-align: middle;">
+                                    @php
+                                        $recipientUser = $email->recipient_user ?? null;
+                                        $avatarUrl = $recipientUser
+                                            ? $recipientUser->avatar_url
+                                            : 'https://ui-avatars.com/api/?name=' . urlencode($email->recipient_name ?? 'N/A') . '&background=003366&color=fff&size=128';
+                                    @endphp
+                                    <div class="email-avatar-container" style="width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; max-width: 40px !important; max-height: 40px !important; border-radius: 50% !important; overflow: hidden !important; display: inline-block !important;">
+                                        <img src="{{ $avatarUrl }}"
+                                             alt="{{ $email->recipient_name ?? 'N/A' }}"
+                                             class="email-avatar"
+                                             style="border-radius: 50% !important; width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important;"
+                                             onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($email->recipient_name ?? 'N/A') }}&background=003366&color=fff&size=128'">
+                                    </div>
+                                </td>
                                 <td>
                                     <strong>{{ $email->recipient_name ?? 'N/A' }}</strong><br>
                                     <small class="text-muted">{{ $email->recipient_email }}</small>

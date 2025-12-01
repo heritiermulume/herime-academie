@@ -417,6 +417,7 @@
                         <table class="table table-hover table-sm">
                             <thead class="table-light">
                                 <tr>
+                                    <th style="width: 50px; min-width: 50px;"></th>
                                     <th>Sujet</th>
                                     <th>Destinataires</th>
                                     <th>Programmé pour</th>
@@ -427,6 +428,22 @@
                             <tbody>
                                 @forelse($pendingScheduledEmails ?? [] as $scheduled)
                                 <tr>
+                                    <td class="align-middle" style="width: 50px; min-width: 50px; padding: 0.5rem; vertical-align: middle;">
+                                        @php
+                                            $creator = $scheduled->created_by_user ?? null;
+                                            $creatorName = $creator?->name ?? ($scheduled->created_by_name ?? 'N/A');
+                                            $avatarUrl = $creator && $creator->avatar_url
+                                                ? $creator->avatar_url
+                                                : 'https://ui-avatars.com/api/?name=' . urlencode($creatorName) . '&background=003366&color=fff&size=128';
+                                        @endphp
+                                        <div class="email-avatar-container" style="width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; max-width: 40px !important; max-height: 40px !important; border-radius: 50% !important; overflow: hidden !important; display: inline-block !important;">
+                                            <img src="{{ $avatarUrl }}"
+                                                 alt="{{ $creatorName }}"
+                                                 class="email-avatar"
+                                                 style="border-radius: 50% !important; width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important;"
+                                                 onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($creatorName) }}&background=003366&color=fff&size=128'">
+                                        </div>
+                                    </td>
                                     <td>
                                         <small><strong>{{ Str::limit($scheduled->subject, 50) }}</strong></small>
                                     </td>
