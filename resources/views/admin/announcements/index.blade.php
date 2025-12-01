@@ -264,12 +264,12 @@
                             <tbody>
                                 @forelse($recentSentEmails ?? [] as $email)
                                 <tr>
-                                    <td class="align-middle" style="width: 50px; min-width: 50px; padding: 0.5rem; vertical-align: middle;">
+                                    <td class="align-middle" style="width: 50px !important; min-width: 50px !important; max-width: 50px !important; padding: 0.5rem; vertical-align: middle;">
                                         @php
                                             $recipientUser = $email->recipient_user ?? null;
                                             $avatarUrl = $recipientUser ? $recipientUser->avatar_url : 'https://ui-avatars.com/api/?name=' . urlencode($email->recipient_name ?? 'N/A') . '&background=003366&color=fff&size=128';
                                         @endphp
-                                        <div class="email-avatar-container" style="border-radius: 50% !important; overflow: hidden !important;">
+                                        <div class="email-avatar-container" style="width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; max-width: 40px !important; max-height: 40px !important; border-radius: 50% !important; overflow: hidden !important; display: inline-block !important;">
                                             <img src="{{ $avatarUrl }}" 
                                                  alt="{{ $email->recipient_name ?? 'N/A' }}" 
                                                  class="email-avatar"
