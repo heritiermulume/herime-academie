@@ -12,7 +12,7 @@
 
 @section('admin-content')
 <div class="admin-panel">
-    <div class="admin-panel__body admin-panel__body--padded">
+    <div class="admin-panel__body">
         <form id="sendEmailForm" method="POST" action="{{ route('admin.announcements.send-email') }}" enctype="multipart/form-data">
             @csrf
 
@@ -140,7 +140,7 @@
             </div>
 
             <!-- Boutons d'action -->
-            <div class="d-flex gap-2 justify-content-end">
+            <div class="d-flex gap-2 justify-content-end action-buttons-container">
                 <a href="{{ route('admin.announcements') }}" class="btn btn-light">Annuler</a>
                 <button type="button" class="btn btn-secondary" id="preview_btn">
                     <i class="fas fa-eye me-2"></i>Aperçu
@@ -150,6 +150,27 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Modal de chargement -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="loadingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <h5 class="mb-2">Envoi en cours...</h5>
+                <p class="text-muted mb-0">Veuillez patienter pendant l'envoi des emails. Cela peut prendre quelques instants.</p>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Ne fermez pas cette fenêtre pendant l'envoi
+                    </small>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -702,10 +723,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Synchroniser le contenu avant la soumission du formulaire
+    // Modal de chargement
+    function showLoadingModal() {
+        const modal = document.getElementById('loadingModal');
+        if (modal) {
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        }
+    }
+    
+    function hideLoadingModal() {
+        const modal = document.getElementById('loadingModal');
+        if (modal) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+        }
+    }
+    
+    // Synchroniser le contenu avant la soumission du formulaire avec AJAX
     const sendEmailForm = document.getElementById('sendEmailForm');
     if (sendEmailForm && quill) {
         sendEmailForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
             // S'assurer que le contenu est synchronisé
             const emailContent = document.getElementById('email_content');
             if (emailContent) {
@@ -714,14 +756,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Valider que le contenu n'est pas vide
             if (!quill.getText().trim() && !quill.root.innerHTML.match(/<img|<iframe/)) {
-                e.preventDefault();
                 alert('Veuillez rédiger un contenu pour votre email.');
                 return false;
             }
             
             const recipientTypeSelect = document.getElementById('recipient_type');
             if (!recipientTypeSelect) {
-                e.preventDefault();
                 alert('Erreur : type de destinataire non défini');
                 return false;
             }
@@ -749,16 +789,62 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (!isValid) {
-                e.preventDefault();
                 return false;
             }
             
-            // Désactiver le bouton pendant l'envoi
+            // Désactiver le bouton et afficher le modal de chargement
             const sendBtn = document.getElementById('send_btn');
             if (sendBtn) {
                 sendBtn.disabled = true;
                 sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Envoi en cours...';
             }
+            
+            // Afficher le modal de chargement
+            showLoadingModal();
+            
+            // Préparer les données du formulaire
+            const formData = new FormData(sendEmailForm);
+            
+            // Envoyer via AJAX
+            fetch(sendEmailForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // Redirection détectée, suivre la redirection
+                    window.location.href = response.url;
+                } else {
+                    return response.text();
+                }
+            })
+            .then(data => {
+                hideLoadingModal();
+                if (data) {
+                    // Si pas de redirection, parser la réponse
+                    try {
+                        const json = JSON.parse(data);
+                        if (json.redirect) {
+                            window.location.href = json.redirect;
+                        }
+                    } catch (e) {
+                        // Si ce n'est pas du JSON, c'est probablement du HTML de redirection
+                        window.location.href = '{{ route("admin.announcements") }}';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                hideLoadingModal();
+                alert('Une erreur est survenue lors de l\'envoi. Veuillez réessayer.');
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Envoyer l\'email';
+                }
+            });
         });
     }
     
@@ -787,6 +873,56 @@ document.addEventListener('DOMContentLoaded', function() {
 #email_content_editor .ql-editor.ql-blank::before {
     color: #6c757d;
     font-style: normal;
+}
+
+/* Ajustement des boutons d'action sur mobile */
+@media (max-width: 767.98px) {
+    .action-buttons-container {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 0.5rem !important;
+    }
+    
+    .action-buttons-container .btn {
+        width: 100% !important;
+        font-size: 0.875rem !important;
+        padding: 0.5rem 0.75rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .action-buttons-container .btn i {
+        font-size: 0.875rem !important;
+    }
+}
+
+/* Ajustement pour très petits écrans */
+@media (max-width: 575.98px) {
+    .action-buttons-container .btn {
+        font-size: 0.8rem !important;
+        padding: 0.45rem 0.6rem !important;
+    }
+    
+    .action-buttons-container .btn i {
+        font-size: 0.8rem !important;
+        margin-right: 0.4rem !important;
+    }
+}
+
+/* Enlever le padding du conteneur */
+.admin-panel__body {
+    padding: 0 !important;
+}
+
+.admin-panel__body > form {
+    padding: 1.5rem;
+}
+
+@media (max-width: 767.98px) {
+    .admin-panel__body > form {
+        padding: 1rem;
+    }
 }
 </style>
 @endpush

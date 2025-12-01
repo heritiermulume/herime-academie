@@ -64,4 +64,10 @@ return [
         'skip_strict_validation' => env('SSO_SKIP_STRICT_VALIDATION', false),
     ],
 
+    'whatsapp' => [
+        'base_url' => env('WHATSAPP_BASE_URL', 'http://localhost:8080'),
+        'instance_name' => env('WHATSAPP_INSTANCE_NAME', 'default'),
+        'api_key' => env('WHATSAPP_API_KEY', ''),
+    ],
+
 ];

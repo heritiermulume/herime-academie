@@ -402,16 +402,18 @@ class PaymentController extends Controller
                 return;
             }
 
-            // Envoyer l'email PaymentReceivedMail directement de manière synchrone (comme CourseEnrolledMail)
+            // Envoyer l'email et WhatsApp en parallèle
             try {
-                Mail::to($user->email)->send(new \App\Mail\PaymentReceivedMail($order));
-                \Log::info("Email PaymentReceivedMail envoyé directement à {$user->email} pour la commande {$order->order_number}", [
+                $mailable = new \App\Mail\PaymentReceivedMail($order);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                \Log::info("Email et WhatsApp PaymentReceivedMail envoyés pour la commande {$order->order_number}", [
                     'order_id' => $order->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                 ]);
             } catch (\Exception $emailException) {
-                \Log::error("Erreur lors de l'envoi direct de l'email PaymentReceivedMail", [
+                \Log::error("Erreur lors de l'envoi de l'email PaymentReceivedMail", [
                     'order_id' => $order->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
@@ -502,7 +504,9 @@ class PaymentController extends Controller
             }
 
             // Envoyer l'email d'échec de manière synchrone (immédiate)
-            Mail::to($order->user->email)->send(new PaymentFailedMail($order, $failureReason));
+            $mailable = new PaymentFailedMail($order, $failureReason);
+            $communicationService = app(\App\Services\CommunicationService::class);
+            $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
 
             \Log::info("Email d'échec de paiement envoyé pour la commande {$order->order_number} à {$order->user->email}");
         } catch (\Exception $e) {

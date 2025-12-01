@@ -270,7 +270,9 @@ class PawaPayController extends Controller
                 // Envoyer l'email d'échec de paiement
                 try {
                     if ($order->user && $order->user->email) {
-                        Mail::to($order->user->email)->send(new PaymentFailedMail($order, $failureReason));
+                        $mailable = new PaymentFailedMail($order, $failureReason);
+                        $communicationService = app(\App\Services\CommunicationService::class);
+                        $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
                         \Log::info("Email d'échec d'initialisation envoyé pour la commande {$order->order_number} à {$order->user->email}");
                     }
                 } catch (\Exception $e) {
@@ -363,7 +365,9 @@ class PawaPayController extends Controller
             // Envoyer l'email d'échec de paiement
             try {
                 if ($order->user && $order->user->email) {
-                    Mail::to($order->user->email)->send(new PaymentFailedMail($order, $failureReason));
+                    $mailable = new PaymentFailedMail($order, $failureReason);
+                    $communicationService = app(\App\Services\CommunicationService::class);
+                    $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
                     \Log::info("Email d'échec technique envoyé pour la commande {$order->order_number} à {$order->user->email}");
                 }
             } catch (\Exception $emailException) {
@@ -601,7 +605,9 @@ class PawaPayController extends Controller
                 // Envoyer l'email d'échec de paiement
                 try {
                     if ($payment->order->user && $payment->order->user->email) {
-                        Mail::to($payment->order->user->email)->send(new PaymentFailedMail($payment->order, $failureReason));
+                        $mailable = new PaymentFailedMail($payment->order, $failureReason);
+                        $communicationService = app(\App\Services\CommunicationService::class);
+                        $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
                         \Log::info("Email d'échec de paiement envoyé pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
                     }
                 } catch (\Exception $e) {
@@ -694,7 +700,9 @@ class PawaPayController extends Controller
                 // Envoyer l'email d'annulation de paiement
                 try {
                     if ($payment->order->user && $payment->order->user->email) {
-                        Mail::to($payment->order->user->email)->send(new PaymentFailedMail($payment->order, $failureReason));
+                        $mailable = new PaymentFailedMail($payment->order, $failureReason);
+                        $communicationService = app(\App\Services\CommunicationService::class);
+                        $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
                         \Log::info("Email d'annulation envoyé pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
                     }
                 } catch (\Exception $e) {
@@ -1007,7 +1015,9 @@ class PawaPayController extends Controller
                         // Envoyer l'email d'échec de paiement
                         try {
                             if ($payment->order->user && $payment->order->user->email) {
-                                Mail::to($payment->order->user->email)->send(new PaymentFailedMail($payment->order, $failureReason));
+                                $mailable = new PaymentFailedMail($payment->order, $failureReason);
+                        $communicationService = app(\App\Services\CommunicationService::class);
+                        $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
                                 \Log::info("Email d'échec envoyé sur redirect pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
                             }
                         } catch (\Exception $e) {
@@ -1097,7 +1107,9 @@ class PawaPayController extends Controller
                 // Envoyer l'email d'échec de paiement (vérifier qu'il n'a pas déjà été envoyé)
                 try {
                     if ($payment->order->user && $payment->order->user->email) {
-                        Mail::to($payment->order->user->email)->send(new PaymentFailedMail($payment->order, $failureReason));
+                        $mailable = new PaymentFailedMail($payment->order, $failureReason);
+                        $communicationService = app(\App\Services\CommunicationService::class);
+                        $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
                         \Log::info("Email d'échec envoyé sur failedRedirect pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
                     }
                 } catch (\Exception $e) {
@@ -1153,16 +1165,18 @@ class PawaPayController extends Controller
                 return;
             }
 
-            // Envoyer l'email PaymentReceivedMail directement de manière synchrone (comme CourseEnrolledMail)
+            // Envoyer l'email et WhatsApp en parallèle
             try {
-                Mail::to($user->email)->send(new \App\Mail\PaymentReceivedMail($order));
-                \Log::info("Email PaymentReceivedMail envoyé directement à {$user->email} pour la commande {$order->order_number}", [
+                $mailable = new \App\Mail\PaymentReceivedMail($order);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                \Log::info("Email et WhatsApp PaymentReceivedMail envoyés pour la commande {$order->order_number}", [
                     'order_id' => $order->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                 ]);
             } catch (\Exception $emailException) {
-                \Log::error("Erreur lors de l'envoi direct de l'email PaymentReceivedMail", [
+                \Log::error("Erreur lors de l'envoi de l'email PaymentReceivedMail", [
                     'order_id' => $order->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
@@ -1192,16 +1206,18 @@ class PawaPayController extends Controller
                 // Ne pas relancer l'exception pour ne pas bloquer le processus
             }
 
-            // Envoyer la facture par email (comme pour les inscriptions)
+            // Envoyer la facture par email et WhatsApp
             try {
-                Mail::to($user->email)->send(new InvoiceMail($order));
-                \Log::info("Email InvoiceMail envoyé directement à {$user->email} pour la commande {$order->order_number}", [
+                $mailable = new InvoiceMail($order);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                \Log::info("Email et WhatsApp InvoiceMail envoyés pour la commande {$order->order_number}", [
                     'order_id' => $order->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                 ]);
             } catch (\Exception $invoiceException) {
-                \Log::error("Erreur lors de l'envoi direct de l'email InvoiceMail", [
+                \Log::error("Erreur lors de l'envoi de l'email InvoiceMail", [
                     'order_id' => $order->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
@@ -1242,7 +1258,9 @@ class PawaPayController extends Controller
             try {
                 if ($order->user && $order->user->email) {
                     $failureReason = 'Annulation automatique après délai d\'attente';
-                    Mail::to($order->user->email)->send(new PaymentFailedMail($order, $failureReason));
+                    $mailable = new PaymentFailedMail($order, $failureReason);
+                    $communicationService = app(\App\Services\CommunicationService::class);
+                    $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
                     \Log::info("Email d'annulation automatique envoyé pour la commande {$order->order_number} à {$order->user->email}");
                 }
             } catch (\Exception $e) {

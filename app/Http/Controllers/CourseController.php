@@ -176,12 +176,14 @@ class CourseController extends Controller
 
     public function show(Course $course)
     {
-        // Vérifier que le cours est publié
-        if (!$course->is_published) {
+        // Vérifier que le cours est publié, sauf si l'utilisateur est l'instructeur du cours
+        $isInstructor = auth()->check() && auth()->user()->hasRole('instructor') && $course->instructor_id === auth()->id();
+        if (!$course->is_published && !$isInstructor) {
             abort(404, 'Ce cours n\'est pas disponible.');
         }
 
         // Charger toutes les relations nécessaires
+        // Pour les instructeurs, charger toutes les sections et leçons même non publiées
         $course->load([
             'instructor' => function($query) {
                 $query->withCount('courses');
@@ -190,11 +192,17 @@ class CourseController extends Controller
                 $query->withCount('enrollments');
             },
             'category',
-            'sections' => function($query) {
-                $query->where('is_published', true)->orderBy('sort_order');
+            'sections' => function($query) use ($isInstructor) {
+                if (!$isInstructor) {
+                    $query->where('is_published', true);
+                }
+                $query->orderBy('sort_order');
             },
-            'sections.lessons' => function($query) {
-                $query->where('is_published', true)->orderBy('sort_order');
+            'sections.lessons' => function($query) use ($isInstructor) {
+                if (!$isInstructor) {
+                    $query->where('is_published', true);
+                }
+                $query->orderBy('sort_order');
             },
             'reviews' => function($query) {
                 $query->where('is_approved', true)->with('user')->latest();
@@ -327,6 +335,14 @@ class CourseController extends Controller
 
     public function store(Request $request)
     {
+        // Log pour debug
+        Log::info('Tentative de création de cours', [
+            'user_id' => auth()->id(),
+            'has_title' => $request->has('title'),
+            'has_category' => $request->has('category_id'),
+            'has_price' => $request->has('price'),
+        ]);
+        
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -338,12 +354,26 @@ class CourseController extends Controller
             'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:5',
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'thumbnail_chunk_path' => 'nullable|string|max:2048',
+            'thumbnail_chunk_name' => 'nullable|string|max:255',
+            'thumbnail_chunk_size' => 'nullable|integer|min:0',
             'video_preview' => 'nullable|file|mimes:mp4,avi,mov|max:10240',
+            'video_preview_file' => 'nullable|file|mimes:mp4,avi,mov,webm,ogg|max:512000',
             'video_preview_path' => 'nullable|string|max:2048',
+            'video_preview_name' => 'nullable|string|max:255',
+            'video_preview_size' => 'nullable|integer|min:0',
             'requirements' => 'nullable|array',
             'what_you_will_learn' => 'nullable|array',
-            'tags' => 'nullable|array',
+            'tags' => 'nullable|string',
+            'meta_description' => 'nullable|string|max:160',
+            'meta_keywords' => 'nullable|string|max:255',
+            'is_downloadable' => 'nullable|boolean',
+            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:1048576',
+            'download_file_chunk_path' => 'nullable|string|max:2048',
+            'download_file_chunk_name' => 'nullable|string|max:255',
+            'download_file_chunk_size' => 'nullable|integer|min:0',
+            'download_file_url' => 'nullable|url|max:1000',
             'sections' => 'nullable|array',
             'sections.*.title' => 'required_with:sections|string|max:255',
             'sections.*.description' => 'nullable|string',
@@ -352,8 +382,10 @@ class CourseController extends Controller
             'sections.*.lessons.*.description' => 'nullable|string',
             'sections.*.lessons.*.type' => 'required_with:sections.*.lessons|in:video,text,quiz,assignment',
             'sections.*.lessons.*.content_url' => 'nullable|string',
-            'sections.*.lessons.*.content_file' => 'nullable|file|mimetypes:video/mp4,video/webm,video/ogg,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/x-rar-compressed,application/x-7z-compressed,application/x-tar,application/gzip|max:1048576',
+            'sections.*.lessons.*.content_file' => 'nullable|file|mimetypes:video/mp4,video/webm,video/ogg,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/x-rar-compressed,application/x-7z-compressed,application/x-tar,application/gzip|max:524288000', // 500MB max
             'sections.*.lessons.*.content_file_path' => 'nullable|string|max:2048',
+            'sections.*.lessons.*.content_file_name' => 'nullable|string|max:255',
+            'sections.*.lessons.*.content_file_size' => 'nullable|integer|min:0',
             'sections.*.lessons.*.content_text' => 'nullable|string',
             'sections.*.lessons.*.duration' => 'nullable|integer|min:0',
             'sections.*.lessons.*.is_preview' => 'boolean',
@@ -382,6 +414,8 @@ class CourseController extends Controller
                 'requirements',
                 'what_you_will_learn',
                 'tags',
+                'meta_description',
+                'meta_keywords',
             ]);
 
             $data['instructor_id'] = $instructorId;
@@ -389,6 +423,9 @@ class CourseController extends Controller
             $data['is_published'] = false;
             $data['is_free'] = false;
             $data['use_external_payment'] = false;
+            $data['is_downloadable'] = $request->boolean('is_downloadable', false);
+            $data['meta_description'] = $request->input('meta_description');
+            $data['meta_keywords'] = $request->input('meta_keywords');
 
             $data['requirements'] = collect($request->input('requirements', []))
                 ->filter(fn($value) => filled($value))
@@ -400,10 +437,17 @@ class CourseController extends Controller
                 ->values()
                 ->all();
 
-            $data['tags'] = collect($request->input('tags', []))
-                ->filter(fn($value) => filled($value))
-                ->values()
-                ->all();
+            // Traiter les tags comme une string séparée par des virgules
+            $tagsString = $request->input('tags', '');
+            if (filled($tagsString)) {
+                $data['tags'] = collect(explode(',', $tagsString))
+                    ->map(fn($tag) => trim($tag))
+                    ->filter(fn($tag) => filled($tag))
+                    ->values()
+                    ->all();
+            } else {
+                $data['tags'] = [];
+            }
 
             $data['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
             $data['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
@@ -422,9 +466,25 @@ class CourseController extends Controller
                     1920
                 );
                 $data['thumbnail'] = $result['path'];
+            } elseif ($request->filled('thumbnail_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('thumbnail_chunk_path'));
+                if ($chunkPath) {
+                    $data['thumbnail'] = $this->fileUploadService->promoteTemporaryFile(
+                        $chunkPath,
+                        'courses/thumbnails'
+                    );
+                }
             }
 
-        if ($request->hasFile('video_preview')) {
+        if ($request->hasFile('video_preview_file')) {
+            $result = $this->fileUploadService->uploadVideo(
+                $request->file('video_preview_file'),
+                'courses/previews',
+                null
+            );
+            $data['video_preview'] = $result['path'];
+        } elseif ($request->hasFile('video_preview')) {
+            // Fallback pour compatibilité
             $result = $this->fileUploadService->uploadVideo(
                 $request->file('video_preview'),
                 'courses/previews',
@@ -440,6 +500,32 @@ class CourseController extends Controller
                 );
             }
         }
+
+            // Gérer le fichier de téléchargement spécifique
+            if ($request->hasFile('download_file_path')) {
+                try {
+                    $result = $this->fileUploadService->uploadDocument(
+                        $request->file('download_file_path'),
+                        'courses/downloads',
+                        null
+                    );
+                    $data['download_file_path'] = $result['path'];
+                } catch (\Exception $e) {
+                    Log::error('Erreur upload download_file_path: ' . $e->getMessage());
+                    throw $e;
+                }
+            } elseif ($request->filled('download_file_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('download_file_chunk_path'));
+                if ($chunkPath) {
+                    $data['download_file_path'] = $this->fileUploadService->promoteTemporaryFile(
+                        $chunkPath,
+                        'courses/downloads'
+                    );
+                }
+            } elseif ($request->filled('download_file_url')) {
+                // Si une URL externe est fournie, l'utiliser
+                $data['download_file_path'] = $request->download_file_url;
+            }
 
             $course = Course::create($data);
 
@@ -521,20 +607,34 @@ class CourseController extends Controller
 
             DB::commit();
 
-            return redirect()->route('instructor.courses.edit', $course)
-                ->with('success', 'Cours créé avec succès. Vous pouvez maintenant finaliser les détails ou publier votre formation.');
+            return redirect()->route('instructor.courses.index')
+                ->with('success', 'Cours créé avec succès.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            
+            Log::error('Erreur de validation lors de la création du cours', [
+                'instructor_id' => auth()->id(),
+                'errors' => $e->errors(),
+                'request_data' => $request->except(['thumbnail', 'video_preview_file', 'sections']),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors());
         } catch (\Throwable $e) {
             DB::rollBack();
 
             Log::error('Erreur lors de la création du cours', [
                 'instructor_id' => auth()->id(),
                 'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['error' => 'Impossible de créer le cours pour le moment. Veuillez réessayer plus tard.']);
+                ->withErrors(['error' => 'Impossible de créer le cours pour le moment. Erreur: ' . $e->getMessage()]);
         }
     }
 
@@ -543,7 +643,11 @@ class CourseController extends Controller
         $this->ensureCanManageCourse($course);
         
         $categories = Category::active()->ordered()->get();
-        $course->load(['sections.lessons']);
+        $course->load(['sections' => function($query) {
+            $query->orderBy('sort_order');
+        }, 'sections.lessons' => function($query) {
+            $query->orderBy('sort_order');
+        }]);
         
         return view('courses.edit', compact('course', 'categories'));
     }

@@ -18,6 +18,11 @@ class LessonNoteController extends Controller
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+        }
+
         $notes = LessonNote::where('user_id', auth()->id())
             ->where('lesson_id', $lesson->id)
             ->orderBy('created_at', 'desc')
@@ -39,6 +44,12 @@ class LessonNoteController extends Controller
             abort(403, 'Accès non autorisé');
         }
 
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return redirect()->route('courses.show', $course)
+                ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
+        }
+
         $notes = LessonNote::where('user_id', auth()->id())
             ->where('lesson_id', $lesson->id)
             ->orderBy('created_at', 'desc')
@@ -56,6 +67,11 @@ class LessonNoteController extends Controller
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+        }
+
         $validated = $request->validate([
             'content' => 'required|string|max:5000',
             'timestamp' => 'nullable|integer|min:0'
@@ -71,7 +87,7 @@ class LessonNoteController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Note créée avec succès',
+            'message' => '✨ Note enregistrée avec succès !',
             'note' => $note
         ], 201);
     }
@@ -88,6 +104,15 @@ class LessonNoteController extends Controller
             abort(403, 'Accès non autorisé');
         }
 
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+            }
+            return redirect()->route('courses.show', $course)
+                ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
+        }
+
         $validated = $request->validate([
             'content' => 'required|string|max:5000',
             'timestamp' => 'nullable|integer|min:0'
@@ -101,29 +126,51 @@ class LessonNoteController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Note mise à jour avec succès',
+                'message' => '✨ Note mise à jour avec succès !',
                 'note' => $note
             ]);
         }
 
         return redirect()->route('learning.notes.all', ['course' => $course->slug, 'lesson' => $lesson->id])
-            ->with('success', 'Note mise à jour avec succès');
+            ->with('success', '✨ Note mise à jour avec succès !');
     }
 
     /**
      * Supprimer une note
      */
-    public function destroy(Course $course, CourseLesson $lesson, LessonNote $note)
+    public function destroy(Request $request, Course $course, CourseLesson $lesson, LessonNote $note)
     {
+        // Détecter si c'est une requête AJAX/JSON
+        $isAjax = $request->expectsJson() || $request->ajax() || $request->wantsJson() || 
+                  $request->header('X-Requested-With') === 'XMLHttpRequest' ||
+                  $request->header('Accept') === 'application/json';
+        
         if (!auth()->check() || $note->user_id !== auth()->id()) {
-            return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+            if ($isAjax) {
+                return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+            }
+            abort(403, 'Accès non autorisé');
+        }
+
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            if ($isAjax) {
+                return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+            }
+            return redirect()->route('courses.show', $course)
+                ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 
         $note->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Note supprimée avec succès'
-        ]);
+        if ($isAjax) {
+            return response()->json([
+                'success' => true,
+                'message' => '🗑️ Note supprimée avec succès'
+            ]);
+        }
+
+        return redirect()->route('learning.notes.all', ['course' => $course->slug, 'lesson' => $lesson->id])
+            ->with('success', '🗑️ Note supprimée avec succès');
     }
 }

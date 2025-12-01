@@ -4,9 +4,14 @@
 @section('admin-title', 'Annonces globales')
 @section('admin-subtitle', 'Diffusez des messages clés auprès de vos apprenants et formateurs')
 @section('admin-actions')
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAnnouncementModal">
-        <i class="fas fa-plus-circle me-2"></i>Nouvelle annonce
-    </button>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAnnouncementModal">
+            <i class="fas fa-plus-circle me-2"></i>Nouvelle annonce
+        </button>
+        <a href="{{ route('admin.announcements.send-combined') }}" class="btn btn-primary" title="Envoyer par Email et WhatsApp simultanément">
+            <i class="fas fa-paper-plane me-2"></i>Messages Combinés
+        </a>
+    </div>
 @endsection
 
 @section('admin-content')
@@ -247,6 +252,7 @@
                         <table class="table table-hover table-sm">
                             <thead class="table-light">
                                 <tr>
+                                    <th style="width: 50px; min-width: 50px;"></th>
                                     <th>Destinataire</th>
                                     <th>Sujet</th>
                                     <th>Type</th>
@@ -258,6 +264,19 @@
                             <tbody>
                                 @forelse($recentSentEmails ?? [] as $email)
                                 <tr>
+                                    <td class="align-middle" style="width: 50px; min-width: 50px; padding: 0.5rem; vertical-align: middle;">
+                                        @php
+                                            $recipientUser = $email->recipient_user ?? null;
+                                            $avatarUrl = $recipientUser ? $recipientUser->avatar_url : 'https://ui-avatars.com/api/?name=' . urlencode($email->recipient_name ?? 'N/A') . '&background=003366&color=fff&size=128';
+                                        @endphp
+                                        <div class="email-avatar-container" style="border-radius: 50% !important; overflow: hidden !important;">
+                                            <img src="{{ $avatarUrl }}" 
+                                                 alt="{{ $email->recipient_name ?? 'N/A' }}" 
+                                                 class="email-avatar"
+                                                 style="border-radius: 50% !important; width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important;"
+                                                 onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($email->recipient_name ?? 'N/A') }}&background=003366&color=fff&size=128'">
+                                        </div>
+                                    </td>
                                     <td>
                                         <small>
                                             {{ $email->recipient_name ?? 'N/A' }}<br>
@@ -624,6 +643,233 @@
         </div>
     </section>
 
+    <!-- Section de gestion des messages WhatsApp -->
+    <section class="admin-panel mt-4">
+        <div class="admin-panel__header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0 flex-grow-1"><i class="fab fa-whatsapp me-2"></i>Gestion des messages WhatsApp</h3>
+            <!-- Icône pour envoyer un message WhatsApp -->
+            <a href="{{ route('admin.announcements.send-whatsapp') }}" class="whatsapp-send-icon-btn" title="Envoyer un message WhatsApp">
+                <i class="fab fa-whatsapp"></i>
+            </a>
+        </div>
+        <div class="admin-panel__body">
+            <!-- Statistiques des messages WhatsApp -->
+            <div class="row g-3 mb-3 whatsapp-stats-row">
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #dcf8c6;">
+                            <i class="fab fa-whatsapp text-success"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($whatsappStats['total_sent'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Messages envoyés</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #e8f5e9;">
+                            <i class="fas fa-calendar-day text-success"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($whatsappStats['sent_today'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Aujourd'hui</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #ffebee;">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($whatsappStats['failed_today'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Échecs aujourd'hui</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #e3f2fd;">
+                            <i class="fas fa-info-circle text-info"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format(count($recentSentWhatsApp ?? [])) }}</div>
+                            <div class="admin-stat-card__label">Messages récents</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tableau des messages WhatsApp récents -->
+            <div class="table-responsive whatsapp-messages-table">
+                <table class="table table-hover table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px; min-width: 50px;"></th>
+                            <th>Destinataire</th>
+                            <th>Message</th>
+                            <th>Type</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentSentWhatsApp ?? [] as $whatsapp)
+                        <tr>
+                            <td class="align-middle" style="width: 50px; min-width: 50px; padding: 0.5rem; vertical-align: middle;">
+                                @php
+                                    $recipientUser = $whatsapp->recipient_user ?? null;
+                                    $avatarUrl = $recipientUser ? $recipientUser->avatar_url : 'https://ui-avatars.com/api/?name=' . urlencode($whatsapp->recipient_name ?? 'N/A') . '&background=25d366&color=fff&size=128';
+                                @endphp
+                                <div class="whatsapp-avatar-container" style="border-radius: 50% !important; overflow: hidden !important;">
+                                    <img src="{{ $avatarUrl }}" 
+                                         alt="{{ $whatsapp->recipient_name ?? 'N/A' }}" 
+                                         class="whatsapp-avatar"
+                                         style="border-radius: 50% !important; width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important;"
+                                         onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($whatsapp->recipient_name ?? 'N/A') }}&background=25d366&color=fff&size=128'">
+                                </div>
+                            </td>
+                            <td>
+                                <small>
+                                    {{ $whatsapp->recipient_name ?? 'N/A' }}<br>
+                                    <span class="text-muted">{{ $whatsapp->recipient_phone }}</span>
+                                </small>
+                            </td>
+                            <td>
+                                <small>{{ Str::limit($whatsapp->message, 50) }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ ucfirst($whatsapp->type) }}</span>
+                            </td>
+                            <td>
+                                @if($whatsapp->status === 'sent')
+                                    <span class="badge bg-success">Envoyé</span>
+                                @elseif($whatsapp->status === 'delivered')
+                                    <span class="badge bg-primary">Livré</span>
+                                @elseif($whatsapp->status === 'read')
+                                    <span class="badge bg-info">Lu</span>
+                                @elseif($whatsapp->status === 'failed')
+                                    <span class="badge bg-danger">Échoué</span>
+                                @else
+                                    <span class="badge bg-secondary">En attente</span>
+                                @endif
+                            </td>
+                            <td>
+                                <small>{{ $whatsapp->sent_at ? $whatsapp->sent_at->format('d/m/Y H:i') : ($whatsapp->created_at->format('d/m/Y H:i')) }}</small>
+                            </td>
+                            <td class="text-center align-top">
+                                @if($loop->first)
+                                    <div class="dropdown d-none d-md-block">
+                                        <button class="btn btn-sm btn-light course-actions-btn" type="button" id="whatsappActionsDropdown{{ $whatsapp->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="whatsappActionsDropdown{{ $whatsapp->id }}">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="viewWhatsAppMessage({{ $whatsapp->id }}); return false;">
+                                                    <i class="fas fa-eye me-2"></i>Voir
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
+                                                   data-message="{{ Str::limit($whatsapp->message, 50) }}"
+                                                   onclick="openDeleteWhatsAppModal(this); return false;">
+                                                    <i class="fas fa-trash me-2"></i>Supprimer
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="dropdown d-md-none">
+                                        <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="whatsappActionsDropdownMobile{{ $whatsapp->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="whatsappActionsDropdownMobile{{ $whatsapp->id }}">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="viewWhatsAppMessage({{ $whatsapp->id }}); return false;">
+                                                    <i class="fas fa-eye me-2"></i>Voir
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
+                                                   data-message="{{ Str::limit($whatsapp->message, 50) }}"
+                                                   onclick="openDeleteWhatsAppModal(this); return false;">
+                                                    <i class="fas fa-trash me-2"></i>Supprimer
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                @else
+                                    <div class="dropup d-none d-md-block">
+                                        <button class="btn btn-sm btn-light course-actions-btn" type="button" id="whatsappActionsDropdown{{ $whatsapp->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="whatsappActionsDropdown{{ $whatsapp->id }}">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="viewWhatsAppMessage({{ $whatsapp->id }}); return false;">
+                                                    <i class="fas fa-eye me-2"></i>Voir
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
+                                                   data-message="{{ Str::limit($whatsapp->message, 50) }}"
+                                                   onclick="openDeleteWhatsAppModal(this); return false;">
+                                                    <i class="fas fa-trash me-2"></i>Supprimer
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="dropup d-md-none">
+                                        <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="whatsappActionsDropdownMobile{{ $whatsapp->id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="whatsappActionsDropdownMobile{{ $whatsapp->id }}">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="viewWhatsAppMessage({{ $whatsapp->id }}); return false;">
+                                                    <i class="fas fa-eye me-2"></i>Voir
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
+                                                   data-message="{{ Str::limit($whatsapp->message, 50) }}"
+                                                   onclick="openDeleteWhatsAppModal(this); return false;">
+                                                    <i class="fas fa-trash me-2"></i>Supprimer
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="7" class="text-center py-3 text-muted">
+                                <i class="fab fa-whatsapp fa-2x mb-2"></i>
+                                <p class="mb-0">Aucun message WhatsApp envoyé récemment</p>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination des messages WhatsApp -->
+            @if(isset($recentSentWhatsApp) && $recentSentWhatsApp->hasPages())
+            <div class="mt-3">
+                <x-admin.pagination :paginator="$recentSentWhatsApp" :pageName="'whatsapp_page'" :showInfo="true" :itemName="'messages'" />
+            </div>
+            @endif
+        </div>
+    </section>
+
 <!-- Modal de création d'annonce -->
 <div class="modal fade" id="createAnnouncementModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -896,6 +1142,39 @@ function openCancelScheduledEmailModal(button) {
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
 }
+
+function viewWhatsAppMessage(id) {
+    window.location.href = '{{ route("admin.whatsapp-messages.show", ":id") }}'.replace(':id', id);
+}
+
+function openDeleteWhatsAppModal(button) {
+    const action = button?.dataset?.action;
+    if (!action) {
+        console.error('Aucune action de suppression fournie.');
+        return;
+    }
+
+    const message = button.dataset.message || '';
+    const messageElement = document.getElementById('deleteWhatsAppMessage');
+    if (messageElement) {
+        messageElement.textContent = message
+            ? `Êtes-vous sûr de vouloir supprimer le message WhatsApp « ${message} » ? Cette action est irréversible.`
+            : `Êtes-vous sûr de vouloir supprimer ce message WhatsApp ? Cette action est irréversible.`;
+    }
+
+    const form = document.getElementById('deleteWhatsAppForm');
+    if (form) {
+        form.action = action;
+    }
+
+    const modalElement = document.getElementById('deleteWhatsAppModal');
+    if (!modalElement) {
+        return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+}
 </script>
 @endpush
 
@@ -1078,6 +1357,30 @@ function openCancelScheduledEmailModal(button) {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
+    
+    /* Scrollbar visible pour le tableau WhatsApp sur mobile */
+    .whatsapp-messages-table {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .whatsapp-messages-table::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .whatsapp-messages-table::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .whatsapp-messages-table::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    .whatsapp-messages-table::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -1094,6 +1397,11 @@ function openCancelScheduledEmailModal(button) {
     /* Pas de padding pour les autres sections */
     .admin-panel:not(.admin-panel--main) .admin-panel__body {
         padding: 0 !important;
+    }
+    
+    /* Padding-top supplémentaire pour les statistiques WhatsApp sur mobile */
+    .whatsapp-stats-row {
+        padding-top: 1.25rem !important;
     }
     
     .admin-panel__header {
@@ -1143,6 +1451,187 @@ function openCancelScheduledEmailModal(button) {
         font-size: 1rem;
     }
     
+    /* Avatar Email - toujours circulaire, jamais déformé (desktop et mobile) */
+    .email-avatar-container {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        flex-shrink: 0 !important;
+        border-radius: 50% !important;
+        -webkit-border-radius: 50% !important;
+        -moz-border-radius: 50% !important;
+        overflow: hidden !important;
+        display: inline-block !important;
+        position: relative !important;
+        aspect-ratio: 1 / 1 !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .email-avatar {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: cover !important;
+        object-position: center !important;
+        display: block !important;
+        border-radius: 50% !important;
+        -webkit-border-radius: 50% !important;
+        -moz-border-radius: 50% !important;
+        aspect-ratio: 1 / 1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+    
+    /* Forcer l'avatar email sur desktop - même taille que mobile et TOUJOURS ROND */
+    @media (min-width: 768px) {
+        .email-avatar-container {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            min-height: 40px !important;
+            max-height: 40px !important;
+            border-radius: 50% !important;
+            -webkit-border-radius: 50% !important;
+            -moz-border-radius: 50% !important;
+        }
+        
+        .email-avatar {
+            width: 100% !important;
+            height: 100% !important;
+            min-width: 100% !important;
+            min-height: 100% !important;
+            border-radius: 50% !important;
+            -webkit-border-radius: 50% !important;
+            -moz-border-radius: 50% !important;
+        }
+        
+        /* S'assurer que la cellule du tableau ne déforme pas l'avatar */
+        .table tbody td:first-child {
+            width: 50px !important;
+            min-width: 50px !important;
+            max-width: 50px !important;
+        }
+    }
+    
+    /* Avatar WhatsApp - toujours circulaire, jamais déformé (desktop et mobile) */
+    .whatsapp-avatar-container {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        flex-shrink: 0 !important;
+        border-radius: 50% !important;
+        -webkit-border-radius: 50% !important;
+        -moz-border-radius: 50% !important;
+        overflow: hidden !important;
+        display: inline-block !important;
+        position: relative !important;
+        aspect-ratio: 1 / 1 !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .whatsapp-avatar {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: cover !important;
+        object-position: center !important;
+        display: block !important;
+        border-radius: 50% !important;
+        -webkit-border-radius: 50% !important;
+        -moz-border-radius: 50% !important;
+        aspect-ratio: 1 / 1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+    
+    /* Forcer l'avatar sur desktop - même taille que mobile et TOUJOURS ROND */
+    @media (min-width: 768px) {
+        .whatsapp-avatar-container {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            min-height: 40px !important;
+            max-height: 40px !important;
+            border-radius: 50% !important;
+            -webkit-border-radius: 50% !important;
+            -moz-border-radius: 50% !important;
+            overflow: hidden !important;
+        }
+        
+        .whatsapp-avatar {
+            width: 100% !important;
+            height: 100% !important;
+            min-width: 100% !important;
+            min-height: 100% !important;
+            border-radius: 50% !important;
+            -webkit-border-radius: 50% !important;
+            -moz-border-radius: 50% !important;
+            object-fit: cover !important;
+        }
+        
+        /* S'assurer que la cellule du tableau ne déforme pas l'avatar */
+        .table tbody td:first-child {
+            width: 50px !important;
+            min-width: 50px !important;
+            max-width: 50px !important;
+        }
+        
+        /* Forcer le border-radius sur tous les navigateurs */
+        .table tbody td .whatsapp-avatar-container,
+        .table tbody td .whatsapp-avatar-container * {
+            border-radius: 50% !important;
+            -webkit-border-radius: 50% !important;
+            -moz-border-radius: 50% !important;
+        }
+    }
+    
+    /* Icône pour envoyer un message WhatsApp */
+    .whatsapp-send-icon-btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        flex-shrink: 0;
+        margin-left: 0.5rem;
+        color: #25d366;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    
+    .whatsapp-send-icon-btn:hover {
+        color: #128c7e;
+        background-color: rgba(37, 211, 102, 0.1);
+        transform: scale(1.1);
+    }
+    
+    .whatsapp-send-icon-btn i {
+        margin: 0;
+        font-size: 1rem;
+    }
+    
     @media (min-width: 768px) {
         .email-send-icon-btn {
             width: 36px;
@@ -1162,6 +1651,19 @@ function openCancelScheduledEmailModal(button) {
     
     @media (min-width: 768px) {
         .email-stats-row {
+            padding-top: 1rem;
+            margin-bottom: 1rem !important;
+        }
+    }
+    
+    /* Espacement des statistiques WhatsApp */
+    .whatsapp-stats-row {
+        padding-top: 1rem;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    @media (min-width: 768px) {
+        .whatsapp-stats-row {
             padding-top: 1rem;
             margin-bottom: 1rem !important;
         }
@@ -1296,7 +1798,37 @@ function openCancelScheduledEmailModal(button) {
     .tab-content .tab-pane {
         margin-left: 0.5rem;
         margin-right: 0.5rem;
-        min-height: 600px;
+        min-height: auto;
+    }
+    
+    /* Avatar WhatsApp sur mobile - toujours circulaire, jamais déformé */
+    .whatsapp-avatar-container {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        flex-shrink: 0;
+        border-radius: 50% !important;
+        overflow: hidden !important;
+        display: inline-block;
+        position: relative;
+        aspect-ratio: 1 / 1;
+    }
+    
+    .whatsapp-avatar {
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
+        object-fit: cover !important;
+        object-position: center !important;
+        display: block !important;
+        border-radius: 50% !important;
+        aspect-ratio: 1 / 1;
     }
     
     @media (min-width: 768px) {
@@ -1345,6 +1877,109 @@ function openCancelScheduledEmailModal(button) {
     .table-responsive {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Scrollbar visible pour le tableau WhatsApp sur mobile */
+    .whatsapp-messages-table {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .whatsapp-messages-table::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .whatsapp-messages-table::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .whatsapp-messages-table::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    .whatsapp-messages-table::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+}
+</style>
+
+<style>
+/* Ajustement des boutons dans l'en-tête admin-actions sur mobile */
+@media (max-width: 767.98px) {
+    /* Centrer le header et le conteneur des actions */
+    .admin-content__header {
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+    
+    .admin-content__header > div {
+        width: 100% !important;
+        text-align: center !important;
+    }
+    
+    /* Centrer le conteneur des actions */
+    .admin-content__actions {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+    }
+    
+    /* Cibler les boutons dans la section admin-content__actions */
+    .admin-content__actions .d-flex.gap-2 {
+        flex-direction: row !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 0.5rem !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin: 0 auto !important;
+    }
+    
+    .admin-content__actions .d-flex.gap-2 .btn {
+        flex: 0 1 auto !important;
+        width: calc(50% - 0.25rem) !important;
+        max-width: calc(50% - 0.25rem) !important;
+        font-size: 0.875rem !important;
+        padding: 0.5rem 0.5rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .admin-content__actions .d-flex.gap-2 .btn i {
+        font-size: 0.875rem !important;
+        margin-right: 0.25rem !important;
+    }
+}
+
+/* Ajustement pour très petits écrans */
+@media (max-width: 575.98px) {
+    .admin-content__actions .d-flex.gap-2 {
+        gap: 0.4rem !important;
+    }
+    
+    .admin-content__actions .d-flex.gap-2 {
+        gap: 0.4rem !important;
+        justify-content: center !important;
+    }
+    
+    .admin-content__actions .d-flex.gap-2 .btn {
+        flex: 0 1 auto !important;
+        width: calc(50% - 0.2rem) !important;
+        max-width: calc(50% - 0.2rem) !important;
+        font-size: 0.75rem !important;
+        padding: 0.45rem 0.4rem !important;
+    }
+    
+    .admin-content__actions .d-flex.gap-2 .btn i {
+        font-size: 0.75rem !important;
+        margin-right: 0.2rem !important;
     }
 }
 </style>
@@ -1417,6 +2052,31 @@ function openCancelScheduledEmailModal(button) {
                     @csrf
                     <button type="submit" class="btn btn-warning">
                         <i class="fas fa-times me-2"></i>Annuler l'email
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de suppression de message WhatsApp -->
+<div class="modal fade" id="deleteWhatsAppModal" tabindex="-1" aria-labelledby="deleteWhatsAppModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteWhatsAppModalLabel">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteWhatsAppMessage">Êtes-vous sûr de vouloir supprimer ce message WhatsApp ? Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deleteWhatsAppForm" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Supprimer
                     </button>
                 </form>
             </div>

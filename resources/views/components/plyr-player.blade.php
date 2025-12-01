@@ -11,23 +11,52 @@
     // Récupérer le temps de visionnage sauvegardé pour restaurer la position
     $savedTime = $lessonProgress && $lessonProgress->time_watched ? (int)$lessonProgress->time_watched : 0;
     $playerId = ($isMobile ? 'plyr-mobile-' : 'plyr-player-') . ($lesson->id ?? 'preview');
+    
+    // Vérifier si c'est une vidéo YouTube - vérifier youtube_video_id d'abord
     $videoId = $lesson->youtube_video_id ?? '';
+    $isYoutube = !empty($videoId) && trim($videoId) !== '';
+    
+    // Si pas de youtube_video_id, vérifier si content_url contient une URL YouTube
+    if (!$isYoutube && !empty($lesson->content_url)) {
+        $contentUrl = $lesson->content_url;
+        if (str_contains($contentUrl, 'youtube.com') || str_contains($contentUrl, 'youtu.be')) {
+            // Extraire l'ID de la vidéo YouTube depuis l'URL
+            if (str_contains($contentUrl, 'youtube.com/watch')) {
+                parse_str(parse_url($contentUrl, PHP_URL_QUERY), $query);
+                $videoId = $query['v'] ?? '';
+            } elseif (str_contains($contentUrl, 'youtu.be/')) {
+                $videoId = basename(parse_url($contentUrl, PHP_URL_PATH));
+            } elseif (str_contains($contentUrl, 'youtube.com/embed/')) {
+                $videoId = basename(parse_url($contentUrl, PHP_URL_PATH));
+            }
+            $isYoutube = !empty($videoId) && trim($videoId) !== '';
+        }
+    }
+    
     // Sur la page d'apprentissage, on ignore is_preview car l'utilisateur est déjà inscrit
     // Le flag is_preview est utilisé pour les aperçus sur la page de présentation du cours
     $isPreview = false; // Toujours false sur la page d'apprentissage pour permettre le suivi de progression
     
-    // Vérifier si c'est une vidéo YouTube
-    $isYoutube = !empty($videoId);
-    
     // Vérifier les vidéos internes - vérifier d'abord les attributs bruts
     $internalVideoUrl = null;
-    $contentUrl = $lesson->getRawOriginal('content_url') ?? $lesson->content_url ?? null;
     $filePath = $lesson->getRawOriginal('file_path') ?? $lesson->file_path ?? null;
+    $contentUrlRaw = $lesson->getRawOriginal('content_url') ?? $lesson->content_url ?? null;
     
     // Si on a un file_path, utiliser l'accesseur file_url
-    if (!empty($filePath)) {
+    if (!empty($filePath) && trim($filePath) !== '') {
         try {
-            $internalVideoUrl = $lesson->file_url;
+            $fileUrl = $lesson->file_url;
+            // Vérifier que l'URL n'est pas vide
+            if (!empty($fileUrl) && trim($fileUrl) !== '') {
+                $internalVideoUrl = $fileUrl;
+            } else {
+                // Si l'accesseur retourne une chaîne vide, construire l'URL manuellement
+                if (!filter_var($filePath, FILTER_VALIDATE_URL)) {
+                    $internalVideoUrl = route('files.serve', ['type' => 'lessons', 'path' => ltrim($filePath, '/')]);
+                } else {
+                    $internalVideoUrl = $filePath;
+                }
+            }
         } catch (\Exception $e) {
             // Si l'accesseur échoue, construire l'URL manuellement
             if (!filter_var($filePath, FILTER_VALIDATE_URL)) {
@@ -37,30 +66,40 @@
             }
         }
     }
-    // Sinon, vérifier content_url
-    elseif (!empty($contentUrl)) {
-        // Vérifier si c'est une URL externe (YouTube, Vimeo, etc.)
-        $isExternalUrl = filter_var($contentUrl, FILTER_VALIDATE_URL) && 
-                        (str_contains($contentUrl, 'youtube.com') || 
-                         str_contains($contentUrl, 'youtu.be') || 
-                         str_contains($contentUrl, 'vimeo.com'));
+    // Sinon, vérifier content_url (seulement si ce n'est pas YouTube)
+    elseif (!empty($contentUrlRaw) && trim($contentUrlRaw) !== '' && !$isYoutube) {
+        // Vérifier si c'est une URL externe (Vimeo, etc.) - YouTube est déjà géré
+        $isExternalUrl = filter_var($contentUrlRaw, FILTER_VALIDATE_URL) && 
+                        (str_contains($contentUrlRaw, 'vimeo.com'));
         
         // Si ce n'est pas une URL externe, c'est probablement un fichier interne
         if (!$isExternalUrl) {
             try {
-                $internalVideoUrl = $lesson->content_file_url;
+                $contentFileUrl = $lesson->content_file_url;
+                // Vérifier que l'URL n'est pas vide
+                if (!empty($contentFileUrl) && trim($contentFileUrl) !== '') {
+                    $internalVideoUrl = $contentFileUrl;
+                } else {
+                    // Si l'accesseur retourne une chaîne vide, construire l'URL manuellement
+                    if (!filter_var($contentUrlRaw, FILTER_VALIDATE_URL)) {
+                        $internalVideoUrl = route('files.serve', ['type' => 'lessons', 'path' => ltrim($contentUrlRaw, '/')]);
+                    } else {
+                        $internalVideoUrl = $contentUrlRaw;
+                    }
+                }
             } catch (\Exception $e) {
                 // Si l'accesseur échoue, construire l'URL manuellement
-                if (!filter_var($contentUrl, FILTER_VALIDATE_URL)) {
-                    $internalVideoUrl = route('files.serve', ['type' => 'lessons', 'path' => ltrim($contentUrl, '/')]);
+                if (!filter_var($contentUrlRaw, FILTER_VALIDATE_URL)) {
+                    $internalVideoUrl = route('files.serve', ['type' => 'lessons', 'path' => ltrim($contentUrlRaw, '/')]);
                 } else {
-                    $internalVideoUrl = $contentUrl;
+                    $internalVideoUrl = $contentUrlRaw;
                 }
             }
         }
     }
     
-    $isInternalVideo = !empty($internalVideoUrl) && !$isYoutube;
+    // Vérifier que l'URL interne n'est pas vide
+    $isInternalVideo = !empty($internalVideoUrl) && trim($internalVideoUrl) !== '' && !$isYoutube;
     
     // Détecter le type MIME à partir de l'extension du fichier
     $videoMimeType = 'video/mp4'; // Par défaut
@@ -78,12 +117,93 @@
         ];
         $videoMimeType = $mimeTypes[$extension] ?? 'video/mp4';
     }
+    
 @endphp
 
-@if($isYoutube || $isInternalVideo)
+<style>
+.video-watermark {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+.video-watermark.show {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+.video-watermark .watermark-content {
+    background: transparent;
+}
+
+/* S'assurer que le lecteur Plyr est visible */
+.plyr-player-wrapper {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1 !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.plyr-player-wrapper .plyr {
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.plyr-player-wrapper .plyr__video-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+    display: block !important;
+}
+
+.plyr-player-wrapper video.plyr-player-video,
+.plyr-player-wrapper .plyr__video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    position: relative !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.plyr-player-wrapper .plyr__poster {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    display: block !important;
+}
+
+/* S'assurer que les contrôles Plyr sont visibles */
+.plyr-player-wrapper .plyr__controls {
+    display: flex !important;
+    visibility: visible !important;
+}
+
+@media (max-width: 768px) {
+    .video-watermark {
+        bottom: 10px;
+        right: 10px;
+        font-size: 0.7rem;
+        padding: 0.5rem !important;
+    }
+}
+</style>
+
+@if($isYoutube || ($isInternalVideo && !empty($internalVideoUrl) && trim($internalVideoUrl) !== ''))
 <div class="plyr-player-wrapper {{ $isYoutube ? 'plyr-external-video' : 'plyr-internal-video' }} position-absolute top-0 start-0 w-100 h-100" id="wrapper-{{ $playerId }}" style="margin: 0; padding: 0; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; max-width: 100% !important; max-height: 100% !important; overflow: hidden;">
-    <!-- Watermark overlay dynamique -->
-    @if(auth()->check() && !$isPreview)
+    <!-- Watermark overlay dynamique - Désactivé -->
+    {{-- @if(auth()->check() && !$isPreview)
     <div class="video-watermark position-absolute" id="watermark-{{ $playerId }}">
         <div class="watermark-content p-2 rounded">
             <small class="d-block fw-bold">{{ auth()->user()->name }}</small>
@@ -91,28 +211,52 @@
             <small class="d-block text-white-50">Session: {{ Str::limit(session()->getId(), 8) }}</small>
         </div>
     </div>
-    @endif
+    @endif --}}
     
     @if($isYoutube)
         <!-- Plyr Player Container pour YouTube -->
         <div class="plyr__video-embed" id="{{ $playerId }}" data-plyr-provider="youtube" data-plyr-embed-id="{{ $videoId }}" style="width: 100%; height: 100%; margin: 0; padding: 0;"></div>
     @else
         <!-- Plyr Player Container pour vidéo interne -->
+        @if(!empty($internalVideoUrl) && trim($internalVideoUrl) !== '')
         <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="metadata" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
             <source src="{{ $internalVideoUrl }}" type="{{ $videoMimeType }}">
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>
+        @else
+        <div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100">
+            <i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i>
+            <p class="text-white mb-2">Erreur: URL de la vidéo introuvable</p>
+            @if(config('app.debug'))
+            <p class="text-muted small">Internal Video URL: {{ $internalVideoUrl ?? 'null' }}</p>
+            <p class="text-muted small">File Path: {{ $filePath ?? 'null' }}</p>
+            <p class="text-muted small">Content URL: {{ $contentUrlRaw ?? 'null' }}</p>
+            @endif
+        </div>
+        @endif
     @endif
 </div>
 @else
-<div class="text-center py-5 position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="min-height: 450px;">
+<div class="text-center py-5 position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-dark" style="min-height: 450px;">
     <i class="fas fa-video fa-3x text-muted mb-3"></i>
-    <p class="text-muted">Aucune vidéo disponible</p>
+    <p class="text-white mb-2">Aucune vidéo disponible pour cette leçon</p>
+    <p class="text-muted small mb-2">Type de leçon: {{ $lesson->type ?? 'non défini' }}</p>
+    @if(config('app.debug'))
+    <div class="text-muted small mt-2 p-3 bg-dark rounded" style="font-size: 0.75rem; max-width: 90%; text-align: left;">
+        <strong>Debug info:</strong><br>
+        YouTube ID: {{ $videoId ?: 'vide' }}<br>
+        File Path: {{ $filePath ?? 'vide' }}<br>
+        Content URL: {{ $contentUrlRaw ?? 'vide' }}<br>
+        Internal Video URL: {{ $internalVideoUrl ?? 'vide' }}<br>
+        Is YouTube: {{ $isYoutube ? 'oui' : 'non' }}<br>
+        Is Internal Video: {{ $isInternalVideo ? 'oui' : 'non' }}
+    </div>
+    @endif
 </div>
 @endif
 
-
 @push('scripts')
+@if($isYoutube || $isInternalVideo)
 <script>
 (function() {
     'use strict';
@@ -159,6 +303,24 @@
         const courseSlug = '{{ $courseSlug ?? '' }}';
         const savedTime = {{ $savedTime ?? 0 }}; // Temps sauvegardé pour restaurer la position
         
+        // Debug logging
+        if ({{ config('app.debug') ? 'true' : 'false' }}) {
+            const videoElement = isInternalVideo && playerElement ? playerElement.querySelector('source') : null;
+            console.log('Plyr Player Initialization:', {
+                playerId: playerId,
+                videoId: videoId,
+                isYoutube: isYoutube,
+                isInternalVideo: isInternalVideo,
+                playerElement: playerElement ? 'found' : 'not found',
+                wrapper: wrapper ? 'found' : 'not found',
+                watermark: watermark ? 'found' : 'not found',
+                lessonId: lessonId,
+                courseSlug: courseSlug,
+                videoSource: videoElement ? videoElement.src : 'no source element',
+                videoType: videoElement ? videoElement.type : 'no type'
+            });
+        }
+        
         // URLs pour les routes de progression
         const startLessonUrl = lessonId && courseSlug ? `/learning/courses/${courseSlug}/lessons/${lessonId}/start` : null;
         const updateProgressUrl = lessonId && courseSlug ? `/learning/courses/${courseSlug}/lessons/${lessonId}/progress` : null;
@@ -169,11 +331,19 @@
         let hasStarted = false;
         let hasRestoredPosition = false; // Indique si la position a été restaurée
         
-        if (!window.Plyr) {
-            return;
+    if (!window.Plyr) {
+        console.error('Plyr library not loaded');
+        if (wrapper) {
+            wrapper.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100"><i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><p class="text-white mb-2">Erreur: La bibliothèque Plyr n\'est pas chargée</p><p class="text-muted small">Veuillez rafraîchir la page</p></div>';
         }
+        return;
+    }
     
     if (!playerElement) {
+        console.error('Player element not found:', playerId);
+        if (wrapper) {
+            wrapper.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100"><i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><p class="text-white mb-2">Erreur: Élément du lecteur introuvable</p></div>';
+        }
         return;
     }
     
@@ -256,7 +426,75 @@
         
         let player;
         try {
+            if (!playerElement) {
+                console.error('Player element not found:', playerId);
+                return null;
+            }
+            
+            // Pour les vidéos internes, vérifier que la source existe
+            if (isInternalVideo && playerElement.tagName === 'VIDEO') {
+                const sourceElement = playerElement.querySelector('source');
+                if (sourceElement) {
+                    const videoSrc = sourceElement.getAttribute('src');
+                    if ({{ config('app.debug') ? 'true' : 'false' }}) {
+                        console.log('Video source URL:', videoSrc);
+                    }
+                    if (!videoSrc || videoSrc.trim() === '') {
+                        console.error('Video source URL is empty');
+                        if (wrapper) {
+                            wrapper.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100"><i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><p class="text-white mb-2">Erreur: URL de la vidéo introuvable</p><p class="text-muted small">Vérifiez que la leçon a bien un fichier vidéo</p></div>';
+                        }
+                        return null;
+                    }
+                } else {
+                    console.error('Source element not found in video element');
+                    if (wrapper) {
+                        wrapper.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100"><i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><p class="text-white mb-2">Erreur: Élément source introuvable</p></div>';
+                    }
+                    return null;
+                }
+            }
+            
             player = new Plyr(playerElement, plyrConfig);
+            
+            // Vérifier que le lecteur est bien créé
+            if (!player) {
+                console.error('Failed to initialize Plyr player');
+                return null;
+            }
+            
+            if ({{ config('app.debug') ? 'true' : 'false' }}) {
+                console.log('Plyr player initialized successfully');
+            }
+            
+            // Forcer la visibilité du lecteur après l'initialisation
+            if (player && player.media) {
+                // S'assurer que le conteneur Plyr est visible
+                const plyrContainer = player.media.closest('.plyr');
+                if (plyrContainer) {
+                    plyrContainer.style.width = '100%';
+                    plyrContainer.style.height = '100%';
+                    plyrContainer.style.position = 'relative';
+                    plyrContainer.style.display = 'block';
+                }
+                
+                // S'assurer que le wrapper vidéo est visible
+                const videoWrapper = player.media.parentElement;
+                if (videoWrapper) {
+                    videoWrapper.style.width = '100%';
+                    videoWrapper.style.height = '100%';
+                    videoWrapper.style.position = 'relative';
+                }
+                
+                // S'assurer que l'élément vidéo est visible
+                if (player.media.tagName === 'VIDEO') {
+                    player.media.style.width = '100%';
+                    player.media.style.height = '100%';
+                    player.media.style.display = 'block';
+                    player.media.style.visibility = 'visible';
+                    player.media.style.opacity = '1';
+                }
+            }
             
             // Forcer la langue française après l'initialisation et mettre à jour les tooltips
             if (player) {
@@ -273,6 +511,52 @@
                 
                 // Forcer la mise à jour des tooltips après que le lecteur soit prêt
                 player.on('ready', function() {
+                    // Forcer la visibilité du lecteur après qu'il soit prêt
+                    setTimeout(function() {
+                        if (player && player.media) {
+                            // S'assurer que le conteneur Plyr est visible
+                            const plyrContainer = player.media.closest('.plyr');
+                            if (plyrContainer) {
+                                plyrContainer.style.width = '100%';
+                                plyrContainer.style.height = '100%';
+                                plyrContainer.style.position = 'relative';
+                                plyrContainer.style.display = 'block';
+                                plyrContainer.style.visibility = 'visible';
+                                plyrContainer.style.opacity = '1';
+                                plyrContainer.style.zIndex = '1';
+                            }
+                            
+                            // S'assurer que le wrapper vidéo est visible
+                            const videoWrapper = player.media.parentElement;
+                            if (videoWrapper) {
+                                videoWrapper.style.width = '100%';
+                                videoWrapper.style.height = '100%';
+                                videoWrapper.style.position = 'relative';
+                                videoWrapper.style.display = 'block';
+                            }
+                            
+                            // S'assurer que l'élément vidéo est visible
+                            if (player.media.tagName === 'VIDEO') {
+                                player.media.style.width = '100%';
+                                player.media.style.height = '100%';
+                                player.media.style.display = 'block';
+                                player.media.style.visibility = 'visible';
+                                player.media.style.opacity = '1';
+                            }
+                            
+                            // S'assurer que le wrapper parent est visible
+                            if (wrapper) {
+                                wrapper.style.display = 'block';
+                                wrapper.style.visibility = 'visible';
+                                wrapper.style.opacity = '1';
+                            }
+                            
+                            if ({{ config('app.debug') ? 'true' : 'false' }}) {
+                                console.log('Player visibility forced');
+                            }
+                        }
+                    }, 100);
+                    
                     // Fonction pour mettre à jour les tooltips
                     const updateTooltips = function() {
                         const tooltipMap = {
@@ -340,17 +624,89 @@
             // Sauvegarder la référence
             window['plyr_' + playerId] = player;
             
+            // Observer pour s'assurer que le conteneur Plyr est visible dès qu'il est créé
+            if (wrapper && player.media) {
+                const observer = new MutationObserver(function(mutations) {
+                    const plyrContainer = wrapper.querySelector('.plyr');
+                    if (plyrContainer) {
+                        plyrContainer.style.width = '100%';
+                        plyrContainer.style.height = '100%';
+                        plyrContainer.style.position = 'relative';
+                        plyrContainer.style.display = 'block';
+                        plyrContainer.style.visibility = 'visible';
+                        plyrContainer.style.opacity = '1';
+                        plyrContainer.style.zIndex = '1';
+                    }
+                });
+                
+                observer.observe(wrapper, {
+                    childList: true,
+                    subtree: true
+                });
+                
+                // Arrêter l'observer après 5 secondes
+                setTimeout(function() {
+                    observer.disconnect();
+                }, 5000);
+            }
+            
             // Gérer les erreurs de chargement pour les vidéos internes
             if (isInternalVideo && playerElement.tagName === 'VIDEO') {
                 playerElement.addEventListener('error', function(e) {
                     const error = playerElement.error;
                     if (error) {
-                        // Gestion silencieuse des erreurs
+                        console.error('Video loading error:', {
+                            code: error.code,
+                            message: error.message,
+                            networkState: playerElement.networkState,
+                            readyState: playerElement.readyState,
+                            src: playerElement.querySelector('source')?.src
+                        });
+                        
+                        // Afficher un message d'erreur à l'utilisateur
+                        if (wrapper) {
+                            let errorMessage = 'Erreur lors du chargement de la vidéo';
+                            switch(error.code) {
+                                case 1: // MEDIA_ERR_ABORTED
+                                    errorMessage = 'Le chargement de la vidéo a été annulé';
+                                    break;
+                                case 2: // MEDIA_ERR_NETWORK
+                                    errorMessage = 'Erreur réseau lors du chargement de la vidéo';
+                                    break;
+                                case 3: // MEDIA_ERR_DECODE
+                                    errorMessage = 'Erreur de décodage de la vidéo';
+                                    break;
+                                case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+                                    errorMessage = 'Format de vidéo non supporté';
+                                    break;
+                            }
+                            wrapper.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100"><i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><p class="text-white mb-2">' + errorMessage + '</p><p class="text-muted small">Code d\'erreur: ' + error.code + '</p></div>';
+                        }
                     }
                 });
+                
+                // Écouter aussi les événements de chargement pour le debug
+                if ({{ config('app.debug') ? 'true' : 'false' }}) {
+                    playerElement.addEventListener('loadstart', function() {
+                        console.log('Video load started');
+                    });
+                    playerElement.addEventListener('loadedmetadata', function() {
+                        console.log('Video metadata loaded');
+                    });
+                    playerElement.addEventListener('loadeddata', function() {
+                        console.log('Video data loaded');
+                    });
+                    playerElement.addEventListener('canplay', function() {
+                        console.log('Video can play');
+                    });
+                }
             }
             
         } catch (error) {
+            console.error('Error initializing Plyr player:', error);
+            if (wrapper) {
+                wrapper.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100"><i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><p class="text-white mb-2">Erreur lors de l\'initialisation du lecteur</p><p class="text-muted small">' + (error.message || 'Erreur inconnue') + '</p></div>';
+            }
             return null;
         }
         
@@ -367,14 +723,17 @@
             });
         }
         
-        // Afficher le watermark si authentifié
-        if (watermark && !isPreview && isAuth) {
-            player.on('ready', function() {
-                setTimeout(() => {
-                    watermark.classList.add('show');
-                }, 1000);
-            });
-        }
+        // Watermark désactivé - Code commenté
+        // Afficher le watermark si authentifié et si le lecteur est bien initialisé
+        // if (watermark && !isPreview && isAuth && player) {
+        //     player.on('ready', function() {
+        //         setTimeout(() => {
+        //             if (player && player.media) {
+        //                 watermark.classList.add('show');
+        //             }
+        //         }, 1000);
+        //     });
+        // }
         
         // Restaurer la position sauvegardée pour toutes les vidéos (YouTube et internes)
         if (savedTime > 0) {
@@ -578,4 +937,5 @@
     }
 })();
 </script>
+@endif
 @endpush

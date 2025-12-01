@@ -234,6 +234,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/certificates', [StudentController::class, 'certificates'])->name('certificates');
     });
     
+    // Certificate download route (accessible to authenticated users who own the certificate)
+    Route::get('/certificates/{certificate}/download', [StudentController::class, 'downloadCertificate'])
+        ->middleware('auth')
+        ->name('certificates.download');
+    
     // Enrollment route (accessible to all authenticated users) - avec validation SSO
     Route::post('/student/courses/{course:slug}/enroll', [StudentController::class, 'enroll'])
         ->middleware('sso.validate')
@@ -277,6 +282,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/courses', [InstructorController::class, 'coursesIndex'])->name('courses.index');
         Route::get('/dashboard', [InstructorController::class, 'dashboard'])->name('dashboard');
         Route::resource('courses', CourseController::class)->except(['index', 'show'])->middleware('sso.validate');
+        Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
         Route::get('/courses/{course}/lessons', [InstructorController::class, 'lessons'])->name('courses.lessons');
         Route::post('/courses/{course}/lessons', [InstructorController::class, 'storeLesson'])
             ->middleware('sso.validate')
@@ -410,6 +416,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('announcements.upload-image');
         
+        // WhatsApp sending from announcements
+        Route::get('/announcements/send-whatsapp', [AdminController::class, 'showSendWhatsApp'])
+            ->name('announcements.send-whatsapp');
+        Route::post('/announcements/send-whatsapp', [AdminController::class, 'sendWhatsApp'])
+            ->middleware('sso.validate')
+            ->name('announcements.send-whatsapp.post');
+        Route::get('/announcements/search-users-whatsapp', [AdminController::class, 'searchUsersForWhatsApp'])
+            ->name('announcements.search-users-whatsapp');
+        Route::get('/announcements/count-users-whatsapp', [AdminController::class, 'countUsersForWhatsApp'])
+            ->name('announcements.count-users-whatsapp');
+        
+        // Combined sending (Email + WhatsApp) from announcements
+        Route::get('/announcements/send-combined', [AdminController::class, 'showSendCombined'])
+            ->name('announcements.send-combined');
+        Route::post('/announcements/send-combined', [AdminController::class, 'sendCombined'])
+            ->middleware('sso.validate')
+            ->name('announcements.send-combined.post');
+        Route::get('/whatsapp-messages/{sentWhatsAppMessage}', [AdminController::class, 'showWhatsAppMessage'])
+            ->name('whatsapp-messages.show');
+        Route::delete('/whatsapp-messages/{sentWhatsAppMessage}', [AdminController::class, 'destroyWhatsAppMessage'])
+            ->middleware('sso.validate')
+            ->name('whatsapp-messages.destroy');
+        
         // Email management
         Route::get('/emails/sent', [AdminController::class, 'sentEmails'])->name('emails.sent');
         Route::get('/emails/sent/{sentEmail}', [AdminController::class, 'showSentEmail'])->name('emails.sent.show');
@@ -462,6 +491,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/reviews/{review}', [AdminController::class, 'deleteReview'])
             ->middleware('sso.validate')
             ->name('reviews.delete');
+        
+        // Certificates management
+        Route::get('/certificates', [AdminController::class, 'certificates'])->name('certificates');
+        Route::get('/certificates/{certificate}', [AdminController::class, 'showCertificate'])->name('certificates.show');
+        Route::get('/certificates/{certificate}/download', [AdminController::class, 'downloadCertificate'])->name('certificates.download');
+        Route::post('/certificates/{certificate}/regenerate', [AdminController::class, 'regenerateCertificate'])
+            ->middleware('sso.validate')
+            ->name('certificates.regenerate');
+        Route::delete('/certificates/{certificate}', [AdminController::class, 'destroyCertificate'])
+            ->middleware('sso.validate')
+            ->name('certificates.destroy');
         
         // Banners management
         Route::resource('banners', BannerController::class)->middleware('sso.validate');
@@ -579,6 +619,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/notes', [App\Http\Controllers\LessonNoteController::class, 'store'])
             ->middleware('sso.validate')
             ->name('learning.notes.store');
+        // Route GET pour gérer les accès accidentels (redirige vers la page des notes)
+        Route::get('/notes/{note}', function (App\Models\Course $course, App\Models\CourseLesson $lesson) {
+            return redirect()->route('learning.notes.all', ['course' => $course->slug, 'lesson' => $lesson->id]);
+        })->name('learning.notes.show');
         Route::put('/notes/{note}', [App\Http\Controllers\LessonNoteController::class, 'update'])
             ->middleware('sso.validate')
             ->name('learning.notes.update');

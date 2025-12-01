@@ -280,6 +280,31 @@
         grid-template-columns: repeat(2, 1fr) !important;
     }
 }
+
+/* Désactiver le scrollbar du conteneur sur mobile */
+@media (max-width: 767.98px) {
+    /* Désactiver le scrollbar du conteneur principal et de tous les parents */
+    .admin-shell,
+    .admin-shell__container,
+    .admin-shell__content {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+    }
+    
+    .admin-panel--main,
+    .admin-panel--main .admin-panel__body {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        max-width: 100% !important;
+    }
+    
+    /* Garder le scrollbar uniquement pour la table */
+    .admin-table .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        width: 100% !important;
+    }
+}
 </style>
 @endpush
 

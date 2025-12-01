@@ -4,493 +4,518 @@
 @section('admin-title', 'Détails de la commande')
 @section('admin-subtitle', 'Analysez et gérez chaque étape du cycle de vie de la commande')
 @section('admin-actions')
-    <a href="{{ route('admin.orders.index') }}" class="btn btn-light">
-        <i class="fas fa-arrow-left me-2"></i>Retour aux commandes
+    <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
 @endsection
 
 @section('admin-content')
-    <div class="admin-panel">
-        <div class="admin-panel__body admin-panel__body--padded">
-            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4">
-                <div>
-                    <span class="admin-chip admin-chip--info">#{{ $order->order_number }}</span>
-                    <span class="admin-chip admin-chip--neutral">Créée le {{ $order->created_at->format('d/m/Y H:i') }}</span>
+    <div class="row g-4">
+        <div class="col-md-8">
+            <section class="admin-panel">
+                <div class="admin-panel__header">
+                    <h3>
+                        <i class="fas fa-shopping-cart me-2"></i>Informations de la commande
+                    </h3>
                 </div>
-                <div class="d-flex gap-2 flex-wrap">
-                    @if($order->status === 'pending')
-                        <button class="btn btn-outline-primary" onclick="confirmOrder({{ $order->id }})"><i class="fas fa-check me-2"></i>Confirmer</button>
-                        <button class="btn btn-outline-danger" onclick="cancelOrder({{ $order->id }})"><i class="fas fa-times me-2"></i>Annuler</button>
-                    @elseif($order->status === 'confirmed')
-                        <button class="btn btn-outline-primary" onclick="markAsPaid({{ $order->id }})"><i class="fas fa-credit-card me-2"></i>Marquer payée</button>
-                    @elseif($order->status === 'paid')
-                        <button class="btn btn-outline-success" onclick="markAsCompleted({{ $order->id }})"><i class="fas fa-check-double me-2"></i>Terminer</button>
-                    @endif
-                    <button class="btn btn-danger" onclick="deleteOrder({{ $order->id }})" title="Supprimer définitivement cette commande">
-                        <i class="fas fa-trash me-2"></i>Supprimer
-                    </button>
-                </div>
-            </div>
+                <div class="admin-panel__body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Numéro de commande</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-primary fs-6">#{{ $order->order_number }}</span>
+                        </dd>
 
-            <div class="admin-form-grid admin-form-grid--two">
-                <div class="admin-form-card">
-                    <h5><i class="fas fa-info-circle me-2"></i>Informations de la commande</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">Numéro de commande</label>
-                                <div class="fw-bold">{{ $order->order_number }}</div>
-                            </div>
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">Date de commande</label>
-                                <div>{{ $order->created_at->format('d/m/Y à H:i') }}</div>
-                            </div>
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">Mode de paiement</label>
-                                <div>
-                                    <span class="badge bg-light text-dark">
-                                        {{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'Non spécifié')) }}
-                                    </span>
-                                </div>
-                            </div>
-                            @if($order->payment_provider)
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">Fournisseur</label>
-                                <div class="fw-bold text-uppercase">{{ $order->payment_provider }}</div>
-                            </div>
-                            @endif
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">Statut</label>
-                                <div>
-                                    <span class="badge order-status-{{ $order->status }} fs-6">
-                                        @switch($order->status)
-                                            @case('pending')
-                                                <i class="fas fa-clock me-1"></i>En attente
-                                                @break
-                                            @case('confirmed')
-                                                <i class="fas fa-check-circle me-1"></i>Confirmée
-                                                @break
-                                            @case('paid')
-                                                <i class="fas fa-credit-card me-1"></i>Payée
-                                                @break
-                                            @case('completed')
-                                                <i class="fas fa-check-double me-1"></i>Terminée
-                                                @break
-                                            @case('cancelled')
-                                                <i class="fas fa-times-circle me-1"></i>Annulée
-                                                @break
-                                            @default
-                                                {{ ucfirst($order->status) }}
-                                        @endswitch
-                                    </span>
-                                </div>
-                            </div>
-                            @if($order->payment_reference)
-                                <div class="info-item mb-3">
-                                    <label class="text-muted small">Référence de paiement</label>
-                                    <div class="fw-bold">{{ $order->payment_reference }}</div>
-                                </div>
-                            @endif
-                            @if($order->payment_amount)
-                                <div class="info-item mb-3">
-                                    <label class="text-muted small">Montant du paiement (devise fournisseur)</label>
-                                    <div>
-                                        <span class="fw-bold">{{ number_format((float)$order->payment_amount, 2) }} {{ $order->payment_currency }}</span>
-                                        @if(!is_null($order->provider_fee))
-                                            <span class="ms-2 text-muted small">· Frais: {{ number_format((float)$order->provider_fee, 2) }} {{ $order->provider_fee_currency ?? $order->payment_currency }}</span>
-                                        @endif
-                                        @if(!is_null($order->net_total))
-                                            <span class="ms-2 text-muted small">· Net: {{ number_format((float)$order->net_total, 2) }} {{ $order->payment_currency }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endif
-                            @if($order->exchange_rate)
-                                <div class="info-item mb-3">
-                                    <label class="text-muted small">Taux de change (approx.)</label>
-                                    <div class="text-muted small">1 {{ $order->currency }} ≈ {{ number_format((float)$order->exchange_rate, 6) }} {{ $order->payment_currency }}</div>
-                                </div>
-                            @endif
-                            @if($order->confirmed_at)
-                                <div class="info-item mb-3">
-                                    <label class="text-muted small">Date de confirmation</label>
-                                    <div>{{ $order->confirmed_at ? $order->confirmed_at->format('d/m/Y à H:i') : 'Non confirmée' }}</div>
-                                </div>
-                            @endif
-                            @if($order->paid_at)
-                                <div class="info-item mb-3">
-                                    <label class="text-muted small">Date de paiement</label>
-                                    <div>{{ $order->paid_at ? $order->paid_at->format('d/m/Y à H:i') : 'Non payée' }}</div>
-                                </div>
-                            @endif
-                            @php($lastPayment = $order->payments()->latest()->first())
-                            @if($lastPayment && $lastPayment->failure_reason)
-                                <div class="info-item mb-3">
-                                    <label class="text-muted small">Raison de l'échec</label>
-                                    <div class="text-danger small">{{ $lastPayment->failure_reason }}</div>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-                <div class="admin-form-card">
-                    <h5><i class="fas fa-user me-2"></i>Informations client</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">Nom complet</label>
-                                <div class="fw-bold">{{ $order->user->name }}</div>
-                            </div>
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">Email</label>
-                                <div>{{ $order->user->email }}</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">Membre depuis</label>
-                                <div>{{ $order->user->created_at->format('d/m/Y') }}</div>
-                            </div>
-                            <div class="info-item mb-3">
-                                <label class="text-muted small">ID utilisateur</label>
-                                <div class="fw-bold">#{{ $order->user->id }}</div>
-                            </div>
-                        </div>
-                    </div>
+                        <dt class="col-sm-4">Statut</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge order-status-{{ $order->status }} fs-6">
+                                @switch($order->status)
+                                    @case('pending')
+                                        <i class="fas fa-clock me-1"></i>En attente
+                                        @break
+                                    @case('confirmed')
+                                        <i class="fas fa-check-circle me-1"></i>Confirmée
+                                        @break
+                                    @case('paid')
+                                        <i class="fas fa-credit-card me-1"></i>Payée
+                                        @break
+                                    @case('completed')
+                                        <i class="fas fa-check-double me-1"></i>Terminée
+                                        @break
+                                    @case('cancelled')
+                                        <i class="fas fa-times-circle me-1"></i>Annulée
+                                        @break
+                                    @default
+                                        {{ ucfirst($order->status) }}
+                                @endswitch
+                            </span>
+                        </dd>
 
-                    <hr>
-                    <h6 class="text-muted mb-3">Détails payeur</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            @if($order->payer_phone)
-                                <div class="info-item mb-2">
-                                    <label class="text-muted small">Téléphone payeur</label>
-                                    <div>{{ $order->payer_phone }}</div>
-                                </div>
-                            @endif
-                            @if($order->payer_country)
-                                <div class="info-item mb-2">
-                                    <label class="text-muted small">Pays payeur</label>
-                                    <div>{{ $order->payer_country }}</div>
-                                </div>
-                            @endif
-                        </div>
-                        <div class="col-md-6">
-                            @if($order->customer_ip)
-                                <div class="info-item mb-2">
-                                    <label class="text-muted small">Adresse IP</label>
-                                    <div>{{ $order->customer_ip }}</div>
-                                </div>
-                            @endif
-                            @if($order->user_agent)
-                                <div class="info-item mb-2">
-                                    <label class="text-muted small">User-Agent</label>
-                                    <div class="small text-break">{{ $order->user_agent }}</div>
-                                </div>
-                            @endif
+                        <dt class="col-sm-4">Date de commande</dt>
+                        <dd class="col-sm-8">
+                            <i class="fas fa-calendar me-2"></i>
+                            {{ $order->created_at->format('d/m/Y à H:i') }}
+                        </dd>
+
+                        <dt class="col-sm-4">Mode de paiement</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-secondary">
+                                {{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'Non spécifié')) }}
+                            </span>
+                        </dd>
+
+                        @if($order->payment_provider)
+                            <dt class="col-sm-4">Fournisseur</dt>
+                            <dd class="col-sm-8">{{ strtoupper($order->payment_provider) }}</dd>
+                        @endif
+
+                        @if($order->payment_reference)
+                            <dt class="col-sm-4">Référence de paiement</dt>
+                            <dd class="col-sm-8">{{ $order->payment_reference }}</dd>
+                        @endif
+
+                        @if($order->payment_amount)
+                            <dt class="col-sm-4">Montant du paiement</dt>
+                            <dd class="col-sm-8">
+                                <strong>{{ number_format((float)$order->payment_amount, 2) }} {{ $order->payment_currency }}</strong>
+                                @if(!is_null($order->provider_fee))
+                                    <br><small class="text-muted">Frais: {{ number_format((float)$order->provider_fee, 2) }} {{ $order->provider_fee_currency ?? $order->payment_currency }}</small>
+                                @endif
+                                @if(!is_null($order->net_total))
+                                    <br><small class="text-muted">Net: {{ number_format((float)$order->net_total, 2) }} {{ $order->payment_currency }}</small>
+                                @endif
+                            </dd>
+                        @endif
+
+                        @if($order->exchange_rate)
+                            <dt class="col-sm-4">Taux de change</dt>
+                            <dd class="col-sm-8">
+                                <small class="text-muted">1 {{ $order->currency }} ≈ {{ number_format((float)$order->exchange_rate, 6) }} {{ $order->payment_currency }}</small>
+                            </dd>
+                        @endif
+
+                        @if($order->confirmed_at)
+                            <dt class="col-sm-4">Date de confirmation</dt>
+                            <dd class="col-sm-8">{{ $order->confirmed_at->format('d/m/Y à H:i') }}</dd>
+                        @endif
+
+                        @if($order->paid_at)
+                            <dt class="col-sm-4">Date de paiement</dt>
+                            <dd class="col-sm-8">{{ $order->paid_at->format('d/m/Y à H:i') }}</dd>
+                        @endif
+
+                        @php($lastPayment = $order->payments()->latest()->first())
+                        @if($lastPayment && $lastPayment->failure_reason)
+                            <dt class="col-sm-4">Raison de l'échec</dt>
+                            <dd class="col-sm-8">
+                                <span class="text-danger">{{ $lastPayment->failure_reason }}</span>
+                            </dd>
+                        @endif
+                    </dl>
+                </div>
+            </section>
+
+            <section class="admin-panel">
+                <div class="admin-panel__header">
+                    <h3>
+                        <i class="fas fa-user me-2"></i>Informations client
+                    </h3>
+                </div>
+                <div class="admin-panel__body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div>
+                            <h5 class="mb-1">{{ $order->user->name }}</h5>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-envelope me-2"></i>{{ $order->user->email }}
+                            </p>
                         </div>
                     </div>
-                    
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Membre depuis</dt>
+                        <dd class="col-sm-8">{{ $order->user->created_at->format('d/m/Y') }}</dd>
+
+                        <dt class="col-sm-4">ID utilisateur</dt>
+                        <dd class="col-sm-8">#{{ $order->user->id }}</dd>
+
+                        @if($order->payer_phone)
+                            <dt class="col-sm-4">Téléphone payeur</dt>
+                            <dd class="col-sm-8">{{ $order->payer_phone }}</dd>
+                        @endif
+
+                        @if($order->payer_country)
+                            <dt class="col-sm-4">Pays payeur</dt>
+                            <dd class="col-sm-8">{{ $order->payer_country }}</dd>
+                        @endif
+
+                        @if($order->customer_ip)
+                            <dt class="col-sm-4">Adresse IP</dt>
+                            <dd class="col-sm-8">{{ $order->customer_ip }}</dd>
+                        @endif
+
+                        @if($order->user_agent)
+                            <dt class="col-sm-4">User-Agent</dt>
+                            <dd class="col-sm-8">
+                                <small class="text-break">{{ $order->user_agent }}</small>
+                            </dd>
+                        @endif
+                    </dl>
+
                     @if($order->billing_info)
-                        <hr>
+                        <hr class="my-3">
                         <h6 class="text-muted mb-3">Informations de facturation</h6>
-                        <div class="row">
-                            <div class="col-md-6">
-                                @if(isset($order->billing_info['first_name']))
-                                    <div class="info-item mb-2">
-                                        <label class="text-muted small">Prénom</label>
-                                        <div>{{ $order->billing_info['first_name'] }}</div>
-                                    </div>
-                                @endif
-                                @if(isset($order->billing_info['last_name']))
-                                    <div class="info-item mb-2">
-                                        <label class="text-muted small">Nom</label>
-                                        <div>{{ $order->billing_info['last_name'] }}</div>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="col-md-6">
-                                @if(isset($order->billing_info['email']))
-                                    <div class="info-item mb-2">
-                                        <label class="text-muted small">Email</label>
-                                        <div>{{ $order->billing_info['email'] }}</div>
-                                    </div>
-                                @endif
-                                @if(isset($order->billing_info['phone']))
-                                    <div class="info-item mb-2">
-                                        <label class="text-muted small">Téléphone</label>
-                                        <div>{{ $order->billing_info['phone'] }}</div>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
+                        <dl class="row mb-0">
+                            @if(isset($order->billing_info['first_name']))
+                                <dt class="col-sm-4">Prénom</dt>
+                                <dd class="col-sm-8">{{ $order->billing_info['first_name'] }}</dd>
+                            @endif
+                            @if(isset($order->billing_info['last_name']))
+                                <dt class="col-sm-4">Nom</dt>
+                                <dd class="col-sm-8">{{ $order->billing_info['last_name'] }}</dd>
+                            @endif
+                            @if(isset($order->billing_info['email']))
+                                <dt class="col-sm-4">Email</dt>
+                                <dd class="col-sm-8">{{ $order->billing_info['email'] }}</dd>
+                            @endif
+                            @if(isset($order->billing_info['phone']))
+                                <dt class="col-sm-4">Téléphone</dt>
+                                <dd class="col-sm-8">{{ $order->billing_info['phone'] }}</dd>
+                            @endif
+                        </dl>
                     @endif
                 </div>
-            </div>
+            </section>
 
-            <div class="admin-panel__body mt-4">
-                <h5 class="mb-3"><i class="fas fa-list me-2"></i>Cours inclus</h5>
-                <div class="admin-table">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Cours</th>
-                                    <th>Quantité</th>
-                                    <th>Prix</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php($relItems = $order->orderItems ?? collect())
-                                @if($relItems->count() > 0)
+            <section class="admin-panel">
+                <div class="admin-panel__header">
+                    <h3>
+                        <i class="fas fa-list me-2"></i>Cours inclus
+                    </h3>
+                </div>
+                <div class="admin-panel__body">
+                    @php($relItems = $order->orderItems ?? collect())
+                    @if($relItems->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Cours</th>
+                                        <th>Quantité</th>
+                                        <th>Prix</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                     @foreach($relItems as $item)
                                         <tr>
                                             <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="course-icon me-3">
-                                                        <i class="fas fa-play-circle fa-2x text-primary"></i>
-                                                    </div>
-                                                    <div>
-                                                        <h6 class="mb-1">{{ optional($item->course)->title ?? 'Cours supprimé' }}</h6>
-                                                        <p class="text-muted mb-0 small">
-                                                            <i class="fas fa-user me-1"></i>{{ optional(optional($item->course)->instructor)->name ?? 'Instructeur inconnu' }}
-                                                        </p>
-                                                    </div>
+                                                <div>
+                                                    <strong>{{ optional($item->course)->title ?? 'Cours supprimé' }}</strong>
+                                                    @if($item->course && $item->course->instructor)
+                                                        <br><small class="text-muted">par {{ $item->course->instructor->name }}</small>
+                                                    @endif
                                                 </div>
                                             </td>
                                             <td class="text-center">
                                                 <span class="badge bg-light text-dark">1</span>
                                             </td>
                                             <td class="text-end">
-                                                <div class="fw-bold text-success d-flex align-items-center justify-content-end gap-2 amount-icon">
-                                                    <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0, $order->currency) }}</span>
-                                                    @if($item->course)
-                                                        <a href="{{ route('courses.show', $item->course->slug) }}" class="text-primary text-decoration-none small" target="_blank" title="Voir le cours">
-                                                            <i class="fas fa-external-link-alt"></i>
-                                                        </a>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @elseif($order->orderItems && $order->orderItems->count() > 0)
-                                    @foreach($order->orderItems as $item)
-                                        @php($course = $item->course)
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="course-icon me-3">
-                                                        <i class="fas fa-play-circle fa-2x text-primary"></i>
-                                                    </div>
-                                                    <div>
-                                                        <h6 class="mb-1">{{ $course->title ?? 'Cours supprimé' }}</h6>
-                                                        <p class="text-muted mb-0 small">
-                                                            <i class="fas fa-user me-1"></i>{{ $course->instructor->name ?? 'Instructeur inconnu' }}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-light text-dark">Quantité: 1</span>
-                                            </td>
-                                            <td class="text-end">
                                                 <div class="fw-bold text-success">
                                                     {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0, $order->currency) }}
                                                 </div>
+                                                @if($item->course)
+                                                    <a href="{{ route('courses.show', $item->course->slug) }}" class="btn btn-sm btn-outline-primary mt-1" target="_blank">
+                                                        <i class="fas fa-external-link-alt me-1"></i>Voir le cours
+                                                    </a>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach
-                                @else
-                                    <tr>
-                                        <td colspan="3" class="text-center text-muted py-4">
-                                            <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
-                                            <p>Aucun cours trouvé pour cette commande.</p>
-                                        </td>
-                                    </tr>
-                                @endif
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="admin-form-grid admin-form-grid--two mt-4">
-                <div class="admin-form-card">
-                    <h5><i class="fas fa-wallet me-2"></i>Résumé du paiement</h5>
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <div class="summary-item">
-                                <span>Sous-total</span>
-                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->subtotal ?? $order->total_amount, $order->currency) }}</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>Remise</span>
-                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->discount ?? 0, $order->currency) }}</span>
-                            </div>
-                            <div class="summary-item">
-                                <span>Taxes</span>
-                                <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->tax ?? 0, $order->currency) }}</span>
-                            </div>
-                            <hr>
-                            <div class="summary-item d-flex justify-content-between fw-bold fs-5">
-                                <span>Total</span>
-                                <span class="text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount ?? $order->total, $order->currency) }}</span>
-                            </div>
-                            @if($order->payment_amount)
-                                <div class="mt-3">
-                                    <div class="small text-muted mb-1">Montants en devise de paiement</div>
-                                    <div class="d-flex justify-content-between small">
-                                        <span>Brut</span>
-                                        <span>{{ number_format((float)$order->payment_amount, 2) }} {{ $order->payment_currency }}</span>
-                                    </div>
-                                    @if(!is_null($order->provider_fee))
-                                    <div class="d-flex justify-content-between small">
-                                        <span>Frais</span>
-                                        <span>- {{ number_format((float)$order->provider_fee, 2) }} {{ $order->provider_fee_currency ?? $order->payment_currency }}</span>
-                                    </div>
-                                    @endif
-                                    @if(!is_null($order->net_total))
-                                    <div class="d-flex justify-content-between small fw-bold">
-                                        <span>Net reçu</span>
-                                        <span>{{ number_format((float)$order->net_total, 2) }} {{ $order->payment_currency }}</span>
-                                    </div>
-                                    @endif
-                                </div>
-                            @endif
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                    @else
+                        <p class="text-muted mb-0">Aucun cours trouvé pour cette commande.</p>
+                    @endif
                 </div>
-                <div class="admin-form-card">
-                    <h5><i class="fas fa-cog me-2"></i>Actions administrateur</h5>
-                    <div class="list-group">
-                        <a href="{{ route('admin.orders.index') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-arrow-left me-2"></i>Retour aux commandes
-                        </a>
+            </section>
+        </div>
+
+        <div class="col-md-4">
+            <section class="admin-panel">
+                <div class="admin-panel__header">
+                    <h3>
+                        <i class="fas fa-wallet me-2"></i>Résumé du paiement
+                    </h3>
+                </div>
+                <div class="admin-panel__body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-6">Sous-total</dt>
+                        <dd class="col-sm-6 text-end">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->subtotal ?? $order->total_amount, $order->currency) }}</dd>
+
+                        <dt class="col-sm-6">Remise</dt>
+                        <dd class="col-sm-6 text-end">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->discount ?? 0, $order->currency) }}</dd>
+
+                        <dt class="col-sm-6">Taxes</dt>
+                        <dd class="col-sm-6 text-end">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->tax ?? 0, $order->currency) }}</dd>
+
+                        <dt class="col-sm-6"><strong>Total</strong></dt>
+                        <dd class="col-sm-6 text-end">
+                            <strong class="text-success fs-5">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount ?? $order->total, $order->currency) }}</strong>
+                        </dd>
+                    </dl>
+
+                    @if($order->payment_amount)
+                        <hr class="my-3">
+                        <h6 class="text-muted mb-2">Montants en devise de paiement</h6>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-6">Brut</dt>
+                            <dd class="col-sm-6 text-end">{{ number_format((float)$order->payment_amount, 2) }} {{ $order->payment_currency }}</dd>
+                            @if(!is_null($order->provider_fee))
+                                <dt class="col-sm-6">Frais</dt>
+                                <dd class="col-sm-6 text-end">- {{ number_format((float)$order->provider_fee, 2) }} {{ $order->provider_fee_currency ?? $order->payment_currency }}</dd>
+                            @endif
+                            @if(!is_null($order->net_total))
+                                <dt class="col-sm-6"><strong>Net reçu</strong></dt>
+                                <dd class="col-sm-6 text-end"><strong>{{ number_format((float)$order->net_total, 2) }} {{ $order->payment_currency }}</strong></dd>
+                            @endif
+                        </dl>
+                    @endif
+                </div>
+            </section>
+
+            <section class="admin-panel">
+                <div class="admin-panel__header">
+                    <h3>
+                        <i class="fas fa-cog me-2"></i>Actions administrateur
+                    </h3>
+                </div>
+                <div class="admin-panel__body">
+                    <div class="d-grid gap-2">
                         @if($order->status === 'pending')
-                            <button class="list-group-item list-group-item-action" onclick="confirmOrder({{ $order->id }})">
+                            <button class="btn btn-outline-primary" onclick="confirmOrder({{ $order->id }})">
                                 <i class="fas fa-check me-2"></i>Confirmer la commande
                             </button>
-                            <button class="list-group-item list-group-item-action" onclick="cancelOrder({{ $order->id }})">
+                            <button class="btn btn-outline-danger" onclick="cancelOrder({{ $order->id }})">
                                 <i class="fas fa-times me-2"></i>Annuler la commande
                             </button>
                         @elseif($order->status === 'confirmed')
-                            <button class="list-group-item list-group-item-action" onclick="markAsPaid({{ $order->id }})">
+                            <button class="btn btn-outline-primary" onclick="markAsPaid({{ $order->id }})">
                                 <i class="fas fa-credit-card me-2"></i>Marquer comme payée
                             </button>
                         @elseif($order->status === 'paid')
-                            <button class="list-group-item list-group-item-action" onclick="markAsCompleted({{ $order->id }})">
+                            <button class="btn btn-outline-success" onclick="markAsCompleted({{ $order->id }})">
                                 <i class="fas fa-check-double me-2"></i>Marquer comme terminée
                             </button>
                         @endif
-                        <button class="list-group-item list-group-item-action text-danger" onclick="deleteOrder({{ $order->id }})">
+                        <button class="btn btn-danger" onclick="deleteOrder({{ $order->id }})">
                             <i class="fas fa-trash me-2"></i>Supprimer définitivement
                         </button>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 
     <!-- Action Modals -->
     @include('admin.orders.partials.action-modals')
-
-    <style>
-    .order-status-pending {
-        background-color: #ffc107 !important;
-        color: #000 !important;
-    }
-
-    .order-status-confirmed {
-        background-color: #17a2b8 !important;
-        color: #fff !important;
-    }
-
-    .order-status-paid {
-        background-color: #28a745 !important;
-        color: #fff !important;
-    }
-
-    .order-status-completed {
-        background-color: #6f42c1 !important;
-        color: #fff !important;
-    }
-
-    .order-status-cancelled {
-        background-color: #dc3545 !important;
-        color: #fff !important;
-    }
-
-    .info-item label {
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .order-item:last-child {
-        border-bottom: none !important;
-    }
-
-    .enrollment-item {
-        transition: box-shadow 0.2s ease;
-    }
-
-    .enrollment-item:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .summary-item {
-        font-size: 0.9rem;
-    }
-
-    .timeline {
-        position: relative;
-        padding-left: 2rem;
-    }
-
-    .timeline::before {
-        content: '';
-        position: absolute;
-        left: 0.75rem;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background-color: #e9ecef;
-    }
-
-    .timeline-item {
-        position: relative;
-        margin-bottom: 1.5rem;
-    }
-
-    .timeline-marker {
-        position: absolute;
-        left: -2rem;
-        top: 0.25rem;
-        width: 1rem;
-        height: 1rem;
-        border-radius: 50%;
-        border: 2px solid #fff;
-        box-shadow: 0 0 0 2px #e9ecef;
-    }
-
-    .bg-purple {
-        background-color: #6f42c1 !important;
-    }
-
-    @media (max-width: 576px) {
-        .order-items .order-item .amount-icon {
-            justify-content: space-between !important;
-            gap: 10px !important;
-        }
-        .order-items .order-item .amount-icon a {
-            padding: 6px; /* plus grande zone tactile */
-            border-radius: 6px;
-        }
-        .order-items .order-item .course-icon i {
-            font-size: 1.6rem; /* icône un peu plus petite pour gagner de la place */
-        }
-    }
-    </style>
 @endsection
+
+@push('styles')
+<style>
+/* Styles identiques à analytics */
+.admin-card {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.admin-card__header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 16px 16px 0 0;
+}
+
+/* Réduire l'espace au-dessus du contenu sur desktop */
+@media (min-width: 992px) {
+    .admin-card__header .admin-card__title.mb-1 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-card__header {
+        padding-top: 0.75rem !important;
+        padding-bottom: 0.75rem !important;
+    }
+}
+
+.admin-card__title {
+    margin: 0;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.admin-card__body {
+    padding: 1.25rem;
+}
+
+/* Styles pour admin-panel - identiques à analytics */
+.admin-panel {
+    margin-bottom: 2rem;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.admin-panel__header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.admin-panel__header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.admin-panel__body {
+    padding: 1rem;
+}
+
+/* Padding légèrement réduit sur desktop */
+@media (min-width: 992px) {
+    .admin-panel__body {
+        padding: 0.875rem 1rem;
+    }
+}
+
+/* Corriger le chevauchement des boutons dans la carte Informations du certificat */
+.admin-panel__body dl.row dd {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.admin-panel__body dl.row dd .badge {
+    flex-shrink: 0;
+}
+
+.admin-panel__body dl.row dd .btn,
+.admin-panel__body dl.row dd button {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.order-status-pending {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.order-status-confirmed {
+    background-color: #17a2b8 !important;
+    color: #fff !important;
+}
+
+.order-status-paid {
+    background-color: #28a745 !important;
+    color: #fff !important;
+}
+
+.order-status-completed {
+    background-color: #6f42c1 !important;
+    color: #fff !important;
+}
+
+.order-status-cancelled {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+/* Styles responsives pour les paddings et margins - identiques à analytics */
+@media (max-width: 991.98px) {
+    /* Réduire les paddings et margins sur tablette */
+    .admin-panel {
+        margin-bottom: 1rem;
+    }
+    
+    .admin-panel__body {
+        padding: 0 !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    
+    .admin-card {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-card__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-card__body {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* Réduire encore plus les paddings et margins sur mobile */
+    .admin-panel {
+        margin-bottom: 0.75rem;
+    }
+    
+    .admin-panel__body {
+        padding: 1.25rem !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.375rem 0.5rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 0.95rem;
+        margin-bottom: 0.125rem;
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
+    }
+    
+    .admin-card {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Garder le même design de carte que sur desktop - mêmes tailles */
+    .admin-card__header {
+        padding: 1rem 1.25rem !important;
+    }
+    
+    .admin-card__body {
+        padding: 1.25rem !important;
+    }
+    
+    /* Empiler les boutons sur mobile dans la carte Informations du certificat */
+    .admin-panel__body dl.row dd .btn,
+    .admin-panel__body dl.row dd button {
+        flex: 1 1 auto;
+        min-width: 120px;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+</style>
+@endpush

@@ -401,4 +401,27 @@ class StudentController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Télécharger un certificat
+     */
+    public function downloadCertificate(Certificate $certificate)
+    {
+        // Vérifier que l'utilisateur est propriétaire du certificat
+        if ($certificate->user_id !== auth()->id()) {
+            abort(403, 'Vous n\'êtes pas autorisé à télécharger ce certificat.');
+        }
+
+        if (!$certificate->file_path) {
+            abort(404, 'Le fichier du certificat n\'existe pas.');
+        }
+
+        $filePath = \Illuminate\Support\Facades\Storage::disk('public')->path($certificate->file_path);
+
+        if (!file_exists($filePath)) {
+            abort(404, 'Le fichier du certificat n\'existe pas sur le serveur.');
+        }
+
+        return response()->download($filePath, 'certificat-' . $certificate->certificate_number . '.pdf');
+    }
 }

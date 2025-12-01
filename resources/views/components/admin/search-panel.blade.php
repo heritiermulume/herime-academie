@@ -166,13 +166,13 @@
 
         .admin-search-panel__actions {
             width: 100% !important;
-            display: flex !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: 0.5rem !important;
-            flex-wrap: nowrap !important;
         }
 
         .admin-search-panel__actions .btn {
-            flex: 1 1 50% !important;
+            width: 100% !important;
             white-space: nowrap !important;
         }
     }
@@ -193,6 +193,35 @@
         }
     }
 
+    /* Styles spécifiques pour mobile */
+    @media (max-width: 767.98px) {
+        .admin-search-panel__primary {
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+        }
+
+        .admin-search-panel__search {
+            width: 100% !important;
+        }
+
+        .admin-search-panel__actions {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+        }
+
+        .admin-search-panel__actions .btn {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            font-size: 0.85rem !important;
+            padding: 0.45rem 0.75rem !important;
+            flex: none !important;
+        }
+    }
+    
     @media (max-width: 768px) {
         .admin-search-panel__primary {
             flex-direction: column;
@@ -205,12 +234,13 @@
 
         .admin-search-panel__actions {
             width: 100%;
-            display: flex;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: 0.5rem;
         }
 
         .admin-search-panel__actions .btn {
-            flex: 1 1 50%;
+            width: 100% !important;
             font-size: 0.85rem;
             padding: 0.45rem 0.75rem;
         }
@@ -279,8 +309,13 @@
     }
 
     @media (max-width: 576px) {
+        .admin-search-panel__actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+        
         .admin-search-panel__actions .btn {
-            flex: 1 1 auto;
+            width: 100% !important;
             font-size: 0.8rem;
         }
 

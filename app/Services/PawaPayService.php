@@ -286,7 +286,9 @@ class PawaPayService
 
             // Envoyer l'email directement de manière synchrone
             try {
-                Mail::to($instructor->email)->send(new InstructorPayoutReceivedMail($payout));
+                $mailable = new InstructorPayoutReceivedMail($payout);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($instructor, $mailable);
                 Log::info("Email InstructorPayoutReceivedMail envoyé à {$instructor->email} pour le payout {$payout->payout_id}", [
                     'payout_id' => $payout->id,
                     'instructor_id' => $instructor->id,

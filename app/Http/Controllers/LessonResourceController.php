@@ -19,6 +19,11 @@ class LessonResourceController extends Controller
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+        }
+
         $resources = LessonResource::where('lesson_id', $lesson->id)
             ->orderBy('sort_order')
             ->orderBy('created_at', 'desc')
@@ -51,6 +56,11 @@ class LessonResourceController extends Controller
     {
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+        }
+
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
         }
 
         if (!$resource->is_downloadable) {

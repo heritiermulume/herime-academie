@@ -73,6 +73,13 @@
             'available' => Route::has('admin.reviews')
         ],
         [
+            'label' => 'Certificats',
+            'icon' => 'fas fa-certificate',
+            'route' => 'admin.certificates',
+            'active' => ['admin.certificates', 'admin.certificates.*'],
+            'available' => Route::has('admin.certificates')
+        ],
+        [
             'label' => 'Annonces',
             'icon' => 'fas fa-bullhorn',
             'route' => 'admin.announcements',
@@ -269,13 +276,13 @@
         
         .admin-search-panel__actions {
             width: 100% !important;
-            display: flex !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: 0.5rem !important;
-            flex-wrap: nowrap !important;
         }
         
         .admin-search-panel__actions .btn {
-            flex: 1 1 50% !important;
+            width: 100% !important;
             white-space: nowrap !important;
         }
     }
@@ -481,11 +488,12 @@
         }
         .admin-search-panel__actions {
             width: 100%;
-            display: flex;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: 0.5rem;
         }
         .admin-search-panel__actions .btn {
-            flex: 1 1 50%;
+            width: 100% !important;
             white-space: nowrap;
         }
         .admin-shell__mobile-nav-spacer {
@@ -545,11 +553,12 @@
         }
         .admin-search-panel__actions {
             width: 100%;
-            display: flex;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: 0.5rem;
         }
         .admin-search-panel__actions .btn {
-            flex: 1 1 50%;
+            width: 100% !important;
             white-space: nowrap;
             height: 42px;
         }
@@ -578,12 +587,12 @@
             padding: 0.48rem 0.75rem;
         }
         .admin-search-panel__actions {
-            flex-direction: column;
-            align-items: stretch;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: 0.45rem;
         }
         .admin-search-panel__actions .btn {
-            width: 100%;
+            width: 100% !important;
             min-width: 0;
             height: 42px;
         }

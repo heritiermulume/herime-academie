@@ -3652,7 +3652,7 @@ button.mobile-price-slider__btn--download i,
                                 @php
                                     $finalRegisterCourse = url()->full();
                                     $callbackRegisterCourse = route('sso.callback', ['redirect' => $finalRegisterCourse]);
-                                    $ssoRegisterUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegisterCourse);
+                                    $ssoRegisterUrlCourse = 'https://compte.herime.com/login?force_token=1&action=register&redirect=' . urlencode($callbackRegisterCourse);
                                 @endphp
                                 <a href="{{ $ssoRegisterUrlCourse }}" class="btn btn-outline-primary btn-lg w-100">
                                     <i class="fas fa-user-plus me-2"></i>Créer un compte

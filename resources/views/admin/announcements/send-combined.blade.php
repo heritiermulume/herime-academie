@@ -1,0 +1,788 @@
+@extends('layouts.admin')
+
+@section('title', 'Envoyer par Email et WhatsApp')
+@section('admin-title', 'Envoyer par Email et WhatsApp')
+@section('admin-subtitle', 'Envoyez simultanément par email et WhatsApp - Les envois sont traités en arrière-plan')
+
+@section('admin-actions')
+    <a href="{{ route('admin.announcements') }}" class="btn btn-light">
+        <i class="fas fa-arrow-left me-2"></i>Retour aux annonces
+    </a>
+@endsection
+
+@section('admin-content')
+<div class="admin-panel">
+    <div class="admin-panel__body admin-panel__body--padded">
+        @if(isset($whatsappConnectionStatus) && !$whatsappConnectionStatus['connected'])
+        <div class="alert alert-warning mb-4">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Attention:</strong> La connexion WhatsApp n'est pas active. Les messages WhatsApp ne pourront pas être envoyés.
+            <br><small>État actuel: {{ $whatsappConnectionStatus['state'] ?? 'Inconnu' }}</small>
+        </div>
+        @endif
+
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Envoi direct:</strong> Les messages sont envoyés directement. L'échec d'un canal (email ou WhatsApp) n'empêche pas l'autre de fonctionner. Une fenêtre de chargement s'affichera pendant l'envoi.
+        </div>
+
+        <form id="sendCombinedForm" method="POST" action="{{ route('admin.announcements.send-combined.post') }}" enctype="multipart/form-data">
+            @csrf
+
+            <!-- Sélection des canaux -->
+            <div class="admin-form-card mb-4">
+                <h5 class="mb-3"><i class="fas fa-broadcast-tower me-2"></i>Canaux d'envoi</h5>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="send_email" id="send_email" value="1" checked>
+                        <label class="form-check-label" for="send_email">
+                            <strong><i class="fas fa-envelope me-2"></i>Envoyer par Email</strong>
+                            <small class="d-block text-muted">Les utilisateurs avec une adresse email recevront le message</small>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="send_whatsapp" id="send_whatsapp" value="1" checked>
+                        <label class="form-check-label" for="send_whatsapp">
+                            <strong><i class="fab fa-whatsapp me-2"></i>Envoyer par WhatsApp</strong>
+                            <small class="d-block text-muted">Les utilisateurs avec un numéro de téléphone recevront le message</small>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destinataires -->
+            <div class="admin-form-card mb-4">
+                <h5 class="mb-3"><i class="fas fa-users me-2"></i>Sélection des destinataires</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label">Type d'envoi *</label>
+                    <select class="form-select" id="recipient_type" name="recipient_type" required>
+                        <option value="all">Tous les utilisateurs</option>
+                        <option value="role">Par rôle</option>
+                        <option value="selected">Utilisateurs sélectionnés</option>
+                        <option value="single">Un seul utilisateur</option>
+                    </select>
+                </div>
+
+                <!-- Sélection par rôle -->
+                <div class="mb-3" id="role_selection" style="display: none;">
+                    <label class="form-label">Rôle</label>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="student" id="role_student">
+                                <label class="form-check-label" for="role_student">Étudiants</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="instructor" id="role_instructor">
+                                <label class="form-check-label" for="role_instructor">Formateurs</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="admin" id="role_admin">
+                                <label class="form-check-label" for="role_admin">Admins</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="affiliate" id="role_affiliate">
+                                <label class="form-check-label" for="role_affiliate">Affiliés</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sélection d'un seul utilisateur -->
+                <div class="mb-3" id="single_user_selection" style="display: none;">
+                    <label class="form-label">Sélectionner un utilisateur</label>
+                    <input type="hidden" id="single_user_id" name="single_user_id" value="">
+                    <input type="text" class="form-control" id="user_search" placeholder="Rechercher par nom, email ou téléphone (minimum 2 caractères)...">
+                    <div id="user_search_results" class="mt-2 border rounded p-2" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+                </div>
+
+                <!-- Sélection de plusieurs utilisateurs -->
+                <div class="mb-3" id="multiple_users_selection" style="display: none;">
+                    <label class="form-label">Sélectionner des utilisateurs</label>
+                    <input type="text" class="form-control" id="multiple_user_search" placeholder="Rechercher des utilisateurs (minimum 2 caractères)...">
+                    <div id="multiple_user_search_results" class="mt-2 border rounded p-2" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+                    <div id="selected_users" class="mt-3 mb-2"></div>
+                    <input type="hidden" id="user_ids" name="user_ids" value="">
+                </div>
+
+                <div class="alert alert-info" id="recipient_count" style="display: none;">
+                    <i class="fas fa-info-circle me-2"></i><span id="recipient_count_text"></span>
+                </div>
+            </div>
+
+            <!-- Contenu Email -->
+            <div class="admin-form-card mb-4" id="email_content_section">
+                <h5 class="mb-3"><i class="fas fa-envelope me-2"></i>Contenu de l'email</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label">Objet *</label>
+                    <input type="text" class="form-control" name="subject" id="subject" required 
+                           placeholder="Objet de l'email" maxlength="255">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Contenu *</label>
+                    <div id="email_content_editor" style="height: 400px;"></div>
+                    <textarea class="form-control d-none" id="email_content" name="email_content" required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Pièces jointes</label>
+                    <input type="file" class="form-control" name="attachments[]" id="attachments" multiple 
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.zip,.rar">
+                    <small class="form-text text-muted">Vous pouvez sélectionner plusieurs fichiers. Formats acceptés: PDF, Word, Excel, PowerPoint, Images, ZIP, RAR</small>
+                    <div id="attachments_preview" class="mt-2"></div>
+                </div>
+            </div>
+
+            <!-- Contenu WhatsApp -->
+            <div class="admin-form-card mb-4" id="whatsapp_content_section">
+                <h5 class="mb-3"><i class="fab fa-whatsapp me-2"></i>Contenu du message WhatsApp</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label">Message *</label>
+                    <textarea class="form-control" name="whatsapp_message" id="whatsapp_message" required rows="8" 
+                              placeholder="Rédigez votre message WhatsApp ici..." maxlength="4096"></textarea>
+                    <small class="form-text text-muted">
+                        <span id="char_count">0</span> / 4096 caractères
+                    </small>
+                </div>
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="d-flex gap-2 justify-content-end">
+                <a href="{{ route('admin.announcements') }}" class="btn btn-light">Annuler</a>
+                <button type="submit" class="btn btn-primary" id="send_btn">
+                    <i class="fas fa-paper-plane me-2"></i>Envoyer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal de chargement -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="loadingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <h5 class="mb-2">Envoi en cours...</h5>
+                <p class="text-muted mb-0">Veuillez patienter pendant l'envoi des messages. Cela peut prendre quelques instants.</p>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Ne fermez pas cette fenêtre pendant l'envoi
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('styles')
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<style>
+#selected_users {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background-color: #f0f4ff;
+    border: 1px solid #003366;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.user-badge button {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    padding: 0;
+    font-size: 16px;
+}
+#attachments_preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.attachment-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+}
+</style>
+@endpush
+
+@push('scripts')
+<script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
+<script>
+// Variables globales
+let selectedUsers = [];
+let quill;
+
+// Initialiser Quill Editor quand le DOM est prêt
+document.addEventListener('DOMContentLoaded', function() {
+    // Configuration Quill Editor
+    quill = new Quill('#email_content_editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                ['link', 'image', 'video'],
+                ['clean'],
+                ['code-block']
+            ]
+        },
+        placeholder: 'Rédigez votre email ici...',
+        bounds: '#email_content_editor'
+    });
+
+    // Upload d'images
+    var toolbar = quill.getModule('toolbar');
+    toolbar.addHandler('image', function() {
+        var input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+        
+        input.onchange = function() {
+            var file = input.files[0];
+            if (file) {
+                var formData = new FormData();
+                formData.append('file', file);
+                formData.append('_token', '{{ csrf_token() }}');
+                
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '{{ route("admin.announcements.upload-image") }}');
+                
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        var json = JSON.parse(xhr.responseText);
+                        if (json.location) {
+                            var range = quill.getSelection(true);
+                            quill.insertEmbed(range.index, 'image', json.location);
+                            quill.setSelection(range.index + 1);
+                        }
+                    } else {
+                        alert('Erreur lors du téléchargement de l\'image');
+                    }
+                };
+                
+                xhr.send(formData);
+            }
+        };
+    });
+
+    // Synchroniser le contenu avec le textarea
+    quill.on('text-change', function() {
+        const textarea = document.getElementById('email_content');
+        if (textarea) {
+            textarea.value = quill.root.innerHTML;
+        }
+    });
+
+    // Initialiser le textarea
+    const textarea = document.getElementById('email_content');
+    if (textarea) {
+        textarea.value = quill.root.innerHTML;
+    }
+
+    // Gérer l'affichage des sections selon les canaux sélectionnés
+    function updateChannelSections() {
+        const sendEmail = document.getElementById('send_email').checked;
+        const sendWhatsApp = document.getElementById('send_whatsapp').checked;
+        
+        const emailSection = document.getElementById('email_content_section');
+        const whatsappSection = document.getElementById('whatsapp_content_section');
+        
+        if (emailSection) {
+            emailSection.style.display = sendEmail ? 'block' : 'none';
+            const emailInputs = emailSection.querySelectorAll('input[required], textarea[required]');
+            emailInputs.forEach(input => input.required = sendEmail);
+        }
+        
+        if (whatsappSection) {
+            whatsappSection.style.display = sendWhatsApp ? 'block' : 'none';
+            const whatsappInputs = whatsappSection.querySelectorAll('input[required], textarea[required]');
+            whatsappInputs.forEach(input => input.required = sendWhatsApp);
+        }
+    }
+
+    document.getElementById('send_email').addEventListener('change', updateChannelSections);
+    document.getElementById('send_whatsapp').addEventListener('change', updateChannelSections);
+    updateChannelSections();
+
+    // Compteur de caractères WhatsApp
+    const whatsappMessage = document.getElementById('whatsapp_message');
+    const charCount = document.getElementById('char_count');
+    if (whatsappMessage && charCount) {
+        whatsappMessage.addEventListener('input', function() {
+            charCount.textContent = this.value.length;
+        });
+    }
+
+    // Fonction pour initialiser l'affichage selon le type de destinataire
+    function updateRecipientSections(type) {
+        const roleSelection = document.getElementById('role_selection');
+        const singleUserSelection = document.getElementById('single_user_selection');
+        const multipleUsersSelection = document.getElementById('multiple_users_selection');
+        
+        [roleSelection, singleUserSelection, multipleUsersSelection].forEach(el => {
+            if (el) el.style.display = 'none';
+        });
+        
+        if (type === 'role' && roleSelection) {
+            roleSelection.style.display = 'block';
+        } else if (type === 'single' && singleUserSelection) {
+            singleUserSelection.style.display = 'block';
+        } else if (type === 'selected' && multipleUsersSelection) {
+            multipleUsersSelection.style.display = 'block';
+        }
+    }
+    
+    window.updateRecipientSections = updateRecipientSections;
+    
+    // Gestion du type de destinataire
+    const recipientTypeSelect = document.getElementById('recipient_type');
+    if (recipientTypeSelect) {
+        updateRecipientSections(recipientTypeSelect.value);
+        
+        recipientTypeSelect.addEventListener('change', function() {
+            const type = this.value;
+            
+            // Réinitialiser les champs
+            document.getElementById('single_user_id').value = '';
+            document.getElementById('user_search').value = '';
+            document.getElementById('user_search_results').innerHTML = '';
+            document.getElementById('user_search_results').style.display = 'none';
+            document.getElementById('multiple_user_search').value = '';
+            document.getElementById('multiple_user_search_results').innerHTML = '';
+            document.getElementById('multiple_user_search_results').style.display = 'none';
+            
+            document.querySelectorAll('input[name="roles[]"]').forEach(cb => cb.checked = false);
+            
+            if (type !== 'selected') {
+                selectedUsers = [];
+                if (window.updateSelectedUsersDisplay) {
+                    window.updateSelectedUsersDisplay();
+                }
+            }
+            
+            updateRecipientSections(type);
+            setTimeout(() => window.updateRecipientCount(), 100);
+        });
+    }
+    
+    // Fonction pour mettre à jour le compte de destinataires
+    window.updateRecipientCount = function() {
+        const recipientTypeSelect = document.getElementById('recipient_type');
+        const countDiv = document.getElementById('recipient_count');
+        const countText = document.getElementById('recipient_count_text');
+        const sendEmail = document.getElementById('send_email').checked;
+        const sendWhatsApp = document.getElementById('send_whatsapp').checked;
+        
+        if (!recipientTypeSelect || !countDiv || !countText) return;
+        
+        const type = recipientTypeSelect.value;
+        let emailCount = 0;
+        let whatsappCount = 0;
+        
+        if (type === 'all') {
+            if (sendEmail) {
+                fetch('{{ route("admin.announcements.count-users") }}?type=all')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            if (sendWhatsApp) {
+                fetch('{{ route("admin.announcements.count-users-whatsapp") }}?type=all')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'role') {
+            const roles = Array.from(document.querySelectorAll('input[name="roles[]"]:checked')).map(cb => cb.value);
+            if (roles.length > 0) {
+                if (sendEmail) {
+                    fetch(`{{ route("admin.announcements.count-users") }}?type=role&roles=${roles.join(',')}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && typeof data.count !== 'undefined') {
+                                emailCount = data.count;
+                                updateCountDisplay();
+                            }
+                        });
+                }
+                if (sendWhatsApp) {
+                    fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=role&roles=${roles.join(',')}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && typeof data.count !== 'undefined') {
+                                whatsappCount = data.count;
+                                updateCountDisplay();
+                            }
+                        });
+                }
+            } else {
+                countDiv.style.display = 'none';
+            }
+        } else if (type === 'single') {
+            const userIdInput = document.getElementById('single_user_id');
+            if (userIdInput && userIdInput.value) {
+                emailCount = sendEmail ? 1 : 0;
+                whatsappCount = sendWhatsApp ? 1 : 0;
+                updateCountDisplay();
+            } else {
+                countDiv.style.display = 'none';
+            }
+        } else if (type === 'selected') {
+            if (selectedUsers && selectedUsers.length > 0) {
+                emailCount = sendEmail ? selectedUsers.length : 0;
+                whatsappCount = sendWhatsApp ? selectedUsers.length : 0;
+                updateCountDisplay();
+            } else {
+                countDiv.style.display = 'none';
+            }
+        }
+        
+        function updateCountDisplay() {
+            let messages = [];
+            if (sendEmail && emailCount > 0) {
+                messages.push(`${emailCount} email(s)`);
+            }
+            if (sendWhatsApp && whatsappCount > 0) {
+                messages.push(`${whatsappCount} message(s) WhatsApp`);
+            }
+            if (messages.length > 0) {
+                countText.textContent = messages.join(' et ') + ' seront envoyés';
+                countDiv.style.display = 'block';
+            } else {
+                countDiv.style.display = 'none';
+            }
+        }
+    };
+    
+    // Attacher les événements pour les rôles
+    document.querySelectorAll('input[name="roles[]"]').forEach(cb => {
+        cb.addEventListener('change', window.updateRecipientCount);
+    });
+
+    // Fonction de recherche d'utilisateurs (combine email et WhatsApp)
+    window.searchUsers = function(query, type = 'single') {
+        const resultsDivId = type === 'single' ? 'user_search_results' : 'multiple_user_search_results';
+        const resultsDiv = document.getElementById(resultsDivId);
+        
+        if (!resultsDiv) return;
+        
+        if (!query || query.length < 2) {
+            resultsDiv.innerHTML = '';
+            resultsDiv.style.display = 'none';
+            return;
+        }
+        
+        resultsDiv.innerHTML = '<p class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Recherche...</p>';
+        resultsDiv.style.display = 'block';
+        
+        // Utiliser la route de recherche email qui retourne aussi les téléphones
+        fetch(`{{ route('admin.announcements.search-users') }}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (!Array.isArray(data)) {
+                    resultsDiv.innerHTML = '<p class="text-danger">Erreur lors de la recherche</p>';
+                    return;
+                }
+                
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = '<p class="text-muted">Aucun utilisateur trouvé</p>';
+                    return;
+                }
+                
+                if (type === 'single') {
+                    resultsDiv.innerHTML = data.map(user => {
+                        const safeName = (user.name || 'Utilisateur sans nom').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const safeEmail = (user.email || 'Pas d\'email').replace(/"/g, '&quot;');
+                        const safePhone = (user.phone || 'Pas de téléphone').replace(/"/g, '&quot;');
+                        return `
+                            <div class="list-group-item list-group-item-action" style="cursor: pointer; padding: 8px 12px;" 
+                                 onclick="selectSingleUser(${user.id}, '${safeName}', '${safeEmail}', '${safePhone}')">
+                                <strong>${user.name || 'Utilisateur sans nom'}</strong><br>
+                                <small class="text-muted">${user.email || 'Pas d\'email'}</small><br>
+                                <small class="text-muted">📱 ${user.phone || 'Pas de téléphone'}</small>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    resultsDiv.innerHTML = data.map(user => {
+                        if (selectedUsers && selectedUsers.find(u => u.id === user.id)) {
+                            return '';
+                        }
+                        const safeName = (user.name || 'Utilisateur sans nom').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const safeEmail = (user.email || 'Pas d\'email').replace(/"/g, '&quot;');
+                        const safePhone = (user.phone || 'Pas de téléphone').replace(/"/g, '&quot;');
+                        return `
+                            <div class="list-group-item list-group-item-action" style="cursor: pointer; padding: 8px 12px;" 
+                                 onclick="addSelectedUser(${user.id}, '${safeName}', '${safeEmail}', '${safePhone}')">
+                                <strong>${user.name || 'Utilisateur sans nom'}</strong><br>
+                                <small class="text-muted">${user.email || 'Pas d\'email'}</small><br>
+                                <small class="text-muted">📱 ${user.phone || 'Pas de téléphone'}</small>
+                            </div>
+                        `;
+                    }).filter(html => html !== '').join('') || '<p class="text-muted">Tous les utilisateurs trouvés sont déjà sélectionnés</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la recherche:', error);
+                resultsDiv.innerHTML = '<p class="text-danger">Erreur lors de la recherche</p>';
+            });
+    };
+    
+    // Attacher les événements de recherche
+    const userSearchInput = document.getElementById('user_search');
+    const multipleUserSearchInput = document.getElementById('multiple_user_search');
+    
+    if (userSearchInput) {
+        let searchTimeout;
+        userSearchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => searchUsers(this.value, 'single'), 300);
+        });
+    }
+    
+    if (multipleUserSearchInput) {
+        let searchTimeout;
+        multipleUserSearchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            if (query.length >= 2) {
+                searchTimeout = setTimeout(() => searchUsers(query, 'selected'), 300);
+            } else {
+                const resultsDiv = document.getElementById('multiple_user_search_results');
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = '';
+                    resultsDiv.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Fonctions globales pour la sélection d'utilisateurs
+    window.selectSingleUser = function(id, name, email, phone) {
+        document.getElementById('single_user_id').value = id;
+        document.getElementById('user_search').value = `${name} (${email || phone || 'N/A'})`;
+        document.getElementById('user_search_results').innerHTML = '';
+        document.getElementById('user_search_results').style.display = 'none';
+        window.updateRecipientCount();
+    };
+    
+    window.addSelectedUser = function(id, name, email, phone) {
+        if (!selectedUsers) selectedUsers = [];
+        if (selectedUsers.find(u => u.id === id)) return;
+        
+        selectedUsers.push({ id, name, email, phone });
+        updateSelectedUsersDisplay();
+        
+        document.getElementById('multiple_user_search').value = '';
+        document.getElementById('multiple_user_search_results').innerHTML = '';
+        document.getElementById('multiple_user_search_results').style.display = 'none';
+        window.updateRecipientCount();
+    };
+    
+    window.removeSelectedUser = function(id) {
+        if (!selectedUsers) return;
+        selectedUsers = selectedUsers.filter(u => u.id !== id);
+        updateSelectedUsersDisplay();
+    };
+    
+    window.updateSelectedUsersDisplay = function() {
+        const container = document.getElementById('selected_users');
+        const idsInput = document.getElementById('user_ids');
+        
+        if (!container) return;
+        
+        if (!selectedUsers || selectedUsers.length === 0) {
+            container.innerHTML = '<p class="text-muted">Aucun utilisateur sélectionné</p>';
+            if (idsInput) idsInput.value = '';
+        } else {
+            container.innerHTML = selectedUsers.map(user => {
+                const safeName = (user.name || 'Utilisateur sans nom').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                return `
+                    <span class="user-badge">
+                        ${safeName}
+                        <button type="button" onclick="removeSelectedUser(${user.id})">&times;</button>
+                    </span>
+                `;
+            }).join('');
+            if (idsInput) idsInput.value = selectedUsers.map(u => u.id).join(',');
+        }
+        window.updateRecipientCount();
+    };
+    
+    // Modal de chargement
+    function showLoadingModal() {
+        const modal = document.getElementById('loadingModal');
+        if (modal) {
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        }
+    }
+    
+    function hideLoadingModal() {
+        const modal = document.getElementById('loadingModal');
+        if (modal) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) {
+                bsModal.hide();
+            }
+        }
+    }
+    
+    // Validation et soumission du formulaire avec AJAX
+    const sendCombinedForm = document.getElementById('sendCombinedForm');
+    if (sendCombinedForm) {
+        sendCombinedForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const sendEmail = document.getElementById('send_email').checked;
+            const sendWhatsApp = document.getElementById('send_whatsapp').checked;
+            
+            if (!sendEmail && !sendWhatsApp) {
+                alert('Veuillez sélectionner au moins un canal d\'envoi (Email ou WhatsApp)');
+                return false;
+            }
+            
+            const recipientTypeSelect = document.getElementById('recipient_type');
+            const type = recipientTypeSelect.value;
+            let isValid = true;
+            
+            if (type === 'role') {
+                const checkedRoles = document.querySelectorAll('input[name="roles[]"]:checked');
+                if (checkedRoles.length === 0) {
+                    alert('Veuillez sélectionner au moins un rôle');
+                    isValid = false;
+                }
+            } else if (type === 'single') {
+                const singleUserId = document.getElementById('single_user_id');
+                if (!singleUserId || !singleUserId.value) {
+                    alert('Veuillez sélectionner un utilisateur');
+                    isValid = false;
+                }
+            } else if (type === 'selected') {
+                if (!selectedUsers || selectedUsers.length === 0) {
+                    alert('Veuillez sélectionner au moins un utilisateur');
+                    isValid = false;
+                }
+            }
+            
+            if (!isValid) {
+                return false;
+            }
+            
+            // Synchroniser le contenu Quill avec le textarea avant soumission
+            const textarea = document.getElementById('email_content');
+            if (textarea && quill) {
+                textarea.value = quill.root.innerHTML;
+            }
+            
+            // Désactiver le bouton et afficher le modal de chargement
+            const sendBtn = document.getElementById('send_btn');
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Envoi en cours...';
+            }
+            
+            // Afficher le modal de chargement
+            showLoadingModal();
+            
+            // Préparer les données du formulaire
+            const formData = new FormData(sendCombinedForm);
+            
+            // Envoyer via AJAX
+            fetch(sendCombinedForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.redirected) {
+                    // Redirection détectée, suivre la redirection
+                    window.location.href = response.url;
+                } else {
+                    return response.text();
+                }
+            })
+            .then(data => {
+                hideLoadingModal();
+                if (data) {
+                    // Si pas de redirection, parser la réponse
+                    try {
+                        const json = JSON.parse(data);
+                        if (json.redirect) {
+                            window.location.href = json.redirect;
+                        }
+                    } catch (e) {
+                        // Si ce n'est pas du JSON, c'est probablement du HTML de redirection
+                        window.location.href = '{{ route("admin.announcements") }}';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                hideLoadingModal();
+                alert('Une erreur est survenue lors de l\'envoi. Veuillez réessayer.');
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Envoyer';
+                }
+            });
+        });
+    }
+    
+    // Initialiser
+    if (window.updateSelectedUsersDisplay) {
+        window.updateSelectedUsersDisplay();
+    }
+    if (window.updateRecipientCount) {
+        setTimeout(() => window.updateRecipientCount(), 500);
+    }
+});
+</script>
+@endpush
+

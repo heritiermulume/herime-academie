@@ -18,6 +18,7 @@ use App\Models\CourseDownload;
 use App\Models\InstructorApplication;
 use App\Models\InstructorPayout;
 use App\Models\Visitor;
+use App\Models\Certificate;
 use App\Traits\DatabaseCompatibility;
 use App\Services\FileUploadService;
 use App\Helpers\FileHelper;
@@ -29,7 +30,9 @@ use App\Notifications\InstructorApplicationStatusUpdated;
 use App\Mail\CustomAnnouncementMail;
 use App\Models\SentEmail;
 use App\Models\ScheduledEmail;
+use App\Models\SentWhatsAppMessage;
 use App\Notifications\EmailSentNotification;
+use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +47,8 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Bus\Queueable;
+use App\Jobs\SendEmailJob;
+use App\Jobs\SendWhatsAppJob;
 
 class AdminController extends Controller
 {
@@ -1110,7 +1115,9 @@ class AdminController extends Controller
         try {
             // Envoyer l'email directement de manière synchrone
             try {
-                Mail::to($user->email)->send(new \App\Mail\CourseAccessRevokedMail($course));
+                $mailable = new \App\Mail\CourseAccessRevokedMail($course);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($user, $mailable);
                 \Log::info("Email CourseAccessRevokedMail envoyé directement à {$user->email} pour le cours {$course->id}");
             } catch (\Exception $emailException) {
                 \Log::error("Erreur lors de l'envoi de l'email CourseAccessRevokedMail", [
@@ -2101,6 +2108,18 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
         
+        // Charger les utilisateurs destinataires pour afficher les avatars
+        $recipientEmails = $recentSentEmails->pluck('recipient_email')->unique()->filter();
+        $recipientUsers = User::whereIn('email', $recipientEmails)
+            ->get()
+            ->keyBy('email');
+        
+        // Ajouter les utilisateurs aux emails
+        $recentSentEmails->transform(function ($email) use ($recipientUsers) {
+            $email->recipient_user = $recipientUsers->get($email->recipient_email);
+            return $email;
+        });
+        
         // Récupérer les emails programmés en attente
         $pendingScheduledEmails = ScheduledEmail::with('creator')
             ->where('status', 'pending')
@@ -2117,7 +2136,31 @@ class AdminController extends Controller
             'pending_scheduled' => ScheduledEmail::where('status', 'pending')->count(),
         ];
         
-        return view('admin.announcements.index', compact('announcements', 'recentSentEmails', 'pendingScheduledEmails', 'emailStats'));
+        // Récupérer les messages WhatsApp avec pagination et les utilisateurs destinataires
+        $recentSentWhatsApp = SentWhatsAppMessage::with('user')
+            ->latest()
+            ->paginate(15, ['*'], 'whatsapp_page');
+        
+        // Charger les utilisateurs destinataires pour afficher les avatars
+        $recipientPhones = $recentSentWhatsApp->pluck('recipient_phone')->unique()->filter();
+        $recipientUsers = User::whereIn('phone', $recipientPhones)
+            ->get()
+            ->keyBy('phone');
+        
+        // Ajouter les utilisateurs aux messages
+        $recentSentWhatsApp->getCollection()->transform(function ($message) use ($recipientUsers) {
+            $message->recipient_user = $recipientUsers->get($message->recipient_phone);
+            return $message;
+        });
+        
+        // Statistiques des messages WhatsApp
+        $whatsappStats = [
+            'total_sent' => SentWhatsAppMessage::count(),
+            'sent_today' => SentWhatsAppMessage::whereDate('sent_at', today())->count(),
+            'failed_today' => SentWhatsAppMessage::whereDate('created_at', today())->where('status', 'failed')->count(),
+        ];
+        
+        return view('admin.announcements.index', compact('announcements', 'recentSentEmails', 'pendingScheduledEmails', 'emailStats', 'recentSentWhatsApp', 'whatsappStats'));
     }
 
     public function createAnnouncement()
@@ -2333,7 +2376,9 @@ class AdminController extends Controller
                     try {
                         // Envoyer l'email de manière synchrone (immédiate)
                         // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
-                        Mail::to($user->email)->send(new CustomAnnouncementMail($subject, $content, $attachmentPaths));
+                        $mailable = new CustomAnnouncementMail($subject, $content, $attachmentPaths);
+                        $communicationService = app(\App\Services\CommunicationService::class);
+                        $communicationService->sendEmailAndWhatsApp($user, $mailable);
                         
                         // Enregistrer l'email envoyé
                         SentEmail::create([
@@ -2417,6 +2462,15 @@ class AdminController extends Controller
             $message = "Email programmé pour être envoyé le " . $scheduledAt->format('d/m/Y à H:i') . " à {$users->count()} destinataire(s).";
         }
 
+        // Si c'est une requête AJAX, retourner JSON
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'redirect' => route('admin.announcements')
+            ]);
+        }
+        
         return redirect()->route('admin.announcements')
             ->with('success', $message);
     }
@@ -2555,7 +2609,13 @@ class AdminController extends Controller
      */
     public function showSentEmail(SentEmail $sentEmail)
     {
-        return view('admin.emails.sent-show', compact('sentEmail'));
+        // Charger l'utilisateur destinataire pour afficher l'avatar
+        $recipientUser = null;
+        if ($sentEmail->recipient_email) {
+            $recipientUser = User::where('email', $sentEmail->recipient_email)->first();
+        }
+        
+        return view('admin.emails.sent-show', compact('sentEmail', 'recipientUser'));
     }
 
     /**
@@ -3571,5 +3631,662 @@ class AdminController extends Controller
             'rating' => round($approvedReviews->avg('rating') ?? 0, 2),
             'reviews_count' => $approvedReviews->count(),
         ]);
+    }
+
+    // Gestion des certificats
+    public function certificates(Request $request)
+    {
+        $query = Certificate::with(['user', 'course.instructor', 'course.category']);
+
+        // Recherche par nom d'utilisateur, titre de cours, numéro de certificat
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('certificate_number', 'like', "%{$search}%")
+                  ->orWhere('title', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', "%{$search}%")
+                               ->orWhere('email', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('course', function ($courseQuery) use ($search) {
+                      $courseQuery->where('title', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filtre par utilisateur
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->get('user_id'));
+        }
+
+        // Filtre par cours
+        if ($request->filled('course_id')) {
+            $query->where('course_id', $request->get('course_id'));
+        }
+
+        // Tri
+        $sortBy = $request->get('sort', 'issued_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        if (in_array($sortBy, ['certificate_number', 'title', 'issued_at', 'created_at'])) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->orderBy('issued_at', 'desc');
+        }
+
+        $certificates = $query->paginate(20)->withQueryString();
+
+        // Statistiques
+        $stats = [
+            'total' => Certificate::count(),
+            'this_month' => Certificate::whereMonth('issued_at', now()->month)
+                ->whereYear('issued_at', now()->year)
+                ->count(),
+            'this_year' => Certificate::whereYear('issued_at', now()->year)->count(),
+        ];
+
+        // Liste des cours pour le filtre
+        $courses = Course::published()
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
+        // Liste des utilisateurs pour le filtre (avec certificats)
+        $users = \App\Models\User::whereHas('certificates')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
+        return view('admin.certificates.index', compact('certificates', 'stats', 'courses', 'users'));
+    }
+
+    /**
+     * Afficher les détails d'un certificat
+     */
+    public function showCertificate(Certificate $certificate)
+    {
+        $certificate->load(['user', 'course.instructor', 'course.category']);
+        return view('admin.certificates.show', compact('certificate'));
+    }
+
+    /**
+     * Télécharger un certificat
+     */
+    public function downloadCertificate(Certificate $certificate)
+    {
+        try {
+            $certificateService = app(\App\Services\CertificateService::class);
+            $pdfContent = $certificateService->getCertificatePdfContent($certificate);
+            
+            $filename = $certificate->certificate_number . '.pdf';
+            
+            return response($pdfContent, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du téléchargement du certificat', [
+                'certificate_id' => $certificate->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return redirect()->route('admin.certificates')
+                ->with('error', 'Erreur lors du téléchargement du certificat: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Régénérer un certificat (recréer le PDF)
+     */
+    public function regenerateCertificate(Certificate $certificate)
+    {
+        try {
+            $certificateService = app(\App\Services\CertificateService::class);
+            $certificate = $certificateService->regenerateCertificate($certificate);
+            
+            return redirect()->route('admin.certificates.show', $certificate)
+                ->with('success', "Le certificat {$certificate->certificate_number} a été régénéré avec succès.");
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la régénération du certificat', [
+                'certificate_id' => $certificate->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return redirect()->route('admin.certificates.show', $certificate)
+                ->with('error', 'Erreur lors de la régénération du certificat: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Supprimer un certificat
+     */
+    public function destroyCertificate(Certificate $certificate)
+    {
+        try {
+            // Supprimer le fichier PDF si il existe
+            if ($certificate->file_path) {
+                Storage::disk('public')->delete($certificate->file_path);
+            }
+            
+            $certificateNumber = $certificate->certificate_number;
+            $certificate->delete();
+            
+            return redirect()->route('admin.certificates')
+                ->with('success', "Le certificat {$certificateNumber} a été supprimé avec succès.");
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la suppression du certificat', [
+                'certificate_id' => $certificate->id,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return redirect()->route('admin.certificates')
+                ->with('error', 'Erreur lors de la suppression du certificat: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Afficher la page d'envoi de message WhatsApp
+     */
+    public function showSendWhatsApp()
+    {
+        $whatsappService = app(WhatsAppService::class);
+        $connectionStatus = $whatsappService->checkConnection();
+        
+        return view('admin.announcements.send-whatsapp', compact('connectionStatus'));
+    }
+
+    /**
+     * Rechercher des utilisateurs pour l'envoi WhatsApp (avec numéro de téléphone)
+     */
+    public function searchUsersForWhatsApp(Request $request)
+    {
+        $query = $request->get('q', '');
+        
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $users = User::where('is_active', true)
+            ->where(function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%")
+                  ->orWhere('phone', 'like', "%{$query}%");
+            })
+            ->whereNotNull('phone')
+            ->select('id', 'name', 'email', 'phone')
+            ->limit(20)
+            ->get();
+
+        return response()->json($users);
+    }
+
+    /**
+     * Compter les utilisateurs avec numéro de téléphone selon les critères
+     */
+    public function countUsersForWhatsApp(Request $request)
+    {
+        $type = $request->get('type', 'all');
+        
+        $query = User::where('is_active', true)->whereNotNull('phone');
+
+        if ($type === 'role') {
+            $roles = explode(',', $request->get('roles', ''));
+            if (!empty($roles)) {
+                $query->whereIn('role', $roles);
+            }
+        }
+
+        $count = $query->count();
+
+        return response()->json(['count' => $count]);
+    }
+
+    /**
+     * Envoyer un message WhatsApp personnalisé
+     */
+    public function sendWhatsApp(Request $request)
+    {
+        $request->validate([
+            'recipient_type' => 'required|in:all,role,selected,single',
+            'message' => 'required|string|max:4096',
+            'send_type' => 'required|in:now',
+            'roles' => 'nullable|required_if:recipient_type,role|array',
+            'roles.*' => 'in:student,instructor,admin,affiliate',
+            'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
+            'user_ids' => 'nullable|required_if:recipient_type,selected|string',
+        ]);
+
+        $recipientType = $request->recipient_type;
+        $message = $request->message;
+
+        // Obtenir les destinataires avec numéro de téléphone
+        $users = $this->getWhatsAppRecipients($request);
+
+        if ($users->isEmpty()) {
+            return redirect()->back()
+                ->with('error', 'Aucun destinataire avec numéro de téléphone trouvé pour cet envoi.')
+                ->withInput();
+        }
+
+        $whatsappService = app(WhatsAppService::class);
+        $sentCount = 0;
+        $failedCount = 0;
+
+        // Envoyer immédiatement en lots
+        $users->chunk(50)->each(function ($userChunk) use ($message, &$sentCount, &$failedCount, $recipientType, $whatsappService) {
+            foreach ($userChunk as $user) {
+                try {
+                    // Envoyer le message WhatsApp
+                    $result = $whatsappService->sendMessage($user->phone, $message);
+                    
+                    // Enregistrer le message
+                    SentWhatsAppMessage::create([
+                        'user_id' => $user->id,
+                        'recipient_phone' => $user->phone,
+                        'recipient_name' => $user->name,
+                        'message_id' => $result['message_id'] ?? null,
+                        'message' => $message,
+                        'type' => 'custom',
+                        'status' => $result['success'] ? 'sent' : 'failed',
+                        'error_message' => $result['error'] ?? null,
+                        'sent_at' => $result['success'] ? now() : null,
+                        'metadata' => [
+                            'recipient_type' => $recipientType,
+                        ],
+                    ]);
+                    
+                    if ($result['success']) {
+                        $sentCount++;
+                    } else {
+                        $failedCount++;
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Erreur lors de l'envoi WhatsApp à {$user->phone}: " . $e->getMessage());
+                    
+                    // Enregistrer l'échec
+                    SentWhatsAppMessage::create([
+                        'user_id' => $user->id,
+                        'recipient_phone' => $user->phone,
+                        'recipient_name' => $user->name,
+                        'message' => $message,
+                        'type' => 'custom',
+                        'status' => 'failed',
+                        'error_message' => $e->getMessage(),
+                        'metadata' => [
+                            'recipient_type' => $recipientType,
+                        ],
+                    ]);
+                    
+                    $failedCount++;
+                }
+            }
+        });
+
+        $messageResult = "Message WhatsApp envoyé avec succès à {$sentCount} destinataire(s).";
+        if ($failedCount > 0) {
+            $messageResult .= " {$failedCount} envoi(s) ont échoué.";
+        }
+
+        // Si c'est une requête AJAX, retourner JSON
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $messageResult,
+                'redirect' => route('admin.announcements')
+            ]);
+        }
+
+        return redirect()->route('admin.announcements')
+            ->with('success', $messageResult);
+    }
+
+    /**
+     * Obtenir les destinataires WhatsApp selon le type sélectionné (avec numéro de téléphone)
+     */
+    protected function getWhatsAppRecipients(Request $request)
+    {
+        $type = $request->recipient_type;
+
+        $query = User::where('is_active', true)->whereNotNull('phone');
+
+        switch ($type) {
+            case 'all':
+                // Tous les utilisateurs actifs avec numéro de téléphone
+                break;
+
+            case 'role':
+                $roles = $request->input('roles', []);
+                if (!empty($roles)) {
+                    $query->whereIn('role', $roles);
+                }
+                break;
+
+            case 'selected':
+                $userIdsString = $request->input('user_ids', '');
+                if (empty($userIdsString)) {
+                    return collect();
+                }
+                $userIds = array_filter(explode(',', $userIdsString), function($id) {
+                    return !empty(trim($id)) && is_numeric(trim($id));
+                });
+                if (!empty($userIds)) {
+                    $query->whereIn('id', array_map('intval', $userIds));
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'single':
+                $userId = $request->single_user_id;
+                if ($userId) {
+                    $query->where('id', $userId);
+                } else {
+                    return collect();
+                }
+                break;
+        }
+
+        return $query->select('id', 'name', 'email', 'phone')->get();
+    }
+
+    /**
+     * Voir les détails d'un message WhatsApp envoyé
+     */
+    public function showWhatsAppMessage(SentWhatsAppMessage $sentWhatsAppMessage)
+    {
+        $sentWhatsAppMessage->load('user');
+        
+        // Charger l'utilisateur destinataire si le numéro de téléphone correspond
+        if ($sentWhatsAppMessage->recipient_phone) {
+            $recipientUser = User::where('phone', $sentWhatsAppMessage->recipient_phone)->first();
+            $sentWhatsAppMessage->recipient_user = $recipientUser;
+        }
+        
+        // Traduire le message d'erreur en français si présent
+        if ($sentWhatsAppMessage->error_message) {
+            $sentWhatsAppMessage->translated_error = $this->translateWhatsAppError($sentWhatsAppMessage->error_message);
+        }
+        
+        return view('admin.whatsapp.show', compact('sentWhatsAppMessage'));
+    }
+
+    /**
+     * Traduire un message d'erreur WhatsApp en français
+     */
+    protected function translateWhatsAppError(string $errorMessage): string
+    {
+        // Nettoyer le message d'erreur (enlever "Erreur :" au début si présent)
+        $errorMessage = preg_replace('/^Erreur\s*:\s*/i', '', trim($errorMessage));
+        $errorLower = strtolower($errorMessage);
+        
+        // Traductions des messages d'erreur courants (par ordre de priorité)
+        $translations = [
+            // Messages HTTP courants (priorité haute)
+            'bad request' => 'Requête invalide - Vérifiez les paramètres de la requête',
+            'unauthorized' => 'Non autorisé - Vérifiez votre clé API',
+            'forbidden' => 'Accès interdit',
+            'not found' => 'Ressource introuvable',
+            'method not allowed' => 'Méthode non autorisée',
+            'request timeout' => 'Délai d\'attente de la requête dépassé',
+            'too many requests' => 'Trop de requêtes - Veuillez réessayer plus tard',
+            'internal server error' => 'Erreur interne du serveur',
+            'bad gateway' => 'Mauvaise passerelle',
+            'service unavailable' => 'Service indisponible',
+            'gateway timeout' => 'Délai d\'attente de la passerelle dépassé',
+            
+            // Erreurs de connexion
+            'not connected' => 'Instance WhatsApp non connectée',
+            'instance not found' => 'Instance WhatsApp introuvable',
+            'instance not connected' => 'Instance WhatsApp non connectée',
+            'connection timeout' => 'Délai de connexion dépassé',
+            'timeout' => 'Délai d\'attente dépassé',
+            'connection' => 'Erreur de connexion',
+            
+            // Erreurs de numéro
+            'invalid phone' => 'Numéro de téléphone invalide',
+            'invalid number' => 'Numéro de téléphone invalide',
+            'phone number' => 'Numéro de téléphone invalide',
+            'number not found' => 'Numéro de téléphone introuvable',
+            
+            // Erreurs d'API
+            'api error' => 'Erreur de l\'API WhatsApp',
+            'api key' => 'Clé API invalide',
+            'server error' => 'Erreur du serveur WhatsApp',
+            
+            // Erreurs de message
+            'message failed' => 'Échec de l\'envoi du message',
+            'send failed' => 'Échec de l\'envoi',
+            'failed to send' => 'Échec de l\'envoi',
+            'unable to send' => 'Impossible d\'envoyer le message',
+            
+            // Erreurs réseau
+            'network error' => 'Erreur réseau',
+            'connection refused' => 'Connexion refusée',
+            'could not connect' => 'Impossible de se connecter',
+            'connection error' => 'Erreur de connexion',
+            
+            // Erreurs spécifiques Evolution API
+            'qr code' => 'Code QR requis - Veuillez scanner le code QR',
+            'qr' => 'Code QR requis',
+            'authentication' => 'Erreur d\'authentification WhatsApp',
+            'session' => 'Session WhatsApp expirée',
+            
+            // Erreurs génériques
+            'unknown error' => 'Erreur inconnue',
+            'error occurred' => 'Une erreur s\'est produite',
+            'something went wrong' => 'Une erreur s\'est produite',
+        ];
+        
+        // Chercher une correspondance exacte d'abord
+        if (isset($translations[$errorLower])) {
+            return $translations[$errorLower];
+        }
+        
+        // Chercher une correspondance partielle dans les traductions
+        foreach ($translations as $key => $translation) {
+            if (stripos($errorLower, $key) !== false) {
+                return $translation;
+            }
+        }
+        
+        // Si c'est un message d'erreur HTTP avec code numérique, le traduire
+        if (preg_match('/\b(\d{3})\b/', $errorMessage, $matches)) {
+            $httpCode = (int)$matches[1];
+            $httpMessages = [
+                400 => 'Requête invalide - Vérifiez les paramètres de la requête',
+                401 => 'Non autorisé - Vérifiez votre clé API',
+                403 => 'Accès interdit',
+                404 => 'Ressource introuvable',
+                405 => 'Méthode non autorisée',
+                408 => 'Délai d\'attente dépassé',
+                429 => 'Trop de requêtes - Veuillez réessayer plus tard',
+                500 => 'Erreur interne du serveur',
+                502 => 'Mauvaise passerelle',
+                503 => 'Service indisponible',
+                504 => 'Délai d\'attente de la passerelle dépassé',
+            ];
+            
+            if (isset($httpMessages[$httpCode])) {
+                return $httpMessages[$httpCode];
+            }
+        }
+        
+        // Retourner le message original si aucune traduction n'est trouvée
+        return $errorMessage;
+    }
+
+    /**
+     * Afficher le formulaire d'envoi combiné (email + WhatsApp)
+     */
+    public function showSendCombined()
+    {
+        $whatsappConnectionStatus = app(WhatsAppService::class)->checkConnection();
+        return view('admin.announcements.send-combined', compact('whatsappConnectionStatus'));
+    }
+
+    /**
+     * Envoyer un message combiné (email + WhatsApp) simultanément
+     */
+    public function sendCombined(Request $request)
+    {
+        $request->validate([
+            'recipient_type' => 'required|in:all,role,selected,single',
+            'subject' => 'required|string|max:255',
+            'email_content' => 'required|string',
+            'whatsapp_message' => 'required|string|max:4096',
+            'send_email' => 'nullable|boolean',
+            'send_whatsapp' => 'nullable|boolean',
+            'roles' => 'nullable|required_if:recipient_type,role|array',
+            'roles.*' => 'in:student,instructor,admin,affiliate',
+            'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
+            'user_ids' => 'nullable|required_if:recipient_type,selected|string',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240', // 10MB max par fichier
+        ]);
+
+        // Vérifier qu'au moins un canal est sélectionné
+        if (!$request->has('send_email') && !$request->has('send_whatsapp')) {
+            return redirect()->back()
+                ->with('error', 'Veuillez sélectionner au moins un canal d\'envoi (Email ou WhatsApp).')
+                ->withInput();
+        }
+
+        $recipientType = $request->recipient_type;
+        $subject = $request->subject;
+        $emailContent = $request->email_content;
+        $whatsappMessage = $request->whatsapp_message;
+        $sendEmail = $request->has('send_email');
+        $sendWhatsApp = $request->has('send_whatsapp');
+
+        // Gérer les pièces jointes pour l'email
+        $attachmentPaths = [];
+        if ($request->hasFile('attachments')) {
+            $service = app(FileUploadService::class);
+            foreach ($request->file('attachments') as $file) {
+                $path = $service->upload($file, 'email-attachments');
+                $attachmentPaths[] = $path;
+            }
+        }
+
+        // Obtenir les destinataires pour email (avec email)
+        $emailUsers = collect();
+        if ($sendEmail) {
+            $emailUsers = $this->getEmailRecipients($request);
+        }
+
+        // Obtenir les destinataires pour WhatsApp (avec téléphone)
+        $whatsappUsers = collect();
+        if ($sendWhatsApp) {
+            $whatsappUsers = $this->getWhatsAppRecipients($request);
+        }
+
+        // Vérifier qu'il y a au moins un destinataire
+        if ($sendEmail && $emailUsers->isEmpty()) {
+            return redirect()->back()
+                ->with('error', 'Aucun destinataire avec adresse email trouvé pour cet envoi.')
+                ->withInput();
+        }
+
+        if ($sendWhatsApp && $whatsappUsers->isEmpty()) {
+            return redirect()->back()
+                ->with('error', 'Aucun destinataire avec numéro de téléphone trouvé pour cet envoi.')
+                ->withInput();
+        }
+
+        if ($sendEmail && $emailUsers->isEmpty() && $sendWhatsApp && $whatsappUsers->isEmpty()) {
+            return redirect()->back()
+                ->with('error', 'Aucun destinataire trouvé pour cet envoi.')
+                ->withInput();
+        }
+
+        $emailSentCount = 0;
+        $emailFailedCount = 0;
+        $whatsappSentCount = 0;
+        $whatsappFailedCount = 0;
+
+        // Exécuter directement les envois sans passer par la queue/worker
+        // Les erreurs sont gérées individuellement pour ne pas bloquer les autres envois
+        
+        // Envoyer les emails directement
+        if ($sendEmail && $emailUsers->isNotEmpty()) {
+            foreach ($emailUsers as $user) {
+                if ($user->email) {
+                    try {
+                        // Exécuter directement le job sans passer par la queue
+                        $job = new SendEmailJob($user, $subject, $emailContent, $attachmentPaths, $recipientType);
+                        $job->handle();
+                        $emailSentCount++;
+                    } catch (\Exception $e) {
+                        Log::error("Erreur lors de l'envoi d'email à {$user->email}: " . $e->getMessage());
+                        $emailFailedCount++;
+                    }
+                }
+            }
+        }
+
+        // Envoyer les messages WhatsApp directement
+        if ($sendWhatsApp && $whatsappUsers->isNotEmpty()) {
+            foreach ($whatsappUsers as $user) {
+                if ($user->phone) {
+                    try {
+                        // Exécuter directement le job sans passer par la queue
+                        $job = new SendWhatsAppJob($user, $whatsappMessage, $recipientType);
+                        $job->handle();
+                        $whatsappSentCount++;
+                    } catch (\Exception $e) {
+                        Log::error("Erreur lors de l'envoi WhatsApp à {$user->phone}: " . $e->getMessage());
+                        $whatsappFailedCount++;
+                    }
+                }
+            }
+        }
+        
+        // Construire le message de résultat
+        $message = "Envoi combiné terminé ! ";
+        if ($sendEmail) {
+            $message .= "{$emailSentCount} email(s) envoyé(s)";
+            if ($emailFailedCount > 0) {
+                $message .= ", {$emailFailedCount} échec(s)";
+            }
+            $message .= ". ";
+        }
+        if ($sendWhatsApp) {
+            $message .= "{$whatsappSentCount} message(s) WhatsApp envoyé(s)";
+            if ($whatsappFailedCount > 0) {
+                $message .= ", {$whatsappFailedCount} échec(s)";
+            }
+            $message .= ". ";
+        }
+
+        // Si c'est une requête AJAX, retourner JSON
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'redirect' => route('admin.announcements')
+            ]);
+        }
+        
+        return redirect()->route('admin.announcements')
+            ->with('success', $message);
+    }
+
+    /**
+     * Supprimer un message WhatsApp envoyé
+     */
+    public function destroyWhatsAppMessage(SentWhatsAppMessage $sentWhatsAppMessage)
+    {
+        try {
+            $sentWhatsAppMessage->delete();
+
+            return redirect()->route('admin.announcements')
+                ->with('success', 'Message WhatsApp supprimé avec succès.');
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la suppression du message WhatsApp', [
+                'message_id' => $sentWhatsAppMessage->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return redirect()->route('admin.announcements')
+                ->with('error', 'Erreur lors de la suppression du message WhatsApp.');
+        }
     }
 }

@@ -123,12 +123,12 @@
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Étudiant</th>
-                                    <th>Cours</th>
-                                    <th style="width: 120px;">Note</th>
-                                    <th>Commentaire</th>
-                                    <th style="width: 100px;">Statut</th>
-                                    <th style="width: 120px;">Date</th>
+                                    <th style="min-width: 200px; max-width: 250px;">Étudiant</th>
+                                    <th style="min-width: 200px; max-width: 300px;">Cours</th>
+                                    <th style="width: 120px; text-align: center;">Note</th>
+                                    <th style="min-width: 200px; max-width: 350px;">Commentaire</th>
+                                    <th style="width: 120px; text-align: center;">Statut</th>
+                                    <th style="width: 120px; text-align: center;">Date</th>
                                     <th style="width: 150px;" class="text-end">Actions</th>
                                 </tr>
                             </thead>
@@ -142,25 +142,29 @@
                                                      alt="{{ $review->user->name }}" 
                                                      style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: block;">
                                             </div>
-                                            <div>
-                                                <div class="fw-semibold">{{ $review->user->name }}</div>
-                                                <small class="text-muted">{{ $review->user->email }}</small>
+                                            <div style="min-width: 0; flex: 1;">
+                                                <div class="fw-semibold text-truncate" style="max-width: 200px;" title="{{ $review->user->name }}">{{ $review->user->name }}</div>
+                                                <small class="text-muted text-truncate d-block" style="max-width: 200px;" title="{{ $review->user->email }}">{{ $review->user->email }}</small>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <div>
-                                            <div class="fw-semibold">{{ Str::limit($review->course->title, 40) }}</div>
-                                            <small class="text-muted">Par {{ $review->course->instructor->name }}</small>
+                                        <div style="min-width: 0;">
+                                            <div class="fw-semibold text-truncate" style="max-width: 250px;" title="{{ $review->course->title }}">{{ $review->course->title }}</div>
+                                            <small class="text-muted text-truncate d-block" style="max-width: 250px;" title="Par {{ $review->course->instructor->name }}">Par {{ $review->course->instructor->name }}</small>
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="text-warning">
-                                            @for($i = 1; $i <= 5; $i++)
-                                                <i class="fas fa-star{{ $i <= $review->rating ? '' : '-o' }}"></i>
-                                            @endfor
+                                        <div class="d-flex flex-column align-items-center gap-1">
+                                            <span class="badge bg-warning text-dark fw-bold" style="font-size: 0.95rem; padding: 0.35rem 0.65rem; min-width: 50px;">
+                                                {{ $review->rating }}/5
+                                            </span>
+                                            <div class="text-warning" style="font-size: 0.75rem; line-height: 1;">
+                                                @for($i = 1; $i <= 5; $i++)
+                                                    <i class="fas fa-star{{ $i <= $review->rating ? '' : '-o' }}"></i>
+                                                @endfor
+                                            </div>
                                         </div>
-                                        <small class="text-muted">{{ $review->rating }}/5</small>
                                     </td>
                                     <td>
                                         @if($review->comment)
@@ -174,15 +178,17 @@
                                         @endif
                                     </td>
                                     <td>
-                                        @if($review->is_approved)
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check-circle me-1"></i>Approuvé
-                                            </span>
-                                        @else
-                                            <span class="badge bg-warning text-dark">
-                                                <i class="fas fa-clock me-1"></i>En attente
-                                            </span>
-                                        @endif
+                                        <div style="white-space: nowrap;">
+                                            @if($review->is_approved)
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check-circle me-1"></i>Approuvé
+                                                </span>
+                                            @else
+                                                <span class="badge bg-warning text-dark">
+                                                    <i class="fas fa-clock me-1"></i>En attente
+                                                </span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td>
                                         <small class="text-muted">
@@ -191,26 +197,26 @@
                                         </small>
                                     </td>
                                     <td>
-                                        <div class="d-flex justify-content-end gap-2">
+                                        <div class="d-flex justify-content-end align-items-center gap-2" style="flex-wrap: nowrap;">
                                             @if(!$review->is_approved)
-                                                <form action="{{ route('admin.reviews.approve', $review) }}" method="POST" class="d-inline">
+                                                <form action="{{ route('admin.reviews.approve', $review) }}" method="POST" class="d-inline m-0" style="flex-shrink: 0;">
                                                     @csrf
-                                                    <button type="submit" class="btn btn-link text-success p-0" title="Approuver" style="border: none; background: none;">
+                                                    <button type="submit" class="btn btn-link text-success p-0 action-btn" title="Approuver" style="border: none; background: none; min-width: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                                         <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
                                                     </button>
                                                 </form>
                                             @else
-                                                <form action="{{ route('admin.reviews.reject', $review) }}" method="POST" class="d-inline">
+                                                <form action="{{ route('admin.reviews.reject', $review) }}" method="POST" class="d-inline m-0" style="flex-shrink: 0;">
                                                     @csrf
-                                                    <button type="submit" class="btn btn-link text-warning p-0" title="Rejeter" style="border: none; background: none;">
+                                                    <button type="submit" class="btn btn-link text-warning p-0 action-btn" title="Rejeter" style="border: none; background: none; min-width: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                                         <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
                                                     </button>
                                                 </form>
                                             @endif
                                             <button type="button" 
-                                                    class="btn btn-link text-danger p-0" 
+                                                    class="btn btn-link text-danger p-0 action-btn" 
                                                     title="Supprimer" 
-                                                    style="border: none; background: none;"
+                                                    style="border: none; background: none; min-width: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"
                                                     onclick="openDeleteModal({{ $review->id }}, '{{ addslashes($review->user->name) }}', '{{ addslashes(Str::limit($review->course->title, 50)) }}')">
                                                 <i class="fas fa-trash-alt" style="font-size: 1.2rem;"></i>
                                             </button>
@@ -304,6 +310,92 @@ function openDeleteModal(reviewId, userName, courseTitle) {
 
 @push('styles')
 <style>
+/* Styles pour éviter les débordements dans les colonnes */
+.table td {
+    vertical-align: middle;
+    overflow: hidden;
+    position: relative;
+}
+
+/* S'assurer que les éléments cliquables sont accessibles */
+.table td a,
+.table td button,
+.table td .btn-link,
+.table td form {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+}
+
+/* S'assurer que la colonne Actions n'est jamais coupée */
+.table td:last-child {
+    overflow: visible !important;
+}
+
+/* Colonne Étudiant */
+.table td:first-child {
+    max-width: 250px;
+    min-width: 200px;
+}
+
+/* Colonne Cours */
+.table td:nth-child(2) {
+    max-width: 300px;
+    min-width: 200px;
+}
+
+/* Colonne Note */
+.table td:nth-child(3) {
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Colonne Commentaire */
+.table td:nth-child(4) {
+    max-width: 350px;
+    min-width: 200px;
+}
+
+/* Colonne Statut */
+.table td:nth-child(5) {
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* Colonne Date */
+.table td:nth-child(6) {
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* Colonne Actions */
+.table td:last-child {
+    white-space: nowrap;
+    text-align: right;
+    overflow: visible !important;
+    min-width: 120px;
+}
+
+.table th:last-child {
+    overflow: visible !important;
+    min-width: 120px;
+}
+
+/* Styles pour les boutons d'action */
+.table td .action-btn {
+    flex-shrink: 0 !important;
+    min-width: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.table td form {
+    flex-shrink: 0 !important;
+    display: inline-block !important;
+    margin: 0 !important;
+}
+
 /* Styles pour les icônes d'action */
 .table td .btn-link {
     transition: all 0.2s ease;
@@ -317,6 +409,41 @@ function openDeleteModal(reviewId, userName, courseTitle) {
 
 .table td .btn-link:active {
     transform: scale(0.95);
+}
+
+/* Responsive - ajustements pour mobile */
+@media (max-width: 991.98px) {
+    .table td:first-child {
+        max-width: 180px;
+        min-width: 150px;
+    }
+    
+    .table td:nth-child(2) {
+        max-width: 200px;
+        min-width: 150px;
+    }
+    
+    .table td:nth-child(4) {
+        max-width: 200px;
+        min-width: 150px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .table td:first-child {
+        max-width: 150px;
+        min-width: 120px;
+    }
+    
+    .table td:nth-child(2) {
+        max-width: 150px;
+        min-width: 120px;
+    }
+    
+    .table td:nth-child(4) {
+        max-width: 150px;
+        min-width: 120px;
+    }
 }
 
 /* Styles pour l'affichage des commentaires */
@@ -388,28 +515,111 @@ function openDeleteModal(reviewId, userName, courseTitle) {
 }
 
 @media (max-width: 767.98px) {
+    .table td:last-child {
+        min-width: 100px !important;
+        width: auto !important;
+        overflow: visible !important;
+    }
+    
+    .table th:last-child {
+        min-width: 100px !important;
+        width: auto !important;
+    }
+    
+    .table td .btn-link {
+        min-width: 32px !important;
+        width: auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0.25rem !important;
+    }
+    
     .table td .btn-link i {
         font-size: 1rem !important;
     }
     
     .table td .d-flex.gap-2 {
-        gap: 0.4rem !important;
+        gap: 0.3rem !important;
+        flex-wrap: nowrap !important;
+    }
+    
+    .table td form {
+        display: inline-block !important;
+        margin: 0 !important;
     }
 }
 
 @media (max-width: 575.98px) {
+    .table td:last-child {
+        min-width: 90px !important;
+        width: auto !important;
+        overflow: visible !important;
+    }
+    
+    .table th:last-child {
+        min-width: 90px !important;
+        width: auto !important;
+    }
+    
+    .table td .btn-link {
+        min-width: 28px !important;
+        width: auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0.2rem !important;
+    }
+    
     .table td .btn-link i {
         font-size: 0.9rem !important;
     }
     
     .table td .d-flex.gap-2 {
-        gap: 0.3rem !important;
+        gap: 0.25rem !important;
+        flex-wrap: nowrap !important;
+    }
+    
+    .table td form {
+        display: inline-block !important;
+        margin: 0 !important;
     }
 }
 
 /* Styles pour le modal de suppression - Responsive */
-#deleteReviewModal .modal-dialog {
-    margin: 1rem;
+/* Sur mobile, utiliser un margin réduit */
+@media (max-width: 575.98px) {
+    #deleteReviewModal .modal-dialog {
+        margin: 0.75rem auto;
+    }
+}
+
+/* Sur desktop, s'assurer que le modal est bien centré */
+@media (min-width: 576px) {
+    #deleteReviewModal .modal-dialog {
+        margin: 1.75rem auto;
+    }
+    
+    /* S'assurer que le centrage vertical fonctionne uniquement quand le modal est ouvert */
+    #deleteReviewModal.modal.show {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* S'assurer que le modal fermé n'interfère pas avec les clics */
+    #deleteReviewModal.modal:not(.show) {
+        display: none !important;
+        pointer-events: none !important;
+        z-index: -1 !important;
+    }
+    
+    /* S'assurer que le backdrop n'interfère pas quand le modal est fermé */
+    #deleteReviewModal.modal:not(.show) + .modal-backdrop,
+    .modal-backdrop:not(.show) {
+        display: none !important;
+        pointer-events: none !important;
+    }
 }
 
 #deleteReviewModal .modal-content {

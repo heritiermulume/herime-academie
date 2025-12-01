@@ -92,6 +92,19 @@ class SSOService
                                         : $user['privileges'];
                                 }
                             }
+                            
+                            // Normaliser le numéro de téléphone (peut être dans phone, telephone, mobile, phone_number)
+                            if (!isset($user['phone'])) {
+                                if (isset($user['telephone'])) {
+                                    $user['phone'] = $user['telephone'];
+                                } elseif (isset($user['mobile'])) {
+                                    $user['phone'] = $user['mobile'];
+                                } elseif (isset($user['phone_number'])) {
+                                    $user['phone'] = $user['phone_number'];
+                                } elseif (isset($user['tel'])) {
+                                    $user['phone'] = $user['tel'];
+                                }
+                            }
                         }
                         
                         return $user;
@@ -165,6 +178,19 @@ class SSOService
                                 $user['role'] = is_array($user['privileges']) 
                                     ? ($user['privileges'][0] ?? 'student')
                                     : $user['privileges'];
+                            }
+                        }
+                        
+                        // Normaliser le numéro de téléphone (peut être dans phone, telephone, mobile, phone_number)
+                        if (!isset($user['phone'])) {
+                            if (isset($user['telephone'])) {
+                                $user['phone'] = $user['telephone'];
+                            } elseif (isset($user['mobile'])) {
+                                $user['phone'] = $user['mobile'];
+                            } elseif (isset($user['phone_number'])) {
+                                $user['phone'] = $user['phone_number'];
+                            } elseif (isset($user['tel'])) {
+                                $user['phone'] = $user['tel'];
                             }
                         }
                     }
@@ -254,6 +280,8 @@ class SSOService
                 'avatar' => $payload['avatar'] ?? $payload['photo'] ?? $payload['picture'] ?? $payload['image'] ?? null,
                 // Récupérer le bio depuis le SSO
                 'bio' => $payload['bio'] ?? $payload['biography'] ?? $payload['about'] ?? null,
+                // Récupérer le numéro de téléphone depuis le SSO
+                'phone' => $payload['phone'] ?? $payload['telephone'] ?? $payload['mobile'] ?? $payload['phone_number'] ?? $payload['tel'] ?? null,
             ];
 
             // Vérifier que les données essentielles sont présentes
@@ -322,9 +350,9 @@ class SSOService
      */
     public function getRegisterUrl(?string $redirectUrl = null, bool $forceToken = true): string
     {
-        // Utiliser la route /register du SSO si elle existe, sinon utiliser /login
-        // Le SSO peut gérer l'enregistrement via la même page de login ou une page dédiée
-        $registerUrl = $this->ssoBaseUrl . '/register';
+        // Utiliser /login avec action=register pour rediriger directement vers la page d'inscription
+        // selon les recommandations SSO : action=register ou register=1
+        $registerUrl = $this->ssoBaseUrl . '/login';
         
         $params = [];
         
@@ -336,6 +364,9 @@ class SSOService
         if ($forceToken) {
             $params['force_token'] = '1';
         }
+        
+        // Ajouter le paramètre action=register pour rediriger directement vers l'inscription
+        $params['action'] = 'register';
         
         if (!empty($params)) {
             $registerUrl .= '?' . http_build_query($params);

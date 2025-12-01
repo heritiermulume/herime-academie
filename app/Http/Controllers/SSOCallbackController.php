@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 use App\Models\User;
 
 class SSOCallbackController extends Controller
@@ -87,6 +88,86 @@ class SSOCallbackController extends Controller
                 ?? data_get($remoteUser, 'about')
                 ?? null;
 
+            // Récupérer le numéro de téléphone depuis SSO
+            $phone = data_get($remoteUser, 'phone') 
+                ?? data_get($remoteUser, 'telephone') 
+                ?? data_get($remoteUser, 'mobile') 
+                ?? data_get($remoteUser, 'phone_number')
+                ?? data_get($remoteUser, 'tel')
+                ?? null;
+            
+            // Nettoyer le numéro de téléphone si fourni (sans ajouter d'indicatif)
+            if ($phone) {
+                $phone = trim($phone);
+                // Supprimer uniquement les espaces, tirets, points, etc. mais garder les chiffres et le +
+                $phone = preg_replace('/[^0-9+]/', '', $phone);
+                // Si le résultat est vide après nettoyage, mettre à null
+                if (empty($phone)) {
+                    $phone = null;
+                }
+            }
+
+            // Récupérer la date de naissance depuis SSO
+            $dateOfBirth = data_get($remoteUser, 'date_of_birth')
+                ?? data_get($remoteUser, 'birthdate')
+                ?? data_get($remoteUser, 'birth_date')
+                ?? data_get($remoteUser, 'date_naissance')
+                ?? data_get($remoteUser, 'dob')
+                ?? null;
+
+            // Normaliser la date de naissance si fournie
+            if ($dateOfBirth) {
+                try {
+                    // Si c'est déjà une date valide, la convertir en Carbon
+                    if (is_string($dateOfBirth)) {
+                        $dateOfBirth = Carbon::parse($dateOfBirth)->format('Y-m-d');
+                    } elseif ($dateOfBirth instanceof \DateTime) {
+                        $dateOfBirth = $dateOfBirth->format('Y-m-d');
+                    } else {
+                        $dateOfBirth = null;
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('SSO callback: invalid date_of_birth format', [
+                        'date_of_birth' => $dateOfBirth,
+                        'error' => $e->getMessage()
+                    ]);
+                    $dateOfBirth = null;
+                }
+            }
+
+            // Récupérer le sexe/genre depuis SSO
+            $gender = data_get($remoteUser, 'gender')
+                ?? data_get($remoteUser, 'sexe')
+                ?? data_get($remoteUser, 'sex')
+                ?? null;
+
+            // Normaliser le genre si fourni
+            if ($gender) {
+                $gender = strtolower(trim($gender));
+                // Mapper les valeurs possibles vers les valeurs attendues
+                $genderMap = [
+                    'm' => 'male',
+                    'male' => 'male',
+                    'homme' => 'male',
+                    'masculin' => 'male',
+                    'f' => 'female',
+                    'female' => 'female',
+                    'femme' => 'female',
+                    'féminin' => 'female',
+                    'feminin' => 'female',
+                    'o' => 'other',
+                    'other' => 'other',
+                    'autre' => 'other',
+                    'non-binaire' => 'other',
+                    'nonbinaire' => 'other',
+                ];
+                $gender = $genderMap[$gender] ?? null;
+                // Si la valeur n'est pas reconnue, mettre à null
+                if (!in_array($gender, ['male', 'female', 'other'])) {
+                    $gender = null;
+                }
+            }
+
             // Upsert utilisateur local avec le rôle depuis SSO
             $user = User::firstOrCreate(
                 ['email' => $email],
@@ -95,6 +176,9 @@ class SSOCallbackController extends Controller
                     'password' => bcrypt(Str::random(32)),
                     'role' => $role, // Assigner le rôle depuis SSO
                     'bio' => $bio, // Ajouter le bio depuis SSO
+                    'phone' => $phone, // Ajouter le numéro de téléphone depuis SSO
+                    'date_of_birth' => $dateOfBirth, // Ajouter la date de naissance depuis SSO
+                    'gender' => $gender, // Ajouter le sexe depuis SSO
                 ]
             );
             
@@ -118,6 +202,21 @@ class SSOCallbackController extends Controller
                 // Mettre à jour le bio si fourni
                 if ($bio !== null) {
                     $updateData['bio'] = $bio;
+                }
+                
+                // Mettre à jour le numéro de téléphone si fourni
+                if ($phone !== null) {
+                    $updateData['phone'] = $phone;
+                }
+                
+                // Mettre à jour la date de naissance si fournie
+                if ($dateOfBirth !== null) {
+                    $updateData['date_of_birth'] = $dateOfBirth;
+                }
+                
+                // Mettre à jour le sexe/genre si fourni
+                if ($gender !== null) {
+                    $updateData['gender'] = $gender;
                 }
                 
                 // Mettre à jour is_verified et is_active si fournis

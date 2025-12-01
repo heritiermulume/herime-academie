@@ -279,10 +279,12 @@ class OrderController extends Controller
                     ->exists();
 
                 if (!$alreadyNotified) {
-                    // Envoyer l'email directement de manière synchrone
+                    // Envoyer l'email et WhatsApp en parallèle
                     try {
-                        Mail::to($order->user->email)->send(new \App\Mail\PaymentReceivedMail($order));
-                        \Log::info("Email PaymentReceivedMail envoyé directement à {$order->user->email} pour la commande {$order->order_number}");
+                        $mailable = new \App\Mail\PaymentReceivedMail($order);
+                        $communicationService = app(\App\Services\CommunicationService::class);
+                        $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
+                        \Log::info("Email et WhatsApp PaymentReceivedMail envoyés pour la commande {$order->order_number}");
                     } catch (\Exception $emailException) {
                         \Log::error("Erreur lors de l'envoi de l'email PaymentReceivedMail", [
                             'order_id' => $order->id,
@@ -302,12 +304,13 @@ class OrderController extends Controller
             \Log::error("Erreur lors de l'envoi de la notification de confirmation de paiement pour la commande {$order->id}: " . $e->getMessage());
         }
 
-        // Envoyer la facture par email de manière synchrone (immédiate)
+        // Envoyer la facture par email et WhatsApp
         try {
             if ($order->user && $order->user->email) {
-                // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
-                Mail::to($order->user->email)->send(new InvoiceMail($order));
-                \Log::info("Facture envoyée pour la commande {$order->order_number}");
+                $mailable = new InvoiceMail($order);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
+                \Log::info("Facture envoyée par email et WhatsApp pour la commande {$order->order_number}");
             }
         } catch (\Exception $e) {
             \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
@@ -402,7 +405,9 @@ class OrderController extends Controller
             // Envoyer l'email de notification de suppression de commande à l'utilisateur
             if ($order->user && $order->user->email) {
                 try {
-                    Mail::to($order->user->email)->send(new \App\Mail\OrderDeletedMail($order));
+                    $mailable = new \App\Mail\OrderDeletedMail($order);
+                    $communicationService = app(\App\Services\CommunicationService::class);
+                    $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
                     \Log::info("Email OrderDeletedMail envoyé à {$order->user->email} pour la commande {$orderNumber}", [
                         'order_id' => $orderId,
                         'user_id' => $userId,
@@ -426,7 +431,9 @@ class OrderController extends Controller
                 try {
                     if ($enrollment->course && $enrollment->user) {
                         // Envoyer l'email de notification
-                        Mail::to($enrollment->user->email)->send(new CourseAccessRevokedMail($enrollment->course));
+                        $mailable = new CourseAccessRevokedMail($enrollment->course);
+                        $communicationService = app(\App\Services\CommunicationService::class);
+                        $communicationService->sendEmailAndWhatsApp($enrollment->user, $mailable);
                         // Envoyer la notification
                         Notification::sendNow($enrollment->user, new CourseAccessRevoked($enrollment->course));
                     }

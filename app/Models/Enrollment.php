@@ -147,9 +147,10 @@ class Enrollment extends Model
                     return;
                 }
 
-                // Envoyer l'email et capturer les erreurs SMTP
+                // Envoyer l'email et WhatsApp en parallèle
                 $mailable = new \App\Mail\CourseEnrolledMail($course);
-                Mail::to($user->email)->send($mailable);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($user, $mailable);
                 
                 \Log::info("Email CourseEnrolledMail envoyé avec succès à {$user->email} pour le cours {$course->id}", [
                     'enrollment_id' => $this->id,

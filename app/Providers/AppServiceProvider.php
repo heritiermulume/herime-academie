@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use App\Models\Announcement;
+use App\Events\CourseCompleted;
+use App\Listeners\GenerateCertificateOnCourseCompletion;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Event;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -62,5 +65,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Rien à faire - FileHelper est accessible directement dans les vues via \App\Helpers\FileHelper
+        
+        // Enregistrer les événements
+        Event::listen(
+            CourseCompleted::class,
+            GenerateCertificateOnCourseCompletion::class
+        );
     }
 }

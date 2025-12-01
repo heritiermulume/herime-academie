@@ -1,4 +1,4 @@
-@props(['paginator', 'showInfo' => false, 'itemName' => 'éléments'])
+@props(['paginator', 'showInfo' => false, 'itemName' => 'éléments', 'pageName' => null])
 
 @if ($paginator && $paginator->hasPages())
     <div class="admin-pagination">
@@ -8,7 +8,14 @@
             </span>
         @endif
         <div class="admin-pagination__links">
-            {{ $paginator->appends(request()->query())->links('pagination.bootstrap-5') }}
+            @php
+                $queryParams = request()->query();
+                // Si un nom de page personnalisé est fourni, exclure le paramètre 'page' par défaut
+                if ($pageName && isset($queryParams['page'])) {
+                    unset($queryParams['page']);
+                }
+            @endphp
+            {{ $paginator->appends($queryParams)->links('pagination.bootstrap-5') }}
         </div>
     </div>
 @endif

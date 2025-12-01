@@ -386,12 +386,10 @@
     border: 1px solid rgba(148, 163, 184, 0.18);
     background: #040913;
     margin-bottom: clamp(0.75rem, 0.6rem + 0.6vw, 1.2rem);
-    /* Fixer la taille du conteneur pour qu'il garde toujours la même taille */
+    /* Fixer le ratio 16:9 - la hauteur sera calculée automatiquement */
     aspect-ratio: 16 / 9 !important;
     width: 100% !important;
     height: auto !important;
-    min-height: 450px !important;
-    max-height: 600px !important;
 }
 
 .player-shell .ratio {
@@ -401,6 +399,7 @@
     top: 0 !important;
     left: 0 !important;
     padding-bottom: 0 !important; /* Désactiver le padding-bottom du ratio Bootstrap */
+    aspect-ratio: 16 / 9 !important;
 }
 
 /* S'assurer que les lecteurs vidéo remplissent le conteneur sans changer sa taille */
@@ -806,9 +805,9 @@
 
     .player-shell {
         margin-bottom: 1rem;
-        min-height: 300px !important;
-        max-height: 400px !important;
         aspect-ratio: 16 / 9 !important;
+        width: 100% !important;
+        height: auto !important;
     }
     
     /* S'assurer que les vidéos s'adaptent sur mobile */
@@ -1160,10 +1159,11 @@
         padding-bottom: 0 !important;
     }
     
-    /* S'assurer que le conteneur garde une taille fixe sur tablette */
+    /* S'assurer que le conteneur garde le ratio 16:9 sur tablette */
     .player-shell {
-        min-height: 400px !important;
-        max-height: 550px !important;
+        aspect-ratio: 16 / 9 !important;
+        width: 100% !important;
+        height: auto !important;
     }
 
     .player-shell .text-viewer-container .text-content {
@@ -2766,6 +2766,333 @@
     .form-control {
         font-size: 0.85rem;
     }
+    
+    /* Boutons compacts dans les cartes de notes et discussions - uniquement icônes sur mobile */
+    #notes-list .card .btn-sm,
+    #discussions-list .card .btn-sm,
+    #discussions-list .card .reply-card .btn-sm {
+        padding: 0.25rem !important;
+        font-size: 0.75rem !important;
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        line-height: 1 !important;
+    }
+    
+    #notes-list .card .btn-sm i,
+    #discussions-list .card .btn-sm i,
+    #discussions-list .card .reply-card .btn-sm i {
+        font-size: 0.7rem !important;
+        margin: 0 !important;
+        line-height: 1 !important;
+    }
+    
+    /* Masquer le texte dans les boutons, garder seulement les icônes */
+    #notes-list .card .btn-sm > *:not(i),
+    #discussions-list .card .btn-sm > *:not(i):not(.badge):not(.likes-count-inline),
+    #discussions-list .card .reply-card .btn-sm > *:not(i):not(.badge):not(.likes-count-inline) {
+        display: none !important;
+    }
+    
+    /* Exception pour le bouton like qui a un nombre - le rendre plus compact */
+    #discussions-list .card .btn-sm.btn-outline-info:first-child,
+    #discussions-list .card .btn-sm.btn-info:first-child,
+    #discussions-list .card button[onclick*="toggleLike"] {
+        width: auto !important;
+        min-width: 36px !important;
+        max-width: 60px !important;
+        padding: 0.25rem 0.35rem !important;
+    }
+    
+    #discussions-list .card .btn-sm.btn-outline-info:first-child i,
+    #discussions-list .card .btn-sm.btn-info:first-child i,
+    #discussions-list .card button[onclick*="toggleLike"] i {
+        margin-right: 0.2rem !important;
+    }
+    
+    #discussions-list .card .btn-sm.btn-outline-info:first-child > *:not(i),
+    #discussions-list .card .btn-sm.btn-info:first-child > *:not(i),
+    #discussions-list .card button[onclick*="toggleLike"] .likes-count-inline {
+        display: inline !important;
+        font-size: 0.65rem !important;
+    }
+    
+    /* Réduire l'espacement entre les boutons */
+    #notes-list .card .d-flex.gap-2,
+    #discussions-list .card .d-flex.gap-2,
+    #discussions-list .card .reply-card .d-flex.gap-2 {
+        gap: 0.3rem !important;
+    }
+    
+    /* S'assurer que les boutons ne se dilatent pas */
+    #notes-list .card .d-flex.gap-2 > *,
+    #discussions-list .card .d-flex.gap-2 > *,
+    #discussions-list .card .reply-card .d-flex.gap-2 > * {
+        flex-shrink: 0 !important;
+    }
+    
+    /* Forcer le conteneur des boutons à ne pas déborder */
+    #notes-list .card .d-flex.justify-content-between,
+    #discussions-list .card .d-flex.justify-content-between,
+    #discussions-list .card .reply-card .d-flex.justify-content-between {
+        flex-wrap: wrap !important;
+    }
+    
+    #notes-list .card .d-flex.gap-2,
+    #discussions-list .card .d-flex.gap-2,
+    #discussions-list .card .reply-card .d-flex.gap-2 {
+        flex-wrap: nowrap !important;
+        min-width: 0 !important;
+    }
+    
+    /* S'assurer que le conteneur principal ne déborde pas */
+    #notes-list .card > .card-body > .d-flex:first-child,
+    #discussions-list .card > .card-body > .d-flex:first-child,
+    #discussions-list .card .reply-card > .card-body > .d-flex:first-child {
+        overflow: hidden !important;
+    }
+    
+    /* Formulaires d'édition inline - boutons avec largeur relative au texte (spécificité élevée) */
+    #notes-list .card .note-edit-form-inline .btn-sm,
+    #discussions-list .card .discussion-edit-form-inline .btn-sm,
+    #discussions-list .card .reply-edit-form-inline .btn-sm {
+        width: auto !important;
+        min-width: auto !important;
+        height: auto !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+    
+    /* S'assurer que le texte est visible dans les boutons des formulaires inline */
+    #notes-list .card .note-edit-form-inline .btn-sm > *:not(i),
+    #discussions-list .card .discussion-edit-form-inline .btn-sm > *:not(i):not(.badge),
+    #discussions-list .card .reply-edit-form-inline .btn-sm > *:not(i):not(.badge) {
+        display: inline !important;
+    }
+    
+    #notes-list .card .note-edit-form-inline .btn-sm i,
+    #discussions-list .card .discussion-edit-form-inline .btn-sm i,
+    #discussions-list .card .reply-edit-form-inline .btn-sm i {
+        margin-right: 0.25rem !important;
+        margin-left: 0 !important;
+    }
+    
+    /* Bouton "Répondre" avec largeur relative au texte - celui qui ouvre le modal */
+    #discussions-list .card button.btn-sm[onclick*="replyToDiscussion"],
+    #discussions-list .card .btn-sm.btn-outline-light[onclick*="replyToDiscussion"] {
+        width: auto !important;
+        min-width: auto !important;
+        height: auto !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+    }
+    
+    #discussions-list .card button.btn-sm[onclick*="replyToDiscussion"] > *:not(i),
+    #discussions-list .card .btn-sm.btn-outline-light[onclick*="replyToDiscussion"] > *:not(i) {
+        display: inline !important;
+    }
+    
+    #discussions-list .card button.btn-sm[onclick*="replyToDiscussion"] i,
+    #discussions-list .card .btn-sm.btn-outline-light[onclick*="replyToDiscussion"] i {
+        margin-right: 0.25rem !important;
+    }
+    
+    /* Bouton "Répondre" dans les formulaires de réponse - avec largeur relative au texte */
+    #discussions-list .card form .btn-sm.btn-info,
+    #discussions-list .card form button.btn-sm[type="submit"].btn-info {
+        width: auto !important;
+        min-width: auto !important;
+        height: auto !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+    }
+    
+    #discussions-list .card form .btn-sm.btn-info > *:not(i),
+    #discussions-list .card form button.btn-sm[type="submit"].btn-info > *:not(i) {
+        display: inline !important;
+    }
+    
+    #discussions-list .card form .btn-sm.btn-info i,
+    #discussions-list .card form button.btn-sm[type="submit"].btn-info i {
+        margin-right: 0.25rem !important;
+    }
+}
+
+/* Styles pour très petits écrans - boutons encore plus compacts */
+@media (max-width: 480px) {
+    /* Boutons d'action encore plus compacts - uniquement icônes */
+    #notes-list .card .btn-sm,
+    #discussions-list .card .btn-sm,
+    #discussions-list .card .reply-card .btn-sm {
+        padding: 0.2rem !important;
+        font-size: 0.7rem !important;
+        min-width: 24px !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
+    
+    #notes-list .card .btn-sm i,
+    #discussions-list .card .btn-sm i,
+    #discussions-list .card .reply-card .btn-sm i {
+        font-size: 0.65rem !important;
+    }
+    
+    /* Exception pour le bouton like */
+    #discussions-list .card .btn-sm.btn-outline-info:first-child,
+    #discussions-list .card .btn-sm.btn-info:first-child,
+    #discussions-list .card button[onclick*="toggleLike"] {
+        min-width: 32px !important;
+        max-width: 55px !important;
+        padding: 0.2rem 0.3rem !important;
+        width: auto !important;
+        height: auto !important;
+    }
+    
+    #discussions-list .card .btn-sm.btn-outline-info:first-child i,
+    #discussions-list .card .btn-sm.btn-info:first-child i,
+    #discussions-list .card button[onclick*="toggleLike"] i {
+        margin-right: 0.15rem !important;
+    }
+    
+    #discussions-list .card .btn-sm.btn-outline-info:first-child > *:not(i),
+    #discussions-list .card .btn-sm.btn-info:first-child > *:not(i),
+    #discussions-list .card button[onclick*="toggleLike"] .likes-count-inline {
+        display: inline !important;
+        font-size: 0.6rem !important;
+    }
+    
+    /* Réduire encore plus l'espacement */
+    #notes-list .card .d-flex.gap-2,
+    #discussions-list .card .d-flex.gap-2,
+    #discussions-list .card .reply-card .d-flex.gap-2 {
+        gap: 0.25rem !important;
+    }
+    
+    /* Formulaires d'édition inline - boutons avec largeur relative au texte (spécificité élevée) */
+    #notes-list .card .note-edit-form-inline .btn-sm,
+    #discussions-list .card .discussion-edit-form-inline .btn-sm,
+    #discussions-list .card .reply-edit-form-inline .btn-sm {
+        width: auto !important;
+        min-width: auto !important;
+        height: auto !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+    
+    /* S'assurer que le texte est visible dans les boutons des formulaires inline */
+    #notes-list .card .note-edit-form-inline .btn-sm > *:not(i),
+    #discussions-list .card .discussion-edit-form-inline .btn-sm > *:not(i):not(.badge),
+    #discussions-list .card .reply-edit-form-inline .btn-sm > *:not(i):not(.badge) {
+        display: inline !important;
+    }
+    
+    #notes-list .card .note-edit-form-inline .btn-sm i,
+    #discussions-list .card .discussion-edit-form-inline .btn-sm i,
+    #discussions-list .card .reply-edit-form-inline .btn-sm i {
+        margin-right: 0.25rem !important;
+        margin-left: 0 !important;
+    }
+    
+    /* Bouton "Répondre" avec largeur relative au texte - celui qui ouvre le modal */
+    #discussions-list .card button.btn-sm[onclick*="replyToDiscussion"],
+    #discussions-list .card .btn-sm.btn-outline-light[onclick*="replyToDiscussion"] {
+        width: auto !important;
+        min-width: auto !important;
+        height: auto !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+    }
+    
+    #discussions-list .card button.btn-sm[onclick*="replyToDiscussion"] > *:not(i),
+    #discussions-list .card .btn-sm.btn-outline-light[onclick*="replyToDiscussion"] > *:not(i) {
+        display: inline !important;
+    }
+    
+    #discussions-list .card button.btn-sm[onclick*="replyToDiscussion"] i,
+    #discussions-list .card .btn-sm.btn-outline-light[onclick*="replyToDiscussion"] i {
+        margin-right: 0.25rem !important;
+    }
+    
+    /* Bouton "Répondre" dans les formulaires de réponse - avec largeur relative au texte */
+    #discussions-list .card form .btn-sm.btn-info,
+    #discussions-list .card form button.btn-sm[type="submit"].btn-info {
+        width: auto !important;
+        min-width: auto !important;
+        height: auto !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+    }
+    
+    #discussions-list .card form .btn-sm.btn-info > *:not(i),
+    #discussions-list .card form button.btn-sm[type="submit"].btn-info > *:not(i) {
+        display: inline !important;
+    }
+    
+    #discussions-list .card form .btn-sm.btn-info i,
+    #discussions-list .card form button.btn-sm[type="submit"].btn-info i {
+        margin-right: 0.25rem !important;
+    }
+}
+
+/* Styles pour le modal de confirmation */
+#confirmModal .modal-content {
+    background: rgba(0, 51, 102, 0.95) !important;
+    color: #f8fafc !important;
+}
+
+#confirmModal .modal-body {
+    background: rgba(0, 51, 102, 0.95) !important;
+    color: #f8fafc !important;
+}
+
+#confirmModal .modal-body p {
+    color: #f8fafc !important;
+}
+
+#confirmModal .modal-footer {
+    background: rgba(0, 51, 102, 0.95) !important;
+}
+
+/* Styles pour le modal de réponse */
+#replyModal .modal-content {
+    background: rgba(0, 51, 102, 0.95) !important;
+    color: #f8fafc !important;
+}
+
+#replyModal .modal-body {
+    background: rgba(0, 51, 102, 0.95) !important;
+    color: #f8fafc !important;
+}
+
+#replyModal .modal-body label {
+    color: #f8fafc !important;
+}
+
+#replyModal .modal-body textarea,
+#replyModal .modal-body input {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 204, 51, 0.25) !important;
+    color: #f8fafc !important;
+}
+
+#replyModal .modal-body textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+#replyModal .modal-body .text-muted {
+    color: #94a3b8 !important;
+}
+
+#replyModal .modal-footer {
+    background: rgba(0, 51, 102, 0.95) !important;
 }
 </style>
 @endpush
@@ -2953,6 +3280,9 @@
                             @if(isset($activeLesson))
                                     @switch($activeLesson->type)
                                         @case('video')
+                                        @if(config('app.debug'))
+                                        <!-- Debug: Lesson ID: {{ $activeLesson->id }}, Type: {{ $activeLesson->type }}, YouTube ID: {{ $activeLesson->youtube_video_id ?? 'vide' }}, File Path: {{ $activeLesson->file_path ?? 'vide' }}, Content URL: {{ $activeLesson->content_url ?? 'vide' }} -->
+                                        @endif
                                         <x-plyr-player :lesson="$activeLesson" :course="$course" :lesson-progress="$lessonProgress" :is-mobile="false" />
                                             @break
                                         @case('pdf')
@@ -2965,14 +3295,16 @@
                                             <x-quiz-viewer :lesson="$activeLesson" :course="$course" />
                                             @break
                                         @default
-                                        <div class="d-flex align-items-center justify-content-center bg-dark">
-                                            <p class="text-white">Type de contenu non supporté</p>
+                                        <div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100">
+                                            <i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i>
+                                            <p class="text-white mb-2">Type de contenu non supporté</p>
+                                            <p class="text-muted small">Type de leçon: {{ $activeLesson->type ?? 'non défini' }}</p>
                                             </div>
                                     @endswitch
                             @else
                                 <div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5">
                                     <i class="fas fa-graduation-cap fa-3x mb-3 text-info"></i>
-                                    <h4 class="mb-2">Sélectionnez une leçon pour commencer</h4>
+    
                                     <p class="text-muted mb-4 text-center">
                                         Explorez le contenu du cours et lancez-vous dans une expérience immersive.
                                     </p>
@@ -3374,6 +3706,63 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de confirmation moderne -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header border-0 pb-0" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                <h5 class="modal-title text-white fw-bold" id="confirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmation
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <p class="mb-0 fs-5" id="confirmModalMessage"></p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmModalConfirmBtn">
+                    <i class="fas fa-trash me-2"></i>Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de réponse à une discussion -->
+<div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header border-0 pb-0" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                <h5 class="modal-title text-white fw-bold" id="replyModalLabel">
+                    <i class="fas fa-reply me-2"></i>Répondre à la discussion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <form id="replyModalForm">
+                    <div class="mb-3">
+                        <label for="replyContent" class="form-label fw-semibold">Votre réponse</label>
+                        <textarea class="form-control" id="replyContent" rows="6" placeholder="Écrivez votre réponse ici..." required style="border-radius: 8px; resize: vertical;"></textarea>
+                        <small class="text-muted">Maximum 5000 caractères</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-primary" id="replyModalSubmitBtn">
+                    <i class="fas fa-paper-plane me-2"></i>Publier la réponse
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -3446,12 +3835,12 @@ function markAsComplete(lessonId) {
         if (data.success) {
             window.location.reload();
         } else {
-            alert('Erreur: ' + (data.message || 'Impossible de marquer la leçon comme terminée'));
+            showToast(data.message || 'Impossible de marquer la leçon comme terminée', 'error');
         }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        alert('Erreur lors de la mise à jour de la leçon.');
+        showToast('Erreur lors de la mise à jour de la leçon', 'error');
     });
 }
 
@@ -3497,6 +3886,177 @@ function getDiscussionLikeUrl(discussionId) {
 // Helper function to generate discussion update URL
 function getDiscussionUpdateUrl(discussionId) {
     return `{{ route('learning.discussions.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}/${discussionId}`;
+}
+
+// Fonction pour afficher des notifications toast modernes
+function showToast(message, type = 'success') {
+    // Types: success, error, info, warning
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        info: 'fa-info-circle',
+        warning: 'fa-exclamation-triangle'
+    };
+    
+    const colors = {
+        success: {
+            bg: 'bg-success',
+            border: 'border-success',
+            icon: 'text-success'
+        },
+        error: {
+            bg: 'bg-danger',
+            border: 'border-danger',
+            icon: 'text-danger'
+        },
+        info: {
+            bg: 'bg-info',
+            border: 'border-info',
+            icon: 'text-info'
+        },
+        warning: {
+            bg: 'bg-warning',
+            border: 'border-warning',
+            icon: 'text-warning'
+        }
+    };
+    
+    const colorScheme = colors[type] || colors.success;
+    const icon = icons[type] || icons.success;
+    
+    // Créer le conteneur toast
+    const toast = document.createElement('div');
+    toast.className = 'position-fixed top-0 start-50 translate-middle-x mt-3';
+    toast.style.zIndex = '9999';
+    toast.style.animation = 'slideDown 0.3s ease-out';
+    
+    toast.innerHTML = `
+        <div class="alert ${colorScheme.bg} alert-dismissible fade show shadow-lg border-0" role="alert" style="min-width: 320px; max-width: 500px; border-radius: 12px; backdrop-filter: blur(10px);">
+            <div class="d-flex align-items-center">
+                <i class="fas ${icon} me-3 fs-5 ${colorScheme.icon}" style="color: white !important;"></i>
+                <div class="flex-grow-1 text-white fw-semibold">${message}</div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Animation d'entrée
+    setTimeout(() => {
+        toast.querySelector('.alert').classList.add('show');
+    }, 10);
+    
+    // Supprimer automatiquement après 4 secondes
+    setTimeout(() => {
+        const alert = toast.querySelector('.alert');
+        if (alert) {
+            alert.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }
+    }, 4000);
+    
+    // Supprimer au clic sur le bouton de fermeture
+    toast.querySelector('.btn-close')?.addEventListener('click', () => {
+        const alert = toast.querySelector('.alert');
+        if (alert) {
+            alert.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }
+    });
+}
+
+// Ajouter les styles CSS pour l'animation
+if (!document.getElementById('toast-animations')) {
+    const style = document.createElement('style');
+    style.id = 'toast-animations';
+    style.textContent = `
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Fonction pour afficher un modal de confirmation moderne
+function showConfirmModal(message, onConfirm, confirmText = 'Confirmer', cancelText = 'Annuler') {
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    const messageEl = document.getElementById('confirmModalMessage');
+    const confirmBtn = document.getElementById('confirmModalConfirmBtn');
+    
+    messageEl.textContent = message;
+    confirmBtn.innerHTML = `<i class="fas fa-trash me-2"></i>${confirmText}`;
+    
+    // Supprimer les anciens event listeners
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    // Ajouter le nouveau event listener
+    document.getElementById('confirmModalConfirmBtn').addEventListener('click', function() {
+        modal.hide();
+        if (onConfirm) onConfirm();
+    });
+    
+    modal.show();
+}
+
+// Fonction pour afficher un modal de réponse à une discussion
+function showReplyModal(onSubmit) {
+    const modal = new bootstrap.Modal(document.getElementById('replyModal'));
+    const form = document.getElementById('replyModalForm');
+    const contentTextarea = document.getElementById('replyContent');
+    const submitBtn = document.getElementById('replyModalSubmitBtn');
+    
+    // Réinitialiser le formulaire
+    form.reset();
+    contentTextarea.value = '';
+    
+    // Supprimer les anciens event listeners
+    const newSubmitBtn = submitBtn.cloneNode(true);
+    submitBtn.parentNode.replaceChild(newSubmitBtn, submitBtn);
+    
+    // Ajouter le nouveau event listener
+    document.getElementById('replyModalSubmitBtn').addEventListener('click', function() {
+        const content = contentTextarea.value.trim();
+        if (!content) {
+            showToast('Veuillez entrer une réponse', 'warning');
+            return;
+        }
+        
+        if (content.length > 5000) {
+            showToast('La réponse ne peut pas dépasser 5000 caractères', 'error');
+            return;
+        }
+        
+        modal.hide();
+        if (onSubmit) onSubmit(content);
+    });
+    
+    // Permettre la soumission avec Enter + Ctrl/Cmd
+    contentTextarea.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            document.getElementById('replyModalSubmitBtn').click();
+        }
+    });
+    
+    modal.show();
+    
+    // Focus sur le textarea après l'ouverture du modal
+    setTimeout(() => {
+        contentTextarea.focus();
+    }, 300);
 }
 
 // Load Notes
@@ -3556,7 +4116,7 @@ function loadNotes() {
         })
         .catch(error => {
             console.error('Erreur lors du chargement des notes:', error);
-            alert('Erreur lors du chargement des notes');
+            showToast('Erreur lors du chargement des notes', 'error');
         });
 }
 
@@ -3623,8 +4183,8 @@ function loadDiscussions() {
                                         ${discussion.is_answered ? '<span class="badge bg-success ms-2">Répondu</span>' : ''}
                                     </div>
                                     <div class="d-flex gap-2">
-                                        <button class="btn btn-sm btn-outline-info" onclick="toggleLike(${discussion.id})">
-                                            <i class="fas fa-thumbs-up me-1"></i>${discussion.likes_count}
+                                        <button class="btn btn-sm ${discussion.is_liked ? 'btn-info' : 'btn-outline-info'}" onclick="toggleLike(${discussion.id})" id="like-btn-inline-${discussion.id}" data-is-liked="${discussion.is_liked ? 'true' : 'false'}">
+                                            <i class="fas fa-thumbs-up me-1"></i><span class="likes-count-inline">${discussion.likes_count}</span>
                                         </button>
                                         ${canEditDiscussion ? `
                                             <button class="btn btn-sm btn-outline-info" onclick="toggleEditDiscussionInline(${discussion.id})">
@@ -3734,7 +4294,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const content = document.getElementById('note-content').value;
             if (!content.trim()) {
-                alert('Veuillez entrer une note');
+                showToast('Veuillez entrer une note', 'warning');
                 return;
             }
             
@@ -3753,14 +4313,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     document.getElementById('note-content').value = '';
                     loadNotes();
-                    alert('Note enregistrée avec succès !');
+                    showToast(data.message || 'Note enregistrée avec succès !', 'success');
                 } else {
-                    alert('Erreur: ' + (data.message || 'Impossible d\'enregistrer la note'));
+                    showToast(data.message || 'Impossible d\'enregistrer la note', 'error');
                 }
             })
             .catch(error => {
                 console.error('Erreur:', error);
-                alert('Erreur lors de l\'enregistrement de la note');
+                showToast('Erreur lors de l\'enregistrement de la note', 'error');
             });
         });
     }
@@ -3772,7 +4332,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const content = document.getElementById('discussion-content').value;
             if (!content.trim()) {
-                alert('Veuillez entrer un message');
+                showToast('Veuillez entrer un message', 'warning');
                 return;
             }
             
@@ -3791,14 +4351,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     document.getElementById('discussion-content').value = '';
                     loadDiscussions();
-                    alert('Discussion publiée avec succès !');
+                    showToast(data.message || 'Discussion publiée avec succès !', 'success');
                 } else {
-                    alert('Erreur: ' + (data.message || 'Impossible de publier la discussion'));
+                    showToast(data.message || 'Impossible de publier la discussion', 'error');
                 }
             })
             .catch(error => {
                 console.error('Erreur:', error);
-                alert('Erreur lors de la publication de la discussion');
+                showToast('Erreur lors de la publication de la discussion', 'error');
             });
         });
     }
@@ -3821,58 +4381,76 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function deleteNote(noteId) {
-    if (!confirm('Supprimer cette note ?')) return;
-    
-    fetch(getNoteDeleteUrl(noteId), {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadNotes();
-            alert('Note supprimée avec succès');
-        } else {
-            alert('Erreur: ' + (data.message || 'Impossible de supprimer la note'));
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        alert('Erreur lors de la suppression de la note');
-    });
+    showConfirmModal(
+        'Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.',
+        function() {
+            fetch(getNoteDeleteUrl(noteId), {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadNotes();
+                    showToast(data.message || 'Note supprimée avec succès', 'success');
+                } else {
+                    showToast(data.message || 'Impossible de supprimer la note', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showToast('Erreur lors de la suppression de la note', 'error');
+            });
+        },
+        'Supprimer'
+    );
 }
 
 function deleteDiscussion(discussionId) {
-    if (!confirm('Supprimer cette discussion ?')) return;
-    
-    fetch(getDiscussionUpdateUrl(discussionId), {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadDiscussions();
-            alert('Discussion supprimée avec succès');
-        } else {
-            alert('Erreur: ' + (data.message || 'Impossible de supprimer la discussion'));
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        alert('Erreur lors de la suppression de la discussion');
-    });
+    showConfirmModal(
+        'Êtes-vous sûr de vouloir supprimer cette discussion ? Cette action est irréversible.',
+        function() {
+            fetch(getDiscussionUpdateUrl(discussionId), {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadDiscussions();
+                    showToast(data.message || 'Discussion supprimée avec succès', 'success');
+                } else {
+                    showToast(data.message || 'Impossible de supprimer la discussion', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showToast('Erreur lors de la suppression de la discussion', 'error');
+            });
+        },
+        'Supprimer'
+    );
 }
 
 function toggleLike(discussionId) {
+    const likeBtn = document.getElementById('like-btn-inline-' + discussionId);
+    if (!likeBtn) {
+        loadDiscussions();
+        return;
+    }
+    
+    const originalHtml = likeBtn.innerHTML;
+    likeBtn.disabled = true;
+    likeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i><span class="likes-count-inline">' + (likeBtn.querySelector('.likes-count-inline')?.textContent || '0') + '</span>';
+    
     fetch(getDiscussionLikeUrl(discussionId), {
         method: 'POST',
         headers: {
@@ -3885,43 +4463,65 @@ function toggleLike(discussionId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            loadDiscussions();
+            // Mettre à jour le compteur de likes
+            const likesCountSpan = likeBtn.querySelector('.likes-count-inline');
+            if (likesCountSpan) {
+                likesCountSpan.textContent = data.likes_count;
+            }
+            
+            // Mettre à jour l'état visuel du bouton (liké ou non liké)
+            if (data.is_liked) {
+                likeBtn.classList.remove('btn-outline-info');
+                likeBtn.classList.add('btn-info');
+                likeBtn.setAttribute('data-is-liked', 'true');
+            } else {
+                likeBtn.classList.remove('btn-info');
+                likeBtn.classList.add('btn-outline-info');
+                likeBtn.setAttribute('data-is-liked', 'false');
+            }
+            
+            // Réactiver le bouton
+            likeBtn.disabled = false;
+            likeBtn.innerHTML = '<i class="fas fa-thumbs-up me-1"></i><span class="likes-count-inline">' + data.likes_count + '</span>';
         } else {
-            alert('Erreur: ' + (data.message || 'Impossible d\'aimer cette discussion'));
+            showToast(data.message || 'Impossible d\'aimer cette discussion', 'error');
+            likeBtn.disabled = false;
+            likeBtn.innerHTML = originalHtml;
         }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        alert('Erreur lors du like');
+        showToast('Erreur lors du like', 'error');
+        likeBtn.disabled = false;
+        likeBtn.innerHTML = originalHtml;
     });
 }
 
 function replyToDiscussion(parentId) {
-    const content = prompt('Votre réponse:');
-    if (!content) return;
-    
-    fetch(discussionsStoreUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({ content, parent_id: parentId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadDiscussions();
-            alert('Réponse publiée avec succès !');
-        } else {
-            alert('Erreur: ' + (data.message || 'Impossible de publier la réponse'));
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        alert('Erreur lors de la publication de la réponse');
+    showReplyModal(function(content) {
+        fetch(discussionsStoreUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ content, parent_id: parentId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadDiscussions();
+                showToast(data.message || 'Réponse publiée avec succès !', 'success');
+            } else {
+                showToast(data.message || 'Impossible de publier la réponse', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showToast('Erreur lors de la publication de la réponse', 'error');
+        });
     });
 }
 
@@ -3958,14 +4558,14 @@ function updateNoteInline(event, noteId) {
     .then(data => {
         if (data.success) {
             loadNotes();
-            alert('Note mise à jour avec succès !');
+            showToast(data.message || 'Note mise à jour avec succès !', 'success');
         } else {
-            alert('Erreur: ' + (data.message || 'Impossible de mettre à jour la note'));
+            showToast(data.message || 'Impossible de mettre à jour la note', 'error');
         }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        alert('Erreur lors de la mise à jour de la note');
+        showToast('Erreur lors de la mise à jour de la note', 'error');
     });
 }
 
@@ -4002,14 +4602,14 @@ function updateDiscussionInline(event, discussionId) {
     .then(data => {
         if (data.success) {
             loadDiscussions();
-            alert('Discussion mise à jour avec succès !');
+            showToast(data.message || 'Discussion mise à jour avec succès !', 'success');
         } else {
-            alert('Erreur: ' + (data.message || 'Impossible de mettre à jour la discussion'));
+            showToast(data.message || 'Impossible de mettre à jour la discussion', 'error');
         }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        alert('Erreur lors de la mise à jour de la discussion');
+        showToast('Erreur lors de la mise à jour de la discussion', 'error');
     });
 }
 
@@ -4046,14 +4646,14 @@ function updateReplyInline(event, replyId) {
     .then(data => {
         if (data.success) {
             loadDiscussions();
-            alert('Réponse mise à jour avec succès !');
+            showToast(data.message || 'Réponse mise à jour avec succès !', 'success');
         } else {
-            alert('Erreur: ' + (data.message || 'Impossible de mettre à jour la réponse'));
+            showToast(data.message || 'Impossible de mettre à jour la réponse', 'error');
         }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        alert('Erreur lors de la mise à jour de la réponse');
+        showToast('Erreur lors de la mise à jour de la réponse', 'error');
     });
 }
 

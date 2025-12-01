@@ -1031,7 +1031,7 @@ body {
                     @php
                         $final = url()->full();
                         $callback = route('sso.callback', ['redirect' => $final]);
-                        $ssoRegisterUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
+                        $ssoRegisterUrl = 'https://compte.herime.com/login?force_token=1&action=register&redirect=' . urlencode($callback);
                     @endphp
                     <a href="{{ $ssoRegisterUrl }}" class="btn btn-warning btn-lg px-4 w-100 w-sm-auto">
                             <i class="fas fa-user-plus me-2"></i>S'inscrire gratuitement

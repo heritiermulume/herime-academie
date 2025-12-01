@@ -116,7 +116,7 @@
                         @php
                             $finalRegisterMobile = url()->full();
                             $callbackRegisterMobile = route('sso.callback', ['redirect' => $finalRegisterMobile]);
-                            $ssoRegisterUrlMobile = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegisterMobile);
+                            $ssoRegisterUrlMobile = 'https://compte.herime.com/login?force_token=1&action=register&redirect=' . urlencode($callbackRegisterMobile);
                         @endphp
                         <a href="{{ $ssoRegisterUrlMobile }}" class="d-flex align-items-center justify-content-center" style="text-decoration: none; color: var(--primary-color); padding: 0.25rem;" title="Inscription">
                             <i class="fas fa-user-plus" style="font-size: 1.25rem;"></i>
@@ -348,7 +348,7 @@
                     @php
                         $finalRegister = url()->full();
                         $callbackRegister = route('sso.callback', ['redirect' => $finalRegister]);
-                        $ssoRegisterUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegister);
+                        $ssoRegisterUrl = 'https://compte.herime.com/login?force_token=1&action=register&redirect=' . urlencode($callbackRegister);
                     @endphp
                     <a class="btn btn-primary" href="{{ $ssoRegisterUrl }}" title="S'inscrire">
                         <i class="fas fa-user-plus me-1"></i>
@@ -497,7 +497,7 @@
                         @php
                             $finalRegister2 = url()->full();
                             $callbackRegister2 = route('sso.callback', ['redirect' => $finalRegister2]);
-                            $ssoRegisterUrl2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackRegister2);
+                            $ssoRegisterUrl2 = 'https://compte.herime.com/login?force_token=1&action=register&redirect=' . urlencode($callbackRegister2);
                         @endphp
                         <a class="nav-link" href="{{ $ssoRegisterUrl2 }}">
                             <i class="fas fa-user-plus me-2"></i>S'inscrire

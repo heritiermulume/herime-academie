@@ -53,6 +53,19 @@ class LessonDiscussion extends Model
         return $this->hasMany(LessonDiscussion::class, 'parent_id');
     }
 
+    public function likes(): HasMany
+    {
+        return $this->hasMany(DiscussionLike::class, 'discussion_id');
+    }
+
+    /**
+     * Vérifier si un utilisateur a liké cette discussion
+     */
+    public function isLikedBy($userId): bool
+    {
+        return $this->likes()->where('user_id', $userId)->exists();
+    }
+
     /**
      * Scope pour obtenir seulement les discussions principales (pas les réponses)
      */

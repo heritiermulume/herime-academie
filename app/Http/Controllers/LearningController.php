@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\CourseLesson;
 use App\Models\LessonProgress;
 use App\Models\Enrollment;
+use App\Events\CourseCompleted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -25,6 +26,12 @@ class LearningController extends Controller
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
             return redirect()->route('courses.show', $course)
                 ->with('error', 'Vous devez être inscrit à ce cours pour y accéder.');
+        }
+
+        // Vérifier que le cours n'est pas téléchargeable (les cours téléchargeables ne sont pas accessibles via l'interface d'apprentissage)
+        if ($course->is_downloadable) {
+            return redirect()->route('courses.show', $course)
+                ->with('error', 'Ce cours est disponible uniquement en téléchargement. Veuillez le télécharger pour y accéder.');
         }
 
         $enrollment = $course->getEnrollmentFor(auth()->id());
@@ -99,6 +106,12 @@ class LearningController extends Controller
                 ->with('error', 'Vous devez être inscrit à ce cours pour y accéder.');
         }
 
+        // Vérifier que le cours n'est pas téléchargeable (les cours téléchargeables ne sont pas accessibles via l'interface d'apprentissage)
+        if ($course->is_downloadable) {
+            return redirect()->route('courses.show', $course)
+                ->with('error', 'Ce cours est disponible uniquement en téléchargement. Veuillez le télécharger pour y accéder.');
+        }
+
         // Vérifier que la leçon appartient au cours
         if ($lesson->course_id !== $course->id) {
             abort(404);
@@ -163,6 +176,11 @@ class LearningController extends Controller
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+        }
+
         $progress = LessonProgress::firstOrCreate([
             'user_id' => auth()->id(),
             'course_id' => $course->id,
@@ -190,6 +208,11 @@ class LearningController extends Controller
 
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+        }
+
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
         }
 
         $progress = LessonProgress::firstOrCreate([
@@ -223,6 +246,11 @@ class LearningController extends Controller
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+        }
+
         $progress = LessonProgress::firstOrCreate([
             'user_id' => auth()->id(),
             'course_id' => $course->id,
@@ -247,6 +275,11 @@ class LearningController extends Controller
     {
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+        }
+
+        // Vérifier que le cours n'est pas téléchargeable
+        if ($course->is_downloadable) {
+            return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
         }
 
         $request->validate([
@@ -323,9 +356,27 @@ class LearningController extends Controller
             }
         });
 
+        // Obtenir toutes les leçons du cours pour calculer la progression globale
         $totalLessons = $course->lessons()->count();
         $completedLessons = $progress->where('is_completed', true)->count();
-        $overallProgress = $totalLessons > 0 ? ($completedLessons / $totalLessons) * 100 : 0;
+        
+        // Calculer la progression globale en fonction de la progression réelle de chaque leçon
+        // Au lieu de compter uniquement les leçons complétées, on somme les progressions individuelles
+        $allLessons = $course->lessons()->get();
+        $totalProgress = 0;
+        
+        foreach ($allLessons as $lesson) {
+            $lessonProgress = $progress->get($lesson->id);
+            if ($lessonProgress) {
+                // Utiliser progress_percentage qui prend en compte time_watched et duration
+                $totalProgress += $lessonProgress->progress_percentage;
+            } else {
+                // Si pas de progression, 0%
+                $totalProgress += 0;
+            }
+        }
+        
+        $overallProgress = $totalLessons > 0 ? ($totalProgress / $totalLessons) : 0;
 
         // Obtenir les IDs des leçons terminées et commencées
         $completedLessonsIds = $progress->where('is_completed', true)->keys();
@@ -430,13 +481,83 @@ class LearningController extends Controller
             ->where('is_completed', true)
             ->count();
 
-        $progress = $totalLessons > 0 ? ($completedLessons / $totalLessons) * 100 : 0;
+        // Calculer la progression globale en fonction de la progression réelle de chaque leçon
+        $allProgress = LessonProgress::where('user_id', auth()->id())
+            ->where('course_id', $course->id)
+            ->with(['lesson' => function ($query) {
+                $query->select('id', 'duration');
+            }])
+            ->get();
+
+        $allLessons = $course->lessons()->get();
+        $totalProgress = 0;
+        
+        foreach ($allLessons as $lesson) {
+            $lessonProgress = $allProgress->firstWhere('lesson_id', $lesson->id);
+            if ($lessonProgress) {
+                // Utiliser progress_percentage qui prend en compte time_watched et duration
+                $totalProgress += $lessonProgress->progress_percentage;
+            } else {
+                // Si pas de progression, 0%
+                $totalProgress += 0;
+            }
+        }
+        
+        $progress = $totalLessons > 0 ? ($totalProgress / $totalLessons) : 0;
+
+        $wasCompleted = $enrollment->status === 'completed';
+        $isNowCompleted = $progress >= 100;
 
         $enrollment->update([
             'progress' => $progress,
-            'status' => $progress >= 100 ? 'completed' : 'active',
-            'completed_at' => $progress >= 100 ? now() : null
+            'status' => $isNowCompleted ? 'completed' : 'active',
+            'completed_at' => $isNowCompleted ? now() : null
         ]);
+
+        // Déclencher l'événement si le cours vient d'être complété (100% de toutes les leçons)
+        if ($isNowCompleted && !$wasCompleted) {
+            // Vérifier que toutes les leçons sont complétées à 100%
+            $allLessonsCompleted = $this->areAllLessonsCompleted($course, auth()->id());
+            
+            if ($allLessonsCompleted) {
+                event(new CourseCompleted(auth()->user(), $course));
+            }
+        }
+    }
+
+    /**
+     * Vérifier si toutes les leçons sont complétées à 100%
+     */
+    private function areAllLessonsCompleted(Course $course, int $userId): bool
+    {
+        $allLessons = $course->lessons()->get();
+        
+        if ($allLessons->isEmpty()) {
+            return false;
+        }
+
+        $allProgress = LessonProgress::where('user_id', $userId)
+            ->where('course_id', $course->id)
+            ->with(['lesson' => function ($query) {
+                $query->select('id', 'duration');
+            }])
+            ->get();
+
+        foreach ($allLessons as $lesson) {
+            $lessonProgress = $allProgress->firstWhere('lesson_id', $lesson->id);
+            
+            // Vérifier que la leçon est complétée (is_completed = true)
+            if (!$lessonProgress || !$lessonProgress->is_completed) {
+                return false;
+            }
+            
+            // Vérifier que la progression est à 100%
+            if ($lessonProgress->progress_percentage < 100) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -669,6 +790,16 @@ class LearningController extends Controller
                 $course->load(['sections.lessons', 'reviews', 'enrollments']);
             }
             
+            // S'assurer que les reviews sont bien chargées
+            if (!$course->relationLoaded('reviews')) {
+                $course->load('reviews');
+            }
+            
+            // Calculer la moyenne des avis en utilisant la relation directement (plus fiable)
+            $averageRating = $course->reviews()->avg('rating');
+            $averageRating = $averageRating !== null ? round($averageRating, 1) : 0;
+            $totalReviews = $course->reviews()->count();
+            
             // Ajouter les statistiques calculées
             $course->stats = [
                 'total_lessons' => $course->sections ? $course->sections->sum(function($section) {
@@ -678,8 +809,8 @@ class LearningController extends Controller
                     return $section->lessons ? $section->lessons->sum('duration') : 0;
                 }) : 0,
                 'total_students' => $course->enrollments ? $course->enrollments->count() : 0,
-                'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
-                'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
+                'average_rating' => $averageRating,
+                'total_reviews' => $totalReviews,
             ];
             
             return $course;
