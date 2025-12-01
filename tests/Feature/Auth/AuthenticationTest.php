@@ -12,6 +12,8 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered(): void
     {
+        $this->markTestSkipped('Le flux de connexion est désormais géré via le SSO (compte.herime.com) et la route /login redirige vers le SSO.');
+
         $response = $this->get('/login');
 
         $response->assertStatus(200);
@@ -19,6 +21,8 @@ class AuthenticationTest extends TestCase
 
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
+        $this->markTestSkipped('L’authentification locale via /login est remplacée par le SSO ; ce test Breeze n’est plus applicable.');
+
         $user = User::factory()->create();
 
         $response = $this->post('/login', [
