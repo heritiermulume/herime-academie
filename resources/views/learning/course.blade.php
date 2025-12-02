@@ -398,8 +398,10 @@
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     padding-bottom: 0 !important; /* Désactiver le padding-bottom du ratio Bootstrap */
-    aspect-ratio: 16 / 9 !important;
+    /* Le ratio est géré par le parent .player-shell */
 }
 
 /* S'assurer que les lecteurs vidéo remplissent le conteneur sans changer sa taille */
@@ -422,16 +424,21 @@
 /* S'assurer que les messages par défaut (pas de vidéo) respectent aussi la taille fixe */
 .player-shell .text-center,
 .player-shell .d-flex.flex-column.align-items-center,
-.player-shell .d-flex.align-items-center.justify-content-center {
+.player-shell .d-flex.align-items-center.justify-content-center,
+.player-shell .d-flex.flex-column.align-items-center.justify-content-center,
+.player-shell .ratio > .d-flex.flex-column.align-items-center.justify-content-center,
+.player-shell .bg-dark.d-flex {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     width: 100% !important;
     height: 100% !important;
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    min-height: 450px !important;
 }
 
 .lesson-cta-row {
@@ -3302,7 +3309,7 @@
                                             </div>
                                     @endswitch
                             @else
-                                <div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5">
+                                <div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100">
                                     <i class="fas fa-graduation-cap fa-3x mb-3 text-info"></i>
     
                                     <p class="text-muted mb-4 text-center">

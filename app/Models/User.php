@@ -217,6 +217,21 @@ class User extends Authenticatable
         return $this->is_external_instructor && $this->isInstructor();
     }
 
+    /**
+     * Vérifier si l'utilisateur a un rôle spécifique
+     * 
+     * @param string|array $role Le(s) rôle(s) à vérifier
+     * @return bool
+     */
+    public function hasRole($role)
+    {
+        if (is_array($role)) {
+            return in_array($this->role, $role);
+        }
+        
+        return $this->role === $role;
+    }
+
     public function instructorPayouts()
     {
         return $this->hasMany(InstructorPayout::class, 'instructor_id');
