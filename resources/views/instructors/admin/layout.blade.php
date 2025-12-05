@@ -194,21 +194,34 @@
         display: flex;
         gap: 1rem;
         align-items: center;
+        flex-wrap: nowrap;
     }
 
     .admin-sidebar__avatar {
         width: 64px;
         height: 64px;
+        min-width: 64px;
+        min-height: 64px;
+        max-width: 64px;
+        max-height: 64px;
         border-radius: 16px;
         overflow: hidden;
         border: 3px solid rgba(255, 255, 255, 0.35);
         background: rgba(255, 255, 255, 0.1);
+        flex-shrink: 0;
     }
 
     .admin-sidebar__avatar img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
+    }
+
+    .admin-sidebar__meta {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
     }
 
     .admin-sidebar__role {
@@ -216,17 +229,30 @@
         text-transform: uppercase;
         letter-spacing: 0.08em;
         opacity: 0.65;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .admin-sidebar__name {
         font-size: 1.1rem;
         font-weight: 700;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        word-break: break-word;
     }
 
     .admin-sidebar__email {
         font-size: 0.8rem;
         opacity: 0.75;
         display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        word-break: break-all;
     }
 
     .admin-sidebar__nav {

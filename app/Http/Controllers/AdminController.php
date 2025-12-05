@@ -3152,12 +3152,17 @@ class AdminController extends Controller
         $request->validate([
             'base_currency' => 'required|string|size:3|uppercase',
             'external_instructor_commission_percentage' => 'nullable|numeric|min:0|max:100',
+            'ambassador_commission_rate' => 'nullable|numeric|min:0|max:100',
         ]);
 
         Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
         
         if ($request->has('external_instructor_commission_percentage')) {
             Setting::set('external_instructor_commission_percentage', $request->external_instructor_commission_percentage, 'number', 'Pourcentage de commission retenu sur les paiements aux formateurs externes');
+        }
+
+        if ($request->has('ambassador_commission_rate')) {
+            Setting::set('ambassador_commission_rate', $request->ambassador_commission_rate, 'number', 'Pourcentage de commission versé aux ambassadeurs sur chaque vente réalisée avec leur code promo');
         }
 
         return redirect()->route('admin.settings')

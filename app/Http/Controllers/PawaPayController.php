@@ -7,6 +7,10 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Enrollment;
 use App\Models\CartItem;
+use App\Models\AmbassadorPromoCode;
+use App\Models\Ambassador;
+use App\Models\AmbassadorCommission;
+use App\Models\Setting;
 use App\Mail\InvoiceMail;
 use App\Mail\PaymentFailedMail;
 use Illuminate\Http\Request;
@@ -128,12 +132,37 @@ class PawaPayController extends Controller
             ], 401);
         }
 
+        // Validation rapide du code promo (sans créer de commande)
+        if ($request->has('validate_promo_code') && $request->validate_promo_code === true) {
+            $code = $request->ambassador_promo_code;
+            if ($code) {
+                $promoCode = AmbassadorPromoCode::where('code', strtoupper($code))
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($promoCode && $promoCode->isValid()) {
+                    $ambassador = $promoCode->ambassador;
+                    if ($ambassador && $ambassador->is_active) {
+                        return response()->json([
+                            'valid' => true,
+                            'message' => 'Code promo valide'
+                        ]);
+                    }
+                }
+            }
+            return response()->json([
+                'valid' => false,
+                'message' => 'Code promo invalide ou expiré'
+            ]);
+        }
+
         $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:1',
             'currency' => 'nullable|string',
             'phoneNumber' => 'required|string',
             'provider' => 'required|string',
             'country' => 'nullable|string',
+            'ambassador_promo_code' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -170,6 +199,30 @@ class PawaPayController extends Controller
             return optional($item->course)->current_price ?? optional($item->course)->price ?? 0;
         });
         
+        // Valider et appliquer le code promo d'ambassadeur si fourni
+        $ambassadorPromoCode = null;
+        $ambassador = null;
+        if ($request->filled('ambassador_promo_code')) {
+            $promoCode = AmbassadorPromoCode::where('code', $request->ambassador_promo_code)
+                ->where('is_active', true)
+                ->first();
+
+            if ($promoCode && $promoCode->isValid()) {
+                $ambassadorPromoCode = $promoCode;
+                $ambassador = $promoCode->ambassador;
+                
+                // Vérifier que l'ambassadeur est actif
+                if ($ambassador && $ambassador->is_active) {
+                    // Le code promo est valide, on l'associera à la commande
+                    // Note: Les codes promo d'ambassadeur ne donnent pas de réduction,
+                    // ils servent uniquement à attribuer la commission à l'ambassadeur
+                } else {
+                    $ambassadorPromoCode = null;
+                    $ambassador = null;
+                }
+            }
+        }
+        
         // IMPORTANT: Utiliser le montant converti et la devise envoyés par le frontend
         $paymentAmount = (float) $data['amount']; // Montant converti dans la devise sélectionnée
         $paymentCurrency = $data['currency'] ?? config('services.pawapay.default_currency'); // Devise sélectionnée
@@ -181,6 +234,8 @@ class PawaPayController extends Controller
 		$order = Order::create([
             'order_number' => 'PP-' . strtoupper(Str::random(8)) . '-' . time(),
             'user_id' => $user->id,
+            'ambassador_id' => $ambassador?->id,
+            'ambassador_promo_code_id' => $ambassadorPromoCode?->id,
             'subtotal' => $subtotal,
             'discount' => 0,
 			'total' => $subtotal, // Total dans la devise de base du site
@@ -871,6 +926,25 @@ class PawaPayController extends Controller
 				'session_cart_cleared' => true,
 			]);
             
+            // Créer la commission d'ambassadeur si un code promo a été utilisé
+            if ($order->ambassador_id && $order->ambassador_promo_code_id) {
+                $commission = $this->createAmbassadorCommission($order);
+                
+                // Envoyer un email à l'ambassadeur
+                if ($commission) {
+                    try {
+                        $order->load(['ambassador.user']);
+                        if ($order->ambassador && $order->ambassador->user) {
+                            $mailable = new \App\Mail\AmbassadorCommissionEarned($commission);
+                            $communicationService = app(\App\Services\CommunicationService::class);
+                            $communicationService->sendEmailAndWhatsApp($order->ambassador->user, $mailable);
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error('Error sending ambassador commission email: ' . $e->getMessage());
+                    }
+                }
+            }
+            
             // Envoyer les emails de paiement (même logique que Enrollment::sendEnrollmentNotifications)
             $this->sendPaymentEmails($order);
             
@@ -1266,6 +1340,80 @@ class PawaPayController extends Controller
             } catch (\Exception $e) {
                 \Log::error("Erreur lors de l'envoi de l'email d'annulation automatique pour la commande {$order->id}: " . $e->getMessage());
             }
+        }
+    }
+
+    /**
+     * Créer une commission d'ambassadeur pour une commande
+     */
+    private function createAmbassadorCommission(Order $order)
+    {
+        try {
+            // Charger les relations nécessaires
+            $order->load(['ambassador', 'ambassadorPromoCode']);
+            
+            if (!$order->ambassador || !$order->ambassador->is_active) {
+                \Log::warning('pawaPay: Cannot create ambassador commission - ambassador not found or inactive', [
+                    'order_id' => $order->id,
+                    'ambassador_id' => $order->ambassador_id,
+                ]);
+                return;
+            }
+
+            // Récupérer le pourcentage de commission depuis les settings
+            $commissionRate = Setting::get('ambassador_commission_rate', 10.0); // 10% par défaut
+            
+            // Calculer le montant de la commission
+            $orderTotal = $order->total ?? $order->total_amount ?? 0;
+            $commissionAmount = ($orderTotal * $commissionRate) / 100;
+
+            // Vérifier si une commission existe déjà pour cette commande
+            $existingCommission = AmbassadorCommission::where('order_id', $order->id)->first();
+            if ($existingCommission) {
+                \Log::info('pawaPay: Ambassador commission already exists', [
+                    'order_id' => $order->id,
+                    'commission_id' => $existingCommission->id,
+                ]);
+                return;
+            }
+
+            // Créer la commission
+            $commission = AmbassadorCommission::create([
+                'ambassador_id' => $order->ambassador_id,
+                'order_id' => $order->id,
+                'promo_code_id' => $order->ambassador_promo_code_id,
+                'order_total' => $orderTotal,
+                'commission_rate' => $commissionRate,
+                'commission_amount' => $commissionAmount,
+                'status' => 'pending',
+            ]);
+
+            // Ajouter les gains à l'ambassadeur
+            $order->ambassador->addEarnings($commissionAmount);
+            $order->ambassador->incrementReferrals();
+            $order->ambassador->incrementSales();
+
+            // Incrémenter l'utilisation du code promo
+            if ($order->ambassadorPromoCode) {
+                $order->ambassadorPromoCode->incrementUsage();
+            }
+
+            \Log::info('pawaPay: Ambassador commission created', [
+                'order_id' => $order->id,
+                'commission_id' => $commission->id,
+                'ambassador_id' => $order->ambassador_id,
+                'commission_amount' => $commissionAmount,
+                'commission_rate' => $commissionRate,
+            ]);
+
+            return $commission;
+        } catch (\Exception $e) {
+            \Log::error('pawaPay: Error creating ambassador commission', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return null;
         }
     }
 }

@@ -28,6 +28,8 @@ class Order extends Model
         'user_id',
         'affiliate_id',
         'coupon_id',
+        'ambassador_id',
+        'ambassador_promo_code_id',
         'subtotal',
         'discount',
         'tax',
@@ -92,6 +94,16 @@ class Order extends Model
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    public function ambassador(): BelongsTo
+    {
+        return $this->belongsTo(Ambassador::class);
+    }
+
+    public function ambassadorPromoCode(): BelongsTo
+    {
+        return $this->belongsTo(AmbassadorPromoCode::class, 'ambassador_promo_code_id');
     }
 
     public function orderItems(): HasMany

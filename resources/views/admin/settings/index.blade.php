@@ -66,6 +66,27 @@
                                     </div>
                                 </div>
 
+                                <div>
+                                    <label for="ambassador_commission_rate" class="form-label fw-semibold">
+                                        Pourcentage de commission (ambassadeurs)
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" 
+                                               name="ambassador_commission_rate" 
+                                               id="ambassador_commission_rate" 
+                                               class="form-control form-control-lg" 
+                                               value="{{ \App\Models\Setting::get('ambassador_commission_rate', 10) }}"
+                                               min="0" 
+                                               max="100" 
+                                               step="0.01">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-text mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Pourcentage de commission versé aux ambassadeurs sur chaque vente réalisée avec leur code promo.
+                                    </div>
+                                </div>
+
                                 <div class="alert alert-info mb-0">
                                     <i class="fas fa-lightbulb me-2"></i>
                                     <strong>Note :</strong> Les prix sont désormais stockés et affichés dans la devise de base du site. Lors du paiement, le montant peut être débité dans une autre devise selon l’opérateur sélectionné, avec conversion appliquée depuis la devise de base.

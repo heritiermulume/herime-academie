@@ -137,7 +137,7 @@
 <style>
     .dashboard-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 1.5rem;
     }
     .dashboard-grid__item {
@@ -319,7 +319,7 @@
     }
 
 
-    @media (max-width: 640px) {
+    @media (max-width: 1024px) {
         .dashboard-grid {
             grid-template-columns: 1fr;
             gap: 1rem;

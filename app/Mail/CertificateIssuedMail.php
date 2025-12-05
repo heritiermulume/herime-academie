@@ -75,3 +75,7 @@ class CertificateIssuedMail extends Mailable
     }
 }
 
+
+
+
+

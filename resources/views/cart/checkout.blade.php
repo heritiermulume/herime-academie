@@ -100,6 +100,30 @@
                             </div>
                         </div>
 
+                            <!-- Code Promo Ambassadeur -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-gift me-1"></i>Code Promo Ambassadeur (optionnel)
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" 
+                                           id="ambassadorPromoCode" 
+                                           class="form-control" 
+                                           placeholder="Entrez le code promo d'un ambassadeur"
+                                           autocomplete="off">
+                                    <button type="button" 
+                                            class="btn btn-outline-secondary" 
+                                            id="validatePromoCodeBtn"
+                                            onclick="validatePromoCode()">
+                                        <i class="fas fa-check"></i> Valider
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">
+                                    Si vous avez un code promo d'un ambassadeur, entrez-le ici. L'ambassadeur bénéficiera d'une commission sur votre achat.
+                                </small>
+                                <div id="promoCodeFeedback" class="mt-2" style="display:none;"></div>
+                            </div>
+
                             <div class="terms-section mt-3">
                             <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="terms" required>
@@ -481,6 +505,10 @@ document.addEventListener('DOMContentLoaded', function() {
         payButtonText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Initialisation…';
         paymentNotice.style.display = 'none';
 
+        // Récupérer le code promo ambassadeur si fourni
+        const ambassadorPromoCodeInput = document.getElementById('ambassadorPromoCode');
+        const ambassadorPromoCode = ambassadorPromoCodeInput ? ambassadorPromoCodeInput.value.trim().toUpperCase() : '';
+
         // Payload avec montant converti et devise sélectionnée pour l'opérateur
         const payload = {
             amount: parseFloat(amountInput.value), // Montant converti dans la devise sélectionnée
@@ -488,6 +516,7 @@ document.addEventListener('DOMContentLoaded', function() {
             phoneNumber: fullPhone,
             provider: selectedProvider,
             country: countrySelect.value,
+            ambassador_promo_code: ambassadorPromoCode || null, // Code promo ambassadeur optionnel
             _token: '{{ csrf_token() }}'
         };
 
@@ -716,6 +745,87 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     countrySelect.addEventListener('change', onCountryChange);
+    // Fonction pour valider le code promo ambassadeur
+    async function validatePromoCode() {
+        const promoCodeInput = document.getElementById('ambassadorPromoCode');
+        const feedbackDiv = document.getElementById('promoCodeFeedback');
+        const validateBtn = document.getElementById('validatePromoCodeBtn');
+        
+        if (!promoCodeInput || !feedbackDiv) return;
+        
+        const code = promoCodeInput.value.trim().toUpperCase();
+        
+        if (!code) {
+            feedbackDiv.style.display = 'none';
+            return;
+        }
+        
+        validateBtn.disabled = true;
+        validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        try {
+            // Vérifier le code via une route dédiée ou via l'API
+            const response = await fetch(`{{ route('pawapay.initiate') }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    validate_promo_code: true,
+                    ambassador_promo_code: code,
+                    _token: '{{ csrf_token() }}'
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.valid === true) {
+                feedbackDiv.className = 'alert alert-success mt-2';
+                feedbackDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>Code promo valide !';
+                feedbackDiv.style.display = 'block';
+                promoCodeInput.classList.remove('is-invalid');
+                promoCodeInput.classList.add('is-valid');
+            } else {
+                feedbackDiv.className = 'alert alert-danger mt-2';
+                feedbackDiv.innerHTML = '<i class="fas fa-times-circle me-2"></i>' + (data.message || 'Code promo invalide');
+                feedbackDiv.style.display = 'block';
+                promoCodeInput.classList.remove('is-valid');
+                promoCodeInput.classList.add('is-invalid');
+            }
+        } catch (error) {
+            feedbackDiv.className = 'alert alert-warning mt-2';
+            feedbackDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Erreur lors de la validation';
+            feedbackDiv.style.display = 'block';
+        } finally {
+            validateBtn.disabled = false;
+            validateBtn.innerHTML = '<i class="fas fa-check"></i> Valider';
+        }
+    }
+
+    // Valider le code promo lors de la saisie (avec debounce)
+    let promoCodeTimeout;
+    const promoCodeInput = document.getElementById('ambassadorPromoCode');
+    if (promoCodeInput) {
+        promoCodeInput.addEventListener('input', function() {
+            clearTimeout(promoCodeTimeout);
+            const code = this.value.trim();
+            const feedbackDiv = document.getElementById('promoCodeFeedback');
+            
+            if (code.length >= 6) {
+                promoCodeTimeout = setTimeout(() => {
+                    validatePromoCode();
+                }, 1000);
+            } else if (code.length === 0) {
+                if (feedbackDiv) {
+                    feedbackDiv.style.display = 'none';
+                }
+                this.classList.remove('is-valid', 'is-invalid');
+            }
+        });
+    }
+
     payButton.addEventListener('click', initiateDeposit);
     phoneNumberInput.addEventListener('input', () => { validatePhone(); updatePayButtonState(); });
     termsCheckbox.addEventListener('change', () => { validateTerms(); updatePayButtonState(); });

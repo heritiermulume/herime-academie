@@ -92,6 +92,7 @@ Route::get('/categories/{category:slug}', [CourseController::class, 'byCategory'
 Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
 Route::get('/instructors/{instructor}', [InstructorController::class, 'show'])->name('instructors.show');
 Route::get('/become-instructor', [InstructorApplicationController::class, 'index'])->name('instructor-application.index');
+Route::get('/become-ambassador', [App\Http\Controllers\AmbassadorApplicationController::class, 'index'])->name('ambassador-application.index');
 
 // Blog routes
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
@@ -274,6 +275,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('instructor-application.abandon');
     });
 
+    // Ambassador Application routes (accessible to authenticated users) - avec validation SSO pour les POST
+    Route::middleware('auth')->group(function () {
+        Route::get('/ambassador-application/create', [App\Http\Controllers\AmbassadorApplicationController::class, 'create'])->name('ambassador-application.create');
+        Route::post('/ambassador-application/step1', [App\Http\Controllers\AmbassadorApplicationController::class, 'storeStep1'])
+            ->middleware('sso.validate')
+            ->name('ambassador-application.store-step1');
+        Route::get('/ambassador-application/{application}/step2', [App\Http\Controllers\AmbassadorApplicationController::class, 'step2'])->name('ambassador-application.step2');
+        Route::post('/ambassador-application/{application}/step2', [App\Http\Controllers\AmbassadorApplicationController::class, 'storeStep2'])
+            ->middleware('sso.validate')
+            ->name('ambassador-application.store-step2');
+        Route::get('/ambassador-application/{application}/step3', [App\Http\Controllers\AmbassadorApplicationController::class, 'step3'])->name('ambassador-application.step3');
+        Route::post('/ambassador-application/{application}/step3', [App\Http\Controllers\AmbassadorApplicationController::class, 'storeStep3'])
+            ->middleware('sso.validate')
+            ->name('ambassador-application.store-step3');
+        Route::get('/ambassador-application/{application}/status', [App\Http\Controllers\AmbassadorApplicationController::class, 'status'])->name('ambassador-application.status');
+        Route::get('/ambassador-application/{application}/document', [App\Http\Controllers\AmbassadorApplicationController::class, 'downloadDocument'])->name('ambassador-application.download-document');
+        Route::delete('/ambassador-application/{application}', [App\Http\Controllers\AmbassadorApplicationController::class, 'abandon'])
+            ->middleware('sso.validate')
+            ->name('ambassador-application.abandon');
+        
+        // Dashboard ambassadeur
+        Route::get('/ambassador/dashboard', [App\Http\Controllers\AmbassadorApplicationController::class, 'dashboard'])->name('ambassador.dashboard');
+        Route::get('/ambassador/analytics', [App\Http\Controllers\AmbassadorApplicationController::class, 'analytics'])->name('ambassador.analytics');
+        Route::get('/ambassador/payment-settings', [App\Http\Controllers\AmbassadorApplicationController::class, 'paymentSettings'])->name('ambassador.payment-settings');
+        Route::post('/ambassador/payment-settings', [App\Http\Controllers\AmbassadorApplicationController::class, 'updatePaymentSettings'])
+            ->middleware('sso.validate')
+            ->name('ambassador.payment-settings.update');
+    });
+
     // Instructor routes (only for approved instructors) - avec validation SSO pour les POST/PUT/DELETE
     Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
         Route::get('/courses/list', function () {
@@ -358,6 +388,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/instructor-applications/{application}/status', [AdminController::class, 'updateInstructorApplicationStatus'])
             ->middleware('sso.validate')
             ->name('instructor-applications.update-status');
+        
+        // Ambassador Applications management
+        Route::get('/ambassadors/applications', [App\Http\Controllers\Admin\AmbassadorController::class, 'applications'])->name('ambassadors.applications');
+        Route::get('/ambassadors/applications/{application}', [App\Http\Controllers\Admin\AmbassadorController::class, 'showApplication'])->name('ambassadors.applications.show');
+        Route::put('/ambassadors/applications/{application}/status', [App\Http\Controllers\Admin\AmbassadorController::class, 'updateApplicationStatus'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.applications.update-status');
+        
+        // Ambassadors management
+        Route::get('/ambassadors', [App\Http\Controllers\Admin\AmbassadorController::class, 'index'])->name('ambassadors.index');
+        Route::get('/ambassadors/{ambassador}', [App\Http\Controllers\Admin\AmbassadorController::class, 'show'])->name('ambassadors.show');
+        Route::post('/ambassadors/{ambassador}/toggle-active', [App\Http\Controllers\Admin\AmbassadorController::class, 'toggleActive'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.toggle-active');
+        Route::post('/ambassadors/{ambassador}/generate-promo-code', [App\Http\Controllers\Admin\AmbassadorController::class, 'generatePromoCode'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.generate-promo-code');
+        
+        // Ambassador Commissions management
+        Route::get('/ambassadors/commissions', [App\Http\Controllers\Admin\AmbassadorController::class, 'commissions'])->name('ambassadors.commissions');
+        Route::get('/ambassadors/{ambassador}/commissions', [App\Http\Controllers\Admin\AmbassadorController::class, 'commissions'])->name('ambassadors.commissions.ambassador');
+        Route::post('/ambassadors/commissions/{commission}/approve', [App\Http\Controllers\Admin\AmbassadorController::class, 'approveCommission'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.commissions.approve');
+        Route::post('/ambassadors/commissions/{commission}/mark-paid', [App\Http\Controllers\Admin\AmbassadorController::class, 'markCommissionAsPaid'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.commissions.mark-paid');
         
         // Categories management
         Route::get('/categories', [AdminController::class, 'categories'])->name('categories');

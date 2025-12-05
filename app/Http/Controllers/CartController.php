@@ -260,8 +260,11 @@ public function add(Request $request)
         // Les prix des cours sont stockés dans la devise de base configurée dans /admin/settings
         $total = collect($cartItems)->sum('subtotal');
 
-        // $baseCurrency est automatiquement partagé avec toutes les vues via AppServiceProvider
-        return view('cart.checkout', compact('cartItems', 'total'));
+        // Récupérer la devise de base
+        $baseCurrency = \App\Models\Setting::getBaseCurrency();
+        $currencyCode = is_array($baseCurrency) ? ($baseCurrency['code'] ?? 'USD') : ($baseCurrency ?? 'USD');
+
+        return view('cart.checkout', compact('cartItems', 'total', 'baseCurrency', 'currencyCode'));
     }
 
     /**

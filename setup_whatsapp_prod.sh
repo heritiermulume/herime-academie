@@ -180,3 +180,7 @@ php artisan whatsapp:test || {
 echo
 echo "✅ Setup terminé. Vérifie maintenant l'envoi de messages depuis l'interface admin (/admin/announcements)."
 
+
+
+
+

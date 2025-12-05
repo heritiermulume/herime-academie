@@ -661,73 +661,395 @@ class CourseController extends Controller
             'description' => 'required|string',
             'short_description' => 'nullable|string|max:500',
             'category_id' => 'required|exists:categories,id',
-            'price' => 'required|numeric|min:0',
+            // Prix obligatoire sauf si le cours est marqué comme gratuit
+            'price' => 'required_unless:is_free,1|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0|lt:price',
             'sale_start_at' => 'nullable|date',
             'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:5',
-            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'video_preview' => 'nullable|file|mimes:mp4,avi,mov|max:10240',
+            'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'thumbnail_chunk_path' => 'nullable|string|max:2048',
+            'thumbnail_chunk_name' => 'nullable|string|max:255',
+            'thumbnail_chunk_size' => 'nullable|integer|min:0',
+            'video_preview' => 'nullable|string|max:2048',
+            'video_preview_file' => 'nullable|file|mimes:mp4,avi,mov,webm,ogg|max:512000',
             'video_preview_path' => 'nullable|string|max:2048',
+            'video_preview_name' => 'nullable|string|max:255',
+            'video_preview_size' => 'nullable|integer|min:0',
+            'video_preview_youtube_id' => 'nullable|string|max:255',
+            'video_preview_is_unlisted' => 'nullable|boolean',
             'requirements' => 'nullable|array',
             'what_you_will_learn' => 'nullable|array',
-            'tags' => 'nullable|array',
+            'tags' => 'nullable|string',
+            'meta_description' => 'nullable|string|max:160',
+            'meta_keywords' => 'nullable|string|max:255',
+            'is_downloadable' => 'nullable|boolean',
+            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:1048576',
+            'download_file_chunk_path' => 'nullable|string|max:2048',
+            'download_file_chunk_name' => 'nullable|string|max:255',
+            'download_file_chunk_size' => 'nullable|integer|min:0',
+            'download_file_url' => 'nullable|url|max:1000',
+            'sections' => 'nullable|array',
+            'sections.*.title' => 'required_with:sections|string|max:255',
+            'sections.*.description' => 'nullable|string',
+            'sections.*.lessons' => 'nullable|array',
+            'sections.*.lessons.*.title' => 'required_with:sections.*.lessons|string|max:255',
+            'sections.*.lessons.*.description' => 'nullable|string',
+            'sections.*.lessons.*.type' => 'required_with:sections.*.lessons|in:video,text,quiz,assignment',
+            'sections.*.lessons.*.content_url' => 'nullable|string',
+            'sections.*.lessons.*.content_file' => 'nullable|file|mimetypes:video/mp4,video/webm,video/ogg,application/pdf,application/zip,application/x-zip-compressed,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/x-rar-compressed,application/x-7z-compressed,application/x-tar,application/gzip|max:524288000',
+            'sections.*.lessons.*.content_file_path' => 'nullable|string|max:2048',
+            'sections.*.lessons.*.content_file_name' => 'nullable|string|max:255',
+            'sections.*.lessons.*.content_file_size' => 'nullable|integer|min:0',
+            'sections.*.lessons.*.content_text' => 'nullable|string',
+            'sections.*.lessons.*.duration' => 'nullable|integer|min:0',
+            'sections.*.lessons.*.is_preview' => 'boolean',
         ]);
 
-        $data = $request->all();
-        if (auth()->check() && auth()->user()->isInstructor()) {
-            $data['instructor_id'] = $course->instructor_id ?? auth()->id();
-        }
-        $data['slug'] = $this->generateUniqueSlug($request->title, $course->id);
+        DB::beginTransaction();
 
-        $data['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
-        $data['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
+        try {
+            $data = $request->only([
+                'title',
+                'description',
+                'short_description',
+                'category_id',
+                'price',
+                'sale_price',
+                'sale_start_at',
+                'sale_end_at',
+                'level',
+                'language',
+                'requirements',
+                'what_you_will_learn',
+                'meta_description',
+                'meta_keywords',
+            ]);
 
-        if (! $request->filled('sale_price')) {
-            $data['sale_price'] = null;
-            $data['sale_start_at'] = null;
-            $data['sale_end_at'] = null;
-        }
-
-        // Gérer l'upload de l'image
-        if ($request->hasFile('thumbnail')) {
-            $result = $this->fileUploadService->uploadImage(
-                $request->file('thumbnail'),
-                'courses/thumbnails',
-                $course->thumbnail,
-                1920 // Max 1920px width
-            );
-            $data['thumbnail'] = $result['path'];
-        }
-
-        // Gérer l'upload de la vidéo de prévisualisation
-        if ($request->hasFile('video_preview')) {
-            $result = $this->fileUploadService->uploadVideo(
-                $request->file('video_preview'),
-                'courses/previews',
-                $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
-            );
-            $data['video_preview'] = $result['path'];
-        } elseif ($request->filled('video_preview_path')) {
-            $sanitizedPath = $this->sanitizeUploadedPath($request->string('video_preview_path')->toString());
-            if ($sanitizedPath) {
-                $finalPath = $this->fileUploadService->promoteTemporaryFile(
-                    $sanitizedPath,
-                    'courses/previews'
-                );
-                if ($course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL)
-                    && $course->video_preview !== $finalPath) {
-                    $this->fileUploadService->deleteFile($course->video_preview);
-                }
-                $data['video_preview'] = $finalPath;
+            if (auth()->check() && auth()->user()->isInstructor()) {
+                $data['instructor_id'] = $course->instructor_id ?? auth()->id();
             }
+            $data['slug'] = $this->generateUniqueSlug($request->title, $course->id);
+
+            // Normaliser les tableaux (requirements / what_you_will_learn) en filtrant les valeurs vides
+            $data['requirements'] = collect($request->input('requirements', []))
+                ->filter(fn($value) => filled($value))
+                ->values()
+                ->all();
+
+            $data['what_you_will_learn'] = collect($request->input('what_you_will_learn', []))
+                ->filter(fn($value) => filled($value))
+                ->values()
+                ->all();
+
+            // Traiter les tags comme une string séparée par des virgules, comme dans store()
+            $tagsString = $request->input('tags', '');
+            if (filled($tagsString)) {
+                $data['tags'] = collect(explode(',', $tagsString))
+                    ->map(fn($tag) => trim($tag))
+                    ->filter(fn($tag) => filled($tag))
+                    ->values()
+                    ->all();
+            } else {
+                $data['tags'] = [];
+            }
+
+            $data['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
+            $data['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
+
+            if (! $request->filled('sale_price')) {
+                $data['sale_price'] = null;
+                $data['sale_start_at'] = null;
+                $data['sale_end_at'] = null;
+            }
+
+            // Si le cours est gratuit, forcer le prix à 0 pour éviter les incohérences
+            if ($request->boolean('is_free')) {
+                $data['price'] = 0;
+                $data['is_free'] = true;
+            } else {
+                $data['is_free'] = false;
+            }
+
+            // Gérer is_downloadable
+            $data['is_downloadable'] = $request->boolean('is_downloadable', false);
+
+            // Gérer les champs YouTube pour la vidéo de prévisualisation
+            // Note: Ces champs ne sont peut-être pas dans le formulaire instructeur, mais on les gère pour la cohérence
+            if ($request->has('video_preview_youtube_id')) {
+                if ($request->filled('video_preview_youtube_id')) {
+                    $youtubeId = $request->input('video_preview_youtube_id');
+                    // Extraire l'ID YouTube de l'URL si nécessaire
+                    if (preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/', $youtubeId, $matches)) {
+                        $data['video_preview_youtube_id'] = $matches[1];
+                    } else {
+                        $data['video_preview_youtube_id'] = $youtubeId;
+                    }
+                    $data['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
+                    // Si YouTube est utilisé, vider le champ video_preview (sauf si c'est une URL externe)
+                    if (!$request->filled('video_preview') || !filter_var($request->input('video_preview'), FILTER_VALIDATE_URL)) {
+                        $data['video_preview'] = null;
+                    }
+                } else {
+                    // Si le champ est présent mais vide, on le vide
+                    $data['video_preview_youtube_id'] = null;
+                    $data['video_preview_is_unlisted'] = false;
+                }
+            }
+
+            // Gérer l'upload de l'image (thumbnail)
+            if ($request->hasFile('thumbnail')) {
+                $result = $this->fileUploadService->uploadImage(
+                    $request->file('thumbnail'),
+                    'courses/thumbnails',
+                    $course->thumbnail,
+                    1920
+                );
+                $data['thumbnail'] = $result['path'];
+            } elseif ($request->filled('thumbnail_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('thumbnail_chunk_path'));
+                if ($chunkPath) {
+                    $newThumbnail = $this->fileUploadService->promoteTemporaryFile(
+                        $chunkPath,
+                        'courses/thumbnails'
+                    );
+                    if ($course->thumbnail && $course->thumbnail !== $newThumbnail) {
+                        $this->fileUploadService->deleteFile($course->thumbnail);
+                    }
+                    $data['thumbnail'] = $newThumbnail;
+                }
+            }
+
+            // Gérer l'upload de la vidéo de prévisualisation
+            if ($request->hasFile('video_preview_file')) {
+                $result = $this->fileUploadService->uploadVideo(
+                    $request->file('video_preview_file'),
+                    'courses/previews',
+                    $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
+                );
+                $data['video_preview'] = $result['path'];
+            } elseif ($request->hasFile('video_preview')) {
+                // Fallback pour compatibilité
+                $result = $this->fileUploadService->uploadVideo(
+                    $request->file('video_preview'),
+                    'courses/previews',
+                    $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
+                );
+                $data['video_preview'] = $result['path'];
+            } elseif ($request->filled('video_preview_path')) {
+                $sanitizedPath = $this->sanitizeUploadedPath($request->string('video_preview_path')->toString());
+                if ($sanitizedPath) {
+                    $finalPath = $this->fileUploadService->promoteTemporaryFile(
+                        $sanitizedPath,
+                        'courses/previews'
+                    );
+                    if ($course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL)
+                        && $course->video_preview !== $finalPath) {
+                        $this->fileUploadService->deleteFile($course->video_preview);
+                    }
+                    $data['video_preview'] = $finalPath;
+                }
+            } elseif ($request->filled('video_preview') && filter_var($request->input('video_preview'), FILTER_VALIDATE_URL)) {
+                // Si c'est une URL externe, l'utiliser directement
+                $data['video_preview'] = $request->input('video_preview');
+            }
+
+            // Gérer le fichier de téléchargement spécifique
+            if ($request->hasFile('download_file_path')) {
+                try {
+                    $oldPath = $course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL) 
+                        ? $course->download_file_path 
+                        : null;
+                    $result = $this->fileUploadService->uploadDocument(
+                        $request->file('download_file_path'),
+                        'courses/downloads',
+                        $oldPath
+                    );
+                    $data['download_file_path'] = $result['path'];
+                } catch (\Exception $e) {
+                    Log::error('Erreur upload download_file_path: ' . $e->getMessage());
+                    throw $e;
+                }
+            } elseif ($request->filled('download_file_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('download_file_chunk_path'));
+                if ($chunkPath) {
+                    $oldPath = $course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL) 
+                        ? $course->download_file_path 
+                        : null;
+                    $newPath = $this->fileUploadService->promoteTemporaryFile(
+                        $chunkPath,
+                        'courses/downloads'
+                    );
+                    if ($oldPath && $oldPath !== $newPath) {
+                        $this->fileUploadService->deleteFile($oldPath);
+                    }
+                    $data['download_file_path'] = $newPath;
+                }
+            } elseif ($request->filled('download_file_url')) {
+                // Si une URL externe est fournie, l'utiliser
+                $data['download_file_path'] = $request->download_file_url;
+            }
+
+            $course->update($data);
+
+            // Gérer les sections et leçons si fournies
+            if ($request->filled('sections')) {
+                // Supprimer les sections existantes qui ne sont plus dans la requête
+                $existingSectionIds = collect($request->input('sections', []))
+                    ->filter(fn($section) => isset($section['id']))
+                    ->pluck('id')
+                    ->toArray();
+                
+                $course->sections()->whereNotIn('id', $existingSectionIds)->delete();
+
+                $sections = $request->input('sections', []);
+                foreach ($sections as $sectionIndex => $sectionData) {
+                    $sectionTitle = $sectionData['title'] ?? null;
+                    if (!filled($sectionTitle)) {
+                        continue;
+                    }
+
+                    // Mettre à jour ou créer la section
+                    if (isset($sectionData['id']) && $sectionData['id']) {
+                        $section = $course->sections()->find($sectionData['id']);
+                        if ($section) {
+                            $section->update([
+                                'title' => $sectionTitle,
+                                'description' => $sectionData['description'] ?? '',
+                                'sort_order' => $sectionIndex + 1,
+                            ]);
+                        } else {
+                            $section = $course->sections()->create([
+                                'title' => $sectionTitle,
+                                'description' => $sectionData['description'] ?? '',
+                                'sort_order' => $sectionIndex + 1,
+                                'is_published' => true,
+                            ]);
+                        }
+                    } else {
+                        $section = $course->sections()->create([
+                            'title' => $sectionTitle,
+                            'description' => $sectionData['description'] ?? '',
+                            'sort_order' => $sectionIndex + 1,
+                            'is_published' => true,
+                        ]);
+                    }
+
+                    // Gérer les leçons de cette section
+                    $lessons = $sectionData['lessons'] ?? [];
+                    if (is_array($lessons) && !empty($lessons)) {
+                        // Supprimer les leçons existantes qui ne sont plus dans la requête
+                        $existingLessonIds = collect($lessons)
+                            ->filter(fn($lesson) => isset($lesson['id']))
+                            ->pluck('id')
+                            ->toArray();
+                        
+                        $section->lessons()->whereNotIn('id', $existingLessonIds)->delete();
+
+                        foreach ($lessons as $lessonIndex => $lessonData) {
+                            $lessonTitle = $lessonData['title'] ?? null;
+                            $lessonType = $lessonData['type'] ?? null;
+
+                            if (!filled($lessonTitle) || !filled($lessonType)) {
+                                continue;
+                            }
+
+                            $filePath = null;
+                            $chunkPath = $this->sanitizeUploadedPath($lessonData['content_file_path'] ?? null);
+                            if ($chunkPath) {
+                                $filePath = $this->fileUploadService->promoteTemporaryFile(
+                                    $chunkPath,
+                                    'courses/lessons'
+                                );
+                            }
+                            if ($request->hasFile("sections.$sectionIndex.lessons.$lessonIndex.content_file")) {
+                                $uploadedFile = $request->file("sections.$sectionIndex.lessons.$lessonIndex.content_file");
+
+                                try {
+                                    $mimeType = $uploadedFile->getMimeType();
+                                    if ($mimeType && str_starts_with($mimeType, 'video/')) {
+                                        $result = $this->fileUploadService->uploadVideo($uploadedFile, 'courses/lessons', null);
+                                    } elseif ($mimeType && str_starts_with($mimeType, 'application/')) {
+                                        $result = $this->fileUploadService->uploadDocument($uploadedFile, 'courses/lessons', null);
+                                    } else {
+                                        $result = $this->fileUploadService->upload($uploadedFile, 'courses/lessons', null);
+                                    }
+                                    $filePath = $result['path'];
+                                } catch (\Throwable $e) {
+                                    Log::error('Erreur lors du téléversement du fichier de leçon', [
+                                        'instructor_id' => auth()->id(),
+                                        'course_id' => $course->id,
+                                        'section_index' => $sectionIndex,
+                                        'lesson_index' => $lessonIndex,
+                                        'message' => $e->getMessage(),
+                                    ]);
+                                    throw $e;
+                                }
+                            }
+
+                            $lessonDataToSave = [
+                                'course_id' => $course->id,
+                                'title' => $lessonTitle,
+                                'description' => $lessonData['description'] ?? null,
+                                'type' => $lessonType,
+                                'content_url' => $filePath ?: ($lessonData['content_url'] ?? null),
+                                'file_path' => $filePath,
+                                'content_text' => $lessonData['content_text'] ?? null,
+                                'duration' => isset($lessonData['duration']) ? (int) $lessonData['duration'] : 0,
+                                'sort_order' => $lessonIndex + 1,
+                                'is_published' => true,
+                                'is_preview' => !empty($lessonData['is_preview']),
+                            ];
+
+                            // Mettre à jour ou créer la leçon
+                            if (isset($lessonData['id']) && $lessonData['id']) {
+                                $lesson = $section->lessons()->find($lessonData['id']);
+                                if ($lesson) {
+                                    $lesson->update($lessonDataToSave);
+                                } else {
+                                    $section->lessons()->create($lessonDataToSave);
+                                }
+                            } else {
+                                $section->lessons()->create($lessonDataToSave);
+                            }
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('instructor.courses.edit', $course)
+                ->with('success', 'Cours mis à jour avec succès.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            
+            Log::error('Erreur de validation lors de la mise à jour du cours', [
+                'instructor_id' => auth()->id(),
+                'course_id' => $course->id,
+                'errors' => $e->errors(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors());
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Erreur lors de la mise à jour du cours', [
+                'instructor_id' => auth()->id(),
+                'course_id' => $course->id,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Impossible de mettre à jour le cours pour le moment. Erreur: ' . $e->getMessage()]);
         }
-
-        $course->update($data);
-
-        return redirect()->route('instructor.courses.edit', $course)
-            ->with('success', 'Cours mis à jour avec succès.');
     }
 
     public function destroy(Course $course)

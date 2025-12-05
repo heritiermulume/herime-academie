@@ -3563,6 +3563,35 @@
                                 Formateurs
                             </a>
                         </div>
+                        @auth
+                            @php
+                                $isAmbassador = \App\Models\Ambassador::where('user_id', auth()->id())
+                                    ->where('is_active', true)
+                                    ->exists();
+                            @endphp
+                            @if(!$isAmbassador)
+                                <div class="list-group-item">
+                                    <a href="{{ route('ambassador-application.index') }}">
+                                        <i class="fas fa-handshake"></i>
+                                        Ambassadeur
+                                    </a>
+                                </div>
+                            @else
+                                <div class="list-group-item">
+                                    <a href="{{ route('ambassador.dashboard') }}">
+                                        <i class="fas fa-tachometer-alt"></i>
+                                        Ambassadeur
+                                    </a>
+                                </div>
+                            @endif
+                        @else
+                            <div class="list-group-item">
+                                <a href="{{ route('ambassador-application.index') }}">
+                                    <i class="fas fa-handshake"></i>
+                                    Ambassadeur
+                                </a>
+                            </div>
+                        @endauth
                         <div class="list-group-item">
                             <a href="{{ route('contact') }}">
                                 <i class="fas fa-envelope"></i>

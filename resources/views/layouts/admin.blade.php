@@ -33,12 +33,6 @@
             'active' => ['admin.orders.*']
         ],
         [
-            'label' => 'Paiements formateurs',
-            'icon' => 'fas fa-money-bill-wave',
-            'route' => 'admin.instructor-payouts',
-            'active' => ['admin.instructor-payouts', 'admin.instructor-payouts.*']
-        ],
-        [
             'label' => 'Utilisateurs',
             'icon' => 'fas fa-users-cog',
             'route' => 'admin.users',
@@ -50,6 +44,30 @@
             'route' => 'admin.instructor-applications',
             'active' => ['admin.instructor-applications', 'admin.instructor-applications.*'],
             'available' => Route::has('admin.instructor-applications')
+        ],
+        [
+            'label' => 'Paiements formateurs',
+            'icon' => 'fas fa-money-bill-wave',
+            'route' => 'admin.instructor-payouts',
+            'active' => ['admin.instructor-payouts', 'admin.instructor-payouts.*']
+        ],
+        [
+            'label' => 'Candidatures Ambassadeur',
+            'icon' => 'fas fa-handshake',
+            'route' => 'admin.ambassadors.applications',
+            'active' => ['admin.ambassadors.applications', 'admin.ambassadors.applications.*']
+        ],
+        [
+            'label' => 'Ambassadeurs',
+            'icon' => 'fas fa-users-cog',
+            'route' => 'admin.ambassadors.index',
+            'active' => ['admin.ambassadors.index', 'admin.ambassadors.show', 'admin.ambassadors.*']
+        ],
+        [
+            'label' => 'Commissions Ambassadeurs',
+            'icon' => 'fas fa-money-bill-wave',
+            'route' => 'admin.ambassadors.commissions',
+            'active' => ['admin.ambassadors.commissions', 'admin.ambassadors.commissions.*']
         ],
         [
             'label' => 'Bannières',

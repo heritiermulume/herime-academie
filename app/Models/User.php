@@ -43,6 +43,7 @@ class User extends Authenticatable
         'pawapay_phone',
         'pawapay_provider',
         'pawapay_country',
+        'pawapay_currency',
     ];
 
     /**
@@ -157,6 +158,16 @@ class User extends Authenticatable
     public function instructorApplication()
     {
         return $this->hasOne(InstructorApplication::class);
+    }
+
+    public function ambassadorApplication()
+    {
+        return $this->hasOne(AmbassadorApplication::class);
+    }
+
+    public function ambassador()
+    {
+        return $this->hasOne(Ambassador::class);
     }
 
     // Scopes

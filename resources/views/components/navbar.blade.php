@@ -37,6 +37,9 @@
                             @php
                                 $user = Auth::user();
                                 $dashboardLinks = [];
+                                $isAmbassador = \App\Models\Ambassador::where('user_id', $user->id)
+                                    ->where('is_active', true)
+                                    ->exists();
 
                                 if ($user->isAdmin()) {
                                     $dashboardLinks[] = [
@@ -54,6 +57,13 @@
                                         'route' => route('instructor.dashboard'),
                                         'icon' => 'fas fa-chalkboard-teacher',
                                     ];
+                                    if ($isAmbassador) {
+                                        $dashboardLinks[] = [
+                                            'label' => 'Tableau de bord ambassadeur',
+                                            'route' => route('ambassador.dashboard'),
+                                            'icon' => 'fas fa-handshake',
+                                        ];
+                                    }
                                 } elseif ($user->isInstructor()) {
                                     $dashboardLinks[] = [
                                         'label' => 'Tableau de bord formateur',
@@ -65,12 +75,26 @@
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
+                                    if ($isAmbassador) {
+                                        $dashboardLinks[] = [
+                                            'label' => 'Tableau de bord ambassadeur',
+                                            'route' => route('ambassador.dashboard'),
+                                            'icon' => 'fas fa-handshake',
+                                        ];
+                                    }
                                 } else {
                                     $dashboardLinks[] = [
                                         'label' => 'Tableau de bord étudiant',
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
+                                    if ($isAmbassador) {
+                                        $dashboardLinks[] = [
+                                            'label' => 'Tableau de bord ambassadeur',
+                                            'route' => route('ambassador.dashboard'),
+                                            'icon' => 'fas fa-handshake',
+                                        ];
+                                    }
                                 }
                             @endphp
 
@@ -191,6 +215,20 @@
                     </ul>
                 </div>
                 <a class="nav-link" href="{{ route('instructors.index') }}">Formateurs</a>
+                @auth
+                    @php
+                        $isAmbassador = \App\Models\Ambassador::where('user_id', auth()->id())
+                            ->where('is_active', true)
+                            ->exists();
+                    @endphp
+                    @if(!$isAmbassador)
+                        <a class="nav-link" href="{{ route('ambassador-application.index') }}">Ambassadeur</a>
+                    @else
+                        <a class="nav-link" href="{{ route('ambassador.dashboard') }}">Ambassadeur</a>
+                    @endif
+                @else
+                    <a class="nav-link" href="{{ route('ambassador-application.index') }}">Ambassadeur</a>
+                @endauth
                 <a class="nav-link" href="{{ route('about') }}">À propos</a>
                 <a class="nav-link" href="{{ route('contact') }}">Contact</a>
             </div>
@@ -263,6 +301,9 @@
                             @php
                                 $user = Auth::user();
                                 $dashboardLinks = [];
+                                $isAmbassador = \App\Models\Ambassador::where('user_id', $user->id)
+                                    ->where('is_active', true)
+                                    ->exists();
 
                                 if ($user->isAdmin()) {
                                     $dashboardLinks[] = [
@@ -280,6 +321,13 @@
                                         'route' => route('instructor.dashboard'),
                                         'icon' => 'fas fa-chalkboard-teacher',
                                     ];
+                                    if ($isAmbassador) {
+                                        $dashboardLinks[] = [
+                                            'label' => 'Tableau de bord ambassadeur',
+                                            'route' => route('ambassador.dashboard'),
+                                            'icon' => 'fas fa-handshake',
+                                        ];
+                                    }
                                 } elseif ($user->isInstructor()) {
                                     $dashboardLinks[] = [
                                         'label' => 'Tableau de bord formateur',
@@ -291,12 +339,26 @@
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
+                                    if ($isAmbassador) {
+                                        $dashboardLinks[] = [
+                                            'label' => 'Tableau de bord ambassadeur',
+                                            'route' => route('ambassador.dashboard'),
+                                            'icon' => 'fas fa-handshake',
+                                        ];
+                                    }
                                 } else {
                                     $dashboardLinks[] = [
                                         'label' => 'Tableau de bord étudiant',
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
+                                    if ($isAmbassador) {
+                                        $dashboardLinks[] = [
+                                            'label' => 'Tableau de bord ambassadeur',
+                                            'route' => route('ambassador.dashboard'),
+                                            'icon' => 'fas fa-handshake',
+                                        ];
+                                    }
                                 }
                             @endphp
 
@@ -394,6 +456,24 @@
                             </a>
                         </li>
                     @endif
+                    @php
+                        $isAmbassador = \App\Models\Ambassador::where('user_id', auth()->id())
+                            ->where('is_active', true)
+                            ->exists();
+                    @endphp
+                    @if(!$isAmbassador)
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('ambassador-application.index') }}">
+                                <i class="fas fa-handshake me-2"></i>Devenir Ambassadeur
+                            </a>
+                        </li>
+                    @else
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('ambassador.dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-2"></i>Dashboard Ambassadeur
+                            </a>
+                        </li>
+                    @endif
                 @endauth
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('about') }}">
@@ -410,6 +490,9 @@
                     @php
                         $user = Auth::user();
                         $dashboardLinks = [];
+                        $isAmbassador = \App\Models\Ambassador::where('user_id', $user->id)
+                            ->where('is_active', true)
+                            ->exists();
 
                         if ($user->isAdmin()) {
                             $dashboardLinks[] = [
@@ -427,6 +510,13 @@
                                 'route' => route('instructor.dashboard'),
                                 'icon' => 'fas fa-chalkboard-teacher',
                             ];
+                            if ($isAmbassador) {
+                                $dashboardLinks[] = [
+                                    'label' => 'Tableau de bord ambassadeur',
+                                    'route' => route('ambassador.dashboard'),
+                                    'icon' => 'fas fa-handshake',
+                                ];
+                            }
                         } elseif ($user->isInstructor()) {
                             $dashboardLinks[] = [
                                 'label' => 'Tableau de bord formateur',
@@ -438,12 +528,26 @@
                                 'route' => route('student.dashboard'),
                                 'icon' => 'fas fa-user-graduate',
                             ];
+                            if ($isAmbassador) {
+                                $dashboardLinks[] = [
+                                    'label' => 'Tableau de bord ambassadeur',
+                                    'route' => route('ambassador.dashboard'),
+                                    'icon' => 'fas fa-handshake',
+                                ];
+                            }
                         } else {
                             $dashboardLinks[] = [
                                 'label' => 'Tableau de bord étudiant',
                                 'route' => route('student.dashboard'),
                                 'icon' => 'fas fa-user-graduate',
                             ];
+                            if ($isAmbassador) {
+                                $dashboardLinks[] = [
+                                    'label' => 'Tableau de bord ambassadeur',
+                                    'route' => route('ambassador.dashboard'),
+                                    'icon' => 'fas fa-handshake',
+                                ];
+                            }
                         }
                     @endphp
 
