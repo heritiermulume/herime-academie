@@ -90,11 +90,29 @@ class Ambassador extends Model
      */
     public function generatePromoCode(): AmbassadorPromoCode
     {
-        $code = strtoupper('AMB' . Str::random(6));
+        // Extraire une partie du nom de l'ambassadeur
+        $userName = $this->user->name ?? 'AMB';
+        
+        // Prendre le premier mot du nom (pour les noms composés)
+        $firstName = explode(' ', trim($userName))[0];
+        
+        // Nettoyer le nom : enlever les accents, espaces et caractères spéciaux
+        $cleanName = $this->cleanNameForCode($firstName);
+        
+        // Prendre les 3-4 premiers caractères du nom (ou tout si moins de 3 caractères)
+        $namePrefix = strtoupper(substr($cleanName, 0, min(4, strlen($cleanName))));
+        
+        // Si le nom est trop court, utiliser "AMB" comme préfixe
+        if (strlen($namePrefix) < 3) {
+            $namePrefix = 'AMB';
+        }
+        
+        // Générer le code avec le préfixe du nom + partie aléatoire
+        $code = strtoupper($namePrefix . '-' . Str::random(6));
         
         // Ensure uniqueness
         while (AmbassadorPromoCode::where('code', $code)->exists()) {
-            $code = strtoupper('AMB' . Str::random(6));
+            $code = strtoupper($namePrefix . '-' . Str::random(6));
         }
 
         return $this->promoCodes()->create([
@@ -103,6 +121,33 @@ class Ambassador extends Model
             'description' => 'Code promo ambassadeur',
             'is_active' => true,
         ]);
+    }
+
+    /**
+     * Clean name for promo code generation
+     * Remove accents, spaces, and special characters
+     */
+    private function cleanNameForCode(string $name): string
+    {
+        // Convertir en minuscules
+        $name = mb_strtolower($name, 'UTF-8');
+        
+        // Remplacer les accents
+        $accents = [
+            'à' => 'a', 'á' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a', 'å' => 'a',
+            'è' => 'e', 'é' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'ì' => 'i', 'í' => 'i', 'î' => 'i', 'ï' => 'i',
+            'ò' => 'o', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o',
+            'ù' => 'u', 'ú' => 'u', 'û' => 'u', 'ü' => 'u',
+            'ý' => 'y', 'ÿ' => 'y',
+            'ç' => 'c', 'ñ' => 'n',
+        ];
+        $name = strtr($name, $accents);
+        
+        // Garder uniquement les lettres et chiffres
+        $name = preg_replace('/[^a-z0-9]/', '', $name);
+        
+        return $name;
     }
 
     /**
