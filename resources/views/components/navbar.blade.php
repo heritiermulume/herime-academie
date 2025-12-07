@@ -204,16 +204,7 @@
             <!-- Navigation Menu -->
             <div class="navbar-nav me-auto">
                 <a class="nav-link" href="{{ route('courses.index') }}">Cours</a>
-                <div class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                        Catégories
-                    </a>
-                    <ul class="dropdown-menu">
-                        @foreach(\App\Models\Category::active()->ordered()->limit(6)->get() as $category)
-                            <li><a class="dropdown-item" href="{{ route('courses.category', $category->slug) }}">{{ $category->name }}</a></li>
-                        @endforeach
-                    </ul>
-                </div>
+                <a class="nav-link" href="{{ route('categories.index') }}">Catégories</a>
                 <a class="nav-link" href="{{ route('instructors.index') }}">Formateurs</a>
                 @auth
                     @php
@@ -433,15 +424,10 @@
                         <i class="fas fa-book me-2"></i>Cours
                     </a>
                 </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('categories.index') }}">
                         <i class="fas fa-th-large me-2"></i>Catégories
                     </a>
-                    <ul class="dropdown-menu">
-                        @foreach(\App\Models\Category::active()->ordered()->limit(6)->get() as $category)
-                            <li><a class="dropdown-item" href="{{ route('courses.category', $category->slug) }}">{{ $category->name }}</a></li>
-                        @endforeach
-                    </ul>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('instructor-application.index') }}">
@@ -717,6 +703,34 @@
         text-overflow: ellipsis !important;
         max-width: 100% !important;
         display: block !important;
+    }
+    
+    /* Sur mobile/tablette, l'en-tête doit occuper toute la largeur */
+    @media (max-width: 991.98px) {
+        .navbar .dropdown-menu.user-profile-dropdown {
+            width: calc(100vw - 1rem) !important;
+            max-width: 320px !important;
+            padding: 0 !important;
+            border-radius: 0.375rem !important;
+            overflow: hidden !important;
+        }
+        
+        /* L'en-tête doit occuper toute la largeur sans marges horizontales */
+        .navbar .dropdown-menu.user-profile-dropdown > li:first-child {
+            padding-top: 1.25rem !important;
+            padding-bottom: 1.25rem !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            border-radius: 0.375rem 0.375rem 0 0 !important;
+        }
+        
+        /* Le contenu interne de l'en-tête garde son padding horizontal */
+        .navbar .dropdown-menu.user-profile-dropdown > li:first-child > div {
+            padding-left: 1.25rem !important;
+            padding-right: 1.25rem !important;
+        }
     }
     
     /* Sur mobile, réduire la largeur si nécessaire */

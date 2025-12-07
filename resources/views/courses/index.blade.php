@@ -684,6 +684,96 @@
         padding-top: 0.1rem;
     }
 }
+
+/* Pagination compacte */
+.pagination {
+    --bs-pagination-padding-x: 0.5rem;
+    --bs-pagination-padding-y: 0.25rem;
+    --bs-pagination-font-size: 0.875rem;
+    --bs-pagination-border-radius: 0.375rem;
+    gap: 0.25rem;
+}
+
+.pagination .page-link {
+    padding: 0.375rem 0.65rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #003366;
+    border-color: #e2e8f0;
+    background-color: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.pagination .page-link:hover {
+    color: #ffffff;
+    background-color: #003366;
+    border-color: #003366;
+}
+
+.pagination .page-link:focus {
+    color: #003366;
+    background-color: #ffffff;
+    border-color: #003366;
+    box-shadow: 0 0 0 0.2rem rgba(0, 51, 102, 0.25);
+}
+
+.pagination .page-item.active .page-link {
+    padding: 0.375rem 0.65rem;
+    font-size: 0.875rem;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    color: #ffffff;
+    background-color: #003366;
+    border-color: #003366;
+}
+
+.pagination .page-item.disabled .page-link {
+    padding: 0.375rem 0.65rem;
+    font-size: 0.875rem;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    color: #94a3b8;
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+    cursor: not-allowed;
+}
+
+.pagination .page-link i {
+    font-size: 0.75rem;
+}
+
+@media (max-width: 575.98px) {
+    .pagination {
+        --bs-pagination-padding-x: 0.375rem;
+        --bs-pagination-padding-y: 0.2rem;
+        --bs-pagination-font-size: 0.8rem;
+        gap: 0.15rem;
+    }
+    
+    .pagination .page-link {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.8rem;
+        min-width: 2rem;
+        height: 2rem;
+    }
+    
+    .pagination .page-item.disabled .page-link,
+    .pagination .page-item.active .page-link {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.8rem;
+        min-width: 2rem;
+        height: 2rem;
+    }
+    
+    .pagination .page-link i {
+        font-size: 0.7rem;
+    }
+}
 </style>
 @endpush
 

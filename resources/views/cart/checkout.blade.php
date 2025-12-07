@@ -101,7 +101,7 @@
                             </div>
 
                             <!-- Code Promo Ambassadeur -->
-                            <div class="mb-3">
+                            <div class="mb-3 promo-code-container">
                                 <label class="form-label">
                                     <i class="fas fa-gift me-1"></i>Code Promo Ambassadeur (optionnel)
                                 </label>
@@ -1219,6 +1219,62 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .form-section {
         padding: 0.5rem;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    .promo-code-container {
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    /* Input group responsive pour tablette */
+    .input-group {
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    .input-group .form-control {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: calc(100% - 90px);
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    .input-group .btn {
+        white-space: nowrap;
+        padding: 10px 10px;
+        font-size: 12px;
+        flex-shrink: 0;
+        min-width: 80px;
+        max-width: 90px;
+        box-sizing: border-box;
+    }
+    
+    #validatePromoCodeBtn {
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+        min-width: 75px !important;
+        max-width: 85px !important;
+    }
+    
+    /* Payment button pour tablette */
+    .payment-actions {
+        display: flex;
+        justify-content: center;
+    }
+    
+    #payButton {
+        width: auto !important;
+        max-width: 100%;
+        padding: 12px 28px !important;
+        font-size: 15px !important;
     }
 }
 
@@ -1359,6 +1415,15 @@ document.addEventListener('DOMContentLoaded', function() {
     /* Form responsive */
     .form-section {
         padding: 0.375rem;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    .promo-code-container {
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
     .form-section .row.g-3 {
@@ -1422,18 +1487,38 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /* Input group responsive */
     .input-group {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
     
     .input-group .form-control {
-        flex: 1;
+        flex: 1 1 auto;
         min-width: 0;
+        max-width: calc(100% - 85px);
+        box-sizing: border-box;
     }
     
     .input-group .btn {
         white-space: nowrap;
-        padding: 10px 14px;
-        font-size: 13px;
+        padding: 10px 10px;
+        font-size: 12px;
+        flex-shrink: 0;
+        min-width: 75px;
+        max-width: 85px;
+        box-sizing: border-box;
+    }
+    
+    #validatePromoCodeBtn {
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+        min-width: 70px !important;
+        max-width: 80px !important;
+    }
+    
+    #validatePromoCodeBtn .fas {
+        margin-right: 3px;
     }
     
     /* Terms section responsive */
@@ -1455,7 +1540,19 @@ document.addEventListener('DOMContentLoaded', function() {
         padding: 14px 20px;
         font-size: 15px;
         width: 100%;
+        max-width: 100%;
         border-radius: 6px;
+    }
+    
+    .payment-actions {
+        display: flex;
+        justify-content: center;
+    }
+    
+    #payButton {
+        width: auto !important;
+        max-width: 100%;
+        padding: 12px 24px !important;
     }
     
     /* Order summary responsive */
@@ -1811,6 +1908,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .form-section {
         padding: 0.375rem;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    .promo-code-container {
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
     }
     
     .form-label {
@@ -1843,9 +1949,58 @@ document.addEventListener('DOMContentLoaded', function() {
         margin-bottom: 0.5rem !important;
     }
     
+    .input-group {
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
+    .input-group .form-control {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: calc(100% - 75px);
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+    
     .input-group .btn {
-        padding: 9px 12px;
-        font-size: 12px;
+        padding: 9px 6px;
+        font-size: 11px;
+        flex-shrink: 0;
+        min-width: 65px;
+        max-width: 75px;
+        box-sizing: border-box;
+    }
+    
+    #validatePromoCodeBtn {
+        padding: 9px 6px !important;
+        font-size: 11px !important;
+        min-width: 60px !important;
+        max-width: 70px !important;
+    }
+    
+    #validatePromoCodeBtn .fas {
+        margin-right: 2px;
+    }
+    
+    /* Sur très petits écrans, réduire encore plus */
+    @media (max-width: 400px) {
+        .input-group .form-control {
+            max-width: calc(100% - 70px);
+        }
+        
+        #validatePromoCodeBtn {
+            padding: 9px 4px !important;
+            font-size: 10px !important;
+            min-width: 55px !important;
+            max-width: 65px !important;
+        }
+        
+        #validatePromoCodeBtn .fas {
+            margin-right: 0;
+        }
     }
     
     .order-summary-card {
@@ -1908,6 +2063,18 @@ document.addEventListener('DOMContentLoaded', function() {
     .btn-lg {
         font-size: 14px;
         padding: 13px 18px;
+    }
+    
+    .payment-actions {
+        display: flex;
+        justify-content: center;
+    }
+    
+    #payButton {
+        width: auto !important;
+        max-width: 100%;
+        padding: 12px 20px !important;
+        font-size: 14px !important;
     }
 }
 </style>

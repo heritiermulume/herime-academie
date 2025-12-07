@@ -3527,17 +3527,10 @@
             <i class="fas fa-book"></i>
             <span>Cours</span>
         </a>
-        <div class="dropdown">
-            <button class="mobile-bottom-nav-item" type="button" data-bs-toggle="dropdown">
-                <i class="fas fa-th-large"></i>
-                <span>Catégories</span>
-            </button>
-            <ul class="dropdown-menu">
-                @foreach(\App\Models\Category::active()->ordered()->limit(6)->get() as $category)
-                    <li><a class="dropdown-item" href="{{ route('courses.category', $category->slug) }}">{{ $category->name }}</a></li>
-                @endforeach
-            </ul>
-        </div>
+        <a href="{{ route('categories.index') }}" class="mobile-bottom-nav-item" data-page="categories">
+            <i class="fas fa-th-large"></i>
+            <span>Catégories</span>
+        </a>
         <button class="mobile-bottom-nav-item" type="button" data-bs-toggle="modal" data-bs-target="#moreModal">
             <i class="fas fa-ellipsis-h"></i>
             <span>Plus</span>
