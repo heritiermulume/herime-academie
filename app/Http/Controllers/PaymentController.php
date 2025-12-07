@@ -48,6 +48,14 @@ class PaymentController extends Controller
                 'message' => 'Ce cours n\'est pas disponible.'
             ], 404);
         }
+
+        // Vérifier si la vente/inscription est activée
+        if (!$course->is_sale_enabled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ce cours n\'est pas actuellement disponible à l\'achat.'
+            ], 403);
+        }
         
         $user = auth()->user();
 

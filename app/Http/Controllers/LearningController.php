@@ -23,7 +23,14 @@ class LearningController extends Controller
         }
 
         // Vérifier que l'utilisateur est inscrit au cours
+        // Les utilisateurs déjà inscrits peuvent toujours accéder, même si is_sale_enabled est maintenant false
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
+            // Si la vente est désactivée et l'utilisateur n'est pas inscrit, bloquer
+            if (!$course->is_sale_enabled) {
+                return redirect()->route('courses.show', $course)
+                    ->with('error', 'Ce cours n\'est pas actuellement disponible.');
+            }
+            
             return redirect()->route('courses.show', $course)
                 ->with('error', 'Vous devez être inscrit à ce cours pour y accéder.');
         }

@@ -162,118 +162,24 @@
                                 <td class="d-none d-md-table-cell">
                                     <span class="admin-chip admin-chip--neutral">{{ $order->created_at ? $order->created_at->format('d/m/Y H:i') : '—' }}</span>
                                 </td>
-                                <td class="text-center align-top">
-                                    @if($loop->first)
-                                        <div class="dropdown d-none d-md-block">
-                                            <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $order->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $order->id }}">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
-                                                        <i class="fas fa-eye me-2"></i>Voir
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="#" 
-                                                       data-order-id="{{ $order->id }}"
-                                                       onclick="openConfirmOrderModal(this.dataset.orderId); return false;">
-                                                        <i class="fas fa-check me-2"></i>Confirmer
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger" href="#" 
-                                                       data-order-id="{{ $order->id }}"
-                                                       onclick="openCancelOrderModal(this.dataset.orderId); return false;">
-                                                        <i class="fas fa-times me-2"></i>Annuler
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div class="dropdown d-md-none">
-                                            <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $order->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $order->id }}">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
-                                                        <i class="fas fa-eye me-2"></i>Voir
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="#" 
-                                                       data-order-id="{{ $order->id }}"
-                                                       onclick="openConfirmOrderModal(this.dataset.orderId); return false;">
-                                                        <i class="fas fa-check me-2"></i>Confirmer
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger" href="#" 
-                                                       data-order-id="{{ $order->id }}"
-                                                       onclick="openCancelOrderModal(this.dataset.orderId); return false;">
-                                                        <i class="fas fa-times me-2"></i>Annuler
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    @else
-                                        <div class="dropup d-none d-md-block">
-                                            <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $order->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $order->id }}">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
-                                                        <i class="fas fa-eye me-2"></i>Voir
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="#" 
-                                                       data-order-id="{{ $order->id }}"
-                                                       onclick="openConfirmOrderModal(this.dataset.orderId); return false;">
-                                                        <i class="fas fa-check me-2"></i>Confirmer
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger" href="#" 
-                                                       data-order-id="{{ $order->id }}"
-                                                       onclick="openCancelOrderModal(this.dataset.orderId); return false;">
-                                                        <i class="fas fa-times me-2"></i>Annuler
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div class="dropup d-md-none">
-                                            <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $order->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $order->id }}">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
-                                                        <i class="fas fa-eye me-2"></i>Voir
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="#" 
-                                                       data-order-id="{{ $order->id }}"
-                                                       onclick="openConfirmOrderModal(this.dataset.orderId); return false;">
-                                                        <i class="fas fa-check me-2"></i>Confirmer
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger" href="#" 
-                                                       data-order-id="{{ $order->id }}"
-                                                       onclick="openCancelOrderModal(this.dataset.orderId); return false;">
-                                                        <i class="fas fa-times me-2"></i>Annuler
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    @endif
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <a href="{{ route('admin.orders.show', $order) }}" class="btn btn-light btn-sm" title="Voir la commande">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-success btn-sm" 
+                                                data-order-id="{{ $order->id }}"
+                                                onclick="openConfirmOrderModal(this.dataset.orderId)" 
+                                                title="Confirmer la commande">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                data-order-id="{{ $order->id }}"
+                                                onclick="openCancelOrderModal(this.dataset.orderId)" 
+                                                title="Annuler la commande">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             @empty

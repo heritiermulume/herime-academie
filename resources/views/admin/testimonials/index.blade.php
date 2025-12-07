@@ -10,87 +10,97 @@
 @endsection
 
 @section('admin-content')
-    <section class="admin-panel admin-panel--main">
+    <section class="admin-panel">
         <div class="admin-panel__body">
-            <!-- Grille des témoignages -->
-            <div class="row">
-                @forelse($testimonials as $testimonial)
-                <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center mb-3">
-                                @if($testimonial->photo)
-                                <img src="{{ str_starts_with($testimonial->photo, 'http') ? $testimonial->photo : \App\Helpers\FileHelper::url($testimonial->photo) }}" 
-                                     alt="{{ $testimonial->name }}" 
-                                     class="rounded-circle me-3" 
-                                     width="50" 
-                                     height="50"
-                                     style="object-fit: cover;">
-                                @else
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" 
-                                     style="width: 50px; height: 50px;">
-                                    {{ substr($testimonial->name, 0, 1) }}
-                                </div>
-                                @endif
-                                
-                                <div>
-                                    <h6 class="mb-0">{{ $testimonial->name }}</h6>
-                                    @if($testimonial->title)
-                                    <small class="text-muted">{{ $testimonial->title }}</small>
-                                    @endif
-                                </div>
-                            </div>
-                            
-                            <div class="text-warning mb-2">
-                                @for($i = 1; $i <= 5; $i++)
-                                    <i class="fas fa-star{{ $i <= $testimonial->rating ? '' : '-o' }}"></i>
-                                @endfor
-                            </div>
-                            
-                            <p class="card-text">{{ Str::limit($testimonial->testimonial, 150) }}</p>
-                            
-                            @if($testimonial->company)
-                            <small class="text-muted d-block">
-                                <i class="fas fa-building me-1"></i>{{ $testimonial->company }}
-                            </small>
-                            @endif
-                        </div>
-                        
-                        <div class="card-footer bg-light">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <small class="text-muted">
-                                    {{ $testimonial->created_at->format('d/m/Y') }}
-                                </small>
-                                <div class="d-flex gap-2 testimonial-actions">
-                                    <button type="button"
-                                            class="testimonial-action-icon text-warning"
-                                            onclick="editTestimonial({{ $testimonial->id }})"
-                                            title="Modifier">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button"
-                                            class="testimonial-action-icon text-danger"
-                                            onclick="deleteTestimonial({{ $testimonial->id }})"
-                                            title="Supprimer">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="admin-table">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 250px;">Témoignage</th>
+                                <th>Note</th>
+                                <th>Entreprise</th>
+                                <th>Statut</th>
+                                <th>Date de création</th>
+                                <th class="text-center d-none d-md-table-cell" style="width: 120px;">Actions</th>
+                                <th class="text-center d-md-none" style="width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($testimonials as $testimonial)
+                                <tr>
+                                    <td style="min-width: 250px;">
+                                        <div class="d-flex align-items-center gap-3">
+                                            @if($testimonial->photo)
+                                                <img src="{{ str_starts_with($testimonial->photo, 'http') ? $testimonial->photo : \App\Helpers\FileHelper::url($testimonial->photo) }}" 
+                                                     alt="{{ $testimonial->name }}" 
+                                                     class="rounded-circle" 
+                                                     style="width: 48px; height: 48px; object-fit: cover;">
+                                            @else
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                                                     style="width: 48px; height: 48px; font-weight: 600;">
+                                                    {{ substr($testimonial->name, 0, 1) }}
+                                                </div>
+                                            @endif
+                                            <div style="min-width: 0; flex: 1;">
+                                                <div class="fw-semibold text-truncate d-block" title="{{ $testimonial->name }}">{{ $testimonial->name }}</div>
+                                                @if($testimonial->title)
+                                                    <div class="text-muted small text-truncate d-block" title="{{ $testimonial->title }}">
+                                                        {{ $testimonial->title }}
+                                                    </div>
+                                                @endif
+                                                <div class="text-muted small text-truncate d-block mt-1" title="{{ $testimonial->testimonial }}">
+                                                    {{ Str::limit($testimonial->testimonial, 80) }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-warning">
+                                            @for($i = 1; $i <= 5; $i++)
+                                                <i class="fas fa-star{{ $i <= $testimonial->rating ? '' : '-o' }}" style="font-size: 0.85rem;"></i>
+                                            @endfor
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if($testimonial->company)
+                                            <span class="admin-chip">
+                                                <i class="fas fa-building me-1"></i>{{ Str::limit($testimonial->company, 30) }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="admin-chip admin-chip--{{ $testimonial->is_active ? 'success' : 'secondary' }}">
+                                            {{ $testimonial->is_active ? 'Actif' : 'Inactif' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $testimonial->created_at->format('d/m/Y') }}</td>
+                                    <td class="text-center">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="editTestimonial({{ $testimonial->id }})" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteTestimonial({{ $testimonial->id }})" title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="admin-table__empty">
+                                        <i class="fas fa-quote-left mb-2 d-block"></i>
+                                        Aucun témoignage trouvé.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
-                @empty
-                <div class="col-12">
-                    <div class="admin-empty-state">
-                        <i class="fas fa-quote-left"></i>
-                        <p class="mb-1">Aucun témoignage trouvé</p>
-                        <p class="text-muted mb-0">Ajoutez un premier témoignage pour mettre en avant la satisfaction de vos étudiants.</p>
-                    </div>
-                </div>
-                @endforelse
             </div>
 
-            <!-- Pagination -->
             <x-admin.pagination :paginator="$testimonials" />
         </div>
     </section>
@@ -777,42 +787,6 @@ function deleteTestimonial(id) {
 
 @push('styles')
 <style>
-/* Design moderne pour la page de gestion des témoignages */
-.card.h-100 {
-    border-radius: 15px;
-    overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card.h-100:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important;
-}
-
-.rounded-circle {
-    transition: transform 0.2s ease, border-color 0.2s ease;
-    border: 2px solid #dee2e6;
-}
-
-.card:hover .rounded-circle {
-    transform: scale(1.1);
-    border-color: #0d6efd;
-}
-
-.btn-group .btn, .d-flex.gap-1 .btn {
-    transition: all 0.2s ease;
-}
-
-.btn-group .btn:hover, .d-flex.gap-1 .btn:hover {
-    transform: translateY(-2px);
-}
-
-.badge {
-    font-size: 0.85rem;
-    padding: 0.4em 0.8em;
-    font-weight: 500;
-}
-
 /* Zone d'upload photo témoignage */
 #testimonialPhotoUploadZone {
     border: 1px dashed #d1d5db;
@@ -846,48 +820,36 @@ function deleteTestimonial(id) {
     font-size: 0.7rem;
 }
 
-.testimonial-action-icon {
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.testimonial-action-icon i {
-    font-size: 0.95rem;
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-    .admin-panel--main .admin-panel__body {
-        padding: 0.75rem 0.75rem;
+/* Styles responsives pour les paddings et margins */
+@media (max-width: 991.98px) {
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
     }
     
-    .card-body {
-        padding: 0.75rem;
+    .admin-panel__body {
+        overflow: visible !important;
     }
     
-    .col-md-6.col-lg-4 {
-        padding: 0.5rem;
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 }
 
-@media (max-width: 576px) {
-    .testimonial-actions {
-        gap: 0.25rem;
+@media (max-width: 767.98px) {
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
     }
     
-    .testimonial-action-icon i {
-        font-size: 0.8rem;
+    .admin-panel__body {
+        overflow: visible !important;
     }
     
-    .admin-panel--main .row > [class*="col-"] {
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
     
     /* Modal de suppression - adaptation mobile */

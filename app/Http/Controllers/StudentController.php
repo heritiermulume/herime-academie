@@ -320,6 +320,12 @@ class StudentController extends Controller
             );
         }
 
+        // Vérifier si la vente/inscription est activée
+        if (!$course->is_sale_enabled) {
+            return redirect()->route('courses.show', $course->slug)
+                ->with('error', 'Ce cours n\'est pas actuellement disponible à l\'inscription.');
+        }
+
         // Pour les cours payants, vérifier que l'utilisateur a acheté le cours
         if (!$course->is_free) {
             $hasPurchased = Order::where('user_id', $student->id)

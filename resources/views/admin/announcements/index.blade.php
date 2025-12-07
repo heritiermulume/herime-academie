@@ -22,134 +22,80 @@
                             <table class="table table-hover">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Titre</th>
-                                        <th>Type</th>
-                                        <th>Statut</th>
-                                        <th>Début</th>
-                                        <th>Fin</th>
-                                        <th>Actions</th>
+                                        <th style="min-width: 250px; max-width: 400px;">Titre</th>
+                                        <th style="width: 100px; white-space: nowrap;">Type</th>
+                                        <th style="width: 100px; white-space: nowrap;">Statut</th>
+                                        <th style="min-width: 140px; max-width: 160px; white-space: nowrap;">Début</th>
+                                        <th style="min-width: 140px; max-width: 160px; white-space: nowrap;">Fin</th>
+                                        <th class="text-center d-none d-md-table-cell" style="width: 120px; white-space: nowrap;">Actions</th>
+                                        <th class="text-center d-md-none" style="width: 120px; white-space: nowrap;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($announcements as $announcement)
                                     <tr>
-                                        <td>
-                                            <h6 class="mb-0">{{ $announcement->title }}</h6>
-                                            <small class="text-muted">{{ Str::limit($announcement->content, 100) }}</small>
+                                        <td style="max-width: 400px;">
+                                            <h6 class="mb-0 text-truncate d-block" style="max-width: 100%;" title="{{ $announcement->title }}">{{ $announcement->title }}</h6>
+                                            <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $announcement->content }}">{{ $announcement->content }}</small>
                                         </td>
-                                        <td>
+                                        <td style="white-space: nowrap;">
                                             <span class="badge bg-{{ $announcement->type === 'info' ? 'info' : ($announcement->type === 'success' ? 'success' : ($announcement->type === 'warning' ? 'warning' : 'danger')) }}">
                                                 {{ ucfirst($announcement->type) }}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td style="white-space: nowrap;">
                                             <span class="badge bg-{{ $announcement->is_active ? 'success' : 'secondary' }}">
                                                 {{ $announcement->is_active ? 'Active' : 'Inactive' }}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td style="max-width: 160px; white-space: nowrap;">
                                             <small>
                                                 {{ $announcement->starts_at ? $announcement->starts_at->format('d/m/Y H:i') : 'Immédiat' }}
                                             </small>
                                         </td>
-                                        <td>
+                                        <td style="max-width: 160px; white-space: nowrap;">
                                             <small>
                                                 {{ $announcement->expires_at ? $announcement->expires_at->format('d/m/Y H:i') : 'Illimité' }}
                                             </small>
                                         </td>
-                                        <td class="text-center align-top">
-                                            @if($loop->first)
-                                                <div class="dropdown d-none d-md-block">
-                                                    <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $announcement->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $announcement->id }}">
-                                                        <li>
-                                                            <a class="dropdown-item" href="#" onclick="editAnnouncement({{ $announcement->id }}); return false;">
-                                                                <i class="fas fa-edit me-2"></i>Modifier
-                                                            </a>
-                                                        </li>
-                                                        <li><hr class="dropdown-divider"></li>
-                                                        <li>
-                                                            <a class="dropdown-item text-danger" href="#" 
-                                                               data-action="{{ route('admin.announcements.destroy', $announcement) }}"
-                                                               data-title="{{ $announcement->title }}"
-                                                               onclick="openDeleteAnnouncementModal(this); return false;">
-                                                                <i class="fas fa-trash me-2"></i>Supprimer
-                                                            </a>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                                <div class="dropdown d-md-none">
-                                                    <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $announcement->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $announcement->id }}">
-                                                        <li>
-                                                            <a class="dropdown-item" href="#" onclick="editAnnouncement({{ $announcement->id }}); return false;">
-                                                                <i class="fas fa-edit me-2"></i>Modifier
-                                                            </a>
-                                                        </li>
-                                                        <li><hr class="dropdown-divider"></li>
-                                                        <li>
-                                                            <a class="dropdown-item text-danger" href="#" 
-                                                               data-action="{{ route('admin.announcements.destroy', $announcement) }}"
-                                                               data-title="{{ $announcement->title }}"
-                                                               onclick="openDeleteAnnouncementModal(this); return false;">
-                                                                <i class="fas fa-trash me-2"></i>Supprimer
-                                                            </a>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                            @else
-                                                <div class="dropup d-none d-md-block">
-                                                    <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $announcement->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $announcement->id }}">
-                                                        <li>
-                                                            <a class="dropdown-item" href="#" onclick="editAnnouncement({{ $announcement->id }}); return false;">
-                                                                <i class="fas fa-edit me-2"></i>Modifier
-                                                            </a>
-                                                        </li>
-                                                        <li><hr class="dropdown-divider"></li>
-                                                        <li>
-                                                            <a class="dropdown-item text-danger" href="#" 
-                                                               data-action="{{ route('admin.announcements.destroy', $announcement) }}"
-                                                               data-title="{{ $announcement->title }}"
-                                                               onclick="openDeleteAnnouncementModal(this); return false;">
-                                                                <i class="fas fa-trash me-2"></i>Supprimer
-                                                            </a>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                                <div class="dropup d-md-none">
-                                                    <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $announcement->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                        <i class="fas fa-ellipsis-v"></i>
-                                                    </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $announcement->id }}">
-                                                        <li>
-                                                            <a class="dropdown-item" href="#" onclick="editAnnouncement({{ $announcement->id }}); return false;">
-                                                                <i class="fas fa-edit me-2"></i>Modifier
-                                                            </a>
-                                                        </li>
-                                                        <li><hr class="dropdown-divider"></li>
-                                                        <li>
-                                                            <a class="dropdown-item text-danger" href="#" 
-                                                               data-action="{{ route('admin.announcements.destroy', $announcement) }}"
-                                                               data-title="{{ $announcement->title }}"
-                                                               onclick="openDeleteAnnouncementModal(this); return false;">
-                                                                <i class="fas fa-trash me-2"></i>Supprimer
-                                                            </a>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                            @endif
+                                        <td class="text-center d-none d-md-table-cell">
+                                            <div class="d-flex gap-2 justify-content-center">
+                                                <a href="{{ route('admin.announcements.preview', $announcement) }}" class="btn btn-info btn-sm" title="Aperçu de l'annonce">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-primary btn-sm" onclick="editAnnouncement({{ $announcement->id }})" title="Modifier l'annonce">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm" 
+                                                        data-action="{{ route('admin.announcements.destroy', $announcement) }}"
+                                                        data-title="{{ $announcement->title }}"
+                                                        onclick="openDeleteAnnouncementModal(this)" 
+                                                        title="Supprimer l'annonce">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="text-center d-md-none">
+                                            <div class="d-flex gap-2 justify-content-center">
+                                                <a href="{{ route('admin.announcements.preview', $announcement) }}" class="btn btn-info btn-sm" title="Aperçu de l'annonce">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-primary btn-sm" onclick="editAnnouncement({{ $announcement->id }})" title="Modifier l'annonce">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm" 
+                                                        data-action="{{ route('admin.announcements.destroy', $announcement) }}"
+                                                        data-title="{{ $announcement->title }}"
+                                                        onclick="openDeleteAnnouncementModal(this)" 
+                                                        title="Supprimer l'annonce">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="6" class="text-center py-4">
+                                        <td colspan="7" class="text-center py-4">
                                             <i class="fas fa-bullhorn fa-3x text-muted mb-3"></i>
                                             <p class="text-muted">Aucune annonce trouvée</p>
                                         </td>
@@ -170,9 +116,9 @@
     <section class="admin-panel mt-4">
         <div class="admin-panel__header d-flex justify-content-between align-items-center">
             <h3 class="mb-0 flex-grow-1"><i class="fas fa-envelope me-2"></i>Gestion des emails</h3>
-            <!-- Icône pour envoyer un email -->
-            <a href="{{ route('admin.announcements.send-email') }}" class="email-send-icon-btn" title="Envoyer un email">
-                <i class="fas fa-envelope"></i>
+            <!-- Bouton pour envoyer un email -->
+            <a href="{{ route('admin.announcements.send-email') }}" class="btn btn-primary" title="Envoyer un email">
+                <i class="fas fa-plus me-2"></i>Envoyer un email
             </a>
         </div>
         <div class="admin-panel__body">
@@ -229,13 +175,13 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="sent-emails-tab" data-bs-toggle="tab" data-bs-target="#sent-emails" type="button" role="tab">
                         <i class="fas fa-paper-plane me-2"></i>Emails envoyés
-                        <span class="badge bg-primary ms-2">{{ count($recentSentEmails ?? []) }}</span>
+                        <span class="badge bg-primary ms-2">{{ $recentSentEmails->total() ?? 0 }}</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="scheduled-emails-tab" data-bs-toggle="tab" data-bs-target="#scheduled-emails" type="button" role="tab">
                         <i class="fas fa-clock me-2"></i>Emails programmés
-                        <span class="badge bg-warning ms-2">{{ count($pendingScheduledEmails ?? []) }}</span>
+                        <span class="badge bg-warning ms-2">{{ $pendingScheduledEmails->total() ?? 0 }}</span>
                     </button>
                 </li>
                 <li class="nav-item ms-auto d-none d-md-block" role="presentation">
@@ -252,13 +198,14 @@
                         <table class="table table-hover table-sm">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 50px; min-width: 50px;"></th>
-                                    <th>Destinataire</th>
-                                    <th>Sujet</th>
-                                    <th>Type</th>
-                                    <th>Statut</th>
-                                    <th>Date</th>
-                                    <th>Actions</th>
+                                    <th style="width: 50px; min-width: 50px; max-width: 50px;"></th>
+                                    <th style="min-width: 180px; max-width: 250px;">Destinataire</th>
+                                    <th style="min-width: 200px; max-width: 300px;">Sujet</th>
+                                    <th style="width: 100px; white-space: nowrap;">Type</th>
+                                    <th style="width: 120px; white-space: nowrap;">Statut</th>
+                                    <th style="min-width: 140px; max-width: 160px; white-space: nowrap;">Date</th>
+                                    <th class="text-center d-none d-md-table-cell" style="width: 120px; white-space: nowrap;">Actions</th>
+                                    <th class="text-center d-md-none" style="width: 120px; white-space: nowrap;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -277,19 +224,19 @@
                                                  onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($email->recipient_name ?? 'N/A') }}&background=003366&color=fff&size=128'">
                                         </div>
                                     </td>
-                                    <td>
-                                        <small>
-                                            {{ $email->recipient_name ?? 'N/A' }}<br>
-                                            <span class="text-muted">{{ $email->recipient_email }}</span>
-                                        </small>
+                                    <td style="max-width: 250px;">
+                                        <div style="min-width: 0; overflow: hidden;">
+                                            <small class="text-truncate d-block" style="max-width: 100%;" title="{{ $email->recipient_name ?? 'N/A' }}">{{ $email->recipient_name ?? 'N/A' }}</small>
+                                            <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $email->recipient_email }}">{{ $email->recipient_email }}</small>
+                                        </div>
                                     </td>
-                                    <td>
-                                        <small>{{ Str::limit($email->subject, 50) }}</small>
+                                    <td style="max-width: 300px;">
+                                        <small class="text-truncate d-block" style="max-width: 100%;" title="{{ $email->subject }}">{{ $email->subject }}</small>
                                     </td>
-                                    <td>
+                                    <td style="white-space: nowrap;">
                                         <span class="badge bg-info">{{ ucfirst($email->type) }}</span>
                                     </td>
-                                    <td>
+                                    <td style="white-space: nowrap;">
                                         @if($email->status === 'sent')
                                             <span class="badge bg-success">Envoyé</span>
                                         @elseif($email->status === 'failed')
@@ -298,102 +245,41 @@
                                             <span class="badge bg-secondary">En attente</span>
                                         @endif
                                     </td>
-                                    <td>
+                                    <td style="max-width: 160px; white-space: nowrap;">
                                         <small>{{ $email->sent_at ? $email->sent_at->format('d/m/Y H:i') : ($email->created_at->format('d/m/Y H:i')) }}</small>
                                     </td>
-                                    <td class="text-center align-top">
-                                        @if($loop->first)
-                                            <div class="dropdown d-none d-md-block">
-                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="emailActionsDropdown{{ $email->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="emailActionsDropdown{{ $email->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.emails.sent.show', $email) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.sent.destroy', $email) }}"
-                                                           data-subject="{{ $email->subject }}"
-                                                           onclick="openDeleteEmailModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                            <div class="dropdown d-md-none">
-                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="emailActionsDropdownMobile{{ $email->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="emailActionsDropdownMobile{{ $email->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.emails.sent.show', $email) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.sent.destroy', $email) }}"
-                                                           data-subject="{{ $email->subject }}"
-                                                           onclick="openDeleteEmailModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @else
-                                            <div class="dropup d-none d-md-block">
-                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="emailActionsDropdown{{ $email->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="emailActionsDropdown{{ $email->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.emails.sent.show', $email) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.sent.destroy', $email) }}"
-                                                           data-subject="{{ $email->subject }}"
-                                                           onclick="openDeleteEmailModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                            <div class="dropup d-md-none">
-                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="emailActionsDropdownMobile{{ $email->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="emailActionsDropdownMobile{{ $email->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.emails.sent.show', $email) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.sent.destroy', $email) }}"
-                                                           data-subject="{{ $email->subject }}"
-                                                           onclick="openDeleteEmailModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @endif
+                                    <td class="text-center d-none d-md-table-cell">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <a href="{{ route('admin.emails.sent.show', $email) }}" class="btn btn-light btn-sm" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    data-action="{{ route('admin.emails.sent.destroy', $email) }}"
+                                                    data-subject="{{ $email->subject }}"
+                                                    onclick="openDeleteEmailModal(this)" 
+                                                    title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="text-center d-md-none">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <a href="{{ route('admin.emails.sent.show', $email) }}" class="btn btn-light btn-sm" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    data-action="{{ route('admin.emails.sent.destroy', $email) }}"
+                                                    data-subject="{{ $email->subject }}"
+                                                    onclick="openDeleteEmailModal(this)" 
+                                                    title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="6" class="text-center py-3 text-muted">
+                                    <td colspan="8" class="text-center py-3 text-muted">
                                         <i class="fas fa-inbox fa-2x mb-2"></i>
                                         <p class="mb-0">Aucun email envoyé récemment</p>
                                     </td>
@@ -402,13 +288,8 @@
                             </tbody>
                         </table>
                     </div>
-                    @if(count($recentSentEmails ?? []) > 0)
-                    <div class="text-center mt-3">
-                        <a href="{{ route('admin.emails.sent') }}" class="btn btn-sm btn-outline-primary">
-                            <i class="fas fa-list me-2"></i>Voir tous les emails envoyés
-                        </a>
-                    </div>
-                    @endif
+                    <!-- Pagination des emails envoyés -->
+                    <x-admin.pagination :paginator="$recentSentEmails" :pageName="'emails_page'" />
                 </div>
 
                 <!-- Onglet emails programmés -->
@@ -417,18 +298,19 @@
                         <table class="table table-hover table-sm">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 50px; min-width: 50px;"></th>
-                                    <th>Sujet</th>
-                                    <th>Destinataires</th>
-                                    <th>Programmé pour</th>
-                                    <th>Statut</th>
-                                    <th>Actions</th>
+                                    <th style="width: 50px; min-width: 50px; max-width: 50px;"></th>
+                                    <th style="min-width: 200px; max-width: 300px;">Sujet</th>
+                                    <th style="min-width: 150px; max-width: 250px;">Destinataires</th>
+                                    <th style="min-width: 160px; max-width: 180px; white-space: nowrap;">Programmé pour</th>
+                                    <th style="width: 120px; white-space: nowrap;">Statut</th>
+                                    <th class="text-center d-none d-md-table-cell" style="width: 150px; white-space: nowrap;">Actions</th>
+                                    <th class="text-center d-md-none" style="width: 150px; white-space: nowrap;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($pendingScheduledEmails ?? [] as $scheduled)
                                 <tr>
-                                    <td class="align-middle" style="width: 50px; min-width: 50px; padding: 0.5rem; vertical-align: middle;">
+                                    <td class="align-middle" style="width: 50px; min-width: 50px; max-width: 50px; padding: 0.5rem; vertical-align: middle;">
                                         @php
                                             $creator = $scheduled->created_by_user ?? null;
                                             $creatorName = $creator?->name ?? ($scheduled->created_by_name ?? 'N/A');
@@ -444,21 +326,23 @@
                                                  onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($creatorName) }}&background=003366&color=fff&size=128'">
                                         </div>
                                     </td>
-                                    <td>
-                                        <small><strong>{{ Str::limit($scheduled->subject, 50) }}</strong></small>
+                                    <td style="max-width: 300px;">
+                                        <small class="text-truncate d-block fw-bold" style="max-width: 100%;" title="{{ $scheduled->subject }}">{{ $scheduled->subject }}</small>
                                     </td>
-                                    <td>
-                                        <small>
-                                            {{ $scheduled->total_recipients }} destinataire(s)
+                                    <td style="max-width: 250px;">
+                                        <div style="min-width: 0; overflow: hidden;">
+                                            <small class="text-truncate d-block" style="max-width: 100%;" title="{{ $scheduled->total_recipients }} destinataire(s)">
+                                                {{ $scheduled->total_recipients }} destinataire(s)
+                                            </small>
                                             @if($scheduled->recipient_type === 'role' && isset($scheduled->recipient_config['roles']))
-                                                <br><span class="badge bg-secondary">{{ implode(', ', $scheduled->recipient_config['roles']) }}</span>
+                                                <span class="badge bg-secondary text-truncate d-inline-block" style="max-width: 100%;" title="{{ implode(', ', $scheduled->recipient_config['roles']) }}">{{ implode(', ', $scheduled->recipient_config['roles']) }}</span>
                                             @endif
-                                        </small>
+                                        </div>
                                     </td>
-                                    <td>
+                                    <td style="max-width: 180px; white-space: nowrap;">
                                         <small>{{ $scheduled->scheduled_at->format('d/m/Y à H:i') }}</small>
                                     </td>
-                                    <td>
+                                    <td style="white-space: nowrap;">
                                         @if($scheduled->status === 'pending')
                                             <span class="badge bg-warning">En attente</span>
                                         @elseif($scheduled->status === 'processing')
@@ -471,175 +355,68 @@
                                             <span class="badge bg-secondary">{{ ucfirst($scheduled->status) }}</span>
                                         @endif
                                     </td>
-                                    <td class="text-center align-top">
-                                        @if($loop->first)
-                                            <div class="dropdown d-none d-md-block">
-                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="scheduledActionsDropdown{{ $scheduled->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="scheduledActionsDropdown{{ $scheduled->id }}">
-                                                    @if($scheduled->status === 'pending')
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}">
-                                                            <i class="fas fa-edit me-2"></i>Modifier
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    @endif
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.emails.scheduled.show', $scheduled) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                        @if($scheduled->status === 'pending')
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
-                                                           data-subject="{{ $scheduled->subject }}"
-                                                           onclick="openCancelScheduledEmailModal(this); return false;">
-                                                            <i class="fas fa-times me-2"></i>Annuler
-                                                        </a>
-                                                    </li>
-                                                    @else
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
-                                                           data-subject="{{ $scheduled->subject }}"
-                                                           onclick="openDeleteEmailModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                    @endif
-                                                </ul>
-                                            </div>
-                                            <div class="dropdown d-md-none">
-                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="scheduledActionsDropdownMobile{{ $scheduled->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
+                                    <td class="text-center d-none d-md-table-cell">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            @if($scheduled->status === 'pending')
+                                            <a href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}" class="btn btn-primary btn-sm" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            @endif
+                                            <a href="{{ route('admin.emails.scheduled.show', $scheduled) }}" class="btn btn-light btn-sm" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if($scheduled->status === 'pending')
+                                            <button type="button" class="btn btn-warning btn-sm" 
+                                                    data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
+                                                    data-subject="{{ $scheduled->subject }}"
+                                                    onclick="openCancelScheduledEmailModal(this)" 
+                                                    title="Annuler">
+                                                <i class="fas fa-times"></i>
                                             </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="scheduledActionsDropdownMobile{{ $scheduled->id }}">
-                                                    @if($scheduled->status === 'pending')
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}">
-                                                            <i class="fas fa-edit me-2"></i>Modifier
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    @endif
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.emails.scheduled.show', $scheduled) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    @if($scheduled->status === 'pending')
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
-                                                           data-subject="{{ $scheduled->subject }}"
-                                                           onclick="openCancelScheduledEmailModal(this); return false;">
-                                                            <i class="fas fa-times me-2"></i>Annuler
-                                                        </a>
-                                                    </li>
-                                                    @else
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
-                                                           data-subject="{{ $scheduled->subject }}"
-                                                           onclick="openDeleteEmailModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                    @endif
-                                                </ul>
-                                            </div>
-                                        @else
-                                            <div class="dropup d-none d-md-block">
-                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="scheduledActionsDropdown{{ $scheduled->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="scheduledActionsDropdown{{ $scheduled->id }}">
-                                                    @if($scheduled->status === 'pending')
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}">
-                                                            <i class="fas fa-edit me-2"></i>Modifier
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    @endif
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.emails.scheduled.show', $scheduled) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    @if($scheduled->status === 'pending')
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
-                                                           data-subject="{{ $scheduled->subject }}"
-                                                           onclick="openCancelScheduledEmailModal(this); return false;">
-                                                            <i class="fas fa-times me-2"></i>Annuler
-                                                        </a>
-                                                    </li>
-                                                    @else
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
-                                                           data-subject="{{ $scheduled->subject }}"
-                                                           onclick="openDeleteEmailModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                    @endif
-                                                </ul>
-                                            </div>
-                                            <div class="dropup d-md-none">
-                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="scheduledActionsDropdownMobile{{ $scheduled->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="scheduledActionsDropdownMobile{{ $scheduled->id }}">
-                                                    @if($scheduled->status === 'pending')
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}">
-                                                            <i class="fas fa-edit me-2"></i>Modifier
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    @endif
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.emails.scheduled.show', $scheduled) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    @if($scheduled->status === 'pending')
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
-                                                           data-subject="{{ $scheduled->subject }}"
-                                                           onclick="openCancelScheduledEmailModal(this); return false;">
-                                                            <i class="fas fa-times me-2"></i>Annuler
-                                                        </a>
-                                                    </li>
-                                                    @else
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
-                                                           data-subject="{{ $scheduled->subject }}"
-                                                           onclick="openDeleteEmailModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                    @endif
-                                                </ul>
-                                            </div>
-                                        @endif
+                                            @else
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
+                                                    data-subject="{{ $scheduled->subject }}"
+                                                    onclick="openDeleteEmailModal(this)" 
+                                                    title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="text-center d-md-none">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            @if($scheduled->status === 'pending')
+                                            <a href="{{ route('admin.announcements.send-email', ['edit' => $scheduled->id]) }}" class="btn btn-primary btn-sm" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            @endif
+                                            <a href="{{ route('admin.emails.scheduled.show', $scheduled) }}" class="btn btn-light btn-sm" title="Voir">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if($scheduled->status === 'pending')
+                                            <button type="button" class="btn btn-warning btn-sm" 
+                                                    data-action="{{ route('admin.emails.scheduled.cancel', $scheduled) }}"
+                                                    data-subject="{{ $scheduled->subject }}"
+                                                    onclick="openCancelScheduledEmailModal(this)" 
+                                                    title="Annuler">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            @else
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    data-action="{{ route('admin.emails.scheduled.destroy', $scheduled) }}"
+                                                    data-subject="{{ $scheduled->subject }}"
+                                                    onclick="openDeleteEmailModal(this)" 
+                                                    title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-3 text-muted">
+                                    <td colspan="7" class="text-center py-3 text-muted">
                                         <i class="fas fa-clock fa-2x mb-2"></i>
                                         <p class="mb-0">Aucun email programmé</p>
                                     </td>
@@ -648,13 +425,8 @@
                             </tbody>
                         </table>
                     </div>
-                    @if(count($pendingScheduledEmails ?? []) > 0)
-                    <div class="text-center mt-3">
-                        <a href="{{ route('admin.emails.scheduled') }}" class="btn btn-sm btn-outline-primary">
-                            <i class="fas fa-list me-2"></i>Voir tous les emails programmés
-                        </a>
-                    </div>
-                    @endif
+                    <!-- Pagination des emails programmés -->
+                    <x-admin.pagination :paginator="$pendingScheduledEmails" :pageName="'scheduled_page'" />
                 </div>
             </div>
         </div>
@@ -664,9 +436,9 @@
     <section class="admin-panel mt-4">
         <div class="admin-panel__header d-flex justify-content-between align-items-center">
             <h3 class="mb-0 flex-grow-1"><i class="fab fa-whatsapp me-2"></i>Gestion des messages WhatsApp</h3>
-            <!-- Icône pour envoyer un message WhatsApp -->
-            <a href="{{ route('admin.announcements.send-whatsapp') }}" class="whatsapp-send-icon-btn" title="Envoyer un message WhatsApp">
-                <i class="fab fa-whatsapp"></i>
+            <!-- Bouton pour envoyer un message WhatsApp -->
+            <a href="{{ route('admin.announcements.send-whatsapp') }}" class="btn btn-primary" title="Envoyer un message WhatsApp">
+                <i class="fas fa-plus me-2"></i>Envoyer un message
             </a>
         </div>
         <div class="admin-panel__body">
@@ -723,24 +495,25 @@
                 <table class="table table-hover table-sm">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 50px; min-width: 50px;"></th>
-                            <th>Destinataire</th>
-                            <th>Message</th>
-                            <th>Type</th>
-                            <th>Statut</th>
-                            <th>Date</th>
-                            <th>Actions</th>
+                            <th style="width: 50px; min-width: 50px; max-width: 50px;"></th>
+                            <th style="min-width: 180px; max-width: 250px;">Destinataire</th>
+                            <th style="min-width: 200px; max-width: 350px;">Message</th>
+                            <th style="width: 100px; white-space: nowrap;">Type</th>
+                            <th style="width: 120px; white-space: nowrap;">Statut</th>
+                            <th style="min-width: 140px; max-width: 160px; white-space: nowrap;">Date</th>
+                            <th class="text-center d-none d-md-table-cell" style="width: 120px; white-space: nowrap;">Actions</th>
+                            <th class="text-center d-md-none" style="width: 120px; white-space: nowrap;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($recentSentWhatsApp ?? [] as $whatsapp)
                         <tr>
-                            <td class="align-middle" style="width: 50px; min-width: 50px; padding: 0.5rem; vertical-align: middle;">
+                            <td class="align-middle" style="width: 50px; min-width: 50px; max-width: 50px; padding: 0.5rem; vertical-align: middle;">
                                 @php
                                     $recipientUser = $whatsapp->recipient_user ?? null;
                                     $avatarUrl = $recipientUser ? $recipientUser->avatar_url : 'https://ui-avatars.com/api/?name=' . urlencode($whatsapp->recipient_name ?? 'N/A') . '&background=25d366&color=fff&size=128';
                                 @endphp
-                                <div class="whatsapp-avatar-container" style="border-radius: 50% !important; overflow: hidden !important;">
+                                <div class="whatsapp-avatar-container" style="width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; max-width: 40px !important; max-height: 40px !important; border-radius: 50% !important; overflow: hidden !important; display: inline-block !important;">
                                     <img src="{{ $avatarUrl }}" 
                                          alt="{{ $whatsapp->recipient_name ?? 'N/A' }}" 
                                          class="whatsapp-avatar"
@@ -748,19 +521,19 @@
                                          onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($whatsapp->recipient_name ?? 'N/A') }}&background=25d366&color=fff&size=128'">
                                 </div>
                             </td>
-                            <td>
-                                <small>
-                                    {{ $whatsapp->recipient_name ?? 'N/A' }}<br>
-                                    <span class="text-muted">{{ $whatsapp->recipient_phone }}</span>
-                                </small>
+                            <td style="max-width: 250px;">
+                                <div style="min-width: 0; overflow: hidden;">
+                                    <small class="text-truncate d-block" style="max-width: 100%;" title="{{ $whatsapp->recipient_name ?? 'N/A' }}">{{ $whatsapp->recipient_name ?? 'N/A' }}</small>
+                                    <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $whatsapp->recipient_phone }}">{{ $whatsapp->recipient_phone }}</small>
+                                </div>
                             </td>
-                            <td>
-                                <small>{{ Str::limit($whatsapp->message, 50) }}</small>
+                            <td style="max-width: 350px;">
+                                <small class="text-truncate d-block" style="max-width: 100%;" title="{{ $whatsapp->message }}">{{ $whatsapp->message }}</small>
                             </td>
-                            <td>
+                            <td style="white-space: nowrap;">
                                 <span class="badge bg-info">{{ ucfirst($whatsapp->type) }}</span>
                             </td>
-                            <td>
+                            <td style="white-space: nowrap;">
                                 @if($whatsapp->status === 'sent')
                                     <span class="badge bg-success">Envoyé</span>
                                 @elseif($whatsapp->status === 'delivered')
@@ -773,102 +546,41 @@
                                     <span class="badge bg-secondary">En attente</span>
                                 @endif
                             </td>
-                            <td>
+                            <td style="max-width: 160px; white-space: nowrap;">
                                 <small>{{ $whatsapp->sent_at ? $whatsapp->sent_at->format('d/m/Y H:i') : ($whatsapp->created_at->format('d/m/Y H:i')) }}</small>
                             </td>
-                            <td class="text-center align-top">
-                                @if($loop->first)
-                                    <div class="dropdown d-none d-md-block">
-                                        <button class="btn btn-sm btn-light course-actions-btn" type="button" id="whatsappActionsDropdown{{ $whatsapp->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="whatsappActionsDropdown{{ $whatsapp->id }}">
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="viewWhatsAppMessage({{ $whatsapp->id }}); return false;">
-                                                    <i class="fas fa-eye me-2"></i>Voir
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item text-danger" href="#" 
-                                                   data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
-                                                   data-message="{{ Str::limit($whatsapp->message, 50) }}"
-                                                   onclick="openDeleteWhatsAppModal(this); return false;">
-                                                    <i class="fas fa-trash me-2"></i>Supprimer
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <div class="dropdown d-md-none">
-                                        <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="whatsappActionsDropdownMobile{{ $whatsapp->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="whatsappActionsDropdownMobile{{ $whatsapp->id }}">
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="viewWhatsAppMessage({{ $whatsapp->id }}); return false;">
-                                                    <i class="fas fa-eye me-2"></i>Voir
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item text-danger" href="#" 
-                                                   data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
-                                                   data-message="{{ Str::limit($whatsapp->message, 50) }}"
-                                                   onclick="openDeleteWhatsAppModal(this); return false;">
-                                                    <i class="fas fa-trash me-2"></i>Supprimer
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                @else
-                                    <div class="dropup d-none d-md-block">
-                                        <button class="btn btn-sm btn-light course-actions-btn" type="button" id="whatsappActionsDropdown{{ $whatsapp->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="whatsappActionsDropdown{{ $whatsapp->id }}">
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="viewWhatsAppMessage({{ $whatsapp->id }}); return false;">
-                                                    <i class="fas fa-eye me-2"></i>Voir
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item text-danger" href="#" 
-                                                   data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
-                                                   data-message="{{ Str::limit($whatsapp->message, 50) }}"
-                                                   onclick="openDeleteWhatsAppModal(this); return false;">
-                                                    <i class="fas fa-trash me-2"></i>Supprimer
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                    <div class="dropup d-md-none">
-                                        <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="whatsappActionsDropdownMobile{{ $whatsapp->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="whatsappActionsDropdownMobile{{ $whatsapp->id }}">
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="viewWhatsAppMessage({{ $whatsapp->id }}); return false;">
-                                                    <i class="fas fa-eye me-2"></i>Voir
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item text-danger" href="#" 
-                                                   data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
-                                                   data-message="{{ Str::limit($whatsapp->message, 50) }}"
-                                                   onclick="openDeleteWhatsAppModal(this); return false;">
-                                                    <i class="fas fa-trash me-2"></i>Supprimer
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                @endif
+                            <td class="text-center d-none d-md-table-cell">
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button type="button" class="btn btn-light btn-sm" onclick="viewWhatsAppMessage({{ $whatsapp->id }})" title="Voir">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm" 
+                                            data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
+                                            data-message="{{ Str::limit($whatsapp->message, 50) }}"
+                                            onclick="openDeleteWhatsAppModal(this)" 
+                                            title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="text-center d-md-none">
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button type="button" class="btn btn-light btn-sm" onclick="viewWhatsAppMessage({{ $whatsapp->id }})" title="Voir">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm" 
+                                            data-action="{{ route('admin.whatsapp-messages.destroy', $whatsapp) }}"
+                                            data-message="{{ Str::limit($whatsapp->message, 50) }}"
+                                            onclick="openDeleteWhatsAppModal(this)" 
+                                            title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center py-3 text-muted">
+                            <td colspan="8" class="text-center py-3 text-muted">
                                 <i class="fab fa-whatsapp fa-2x mb-2"></i>
                                 <p class="mb-0">Aucun message WhatsApp envoyé récemment</p>
                             </td>
@@ -879,11 +591,7 @@
             </div>
             
             <!-- Pagination des messages WhatsApp -->
-            @if(isset($recentSentWhatsApp) && $recentSentWhatsApp->hasPages())
-            <div class="mt-3">
-                <x-admin.pagination :paginator="$recentSentWhatsApp" :pageName="'whatsapp_page'" :showInfo="true" :itemName="'messages'" />
-            </div>
-            @endif
+            <x-admin.pagination :paginator="$recentSentWhatsApp" :pageName="'whatsapp_page'" />
         </div>
     </section>
 
@@ -1197,6 +905,25 @@ function openDeleteWhatsAppModal(button) {
 
 @push('styles')
 <style>
+/* Gestion des contenus qui dépassent dans les colonnes */
+.admin-table table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-table table td .text-truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* Colonnes avec white-space: nowrap */
+.admin-table table td[style*="white-space: nowrap"] {
+    white-space: nowrap !important;
+}
+
 /* Design moderne pour la page de gestion des annonces */
 .card {
     border-radius: 15px;
@@ -1303,6 +1030,54 @@ function openDeleteWhatsAppModal(button) {
 }
 
 @media (max-width: 991.98px) {
+    /* Réduire la taille des boutons dans les en-têtes sur tablette */
+    .admin-panel__header .btn {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .admin-panel__header .btn i {
+        font-size: 0.75rem;
+        margin-right: 0.3rem !important;
+    }
+    
+    /* Forcer les onglets à rester sur une ligne en 2 colonnes sur tablette */
+    .nav-tabs {
+        display: flex;
+        flex-wrap: nowrap;
+    }
+    
+    .nav-tabs .nav-item {
+        flex: 1 1 50%;
+        min-width: 0;
+        max-width: 50%;
+    }
+    
+    .nav-tabs .nav-link {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.5rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3rem;
+    }
+    
+    .nav-tabs .nav-link i {
+        font-size: 0.7rem;
+        margin-right: 0;
+        flex-shrink: 0;
+    }
+    
+    .nav-tabs .nav-link .badge {
+        font-size: 0.65rem;
+        padding: 0.15em 0.35em;
+        margin-left: 0.2rem !important;
+        flex-shrink: 0;
+    }
+    
     /* Réduire les paddings et margins sur tablette */
     .admin-panel {
         margin-bottom: 1rem;
@@ -1401,6 +1176,17 @@ function openDeleteWhatsAppModal(button) {
 }
 
 @media (max-width: 767.98px) {
+    /* Réduire la taille des boutons dans les en-têtes sur mobile */
+    .admin-panel__header .btn {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .admin-panel__header .btn i {
+        font-size: 0.7rem;
+        margin-right: 0.25rem !important;
+    }
+    
     /* Réduire encore plus les paddings et margins sur mobile */
     .admin-panel {
         margin-bottom: 0.75rem;
@@ -1441,32 +1227,6 @@ function openDeleteWhatsAppModal(button) {
         font-size: 0.75rem;
     }
     
-    /* Icône pour envoyer un email dans la section emails */
-    .email-send-icon-btn {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        flex-shrink: 0;
-        margin-left: 0.5rem;
-        color: #198754;
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
-    
-    .email-send-icon-btn:hover {
-        color: #157347;
-        background-color: rgba(25, 135, 84, 0.1);
-        transform: scale(1.1);
-    }
-    
-    .email-send-icon-btn i {
-        margin: 0;
-        font-size: 1rem;
-    }
     
     /* Avatar Email - toujours circulaire, jamais déformé (desktop et mobile) */
     .email-avatar-container {
@@ -1622,43 +1382,6 @@ function openDeleteWhatsAppModal(button) {
         }
     }
     
-    /* Icône pour envoyer un message WhatsApp */
-    .whatsapp-send-icon-btn {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        flex-shrink: 0;
-        margin-left: 0.5rem;
-        color: #25d366;
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
-    
-    .whatsapp-send-icon-btn:hover {
-        color: #128c7e;
-        background-color: rgba(37, 211, 102, 0.1);
-        transform: scale(1.1);
-    }
-    
-    .whatsapp-send-icon-btn i {
-        margin: 0;
-        font-size: 1rem;
-    }
-    
-    @media (min-width: 768px) {
-        .email-send-icon-btn {
-            width: 36px;
-            height: 36px;
-        }
-        
-        .email-send-icon-btn i {
-            font-size: 1.1rem;
-        }
-    }
     
     /* Espacement des statistiques emails */
     .email-stats-row {
@@ -1720,22 +1443,42 @@ function openDeleteWhatsAppModal(button) {
     .nav-tabs {
         font-size: 0.75rem;
         border-bottom: 1px solid #dee2e6;
+        display: flex;
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+    
+    .nav-tabs .nav-item {
+        flex: 1 1 50%;
+        min-width: 0;
+        max-width: 50%;
     }
     
     .nav-tabs .nav-link {
-        padding: 0.375rem 0.5rem;
-        font-size: 0.75rem;
+        padding: 0.375rem 0.4rem;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
     }
     
     .nav-tabs .nav-link i {
-        font-size: 0.7rem;
-        margin-right: 0.25rem;
+        font-size: 0.65rem;
+        margin-right: 0;
+        flex-shrink: 0;
     }
     
-    .nav-tabs .badge {
-        font-size: 0.65rem;
-        padding: 0.15em 0.4em;
-        margin-left: 0.25rem !important;
+    .nav-tabs .nav-link .badge {
+        font-size: 0.6rem;
+        padding: 0.1em 0.3em;
+        margin-left: 0.15rem !important;
+        flex-shrink: 0;
     }
     
     .nav-tabs .btn-sm {

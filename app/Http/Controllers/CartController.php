@@ -79,6 +79,14 @@ public function add(Request $request)
                 ], 404);
             }
 
+            // Vérifier si la vente/inscription est activée
+            if (!$course->is_sale_enabled) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce cours n\'est pas actuellement disponible à l\'achat.'
+                ], 403);
+            }
+
             // Vérifier si le cours est gratuit
             if ($course->is_free) {
                 return response()->json([
@@ -251,6 +259,30 @@ public function add(Request $request)
 
         // S'assurer que $cartItems est un tableau
         $cartItems = is_array($cartItems) ? $cartItems : [];
+
+        // Filtrer les cours qui ne sont plus disponibles à la vente
+        $unavailableCourses = [];
+        $cartItems = array_filter($cartItems, function($item) use (&$unavailableCourses) {
+            $course = $item['course'] ?? null;
+            if (!$course) {
+                return false;
+            }
+            
+            // Ne pas inclure les cours non publiés ou non disponibles à la vente
+            if (!$course->is_published || !$course->is_sale_enabled) {
+                $unavailableCourses[] = $course->title;
+                return false;
+            }
+            return true;
+        });
+
+        // Réindexer le tableau après filtrage
+        $cartItems = array_values($cartItems);
+
+        if (!empty($unavailableCourses)) {
+            $message = 'Certains cours de votre panier ne sont plus disponibles : ' . implode(', ', $unavailableCourses) . '. Veuillez les retirer du panier.';
+            return redirect()->route('cart.index')->with('warning', $message);
+        }
 
         if (empty($cartItems)) {
             return redirect()->route('cart.index')->with('error', 'Votre panier est vide.');
@@ -725,7 +757,11 @@ public function add(Request $request)
             'course.sections.lessons'
         ])->get();
         
-        return $cartItems->map(function ($item) {
+        return $cartItems->filter(function ($item) {
+            $course = $item->course;
+            // Ne pas inclure les cours non publiés ou non disponibles à la vente
+            return $course && $course->is_published && $course->is_sale_enabled;
+        })->map(function ($item) {
             $course = $item->course;
             
             // Ajouter les statistiques calculées avec vérifications
@@ -747,7 +783,7 @@ public function add(Request $request)
                 'price' => $course->current_price,
                 'subtotal' => $course->current_price
             ];
-        })->toArray();
+        })->values()->toArray();
     }
 
     /**
@@ -767,8 +803,8 @@ public function add(Request $request)
                 'sections.lessons'
             ])->find($courseId);
             
-            // Ne pas inclure les cours non publiés
-            if ($course && $course->is_published) {
+            // Ne pas inclure les cours non publiés ou non disponibles à la vente
+            if ($course && $course->is_published && $course->is_sale_enabled) {
                 // Ajouter les statistiques calculées avec vérifications
                 $course->stats = [
                     'total_lessons' => $course->sections ? $course->sections->sum(function($section) {

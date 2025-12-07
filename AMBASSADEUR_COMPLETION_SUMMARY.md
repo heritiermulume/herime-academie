@@ -146,3 +146,4 @@ Les admins peuvent gérer tout le système depuis l'interface admin dédiée.
 
 Tous les composants sont en place et fonctionnels. Le système est prêt à être utilisé en production.
 
+

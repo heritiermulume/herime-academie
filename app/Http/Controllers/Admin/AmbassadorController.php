@@ -53,6 +53,80 @@ class AmbassadorController extends Controller
     }
 
     /**
+     * Supprimer une candidature
+     */
+    public function destroyApplication(Request $request, $application)
+    {
+        // Gérer le binding de route - peut être un ID ou un modèle
+        if (is_numeric($application)) {
+            $application = AmbassadorApplication::findOrFail($application);
+        } elseif (!$application instanceof AmbassadorApplication) {
+            \Log::error('Type de paramètre invalide pour destroyApplication', [
+                'type' => gettype($application),
+                'value' => $application
+            ]);
+            return back()->with('error', 'Candidature introuvable.');
+        }
+
+        \Log::info('=== TENTATIVE DE SUPPRESSION DE CANDIDATURE ===', [
+            'application_id' => $application->id,
+            'user_id' => $application->user_id,
+            'method' => $request->method(),
+            'route' => $request->route()?->getName(),
+            'url' => $request->fullUrl(),
+            'auth_user' => Auth::id(),
+            'all_params' => $request->all()
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Vérifier si un ambassadeur a été créé à partir de cette candidature
+            $ambassador = Ambassador::where('application_id', $application->id)->first();
+            if ($ambassador) {
+                DB::rollBack();
+                \Log::warning('BLOCAGE: Candidature liée à un ambassadeur', [
+                    'application_id' => $application->id,
+                    'ambassador_id' => $ambassador->id
+                ]);
+                return redirect()->route('admin.ambassadors.index', ['tab' => 'applications'])
+                    ->with('error', 'Impossible de supprimer cette candidature car un ambassadeur a été créé à partir de celle-ci. Veuillez d\'abord supprimer l\'ambassadeur associé si vous souhaitez supprimer cette candidature.');
+            }
+
+            // Supprimer le fichier document si présent
+            if ($application->document_path) {
+                try {
+                    $fileUploadService = app(\App\Services\FileUploadService::class);
+                    $fileUploadService->delete($application->document_path, 'ambassador-applications');
+                    \Log::info('Fichier document supprimé', ['path' => $application->document_path]);
+                } catch (\Exception $e) {
+                    \Log::warning('Erreur lors de la suppression du fichier de candidature: ' . $e->getMessage());
+                }
+            }
+
+            $applicationId = $application->id;
+            $application->delete();
+
+            DB::commit();
+
+            \Log::info('=== CANDIDATURE SUPPRIMÉE AVEC SUCCÈS ===', ['application_id' => $applicationId]);
+
+            return redirect()->route('admin.ambassadors.index', ['tab' => 'applications'])
+                ->with('success', 'Candidature supprimée avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('=== ERREUR LORS DE LA SUPPRESSION ===', [
+                'application_id' => $application->id ?? null,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('admin.ambassadors.index', ['tab' => 'applications'])
+                ->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Mettre à jour le statut d'une candidature
      */
     public function updateApplicationStatus(Request $request, AmbassadorApplication $application)
@@ -123,33 +197,70 @@ class AmbassadorController extends Controller
     }
 
     /**
-     * Afficher la liste des ambassadeurs
+     * Afficher la liste des ambassadeurs avec onglets
      */
     public function index(Request $request)
     {
-        $query = Ambassador::with(['user', 'application'])
+        $tab = $request->get('tab', 'ambassadors'); // Par défaut, onglet Ambassadeurs
+
+        // Données pour l'onglet Ambassadeurs
+        $ambassadorsQuery = Ambassador::with(['user', 'application'])
             ->latest();
 
-        // Filtres
-        if ($request->filled('status')) {
+        if ($request->filled('status') && $tab === 'ambassadors') {
             if ($request->status === 'active') {
-                $query->where('is_active', true);
+                $ambassadorsQuery->where('is_active', true);
             } elseif ($request->status === 'inactive') {
-                $query->where('is_active', false);
+                $ambassadorsQuery->where('is_active', false);
             }
         }
 
-        if ($request->filled('search')) {
+        if ($request->filled('search') && $tab === 'ambassadors') {
             $search = $request->search;
-            $query->whereHas('user', function($q) use ($search) {
+            $ambassadorsQuery->whereHas('user', function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        $ambassadors = $query->paginate(20);
+        $ambassadors = $ambassadorsQuery->paginate(20, ['*'], 'ambassadors_page');
 
-        return view('admin.ambassadors.index', compact('ambassadors'));
+        // Données pour l'onglet Candidatures
+        $applicationsQuery = AmbassadorApplication::with(['user', 'reviewer'])
+            ->latest();
+
+        if ($request->filled('status') && $tab === 'applications' && $request->status !== 'all') {
+            $applicationsQuery->where('status', $request->status);
+        }
+
+        if ($request->filled('search') && $tab === 'applications') {
+            $search = $request->search;
+            $applicationsQuery->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $applications = $applicationsQuery->paginate(20, ['*'], 'applications_page');
+
+        // Données pour l'onglet Commissions
+        $commissionsQuery = AmbassadorCommission::with(['ambassador.user', 'order', 'promoCode'])
+            ->latest();
+
+        if ($request->filled('status') && $tab === 'commissions' && $request->status !== 'all') {
+            $commissionsQuery->where('status', $request->status);
+        }
+
+        if ($request->filled('search') && $tab === 'commissions') {
+            $search = $request->search;
+            $commissionsQuery->whereHas('order', function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%");
+            });
+        }
+
+        $commissions = $commissionsQuery->paginate(20, ['*'], 'commissions_page');
+
+        return view('admin.ambassadors.index', compact('ambassadors', 'applications', 'commissions', 'tab'));
     }
 
     /**
@@ -245,5 +356,61 @@ class AmbassadorController extends Controller
         $promoCode = $ambassador->generatePromoCode();
 
         return back()->with('success', 'Code promo généré avec succès: ' . $promoCode->code);
+    }
+
+    /**
+     * Supprimer un ambassadeur
+     * Met à jour la candidature associée au statut "rejected"
+     */
+    public function destroy(Request $request, Ambassador $ambassador)
+    {
+        \Log::info('=== TENTATIVE DE SUPPRESSION D\'AMBASSADEUR ===', [
+            'ambassador_id' => $ambassador->id,
+            'user_id' => $ambassador->user_id,
+            'application_id' => $ambassador->application_id,
+            'method' => $request->method(),
+            'auth_user' => Auth::id(),
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Mettre à jour la candidature associée au statut "rejected"
+            if ($ambassador->application_id) {
+                $application = AmbassadorApplication::find($ambassador->application_id);
+                if ($application) {
+                    $application->update([
+                        'status' => 'rejected',
+                        'reviewed_by' => Auth::id(),
+                        'reviewed_at' => now(),
+                        'admin_notes' => ($application->admin_notes ?? '') . "\n\n[Note automatique] Candidature rejetée suite à la suppression de l'ambassadeur.",
+                    ]);
+                    \Log::info('Candidature mise à jour au statut rejected', [
+                        'application_id' => $application->id,
+                        'ambassador_id' => $ambassador->id,
+                    ]);
+                }
+            }
+
+            $ambassadorId = $ambassador->id;
+            $ambassador->delete();
+
+            DB::commit();
+
+            \Log::info('=== AMBASSADEUR SUPPRIMÉ AVEC SUCCÈS ===', ['ambassador_id' => $ambassadorId]);
+
+            return redirect()->route('admin.ambassadors.index', ['tab' => 'ambassadors'])
+                ->with('success', 'Ambassadeur supprimé avec succès. La candidature associée a été mise à jour au statut "rejeté".');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('=== ERREUR LORS DE LA SUPPRESSION D\'AMBASSADEUR ===', [
+                'ambassador_id' => $ambassador->id ?? null,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('admin.ambassadors.index', ['tab' => 'ambassadors'])
+                ->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+        }
     }
 }

@@ -275,7 +275,7 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th>
+                                <th style="min-width: 150px; max-width: 180px;">
                                     <a href="{{ request()->fullUrlWithQuery(['sort' => 'certificate_number', 'direction' => request('sort') == 'certificate_number' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
                                         Numéro
                                         @if(request('sort') == 'certificate_number')
@@ -285,10 +285,10 @@
                                         @endif
                                     </a>
                                 </th>
-                                <th>Étudiant</th>
-                                <th>Cours</th>
-                                <th>Titre</th>
-                                <th>
+                                <th style="min-width: 200px; max-width: 250px;">Étudiant</th>
+                                <th style="min-width: 200px; max-width: 300px;">Cours</th>
+                                <th style="min-width: 180px; max-width: 250px;">Titre</th>
+                                <th style="min-width: 140px; max-width: 160px; white-space: nowrap;">
                                     <a href="{{ request()->fullUrlWithQuery(['sort' => 'issued_at', 'direction' => request('sort') == 'issued_at' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
                                         Date d'émission
                                         @if(request('sort') == 'issued_at')
@@ -298,188 +298,69 @@
                                         @endif
                                     </a>
                                 </th>
-                                <th class="text-center d-none d-md-table-cell" style="width: 150px;">Actions</th>
+                                <th class="text-center d-none d-md-table-cell" style="width: 150px; white-space: nowrap;">Actions</th>
+                                <th class="text-center d-md-none" style="width: 150px; white-space: nowrap;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($certificates as $certificate)
                                 <tr>
-                                    <td>
-                                        <span class="fw-semibold text-primary">{{ $certificate->certificate_number }}</span>
+                                    <td style="max-width: 180px;">
+                                        <span class="fw-semibold text-primary text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->certificate_number }}">{{ $certificate->certificate_number }}</span>
                                     </td>
-                                    <td>
+                                    <td style="max-width: 250px;">
                                         <div class="d-flex align-items-center gap-2">
                                             <img src="{{ $certificate->user->avatar_url }}" 
                                                  alt="{{ $certificate->user->name }}" 
-                                                 class="admin-user-avatar"
+                                                 class="admin-user-avatar flex-shrink-0"
                                                  style="width: 40px; height: 40px;">
-                                            <div>
-                                                <div class="fw-semibold">{{ $certificate->user->name }}</div>
-                                                <small class="text-muted">{{ $certificate->user->email }}</small>
+                                            <div style="min-width: 0; flex: 1; overflow: hidden;">
+                                                <div class="fw-semibold text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->user->name }}">{{ $certificate->user->name }}</div>
+                                                <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->user->email }}">{{ $certificate->user->email }}</small>
                                             </div>
                                         </div>
                                     </td>
-                                    <td>
-                                        <div>
-                                            <div class="fw-semibold">{{ Str::limit($certificate->course->title, 40) }}</div>
-                                            <small class="text-muted">
+                                    <td style="max-width: 300px;">
+                                        <div style="min-width: 0; overflow: hidden;">
+                                            <div class="fw-semibold text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->course->title }}">{{ $certificate->course->title }}</div>
+                                            <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->course->instructor->name ?? 'N/A' }}">
                                                 <i class="fas fa-user me-1"></i>
                                                 {{ $certificate->course->instructor->name ?? 'N/A' }}
                                             </small>
                                         </div>
                                     </td>
-                                    <td>
-                                        <span class="text-muted">{{ Str::limit($certificate->title, 50) }}</span>
+                                    <td style="max-width: 250px;">
+                                        <span class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->title }}">{{ $certificate->title }}</span>
                                     </td>
-                                    <td>
+                                    <td style="max-width: 160px; white-space: nowrap;">
                                         <span class="admin-chip admin-chip--info">
                                             <i class="fas fa-calendar me-1"></i>
                                             {{ $certificate->issued_at ? $certificate->issued_at->format('d/m/Y') : 'N/A' }}
                                         </span>
                                     </td>
-                                    <td class="text-center align-top">
-                                        @if($loop->first)
-                                            <div class="dropdown d-none d-md-block">
-                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $certificate->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $certificate->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.certificates.show', $certificate) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir les détails
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.certificates.download', $certificate) }}" target="_blank">
-                                                            <i class="fas fa-download me-2"></i>Télécharger
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="#" 
-                                                           data-certificate-id="{{ $certificate->id }}"
-                                                           data-certificate-number="{{ $certificate->certificate_number }}"
-                                                           onclick="openCertificateRegenerateModal(this); return false;">
-                                                            <i class="fas fa-sync-alt me-2"></i>Régénérer
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-certificate-id="{{ $certificate->id }}"
-                                                           data-certificate-number="{{ $certificate->certificate_number }}"
-                                                           onclick="openCertificateDeleteModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @else
-                                            <div class="dropup d-none d-md-block">
-                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $certificate->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $certificate->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.certificates.show', $certificate) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir les détails
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.certificates.download', $certificate) }}" target="_blank">
-                                                            <i class="fas fa-download me-2"></i>Télécharger
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="#" 
-                                                           data-certificate-id="{{ $certificate->id }}"
-                                                           data-certificate-number="{{ $certificate->certificate_number }}"
-                                                           onclick="openCertificateRegenerateModal(this); return false;">
-                                                            <i class="fas fa-sync-alt me-2"></i>Régénérer
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-certificate-id="{{ $certificate->id }}"
-                                                           data-certificate-number="{{ $certificate->certificate_number }}"
-                                                           onclick="openCertificateDeleteModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @endif
-                                        @if($loop->first)
-                                            <div class="dropdown d-md-none">
-                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $certificate->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $certificate->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.certificates.show', $certificate) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.certificates.download', $certificate) }}" target="_blank">
-                                                            <i class="fas fa-download me-2"></i>Télécharger
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="#" 
-                                                           data-certificate-id="{{ $certificate->id }}"
-                                                           data-certificate-number="{{ $certificate->certificate_number }}"
-                                                           onclick="openCertificateRegenerateModal(this); return false;">
-                                                            <i class="fas fa-sync-alt me-2"></i>Régénérer
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-certificate-id="{{ $certificate->id }}"
-                                                           data-certificate-number="{{ $certificate->certificate_number }}"
-                                                           onclick="openCertificateDeleteModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @else
-                                            <div class="dropup d-md-none">
-                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $certificate->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $certificate->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.certificates.show', $certificate) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.certificates.download', $certificate) }}" target="_blank">
-                                                            <i class="fas fa-download me-2"></i>Télécharger
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="#" 
-                                                           data-certificate-id="{{ $certificate->id }}"
-                                                           data-certificate-number="{{ $certificate->certificate_number }}"
-                                                           onclick="openCertificateRegenerateModal(this); return false;">
-                                                            <i class="fas fa-sync-alt me-2"></i>Régénérer
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-certificate-id="{{ $certificate->id }}"
-                                                           data-certificate-number="{{ $certificate->certificate_number }}"
-                                                           onclick="openCertificateDeleteModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @endif
+                                    <td class="text-center d-none d-md-table-cell">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <a href="{{ route('admin.certificates.show', $certificate) }}" class="btn btn-light btn-sm" title="Voir les détails">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('admin.certificates.download', $certificate) }}" target="_blank" class="btn btn-info btn-sm" title="Télécharger">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-warning btn-sm" 
+                                                    data-certificate-id="{{ $certificate->id }}"
+                                                    data-certificate-number="{{ $certificate->certificate_number }}"
+                                                    onclick="openCertificateRegenerateModal(this)" 
+                                                    title="Régénérer">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    data-certificate-id="{{ $certificate->id }}"
+                                                    data-certificate-number="{{ $certificate->certificate_number }}"
+                                                    onclick="openCertificateDeleteModal(this)" 
+                                                    title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                         <form id="certificate-delete-form-{{ $certificate->id }}" action="{{ route('admin.certificates.destroy', $certificate) }}" method="POST" class="d-none">
                                             @csrf
                                             @method('DELETE')
@@ -488,10 +369,34 @@
                                             @csrf
                                         </form>
                                     </td>
+                                    <td class="text-center d-md-none">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <a href="{{ route('admin.certificates.show', $certificate) }}" class="btn btn-light btn-sm" title="Voir les détails">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('admin.certificates.download', $certificate) }}" target="_blank" class="btn btn-info btn-sm" title="Télécharger">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-warning btn-sm" 
+                                                    data-certificate-id="{{ $certificate->id }}"
+                                                    data-certificate-number="{{ $certificate->certificate_number }}"
+                                                    onclick="openCertificateRegenerateModal(this)" 
+                                                    title="Régénérer">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    data-certificate-id="{{ $certificate->id }}"
+                                                    data-certificate-number="{{ $certificate->certificate_number }}"
+                                                    onclick="openCertificateDeleteModal(this)" 
+                                                    title="Supprimer">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="admin-table__empty">
+                                    <td colspan="7" class="admin-table__empty">
                                         <i class="fas fa-certificate fa-3x text-muted mb-3 d-block"></i>
                                         <p class="text-muted">Aucun certificat trouvé avec ces critères.</p>
                                     </td>
@@ -518,6 +423,50 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
+    /* Gestion des contenus qui dépassent dans les colonnes */
+    .admin-table table td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .admin-table table td .text-truncate {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+    }
+
+    /* Colonne Numéro */
+    .admin-table table td:first-child {
+        max-width: 180px;
+    }
+
+    /* Colonne Étudiant */
+    .admin-table table td:nth-child(2) {
+        max-width: 250px;
+    }
+
+    /* Colonne Cours */
+    .admin-table table td:nth-child(3) {
+        max-width: 300px;
+    }
+
+    /* Colonne Titre */
+    .admin-table table td:nth-child(4) {
+        max-width: 250px;
+    }
+
+    /* Colonne Date d'émission */
+    .admin-table table td:nth-child(5) {
+        max-width: 160px;
+    }
+
+    /* Colonnes avec white-space: nowrap */
+    .admin-table table td[style*="white-space: nowrap"] {
+        white-space: nowrap !important;
+    }
+
     @media (max-width: 991.98px) {
         .admin-panel {
             margin-bottom: 1rem;
@@ -529,6 +478,27 @@
         
         .admin-panel:not(.admin-panel--main) .admin-panel__body {
             padding: 0 !important;
+        }
+        
+        /* Ajuster les max-width sur tablette */
+        .admin-table table td:first-child {
+            max-width: 150px;
+        }
+        
+        .admin-table table td:nth-child(2) {
+            max-width: 200px;
+        }
+        
+        .admin-table table td:nth-child(3) {
+            max-width: 250px;
+        }
+        
+        .admin-table table td:nth-child(4) {
+            max-width: 200px;
+        }
+        
+        .admin-table table td:nth-child(5) {
+            max-width: 140px;
         }
     }
 
@@ -557,6 +527,27 @@
         .table-responsive {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Ajuster les max-width sur mobile */
+        .admin-table table td:first-child {
+            max-width: 130px;
+        }
+        
+        .admin-table table td:nth-child(2) {
+            max-width: 180px;
+        }
+        
+        .admin-table table td:nth-child(3) {
+            max-width: 200px;
+        }
+        
+        .admin-table table td:nth-child(4) {
+            max-width: 180px;
+        }
+        
+        .admin-table table td:nth-child(5) {
+            max-width: 120px;
         }
     }
 </style>

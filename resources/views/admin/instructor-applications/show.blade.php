@@ -4,7 +4,7 @@
 @section('admin-title', 'Candidature de ' . $application->user->name)
 @section('admin-subtitle', 'Détails de la candidature')
 @section('admin-actions')
-    <a href="{{ route('admin.instructor-applications') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('admin.instructor-applications') }}" class="btn btn-light">
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
 @endsection

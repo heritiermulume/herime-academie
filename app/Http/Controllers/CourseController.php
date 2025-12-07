@@ -151,7 +151,9 @@ class CourseController extends Controller
             ]);
         }
 
-        $courses = $query->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])->paginate(12);
+        $courses = $query->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                          ->paginate(12)
+                          ->withQueryString();
         
         // Ajouter les statistiques à chaque cours
         $courses->getCollection()->transform(function($course) {

@@ -6,7 +6,7 @@
 
 @section('admin-actions')
     <div class="admin-actions-grid">
-        <a href="{{ route('admin.certificates') }}" class="btn btn-outline-secondary">
+        <a href="{{ route('admin.certificates') }}" class="btn btn-light">
             <i class="fas fa-arrow-left me-2"></i>Retour
         </a>
         <a href="{{ route('admin.certificates.download', $certificate) }}" class="btn btn-outline-primary" target="_blank">

@@ -95,18 +95,28 @@ class AmbassadorApplicationController extends Controller
             return number_format($amount, 2) . ' ' . $currencyCode;
         };
 
+        // Calculer les gains totaux et en attente depuis les commissions réelles en base de données
+        $totalEarningsFromDB = $ambassador->commissions()->sum('commission_amount');
+        $pendingEarningsFromDB = $ambassador->commissions()
+            ->where('status', '!=', 'paid')
+            ->sum('commission_amount');
+        
+        // Utiliser les valeurs calculées depuis la DB, avec fallback sur les champs stockés
+        $totalEarnings = $totalEarningsFromDB > 0 ? $totalEarningsFromDB : ($ambassador->total_earnings ?? 0);
+        $pendingEarnings = $pendingEarningsFromDB > 0 ? $pendingEarningsFromDB : ($ambassador->pending_earnings ?? 0);
+
         $metrics = [
             [
                 'label' => 'Gains totaux',
                 'icon' => 'fas fa-coins',
-                'value' => $formatCurrency($ambassador->total_earnings ?? 0),
+                'value' => $formatCurrency($totalEarnings),
                 'trend' => $percentTrend($earningsCurrent, $earningsPrevious),
                 'accent' => '#6366f1',
             ],
             [
                 'label' => 'En attente',
                 'icon' => 'fas fa-hourglass-half',
-                'value' => $formatCurrency($ambassador->pending_earnings ?? 0),
+                'value' => $formatCurrency($pendingEarnings),
                 'trend' => 0,
                 'accent' => '#f59e0b',
             ],
@@ -146,7 +156,7 @@ class AmbassadorApplicationController extends Controller
                 'type' => 'alert',
             ];
         }
-        if ($ambassador->pending_earnings > 0 && $ambassador->pending_earnings < 50) {
+        if ($pendingEarnings > 0 && $pendingEarnings < 50) {
             $pendingTasks[] = [
                 'title' => 'Gains en attente',
                 'description' => 'Vous avez des gains en attente de paiement. Continuez à partager votre code promo pour augmenter vos revenus.',
@@ -476,10 +486,33 @@ class AmbassadorApplicationController extends Controller
         $currency = \App\Models\Setting::getBaseCurrency();
         $currencyCode = is_array($currency) ? ($currency['code'] ?? 'USD') : ($currency ?? 'USD');
 
-        // Statistiques des commissions
+        // Statistiques des commissions (calculées depuis la DB)
         $totalCommissions = $ambassador->commissions()->count();
         $paidCommissions = $ambassador->commissions()->where('status', 'paid')->count();
         $pendingCommissions = $ambassador->commissions()->where('status', 'pending')->count();
+        
+        // Calculer les gains totaux et en attente depuis les commissions réelles en base de données
+        $totalEarningsFromDB = $ambassador->commissions()->sum('commission_amount');
+        $pendingEarningsFromDB = $ambassador->commissions()
+            ->where('status', '!=', 'paid')
+            ->sum('commission_amount');
+        
+        // Utiliser les valeurs calculées depuis la DB, avec fallback sur les champs stockés
+        $totalEarnings = $totalEarningsFromDB > 0 ? $totalEarningsFromDB : ($ambassador->total_earnings ?? 0);
+        $pendingEarnings = $pendingEarningsFromDB > 0 ? $pendingEarningsFromDB : ($ambassador->pending_earnings ?? 0);
+
+        // Calculer le nombre total de références depuis les commandes réelles en base de données
+        // Une référence = une commande qui utilise le code promo de l'ambassadeur
+        // Récupérer les IDs des codes promo de l'ambassadeur
+        $promoCodeIds = $ambassador->promoCodes()->pluck('id');
+        
+        $totalReferralsFromDB = \App\Models\Order::where(function($query) use ($ambassador, $promoCodeIds) {
+            $query->where('ambassador_id', $ambassador->id)
+                  ->orWhereIn('ambassador_promo_code_id', $promoCodeIds);
+        })->count();
+        
+        // Utiliser la valeur calculée depuis la DB, avec fallback sur le champ stocké
+        $totalReferrals = $totalReferralsFromDB > 0 ? $totalReferralsFromDB : ($ambassador->total_referrals ?? 0);
 
         // Évolution des commissions par mois
         $commissionsByMonth = $ambassador->commissions()
@@ -528,6 +561,9 @@ class AmbassadorApplicationController extends Controller
             'totalCommissions' => $totalCommissions,
             'paidCommissions' => $paidCommissions,
             'pendingCommissions' => $pendingCommissions,
+            'totalEarnings' => $totalEarnings,
+            'pendingEarnings' => $pendingEarnings,
+            'totalReferrals' => $totalReferrals,
             'commissionsByMonth' => $commissionsByMonth,
             'topOrders' => $topOrders,
             'insights' => $insights,

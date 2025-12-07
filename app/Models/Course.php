@@ -79,6 +79,7 @@ class Course extends Model
         'external_payment_url',
         'external_payment_text',
         'is_published',
+        'is_sale_enabled',
         'is_featured',
         'show_students_count',
         'is_downloadable',
@@ -109,6 +110,7 @@ class Course extends Model
             'is_free' => 'boolean',
             'use_external_payment' => 'boolean',
             'is_published' => 'boolean',
+            'is_sale_enabled' => 'boolean',
             'is_featured' => 'boolean',
             'show_students_count' => 'boolean',
             'is_downloadable' => 'boolean',
@@ -488,17 +490,25 @@ class Course extends Model
 
     /**
      * Get the course button state for a user
-     * Returns: 'enrolled', 'purchased', 'free', 'purchase', 'login'
+     * Returns: 'enrolled', 'purchased', 'free', 'purchase', 'login', 'sale_disabled'
      */
     public function getButtonStateForUser($userId = null): string
     {
         if (!$userId) {
+            // Si la vente est désactivée, on affiche quand même le bouton de connexion
+            // mais on vérifiera après la connexion
             return 'login';
         }
 
         // Check if user is enrolled (for both free and paid courses)
+        // Les utilisateurs déjà inscrits peuvent toujours accéder au cours
         if ($this->isEnrolledBy($userId)) {
             return 'enrolled';
+        }
+
+        // Si la vente/inscription est désactivée, retourner l'état spécial
+        if (!$this->is_sale_enabled) {
+            return 'sale_disabled';
         }
 
         // Check if user has purchased the course (for paid courses only)
@@ -682,8 +692,20 @@ class Course extends Model
     {
         $state = $this->getButtonStateForUser($userId);
 
+        // Si la vente est désactivée et l'utilisateur n'est pas inscrit
+        if ($state === 'sale_disabled') {
+            return [
+                'type' => 'disabled',
+                'class' => 'btn btn-secondary disabled',
+                'text' => 'Indisponible',
+                'icon' => 'fas fa-ban',
+                'tooltip' => 'Ce cours n\'est pas actuellement disponible à l\'achat ou à l\'inscription'
+            ];
+        }
+
         // Si paiement externe: autoriser le lien direct même pour les invités (pas d'auth requise)
-        if ($this->use_external_payment && $this->external_payment_url && in_array($state, ['purchase', 'login'])) {
+        // Mais seulement si la vente est activée
+        if ($this->is_sale_enabled && $this->use_external_payment && $this->external_payment_url && in_array($state, ['purchase', 'login'])) {
             return [
                 'type' => 'link',
                 'url' => $this->external_payment_url,

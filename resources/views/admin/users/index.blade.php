@@ -216,102 +216,18 @@
                                         <span class="text-muted small">Jamais connecté</span>
                                     @endif
                                 </td>
-                                <td class="text-center align-top">
-                                    @if($loop->first)
-                                        <div class="dropdown d-none d-md-block">
-                                            <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $user->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $user->id }}">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.users.show', $user) }}">
-                                                        <i class="fas fa-eye me-2"></i>Voir
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.users.edit', $user) }}">
-                                                        <i class="fas fa-edit me-2"></i>Modifier
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger" href="#" onclick="deleteUser({{ $user->id }}); return false;">
-                                                        <i class="fas fa-trash me-2"></i>Supprimer
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div class="dropdown d-md-none">
-                                            <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $user->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $user->id }}">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.users.show', $user) }}">
-                                                        <i class="fas fa-eye me-2"></i>Voir
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.users.edit', $user) }}">
-                                                        <i class="fas fa-edit me-2"></i>Modifier
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger" href="#" onclick="deleteUser({{ $user->id }}); return false;">
-                                                        <i class="fas fa-trash me-2"></i>Supprimer
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    @else
-                                        <div class="dropup d-none d-md-block">
-                                            <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $user->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $user->id }}">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.users.show', $user) }}">
-                                                        <i class="fas fa-eye me-2"></i>Voir
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.users.edit', $user) }}">
-                                                        <i class="fas fa-edit me-2"></i>Modifier
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger" href="#" onclick="deleteUser({{ $user->id }}); return false;">
-                                                        <i class="fas fa-trash me-2"></i>Supprimer
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div class="dropup d-md-none">
-                                            <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $user->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $user->id }}">
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.users.show', $user) }}">
-                                                        <i class="fas fa-eye me-2"></i>Voir
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item" href="{{ route('admin.users.edit', $user) }}">
-                                                        <i class="fas fa-edit me-2"></i>Modifier
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-danger" href="#" onclick="deleteUser({{ $user->id }}); return false;">
-                                                        <i class="fas fa-trash me-2"></i>Supprimer
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    @endif
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <a href="{{ route('admin.users.show', $user) }}" class="btn btn-light btn-sm" title="Voir l'utilisateur">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary btn-sm" title="Modifier l'utilisateur">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteUser({{ $user->id }})" title="Supprimer l'utilisateur">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             @empty

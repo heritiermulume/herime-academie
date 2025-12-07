@@ -3678,13 +3678,19 @@ button.mobile-price-slider__btn--download i,
                                         @endif
                                     @else
                                         {{-- Utilisateur pas encore inscrit au cours gratuit --}}
-                                        <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
-                                            <button type="submit" class="btn btn-primary btn-lg w-100">
-                                                <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
+                                        @if($course->is_sale_enabled ?? true)
+                                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
+                                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                    <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
+                                                </button>
+                                            </form>
+                                        @else
+                                            <button type="button" class="btn btn-secondary btn-lg w-100" disabled>
+                                                <i class="fas fa-ban me-2"></i>Indisponible
                                             </button>
-                                        </form>
+                                        @endif
                                     @endif
                                 @else
                                     {{-- Cours payant --}}
@@ -3704,21 +3710,33 @@ button.mobile-price-slider__btn--download i,
                                         @endif
                                     @elseif($hasPurchased)
                                         {{-- Utilisateur a acheté mais pas encore inscrit --}}
-                                        <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
-                                            <button type="submit" class="btn btn-primary btn-lg w-100">
-                                                <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
+                                        @if($course->is_sale_enabled ?? true)
+                                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
+                                                <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                    <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
+                                                </button>
+                                            </form>
+                                        @else
+                                            <button type="button" class="btn btn-secondary btn-lg w-100" disabled>
+                                                <i class="fas fa-ban me-2"></i>Indisponible
                                             </button>
-                                        </form>
+                                        @endif
                                     @else
                                         {{-- Utilisateur n'a pas encore acheté --}}
-                                        <button type="button" class="btn btn-outline-primary btn-lg w-100" onclick="addToCart({{ $course->id }})">
-                                            <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
-                                        </button>
-                                        <button type="button" class="btn btn-success btn-lg w-100" onclick="proceedToCheckout({{ $course->id }})">
-                                            <i class="fas fa-credit-card me-2"></i>Procéder au paiement
-                                        </button>
+                                        @if($course->is_sale_enabled ?? true)
+                                            <button type="button" class="btn btn-outline-primary btn-lg w-100" onclick="addToCart({{ $course->id }})">
+                                                <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
+                                            </button>
+                                            <button type="button" class="btn btn-success btn-lg w-100" onclick="proceedToCheckout({{ $course->id }})">
+                                                <i class="fas fa-credit-card me-2"></i>Procéder au paiement
+                                            </button>
+                                        @else
+                                            <button type="button" class="btn btn-secondary btn-lg w-100" disabled>
+                                                <i class="fas fa-ban me-2"></i>Indisponible
+                                            </button>
+                                        @endif
                                     @endif
                                 @endif
                             </div>
@@ -3838,14 +3856,21 @@ button.mobile-price-slider__btn--download i,
                         @endif
                     @else
                         {{-- Utilisateur pas encore inscrit au cours gratuit --}}
-                        <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
-                            @csrf
-                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
-                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
-                                <i class="fas fa-user-plus"></i>
-                                <span>S'inscrire</span>
+                        @if($course->is_sale_enabled ?? true)
+                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                @csrf
+                                <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
+                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>S'inscrire</span>
+                                </button>
+                            </form>
+                        @else
+                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
+                                <i class="fas fa-ban"></i>
+                                <span>Indisponible</span>
                             </button>
-                        </form>
+                        @endif
                     @endif
                 @else
                     {{-- Cours payant --}}
@@ -3867,26 +3892,40 @@ button.mobile-price-slider__btn--download i,
                         @endif
                     @elseif($hasPurchased)
                         {{-- Utilisateur a acheté mais pas encore inscrit --}}
-                        <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
-                            @csrf
-                            <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
-                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
-                                <i class="fas fa-user-plus"></i>
-                                <span>S'inscrire</span>
+                        @if($course->is_sale_enabled ?? true)
+                            <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                @csrf
+                                <input type="hidden" name="redirect_to" value="{{ $course->is_downloadable ? 'course' : 'learn' }}">
+                                <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span>S'inscrire</span>
+                                </button>
+                            </form>
+                        @else
+                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
+                                <i class="fas fa-ban"></i>
+                                <span>Indisponible</span>
                             </button>
-                        </form>
+                        @endif
                     @else
                         {{-- Utilisateur n'a pas encore acheté --}}
-                        <div class="mobile-price-slider__btn-group">
-                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--outline" onclick="addToCart({{ $course->id }})">
-                                <i class="fas fa-shopping-cart"></i>
-                                <span>Panier</span>
+                        @if($course->is_sale_enabled ?? true)
+                            <div class="mobile-price-slider__btn-group">
+                                <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--outline" onclick="addToCart({{ $course->id }})">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    <span>Panier</span>
+                                </button>
+                                <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--success" onclick="proceedToCheckout({{ $course->id }})">
+                                    <i class="fas fa-credit-card"></i>
+                                    <span>Payer</span>
+                                </button>
+                            </div>
+                        @else
+                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
+                                <i class="fas fa-ban"></i>
+                                <span>Indisponible</span>
                             </button>
-                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--success" onclick="proceedToCheckout({{ $course->id }})">
-                                <i class="fas fa-credit-card"></i>
-                                <span>Payer</span>
-                            </button>
-                        </div>
+                        @endif
                     @endif
                 @endif
             @endif

@@ -234,18 +234,12 @@
                             @endforeach
                         </div>
 
-                        <!-- Loading Indicator -->
-                        <div id="loading-indicator" class="text-center mt-5" style="display: none;">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Chargement...</span>
+                        <!-- Pagination -->
+                        @if($courses->hasPages())
+                            <div class="mt-5 d-flex justify-content-center">
+                                {{ $courses->appends(request()->query())->links('pagination.bootstrap-5') }}
                             </div>
-                            <p class="mt-2">Chargement de plus de cours...</p>
-                        </div>
-
-                        <!-- End Indicator -->
-                        <div id="end-indicator" class="text-center mt-5" style="display: none;">
-                            <p class="text-muted">Vous avez vu tous les cours disponibles.</p>
-                        </div>
+                        @endif
                     @else
                         <div class="text-center py-5">
                             <div class="mb-4">
@@ -695,69 +689,10 @@
 
 @push('scripts')
 <script>
-let currentPage = 1;
-let isLoading = false;
-let hasMore = true;
 let filterToggle;
 let filterPanel;
 
-// Fonction pour charger plus de cours
-function loadMoreCourses() {
-    if (isLoading || !hasMore) return;
-    
-    isLoading = true;
-    currentPage++;
-    
-    document.getElementById('loading-indicator').style.display = 'block';
-    
-    const params = new URLSearchParams(window.location.search);
-    params.set('infinite_scroll', '1');
-    params.set('page', currentPage);
-    
-    fetch(`{{ route('courses.index') }}?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.courses && data.courses.length > 0) {
-            const container = document.getElementById('courses-container');
-            data.courses.forEach(course => {
-                const courseElement = createCourseElement(course);
-                container.appendChild(courseElement);
-            });
-            
-            // Réinitialiser les compteurs à rebours pour les nouveaux éléments
-            setTimeout(() => {
-                if (typeof window.initPromotionCountdowns === 'function') {
-                    window.initPromotionCountdowns();
-                }
-            }, 150);
-            
-            hasMore = data.hasMore;
-            if (!hasMore) {
-                document.getElementById('end-indicator').style.display = 'block';
-            }
-        } else {
-            hasMore = false;
-            document.getElementById('end-indicator').style.display = 'block';
-        }
-    })
-    .catch(error => {
-        console.error('Erreur lors du chargement des cours:', error);
-        hasMore = false;
-    })
-    .finally(() => {
-        isLoading = false;
-        document.getElementById('loading-indicator').style.display = 'none';
-    });
-}
-
-// Fonction pour créer un élément de cours
+// Fonction pour créer un élément de cours (utilisée pour les recommandations dans le panier)
 function createCourseElement(course) {
     const div = document.createElement('div');
     div.className = 'col-lg-4 col-md-6 course-item';
@@ -852,24 +787,8 @@ function createCourseElement(course) {
     return div;
 }
 
-// Observer pour détecter quand l'utilisateur arrive en bas de page
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting && hasMore && !isLoading) {
-            loadMoreCourses();
-        }
-    });
-}, {
-    threshold: 0.1
-});
-
-// Initialiser le scroll infini
+// Initialiser les filtres
 document.addEventListener('DOMContentLoaded', function() {
-    const loadingIndicator = document.getElementById('loading-indicator');
-    if (loadingIndicator) {
-        observer.observe(loadingIndicator);
-    }
-    
     filterPanel = document.getElementById('courses-filter-panel');
     filterToggle = document.getElementById('courses-filter-toggle');
 

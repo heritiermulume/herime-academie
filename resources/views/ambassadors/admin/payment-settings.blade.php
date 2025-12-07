@@ -137,7 +137,7 @@
 
         <div class="mt-4 d-flex gap-2">
             <button type="submit" class="admin-btn primary">
-                <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                <i class="fas fa-save me-2"></i>Enregistrer
             </button>
             <a href="{{ route('ambassador.dashboard') }}" class="admin-btn outline">
                 <i class="fas fa-times me-2"></i>Annuler
@@ -462,6 +462,44 @@ document.addEventListener('DOMContentLoaded', function() {
         color: #b45309;
     }
     
+    @media (max-width: 1024px) {
+        .admin-content .admin-form-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        /* Scoper les styles .d-flex uniquement dans le formulaire de payment-settings */
+        .admin-content form[action*="payment-settings"] > .d-flex,
+        .admin-content form[action*="payment-settings"] .d-flex.gap-2 {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.75rem !important;
+        }
+        
+        .admin-content form[action*="payment-settings"] .admin-btn {
+            width: 100%;
+            font-size: 0.8rem !important;
+            padding: 0.5rem 0.75rem !important;
+        }
+        
+        .admin-content form[action*="payment-settings"] .admin-btn i {
+            font-size: 0.75rem !important;
+            margin-right: 0.4rem !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .admin-content form[action*="payment-settings"] .admin-btn {
+            font-size: 0.75rem !important;
+            padding: 0.45rem 0.6rem !important;
+        }
+        
+        .admin-content form[action*="payment-settings"] .admin-btn i {
+            font-size: 0.7rem !important;
+            margin-right: 0.35rem !important;
+        }
+    }
+
     @media (max-width: 640px) {
         .admin-content .admin-form-grid {
             grid-template-columns: 1fr;
@@ -471,12 +509,20 @@ document.addEventListener('DOMContentLoaded', function() {
         /* Scoper les styles .d-flex uniquement dans le formulaire de payment-settings */
         .admin-content form[action*="payment-settings"] > .d-flex,
         .admin-content form[action*="payment-settings"] .d-flex.gap-2 {
-            flex-direction: column;
-            gap: 0.75rem;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.5rem !important;
         }
         
         .admin-content form[action*="payment-settings"] .admin-btn {
             width: 100%;
+            font-size: 0.7rem !important;
+            padding: 0.4rem 0.5rem !important;
+        }
+        
+        .admin-content form[action*="payment-settings"] .admin-btn i {
+            font-size: 0.65rem !important;
+            margin-right: 0.3rem !important;
         }
     }
 </style>

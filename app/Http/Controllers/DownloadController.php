@@ -33,7 +33,13 @@ class DownloadController extends Controller
         }
 
         // Vérifier l'accès au cours selon le type (gratuit/payant)
+        // Les utilisateurs déjà inscrits peuvent toujours télécharger, même si is_sale_enabled est maintenant false
         if (!$this->hasAccessToCourse($course, Auth::id())) {
+            // Si la vente est désactivée et l'utilisateur n'est pas inscrit, bloquer
+            if (!$course->is_sale_enabled) {
+                return back()->with('error', 'Ce cours n\'est pas actuellement disponible.');
+            }
+            
             if ($course->is_free) {
                 return back()->with('error', 'Vous devez être inscrit à ce cours pour le télécharger.');
             } else {

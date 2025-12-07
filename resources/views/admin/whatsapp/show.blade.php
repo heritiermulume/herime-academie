@@ -4,7 +4,7 @@
 @section('admin-title', 'Détails du message WhatsApp')
 @section('admin-subtitle', 'Consultez les détails complets du message WhatsApp')
 @section('admin-actions')
-    <a href="{{ route('admin.announcements') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('admin.announcements') }}" class="btn btn-light">
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
 @endsection

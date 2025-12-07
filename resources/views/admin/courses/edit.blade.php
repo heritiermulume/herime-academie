@@ -424,6 +424,13 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="is_sale_enabled" name="is_sale_enabled" value="1" 
+                                           {{ old('is_sale_enabled', $course->is_sale_enabled ?? true) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="is_sale_enabled">
+                                        <strong>Autoriser la vente et l'inscription</strong>
+                                    </label>
+                                </div>
+                                <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="is_featured" name="is_featured" value="1" 
                                            {{ old('is_featured', $course->is_featured) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_featured">

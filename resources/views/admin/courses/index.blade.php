@@ -597,7 +597,9 @@
                                     </a>
                                 </th>
                                 <th>Statut</th>
+                                <th>Vente</th>
                                 <th class="text-center d-none d-md-table-cell" style="width: 120px;">Actions</th>
+                                <th class="text-center d-md-none" style="width: 120px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -638,117 +640,33 @@
                                             <span class="admin-chip admin-chip--warning">Brouillon</span>
                                         @endif
                                     </td>
-                                    <td class="text-center align-top">
-                                        @if($loop->first)
-                                            <div class="dropdown d-none d-md-block">
-                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $course->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $course->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.courses.show', $course) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.courses.edit', $course) }}">
-                                                            <i class="fas fa-edit me-2"></i>Modifier
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-course-id="{{ $course->id }}"
-                                                           data-course-title="{{ $course->title }}"
-                                                           onclick="openCourseDeleteModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
+                                    <td>
+                                        @if($course->is_sale_enabled ?? true)
+                                            <span class="admin-chip admin-chip--success" title="La vente et l'inscription sont activées">
+                                                <i class="fas fa-check-circle me-1"></i>Activée
+                                            </span>
                                         @else
-                                            <div class="dropup d-none d-md-block">
-                                                <button class="btn btn-sm btn-light course-actions-btn" type="button" id="actionsDropdown{{ $course->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdown{{ $course->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.courses.show', $course) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.courses.edit', $course) }}">
-                                                            <i class="fas fa-edit me-2"></i>Modifier
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-course-id="{{ $course->id }}"
-                                                           data-course-title="{{ $course->title }}"
-                                                           onclick="openCourseDeleteModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
+                                            <span class="admin-chip admin-chip--secondary" title="La vente et l'inscription sont désactivées">
+                                                <i class="fas fa-ban me-1"></i>Désactivée
+                                            </span>
                                         @endif
-                                        @if($loop->first)
-                                            <div class="dropdown d-md-none">
-                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $course->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $course->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.courses.show', $course) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.courses.edit', $course) }}">
-                                                            <i class="fas fa-edit me-2"></i>Modifier
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-course-id="{{ $course->id }}"
-                                                           data-course-title="{{ $course->title }}"
-                                                           onclick="openCourseDeleteModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @else
-                                            <div class="dropup d-md-none">
-                                                <button class="btn btn-sm btn-light course-actions-btn course-actions-btn--mobile" type="button" id="actionsDropdownMobile{{ $course->id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="actionsDropdownMobile{{ $course->id }}">
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.courses.show', $course) }}">
-                                                            <i class="fas fa-eye me-2"></i>Voir
-                                                        </a>
-                                                    </li>
-                                                    <li>
-                                                        <a class="dropdown-item" href="{{ route('admin.courses.edit', $course) }}">
-                                                            <i class="fas fa-edit me-2"></i>Modifier
-                                                        </a>
-                                                    </li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <a class="dropdown-item text-danger" href="#" 
-                                                           data-course-id="{{ $course->id }}"
-                                                           data-course-title="{{ $course->title }}"
-                                                           onclick="openCourseDeleteModal(this); return false;">
-                                                            <i class="fas fa-trash me-2"></i>Supprimer
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <a href="{{ route('admin.courses.show', $course) }}" class="btn btn-light btn-sm" title="Voir le cours">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('admin.courses.edit', $course) }}" class="btn btn-primary btn-sm" title="Modifier le cours">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-danger btn-sm" 
+                                                    data-course-id="{{ $course->id }}"
+                                                    data-course-title="{{ $course->title }}"
+                                                    onclick="openCourseDeleteModal(this)" 
+                                                    title="Supprimer le cours">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                         <form id="course-delete-form-{{ $course->id }}" action="{{ route('admin.courses.destroy', $course) }}" method="POST" class="d-none">
                                             @csrf
                                             @method('DELETE')
@@ -757,7 +675,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="admin-table__empty">
+                                    <td colspan="7" class="admin-table__empty">
                                         <i class="fas fa-inbox mb-2 d-block"></i>
                                         Aucun cours trouvé avec ces critères.
                                     </td>

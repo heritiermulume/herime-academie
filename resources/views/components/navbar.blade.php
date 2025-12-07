@@ -12,7 +12,7 @@
                                 <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" style="width: 100%; height: 100%; object-fit: cover; display: block; border: none; box-shadow: none; transform: none;">
                             </div>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-start" style="width: 280px; padding: 0; border: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); margin-top: 0.5rem;">
+                        <ul class="dropdown-menu dropdown-menu-start user-profile-dropdown" style="width: 320px; padding: 0; border: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); margin-top: 0.5rem;">
                             <!-- User Card -->
                             <li style="padding: 1.25rem; background: linear-gradient(135deg, #003366 0%, #004080 100%); border-radius: 0.375rem 0.375rem 0 0; margin: 0;">
                                 <div class="d-flex align-items-center gap-3">
@@ -283,7 +283,7 @@
                                 <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}" style="width: 100%; height: 100%; object-fit: cover; display: block; border: none; box-shadow: none; transform: none;">
                             </div>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end" style="width: 280px; padding: 0; border: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                        <ul class="dropdown-menu dropdown-menu-end user-profile-dropdown" style="width: 320px; padding: 0; border: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
                             <!-- User Card -->
                             <li style="padding: 1.25rem; background: linear-gradient(135deg, #003366 0%, #004080 100%); border-radius: 0.375rem 0.375rem 0 0; margin: 0;">
                                 <div class="d-flex align-items-center gap-3">
@@ -612,4 +612,140 @@
         </div>
     </div>
 </nav>
+
+@push('styles')
+<style>
+    /* Correction du débordement du texte dans le menu dropdown de l'avatar */
+    .navbar .dropdown-menu.user-profile-dropdown {
+        width: 320px !important;
+        max-width: calc(100vw - 2rem) !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* S'assurer que tous les éléments du menu respectent la largeur */
+    .navbar .dropdown-menu.user-profile-dropdown > li {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+    
+    /* S'assurer que les éléments du menu ne débordent pas - approche avec span pour le texte */
+    .navbar .dropdown-menu.user-profile-dropdown .dropdown-item {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0.75rem 1.25rem !important;
+        line-height: 1.4 !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+        position: relative !important;
+    }
+    
+    /* S'assurer que les icônes ne se rétrécissent pas et restent alignées en haut */
+    .navbar .dropdown-menu.user-profile-dropdown .dropdown-item i {
+        flex-shrink: 0 !important;
+        width: 1.25rem !important;
+        min-width: 1.25rem !important;
+        max-width: 1.25rem !important;
+        text-align: center !important;
+        align-self: flex-start !important;
+        margin-top: 0.15rem !important;
+        line-height: 1.4 !important;
+        display: inline-block !important;
+    }
+    
+    /* Le texte après l'icône doit pouvoir se retourner */
+    .navbar .dropdown-menu.user-profile-dropdown .dropdown-item {
+        flex-wrap: wrap !important;
+    }
+    
+    /* Forcer le texte à se retourner - cibler le contenu textuel directement */
+    .navbar .dropdown-menu.user-profile-dropdown .dropdown-item:not(button):not([type="submit"]) {
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        hyphens: auto !important;
+    }
+    
+    /* S'assurer que le texte dans les liens ne dépasse pas */
+    .navbar .dropdown-menu.user-profile-dropdown .dropdown-item:not(button):not([type="submit"]) {
+        text-overflow: clip !important;
+    }
+    
+    /* Pour les boutons (comme déconnexion), garder le comportement normal */
+    .navbar .dropdown-menu.user-profile-dropdown .dropdown-item button,
+    .navbar .dropdown-menu.user-profile-dropdown form .dropdown-item {
+        display: flex !important;
+        align-items: center !important;
+        white-space: nowrap !important;
+    }
+    
+    /* S'assurer que le texte dans la carte utilisateur ne déborde pas */
+    .navbar .dropdown-menu.user-profile-dropdown li[style*="padding: 1.25rem"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+    
+    .navbar .dropdown-menu.user-profile-dropdown li[style*="padding: 1.25rem"] .text-white {
+        overflow: hidden !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    .navbar .dropdown-menu.user-profile-dropdown li[style*="padding: 1.25rem"] .fw-bold {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+        display: block !important;
+    }
+    
+    .navbar .dropdown-menu.user-profile-dropdown li[style*="padding: 1.25rem"] .text-white-50 {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+        display: block !important;
+    }
+    
+    /* Sur mobile, réduire la largeur si nécessaire */
+    @media (max-width: 575px) {
+        .navbar .dropdown-menu.user-profile-dropdown {
+            width: calc(100vw - 1rem) !important;
+            max-width: 320px !important;
+        }
+    }
+    
+    /* S'assurer que les séparateurs ne débordent pas */
+    .navbar .dropdown-menu.user-profile-dropdown .dropdown-divider {
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Forcer Bootstrap à ne pas appliquer nowrap sur les dropdown-item */
+    .navbar .dropdown-menu.user-profile-dropdown .dropdown-item {
+        white-space: normal !important;
+    }
+    
+    /* Surcharger tous les styles Bootstrap qui pourraient forcer nowrap */
+    .navbar .dropdown-menu.user-profile-dropdown a.dropdown-item,
+    .navbar .dropdown-menu.user-profile-dropdown button.dropdown-item {
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+    }
+</style>
+@endpush
 

@@ -25,6 +25,11 @@
                     <select class="form-select" id="recipient_type" name="recipient_type" required>
                         <option value="all">Tous les utilisateurs</option>
                         <option value="role">Par rôle</option>
+                        <option value="course">Utilisateurs inscrits à un cours</option>
+                        <option value="category">Utilisateurs inscrits à une catégorie</option>
+                        <option value="instructor">Utilisateurs inscrits à un formateur</option>
+                        <option value="registration_date">Par date d'inscription</option>
+                        <option value="activity">Par activité</option>
                         <option value="selected">Utilisateurs sélectionnés</option>
                         <option value="single">Un seul utilisateur</option>
                     </select>
@@ -58,7 +63,80 @@
                                 <label class="form-check-label" for="role_affiliate">Affiliés</label>
                             </div>
                         </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="ambassador" id="role_ambassador">
+                                <label class="form-check-label" for="role_ambassador">Ambassadeurs</label>
+                            </div>
+                        </div>
                     </div>
+                </div>
+
+                <!-- Sélection par cours -->
+                <div class="mb-3" id="course_selection" style="display: none;">
+                    <label class="form-label">Cours *</label>
+                    <select class="form-select" id="course_id" name="course_id">
+                        <option value="">Sélectionner un cours</option>
+                        @foreach(\App\Models\Course::where('is_published', true)->orderBy('title')->get() as $course)
+                            <option value="{{ $course->id }}">{{ $course->title }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à ce cours recevront l'email</small>
+                </div>
+
+                <!-- Sélection par catégorie -->
+                <div class="mb-3" id="category_selection" style="display: none;">
+                    <label class="form-label">Catégorie *</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">Sélectionner une catégorie</option>
+                        @foreach(\App\Models\Category::where('is_active', true)->orderBy('name')->get() as $category)
+                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à des cours de cette catégorie recevront l'email</small>
+                </div>
+
+                <!-- Sélection par formateur -->
+                <div class="mb-3" id="instructor_selection" style="display: none;">
+                    <label class="form-label">Formateur *</label>
+                    <select class="form-select" id="instructor_id" name="instructor_id">
+                        <option value="">Sélectionner un formateur</option>
+                        @foreach(\App\Models\User::where('role', 'instructor')->where('is_active', true)->orderBy('name')->get() as $instructor)
+                            <option value="{{ $instructor->id }}">{{ $instructor->name }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à des cours de ce formateur recevront l'email</small>
+                </div>
+
+                <!-- Sélection par date d'inscription -->
+                <div class="mb-3" id="registration_date_selection" style="display: none;">
+                    <label class="form-label">Période d'inscription *</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label small">Date de début</label>
+                            <input type="date" class="form-control" id="registration_date_from" name="registration_date_from">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Date de fin</label>
+                            <input type="date" class="form-control" id="registration_date_to" name="registration_date_to">
+                        </div>
+                    </div>
+                    <small class="text-muted">Sélectionnez une période pour cibler les utilisateurs inscrits dans cette période</small>
+                </div>
+
+                <!-- Sélection par activité -->
+                <div class="mb-3" id="activity_selection" style="display: none;">
+                    <label class="form-label">Type d'activité *</label>
+                    <select class="form-select" id="activity_type" name="activity_type">
+                        <option value="">Sélectionner un type</option>
+                        <option value="active_recent">Actifs récemment (7 derniers jours)</option>
+                        <option value="active_month">Actifs ce mois</option>
+                        <option value="active_3months">Actifs (3 derniers mois)</option>
+                        <option value="inactive_30days">Inactifs (30+ jours)</option>
+                        <option value="inactive_90days">Inactifs (90+ jours)</option>
+                        <option value="never_logged">Jamais connectés</option>
+                    </select>
+                    <small class="text-muted">Filtrez les utilisateurs selon leur dernière connexion</small>
                 </div>
 
                 <!-- Sélection d'un seul utilisateur -->
@@ -320,12 +398,32 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateRecipientSections(type) {
         // Récupérer tous les éléments
         const roleSelection = document.getElementById('role_selection');
+        const courseSelection = document.getElementById('course_selection');
+        const categorySelection = document.getElementById('category_selection');
+        const instructorSelection = document.getElementById('instructor_selection');
+        const registrationDateSelection = document.getElementById('registration_date_selection');
+        const activitySelection = document.getElementById('activity_selection');
         const singleUserSelection = document.getElementById('single_user_selection');
         const multipleUsersSelection = document.getElementById('multiple_users_selection');
         
         // Masquer toutes les sections d'abord en utilisant setAttribute pour forcer
         if (roleSelection) {
             roleSelection.setAttribute('style', 'display: none !important;');
+        }
+        if (courseSelection) {
+            courseSelection.setAttribute('style', 'display: none !important;');
+        }
+        if (categorySelection) {
+            categorySelection.setAttribute('style', 'display: none !important;');
+        }
+        if (instructorSelection) {
+            instructorSelection.setAttribute('style', 'display: none !important;');
+        }
+        if (registrationDateSelection) {
+            registrationDateSelection.setAttribute('style', 'display: none !important;');
+        }
+        if (activitySelection) {
+            activitySelection.setAttribute('style', 'display: none !important;');
         }
         if (singleUserSelection) {
             singleUserSelection.setAttribute('style', 'display: none !important;');
@@ -337,6 +435,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // Afficher la section appropriée selon le type
         if (type === 'role' && roleSelection) {
             roleSelection.setAttribute('style', 'display: block !important;');
+        } else if (type === 'course' && courseSelection) {
+            courseSelection.setAttribute('style', 'display: block !important;');
+        } else if (type === 'category' && categorySelection) {
+            categorySelection.setAttribute('style', 'display: block !important;');
+        } else if (type === 'instructor' && instructorSelection) {
+            instructorSelection.setAttribute('style', 'display: block !important;');
+        } else if (type === 'registration_date' && registrationDateSelection) {
+            registrationDateSelection.setAttribute('style', 'display: block !important;');
+        } else if (type === 'activity' && activitySelection) {
+            activitySelection.setAttribute('style', 'display: block !important;');
         } else if (type === 'single' && singleUserSelection) {
             singleUserSelection.setAttribute('style', 'display: block !important;');
         } else if (type === 'selected' && multipleUsersSelection) {
@@ -356,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateRecipientSections(initialType);
         
         // Mettre à jour le compte si nécessaire au chargement
-        if (initialType === 'all' || initialType === 'role') {
+        if (initialType === 'all' || initialType === 'role' || initialType === 'course' || initialType === 'category' || initialType === 'instructor' || initialType === 'registration_date' || initialType === 'activity') {
             setTimeout(function() {
                 if (window.updateRecipientCount) {
                     window.updateRecipientCount();
@@ -391,6 +499,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 multipleUserSearchResults.style.display = 'none';
             }
             
+            // Réinitialiser le cours
+            const courseId = document.getElementById('course_id');
+            if (courseId) {
+                courseId.value = '';
+            }
+            
+            // Réinitialiser la catégorie
+            const categoryId = document.getElementById('category_id');
+            if (categoryId) {
+                categoryId.value = '';
+            }
+            
+            // Réinitialiser le formateur
+            const instructorId = document.getElementById('instructor_id');
+            if (instructorId) {
+                instructorId.value = '';
+            }
+            
+            // Réinitialiser les dates d'inscription
+            const registrationDateFrom = document.getElementById('registration_date_from');
+            const registrationDateTo = document.getElementById('registration_date_to');
+            if (registrationDateFrom) {
+                registrationDateFrom.value = '';
+            }
+            if (registrationDateTo) {
+                registrationDateTo.value = '';
+            }
+            
+            // Réinitialiser l'activité
+            const activityType = document.getElementById('activity_type');
+            if (activityType) {
+                activityType.value = '';
+            }
+            
             // Décocher tous les rôles
             document.querySelectorAll('input[name="roles[]"]').forEach(function(cb) {
                 cb.checked = false;
@@ -422,6 +564,48 @@ document.addEventListener('DOMContentLoaded', function() {
             updateRecipientCount();
         });
     });
+    
+    // Attacher les événements pour les nouveaux filtres
+    const courseSelect = document.getElementById('course_id');
+    if (courseSelect) {
+        courseSelect.addEventListener('change', function() {
+            updateRecipientCount();
+        });
+    }
+    
+    const categorySelect = document.getElementById('category_id');
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            updateRecipientCount();
+        });
+    }
+    
+    const instructorSelect = document.getElementById('instructor_id');
+    if (instructorSelect) {
+        instructorSelect.addEventListener('change', function() {
+            updateRecipientCount();
+        });
+    }
+    
+    const registrationDateFrom = document.getElementById('registration_date_from');
+    const registrationDateTo = document.getElementById('registration_date_to');
+    if (registrationDateFrom) {
+        registrationDateFrom.addEventListener('change', function() {
+            updateRecipientCount();
+        });
+    }
+    if (registrationDateTo) {
+        registrationDateTo.addEventListener('change', function() {
+            updateRecipientCount();
+        });
+    }
+    
+    const activityTypeSelect = document.getElementById('activity_type');
+    if (activityTypeSelect) {
+        activityTypeSelect.addEventListener('change', function() {
+            updateRecipientCount();
+        });
+    }
 
     // Fonction de recherche d'utilisateurs
     window.searchUsers = function(query, type = 'single') {
@@ -620,6 +804,158 @@ document.addEventListener('DOMContentLoaded', function() {
                     countText.textContent = 'Impossible de compter les utilisateurs';
                     countDiv.style.display = 'block';
                 });
+        } else if (type === 'course') {
+            const courseId = document.getElementById('course_id')?.value;
+            if (!courseId) {
+                countText.textContent = 'Veuillez sélectionner un cours';
+                countDiv.style.display = 'block';
+                return;
+            }
+            fetch(`{{ route("admin.announcements.count-users") }}?type=course&course_id=${courseId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à ce cours recevront cet email`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors du comptage:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
+        } else if (type === 'category') {
+            const categoryId = document.getElementById('category_id')?.value;
+            if (!categoryId) {
+                countText.textContent = 'Veuillez sélectionner une catégorie';
+                countDiv.style.display = 'block';
+                return;
+            }
+            fetch(`{{ route("admin.announcements.count-users") }}?type=category&category_id=${categoryId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à des cours de cette catégorie recevront cet email`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors du comptage:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
+        } else if (type === 'instructor') {
+            const instructorId = document.getElementById('instructor_id')?.value;
+            if (!instructorId) {
+                countText.textContent = 'Veuillez sélectionner un formateur';
+                countDiv.style.display = 'block';
+                return;
+            }
+            fetch(`{{ route("admin.announcements.count-users") }}?type=instructor&instructor_id=${instructorId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à des cours de ce formateur recevront cet email`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors du comptage:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
+        } else if (type === 'registration_date') {
+            const dateFrom = document.getElementById('registration_date_from')?.value;
+            const dateTo = document.getElementById('registration_date_to')?.value;
+            if (!dateFrom && !dateTo) {
+                countText.textContent = 'Veuillez sélectionner au moins une date';
+                countDiv.style.display = 'block';
+                return;
+            }
+            let url = `{{ route("admin.announcements.count-users") }}?type=registration_date`;
+            if (dateFrom) url += `&registration_date_from=${dateFrom}`;
+            if (dateTo) url += `&registration_date_to=${dateTo}`;
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) dans cette période recevront cet email`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors du comptage:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
+        } else if (type === 'activity') {
+            const activityType = document.getElementById('activity_type')?.value;
+            if (!activityType) {
+                countText.textContent = 'Veuillez sélectionner un type d\'activité';
+                countDiv.style.display = 'block';
+                return;
+            }
+            fetch(`{{ route("admin.announcements.count-users") }}?type=activity&activity_type=${activityType}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        let activityLabel = '';
+                        switch(activityType) {
+                            case 'active_recent':
+                                activityLabel = 'actifs récemment (7 derniers jours)';
+                                break;
+                            case 'active_month':
+                                activityLabel = 'actifs ce mois';
+                                break;
+                            case 'active_3months':
+                                activityLabel = 'actifs (3 derniers mois)';
+                                break;
+                            case 'inactive_30days':
+                                activityLabel = 'inactifs (30+ jours)';
+                                break;
+                            case 'inactive_90days':
+                                activityLabel = 'inactifs (90+ jours)';
+                                break;
+                            case 'never_logged':
+                                activityLabel = 'jamais connectés';
+                                break;
+                            default:
+                                activityLabel = 'correspondant à ce critère';
+                        }
+                        countText.textContent = `${data.count} utilisateur(s) ${activityLabel} recevront cet email`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors du comptage:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
         } else if (type === 'role') {
             const roles = Array.from(document.querySelectorAll('input[name="roles[]"]:checked')).map(cb => cb.value);
             if (roles.length > 0) {
@@ -773,6 +1109,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 const checkedRoles = document.querySelectorAll('input[name="roles[]"]:checked');
                 if (checkedRoles.length === 0) {
                     alert('Veuillez sélectionner au moins un rôle');
+                    isValid = false;
+                }
+            } else if (type === 'course') {
+                const courseId = document.getElementById('course_id')?.value;
+                if (!courseId) {
+                    alert('Veuillez sélectionner un cours');
+                    isValid = false;
+                }
+            } else if (type === 'category') {
+                const categoryId = document.getElementById('category_id')?.value;
+                if (!categoryId) {
+                    alert('Veuillez sélectionner une catégorie');
+                    isValid = false;
+                }
+            } else if (type === 'instructor') {
+                const instructorId = document.getElementById('instructor_id')?.value;
+                if (!instructorId) {
+                    alert('Veuillez sélectionner un formateur');
+                    isValid = false;
+                }
+            } else if (type === 'registration_date') {
+                const dateFrom = document.getElementById('registration_date_from')?.value;
+                const dateTo = document.getElementById('registration_date_to')?.value;
+                if (!dateFrom && !dateTo) {
+                    alert('Veuillez sélectionner au moins une date');
+                    isValid = false;
+                }
+            } else if (type === 'activity') {
+                const activityType = document.getElementById('activity_type')?.value;
+                if (!activityType) {
+                    alert('Veuillez sélectionner un type d\'activité');
                     isValid = false;
                 }
             } else if (type === 'single') {

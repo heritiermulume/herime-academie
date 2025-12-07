@@ -60,7 +60,22 @@
     }
 
     $downloadResource = $course->download_file_url ?: null;
+    $thumbnailUrl = $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80';
 @endphp
+
+    <!-- Image du cours -->
+    <section class="admin-panel mb-4">
+        <div class="admin-panel__header">
+            <h3>
+                <i class="fas fa-image me-2"></i>Image du cours
+            </h3>
+        </div>
+        <div class="admin-panel__body p-0">
+            <div class="course-thumbnail-container">
+                <img src="{{ $thumbnailUrl }}" alt="{{ $course->title }}" class="course-thumbnail-image">
+            </div>
+        </div>
+    </section>
 
     <div class="row g-4">
         <div class="col-md-8">
@@ -93,6 +108,9 @@
                             @endif
                             <span class="badge {{ $course->is_free ? 'bg-success' : 'bg-primary' }} ms-2">
                                 {{ $course->is_free ? 'Gratuit' : 'Payant' }}
+                            </span>
+                            <span class="badge {{ ($course->is_sale_enabled ?? true) ? 'bg-success' : 'bg-secondary' }} ms-2">
+                                {{ ($course->is_sale_enabled ?? true) ? 'Vente activée' : 'Vente désactivée' }}
                             </span>
                             @if($course->is_downloadable)
                                 <span class="badge bg-info ms-2">Téléchargeable</span>
@@ -157,6 +175,44 @@
                 </section>
             @endif
 
+            @if(!empty($requirements))
+                <section class="admin-panel">
+                    <div class="admin-panel__header">
+                        <h3>
+                            <i class="fas fa-clipboard-list me-2"></i>Prérequis
+                        </h3>
+                    </div>
+                    <div class="admin-panel__body">
+                        <ul class="list-unstyled mb-0">
+                            @foreach($requirements as $requirement)
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>{{ $requirement }}
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </section>
+            @endif
+
+            @if(!empty($learnings))
+                <section class="admin-panel">
+                    <div class="admin-panel__header">
+                        <h3>
+                            <i class="fas fa-lightbulb me-2"></i>Objectifs pédagogiques
+                        </h3>
+                    </div>
+                    <div class="admin-panel__body">
+                        <ul class="list-unstyled mb-0">
+                            @foreach($learnings as $learning)
+                                <li class="mb-2">
+                                    <i class="fas fa-check-circle text-success me-2"></i>{{ $learning }}
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </section>
+            @endif
+
             @if($videoPreviewUrl || $downloadResource || $course->use_external_payment)
                 <section class="admin-panel">
                     <div class="admin-panel__header">
@@ -169,9 +225,9 @@
                             @if($videoPreviewUrl)
                                 <dt class="col-sm-4">Aperçu vidéo</dt>
                                 <dd class="col-sm-8">
-                                    <a href="{{ $videoPreviewUrl }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-play-circle me-1"></i>Ouvrir la prévisualisation
-                                    </a>
+                                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#previewVideoModal">
+                                        <i class="fas fa-play-circle me-1"></i>Voir la prévisualisation
+                                    </button>
                                 </dd>
                             @endif
 
@@ -236,44 +292,88 @@
                                         @if($sectionLessons->isEmpty())
                                             <p class="text-muted mb-0">Pas de leçons dans cette section.</p>
                                         @else
-                                            <ul class="curriculum-lessons list-unstyled mb-0">
-                                                @foreach($sectionLessons as $lesson)
-                                                    <li class="lesson-item">
-                                                        <div class="lesson-icon lesson-icon--{{ $lesson->type ?? 'video' }}">
-                                                            <i class="fas fa-{{ match($lesson->type) {
-                                                                'video' => 'play',
-                                                                'text' => 'file-alt',
-                                                                'quiz' => 'question-circle',
-                                                                'pdf', 'document' => 'file-pdf',
-                                                                default => 'file-alt'
-                                                            } }}"></i>
-                                                        </div>
-                                                        <div class="lesson-content">
-                                                            <div class="lesson-title">{{ $lesson->title }}</div>
-                                                            <div class="lesson-meta">
-                                                                <span class="badge bg-primary-subtle text-primary-emphasis text-capitalize">
-                                                                    {{ $lesson->type ?? 'contenu' }}
-                                                                </span>
-                                                                @if($lesson->duration)
-                                                                    <span class="text-muted ms-3">
-                                                                        <i class="far fa-clock me-1"></i>{{ $lesson->duration }} min
-                                                                    </span>
-                                                                @endif
-                                                                @if($lesson->is_preview)
-                                                                    <span class="lesson-preview-badge ms-3">
-                                                                        <i class="fas fa-eye me-1"></i>Aperçu
-                                                                    </span>
-                                                                @endif
-                                                            </div>
-                                                            @if($lesson->description)
-                                                                <p class="lesson-description text-muted mb-0">
-                                                                    {{ Str::limit($lesson->description, 180) }}
-                                                                </p>
-                                                            @endif
-                                                        </div>
-                                                    </li>
-                                                @endforeach
-                                            </ul>
+                                            <div class="admin-table">
+                                                <div class="table-responsive">
+                                                    <table class="table align-middle mb-0">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Leçon</th>
+                                                                <th>Type</th>
+                                                                <th>Durée</th>
+                                                                <th>Statut</th>
+                                                                <th class="text-center">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($sectionLessons as $lesson)
+                                                                @php
+                                                                    $lessonContentUrl = $lesson->content_url ?? null;
+                                                                    $lessonContentFileUrl = $lesson->content_file_url ?? null;
+                                                                    $lessonContentText = $lesson->content_text ?? null;
+                                                                    $hasContent = $lessonContentUrl || $lessonContentFileUrl || $lessonContentText;
+                                                                @endphp
+                                                                <tr>
+                                                                    <td style="min-width: 250px;">
+                                                                        <div class="d-flex align-items-center gap-3">
+                                                                            <div class="lesson-icon lesson-icon--{{ $lesson->type ?? 'video' }}" style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #ffffff; flex-shrink: 0;">
+                                                                                <i class="fas fa-{{ match($lesson->type) {
+                                                                                    'video' => 'play',
+                                                                                    'text' => 'file-alt',
+                                                                                    'quiz' => 'question-circle',
+                                                                                    'pdf', 'document' => 'file-pdf',
+                                                                                    default => 'file-alt'
+                                                                                } }}" style="font-size: 0.85rem;"></i>
+                                                                            </div>
+                                                                            <div style="min-width: 0; flex: 1;">
+                                                                                <div class="fw-semibold text-truncate d-block" title="{{ $lesson->title }}">{{ $lesson->title }}</div>
+                                                                                @if($lesson->description)
+                                                                                    <div class="text-muted small text-truncate d-block" title="{{ $lesson->description }}">
+                                                                                        {{ Str::limit($lesson->description, 60) }}
+                                                                                    </div>
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span class="admin-chip admin-chip--info text-capitalize">
+                                                                            {{ $lesson->type ?? 'contenu' }}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>
+                                                                        @if($lesson->duration)
+                                                                            <span class="text-muted">
+                                                                                <i class="far fa-clock me-1"></i>{{ $lesson->duration }} min
+                                                                            </span>
+                                                                        @else
+                                                                            <span class="text-muted">—</span>
+                                                                        @endif
+                                                                    </td>
+                                                                    <td>
+                                                                        @if($lesson->is_preview)
+                                                                            <span class="admin-chip admin-chip--success">
+                                                                                <i class="fas fa-eye me-1"></i>Aperçu
+                                                                            </span>
+                                                                        @else
+                                                                            <span class="admin-chip admin-chip--secondary">
+                                                                                <i class="fas fa-lock me-1"></i>Verrouillé
+                                                                            </span>
+                                                                        @endif
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        @if($hasContent)
+                                                                            <button type="button" class="btn btn-primary btn-sm" onclick="viewLesson({{ $lesson->id }}, '{{ $lesson->type }}', {{ json_encode($lessonContentUrl) }}, {{ json_encode($lessonContentFileUrl) }}, {{ json_encode($lessonContentText) }}, '{{ addslashes($lesson->title) }}')" title="Visualiser la leçon">
+                                                                                <i class="fas fa-eye"></i>
+                                                                            </button>
+                                                                        @else
+                                                                            <span class="text-muted small">—</span>
+                                                                        @endif
+                                                                    </td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
                                         @endif
                                     </div>
                                 </div>
@@ -327,13 +427,13 @@
                     </h3>
                 </div>
                 <div class="admin-panel__body">
-                    <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-start gap-3">
                         <img src="{{ $course->instructor->avatar ?? asset('images/default-avatar.svg') }}" 
                              alt="{{ $course->instructor->name ?? 'Instructeur' }}" 
-                             class="rounded-circle"
+                             class="rounded-circle flex-shrink-0"
                              style="width: 80px; height: 80px; object-fit: cover;">
-                        <div>
-                            <h5 class="mb-1">{{ $course->instructor->name ?? 'Non assigné' }}</h5>
+                        <div class="flex-grow-1" style="min-width: 0;">
+                            <h5 class="mb-2">{{ $course->instructor->name ?? 'Non assigné' }}</h5>
                             @if($course->instructor)
                                 <a href="{{ route('admin.users.show', $course->instructor) }}" class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-eye me-1"></i>Voir le profil
@@ -377,6 +477,15 @@
                         <dt class="col-sm-6">Gratuit</dt>
                         <dd class="col-sm-6">{{ $course->is_free ? 'Oui' : 'Non' }}</dd>
 
+                        <dt class="col-sm-6">Vente et inscription</dt>
+                        <dd class="col-sm-6">
+                            @if($course->is_sale_enabled ?? true)
+                                <span class="badge bg-success">Activée</span>
+                            @else
+                                <span class="badge bg-secondary">Désactivée</span>
+                            @endif
+                        </dd>
+
                         <dt class="col-sm-6">Téléchargeable</dt>
                         <dd class="col-sm-6">{{ $course->is_downloadable ? 'Oui' : 'Non' }}</dd>
 
@@ -388,44 +497,6 @@
                     </dl>
                 </div>
             </section>
-
-            @if(!empty($requirements))
-                <section class="admin-panel">
-                    <div class="admin-panel__header">
-                        <h3>
-                            <i class="fas fa-clipboard-list me-2"></i>Prérequis
-                        </h3>
-                    </div>
-                    <div class="admin-panel__body">
-                        <ul class="list-unstyled mb-0">
-                            @foreach($requirements as $requirement)
-                                <li class="mb-2">
-                                    <i class="fas fa-check-circle text-success me-2"></i>{{ $requirement }}
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </section>
-            @endif
-
-            @if(!empty($learnings))
-                <section class="admin-panel">
-                    <div class="admin-panel__header">
-                        <h3>
-                            <i class="fas fa-lightbulb me-2"></i>Objectifs pédagogiques
-                        </h3>
-                    </div>
-                    <div class="admin-panel__body">
-                        <ul class="list-unstyled mb-0">
-                            @foreach($learnings as $learning)
-                                <li class="mb-2">
-                                    <i class="fas fa-check-circle text-success me-2"></i>{{ $learning }}
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </section>
-            @endif
 
             @if($course->meta_description || $course->meta_keywords)
                 <section class="admin-panel">
@@ -450,6 +521,114 @@
                     </div>
                 </section>
             @endif
+        </div>
+    </div>
+
+    <!-- Modal pour la prévisualisation vidéo du cours -->
+    @if($videoPreviewUrl)
+    <div class="modal fade" id="previewVideoModal" tabindex="-1" aria-labelledby="previewVideoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="previewVideoModalLabel">Prévisualisation du cours</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    @php
+                        $isYoutube = str_contains($videoPreviewUrl, 'youtube.com') || str_contains($videoPreviewUrl, 'youtu.be');
+                        $isVimeo = str_contains($videoPreviewUrl, 'vimeo.com');
+                        $isDirectVideo = false;
+                        $youtubeId = null;
+                        $vimeoId = null;
+                        
+                        // Vérifier si c'est une URL directe vers un fichier vidéo
+                        $videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.m3u8'];
+                        $lowerUrl = strtolower($videoPreviewUrl);
+                        foreach ($videoExtensions as $ext) {
+                            if (str_contains($lowerUrl, $ext)) {
+                                $isDirectVideo = true;
+                                break;
+                            }
+                        }
+                        
+                        // Vérifier aussi si c'est une URL YouTube embed (doit être fait en premier)
+                        if (str_contains($videoPreviewUrl, 'youtube.com/embed/')) {
+                            $isYoutube = true;
+                            $path = parse_url($videoPreviewUrl, PHP_URL_PATH);
+                            $youtubeId = basename($path);
+                            // Nettoyer l'ID si nécessaire
+                            if (str_contains($youtubeId, '?')) {
+                                $youtubeId = explode('?', $youtubeId)[0];
+                            }
+                        } elseif ($isYoutube) {
+                            if (str_contains($videoPreviewUrl, 'youtube.com/watch')) {
+                                parse_str(parse_url($videoPreviewUrl, PHP_URL_QUERY), $query);
+                                $youtubeId = $query['v'] ?? null;
+                            } elseif (str_contains($videoPreviewUrl, 'youtu.be/')) {
+                                $youtubeId = basename(parse_url($videoPreviewUrl, PHP_URL_PATH));
+                            } elseif (str_contains($videoPreviewUrl, 'youtube.com/v/')) {
+                                $youtubeId = basename(parse_url($videoPreviewUrl, PHP_URL_PATH));
+                            }
+                        } elseif ($isVimeo) {
+                            // Extraire l'ID Vimeo de différentes formats d'URL
+                            if (str_contains($videoPreviewUrl, 'vimeo.com/')) {
+                                $path = parse_url($videoPreviewUrl, PHP_URL_PATH);
+                                $vimeoId = trim($path, '/');
+                                // Si l'URL contient des paramètres, prendre seulement l'ID
+                                if (str_contains($vimeoId, '/')) {
+                                    $parts = explode('/', $vimeoId);
+                                    $vimeoId = end($parts);
+                                }
+                            }
+                        }
+                    @endphp
+                    <div class="ratio ratio-16x9">
+                        @if($isYoutube && $youtubeId)
+                            <iframe src="https://www.youtube.com/embed/{{ $youtubeId }}" 
+                                    title="Prévisualisation du cours" 
+                                    allowfullscreen></iframe>
+                        @elseif($isVimeo && $vimeoId)
+                            <iframe src="https://player.vimeo.com/video/{{ $vimeoId }}" 
+                                    title="Prévisualisation du cours" 
+                                    allowfullscreen></iframe>
+                        @elseif($isDirectVideo)
+                            <video controls class="w-100 h-100" style="object-fit: contain;">
+                                <source src="{{ $videoPreviewUrl }}" type="video/mp4">
+                                <source src="{{ $videoPreviewUrl }}" type="video/webm">
+                                <source src="{{ $videoPreviewUrl }}" type="video/ogg">
+                                Votre navigateur ne supporte pas la lecture vidéo.
+                                <a href="{{ $videoPreviewUrl }}" target="_blank">Télécharger la vidéo</a>
+                            </video>
+                        @else
+                            <div class="d-flex align-items-center justify-content-center bg-dark text-white">
+                                <div class="text-center">
+                                    <i class="fas fa-video fa-3x mb-3"></i>
+                                    <p>Format vidéo non reconnu</p>
+                                    <a href="{{ $videoPreviewUrl }}" target="_blank" class="btn btn-primary">
+                                        Ouvrir dans un nouvel onglet
+                                    </a>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Modal pour visualiser une leçon -->
+    <div class="modal fade" id="lessonViewModal" tabindex="-1" aria-labelledby="lessonViewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="lessonViewModalTitle">Visualiser la leçon</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="lessonViewModalBody">
+                    <!-- Le contenu sera injecté dynamiquement -->
+                </div>
+            </div>
         </div>
     </div>
 @endsection
@@ -557,6 +736,16 @@
 
 .admin-panel__body {
     padding: 1rem;
+    overflow: hidden;
+}
+
+/* S'assurer que le contenu de la section Instructeur reste dans les limites */
+.admin-panel__body .d-flex {
+    flex-wrap: wrap;
+}
+
+.admin-panel__body .d-flex > div {
+    max-width: 100%;
 }
 
 /* Padding légèrement réduit sur desktop */
@@ -566,26 +755,61 @@
     }
 }
 
-/* Corriger le chevauchement des boutons dans la carte Informations du certificat */
+/* S'assurer que les dt et dd s'affichent correctement */
+.admin-panel__body dl.row {
+    margin: 0;
+}
+
+.admin-panel__body dl.row dt {
+    padding: 0.5rem 0.75rem 0.5rem 0;
+    font-weight: 600;
+    text-align: left;
+}
+
 .admin-panel__body dl.row dd {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
+    padding: 0.5rem 0;
+    margin: 0;
+}
+
+/* Appliquer flex seulement pour les dd qui contiennent plusieurs éléments (badges, boutons) */
+.admin-panel__body dl.row dd .badge + .badge,
+.admin-panel__body dl.row dd .btn {
+    margin-left: 0.5rem;
+}
+
+.admin-panel__body dl.row dd .badge:first-child {
+    margin-left: 0;
 }
 
 .admin-panel__body dl.row dd .badge {
+    display: inline-block;
     flex-shrink: 0;
 }
 
 .admin-panel__body dl.row dd .btn,
 .admin-panel__body dl.row dd button {
+    display: inline-block;
     flex-shrink: 0;
     white-space: nowrap;
+    margin-left: 0;
 }
 
 /* Styles responsives pour les paddings et margins - identiques à analytics */
 @media (max-width: 991.98px) {
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-curriculum .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-curriculum .curriculum-section-content {
+        overflow: visible !important;
+    }
+    
+    .admin-curriculum .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     /* Réduire les paddings et margins sur tablette */
     .admin-panel {
         margin-bottom: 1rem;
@@ -662,10 +886,22 @@
     /* Empiler les boutons sur mobile dans la carte Informations du certificat */
     .admin-panel__body dl.row dd .btn,
     .admin-panel__body dl.row dd button {
-        flex: 1 1 auto;
-        min-width: 120px;
+        display: inline-block;
         margin-left: 0 !important;
-        margin-right: 0 !important;
+        margin-right: 0.5rem !important;
+    }
+    
+    /* S'assurer que les dt et dd s'affichent correctement sur mobile */
+    .admin-panel__body dl.row dt {
+        display: block;
+        width: 100%;
+        padding-bottom: 0.25rem;
+    }
+    
+    .admin-panel__body dl.row dd {
+        display: block;
+        width: 100%;
+        padding-bottom: 0.75rem;
     }
     
     /* Centrer les boutons admin-actions sur mobile et les garder sur la même ligne */
@@ -782,30 +1018,10 @@
     font-weight: 500;
 }
 
-.curriculum-lessons .lesson-item {
-    display: flex;
-    gap: 1rem;
-    padding: 0.9rem 1rem;
-    background: #ffffff;
-    border-radius: 12px;
-    border: 1px solid rgba(226, 232, 240, 0.9);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    margin-bottom: 0.75rem;
-}
-
-.curriculum-lessons .lesson-item:last-child {
-    margin-bottom: 0;
-}
-
-.curriculum-lessons .lesson-item:hover {
-    transform: translateX(4px);
-    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
-}
-
 .lesson-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -817,38 +1033,86 @@
 .lesson-icon--text { background: #16a34a; }
 .lesson-icon--quiz { background: #f97316; }
 .lesson-icon--pdf { background: #dc2626; }
-.lesson-icon i { font-size: 1rem; }
 
-.lesson-content .lesson-title {
-    font-weight: 600;
-    margin-bottom: 0.35rem;
+/* Styles pour le tableau des leçons dans les sections */
+.admin-curriculum .admin-table {
+    margin-top: 1rem;
 }
 
-.lesson-content .lesson-meta {
+.admin-curriculum .admin-table table {
+    margin-bottom: 0;
+}
+
+/* Styles pour l'image du cours */
+.course-thumbnail-container {
+    position: relative;
+    width: 100%;
+    border-radius: 0 0 16px 16px;
+    overflow: hidden;
+    background: #f8fafc;
+    aspect-ratio: 16 / 9;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-    color: #64748b;
-    margin-bottom: 0.35rem;
+    justify-content: center;
 }
 
-.lesson-preview-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.65rem;
-    border-radius: 999px;
-    background: rgba(34, 197, 94, 0.12);
-    color: #15803d;
-    font-weight: 600;
-    font-size: 0.78rem;
+.course-thumbnail-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
-.lesson-description {
-    font-size: 0.88rem;
-    line-height: 1.5;
+
+/* Styles pour le modal de prévisualisation vidéo */
+#previewVideoModal .modal-body {
+    padding: 0;
+}
+
+#previewVideoModal .modal-body .ratio {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+/* Styles pour le modal de visualisation de leçon */
+#lessonViewModal .modal-body {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#lessonViewModal .lesson-video-container {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 */
+    height: 0;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+#lessonViewModal .lesson-video-container iframe,
+#lessonViewModal .lesson-video-container video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+#lessonViewModal .lesson-text-content {
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 0.5rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+#lessonViewModal .lesson-pdf-container {
+    width: 100%;
+    height: 80vh;
+    border: none;
+    border-radius: 0.5rem;
 }
 </style>
 @endpush
@@ -882,6 +1146,95 @@
             });
         });
     });
+
+    // Fonction pour visualiser une leçon
+    function viewLesson(lessonId, type, contentUrl, contentFileUrl, contentText, title) {
+        const modal = new bootstrap.Modal(document.getElementById('lessonViewModal'));
+        const modalTitle = document.getElementById('lessonViewModalTitle');
+        const modalBody = document.getElementById('lessonViewModalBody');
+        
+        modalTitle.textContent = title;
+        modalBody.innerHTML = '';
+        
+        let contentHtml = '';
+        
+        if (type === 'video') {
+            if (contentUrl) {
+                // Vérifier si c'est YouTube
+                if (contentUrl.includes('youtube.com') || contentUrl.includes('youtu.be')) {
+                    let videoId = '';
+                    if (contentUrl.includes('youtube.com/watch')) {
+                        const url = new URL(contentUrl);
+                        videoId = url.searchParams.get('v');
+                    } else if (contentUrl.includes('youtu.be/')) {
+                        videoId = contentUrl.split('youtu.be/')[1].split('?')[0];
+                    }
+                    if (videoId) {
+                        contentHtml = `
+                            <div class="lesson-video-container">
+                                <iframe src="https://www.youtube.com/embed/${videoId}" 
+                                        title="${title}" 
+                                        allowfullscreen></iframe>
+                            </div>
+                        `;
+                    }
+                } else if (contentUrl.includes('vimeo.com')) {
+                    const videoId = contentUrl.split('vimeo.com/')[1].split('?')[0];
+                    if (videoId) {
+                        contentHtml = `
+                            <div class="lesson-video-container">
+                                <iframe src="https://player.vimeo.com/video/${videoId}" 
+                                        title="${title}" 
+                                        allowfullscreen></iframe>
+                            </div>
+                        `;
+                    }
+                } else if (contentFileUrl) {
+                    contentHtml = `
+                        <div class="lesson-video-container">
+                            <video controls class="w-100 h-100" style="object-fit: contain;">
+                                <source src="${contentFileUrl}" type="video/mp4">
+                                Votre navigateur ne supporte pas la lecture vidéo.
+                            </video>
+                        </div>
+                    `;
+                }
+            } else if (contentFileUrl) {
+                contentHtml = `
+                    <div class="lesson-video-container">
+                        <video controls class="w-100 h-100" style="object-fit: contain;">
+                            <source src="${contentFileUrl}" type="video/mp4">
+                            Votre navigateur ne supporte pas la lecture vidéo.
+                        </video>
+                    </div>
+                `;
+            }
+        } else if (type === 'text' && contentText) {
+            contentHtml = `
+                <div class="lesson-text-content">
+                    ${contentText.replace(/\n/g, '<br>')}
+                </div>
+            `;
+        } else if ((type === 'pdf' || type === 'document') && (contentFileUrl || contentUrl)) {
+            const pdfUrl = contentFileUrl || contentUrl;
+            contentHtml = `
+                <iframe src="${pdfUrl}" class="lesson-pdf-container" title="${title}">
+                    <p>Votre navigateur ne supporte pas l'affichage de PDF. 
+                    <a href="${pdfUrl}" target="_blank">Télécharger le PDF</a></p>
+                </iframe>
+            `;
+        } else {
+            contentHtml = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Aucun contenu disponible pour cette leçon.
+                </div>
+            `;
+        }
+        
+        modalBody.innerHTML = contentHtml;
+        modal.show();
+    }
 </script>
 @endpush
 

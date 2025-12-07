@@ -11,22 +11,22 @@
             <div class="checkout-title-section">
                 <h1 class="checkout-title">Finaliser votre commande</h1>
                 <p class="checkout-subtitle">Choisissez votre mode de paiement</p>
-                            </div>
+            </div>
             <div class="checkout-actions">
                 <a href="{{ route('cart.index') }}" class="continue-shopping-btn">
                     <i class="fas fa-arrow-left"></i>
                     Retour au panier
-                    </a>
-                </div>
+                </a>
             </div>
         </div>
+    </div>
 
     <div class="checkout-wrapper">
-        <div class="row">
+        <div class="row g-4">
             <!-- Main Content -->
-            <div class="col-lg-8">
+            <div class="col-12 col-lg-8 order-2 order-lg-1">
                 <!-- Progress Steps -->
-                <div class="checkout-progress mb-5">
+                <div class="checkout-progress mb-4">
                     <div class="progress-steps">
                         <div class="step completed">
                             <div class="step-circle">
@@ -63,21 +63,21 @@
                     <form id="pawapayForm" method="POST" onsubmit="return false;">
                         @csrf
                         
-                                <div class="form-section">
+                        <div class="form-section">
                             <div class="row g-3 mb-3">
-                                            <div class="col-md-6">
+                                <div class="col-12 col-md-6">
                                     <label class="form-label"><i class="fas fa-flag me-1"></i>Pays</label>
                                     <select id="country" class="form-select"></select>
-                                            </div>
-                                                    <div class="col-md-6">
-                                    <div class="d-flex align-items-center justify-content-between">
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
                                         <label class="form-label mb-0"><i class="fas fa-coins me-1"></i>Montant</label>
                                         <div style="min-width: 140px;">
                                             <select id="currencySelect" class="form-select form-select-sm"></select>
-                                                </div>
-                                            </div>
+                                        </div>
+                                    </div>
                                     {{-- Montant initial dans la devise de base du site (configurée dans /admin/settings) --}}
-                                    <input type="text" id="amount" class="form-control mt-2" value="{{ number_format($total, 2, '.', '') }}" readonly>
+                                    <input type="text" id="amount" class="form-control" value="{{ number_format($total, 2, '.', '') }}" readonly>
                                     <div class="invalid-feedback" id="amountError"></div>
                                 </div>
                             </div>
@@ -86,19 +86,19 @@
                                 <label class="form-label"><i class="fas fa-network-wired me-1"></i>Opérateur</label>
                                 <div id="providers" class="d-flex flex-wrap gap-2"></div>
                                 <small class="form-text text-muted">Sélectionnez votre opérateur.</small>
-                                    </div>
+                            </div>
                                     
-                            <div class="row g-3 mb-2">
-                                <div class="col-md-4">
+                            <div class="row g-3 mb-3">
+                                <div class="col-12 col-md-4">
                                     <label class="form-label"><i class="fas fa-phone me-1"></i>Indicatif</label>
                                     <input type="text" id="prefix" class="form-control" value="243" readonly>
-                                    </div>
-                                <div class="col-md-8">
+                                </div>
+                                <div class="col-12 col-md-8">
                                     <label class="form-label"><i class="fas fa-phone me-1"></i>Numéro (sans indicatif)</label>
                                     <input type="tel" id="phoneNumber" class="form-control" placeholder="783 456 789" required>
                                     <div class="invalid-feedback" id="phoneError">Veuillez saisir un numéro de téléphone valide.</div>
+                                </div>
                             </div>
-                        </div>
 
                             <!-- Code Promo Ambassadeur -->
                             <div class="mb-3">
@@ -125,22 +125,22 @@
                             </div>
 
                             <div class="terms-section mt-3">
-                            <div class="form-check">
+                                <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="terms" required>
-                                <label class="form-check-label" for="terms">
+                                    <label class="form-check-label" for="terms">
                                         J'accepte les <a href="{{ route('legal.terms') }}" target="_blank" class="text-primary">conditions générales</a> et la <a href="{{ route('legal.privacy') }}" target="_blank" class="text-primary">politique de confidentialité</a>
-                                </label>
+                                    </label>
                                     <div class="invalid-feedback" style="display:none;" id="termsError"></div>
+                                </div>
                             </div>
-                        </div>
 
                             <input type="hidden" id="currency" value="{{ config('services.pawapay.default_currency') }}">
                         </div>
 
-                        <div class="payment-actions mt-3">
+                        <div class="payment-actions mt-4">
                             <button type="button" id="payButton" class="btn btn-primary btn-lg w-100">
                                 <span id="payButtonText">Payer maintenant</span>
-                                    </button>
+                            </button>
                         </div>
 
                         <div id="paymentNotice" class="alert alert-info mt-3" style="display:none;"></div>
@@ -149,7 +149,7 @@
             </div>
 
             <!-- Order Summary Sidebar -->
-            <div class="col-lg-4">
+            <div class="col-12 col-lg-4 order-1 order-lg-2">
                 <div class="order-summary-card">
                     <h5 class="summary-title mb-3">Résumé de la commande</h5>
                     <div class="order-items">
@@ -170,10 +170,10 @@
                             <strong>Total :</strong>
                             <strong class="text-primary fs-4">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($total) }}</strong>
                         </div>
-                        </div>
-                        </div>
                     </div>
-                        </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
@@ -855,6 +855,7 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 16px;
 }
 
 .checkout-wrapper {
@@ -865,6 +866,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .checkout-page .checkout-wrapper {
     padding: 24px;
+}
+
+/* Ensure proper spacing */
+.checkout-page .row.g-4 {
+    --bs-gutter-x: 1.5rem;
+    --bs-gutter-y: 1.5rem;
 }
 
 .checkout-title-section {
@@ -1012,9 +1019,9 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .payment-radio {
-        display: none;
-    }
-    
+    display: none;
+}
+
 .payment-radio:checked + .payment-label {
     border-color: #003366;
     background-color: #e3f2fd;
@@ -1036,6 +1043,25 @@ document.addEventListener('DOMContentLoaded', function() {
     color: #003366;
 }
 
+/* Payment Section */
+.payment-section {
+    background: white;
+    border-radius: 8px;
+    padding: 28px;
+    margin-bottom: 16px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1c1d1f;
+    margin-bottom: 20px;
+}
+
+.section-title i {
+    color: #003366;
+}
+
 /* Payment form visibility is controlled by inline styles, so no CSS needed */
 
 .benefit-item {
@@ -1053,14 +1079,18 @@ document.addEventListener('DOMContentLoaded', function() {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     position: sticky;
     top: 20px;
+    height: fit-content;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
 }
 
 .order-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding: 15px 0;
     border-bottom: 1px solid #eee;
+    gap: 12px;
 }
 
 .order-item:last-of-type {
@@ -1112,21 +1142,41 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 @media (max-width: 991.98px) {
+    /* Réduire les paddings et margins sur tablette - style analytics */
     .checkout-page {
         padding-bottom: 70px;
     }
     
+    .checkout-wrapper {
+        padding: 0 1rem;
+    }
+    
+    .checkout-page .checkout-wrapper {
+        padding: 1rem;
+    }
+    
+    .checkout-header {
+        padding: 0.5rem 0;
+        margin-bottom: 0.5rem;
+    }
+    
     /* Colonnes s'empilent sur tablette */
-    .row > .col-lg-8,
-    .row > .col-lg-4 {
-        width: 100%;
-        max-width: 100%;
-        flex: 0 0 100%;
+    .row.g-4 {
+        margin: 0;
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    
+    .row.g-4 > .col-12 {
+        padding-left: 0;
+        padding-right: 0;
     }
     
     .order-summary-card {
         position: relative;
-        margin-top: 30px;
+        margin-top: 0;
+        margin-bottom: 0.25rem;
+        padding: 0.5rem;
         top: 0;
     }
     
@@ -1134,47 +1184,65 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 13px;
     }
     
-    /* Réduire drastiquement le padding du wrapper principal */
-    .checkout-page .checkout-wrapper {
-        padding: 5px 20px !important;
-    }
-    
     /* Progress section padding sur tablette */
     .checkout-progress {
         background: white;
         border-radius: 8px;
-        padding: 15px;
-        margin: 0 0 15px 0;
+        padding: 0.5rem 0.75rem;
+        margin: 0 0 0.25rem 0;
     }
     
-    .checkout-progress.mb-5 {
-        margin-bottom: 15px !important;
+    .checkout-progress.mb-4 {
+        margin-bottom: 0.25rem !important;
     }
     
     .progress-steps {
         padding: 0 10px;
     }
+    
+    .payment-section {
+        background: white;
+        border-radius: 8px;
+        padding: 0.5rem;
+        margin-bottom: 0.125rem;
+    }
+    
+    /* Réduire les margins entre les colonnes */
+    .row.g-4 > .col-12 {
+        margin-bottom: 0.25rem;
+    }
+    
+    .section-title {
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-section {
+        padding: 0.5rem;
+    }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
+    /* Réduire encore plus les paddings et margins sur mobile - style analytics */
     .checkout-wrapper {
-        padding: 0 16px !important;
+        padding: 0 0.75rem !important;
         max-width: 100%;
     }
     
-    /* Réduire drastiquement le padding du wrapper principal */
     .checkout-page .checkout-wrapper {
-        padding: 5px 16px !important;
+        padding: 0.75rem !important;
     }
     
     /* Header responsive */
     .checkout-header {
-        padding: 20px 0;
+        padding: 0.375rem 0;
+        margin-bottom: 0.5rem;
     }
     
     .checkout-header .checkout-wrapper {
         flex-direction: column;
-        gap: 15px;
+        gap: 12px;
+        padding: 0 0.5rem;
     }
     
     .checkout-title-section {
@@ -1182,7 +1250,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .checkout-title {
-        font-size: 24px;
+        font-size: 22px;
+        margin-bottom: 4px;
     }
     
     .checkout-subtitle {
@@ -1192,161 +1261,128 @@ document.addEventListener('DOMContentLoaded', function() {
     .continue-shopping-btn {
         width: 100%;
         justify-content: center;
+        padding: 10px 16px;
+        font-size: 13px;
     }
     
     /* Progress responsive */
     .checkout-progress {
-        margin: 0 0 15px 0 !important;
+        margin: 0 0 0.25rem 0 !important;
         background: white;
         border-radius: 8px;
-        padding: 15px;
+        padding: 0.375rem 0.5rem;
     }
     
-    /* Désactiver le margin-bottom Bootstrap sur mobile */
-    .checkout-progress.mb-5 {
-        margin-bottom: 15px !important;
+    .checkout-progress.mb-4 {
+        margin-bottom: 0.25rem !important;
     }
     
     .progress-steps {
-        min-width: 100%;
-        gap: 5px;
-        padding: 0 10px;
+        width: 100%;
+        gap: 4px;
+        padding: 0 5px;
     }
     
     .step {
-        min-width: 70px;
+        min-width: 60px;
         flex: 0 0 auto;
     }
     
     .step-circle {
-        width: 35px;
-        height: 35px;
+        width: 32px;
+        height: 32px;
     }
     
     .step-number {
-        font-size: 13px;
+        font-size: 12px;
     }
     
     .step-check {
-        font-size: 14px;
+        font-size: 12px;
     }
     
     .step-label {
-        font-size: 10px;
-        margin-top: 5px;
+        font-size: 9px;
+        margin-top: 4px;
+        line-height: 1.2;
     }
     
     .step-line {
-        margin: -15px 3px;
+        margin: -14px 2px;
         height: 2px;
     }
     
     /* Colonnes responsive */
-    .row {
+    .row.g-4 {
         margin: 0;
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
     }
     
-    .row > .col-lg-8,
-    .row > .col-lg-4 {
-        width: 100% !important;
-        max-width: 100% !important;
-        flex: 0 0 100% !important;
+    .row.g-4 > .col-12 {
         padding-left: 0 !important;
         padding-right: 0 !important;
+        margin-bottom: 0.25rem;
+    }
+    
+    .row.g-4 > .col-12:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* Order summary en premier sur mobile */
+    .order-1 {
+        order: 1 !important;
+    }
+    
+    .order-2 {
+        order: 2 !important;
     }
     
     /* Payment section responsive */
     .payment-section {
-        padding: 15px 0;
         background: white;
         border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
+        padding: 0.375rem;
+        margin-bottom: 0.125rem;
     }
     
     .section-title {
         font-size: 16px;
-        margin-bottom: 20px;
+        margin-bottom: 0.5rem;
+        padding: 0.375rem 0.5rem;
     }
     
-    .payment-methods {
-        margin-bottom: 20px !important;
-    }
-    
-    .payment-methods .row {
-        margin: 0;
-    }
-    
-    .payment-methods .row > .col-md-6 {
-        padding: 0;
-        margin-bottom: 12px;
-    }
-    
-    .payment-option {
-        margin-bottom: 0;
-        padding: 15px;
-        width: 100%;
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
-    }
-    
-    .payment-option:hover {
-        border-color: #003366;
-        background-color: #f8f9fa;
-    }
-    
-    .payment-label {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
-    .payment-info {
-        text-align: center;
-    }
-    
-    .payment-info h6 {
-        font-size: 15px;
-        margin-bottom: 4px;
-    }
-    
-    .payment-info p {
-        font-size: 12px;
-        margin: 0;
-    }
-    
-    .payment-icon {
-        font-size: 1.8rem;
+    .section-title i {
+        font-size: 16px;
     }
     
     /* Form responsive */
-    .payment-forms {
-        margin-bottom: 20px;
-    }
-    
-    
     .form-section {
-        padding: 0;
+        padding: 0.375rem;
     }
-    
-    .form-title {
-        font-size: 16px;
-        margin-bottom: 15px;
+
+    .form-section .row.g-3 {
+        --bs-gutter-x: 0.75rem;
+        --bs-gutter-y: 0.75rem;
     }
     
     .form-section .row {
         margin: 0;
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
     }
     
-    .form-section .row > .col-md-6 {
-        padding: 0;
-        margin-bottom: 15px;
+    .form-section .row > [class*="col-"] {
+        padding-left: calc(var(--bs-gutter-x) * 0.5);
+        padding-right: calc(var(--bs-gutter-x) * 0.5);
+        margin-bottom: 0;
     }
     
     .form-label {
         font-size: 14px;
         margin-bottom: 6px;
         display: block;
+        font-weight: 500;
     }
     
     .form-control,
@@ -1355,120 +1391,144 @@ document.addEventListener('DOMContentLoaded', function() {
         padding: 10px 12px;
         width: 100%;
         max-width: 100%;
+        border-radius: 6px;
+    }
+    
+    .form-select.form-select-sm {
+        font-size: 13px;
+        padding: 6px 10px;
     }
     
     .form-text {
         font-size: 12px;
+        margin-top: 4px;
+    }
+    
+    .invalid-feedback {
+        font-size: 12px;
+        margin-top: 4px;
     }
     
     .alert {
-        padding: 12px 15px;
+        padding: 12px 14px;
         font-size: 13px;
-        margin-bottom: 15px !important;
+        margin-bottom: 0.75rem !important;
+        border-radius: 6px;
     }
     
     .alert i {
-        font-size: 14px;
+        font-size: 13px;
     }
     
-    /* Billing section responsive */
-    .billing-section {
-        margin-top: 20px;
-        padding: 15px;
-        background: #f8f9fa;
-        border-radius: 8px;
+    /* Input group responsive */
+    .input-group {
+        flex-wrap: nowrap;
     }
     
-    .billing-section .row {
-        margin: 0;
+    .input-group .form-control {
+        flex: 1;
+        min-width: 0;
     }
     
-    .billing-section .row > div {
-        padding: 0;
-        margin-bottom: 15px;
+    .input-group .btn {
+        white-space: nowrap;
+        padding: 10px 14px;
+        font-size: 13px;
     }
     
     /* Terms section responsive */
     .terms-section {
-        margin-top: 20px;
-    }
-    
-    .terms-section .form-check {
-        padding-left: 0;
+        margin-top: 0.75rem;
     }
     
     .terms-section .form-check-label {
         font-size: 13px;
         line-height: 1.4;
-        padding-left: 25px;
     }
     
     /* Payment actions responsive */
     .payment-actions {
-        margin-top: 20px;
-    }
-    
-    .payment-actions .row {
-        margin: 0;
+        margin-top: 0.75rem;
     }
     
     .btn-lg {
         padding: 14px 20px;
         font-size: 15px;
         width: 100%;
+        border-radius: 6px;
     }
     
     /* Order summary responsive */
     .order-summary-card {
         position: relative !important;
-        margin-top: 30px;
-        padding: 16px;
+        margin-top: 0;
+        margin-bottom: 0.25rem;
+        padding: 0.375rem;
         border-radius: 8px;
         top: 0 !important;
     }
     
     .summary-title {
         font-size: 16px;
-        margin-bottom: 15px !important;
+        margin-bottom: 0.75rem !important;
+        padding: 0.375rem 0.5rem;
     }
     
     .order-items {
-        max-height: 250px;
+        max-height: 200px;
         overflow-y: auto;
+        margin-bottom: 0.5rem;
+        padding: 0 0.375rem;
     }
     
     .order-item {
-        padding: 12px 0;
+        padding: 0.5rem 0;
         font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
     }
     
-    .item-info {
+    .order-item .item-info {
         flex: 1;
         min-width: 0;
+        width: 100%;
+    }
+    
+    .order-item .item-price {
+        font-size: 14px;
+        flex-shrink: 0;
+        align-self: flex-end;
+        font-weight: 700;
     }
     
     .item-title {
         font-size: 13px;
         line-height: 1.3;
         word-wrap: break-word;
+        margin-bottom: 4px;
     }
     
     .item-instructor {
         font-size: 11px;
-    }
-    
-    .item-price {
-        font-size: 14px;
-        flex-shrink: 0;
+        margin: 0;
     }
     
     .order-total {
-        font-size: 18px;
-        padding-top: 12px;
+        font-size: 16px;
+        padding-top: 0.5rem;
         border-top: 2px solid #003366;
+        margin-top: 0.5rem;
+        padding-left: 0.375rem;
+        padding-right: 0.375rem;
     }
     
     .order-total .d-flex {
+        font-size: 16px;
+        align-items: center;
+    }
+    
+    .order-total .text-primary {
         font-size: 18px;
     }
 }
@@ -1479,7 +1539,9 @@ document.addEventListener('DOMContentLoaded', function() {
     display: grid !important; /* forcer sur .d-flex */
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
+    margin-bottom: 0;
 }
+
 .provider-card {
     display: flex;
     align-items: center;
@@ -1495,49 +1557,96 @@ document.addEventListener('DOMContentLoaded', function() {
     min-height: 72px; /* taille uniforme */
     width: 100%;
 }
+
 .provider-card:hover {
     border-color: #003366;
     background: #f3f8ff;
 }
+
 .provider-card.active {
     border-color: #003366;
     box-shadow: 0 0 0 3px rgba(0,51,102,0.1);
     background: #eaf2ff;
 }
+
+.provider-card .provider-logo {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .provider-card .provider-logo img {
     height: 44px; /* logo plus grand */
     width: auto;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.provider-card .provider-name {
+    font-weight: 600;
+    color: #003366;
+    font-size: 14px;
+    line-height: 1.3;
+    word-wrap: break-word;
 }
 
 /* Optimisations mobile pour la liste des opérateurs */
-@media (max-width: 576px) {
-    /* Deux colonnes compactes sur mobile standard */
+@media (max-width: 768px) {
     #providers {
         display: grid !important;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px !important;
     }
+    
     .provider-card {
         width: 100%;
         min-width: unset;
-        min-height: 80px;
-        padding: 12px;
-        border-radius: 10px;
+        min-height: 70px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        gap: 10px;
     }
+    
     .provider-card .provider-logo img {
-        height: 48px;
+        height: 40px;
     }
+    
     .provider-card .provider-name {
         font-size: 13px;
         line-height: 1.2;
     }
 }
 
+@media (max-width: 480px) {
+    #providers {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px !important;
+    }
+    
+    .provider-card {
+        min-height: 65px;
+        padding: 8px 10px;
+        gap: 8px;
+    }
+    
+    .provider-card .provider-logo img {
+        height: 36px;
+    }
+    
+    .provider-card .provider-name {
+        font-size: 12px;
+    }
+}
+
 @media (max-width: 380px) {
     /* Une colonne pleine largeur pour très petits écrans */
+    #providers {
+        grid-template-columns: 1fr !important;
+    }
+    
     .provider-card {
-        flex: 0 0 100%;
-        min-height: 84px;
+        min-height: 70px;
     }
 }
 
@@ -1547,64 +1656,88 @@ document.addEventListener('DOMContentLoaded', function() {
     grid-template-columns: auto 1fr; /* checkbox + label prend tout l'espace restant */
     column-gap: 10px;
     align-items: start;
+    margin: 0;
 }
+
 .terms-section .form-check-input {
     margin-top: 2px;
     flex: 0 0 auto; /* ne pas s'étirer */
+    width: 1.25em;
+    height: 1.25em;
 }
+
 .terms-section .form-check-label {
     flex: 1; /* occuper toute la largeur disponible */
     white-space: normal; /* autoriser le retour à la ligne */
     word-break: break-word;
     margin: 0; /* supprimer toute marge par défaut */
+    cursor: pointer;
 }
+
 .terms-section .invalid-feedback {
     grid-column: 1 / -1; /* occupe toute la largeur sous la ligne */
     margin-top: 4px;
+    display: block;
 }
+
 .terms-section .form-check-label a {
     white-space: normal;
+    text-decoration: underline;
 }
-@media (max-width: 576px) {
+
+.terms-section .form-check-label a:hover {
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
     .terms-section .form-check-label {
-        font-size: 14px;
-        line-height: 1.35;
+        font-size: 13px;
+        line-height: 1.4;
     }
+    
     .terms-section .form-check-input {
-        transform: scale(1.05);
+        transform: scale(1.1);
+        margin-top: 3px;
     }
-    /* Éviter que la checkbox touche les bords de l'écran */
-    .terms-section {
-        padding-left: 6px;
-        padding-right: 6px;
-    }
-    /* Harmoniser l'alignement avec les autres contrôles */
+    
     .terms-section .form-check {
-        grid-template-columns: auto 1fr; /* largeur auto selon la checkbox */
-        column-gap: 4px; /* réduire encore l'espace */
+        column-gap: 8px;
     }
-    .terms-section .form-check-input {
-        margin-left: 0;
-        margin-right: 0;
-    }
-}
-.provider-card .provider-name {
-    font-weight: 600;
-    color: #003366;
 }
 
 @media (max-width: 480px) {
-    .checkout-wrapper {
-        padding: 0 12px !important;
+    .terms-section .form-check-label {
+        font-size: 12px;
+        line-height: 1.35;
     }
     
-    /* Réduire encore plus le padding du wrapper principal */
+    .terms-section .form-check-input {
+        transform: scale(1.05);
+        margin-top: 2px;
+    }
+    
+    .terms-section .form-check {
+        column-gap: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Styles pour très petits écrans - style analytics */
+    .checkout-wrapper {
+        padding: 0 0.5rem !important;
+    }
+    
     .checkout-page .checkout-wrapper {
-        padding: 3px 12px !important;
+        padding: 0.5rem !important;
     }
     
     .checkout-header {
-        padding: 15px 0;
+        padding: 0.375rem 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .checkout-header .checkout-wrapper {
+        padding: 0 0.5rem;
     }
     
     .checkout-title {
@@ -1617,108 +1750,122 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .continue-shopping-btn {
         padding: 10px 14px;
-        font-size: 13px;
+        font-size: 12px;
     }
     
     .checkout-progress {
-        margin: 0 0 12px 0 !important;
-        padding: 12px;
+        margin: 0 0 0.25rem 0 !important;
+        padding: 0.375rem 0.5rem;
     }
     
-    .checkout-progress.mb-5 {
-        margin-bottom: 12px !important;
+    .checkout-progress.mb-4 {
+        margin-bottom: 0.25rem !important;
     }
     
     .progress-steps {
-        padding: 0 5px;
+        padding: 0 3px;
+        gap: 2px;
     }
     
     .step {
-        min-width: 65px;
+        min-width: 55px;
     }
     
     .step-circle {
-        width: 35px;
-        height: 35px;
+        width: 30px;
+        height: 30px;
     }
     
     .step-number {
-        font-size: 13px;
-    }
-    
-    .step-label {
-        font-size: 10px;
-        margin-top: 4px;
-    }
-    
-    .step-line {
-        margin: -12px 3px;
-        height: 2px;
-    }
-    
-    .payment-option {
-        padding: 12px;
-        margin-bottom: 12px;
-    }
-    
-    .payment-label {
-        padding: 8px;
-    }
-    
-    .payment-info h6 {
-        font-size: 13px;
-    }
-    
-    .payment-info p {
         font-size: 11px;
     }
     
-    .payment-icon {
-        font-size: 1.5rem;
+    .step-check {
+        font-size: 11px;
+    }
+    
+    .step-label {
+        font-size: 8px;
+        margin-top: 3px;
+    }
+    
+    .step-line {
+        margin: -12px 1px;
+        height: 2px;
+    }
+    
+    .payment-section {
+        padding: 0.375rem;
+        margin-bottom: 0.125rem;
     }
     
     .section-title {
-        font-size: 14px;
+        font-size: 15px;
+        margin-bottom: 0.5rem;
+        padding: 0.375rem 0.5rem;
     }
     
     .section-title i {
-        font-size: 14px;
+        font-size: 15px;
     }
     
-    .form-title {
-        font-size: 14px;
+    .form-section {
+        padding: 0.375rem;
     }
     
     .form-label {
         font-size: 13px;
+        margin-bottom: 5px;
     }
     
     .form-control,
     .form-select {
         font-size: 13px;
-        padding: 8px 10px;
+        padding: 9px 11px;
+    }
+    
+    .form-select.form-select-sm {
+        font-size: 12px;
+        padding: 5px 8px;
+    }
+    
+    .form-text {
+        font-size: 11px;
+    }
+    
+    .invalid-feedback {
+        font-size: 11px;
     }
     
     .alert {
         padding: 10px 12px;
-        font-size: 13px;
+        font-size: 12px;
+        margin-bottom: 0.5rem !important;
     }
     
-    .alert i {
-        font-size: 13px;
+    .input-group .btn {
+        padding: 9px 12px;
+        font-size: 12px;
     }
     
     .order-summary-card {
-        padding: 12px;
+        padding: 0.375rem;
+        margin-bottom: 0.25rem;
     }
     
     .summary-title {
-        font-size: 14px;
+        font-size: 15px;
+        margin-bottom: 0.5rem !important;
+        padding: 0.375rem 0.5rem;
+    }
+    
+    .order-items {
+        max-height: 180px;
+        padding: 0 0.375rem;
     }
     
     .order-item {
-        padding: 10px 0;
-        flex-wrap: wrap;
+        padding: 0.5rem 0;
     }
     
     .item-title {
@@ -1732,26 +1879,35 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .item-price {
         font-size: 13px;
-        margin-top: 5px;
     }
     
     .order-total {
-        font-size: 16px;
-        padding-top: 10px;
+        font-size: 15px;
+        padding-top: 0.5rem;
+        padding-left: 0.375rem;
+        padding-right: 0.375rem;
+    }
+    
+    .order-total .text-primary {
+        font-size: 17px;
+    }
+    
+    .terms-section {
+        margin-top: 0.5rem;
     }
     
     .terms-section .form-check-label {
         font-size: 12px;
+        line-height: 1.35;
     }
     
-    #payButton {
-        font-size: 14px;
-        padding: 14px 16px;
+    .payment-actions {
+        margin-top: 0.5rem;
     }
     
-    .btn-primary.btn-lg {
+    .btn-lg {
         font-size: 14px;
-        padding: 14px 16px;
+        padding: 13px 18px;
     }
 }
 </style>

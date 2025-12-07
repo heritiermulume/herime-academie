@@ -88,95 +88,89 @@
                         </div>
                     </div>
 
-                    <!-- Grille des catégories -->
-                    <div class="row g-3">
-                        @forelse($categories as $category)
-                        <div class="col-md-6 col-lg-4">
-                            <div class="category-card-modern h-100">
-                                <div class="category-card-modern__badge" style="--category-color: {{ $category->color ?? '#003366' }};">
-                                    <span>{{ strtoupper(Str::substr($category->name, 0, 1)) }}</span>
-                                </div>
-                                <div class="category-card-modern__header">
-                                    <div class="category-card-modern__icon" style="background: {{ $category->color ?? '#003366' }};">
-                                        @if($category->icon)
-                                            <i class="{{ $category->icon }}"></i>
-                                        @else
-                                            <i class="fas fa-tag"></i>
-                                        @endif
-                                    </div>
-                                    <div class="category-card-modern__title">
-                                        <h5>{{ $category->name }}</h5>
-                                        <p>{{ $category->description ?? 'Aucune description pour cette catégorie.' }}</p>
-                                    </div>
-                                    <div class="dropdown">
-                                        <button class="category-card-modern__menu" type="button" data-bs-toggle="dropdown">
-                                            <i class="fas fa-ellipsis-h"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="editCategory({{ $category->id }})">
-                                                    <i class="fas fa-edit me-2"></i>Modifier
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="deleteCategory({{ $category->id }})">
-                                                    <i class="fas fa-trash me-2"></i>Supprimer
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                <div class="category-card-modern__metrics">
-                                    <div>
-                                        <span class="category-card-modern__metric-label">Cours associés</span>
-                                        <span class="category-card-modern__metric-value">{{ $category->courses_count ?? 0 }}</span>
-                                    </div>
-                                    <div>
-                                        <span class="category-card-modern__metric-label">Statut</span>
-                                        <span class="category-card-modern__metric-badge {{ $category->is_active ? 'is-active' : 'is-inactive' }}">
-                                            {{ $category->is_active ? 'Active' : 'Inactive' }}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span class="category-card-modern__metric-label">Visibilité</span>
-                                        <span class="category-card-modern__metric-value">
-                                            @if($category->is_active)
-                                                <i class="fas fa-eye text-success"></i>
-                                            @else
-                                                <i class="fas fa-eye-slash text-muted"></i>
-                                            @endif
-                                        </span>
-                                    </div>
-                                </div>
-                                @if($category->image)
-                                <div class="category-card-modern__media">
-                                    <img src="{{ \App\Helpers\FileHelper::url($category->image, 'categories') }}" alt="{{ $category->name }}">
-                                </div>
-                                @endif
-                                <div class="category-card-modern__footer">
-                                    <div>
-                                        <span class="category-card-modern__footer-label">Créée le</span>
-                                        <strong>{{ $category->created_at->format('d/m/Y') }}</strong>
-                                    </div>
-                                    <div class="category-card-modern__tags">
-                                        <span class="badge rounded-pill text-bg-light" title="#{{ $category->slug }}">
-                                            #{{ Str::limit($category->slug, 15) }}
-                                        </span>
-                                        <span class="badge rounded-pill text-bg-light">
-                                            Ordre : {{ $category->sort_order ?? 0 }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                    <!-- Tableau des catégories -->
+                    <div class="admin-table mt-4">
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Catégorie</th>
+                                        <th>Couleur / Icône</th>
+                                        <th>Cours associés</th>
+                                        <th>Statut</th>
+                                        <th>Date de création</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($categories as $category)
+                                        <tr>
+                                            <td style="min-width: 250px;">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <div class="category-icon-small" style="background: {{ $category->color ?? '#003366' }};">
+                                                        @if($category->icon)
+                                                            <i class="{{ $category->icon }}"></i>
+                                                        @else
+                                                            <i class="fas fa-tag"></i>
+                                                        @endif
+                                                    </div>
+                                                    <div style="min-width: 0; flex: 1;">
+                                                        <div class="fw-semibold text-truncate d-block" title="{{ $category->name }}">{{ $category->name }}</div>
+                                                        <div class="text-muted small text-truncate d-block" title="{{ $category->description ?? 'Aucune description' }}">
+                                                            {{ $category->description ? Str::limit($category->description, 50) : 'Aucune description' }}
+                                                        </div>
+                                                        <div class="text-muted small mt-1">
+                                                            <span class="badge bg-light text-dark">#{{ $category->slug }}</span>
+                                                            @if($category->sort_order)
+                                                                <span class="badge bg-light text-dark">Ordre: {{ $category->sort_order }}</span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="color-preview" style="background-color: {{ $category->color ?? '#003366' }}; width: 24px; height: 24px; border-radius: 4px; border: 1px solid #dee2e6;"></div>
+                                                    @if($category->icon)
+                                                        <span class="text-muted small">{{ Str::limit($category->icon, 20) }}</span>
+                                                    @else
+                                                        <span class="text-muted small">—</span>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="admin-chip admin-chip--info">{{ $category->courses_count ?? 0 }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ $category->is_active ? 'success' : 'secondary' }}">
+                                                    {{ $category->is_active ? 'Active' : 'Inactive' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="text-muted small">{{ $category->created_at->format('d/m/Y') }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="d-flex gap-2 justify-content-center">
+                                                    <button type="button" class="btn btn-primary btn-sm" onclick="editCategory({{ $category->id }})" title="Modifier">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteCategory({{ $category->id }})" title="Supprimer">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4">
+                                                <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                                                <p class="text-muted">Aucune catégorie trouvée</p>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
-                        @empty
-                        <div class="col-12">
-                            <div class="text-center py-5">
-                                <i class="fas fa-tags fa-3x text-muted mb-3"></i>
-                                <p class="text-muted">Aucune catégorie trouvée</p>
-                            </div>
-                        </div>
-                        @endforelse
                     </div>
 
                     <!-- Pagination -->
@@ -434,244 +428,46 @@ function toggleCategorySubmitLabels(mode) {
 
 @push('styles')
 <style>
-.category-card-modern {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    background: #ffffff;
-    border-radius: 1.25rem;
-    padding: 1.125rem;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 22px 45px -30px rgba(15, 23, 42, 0.35);
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
-    overflow: hidden;
-    height: 100%;
-}
-.category-card-modern::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.06) 100%);
-    pointer-events: none;
-}
-.category-card-modern:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 30px 60px -30px rgba(15, 23, 42, 0.45);
-}
-.category-card-modern__badge {
-    position: absolute;
-    top: -28px;
-    right: -28px;
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(circle at center, var(--category-color) 0%, rgba(15, 23, 42, 0) 70%);
-    opacity: 0.22;
-    pointer-events: none;
-}
-.category-card-modern__badge span {
-    position: absolute;
-    bottom: 28px;
-    right: 35px;
-    font-size: 2.4rem;
-    font-weight: 800;
-    color: rgba(15, 23, 42, 0.08);
-    letter-spacing: -0.04em;
-}
-.category-card-modern__header {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-start;
-    flex-wrap: nowrap;
-}
-.category-card-modern__icon {
-    flex: 0 0 44px;
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+.category-icon-small {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    font-size: 1.15rem;
-    box-shadow: 0 12px 25px -18px rgba(15, 23, 42, 0.65);
-}
-.category-card-modern__title {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-}
-.category-card-modern__title h5 {
-    margin: 0;
-    font-weight: 700;
-    color: #0f172a;
     font-size: 1rem;
-    line-height: 1.3;
-    word-wrap: break-word;
-}
-.category-card-modern__title p {
-    margin: 0;
-    color: #64748b;
-    font-size: 0.8rem;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.category-card-modern__menu {
-    border: none;
-    background: rgba(148, 163, 184, 0.18);
-    color: #475569;
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    margin-left: auto;
-    flex-shrink: 0;
-    font-size: 0.875rem;
-}
-.category-card-modern__menu:hover {
-    background: rgba(15, 23, 42, 0.1);
-    color: #1f2937;
-}
-.category-card-modern__metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 0.65rem;
-    padding: 0.65rem;
-    border-radius: 1rem;
-    background: rgba(241, 245, 249, 0.6);
-}
-.category-card-modern__metrics > div {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.65rem 0.6rem;
-    background: rgba(148, 163, 184, 0.08);
-    border-radius: 0.9rem;
-    border: 1px solid rgba(148, 163, 184, 0.12);
-    min-height: 100%;
-}
-.category-card-modern__metrics > div:nth-child(odd) {
-    background: rgba(148, 163, 184, 0.12);
-}
-.category-card-modern__metric-label {
-    display: block;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    color: #94a3b8;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.25rem;
-}
-.category-card-modern__metric-value {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: #0f172a;
-}
-.category-card-modern__metric-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    border-radius: 999px;
-    padding: 0.35rem 0.85rem;
-    background: rgba(15, 23, 42, 0.06);
-    color: #0f172a;
-}
-.category-card-modern__metric-badge.is-active {
-    background: rgba(34, 197, 94, 0.14);
-    color: #15803d;
-}
-.category-card-modern__metric-badge.is-inactive {
-    background: rgba(148, 163, 184, 0.18);
-    color: #475569;
-}
-.category-card-modern__media {
-    border-radius: 1.2rem;
-    overflow: hidden;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    max-height: 120px;
-}
-.category-card-modern__media img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.category-card-modern__footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px dashed rgba(148, 163, 184, 0.4);
-    flex-wrap: wrap;
-}
-.category-card-modern__footer > div:first-child {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-    min-width: 0;
     flex-shrink: 0;
 }
-.category-card-modern__footer-label {
-    font-size: 0.6rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    line-height: 1.1;
-    display: block;
-}
-.category-card-modern__footer strong {
-    font-size: 0.65rem;
-    color: #334155;
-    font-weight: 600;
-    line-height: 1.2;
-    display: block;
-}
-.category-card-modern__tags {
-    display: flex;
-    gap: 0.3rem;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    flex: 1 1 auto;
-    min-width: 0;
-}
-.category-card-modern__tags .badge {
-    background: rgba(15, 23, 42, 0.05);
-    color: #334155;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    font-weight: 500;
-    font-size: 0.6rem;
-    padding: 0.15rem 0.4rem;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100px;
+
+.color-preview {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Styles responsives pour les paddings et margins */
 @media (max-width: 991.98px) {
-    /* Réduire les paddings et margins sur tablette */
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .admin-panel {
         margin-bottom: 1rem;
     }
     
-    /* Padding uniquement pour la première section principale */
     .admin-panel--main .admin-panel__body {
         padding: 1rem !important;
     }
     
-    /* Pas de padding pour les autres sections */
     .admin-panel:not(.admin-panel--main) .admin-panel__body {
         padding: 0 !important;
     }
@@ -692,46 +488,31 @@ function toggleCategorySubmitLabels(mode) {
     .admin-stat-card {
         padding: 0.75rem 0.875rem !important;
     }
-    
-    .admin-panel__body .row.g-4 {
-        --bs-gutter-x: 0.5rem;
-        --bs-gutter-y: 0.5rem;
-    }
-    
-    .admin-panel__body .row.g-3 {
-        --bs-gutter-x: 0.375rem;
-        --bs-gutter-y: 0.375rem;
-    }
-    
-    .admin-panel__body .row.mb-4 {
-        margin-bottom: 0.5rem !important;
-    }
-    
-    .admin-panel__body .row.mb-3 {
-        margin-bottom: 0.5rem !important;
-    }
-    
-    .admin-panel__body .row.mt-2 {
-        margin-top: 0.375rem !important;
-    }
-    
-    .category-card-modern {
-        padding: 1.25rem;
-    }
 }
 
 @media (max-width: 767.98px) {
-    /* Réduire encore plus les paddings et margins sur mobile */
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     .admin-panel {
         margin-bottom: 0.75rem;
     }
     
-    /* Padding uniquement pour la première section principale */
     .admin-panel--main .admin-panel__body {
         padding: 0.75rem !important;
     }
     
-    /* Pas de padding pour les autres sections */
     .admin-panel:not(.admin-panel--main) .admin-panel__body {
         padding: 0 !important;
     }
@@ -751,51 +532,6 @@ function toggleCategorySubmitLabels(mode) {
     
     .admin-stat-card {
         padding: 0.5rem 0.625rem !important;
-    }
-    
-    .admin-panel__body .row.g-4 {
-        --bs-gutter-x: 0.375rem;
-        --bs-gutter-y: 0.375rem;
-    }
-    
-    .admin-panel__body .row.g-3 {
-        --bs-gutter-x: 0.25rem;
-        --bs-gutter-y: 0.25rem;
-    }
-    
-    .admin-panel__body .row.mb-4 {
-        margin-bottom: 0.5rem !important;
-    }
-    
-    .admin-panel__body .row.mb-3 {
-        margin-bottom: 0.375rem !important;
-    }
-    
-    .admin-panel__body .row.mt-2 {
-        margin-top: 0.375rem !important;
-    }
-    
-    .category-card-modern {
-        padding: 1rem;
-    }
-    
-    .category-card-modern__metrics {
-        grid-template-columns: 1fr;
-        gap: 0.75rem;
-    }
-    
-    .category-card-modern__badge {
-        width: 90px;
-        height: 90px;
-    }
-    
-    .category-card-modern__badge span {
-        font-size: 2.2rem;
-    }
-    
-    .category-card-modern__footer {
-        flex-direction: column;
-        align-items: flex-start;
     }
 }
 </style>

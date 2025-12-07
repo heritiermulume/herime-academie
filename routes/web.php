@@ -395,6 +395,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/ambassadors/applications/{application}/status', [App\Http\Controllers\Admin\AmbassadorController::class, 'updateApplicationStatus'])
             ->middleware('sso.validate')
             ->name('ambassadors.applications.update-status');
+        Route::delete('/ambassadors/applications/{application}', [App\Http\Controllers\Admin\AmbassadorController::class, 'destroyApplication'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.applications.destroy');
         
         // Ambassadors management
         Route::get('/ambassadors', [App\Http\Controllers\Admin\AmbassadorController::class, 'index'])->name('ambassadors.index');
@@ -405,6 +408,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/ambassadors/{ambassador}/generate-promo-code', [App\Http\Controllers\Admin\AmbassadorController::class, 'generatePromoCode'])
             ->middleware('sso.validate')
             ->name('ambassadors.generate-promo-code');
+        Route::delete('/ambassadors/{ambassador}', [App\Http\Controllers\Admin\AmbassadorController::class, 'destroy'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.destroy');
         
         // Ambassador Commissions management
         Route::get('/ambassadors/commissions', [App\Http\Controllers\Admin\AmbassadorController::class, 'commissions'])->name('ambassadors.commissions');
@@ -451,6 +457,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/announcements', [AdminController::class, 'storeAnnouncement'])
             ->middleware('sso.validate')
             ->name('announcements.store');
+        Route::get('/announcements/{announcement}/preview', [AdminController::class, 'previewAnnouncement'])->name('announcements.preview');
         Route::get('/announcements/{announcement}/edit', [AdminController::class, 'editAnnouncement'])->name('announcements.edit');
         Route::put('/announcements/{announcement}', [AdminController::class, 'updateAnnouncement'])
             ->middleware('sso.validate')

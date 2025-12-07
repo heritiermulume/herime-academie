@@ -4,7 +4,7 @@
 @section('admin-title', 'Détails de la commande')
 @section('admin-subtitle', 'Analysez et gérez chaque étape du cycle de vie de la commande')
 @section('admin-actions')
-    <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('admin.orders.index') }}" class="btn btn-light">
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
 @endsection
@@ -193,43 +193,85 @@
                 <div class="admin-panel__body">
                     @php($relItems = $order->orderItems ?? collect())
                     @if($relItems->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Cours</th>
-                                        <th>Quantité</th>
-                                        <th>Prix</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($relItems as $item)
+                        <div class="admin-table">
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
                                         <tr>
-                                            <td>
-                                                <div>
-                                                    <strong>{{ optional($item->course)->title ?? 'Cours supprimé' }}</strong>
-                                                    @if($item->course && $item->course->instructor)
-                                                        <br><small class="text-muted">par {{ $item->course->instructor->name }}</small>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-light text-dark">1</span>
-                                            </td>
-                                            <td class="text-end">
-                                                <div class="fw-bold text-success">
-                                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0, $order->currency) }}
-                                                </div>
-                                                @if($item->course)
-                                                    <a href="{{ route('courses.show', $item->course->slug) }}" class="btn btn-sm btn-outline-primary mt-1" target="_blank">
-                                                        <i class="fas fa-external-link-alt me-1"></i>Voir le cours
-                                                    </a>
-                                                @endif
-                                            </td>
+                                            <th>Cours</th>
+                                            <th>Formateur</th>
+                                            <th>Catégorie</th>
+                                            <th>Prix</th>
+                                            <th class="text-center">Actions</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($relItems as $item)
+                                            <tr>
+                                                <td style="min-width: 280px;">
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        @if($item->course)
+                                                            <img src="{{ $item->course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $item->course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">
+                                                        @else
+                                                            <div class="rounded bg-light d-flex align-items-center justify-content-center" style="width: 64px; height: 48px;">
+                                                                <i class="fas fa-book text-muted"></i>
+                                                            </div>
+                                                        @endif
+                                                        <div>
+                                                            @if($item->course)
+                                                                <a href="{{ route('admin.courses.show', $item->course) }}" class="fw-semibold text-decoration-none text-dark">
+                                                                    {{ $item->course->title }}
+                                                                </a>
+                                                                <div class="text-muted small">{{ Str::limit($item->course->subtitle ?? '', 60) }}</div>
+                                                            @else
+                                                                <div class="fw-semibold text-muted">Cours supprimé</div>
+                                                                <div class="text-muted small">Ce cours n'existe plus dans le système</div>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @if($item->course && $item->course->instructor)
+                                                        <span class="admin-chip">
+                                                            <i class="fas fa-user"></i>{{ $item->course->instructor->name }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted">—</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if($item->course && $item->course->category)
+                                                        <span class="admin-chip admin-chip--info">
+                                                            {{ $item->course->category->name }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted">—</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <div class="fw-bold text-success">
+                                                        {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0, $order->currency) }}
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="d-flex gap-2 justify-content-center">
+                                                        @if($item->course)
+                                                            <a href="{{ route('admin.courses.show', $item->course) }}" class="btn btn-light btn-sm" title="Voir le cours">
+                                                                <i class="fas fa-eye"></i>
+                                                            </a>
+                                                            <a href="{{ route('courses.show', $item->course->slug) }}" class="btn btn-info btn-sm" target="_blank" title="Voir sur le site">
+                                                                <i class="fas fa-external-link-alt"></i>
+                                                            </a>
+                                                        @else
+                                                            <span class="text-muted small">—</span>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     @else
                         <p class="text-muted mb-0">Aucun cours trouvé pour cette commande.</p>
@@ -435,13 +477,24 @@
 
 /* Styles responsives pour les paddings et margins - identiques à analytics */
 @media (max-width: 991.98px) {
-    /* Réduire les paddings et margins sur tablette */
-    .admin-panel {
-        margin-bottom: 1rem;
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
     }
     
     .admin-panel__body {
+        overflow: visible !important;
         padding: 0 !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Réduire les paddings et margins sur tablette */
+    .admin-panel {
+        margin-bottom: 1rem;
     }
     
     .admin-panel__header {
@@ -472,13 +525,24 @@
 }
 
 @media (max-width: 767.98px) {
-    /* Réduire encore plus les paddings et margins sur mobile */
-    .admin-panel {
-        margin-bottom: 0.75rem;
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
     }
     
     .admin-panel__body {
+        overflow: visible !important;
         padding: 1.25rem !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Réduire encore plus les paddings et margins sur mobile */
+    .admin-panel {
+        margin-bottom: 0.75rem;
     }
     
     .admin-panel__header {

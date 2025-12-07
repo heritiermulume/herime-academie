@@ -5,7 +5,7 @@
 @section('admin-subtitle', 'Détails complets de la candidature')
 
 @section('admin-actions')
-    <a href="{{ route('admin.ambassadors.applications') }}" class="admin-btn outline">
+    <a href="{{ route('admin.ambassadors.index', ['tab' => 'applications']) }}" class="btn btn-light">
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
 @endsection
@@ -42,13 +42,23 @@
                     </div>
                 </div>
 
+                <div class="mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="{{ $application->user->avatar_url }}" alt="{{ $application->user->name }}" class="admin-user-avatar-large">
+                        <div>
+                            <h4 class="mb-1">{{ $application->user->name }}</h4>
+                            <p class="text-muted mb-0">{{ $application->user->email }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="info-item">
                             <label class="info-label">
                                 <i class="fas fa-user me-2 text-muted"></i>Nom complet
                             </label>
-                            <div class="info-value">{{ $application->user->name }}</div>
+                            <div class="info-value text-start">{{ $application->user->name }}</div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -56,7 +66,7 @@
                             <label class="info-label">
                                 <i class="fas fa-envelope me-2 text-muted"></i>Email
                             </label>
-                            <div class="info-value">
+                            <div class="info-value text-start">
                                 <a href="mailto:{{ $application->user->email }}">{{ $application->user->email }}</a>
                             </div>
                         </div>
@@ -74,7 +84,7 @@
                             <label class="info-label">
                                 <i class="fas fa-calendar me-2 text-muted"></i>Date de candidature
                             </label>
-                            <div class="info-value">{{ $application->created_at->format('d/m/Y à H:i') }}</div>
+                            <div class="info-value text-start">{{ $application->created_at->format('d/m/Y à H:i') }}</div>
                         </div>
                     </div>
                     @if($application->user->created_at)
@@ -83,7 +93,7 @@
                             <label class="info-label">
                                 <i class="fas fa-user-plus me-2 text-muted"></i>Membre depuis
                             </label>
-                            <div class="info-value">{{ $application->user->created_at->format('d/m/Y') }}</div>
+                            <div class="info-value text-start">{{ $application->user->created_at->format('d/m/Y') }}</div>
                         </div>
                     </div>
                     @endif
@@ -93,7 +103,7 @@
                             <label class="info-label">
                                 <i class="fas fa-user-check me-2 text-muted"></i>Révisé par
                             </label>
-                            <div class="info-value">{{ $application->reviewer->name }}</div>
+                            <div class="info-value text-start">{{ $application->reviewer->name }}</div>
                         </div>
                     </div>
                     @endif
@@ -103,7 +113,7 @@
                             <label class="info-label">
                                 <i class="fas fa-clock me-2 text-muted"></i>Date de révision
                             </label>
-                            <div class="info-value">{{ $application->reviewed_at->format('d/m/Y à H:i') }}</div>
+                            <div class="info-value text-start">{{ $application->reviewed_at->format('d/m/Y à H:i') }}</div>
                         </div>
                     </div>
                     @endif
@@ -125,7 +135,7 @@
                             <label class="info-label">
                                 <i class="fas fa-phone me-2 text-muted"></i>Téléphone
                             </label>
-                            <div class="info-value">{{ $application->phone ?? 'Non renseigné' }}</div>
+                            <div class="info-value text-start">{{ $application->phone ?? 'Non renseigné' }}</div>
                         </div>
                     </div>
                     <div class="col-12">
@@ -133,7 +143,7 @@
                             <label class="info-label">
                                 <i class="fas fa-lightbulb me-2 text-muted"></i>Motivation
                             </label>
-                            <div class="info-value info-text">
+                            <div class="info-value info-text text-start">
                                 {{ $application->motivation ?? 'Non renseigné' }}
                             </div>
                         </div>
@@ -156,7 +166,7 @@
                             <label class="info-label">
                                 <i class="fas fa-chart-line me-2 text-muted"></i>Expérience
                             </label>
-                            <div class="info-value info-text">
+                            <div class="info-value info-text text-start">
                                 {{ $application->experience ?? 'Non renseigné' }}
                             </div>
                         </div>
@@ -166,7 +176,7 @@
                             <label class="info-label">
                                 <i class="fas fa-share-alt me-2 text-muted"></i>Présence sur les réseaux sociaux
                             </label>
-                            <div class="info-value info-text">
+                            <div class="info-value info-text text-start">
                                 {{ $application->social_media_presence ?? 'Non renseigné' }}
                             </div>
                         </div>
@@ -176,7 +186,7 @@
                             <label class="info-label">
                                 <i class="fas fa-users me-2 text-muted"></i>Audience cible
                             </label>
-                            <div class="info-value info-text">
+                            <div class="info-value info-text text-start">
                                 {{ $application->target_audience ?? 'Non renseigné' }}
                             </div>
                         </div>
@@ -199,7 +209,7 @@
                             <label class="info-label">
                                 <i class="fas fa-lightbulb me-2 text-muted"></i>Idées marketing
                             </label>
-                            <div class="info-value info-text">
+                            <div class="info-value info-text text-start">
                                 {{ $application->marketing_ideas ?? 'Non renseigné' }}
                             </div>
                         </div>
@@ -210,14 +220,33 @@
                             <label class="info-label">
                                 <i class="fas fa-file-pdf me-2 text-muted"></i>Document complémentaire
                             </label>
-                            <div class="info-value">
-                                <a href="{{ route('ambassador-application.download-document', $application) }}" 
-                                   class="btn btn-outline-primary btn-sm" 
-                                   target="_blank"
-                                   onclick="event.preventDefault(); window.open(this.href, '_blank');">
-                                    <i class="fas fa-download me-1"></i>Télécharger le document PDF
-                                </a>
-                                <small class="text-muted ms-2 d-block mt-2">({{ basename($application->document_path) }})</small>
+                            <div class="info-value text-start">
+                                <div class="d-flex align-items-center gap-3 p-3 bg-light rounded border">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-file-pdf fa-3x text-danger"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold mb-1">{{ basename($application->document_path) }}</div>
+                                        <small class="text-muted d-block mb-2">Document PDF fourni par le candidat</small>
+                                        <a href="{{ route('ambassador-application.download-document', $application) }}" 
+                                           class="btn btn-outline-primary btn-sm" 
+                                           target="_blank"
+                                           onclick="event.preventDefault(); window.open(this.href, '_blank');">
+                                            <i class="fas fa-download me-1"></i>Télécharger le document
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @else
+                    <div class="col-12">
+                        <div class="info-item">
+                            <label class="info-label">
+                                <i class="fas fa-file-pdf me-2 text-muted"></i>Document complémentaire
+                            </label>
+                            <div class="info-value text-start">
+                                <span class="text-muted">Aucun document fourni</span>
                             </div>
                         </div>
                     </div>
@@ -278,13 +307,17 @@
                         </div>
                     </div>
 
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="admin-btn primary">
-                            <i class="fas fa-save me-2"></i>Mettre à jour le statut
-                        </button>
-                        <a href="{{ route('admin.ambassadors.applications') }}" class="admin-btn outline">
-                            <i class="fas fa-times me-2"></i>Annuler
-                        </a>
+                    <div class="row g-2 mt-4">
+                        <div class="col-6">
+                            <button type="submit" class="btn btn-light btn-primary-light w-100">
+                                <i class="fas fa-save me-2"></i>Mettre à jour
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ route('admin.ambassadors.index', ['tab' => 'applications']) }}" class="btn btn-light btn-secondary-light w-100">
+                                <i class="fas fa-times me-2"></i>Annuler
+                            </a>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -330,6 +363,16 @@
             color: #0f172a;
             font-weight: 500;
             word-break: break-word;
+            text-align: left;
+        }
+
+        .admin-user-avatar-large {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+            box-shadow: 0 6px 12px -6px rgba(15, 23, 42, 0.35);
         }
 
         .info-value a {
@@ -351,6 +394,7 @@
             line-height: 1.7;
             white-space: pre-wrap;
             min-height: 60px;
+            text-align: left;
         }
 
         .admin-card {
@@ -371,6 +415,31 @@
         .form-select-lg {
             font-size: 1rem;
             padding: 0.75rem 1rem;
+        }
+
+        /* Boutons avec style btn-light mais couleurs différentes */
+        .btn-primary-light {
+            background-color: #003366;
+            border-color: #003366;
+            color: #ffffff;
+        }
+
+        .btn-primary-light:hover {
+            background-color: #004080;
+            border-color: #004080;
+            color: #ffffff;
+        }
+
+        .btn-secondary-light {
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
+            color: #6c757d;
+        }
+
+        .btn-secondary-light:hover {
+            background-color: #e9ecef;
+            border-color: #ced4da;
+            color: #495057;
         }
 
         @media (max-width: 768px) {

@@ -117,46 +117,49 @@
             </x-admin.search-panel>
 
             <!-- Tableau des avis -->
-            <div class="card">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
+            <div class="admin-table">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 200px; max-width: 250px;">Étudiant</th>
+                                <th style="min-width: 200px; max-width: 300px;">Cours</th>
+                                <th class="text-center" style="width: 120px; white-space: nowrap;">Note</th>
+                                <th style="min-width: 200px; max-width: 350px;">Commentaire</th>
+                                <th class="text-center" style="width: 120px; white-space: nowrap;">Statut</th>
+                                <th class="text-center" style="width: 120px; white-space: nowrap;">Date</th>
+                                <th class="text-center d-none d-md-table-cell" style="width: 120px;">Actions</th>
+                                <th class="text-center d-md-none" style="width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($reviews as $review)
                                 <tr>
-                                    <th style="min-width: 200px; max-width: 250px;">Étudiant</th>
-                                    <th style="min-width: 200px; max-width: 300px;">Cours</th>
-                                    <th style="width: 120px; text-align: center;">Note</th>
-                                    <th style="min-width: 200px; max-width: 350px;">Commentaire</th>
-                                    <th style="width: 120px; text-align: center;">Statut</th>
-                                    <th style="width: 120px; text-align: center;">Date</th>
-                                    <th style="width: 150px;" class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($reviews as $review)
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="me-2" style="flex-shrink: 0;">
-                                                <img src="{{ $review->user->avatar_url }}" 
-                                                     alt="{{ $review->user->name }}" 
-                                                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; display: block;">
-                                            </div>
-                                            <div style="min-width: 0; flex: 1;">
-                                                <div class="fw-semibold text-truncate" style="max-width: 200px;" title="{{ $review->user->name }}">{{ $review->user->name }}</div>
-                                                <small class="text-muted text-truncate d-block" style="max-width: 200px;" title="{{ $review->user->email }}">{{ $review->user->email }}</small>
+                                    <td style="min-width: 200px; max-width: 250px;">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <img src="{{ $review->user->avatar_url }}" 
+                                                 alt="{{ $review->user->name }}" 
+                                                 class="rounded-circle flex-shrink-0"
+                                                 style="width: 48px; height: 48px; object-fit: cover;">
+                                            <div style="min-width: 0; flex: 1; overflow: hidden;">
+                                                <div class="fw-semibold text-truncate d-block" style="max-width: 100%;" title="{{ $review->user->name }}">{{ $review->user->name }}</div>
+                                                <div class="text-muted small text-truncate d-block" style="max-width: 100%;" title="{{ $review->user->email }}">
+                                                    {{ $review->user->email }}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td>
-                                        <div style="min-width: 0;">
-                                            <div class="fw-semibold text-truncate" style="max-width: 250px;" title="{{ $review->course->title }}">{{ $review->course->title }}</div>
-                                            <small class="text-muted text-truncate d-block" style="max-width: 250px;" title="Par {{ $review->course->instructor->name }}">Par {{ $review->course->instructor->name }}</small>
+                                    <td style="min-width: 200px; max-width: 300px;">
+                                        <div style="min-width: 0; overflow: hidden;">
+                                            <div class="fw-semibold text-truncate d-block" style="max-width: 100%;" title="{{ $review->course->title }}">{{ $review->course->title }}</div>
+                                            <div class="text-muted small text-truncate d-block" style="max-width: 100%;" title="Par {{ $review->course->instructor->name }}">
+                                                Par {{ $review->course->instructor->name }}
+                                            </div>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td class="text-center" style="white-space: nowrap;">
                                         <div class="d-flex flex-column align-items-center gap-1">
-                                            <span class="badge bg-warning text-dark fw-bold" style="font-size: 0.95rem; padding: 0.35rem 0.65rem; min-width: 50px;">
+                                            <span class="admin-chip admin-chip--warning">
                                                 {{ $review->rating }}/5
                                             </span>
                                             <div class="text-warning" style="font-size: 0.75rem; line-height: 1;">
@@ -166,77 +169,62 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td>
+                                    <td style="min-width: 200px; max-width: 350px;">
                                         @if($review->comment)
-                                            <div class="comment-cell" style="max-width: 300px;">
-                                                <div class="comment-text" title="{{ $review->comment }}">
-                                                    {{ $review->comment }}
-                                                </div>
+                                            <div class="text-truncate d-block" style="max-width: 100%; word-wrap: break-word; overflow-wrap: break-word;" title="{{ $review->comment }}">
+                                                {{ $review->comment }}
                                             </div>
                                         @else
                                             <span class="text-muted fst-italic">Aucun commentaire</span>
                                         @endif
                                     </td>
-                                    <td>
-                                        <div style="white-space: nowrap;">
-                                            @if($review->is_approved)
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check-circle me-1"></i>Approuvé
-                                                </span>
-                                            @else
-                                                <span class="badge bg-warning text-dark">
-                                                    <i class="fas fa-clock me-1"></i>En attente
-                                                </span>
-                                            @endif
-                                        </div>
+                                    <td class="text-center" style="white-space: nowrap;">
+                                        <span class="admin-chip admin-chip--{{ $review->is_approved ? 'success' : 'warning' }}">
+                                            {{ $review->is_approved ? 'Approuvé' : 'En attente' }}
+                                        </span>
                                     </td>
-                                    <td>
+                                    <td class="text-center" style="white-space: nowrap;">
                                         <small class="text-muted">
                                             {{ $review->created_at->format('d/m/Y') }}<br>
                                             {{ $review->created_at->format('H:i') }}
                                         </small>
                                     </td>
-                                    <td>
-                                        <div class="d-flex justify-content-end align-items-center gap-2" style="flex-wrap: nowrap;">
+                                    <td class="text-center">
+                                        <div class="d-flex gap-2 justify-content-center">
                                             @if(!$review->is_approved)
-                                                <form action="{{ route('admin.reviews.approve', $review) }}" method="POST" class="d-inline m-0" style="flex-shrink: 0;">
+                                                <form action="{{ route('admin.reviews.approve', $review) }}" method="POST" class="d-inline m-0">
                                                     @csrf
-                                                    <button type="submit" class="btn btn-link text-success p-0 action-btn" title="Approuver" style="border: none; background: none; min-width: 32px; display: inline-flex; align-items: center; justify-content: center;">
-                                                        <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+                                                    <button type="submit" class="btn btn-success btn-sm" title="Approuver">
+                                                        <i class="fas fa-check"></i>
                                                     </button>
                                                 </form>
                                             @else
-                                                <form action="{{ route('admin.reviews.reject', $review) }}" method="POST" class="d-inline m-0" style="flex-shrink: 0;">
+                                                <form action="{{ route('admin.reviews.reject', $review) }}" method="POST" class="d-inline m-0">
                                                     @csrf
-                                                    <button type="submit" class="btn btn-link text-warning p-0 action-btn" title="Rejeter" style="border: none; background: none; min-width: 32px; display: inline-flex; align-items: center; justify-content: center;">
-                                                        <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
+                                                    <button type="submit" class="btn btn-warning btn-sm" title="Rejeter">
+                                                        <i class="fas fa-times"></i>
                                                     </button>
                                                 </form>
                                             @endif
                                             <button type="button" 
-                                                    class="btn btn-link text-danger p-0 action-btn" 
-                                                    title="Supprimer" 
-                                                    style="border: none; background: none; min-width: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;"
+                                                    class="btn btn-danger btn-sm" 
+                                                    title="Supprimer"
                                                     onclick="openDeleteModal({{ $review->id }}, '{{ addslashes($review->user->name) }}', '{{ addslashes(Str::limit($review->course->title, 50)) }}')">
-                                                <i class="fas fa-trash-alt" style="font-size: 1.2rem;"></i>
+                                                <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                                @empty
+                            @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-5">
-                                        <div class="admin-empty-state">
-                                            <i class="fas fa-comments fa-3x text-muted mb-3"></i>
-                                            <p class="mb-1">Aucun avis trouvé</p>
-                                            <p class="text-muted mb-0">Les avis des étudiants apparaîtront ici.</p>
-                                        </div>
+                                    <td colspan="8" class="admin-table__empty">
+                                        <i class="fas fa-comments mb-2 d-block"></i>
+                                        Aucun avis trouvé.
                                     </td>
                                 </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -310,281 +298,99 @@ function openDeleteModal(reviewId, userName, courseTitle) {
 
 @push('styles')
 <style>
-/* Styles pour éviter les débordements dans les colonnes */
-.table td {
-    vertical-align: middle;
+/* Gestion des contenus qui dépassent dans les colonnes */
+.admin-table table td {
     overflow: hidden;
-    position: relative;
+    text-overflow: ellipsis;
 }
 
-/* S'assurer que les éléments cliquables sont accessibles */
-.table td a,
-.table td button,
-.table td .btn-link,
-.table td form {
-    position: relative;
-    z-index: 1;
-    pointer-events: auto;
-}
-
-/* S'assurer que la colonne Actions n'est jamais coupée */
-.table td:last-child {
-    overflow: visible !important;
+.admin-table table td .text-truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
 }
 
 /* Colonne Étudiant */
-.table td:first-child {
+.admin-table table td:first-child {
     max-width: 250px;
-    min-width: 200px;
 }
 
 /* Colonne Cours */
-.table td:nth-child(2) {
+.admin-table table td:nth-child(2) {
     max-width: 300px;
-    min-width: 200px;
-}
-
-/* Colonne Note */
-.table td:nth-child(3) {
-    text-align: center;
-    white-space: nowrap;
 }
 
 /* Colonne Commentaire */
-.table td:nth-child(4) {
+.admin-table table td:nth-child(4) {
     max-width: 350px;
-    min-width: 200px;
 }
 
-/* Colonne Statut */
-.table td:nth-child(5) {
-    white-space: nowrap;
-    text-align: center;
+/* Colonnes avec white-space: nowrap */
+.admin-table table td.text-center[style*="white-space: nowrap"] {
+    white-space: nowrap !important;
 }
 
-/* Colonne Date */
-.table td:nth-child(6) {
-    white-space: nowrap;
-    text-align: center;
-}
-
-/* Colonne Actions */
-.table td:last-child {
-    white-space: nowrap;
-    text-align: right;
-    overflow: visible !important;
-    min-width: 120px;
-}
-
-.table th:last-child {
-    overflow: visible !important;
-    min-width: 120px;
-}
-
-/* Styles pour les boutons d'action */
-.table td .action-btn {
-    flex-shrink: 0 !important;
-    min-width: 32px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.table td form {
-    flex-shrink: 0 !important;
-    display: inline-block !important;
-    margin: 0 !important;
-}
-
-/* Styles pour les icônes d'action */
-.table td .btn-link {
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-
-.table td .btn-link:hover {
-    opacity: 0.7;
-    transform: scale(1.1);
-}
-
-.table td .btn-link:active {
-    transform: scale(0.95);
-}
-
-/* Responsive - ajustements pour mobile */
+/* Styles responsives pour les paddings et margins */
 @media (max-width: 991.98px) {
-    .table td:first-child {
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Ajuster les max-width sur tablette */
+    .admin-table table td:first-child {
+        max-width: 200px;
+    }
+    
+    .admin-table table td:nth-child(2) {
+        max-width: 250px;
+    }
+    
+    .admin-table table td:nth-child(4) {
+        max-width: 250px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Ajuster les max-width sur mobile */
+    .admin-table table td:first-child {
         max-width: 180px;
-        min-width: 150px;
     }
     
-    .table td:nth-child(2) {
+    .admin-table table td:nth-child(2) {
         max-width: 200px;
-        min-width: 150px;
     }
     
-    .table td:nth-child(4) {
+    .admin-table table td:nth-child(4) {
         max-width: 200px;
-        min-width: 150px;
     }
 }
 
-@media (max-width: 767.98px) {
-    .table td:first-child {
-        max-width: 150px;
-        min-width: 120px;
-    }
-    
-    .table td:nth-child(2) {
-        max-width: 150px;
-        min-width: 120px;
-    }
-    
-    .table td:nth-child(4) {
-        max-width: 150px;
-        min-width: 120px;
-    }
-}
-
-/* Styles pour l'affichage des commentaires */
-.comment-cell {
-    position: relative;
-}
-
-.comment-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: 1.5;
-    max-height: 4.5em;
-    word-wrap: break-word;
-    word-break: break-word;
-}
-
-.comment-text:hover {
-    cursor: help;
-}
-
-@media (max-width: 991.98px) {
-    .comment-cell {
-        max-width: 250px !important;
-    }
-    
-    .comment-text {
-        -webkit-line-clamp: 2;
-        max-height: 3em;
-        font-size: 0.9rem;
-    }
-}
-
-@media (max-width: 767.98px) {
-    .comment-cell {
-        max-width: 200px !important;
-    }
-    
-    .comment-text {
-        -webkit-line-clamp: 2;
-        max-height: 3em;
-        font-size: 0.85rem;
-    }
-}
-
-@media (max-width: 575.98px) {
-    .comment-cell {
-        max-width: 150px !important;
-    }
-    
-    .comment-text {
-        -webkit-line-clamp: 2;
-        max-height: 3em;
-        font-size: 0.8rem;
-    }
-}
-
-/* Ajustement de la taille des icônes sur mobile et tablette */
-@media (max-width: 991.98px) {
-    .table td .btn-link i {
-        font-size: 1.1rem !important;
-    }
-    
-    .table td .d-flex.gap-2 {
-        gap: 0.5rem !important;
-    }
-}
-
-@media (max-width: 767.98px) {
-    .table td:last-child {
-        min-width: 100px !important;
-        width: auto !important;
-        overflow: visible !important;
-    }
-    
-    .table th:last-child {
-        min-width: 100px !important;
-        width: auto !important;
-    }
-    
-    .table td .btn-link {
-        min-width: 32px !important;
-        width: auto !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0.25rem !important;
-    }
-    
-    .table td .btn-link i {
-        font-size: 1rem !important;
-    }
-    
-    .table td .d-flex.gap-2 {
-        gap: 0.3rem !important;
-        flex-wrap: nowrap !important;
-    }
-    
-    .table td form {
-        display: inline-block !important;
-        margin: 0 !important;
-    }
-}
-
-@media (max-width: 575.98px) {
-    .table td:last-child {
-        min-width: 90px !important;
-        width: auto !important;
-        overflow: visible !important;
-    }
-    
-    .table th:last-child {
-        min-width: 90px !important;
-        width: auto !important;
-    }
-    
-    .table td .btn-link {
-        min-width: 28px !important;
-        width: auto !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0.2rem !important;
-    }
-    
-    .table td .btn-link i {
-        font-size: 0.9rem !important;
-    }
-    
-    .table td .d-flex.gap-2 {
-        gap: 0.25rem !important;
-        flex-wrap: nowrap !important;
-    }
-    
-    .table td form {
-        display: inline-block !important;
-        margin: 0 !important;
-    }
-}
 
 /* Styles pour le modal de suppression - Responsive */
 /* Sur mobile, utiliser un margin réduit */
@@ -694,4 +500,5 @@ function openDeleteModal(reviewId, userName, courseTitle) {
 }
 </style>
 @endpush
+
 

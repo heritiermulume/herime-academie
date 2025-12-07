@@ -11,7 +11,15 @@
     $shouldShowCart = $showCart && $buttonConfig['type'] === 'buttons' && $buttonState === 'purchase';
 @endphp
 
-@if($buttonConfig['type'] === 'link')
+@if($buttonConfig['type'] === 'disabled')
+    <button type="button" 
+            class="{{ $buttonConfig['class'] }} {{ $sizeClass }} w-100" 
+            disabled
+            @if(isset($buttonConfig['tooltip'])) title="{{ $buttonConfig['tooltip'] }}" data-bs-toggle="tooltip" @endif
+            onclick="event.stopPropagation();">
+        <i class="{{ $buttonConfig['icon'] }} me-2"></i>{{ $buttonConfig['text'] }}
+    </button>
+@elseif($buttonConfig['type'] === 'link')
     <a href="{{ $buttonConfig['url'] }}" 
        class="{{ $buttonConfig['class'] }} {{ $sizeClass }} w-100"
        @if(isset($buttonConfig['target'])) target="{{ $buttonConfig['target'] }}" @endif

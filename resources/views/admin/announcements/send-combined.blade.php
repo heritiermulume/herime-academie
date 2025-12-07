@@ -63,6 +63,11 @@
                     <select class="form-select" id="recipient_type" name="recipient_type" required>
                         <option value="all">Tous les utilisateurs</option>
                         <option value="role">Par rôle</option>
+                        <option value="course">Utilisateurs inscrits à un cours</option>
+                        <option value="category">Utilisateurs inscrits à une catégorie</option>
+                        <option value="instructor">Utilisateurs inscrits à un formateur</option>
+                        <option value="registration_date">Par date d'inscription</option>
+                        <option value="activity">Par activité</option>
                         <option value="selected">Utilisateurs sélectionnés</option>
                         <option value="single">Un seul utilisateur</option>
                     </select>
@@ -96,7 +101,80 @@
                                 <label class="form-check-label" for="role_affiliate">Affiliés</label>
                             </div>
                         </div>
+                        <div class="col-md-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="ambassador" id="role_ambassador">
+                                <label class="form-check-label" for="role_ambassador">Ambassadeurs</label>
+                            </div>
+                        </div>
                     </div>
+                </div>
+
+                <!-- Sélection par cours -->
+                <div class="mb-3" id="course_selection" style="display: none;">
+                    <label class="form-label">Cours *</label>
+                    <select class="form-select" id="course_id" name="course_id">
+                        <option value="">Sélectionner un cours</option>
+                        @foreach(\App\Models\Course::where('is_published', true)->orderBy('title')->get() as $course)
+                            <option value="{{ $course->id }}">{{ $course->title }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à ce cours recevront le message</small>
+                </div>
+
+                <!-- Sélection par catégorie -->
+                <div class="mb-3" id="category_selection" style="display: none;">
+                    <label class="form-label">Catégorie *</label>
+                    <select class="form-select" id="category_id" name="category_id">
+                        <option value="">Sélectionner une catégorie</option>
+                        @foreach(\App\Models\Category::where('is_active', true)->orderBy('name')->get() as $category)
+                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à des cours de cette catégorie recevront le message</small>
+                </div>
+
+                <!-- Sélection par formateur -->
+                <div class="mb-3" id="instructor_selection" style="display: none;">
+                    <label class="form-label">Formateur *</label>
+                    <select class="form-select" id="instructor_id" name="instructor_id">
+                        <option value="">Sélectionner un formateur</option>
+                        @foreach(\App\Models\User::where('role', 'instructor')->where('is_active', true)->orderBy('name')->get() as $instructor)
+                            <option value="{{ $instructor->id }}">{{ $instructor->name }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à des cours de ce formateur recevront le message</small>
+                </div>
+
+                <!-- Sélection par date d'inscription -->
+                <div class="mb-3" id="registration_date_selection" style="display: none;">
+                    <label class="form-label">Période d'inscription *</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label small">Date de début</label>
+                            <input type="date" class="form-control" id="registration_date_from" name="registration_date_from">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small">Date de fin</label>
+                            <input type="date" class="form-control" id="registration_date_to" name="registration_date_to">
+                        </div>
+                    </div>
+                    <small class="text-muted">Sélectionnez une période pour cibler les utilisateurs inscrits dans cette période</small>
+                </div>
+
+                <!-- Sélection par activité -->
+                <div class="mb-3" id="activity_selection" style="display: none;">
+                    <label class="form-label">Type d'activité *</label>
+                    <select class="form-select" id="activity_type" name="activity_type">
+                        <option value="">Sélectionner un type</option>
+                        <option value="active_recent">Actifs récemment (7 derniers jours)</option>
+                        <option value="active_month">Actifs ce mois</option>
+                        <option value="active_3months">Actifs (3 derniers mois)</option>
+                        <option value="inactive_30days">Inactifs (30+ jours)</option>
+                        <option value="inactive_90days">Inactifs (90+ jours)</option>
+                        <option value="never_logged">Jamais connectés</option>
+                    </select>
+                    <small class="text-muted">Filtrez les utilisateurs selon leur dernière connexion</small>
                 </div>
 
                 <!-- Sélection d'un seul utilisateur -->
@@ -352,15 +430,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fonction pour initialiser l'affichage selon le type de destinataire
     function updateRecipientSections(type) {
         const roleSelection = document.getElementById('role_selection');
+        const courseSelection = document.getElementById('course_selection');
+        const categorySelection = document.getElementById('category_selection');
+        const instructorSelection = document.getElementById('instructor_selection');
+        const registrationDateSelection = document.getElementById('registration_date_selection');
+        const activitySelection = document.getElementById('activity_selection');
         const singleUserSelection = document.getElementById('single_user_selection');
         const multipleUsersSelection = document.getElementById('multiple_users_selection');
         
-        [roleSelection, singleUserSelection, multipleUsersSelection].forEach(el => {
+        // Masquer toutes les sections
+        [roleSelection, courseSelection, categorySelection, instructorSelection, registrationDateSelection, activitySelection, singleUserSelection, multipleUsersSelection].forEach(el => {
             if (el) el.style.display = 'none';
         });
         
+        // Afficher la section appropriée
         if (type === 'role' && roleSelection) {
             roleSelection.style.display = 'block';
+        } else if (type === 'course' && courseSelection) {
+            courseSelection.style.display = 'block';
+        } else if (type === 'category' && categorySelection) {
+            categorySelection.style.display = 'block';
+        } else if (type === 'instructor' && instructorSelection) {
+            instructorSelection.style.display = 'block';
+        } else if (type === 'registration_date' && registrationDateSelection) {
+            registrationDateSelection.style.display = 'block';
+        } else if (type === 'activity' && activitySelection) {
+            activitySelection.style.display = 'block';
         } else if (type === 'single' && singleUserSelection) {
             singleUserSelection.style.display = 'block';
         } else if (type === 'selected' && multipleUsersSelection) {
@@ -462,6 +557,143 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 countDiv.style.display = 'none';
             }
+        } else if (type === 'course') {
+            const courseId = document.getElementById('course_id')?.value;
+            if (!courseId) {
+                countDiv.style.display = 'none';
+                return;
+            }
+            if (sendEmail) {
+                fetch(`{{ route("admin.announcements.count-users") }}?type=course&course_id=${courseId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            if (sendWhatsApp) {
+                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=course&course_id=${courseId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'category') {
+            const categoryId = document.getElementById('category_id')?.value;
+            if (!categoryId) {
+                countDiv.style.display = 'none';
+                return;
+            }
+            if (sendEmail) {
+                fetch(`{{ route("admin.announcements.count-users") }}?type=category&category_id=${categoryId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            if (sendWhatsApp) {
+                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=category&category_id=${categoryId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'instructor') {
+            const instructorId = document.getElementById('instructor_id')?.value;
+            if (!instructorId) {
+                countDiv.style.display = 'none';
+                return;
+            }
+            if (sendEmail) {
+                fetch(`{{ route("admin.announcements.count-users") }}?type=instructor&instructor_id=${instructorId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            if (sendWhatsApp) {
+                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=instructor&instructor_id=${instructorId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'registration_date') {
+            const dateFrom = document.getElementById('registration_date_from')?.value;
+            const dateTo = document.getElementById('registration_date_to')?.value;
+            if (!dateFrom && !dateTo) {
+                countDiv.style.display = 'none';
+                return;
+            }
+            let url = `{{ route("admin.announcements.count-users") }}?type=registration_date`;
+            if (dateFrom) url += `&registration_date_from=${dateFrom}`;
+            if (dateTo) url += `&registration_date_to=${dateTo}`;
+            if (sendEmail) {
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            let whatsappUrl = `{{ route("admin.announcements.count-users-whatsapp") }}?type=registration_date`;
+            if (dateFrom) whatsappUrl += `&registration_date_from=${dateFrom}`;
+            if (dateTo) whatsappUrl += `&registration_date_to=${dateTo}`;
+            if (sendWhatsApp) {
+                fetch(whatsappUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'activity') {
+            const activityType = document.getElementById('activity_type')?.value;
+            if (!activityType) {
+                countDiv.style.display = 'none';
+                return;
+            }
+            if (sendEmail) {
+                fetch(`{{ route("admin.announcements.count-users") }}?type=activity&activity_type=${activityType}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            if (sendWhatsApp) {
+                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=activity&activity_type=${activityType}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
         } else if (type === 'single') {
             const userIdInput = document.getElementById('single_user_id');
             if (userIdInput && userIdInput.value) {
@@ -502,6 +734,36 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('input[name="roles[]"]').forEach(cb => {
         cb.addEventListener('change', window.updateRecipientCount);
     });
+    
+    // Attacher les événements pour les nouveaux filtres
+    const courseSelect = document.getElementById('course_id');
+    if (courseSelect) {
+        courseSelect.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const categorySelect = document.getElementById('category_id');
+    if (categorySelect) {
+        categorySelect.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const instructorSelect = document.getElementById('instructor_id');
+    if (instructorSelect) {
+        instructorSelect.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const registrationDateFrom = document.getElementById('registration_date_from');
+    const registrationDateTo = document.getElementById('registration_date_to');
+    if (registrationDateFrom) {
+        registrationDateFrom.addEventListener('change', window.updateRecipientCount);
+    }
+    if (registrationDateTo) {
+        registrationDateTo.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const activityTypeSelect = document.getElementById('activity_type');
+    if (activityTypeSelect) {
+        activityTypeSelect.addEventListener('change', window.updateRecipientCount);
+    }
 
     // Fonction de recherche d'utilisateurs (combine email et WhatsApp)
     window.searchUsers = function(query, type = 'single') {
@@ -694,6 +956,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 const checkedRoles = document.querySelectorAll('input[name="roles[]"]:checked');
                 if (checkedRoles.length === 0) {
                     alert('Veuillez sélectionner au moins un rôle');
+                    isValid = false;
+                }
+            } else if (type === 'course') {
+                const courseId = document.getElementById('course_id')?.value;
+                if (!courseId) {
+                    alert('Veuillez sélectionner un cours');
+                    isValid = false;
+                }
+            } else if (type === 'category') {
+                const categoryId = document.getElementById('category_id')?.value;
+                if (!categoryId) {
+                    alert('Veuillez sélectionner une catégorie');
+                    isValid = false;
+                }
+            } else if (type === 'instructor') {
+                const instructorId = document.getElementById('instructor_id')?.value;
+                if (!instructorId) {
+                    alert('Veuillez sélectionner un formateur');
+                    isValid = false;
+                }
+            } else if (type === 'registration_date') {
+                const dateFrom = document.getElementById('registration_date_from')?.value;
+                const dateTo = document.getElementById('registration_date_to')?.value;
+                if (!dateFrom && !dateTo) {
+                    alert('Veuillez sélectionner au moins une date');
+                    isValid = false;
+                }
+            } else if (type === 'activity') {
+                const activityType = document.getElementById('activity_type')?.value;
+                if (!activityType) {
+                    alert('Veuillez sélectionner un type d\'activité');
                     isValid = false;
                 }
             } else if (type === 'single') {

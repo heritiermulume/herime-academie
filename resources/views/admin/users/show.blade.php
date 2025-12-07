@@ -4,7 +4,7 @@
 @section('admin-title', 'Profil utilisateur')
 @section('admin-subtitle', 'Consultez les informations synchronisées et l\'activité de ' . ($user->name ?? 'l\'utilisateur'))
 @section('admin-actions')
-    <a href="{{ route('admin.users') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('admin.users') }}" class="btn btn-light">
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
     <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary">

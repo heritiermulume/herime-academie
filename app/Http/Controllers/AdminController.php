@@ -1245,6 +1245,7 @@ class AdminController extends Controller
             'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:10485760', // 10GB max (kilobytes)
             'download_file_url' => 'nullable|url|max:1000',
             'is_published' => 'boolean',
+            'is_sale_enabled' => 'boolean',
             'is_featured' => 'boolean',
             'show_students_count' => 'boolean',
             'level' => 'required|in:beginner,intermediate,advanced',
@@ -1410,6 +1411,8 @@ class AdminController extends Controller
             $courseData['is_downloadable'] = $request->boolean('is_downloadable', false);
             $courseData['use_external_payment'] = $request->boolean('use_external_payment', false);
             $courseData['is_published'] = $request->boolean('is_published', false);
+            // Pour la création : si la checkbox est cochée → true, sinon → true par défaut (comme dans la migration)
+            $courseData['is_sale_enabled'] = $request->has('is_sale_enabled') ? (bool) $request->input('is_sale_enabled') : true;
             $courseData['is_featured'] = $request->boolean('is_featured', false);
             $courseData['show_students_count'] = $request->boolean('show_students_count', false);
             $courseData['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
@@ -1549,6 +1552,7 @@ class AdminController extends Controller
             'external_payment_url' => 'nullable|url|max:500|required_if:use_external_payment,1',
             'external_payment_text' => 'nullable|string|max:100',
             'is_published' => 'boolean',
+            'is_sale_enabled' => 'boolean',
             'is_featured' => 'boolean',
             'show_students_count' => 'boolean',
             'level' => 'required|in:beginner,intermediate,advanced',
@@ -1726,6 +1730,8 @@ class AdminController extends Controller
             $data['is_downloadable'] = $request->boolean('is_downloadable', false);
             $data['use_external_payment'] = $request->boolean('use_external_payment', false);
             $data['is_published'] = $request->boolean('is_published', false);
+            // Pour l'édition : si la checkbox est cochée → true, sinon → false (car l'utilisateur a décidé de la décocher)
+            $data['is_sale_enabled'] = $request->has('is_sale_enabled') ? (bool) $request->input('is_sale_enabled') : false;
             $data['is_featured'] = $request->boolean('is_featured', false);
             $data['show_students_count'] = $request->boolean('show_students_count', false);
             $data['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
@@ -2100,13 +2106,13 @@ class AdminController extends Controller
     // Gestion des annonces
     public function announcements(Request $request)
     {
-        $announcements = Announcement::latest()->paginate(15);
+        $announcements = Announcement::latest()->paginate(15)->withQueryString();
         
-        // Récupérer les emails récents (derniers 10 emails envoyés)
+        // Récupérer les emails avec pagination
         $recentSentEmails = SentEmail::with('user')
             ->latest()
-            ->limit(10)
-            ->get();
+            ->paginate(15, ['*'], 'emails_page')
+            ->withQueryString();
         
         // Charger les utilisateurs destinataires pour afficher les avatars
         $recipientEmails = $recentSentEmails->pluck('recipient_email')->unique()->filter();
@@ -2115,18 +2121,18 @@ class AdminController extends Controller
             ->keyBy('email');
         
         // Ajouter les utilisateurs aux emails
-        $recentSentEmails->transform(function ($email) use ($recipientUsers) {
+        $recentSentEmails->getCollection()->transform(function ($email) use ($recipientUsers) {
             $email->recipient_user = $recipientUsers->get($email->recipient_email);
             return $email;
         });
         
-        // Récupérer les emails programmés en attente
+        // Récupérer les emails programmés avec pagination
         $pendingScheduledEmails = ScheduledEmail::with('creator')
             ->where('status', 'pending')
             ->where('scheduled_at', '>=', now())
             ->orderBy('scheduled_at')
-            ->limit(10)
-            ->get();
+            ->paginate(15, ['*'], 'scheduled_page')
+            ->withQueryString();
         
         // Statistiques des emails
         $emailStats = [
@@ -2139,7 +2145,8 @@ class AdminController extends Controller
         // Récupérer les messages WhatsApp avec pagination et les utilisateurs destinataires
         $recentSentWhatsApp = SentWhatsAppMessage::with('user')
             ->latest()
-            ->paginate(15, ['*'], 'whatsapp_page');
+            ->paginate(15, ['*'], 'whatsapp_page')
+            ->withQueryString();
         
         // Charger les utilisateurs destinataires pour afficher les avatars
         $recipientPhones = $recentSentWhatsApp->pluck('recipient_phone')->unique()->filter();
@@ -2178,6 +2185,11 @@ class AdminController extends Controller
 
         return redirect()->route('admin.announcements')
             ->with('success', 'Annonce créée avec succès.');
+    }
+
+    public function previewAnnouncement(Announcement $announcement)
+    {
+        return view('admin.announcements.preview', compact('announcement'));
     }
 
     public function editAnnouncement(Announcement $announcement)
@@ -2291,7 +2303,101 @@ class AdminController extends Controller
         if ($type === 'role') {
             $roles = explode(',', $request->get('roles', ''));
             if (!empty($roles)) {
-                $query->whereIn('role', $roles);
+                // Séparer les rôles normaux des ambassadeurs
+                $normalRoles = array_filter($roles, function($role) {
+                    return $role !== 'ambassador';
+                });
+                $hasAmbassador = in_array('ambassador', $roles);
+                
+                if (!empty($normalRoles) && $hasAmbassador) {
+                    // Si on a des rôles normaux ET des ambassadeurs
+                    $query->where(function($q) use ($normalRoles, $hasAmbassador) {
+                        $q->whereIn('role', $normalRoles);
+                        if ($hasAmbassador) {
+                            $q->orWhereHas('ambassador');
+                        }
+                    });
+                } elseif (!empty($normalRoles)) {
+                    // Seulement des rôles normaux
+                    $query->whereIn('role', $normalRoles);
+                } elseif ($hasAmbassador) {
+                    // Seulement des ambassadeurs
+                    $query->whereHas('ambassador');
+                }
+            }
+        } elseif ($type === 'course') {
+            $courseId = $request->get('course_id');
+            if ($courseId) {
+                // Récupérer les utilisateurs inscrits à ce cours
+                $query->whereHas('enrollments', function($q) use ($courseId) {
+                    $q->where('course_id', $courseId)
+                      ->where('status', 'active');
+                });
+            }
+        } elseif ($type === 'category') {
+            $categoryId = $request->get('category_id');
+            if ($categoryId) {
+                // Récupérer les utilisateurs inscrits à des cours de cette catégorie
+                $query->whereHas('enrollments', function($q) use ($categoryId) {
+                    $q->where('status', 'active')
+                      ->whereHas('course', function($courseQuery) use ($categoryId) {
+                          $courseQuery->where('category_id', $categoryId)
+                                     ->where('is_published', true);
+                      });
+                });
+            }
+        } elseif ($type === 'instructor') {
+            $instructorId = $request->get('instructor_id');
+            if ($instructorId) {
+                // Récupérer les utilisateurs inscrits à des cours de ce formateur
+                $query->whereHas('enrollments', function($q) use ($instructorId) {
+                    $q->where('status', 'active')
+                      ->whereHas('course', function($courseQuery) use ($instructorId) {
+                          $courseQuery->where('instructor_id', $instructorId)
+                                     ->where('is_published', true);
+                      });
+                });
+            }
+        } elseif ($type === 'registration_date') {
+            $dateFrom = $request->get('registration_date_from');
+            $dateTo = $request->get('registration_date_to');
+            if ($dateFrom || $dateTo) {
+                if ($dateFrom) {
+                    $query->whereDate('created_at', '>=', $dateFrom);
+                }
+                if ($dateTo) {
+                    $query->whereDate('created_at', '<=', $dateTo);
+                }
+            }
+        } elseif ($type === 'activity') {
+            $activityType = $request->get('activity_type');
+            if ($activityType) {
+                switch ($activityType) {
+                    case 'active_recent':
+                        $query->where('last_login_at', '>=', now()->subDays(7));
+                        break;
+                    case 'active_month':
+                        $query->where('last_login_at', '>=', now()->startOfMonth());
+                        break;
+                    case 'active_3months':
+                        $query->where('last_login_at', '>=', now()->subMonths(3));
+                        break;
+                    case 'inactive_30days':
+                        $query->where(function($q) {
+                            $q->where('last_login_at', '<', now()->subDays(30))
+                              ->orWhereNull('last_login_at');
+                        });
+                        break;
+                    case 'inactive_90days':
+                        $query->where(function($q) {
+                            $q->where('last_login_at', '<', now()->subDays(90))
+                              ->orWhereNull('last_login_at');
+                        });
+                        break;
+                    case 'never_logged':
+                        $query->whereNull('last_login_at');
+                        break;
+                }
             }
         }
 
@@ -2324,13 +2430,19 @@ class AdminController extends Controller
     public function sendEmail(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,role,selected,single',
+            'recipient_type' => 'required|in:all,role,course,category,instructor,registration_date,activity,selected,single',
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
             'send_type' => 'required|in:now,scheduled',
             'scheduled_at' => 'nullable|required_if:send_type,scheduled|date|after:now',
             'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:student,instructor,admin,affiliate',
+            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
+            'course_id' => 'nullable|required_if:recipient_type,course|exists:courses,id',
+            'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
+            'instructor_id' => 'nullable|required_if:recipient_type,instructor|exists:users,id',
+            'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
+            'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
+            'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
             'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
             'user_ids' => 'nullable|required_if:recipient_type,selected|string',
             'attachments' => 'nullable|array',
@@ -2492,7 +2604,121 @@ class AdminController extends Controller
             case 'role':
                 $roles = $request->input('roles', []);
                 if (!empty($roles)) {
-                    $query->whereIn('role', $roles);
+                    // Séparer les rôles normaux des ambassadeurs
+                    $normalRoles = array_filter($roles, function($role) {
+                        return $role !== 'ambassador';
+                    });
+                    $hasAmbassador = in_array('ambassador', $roles);
+                    
+                    if (!empty($normalRoles) && $hasAmbassador) {
+                        // Si on a des rôles normaux ET des ambassadeurs
+                        $query->where(function($q) use ($normalRoles, $hasAmbassador) {
+                            $q->whereIn('role', $normalRoles);
+                            if ($hasAmbassador) {
+                                $q->orWhereHas('ambassador');
+                            }
+                        });
+                    } elseif (!empty($normalRoles)) {
+                        // Seulement des rôles normaux
+                        $query->whereIn('role', $normalRoles);
+                    } elseif ($hasAmbassador) {
+                        // Seulement des ambassadeurs
+                        $query->whereHas('ambassador');
+                    }
+                }
+                break;
+
+            case 'course':
+                $courseId = $request->input('course_id');
+                if ($courseId) {
+                    // Récupérer les utilisateurs inscrits à ce cours
+                    $query->whereHas('enrollments', function($q) use ($courseId) {
+                        $q->where('course_id', $courseId)
+                          ->where('status', 'active');
+                    });
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'category':
+                $categoryId = $request->input('category_id');
+                if ($categoryId) {
+                    // Récupérer les utilisateurs inscrits à des cours de cette catégorie
+                    $query->whereHas('enrollments', function($q) use ($categoryId) {
+                        $q->where('status', 'active')
+                          ->whereHas('course', function($courseQuery) use ($categoryId) {
+                              $courseQuery->where('category_id', $categoryId)
+                                         ->where('is_published', true);
+                          });
+                    });
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'instructor':
+                $instructorId = $request->input('instructor_id');
+                if ($instructorId) {
+                    // Récupérer les utilisateurs inscrits à des cours de ce formateur
+                    $query->whereHas('enrollments', function($q) use ($instructorId) {
+                        $q->where('status', 'active')
+                          ->whereHas('course', function($courseQuery) use ($instructorId) {
+                              $courseQuery->where('instructor_id', $instructorId)
+                                         ->where('is_published', true);
+                          });
+                    });
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'registration_date':
+                $dateFrom = $request->input('registration_date_from');
+                $dateTo = $request->input('registration_date_to');
+                if ($dateFrom || $dateTo) {
+                    if ($dateFrom) {
+                        $query->whereDate('created_at', '>=', $dateFrom);
+                    }
+                    if ($dateTo) {
+                        $query->whereDate('created_at', '<=', $dateTo);
+                    }
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'activity':
+                $activityType = $request->input('activity_type');
+                if ($activityType) {
+                    switch ($activityType) {
+                        case 'active_recent':
+                            $query->where('last_login_at', '>=', now()->subDays(7));
+                            break;
+                        case 'active_month':
+                            $query->where('last_login_at', '>=', now()->startOfMonth());
+                            break;
+                        case 'active_3months':
+                            $query->where('last_login_at', '>=', now()->subMonths(3));
+                            break;
+                        case 'inactive_30days':
+                            $query->where(function($q) {
+                                $q->where('last_login_at', '<', now()->subDays(30))
+                                  ->orWhereNull('last_login_at');
+                            });
+                            break;
+                        case 'inactive_90days':
+                            $query->where(function($q) {
+                                $q->where('last_login_at', '<', now()->subDays(90))
+                                  ->orWhereNull('last_login_at');
+                            });
+                            break;
+                        case 'never_logged':
+                            $query->whereNull('last_login_at');
+                            break;
+                    }
+                } else {
+                    return collect();
                 }
                 break;
 
@@ -2806,7 +3032,7 @@ class AdminController extends Controller
     // Gestion des témoignages
     public function testimonials()
     {
-        $testimonials = Testimonial::ordered()->paginate(20);
+        $testimonials = Testimonial::ordered()->paginate(15)->withQueryString();
         return view('admin.testimonials.index', compact('testimonials'));
     }
 
@@ -3554,7 +3780,7 @@ class AdminController extends Controller
         $sortDirection = $request->get('direction', 'desc');
         $query->orderBy($sortBy, $sortDirection);
 
-        $reviews = $query->paginate(20)->withQueryString();
+        $reviews = $query->paginate(15)->withQueryString();
 
         // Statistiques
         $stats = [
@@ -3679,7 +3905,7 @@ class AdminController extends Controller
             $query->orderBy('issued_at', 'desc');
         }
 
-        $certificates = $query->paginate(20)->withQueryString();
+        $certificates = $query->paginate(15)->withQueryString();
 
         // Statistiques
         $stats = [
@@ -3835,7 +4061,101 @@ class AdminController extends Controller
         if ($type === 'role') {
             $roles = explode(',', $request->get('roles', ''));
             if (!empty($roles)) {
-                $query->whereIn('role', $roles);
+                // Séparer les rôles normaux des ambassadeurs
+                $normalRoles = array_filter($roles, function($role) {
+                    return $role !== 'ambassador';
+                });
+                $hasAmbassador = in_array('ambassador', $roles);
+                
+                if (!empty($normalRoles) && $hasAmbassador) {
+                    // Si on a des rôles normaux ET des ambassadeurs
+                    $query->where(function($q) use ($normalRoles, $hasAmbassador) {
+                        $q->whereIn('role', $normalRoles);
+                        if ($hasAmbassador) {
+                            $q->orWhereHas('ambassador');
+                        }
+                    });
+                } elseif (!empty($normalRoles)) {
+                    // Seulement des rôles normaux
+                    $query->whereIn('role', $normalRoles);
+                } elseif ($hasAmbassador) {
+                    // Seulement des ambassadeurs
+                    $query->whereHas('ambassador');
+                }
+            }
+        } elseif ($type === 'course') {
+            $courseId = $request->get('course_id');
+            if ($courseId) {
+                // Récupérer les utilisateurs inscrits à ce cours
+                $query->whereHas('enrollments', function($q) use ($courseId) {
+                    $q->where('course_id', $courseId)
+                      ->where('status', 'active');
+                });
+            }
+        } elseif ($type === 'category') {
+            $categoryId = $request->get('category_id');
+            if ($categoryId) {
+                // Récupérer les utilisateurs inscrits à des cours de cette catégorie
+                $query->whereHas('enrollments', function($q) use ($categoryId) {
+                    $q->where('status', 'active')
+                      ->whereHas('course', function($courseQuery) use ($categoryId) {
+                          $courseQuery->where('category_id', $categoryId)
+                                     ->where('is_published', true);
+                      });
+                });
+            }
+        } elseif ($type === 'instructor') {
+            $instructorId = $request->get('instructor_id');
+            if ($instructorId) {
+                // Récupérer les utilisateurs inscrits à des cours de ce formateur
+                $query->whereHas('enrollments', function($q) use ($instructorId) {
+                    $q->where('status', 'active')
+                      ->whereHas('course', function($courseQuery) use ($instructorId) {
+                          $courseQuery->where('instructor_id', $instructorId)
+                                     ->where('is_published', true);
+                      });
+                });
+            }
+        } elseif ($type === 'registration_date') {
+            $dateFrom = $request->get('registration_date_from');
+            $dateTo = $request->get('registration_date_to');
+            if ($dateFrom || $dateTo) {
+                if ($dateFrom) {
+                    $query->whereDate('created_at', '>=', $dateFrom);
+                }
+                if ($dateTo) {
+                    $query->whereDate('created_at', '<=', $dateTo);
+                }
+            }
+        } elseif ($type === 'activity') {
+            $activityType = $request->get('activity_type');
+            if ($activityType) {
+                switch ($activityType) {
+                    case 'active_recent':
+                        $query->where('last_login_at', '>=', now()->subDays(7));
+                        break;
+                    case 'active_month':
+                        $query->where('last_login_at', '>=', now()->startOfMonth());
+                        break;
+                    case 'active_3months':
+                        $query->where('last_login_at', '>=', now()->subMonths(3));
+                        break;
+                    case 'inactive_30days':
+                        $query->where(function($q) {
+                            $q->where('last_login_at', '<', now()->subDays(30))
+                              ->orWhereNull('last_login_at');
+                        });
+                        break;
+                    case 'inactive_90days':
+                        $query->where(function($q) {
+                            $q->where('last_login_at', '<', now()->subDays(90))
+                              ->orWhereNull('last_login_at');
+                        });
+                        break;
+                    case 'never_logged':
+                        $query->whereNull('last_login_at');
+                        break;
+                }
             }
         }
 
@@ -3850,11 +4170,21 @@ class AdminController extends Controller
     public function sendWhatsApp(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,role,selected,single',
+            'recipient_type' => 'required|in:all,role,course,category,instructor,registration_date,activity,selected,single',
             'message' => 'required|string|max:4096',
             'send_type' => 'required|in:now',
             'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:student,instructor,admin,affiliate',
+            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
+            'course_id' => 'nullable|required_if:recipient_type,course|exists:courses,id',
+            'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
+            'instructor_id' => 'nullable|required_if:recipient_type,instructor|exists:users,id',
+            'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
+            'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
+            'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
+            'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
+            'user_ids' => 'nullable|required_if:recipient_type,selected|string',
+            'roles' => 'nullable|required_if:recipient_type,role|array',
+            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
             'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
             'user_ids' => 'nullable|required_if:recipient_type,selected|string',
         ]);
@@ -3960,7 +4290,97 @@ class AdminController extends Controller
             case 'role':
                 $roles = $request->input('roles', []);
                 if (!empty($roles)) {
-                    $query->whereIn('role', $roles);
+                    // Séparer les rôles normaux des ambassadeurs
+                    $normalRoles = array_filter($roles, function($role) {
+                        return $role !== 'ambassador';
+                    });
+                    $hasAmbassador = in_array('ambassador', $roles);
+                    
+                    if (!empty($normalRoles) && $hasAmbassador) {
+                        // Si on a des rôles normaux ET des ambassadeurs
+                        $query->where(function($q) use ($normalRoles, $hasAmbassador) {
+                            $q->whereIn('role', $normalRoles);
+                            if ($hasAmbassador) {
+                                $q->orWhereHas('ambassador');
+                            }
+                        });
+                    } elseif (!empty($normalRoles)) {
+                        // Seulement des rôles normaux
+                        $query->whereIn('role', $normalRoles);
+                    } elseif ($hasAmbassador) {
+                        // Seulement des ambassadeurs
+                        $query->whereHas('ambassador');
+                    }
+                }
+                break;
+
+            case 'course':
+                $courseId = $request->input('course_id');
+                if ($courseId) {
+                    $query->whereHas('enrollments', function($q) use ($courseId) {
+                        $q->where('course_id', $courseId)->where('status', 'active');
+                    });
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'category':
+                $categoryId = $request->input('category_id');
+                if ($categoryId) {
+                    $query->whereHas('enrollments', function($q) use ($categoryId) {
+                        $q->where('status', 'active')
+                          ->whereHas('course', function($courseQuery) use ($categoryId) {
+                              $courseQuery->where('category_id', $categoryId)->where('is_published', true);
+                          });
+                    });
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'instructor':
+                $instructorId = $request->input('instructor_id');
+                if ($instructorId) {
+                    $query->whereHas('enrollments', function($q) use ($instructorId) {
+                        $q->where('status', 'active')
+                          ->whereHas('course', function($courseQuery) use ($instructorId) {
+                              $courseQuery->where('instructor_id', $instructorId)->where('is_published', true);
+                          });
+                    });
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'registration_date':
+                $dateFrom = $request->input('registration_date_from');
+                $dateTo = $request->input('registration_date_to');
+                if ($dateFrom || $dateTo) {
+                    if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
+                    if ($dateTo) $query->whereDate('created_at', '<=', $dateTo);
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'activity':
+                $activityType = $request->input('activity_type');
+                if ($activityType) {
+                    switch ($activityType) {
+                        case 'active_recent': $query->where('last_login_at', '>=', now()->subDays(7)); break;
+                        case 'active_month': $query->where('last_login_at', '>=', now()->startOfMonth()); break;
+                        case 'active_3months': $query->where('last_login_at', '>=', now()->subMonths(3)); break;
+                        case 'inactive_30days': $query->where(function($q) {
+                            $q->where('last_login_at', '<', now()->subDays(30))->orWhereNull('last_login_at');
+                        }); break;
+                        case 'inactive_90days': $query->where(function($q) {
+                            $q->where('last_login_at', '<', now()->subDays(90))->orWhereNull('last_login_at');
+                        }); break;
+                        case 'never_logged': $query->whereNull('last_login_at'); break;
+                    }
+                } else {
+                    return collect();
                 }
                 break;
 
@@ -4133,14 +4553,24 @@ class AdminController extends Controller
     public function sendCombined(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,role,selected,single',
+            'recipient_type' => 'required|in:all,role,course,category,instructor,registration_date,activity,selected,single',
             'subject' => 'required|string|max:255',
             'email_content' => 'required|string',
+            'roles' => 'nullable|required_if:recipient_type,role|array',
+            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
+            'course_id' => 'nullable|required_if:recipient_type,course|exists:courses,id',
+            'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
+            'instructor_id' => 'nullable|required_if:recipient_type,instructor|exists:users,id',
+            'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
+            'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
+            'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
+            'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
+            'user_ids' => 'nullable|required_if:recipient_type,selected|string',
             'whatsapp_message' => 'required|string|max:4096',
             'send_email' => 'nullable|boolean',
             'send_whatsapp' => 'nullable|boolean',
             'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:student,instructor,admin,affiliate',
+            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
             'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
             'user_ids' => 'nullable|required_if:recipient_type,selected|string',
             'attachments' => 'nullable|array',

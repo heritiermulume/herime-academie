@@ -5,6 +5,9 @@
 
 @section('admin-actions')
     @if($promoCode)
+        <button type="button" class="admin-btn outline" id="togglePromoCodeBtn" onclick="togglePromoCodeCard()">
+            <i class="fas fa-ticket-alt me-2"></i>Afficher le code promo
+        </button>
         <button type="button" class="admin-btn outline" onclick="copyPromoCode('{{ $promoCode->code }}')">
             <i class="fas fa-copy me-2"></i>Copier le code promo
         </button>
@@ -13,7 +16,7 @@
 
 @section('admin-content')
     @if($promoCode)
-        <article class="admin-panel">
+        <article class="admin-panel" id="promoCodeCard" style="display: none;">
             <div class="admin-panel__header">
                 <h3>
                     <i class="fas fa-ticket-alt me-2"></i>Votre Code Promo
@@ -21,10 +24,10 @@
             </div>
             <div class="admin-panel__body">
                 <div class="text-center">
-                    <div class="admin-card" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); color: white; padding: 2rem;">
-                        <h2 class="mb-0" style="font-size: 2.5rem; font-weight: 700; letter-spacing: 0.1em;">{{ $promoCode->code }}</h2>
+                    <div class="admin-card promo-code-card" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); color: white; padding: 2rem;">
+                        <h2 class="mb-0 promo-code-text" style="font-size: 2.5rem; font-weight: 700; letter-spacing: 0.1em;">{{ $promoCode->code }}</h2>
                     </div>
-                    <p class="text-muted mt-3 mb-0">Partagez ce code avec votre réseau pour gagner des commissions !</p>
+                    <p class="text-muted mt-3 mb-0 promo-code-description">Partagez ce code avec votre réseau pour gagner des commissions !</p>
                 </div>
             </div>
         </article>
@@ -149,6 +152,44 @@
 
 @push('styles')
 <style>
+    /* Styles pour les boutons d'actions sur mobile/tablette */
+    @media (max-width: 768px) {
+        .admin-header__actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.5rem !important;
+            width: 100%;
+        }
+
+        .admin-header__actions .admin-btn {
+            font-size: 0.75rem !important;
+            padding: 0.5rem 0.75rem !important;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .admin-header__actions .admin-btn i {
+            font-size: 0.8rem !important;
+            margin-right: 0.4rem !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .admin-header__actions {
+            gap: 0.4rem !important;
+        }
+
+        .admin-header__actions .admin-btn {
+            font-size: 0.7rem !important;
+            padding: 0.45rem 0.6rem !important;
+        }
+
+        .admin-header__actions .admin-btn i {
+            font-size: 0.75rem !important;
+            margin-right: 0.3rem !important;
+        }
+    }
+
     .dashboard-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -229,14 +270,18 @@
         padding: 1rem;
         border-radius: 1rem;
         background: rgba(226, 232, 240, 0.35);
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     .dashboard-activity__item strong {
         display: block;
         color: #0f172a;
+        word-break: break-word;
     }
     .dashboard-activity__item span {
         color: #64748b;
         font-size: 0.85rem;
+        word-break: break-word;
     }
     .dashboard-activity__meta {
         font-size: 0.8rem;
@@ -294,15 +339,19 @@
         padding: 1rem;
         border-radius: 1rem;
         background: rgba(226, 232, 240, 0.35);
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     .dashboard-tasks__item strong {
         color: #0f172a;
         display: block;
         margin-bottom: 0.25rem;
+        word-break: break-word;
     }
     .dashboard-tasks__item span {
         color: #64748b;
         font-size: 0.85rem;
+        word-break: break-word;
     }
     .dashboard-tasks__badge {
         align-self: flex-start;
@@ -332,6 +381,16 @@
         background: rgba(226, 232, 240, 0.5);
         color: #94a3b8;
         font-size: 0.9rem;
+    }
+
+    .promo-code-card {
+        word-break: break-all;
+        overflow-wrap: break-word;
+    }
+
+    .promo-code-text {
+        word-break: break-all;
+        overflow-wrap: break-word;
     }
 
     @media (max-width: 1024px) {
@@ -436,6 +495,191 @@
             font-size: 0.85rem;
         }
     }
+
+    @media (max-width: 768px) {
+        .dashboard-grid {
+            gap: 0.75rem;
+        }
+
+        .dashboard-metric {
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .dashboard-metric__icon {
+            width: 44px;
+            height: 44px;
+            font-size: 1.1rem;
+        }
+
+        .dashboard-metric__content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .dashboard-metric__label {
+            font-size: 0.65rem;
+        }
+
+        .dashboard-metric__value {
+            font-size: 1.25rem;
+            word-break: break-word;
+        }
+
+        .dashboard-metric__trend {
+            font-size: 0.7rem;
+            margin-top: 0.25rem;
+        }
+
+        .dashboard-activity {
+            gap: 1rem;
+        }
+
+        .dashboard-activity__title {
+            font-size: 0.85rem;
+        }
+
+        .dashboard-activity__item {
+            padding: 0.65rem;
+            gap: 0.5rem;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .dashboard-activity__item > div {
+            width: 100%;
+        }
+
+        .dashboard-activity__item strong {
+            font-size: 0.8rem;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .dashboard-activity__item span {
+            font-size: 0.7rem;
+            display: block;
+        }
+
+        .dashboard-activity__meta {
+            font-size: 0.65rem;
+            align-self: flex-end;
+        }
+
+        .dashboard-actions {
+            gap: 0.5rem;
+        }
+
+        .dashboard-actions__item {
+            padding: 0.75rem;
+            font-size: 0.8rem;
+            justify-content: center;
+        }
+
+        .dashboard-actions__item i {
+            font-size: 0.9rem;
+        }
+
+        .dashboard-tasks__item {
+            padding: 0.65rem;
+            gap: 0.5rem;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .dashboard-tasks__item > div {
+            width: 100%;
+        }
+
+        .dashboard-tasks__item strong {
+            font-size: 0.8rem;
+        }
+
+        .dashboard-tasks__item span {
+            font-size: 0.7rem;
+        }
+
+        .dashboard-tasks__badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.45rem;
+            align-self: flex-end;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .admin-card {
+            padding: 1rem !important;
+        }
+
+        .admin-card h2 {
+            font-size: 1.75rem !important;
+        }
+
+        .dashboard-grid {
+            gap: 0.5rem;
+        }
+
+        .dashboard-metric {
+            gap: 0.5rem;
+        }
+
+        .dashboard-metric__icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+        }
+
+        .dashboard-metric__value {
+            font-size: 1.1rem;
+        }
+
+        .dashboard-metric__trend {
+            font-size: 0.65rem;
+        }
+
+        .dashboard-activity__item {
+            padding: 0.5rem;
+        }
+
+        .dashboard-activity__item strong {
+            font-size: 0.75rem;
+        }
+
+        .dashboard-activity__item span {
+            font-size: 0.65rem;
+        }
+
+        .dashboard-actions__item {
+            padding: 0.6rem;
+            font-size: 0.75rem;
+        }
+
+        .dashboard-tasks__item {
+            padding: 0.5rem;
+        }
+
+        .dashboard-tasks__item strong {
+            font-size: 0.75rem;
+        }
+
+        .dashboard-tasks__item span {
+            font-size: 0.65rem;
+        }
+
+        .promo-code-card {
+            padding: 1.25rem !important;
+        }
+
+        .promo-code-text {
+            font-size: 1.75rem !important;
+            letter-spacing: 0.05em !important;
+        }
+
+        .promo-code-description {
+            font-size: 0.85rem;
+            padding: 0 0.5rem;
+        }
+    }
 </style>
 @endpush
 
@@ -486,6 +730,21 @@ function showToast(message, type = 'success') {
             }
         }, 300);
     }, 4000);
+}
+
+function togglePromoCodeCard() {
+    const card = document.getElementById('promoCodeCard');
+    const btn = document.getElementById('togglePromoCodeBtn');
+    
+    if (card && btn) {
+        if (card.style.display === 'none') {
+            card.style.display = 'block';
+            btn.innerHTML = '<i class="fas fa-eye-slash me-2"></i>Masquer le code promo';
+        } else {
+            card.style.display = 'none';
+            btn.innerHTML = '<i class="fas fa-ticket-alt me-2"></i>Afficher le code promo';
+        }
+    }
 }
 
 function copyPromoCode(code) {

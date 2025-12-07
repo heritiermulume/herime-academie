@@ -4,7 +4,7 @@
 @section('admin-title', 'Détails de l\'email programmé')
 @section('admin-subtitle', 'Consultez les détails complets de l\'email programmé')
 @section('admin-actions')
-    <a href="{{ route('admin.emails.scheduled') }}" class="btn btn-outline-secondary">
+    <a href="{{ route('admin.emails.scheduled') }}" class="btn btn-light">
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
     @if($scheduledEmail->status === 'pending')
