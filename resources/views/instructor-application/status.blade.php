@@ -126,32 +126,40 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-12 col-md-6">
-                                <div class="d-flex align-items-center p-3 border rounded">
-                                    <i class="fas fa-file-pdf fa-2x text-danger me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <div class="fw-bold">CV</div>
-                                        <small class="text-muted">Curriculum Vitae</small>
+                                <div class="p-3 border rounded h-100 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="fas fa-file-pdf fa-2x text-danger me-3"></i>
+                                        <div>
+                                            <div class="fw-bold">CV</div>
+                                            <small class="text-muted">Curriculum Vitae</small>
+                                        </div>
                                     </div>
                                     @if($application->cv_path)
-                                        <a href="{{ route('instructor-application.download-cv', $application) }}" 
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-download me-1"></i><span class="d-none d-md-inline">Télécharger</span>
-                                        </a>
+                                        <div class="mt-auto">
+                                            <a href="{{ route('instructor-application.download-cv', $application) }}" 
+                                               class="btn btn-sm btn-outline-primary w-100">
+                                                <i class="fas fa-download me-1"></i>Télécharger
+                                            </a>
+                                        </div>
                                     @endif
                                 </div>
                             </div>
                             <div class="col-12 col-md-6">
-                                <div class="d-flex align-items-center p-3 border rounded">
-                                    <i class="fas fa-file-alt fa-2x text-primary me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <div class="fw-bold">Lettre de Motivation</div>
-                                        <small class="text-muted">Document de motivation</small>
+                                <div class="p-3 border rounded h-100 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <i class="fas fa-file-alt fa-2x text-primary me-3"></i>
+                                        <div>
+                                            <div class="fw-bold">Lettre de Motivation</div>
+                                            <small class="text-muted">Document de motivation</small>
+                                        </div>
                                     </div>
                                     @if($application->motivation_letter_path)
-                                        <a href="{{ route('instructor-application.download-motivation-letter', $application) }}" 
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-download me-1"></i><span class="d-none d-md-inline">Télécharger</span>
-                                        </a>
+                                        <div class="mt-auto">
+                                            <a href="{{ route('instructor-application.download-motivation-letter', $application) }}" 
+                                               class="btn btn-sm btn-outline-primary w-100">
+                                                <i class="fas fa-download me-1"></i>Télécharger
+                                            </a>
+                                        </div>
                                     @endif
                                 </div>
                             </div>

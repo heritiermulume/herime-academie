@@ -64,6 +64,50 @@
                      id="ambassadors" 
                      role="tabpanel" 
                      aria-labelledby="ambassadors-tab">
+                    <!-- Statistiques -->
+                    <div class="admin-stats-grid mb-4">
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Total</p>
+                            <p class="admin-stat-card__value">{{ $ambassadorStats['total'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Ambassadeurs</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Actifs</p>
+                            <p class="admin-stat-card__value">{{ $ambassadorStats['active'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">En activité</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Inactifs</p>
+                            <p class="admin-stat-card__value">{{ $ambassadorStats['inactive'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Désactivés</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Gains totaux</p>
+                            <p class="admin-stat-card__value">{{ number_format($ambassadorStats['total_earnings'] ?? 0, 2) }} {{ $currencyCode ?? 'USD' }}</p>
+                            <p class="admin-stat-card__muted">Toutes commissions</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Payés</p>
+                            <p class="admin-stat-card__value">{{ number_format($ambassadorStats['paid_earnings'] ?? 0, 2) }} {{ $currencyCode ?? 'USD' }}</p>
+                            <p class="admin-stat-card__muted">Commissions versées</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">En attente</p>
+                            <p class="admin-stat-card__value">{{ number_format($ambassadorStats['pending_earnings'] ?? 0, 2) }} {{ $currencyCode ?? 'USD' }}</p>
+                            <p class="admin-stat-card__muted">Non encore payés</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Références</p>
+                            <p class="admin-stat-card__value">{{ number_format($ambassadorStats['total_referrals'] ?? 0) }}</p>
+                            <p class="admin-stat-card__muted">Utilisateurs uniques</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Ventes</p>
+                            <p class="admin-stat-card__value">{{ number_format($ambassadorStats['total_sales'] ?? 0) }}</p>
+                            <p class="admin-stat-card__muted">Commandes générées</p>
+                        </div>
+                    </div>
+
                     <x-admin.search-panel
                         :action="route('admin.ambassadors.index', ['tab' => 'ambassadors'])"
                         formId="ambassadorsFilterForm"
@@ -152,6 +196,35 @@
                      id="applications" 
                      role="tabpanel" 
                      aria-labelledby="applications-tab">
+                    <!-- Statistiques -->
+                    <div class="admin-stats-grid mb-4">
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Total</p>
+                            <p class="admin-stat-card__value">{{ $applicationStats['total'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Candidatures reçues</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">En attente</p>
+                            <p class="admin-stat-card__value">{{ $applicationStats['pending'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">En file de traitement</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">En examen</p>
+                            <p class="admin-stat-card__value">{{ $applicationStats['under_review'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Analyse en cours</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Approuvées</p>
+                            <p class="admin-stat-card__value">{{ $applicationStats['approved'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Candidatures acceptées</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Rejetées</p>
+                            <p class="admin-stat-card__value">{{ $applicationStats['rejected'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Candidatures refusées</p>
+                        </div>
+                    </div>
+
                     <x-admin.search-panel
                         :action="route('admin.ambassadors.index', ['tab' => 'applications'])"
                         formId="applicationsFilterForm"
@@ -234,6 +307,45 @@
                      id="commissions" 
                      role="tabpanel" 
                      aria-labelledby="commissions-tab">
+                    <!-- Statistiques -->
+                    <div class="admin-stats-grid mb-4">
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Total</p>
+                            <p class="admin-stat-card__value">{{ $commissionStats['total'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Commissions</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">En attente</p>
+                            <p class="admin-stat-card__value">{{ $commissionStats['pending'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Non approuvées</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Approuvées</p>
+                            <p class="admin-stat-card__value">{{ $commissionStats['approved'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">En attente de paiement</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Payées</p>
+                            <p class="admin-stat-card__value">{{ $commissionStats['paid'] ?? 0 }}</p>
+                            <p class="admin-stat-card__muted">Commissions versées</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Montant total</p>
+                            <p class="admin-stat-card__value">{{ number_format($commissionStats['total_amount'] ?? 0, 2) }} {{ $currencyCode ?? 'USD' }}</p>
+                            <p class="admin-stat-card__muted">Toutes commissions</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">Payé</p>
+                            <p class="admin-stat-card__value">{{ number_format($commissionStats['paid_amount'] ?? 0, 2) }} {{ $currencyCode ?? 'USD' }}</p>
+                            <p class="admin-stat-card__muted">Montants versés</p>
+                        </div>
+                        <div class="admin-stat-card">
+                            <p class="admin-stat-card__label">En attente</p>
+                            <p class="admin-stat-card__value">{{ number_format($commissionStats['pending_amount'] ?? 0, 2) }} {{ $currencyCode ?? 'USD' }}</p>
+                            <p class="admin-stat-card__muted">Montants non payés</p>
+                        </div>
+                    </div>
+
                     <x-admin.search-panel
                         :action="route('admin.ambassadors.index', ['tab' => 'commissions'])"
                         formId="commissionsFilterForm"
@@ -507,6 +619,13 @@ document.addEventListener('DOMContentLoaded', function() {
     object-fit: cover;
     flex-shrink: 0;
     box-shadow: 0 6px 12px -6px rgba(15, 23, 42, 0.35);
+}
+
+/* Statistiques en 2 colonnes sur desktop */
+@media (min-width: 992px) {
+    .admin-panel--main .admin-stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
 }
 
 /* Gestion du débordement de texte dans les tableaux */

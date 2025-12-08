@@ -80,3 +80,4 @@ class CertificateIssuedMail extends Mailable
 
 
 
+

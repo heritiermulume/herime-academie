@@ -46,12 +46,6 @@
             'available' => Route::has('admin.instructor-applications')
         ],
         [
-            'label' => 'Paiements formateurs',
-            'icon' => 'fas fa-money-bill-wave',
-            'route' => 'admin.instructor-payouts',
-            'active' => ['admin.instructor-payouts', 'admin.instructor-payouts.*']
-        ],
-        [
             'label' => 'Ambassadeurs',
             'icon' => 'fas fa-handshake',
             'route' => 'admin.ambassadors.index',

@@ -206,20 +206,7 @@
                 <a class="nav-link" href="{{ route('courses.index') }}">Cours</a>
                 <a class="nav-link" href="{{ route('categories.index') }}">Catégories</a>
                 <a class="nav-link" href="{{ route('instructors.index') }}">Formateurs</a>
-                @auth
-                    @php
-                        $isAmbassador = \App\Models\Ambassador::where('user_id', auth()->id())
-                            ->where('is_active', true)
-                            ->exists();
-                    @endphp
-                    @if(!$isAmbassador)
-                        <a class="nav-link" href="{{ route('ambassador-application.index') }}">Ambassadeur</a>
-                    @else
-                        <a class="nav-link" href="{{ route('ambassador.dashboard') }}">Ambassadeur</a>
-                    @endif
-                @else
-                    <a class="nav-link" href="{{ route('ambassador-application.index') }}">Ambassadeur</a>
-                @endauth
+                <a class="nav-link" href="{{ route('ambassador-application.index') }}">Ambassadeurs</a>
                 <a class="nav-link" href="{{ route('about') }}">À propos</a>
                 <a class="nav-link" href="{{ route('contact') }}">Contact</a>
             </div>
@@ -430,37 +417,36 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('instructor-application.index') }}">
+                    <a class="nav-link" href="{{ route('instructors.index') }}">
                         <i class="fas fa-chalkboard-teacher me-2"></i>Formateurs
                     </a>
                 </li>
                 @auth
-                    @if(auth()->user()->role !== 'instructor')
+                    @php
+                        $hasApplication = auth()->user()->role !== 'instructor' && \App\Models\InstructorApplication::where('user_id', auth()->id())->exists();
+                    @endphp
+                    @if(auth()->user()->role !== 'instructor' && !$hasApplication)
                         <li class="nav-item">
                             <a class="nav-link" href="{{ route('instructor-application.index') }}">
                                 <i class="fas fa-rocket me-2"></i>Devenir Formateur
                             </a>
                         </li>
-                    @endif
-                    @php
-                        $isAmbassador = \App\Models\Ambassador::where('user_id', auth()->id())
-                            ->where('is_active', true)
-                            ->exists();
-                    @endphp
-                    @if(!$isAmbassador)
+                    @elseif($hasApplication)
+                        @php
+                            $application = \App\Models\InstructorApplication::where('user_id', auth()->id())->first();
+                        @endphp
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ route('ambassador-application.index') }}">
-                                <i class="fas fa-handshake me-2"></i>Devenir Ambassadeur
-                            </a>
-                        </li>
-                    @else
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ route('ambassador.dashboard') }}">
-                                <i class="fas fa-tachometer-alt me-2"></i>Dashboard Ambassadeur
+                            <a class="nav-link" href="{{ route('instructor-application.status', $application) }}">
+                                <i class="fas fa-file-alt me-2"></i>Ma candidature
                             </a>
                         </li>
                     @endif
                 @endauth
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('ambassador-application.index') }}">
+                        <i class="fas fa-handshake me-2"></i>Ambassadeurs
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('about') }}">
                         <i class="fas fa-info-circle me-2"></i>À propos

@@ -12,7 +12,9 @@
                 <p class="lead mb-4">Rejoignez notre programme d'ambassadeur et gagnez des commissions en partageant nos formations</p>
                 @auth
                     @if($isAmbassador)
-                        {{-- Ne rien afficher si l'utilisateur est déjà ambassadeur --}}
+                        <button class="btn btn-light btn-lg px-3 px-md-5" disabled>
+                            <i class="fas fa-check-circle me-2"></i>Vous êtes déjà ambassadeur
+                        </button>
                     @elseif(isset($application) && $application)
                         <a href="{{ route('ambassador-application.status', $application) }}" class="btn btn-light btn-lg px-3 px-md-5">
                             <i class="fas fa-eye me-2"></i>Voir le statut de ma candidature
@@ -33,7 +35,7 @@
 </section>
 
 @auth
-    @if(isset($application) && $application)
+    @if(!$isAmbassador && isset($application) && $application)
         <section class="py-4">
             <div class="container">
                 <div class="col-lg-10 mx-auto">
@@ -249,7 +251,13 @@
                 <!-- CTA Section -->
                 @auth
                     @if($isAmbassador)
-                        {{-- Ne rien afficher si l'utilisateur est déjà ambassadeur --}}
+                        <div class="text-center mt-4 mt-md-5">
+                            <div class="alert alert-success d-inline-block" role="alert">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>Vous êtes déjà ambassadeur !</strong>
+                                <p class="mb-0 mt-2">Accédez à votre tableau de bord depuis le menu de votre profil.</p>
+                            </div>
+                        </div>
                     @elseif(isset($application) && $application)
                         <div class="text-center mt-4 mt-md-5">
                             <a href="{{ route('ambassador-application.status', $application) }}" class="btn btn-primary btn-lg px-3 px-md-5 py-2 py-md-3">

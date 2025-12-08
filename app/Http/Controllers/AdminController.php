@@ -3494,102 +3494,208 @@ class AdminController extends Controller
      */
     public function instructorApplications(Request $request)
     {
-        // Récupérer tous les formateurs (avec ou sans candidature)
-        $instructorsQuery = User::where('role', 'instructor')
-            ->with(['instructorApplication.reviewer']);
+        $tab = $request->get('tab', 'instructors'); // Par défaut: formateurs
 
-        // Recherche par nom ou email
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $instructorsQuery->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
+        // Tab: Formateurs
+        if ($tab === 'instructors') {
+            // Récupérer tous les formateurs (avec ou sans candidature)
+            $instructorsQuery = User::where('role', 'instructor')
+                ->with(['instructorApplication.reviewer']);
 
-        $allInstructors = $instructorsQuery->get();
-
-        // Créer une collection combinée de candidatures réelles et formateurs sans candidature
-        $combinedApplications = collect();
-
-        foreach ($allInstructors as $instructor) {
-            if ($instructor->instructorApplication) {
-                // Formateur avec candidature - utiliser la candidature réelle
-                $combinedApplications->push($instructor->instructorApplication);
-            } else {
-                // Formateur nommé directement par admin - créer un objet virtuel
-                $virtualApplication = new InstructorApplication();
-                $virtualApplication->id = 'virtual_' . $instructor->id;
-                $virtualApplication->user_id = $instructor->id;
-                $virtualApplication->user = $instructor;
-                $virtualApplication->status = 'approved'; // Les formateurs nommés sont considérés comme approuvés
-                $virtualApplication->created_at = $instructor->created_at;
-                $virtualApplication->reviewed_at = $instructor->created_at;
-                $virtualApplication->reviewed_by = null;
-                $virtualApplication->reviewer = null;
-                $virtualApplication->is_virtual = true; // Marqueur pour identifier les candidatures virtuelles
-                $combinedApplications->push($virtualApplication);
+            // Recherche par nom ou email
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $instructorsQuery->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
             }
-        }
 
-        // Filtre par statut
-        if ($request->filled('status')) {
-            $status = $request->get('status');
-            $combinedApplications = $combinedApplications->filter(function($app) use ($status) {
-                return $app->status === $status;
-            });
-        }
+            $allInstructors = $instructorsQuery->get();
 
-        // Tri
-        $sortBy = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
-        
-        $combinedApplications = $combinedApplications->sort(function($a, $b) use ($sortBy, $sortDirection) {
-            $valueA = match($sortBy) {
-                'created_at' => $a->created_at?->timestamp ?? 0,
-                'status' => $a->status ?? '',
-                'reviewed_at' => $a->reviewed_at?->timestamp ?? 0,
-                default => $a->created_at?->timestamp ?? 0,
-            };
-            
-            $valueB = match($sortBy) {
-                'created_at' => $b->created_at?->timestamp ?? 0,
-                'status' => $b->status ?? '',
-                'reviewed_at' => $b->reviewed_at?->timestamp ?? 0,
-                default => $b->created_at?->timestamp ?? 0,
-            };
-            
-            if ($sortDirection === 'asc') {
-                return $valueA <=> $valueB;
-            } else {
-                return $valueB <=> $valueA;
+            // Créer une collection combinée de candidatures réelles et formateurs sans candidature
+            $combinedApplications = collect();
+
+            foreach ($allInstructors as $instructor) {
+                if ($instructor->instructorApplication) {
+                    // Formateur avec candidature - utiliser la candidature réelle
+                    $combinedApplications->push($instructor->instructorApplication);
+                } else {
+                    // Formateur nommé directement par admin - créer un objet virtuel
+                    $virtualApplication = new InstructorApplication();
+                    $virtualApplication->id = 'virtual_' . $instructor->id;
+                    $virtualApplication->user_id = $instructor->id;
+                    $virtualApplication->user = $instructor;
+                    $virtualApplication->status = 'approved'; // Les formateurs nommés sont considérés comme approuvés
+                    $virtualApplication->created_at = $instructor->created_at;
+                    $virtualApplication->reviewed_at = $instructor->created_at;
+                    $virtualApplication->reviewed_by = null;
+                    $virtualApplication->reviewer = null;
+                    $virtualApplication->is_virtual = true; // Marqueur pour identifier les candidatures virtuelles
+                    $combinedApplications->push($virtualApplication);
+                }
             }
-        })->values();
 
-        // Pagination manuelle
-        $page = $request->get('page', 1);
-        $perPage = 20;
-        $total = $combinedApplications->count();
-        $items = $combinedApplications->slice(($page - 1) * $perPage, $perPage)->values();
-        
-        $applications = new \Illuminate\Pagination\LengthAwarePaginator(
-            $items,
-            $total,
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
+            // Filtre par statut
+            if ($request->filled('status')) {
+                $status = $request->get('status');
+                $combinedApplications = $combinedApplications->filter(function($app) use ($status) {
+                    return $app->status === $status;
+                });
+            }
 
-        // Statistiques (incluant les formateurs nommés directement)
-        $stats = [
-            'total' => $allInstructors->count(),
-            'pending' => $combinedApplications->where('status', 'pending')->count(),
-            'under_review' => $combinedApplications->where('status', 'under_review')->count(),
-            'approved' => $combinedApplications->where('status', 'approved')->count(),
-            'rejected' => $combinedApplications->where('status', 'rejected')->count(),
-        ];
+            // Tri
+            $sortBy = $request->get('sort', 'created_at');
+            $sortDirection = $request->get('direction', 'desc');
+            
+            $combinedApplications = $combinedApplications->sort(function($a, $b) use ($sortBy, $sortDirection) {
+                $valueA = match($sortBy) {
+                    'created_at' => $a->created_at?->timestamp ?? 0,
+                    'status' => $a->status ?? '',
+                    'reviewed_at' => $a->reviewed_at?->timestamp ?? 0,
+                    default => $a->created_at?->timestamp ?? 0,
+                };
+                
+                $valueB = match($sortBy) {
+                    'created_at' => $b->created_at?->timestamp ?? 0,
+                    'status' => $b->status ?? '',
+                    'reviewed_at' => $b->reviewed_at?->timestamp ?? 0,
+                    default => $b->created_at?->timestamp ?? 0,
+                };
+                
+                if ($sortDirection === 'asc') {
+                    return $valueA <=> $valueB;
+                } else {
+                    return $valueB <=> $valueA;
+                }
+            })->values();
 
-        return view('admin.instructor-applications.index', compact('applications', 'stats'));
+            // Pagination manuelle
+            $page = $request->get('page', 1);
+            $perPage = 20;
+            $total = $combinedApplications->count();
+            $items = $combinedApplications->slice(($page - 1) * $perPage, $perPage)->values();
+            
+            $applications = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items,
+                $total,
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+
+            // Statistiques (incluant les formateurs nommés directement)
+            $stats = [
+                'total' => $allInstructors->count(),
+                'pending' => $combinedApplications->where('status', 'pending')->count(),
+                'under_review' => $combinedApplications->where('status', 'under_review')->count(),
+                'approved' => $combinedApplications->where('status', 'approved')->count(),
+                'rejected' => $combinedApplications->where('status', 'rejected')->count(),
+            ];
+
+            return view('admin.instructor-applications.index', compact('applications', 'stats', 'tab'));
+        }
+
+        // Tab: Paiements (intégration de instructorPayouts)
+        if ($tab === 'payouts') {
+            $payoutQuery = InstructorPayout::with(['instructor', 'order', 'course']);
+
+            // Filtre par statut
+            if ($request->filled('status')) {
+                $payoutQuery->where('status', $request->get('status'));
+            }
+
+            // Filtre par formateur
+            if ($request->filled('instructor_id')) {
+                $payoutQuery->where('instructor_id', $request->get('instructor_id'));
+            }
+
+            // Recherche par payout_id ou order_number
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $payoutQuery->where(function($q) use ($search) {
+                    $q->where('payout_id', 'like', "%{$search}%")
+                      ->orWhereHas('order', function($orderQuery) use ($search) {
+                          $orderQuery->where('order_number', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Tri
+            $sortBy = $request->get('sort', 'created_at');
+            $sortDirection = $request->get('direction', 'desc');
+            
+            if (in_array($sortBy, ['amount', 'status', 'created_at', 'processed_at'])) {
+                $payoutQuery->orderBy($sortBy, $sortDirection);
+            } else {
+                $payoutQuery->latest();
+            }
+
+            $payouts = $payoutQuery->paginate(20)->withQueryString();
+
+            // Statistiques
+            $payoutStats = [
+                'total' => InstructorPayout::count(),
+                'pending' => InstructorPayout::where('status', 'pending')->count(),
+                'processing' => InstructorPayout::where('status', 'processing')->count(),
+                'completed' => InstructorPayout::where('status', 'completed')->count(),
+                'failed' => InstructorPayout::where('status', 'failed')->count(),
+                'total_amount' => InstructorPayout::where('status', 'completed')->sum('amount'),
+                'total_commission' => InstructorPayout::where('status', 'completed')->sum('commission_amount'),
+            ];
+
+            // Liste des formateurs externes pour le filtre
+            $instructors = User::where('is_external_instructor', true)
+                ->where('role', 'instructor')
+                ->get();
+
+            return view('admin.instructor-applications.index', compact('payouts', 'payoutStats', 'instructors', 'tab'));
+        }
+
+        // Tab: Candidatures
+        if ($tab === 'applications') {
+            $applicationsQuery = InstructorApplication::with(['user', 'reviewer']);
+
+            // Recherche par nom ou email
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $applicationsQuery->whereHas('user', function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            // Filtre par statut
+            if ($request->filled('status')) {
+                $applicationsQuery->where('status', $request->get('status'));
+            }
+
+            // Tri
+            $sortBy = $request->get('sort', 'created_at');
+            $sortDirection = $request->get('direction', 'desc');
+            
+            if (in_array($sortBy, ['created_at', 'status', 'reviewed_at'])) {
+                $applicationsQuery->orderBy($sortBy, $sortDirection);
+            } else {
+                $applicationsQuery->latest();
+            }
+
+            $applications = $applicationsQuery->paginate(20)->withQueryString();
+
+            // Statistiques
+            $applicationStats = [
+                'total' => InstructorApplication::count(),
+                'pending' => InstructorApplication::where('status', 'pending')->count(),
+                'under_review' => InstructorApplication::where('status', 'under_review')->count(),
+                'approved' => InstructorApplication::where('status', 'approved')->count(),
+                'rejected' => InstructorApplication::where('status', 'rejected')->count(),
+            ];
+
+            return view('admin.instructor-applications.index', compact('applications', 'applicationStats', 'tab'));
+        }
+
+        // Par défaut, retourner le tab formateurs
+        return redirect()->route('admin.instructor-applications', ['tab' => 'instructors']);
     }
 
     /**

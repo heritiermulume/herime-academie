@@ -53,51 +53,22 @@
             </aside>
 
             <div class="col-lg-9 mt-0 mt-lg-0">
-                <!-- Filters -->
-                <div class="courses-search-wrapper mb-4">
-                    <form method="GET" action="{{ route('courses.index') }}" class="courses-search">
-                        <div class="courses-search__bar">
-                            <label for="search" class="visually-hidden">Recherche</label>
-                            <div class="courses-search__input-wrapper">
-                                <i class="fas fa-search"></i>
-                                <input
-                                    type="text"
-                                    id="search"
-                                    name="search"
-                                    value="{{ request('search') }}"
-                                    placeholder="Rechercher un cours, un formateur..."
-                                >
-                                <button type="submit" class="btn btn-primary courses-search__submit-btn" aria-label="Rechercher">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="courses-search__actions">
-                            <button
-                                class="courses-search__filters-btn toggle-filters-btn {{ $filtersActive ? 'is-active' : '' }}"
-                                type="button"
-                                id="courses-filter-toggle"
-                                aria-expanded="{{ $filtersActive ? 'true' : 'false' }}"
-                                aria-controls="courses-filter-panel"
-                            >
-                                <i class="fas fa-sliders-h me-2"></i>
-                                Filtres avancés
-                            </button>
-                            <a href="{{ route('courses.index') }}" class="courses-search__reset-btn">
-                                <i class="fas fa-rotate-left me-2"></i>
-                                Réinitialiser
-                            </a>
-                        </div>
-
-                        <div
-                            id="courses-filter-panel"
-                            class="courses-search__filters{{ $filtersActive ? ' is-visible' : '' }}"
-                        >
-                            <div class="row g-3">
-                                <div class="col-md-3 col-sm-6">
-                                    <label for="category" class="form-label">Catégorie</label>
-                                    <select class="form-select" id="category" name="category">
+                <!-- Search Panel (système global comme dans l'admin) -->
+                <div class="mb-4">
+                    <x-admin.search-panel
+                        :action="route('courses.index')"
+                        formId="coursesFilterForm"
+                        filtersId="coursesFilters"
+                        :hasFilters="true"
+                        searchName="search"
+                        :searchValue="request('search')"
+                        placeholder="Rechercher un cours, un formateur, une catégorie..."
+                    >
+                        <x-slot:filters>
+                            <div class="admin-form-grid admin-form-grid--two mb-3">
+                                <div>
+                                    <label class="form-label fw-semibold">Catégorie</label>
+                                    <select class="form-select" name="category">
                                         <option value="">Toutes les catégories</option>
                                         @foreach($categories as $category)
                                             <option value="{{ $category->id }}" {{ request('category') == $category->id ? 'selected' : '' }}>
@@ -106,26 +77,26 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-md-3 col-sm-6">
-                                    <label for="level" class="form-label">Niveau</label>
-                                    <select class="form-select" id="level" name="level">
+                                <div>
+                                    <label class="form-label fw-semibold">Niveau</label>
+                                    <select class="form-select" name="level">
                                         <option value="">Tous les niveaux</option>
                                         <option value="beginner" {{ request('level') == 'beginner' ? 'selected' : '' }}>Débutant</option>
                                         <option value="intermediate" {{ request('level') == 'intermediate' ? 'selected' : '' }}>Intermédiaire</option>
                                         <option value="advanced" {{ request('level') == 'advanced' ? 'selected' : '' }}>Avancé</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3 col-sm-6">
-                                    <label for="price" class="form-label">Prix</label>
-                                    <select class="form-select" id="price" name="price">
+                                <div>
+                                    <label class="form-label fw-semibold">Prix</label>
+                                    <select class="form-select" name="price">
                                         <option value="">Tous les prix</option>
                                         <option value="free" {{ request('price') == 'free' ? 'selected' : '' }}>Gratuit</option>
                                         <option value="paid" {{ request('price') == 'paid' ? 'selected' : '' }}>Payant</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3 col-sm-6">
-                                    <label for="sort" class="form-label">Trier par</label>
-                                    <select class="form-select" id="sort" name="sort">
+                                <div>
+                                    <label class="form-label fw-semibold">Trier par</label>
+                                    <select class="form-select" name="sort">
                                         <option value="popular" {{ (request('sort') == 'popular' || !request('sort')) ? 'selected' : '' }}>Plus populaires</option>
                                         <option value="latest" {{ request('sort') == 'latest' ? 'selected' : '' }}>Plus récents</option>
                                         <option value="rating" {{ request('sort') == 'rating' ? 'selected' : '' }}>Mieux notés</option>
@@ -134,13 +105,41 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="courses-search__filters-actions">
-                                <button type="submit" class="btn btn-primary w-100 w-md-auto">
-                                    Appliquer les filtres
-                                </button>
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                <span class="text-muted small">Ajustez les filtres puis appliquez-les.</span>
+                                <a href="{{ route('courses.index') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-undo me-2"></i>Réinitialiser
+                                </a>
                             </div>
+                        </x-slot:filters>
+                    </x-admin.search-panel>
+
+                    <!-- Filtres actifs -->
+                    @if(request()->hasAny(['search', 'category', 'level', 'price', 'sort']))
+                        <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                            <div>
+                                <i class="fas fa-filter me-2"></i><strong>Filtres actifs :</strong>
+                                @if(request('search'))
+                                    <span class="badge bg-primary ms-2">Recherche: "{{ request('search') }}"</span>
+                                @endif
+                                @if(request('category'))
+                                    <span class="badge bg-info ms-2">Catégorie: {{ $categories->firstWhere('id', request('category'))->name ?? 'N/A' }}</span>
+                                @endif
+                                @if(request('level'))
+                                    <span class="badge bg-warning ms-2">Niveau: {{ ucfirst(request('level')) }}</span>
+                                @endif
+                                @if(request('price'))
+                                    <span class="badge bg-success ms-2">Prix: {{ request('price') == 'free' ? 'Gratuit' : 'Payant' }}</span>
+                                @endif
+                                @if(request('sort'))
+                                    <span class="badge bg-secondary ms-2">Tri: {{ ucfirst(str_replace('_', ' ', request('sort'))) }}</span>
+                                @endif
+                            </div>
+                            <a href="{{ route('courses.index') }}" class="btn btn-sm btn-outline-danger clear-filters-btn">
+                                <i class="fas fa-times me-1"></i>Effacer les filtres
+                            </a>
                         </div>
-                    </form>
+                    @endif
                 </div>
 
                 <!-- Results -->
@@ -354,130 +353,328 @@
     color: #0c4a6e;
 }
 
-.courses-search-wrapper {
-    background: #ffffff;
-    border-radius: 1.25rem;
-    padding: clamp(0.85rem, 0.8rem + 0.4vw, 1.25rem);
-    box-shadow: 0 20px 40px -38px rgba(15, 23, 42, 0.4);
-    border: 1px solid rgba(226, 232, 240, 0.7);
-}
-
-.courses-search {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.courses-search__bar {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-}
-
-.courses-search__input-wrapper {
+/* Styles pour le panneau de recherche admin adapté au front-end */
+.admin-search-panel {
     position: relative;
+    background: linear-gradient(135deg, rgba(248, 250, 255, 0.95) 0%, #ffffff 100%);
+    border: 1px solid #dbe3f0;
+    border-radius: 1.75rem;
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 32px 70px -45px rgba(15, 23, 42, 0.45);
+}
+
+.admin-search-panel__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.admin-search-panel__primary {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: nowrap;
+}
+
+.admin-search-panel__search {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.admin-search-panel__label {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #475569;
+    margin: 0;
+}
+
+.admin-search-panel__search-box {
     display: flex;
     align-items: center;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 0.3rem 0.3rem 0.3rem 0.75rem;
-    gap: 0.55rem;
+    gap: 0.65rem;
+    padding: 0.65rem 0.95rem;
+    border-radius: 1rem;
+    border: 1px solid #dbe3f0;
+    background: rgba(255, 255, 255, 0.95);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
 }
 
-.courses-search__input-wrapper i {
-    color: #0ea5e9;
-    font-size: 0.9rem;
+.admin-search-panel__search-box:focus-within {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
 }
 
-.courses-search__input-wrapper input {
-    flex: 1 1 auto;
-    border: 0;
-    background: transparent;
-    padding: 0.28rem 0.55rem;
-    font-size: 0.9rem;
-    min-width: 0;
-}
-
-.courses-search__input-wrapper input:focus {
-    outline: none;
-}
-
-.courses-search__input-wrapper button {
+.admin-search-panel__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    padding: 0.4rem 1.15rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-    flex: 0 0 auto;
+    color: #2563eb;
+    font-size: 1rem;
 }
 
-.courses-search__submit-btn i {
-    font-size: 0.95rem;
+.admin-search-panel__input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 0.98rem;
+    color: #0f172a;
+    min-width: 0;
 }
 
-.courses-search__actions {
+.admin-search-panel__input::placeholder {
+    color: #94a3b8;
+}
+
+.admin-search-panel__actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
 }
 
-.courses-search__filters-btn,
-.courses-search__reset-btn {
+.admin-search-panel__actions .btn {
+    border-radius: 999px;
+    min-height: 46px;
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.4rem 0.85rem;
-    border-radius: 999px;
-    border: 1px solid #e1e7ef;
-    background: #ffffff;
-    color: #0f172a;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.88rem;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.6rem 1.3rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
-.courses-search__filters-btn:hover,
-.courses-search__filters-btn:focus,
-.courses-search__reset-btn:hover,
-.courses-search__reset-btn:focus {
-    background: rgba(14, 165, 233, 0.12);
-    border-color: #0ea5e9;
-    color: #0f172a;
+.admin-search-panel__actions .btn:active {
+    transform: translateY(1px);
 }
 
-.courses-search__filters-btn.is-active {
-    background: #0ea5e9;
-    border-color: #0ea5e9;
-    color: #ffffff;
+.admin-search-panel__submit i,
+.admin-search-panel__filters-toggle i {
+    font-size: 1rem;
 }
 
-.courses-search__filters-btn.is-active:hover {
-    background: #0284c7;
+.admin-search-panel__submit-label,
+.admin-search-panel__filters-label {
+    display: inline;
 }
 
-.courses-search__filters {
-    border-top: 1px solid rgba(226, 232, 240, 0.6);
-    padding-top: 0.85rem;
-    display: none;
+/* Responsive pour le panneau de recherche */
+@media (max-width: 1199.98px) {
+    .admin-search-panel__primary {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+    
+    .admin-search-panel__search {
+        width: 100% !important;
+        flex: none !important;
+    }
+    
+    .admin-search-panel__actions {
+        width: 100% !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem !important;
+    }
+    
+    .admin-search-panel__actions .btn {
+        width: 100% !important;
+        white-space: nowrap !important;
+    }
 }
 
-.courses-search__filters.is-visible {
-    display: block;
+@media (max-width: 767.98px) {
+    .admin-search-panel {
+        padding: 1.05rem 1.1rem;
+    }
+    
+    .admin-search-panel__primary {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+    
+    .admin-search-panel__search {
+        width: 100%;
+    }
+    
+    .admin-search-panel__search-box {
+        padding: 0.5rem 0.8rem;
+    }
+    
+    .admin-search-panel__actions {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem;
+    }
+    
+    .admin-search-panel__actions .btn {
+        width: 100% !important;
+        white-space: nowrap;
+        height: 42px;
+        font-size: 0.85rem;
+        padding: 0.45rem 0.75rem;
+    }
+    
+    .admin-search-panel__submit-label,
+    .admin-search-panel__filters-label {
+        display: none;
+    }
 }
 
-.courses-search__filters-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 0.65rem;
+@media (max-width: 575.98px) {
+    .admin-search-panel {
+        padding: 0.95rem 1rem;
+    }
+    
+    .admin-search-panel__search-box {
+        padding: 0.48rem 0.75rem;
+    }
+    
+    .admin-search-panel__actions {
+        gap: 0.45rem;
+    }
+    
+    .admin-search-panel__actions .btn {
+        min-width: 0;
+        height: 42px;
+        font-size: 0.8rem;
+    }
 }
 
-.courses-search__filters .form-label {
-    font-weight: 600;
-    color: #0f172a;
+/* Styles pour la grille de formulaire admin */
+.admin-form-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.admin-form-grid--two {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 767.98px) {
+    .admin-form-grid--two {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Style pour le bouton "Effacer les filtres" */
+.clear-filters-btn {
+    border: 1px solid #dc3545 !important;
+    padding: 0.375rem 0.75rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    white-space: nowrap;
+    min-height: auto !important;
+    height: auto !important;
+    border-radius: 0.375rem !important;
+}
+
+.clear-filters-btn:hover {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+.clear-filters-btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* Styles pour le conteneur des filtres actifs */
+.alert.alert-info {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+}
+
+.alert.alert-info strong {
+    font-size: 0.875rem;
+}
+
+.alert.alert-info .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+@media (max-width: 991.98px) {
+    .alert.alert-info {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    .alert.alert-info strong {
+        font-size: 0.8rem;
+    }
+    
+    .alert.alert-info .badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+    
+    .clear-filters-btn {
+        font-size: 0.75rem !important;
+        padding: 0.25rem 0.5rem !important;
+        min-height: 32px !important;
+        height: 32px !important;
+    }
+    
+    .clear-filters-btn i {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .alert.alert-info {
+        padding: 0.5rem 0.65rem;
+        font-size: 0.75rem;
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+    
+    .alert.alert-info > div {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+    }
+    
+    .alert.alert-info strong {
+        font-size: 0.75rem;
+        margin-right: 0.25rem;
+    }
+    
+    .alert.alert-info .badge {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.35rem;
+        margin: 0 !important;
+    }
+    
+    .clear-filters-btn {
+        font-size: 0.7rem !important;
+        padding: 0.2rem 0.45rem !important;
+        min-height: 28px !important;
+        height: 28px !important;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .clear-filters-btn i {
+        font-size: 0.65rem;
+        margin-right: 0.25rem !important;
+    }
 }
 
 .hover-lift {
@@ -552,55 +749,6 @@
         margin-inline: auto;
     }
 
-    .courses-search__filters-actions {
-        flex-direction: column;
-        gap: 0.45rem;
-        align-items: stretch;
-    }
-
-    .courses-search__filters-actions .btn {
-        width: 100%;
-    }
-
-    .courses-search__bar {
-        gap: 0.5rem;
-    }
-
-    .courses-search__input-wrapper {
-        padding: 0.3rem 0.35rem;
-        border-radius: 9px;
-        gap: 0.4rem;
-    }
-
-    .courses-search__input-wrapper input {
-        font-size: 0.78rem;
-    }
-
-    .courses-search__input-wrapper button {
-        padding: 0.32rem 0.75rem;
-        font-size: 0.78rem;
-        min-height: 36px;
-        width: auto;
-    }
-    
-    .courses-search__submit-btn {
-        padding: 0.3rem 0.6rem;
-        min-height: 34px;
-    }
-
-    .courses-search__actions {
-        width: 100%;
-        gap: 0.25rem;
-    }
-
-    .courses-search__filters-btn,
-    .courses-search__reset-btn {
-        flex: 1 1 0;
-        justify-content: center;
-        font-size: 0.7rem;
-        padding: 0.32rem 0.65rem;
-        min-height: 34px;
-    }
 
     .courses-categories-panel {
         position: fixed;
@@ -877,31 +1025,31 @@ function createCourseElement(course) {
     return div;
 }
 
-// Initialiser les filtres
+// Gestion du formulaire de recherche (système global comme dans l'admin)
 document.addEventListener('DOMContentLoaded', function() {
-    filterPanel = document.getElementById('courses-filter-panel');
-    filterToggle = document.getElementById('courses-filter-toggle');
+    const coursesFilterForm = document.getElementById('coursesFilterForm');
+    const coursesFiltersOffcanvas = document.getElementById('coursesFilters');
 
-    if (filterPanel && filterToggle) {
-        const updateToggleState = (isShown) => {
-            if (isShown) {
-                filterToggle.classList.add('is-active');
-                filterToggle.setAttribute('aria-expanded', 'true');
-                filterToggle.innerHTML = '<i class="fas fa-sliders-h me-2"></i>Masquer les filtres';
-            } else {
-                filterToggle.classList.remove('is-active');
-                filterToggle.setAttribute('aria-expanded', 'false');
-                filterToggle.innerHTML = '<i class="fas fa-sliders-h me-2"></i>Filtres avancés';
+    if (coursesFilterForm) {
+        coursesFilterForm.addEventListener('submit', () => {
+            if (coursesFiltersOffcanvas) {
+                const instance = bootstrap.Offcanvas.getInstance(coursesFiltersOffcanvas);
+                if (instance) {
+                    instance.hide();
+                }
             }
-        };
+        });
+    }
 
-        updateToggleState(filterPanel.classList.contains('is-visible'));
-
-        filterToggle.addEventListener('click', (event) => {
-            event.preventDefault();
-            const willShow = !filterPanel.classList.contains('is-visible');
-            filterPanel.classList.toggle('is-visible', willShow);
-            updateToggleState(willShow);
+    // Recherche en temps réel (debounce)
+    const searchInput = document.querySelector('#coursesFilterForm input[name="search"]');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                coursesFilterForm?.submit();
+            }, 500);
         });
     }
     

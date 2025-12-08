@@ -70,22 +70,28 @@
                         <form method="POST" action="{{ route('instructor-application.store-step1') }}">
                             @csrf
 
-                            <!-- Phone -->
-                            <div class="mb-4">
-                                <label for="phone" class="form-label fw-bold">
-                                    Téléphone <span class="text-danger">*</span>
-                                </label>
-                                <input type="tel" 
-                                       class="form-control form-control-lg @error('phone') is-invalid @enderror" 
-                                       id="phone" 
-                                       name="phone" 
-                                       value="{{ old('phone', $application->phone ?? '') }}" 
-                                       placeholder="Ex: +243 900 000 000" 
-                                       required>
-                                @error('phone')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            <!-- Phone Info -->
+                            @auth
+                                @if(auth()->user()->phone)
+                                    <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+                                        <i class="fas fa-phone me-2"></i>
+                                        <div>
+                                            <strong>Numéro de téléphone utilisé :</strong> {{ auth()->user()->phone }}
+                                            <br>
+                                            <small class="text-muted">Ce numéro sera utilisé pour votre candidature. Pour le modifier, veuillez mettre à jour votre profil.</small>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <div>
+                                            <strong>Numéro de téléphone manquant</strong>
+                                            <br>
+                                            <small>Veuillez renseigner votre numéro de téléphone dans votre profil avant de continuer.</small>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endauth
 
                             <!-- Professional Experience -->
                             <div class="mb-4">

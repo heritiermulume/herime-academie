@@ -65,19 +65,21 @@
                         
                         <div class="form-section">
                             <div class="row g-3 mb-3">
-                                <div class="col-12 col-md-6">
+                                <div class="col-12">
                                     <label class="form-label"><i class="fas fa-flag me-1"></i>Pays</label>
                                     <select id="country" class="form-select"></select>
                                 </div>
-                                <div class="col-12 col-md-6">
-                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <label class="form-label mb-0"><i class="fas fa-coins me-1"></i>Montant</label>
-                                        <div style="min-width: 140px;">
-                                            <select id="currencySelect" class="form-select form-select-sm"></select>
+                                <div class="col-12">
+                                    <label class="form-label"><i class="fas fa-coins me-1"></i>Montant à payer</label>
+                                    <div class="d-flex gap-2">
+                                        <div style="flex: 0 0 100px;">
+                                            <select id="currencySelect" class="form-select"></select>
+                                        </div>
+                                        <div style="flex: 1;">
+                                            {{-- Montant initial dans la devise de base du site (configurée dans /admin/settings) --}}
+                                            <input type="text" id="amount" class="form-control" value="{{ number_format($total, 2, '.', '') }}" readonly>
                                         </div>
                                     </div>
-                                    {{-- Montant initial dans la devise de base du site (configurée dans /admin/settings) --}}
-                                    <input type="text" id="amount" class="form-control" value="{{ number_format($total, 2, '.', '') }}" readonly>
                                     <div class="invalid-feedback" id="amountError"></div>
                                 </div>
                             </div>
@@ -88,15 +90,18 @@
                                 <small class="form-text text-muted">Sélectionnez votre opérateur.</small>
                             </div>
                                     
-                            <div class="row g-3 mb-3">
-                                <div class="col-12 col-md-4">
-                                    <label class="form-label"><i class="fas fa-phone me-1"></i>Indicatif</label>
-                                    <input type="text" id="prefix" class="form-control" value="243" readonly>
-                                </div>
-                                <div class="col-12 col-md-8">
-                                    <label class="form-label"><i class="fas fa-phone me-1"></i>Numéro (sans indicatif)</label>
-                                    <input type="tel" id="phoneNumber" class="form-control" placeholder="783 456 789" required>
-                                    <div class="invalid-feedback" id="phoneError">Veuillez saisir un numéro de téléphone valide.</div>
+                            <div class="mb-3">
+                                <label class="form-label"><i class="fas fa-phone me-1"></i>Numéro de téléphone</label>
+                                <div class="d-flex gap-2">
+                                    <div style="flex: 0 0 100px;">
+                                        <label class="form-label small mb-1" style="font-size: 0.75rem;">Indicatif</label>
+                                        <input type="text" id="prefix" class="form-control" value="243" readonly>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label class="form-label small mb-1" style="font-size: 0.75rem;">Numéro (sans indicatif)</label>
+                                        <input type="tel" id="phoneNumber" class="form-control" placeholder="783 456 789" required>
+                                        <div class="invalid-feedback" id="phoneError">Veuillez saisir un numéro de téléphone valide.</div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -847,8 +852,8 @@ document.addEventListener('DOMContentLoaded', function() {
 .checkout-header {
     background-color: #fff;
     border-bottom: 1px solid #e5e5e5;
-    padding: 24px 0;
-    margin-bottom: 32px;
+    padding: 12px 0;
+    margin-bottom: 16px;
 }
 
 .checkout-header .checkout-wrapper {
@@ -882,7 +887,7 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 32px;
     font-weight: 700;
     color: #1c1d1f;
-    margin: 0 0 8px 0;
+    margin: 0 0 4px 0;
     line-height: 1.2;
 }
 
@@ -890,6 +895,7 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 16px;
     color: #6a6f73;
     margin: 0;
+    line-height: 1.3;
 }
 
 .checkout-actions {
@@ -1051,6 +1057,18 @@ document.addEventListener('DOMContentLoaded', function() {
     margin-bottom: 16px;
 }
 
+/* Payment Actions */
+.payment-actions {
+    width: 100%;
+    padding: 0 1rem;
+    box-sizing: border-box;
+}
+
+.payment-actions #payButton {
+    width: 100%;
+    max-width: 100%;
+}
+
 .section-title {
     font-size: 18px;
     font-weight: 700;
@@ -1063,6 +1081,112 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 /* Payment form visibility is controlled by inline styles, so no CSS needed */
+
+/* Styles des champs de formulaire - Desktop (tailles appropriées) */
+@media (min-width: 992px) {
+    .checkout-page .form-label {
+        font-size: 14px;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+
+    .checkout-page .form-control,
+    .checkout-page .form-select {
+        font-size: 15px;
+        padding: 10px 12px;
+        border-radius: 6px;
+    }
+
+    /* Aligner la hauteur du champ montant avec le champ devise - uniquement pour ces champs spécifiques */
+    .checkout-page #currencySelect,
+    .checkout-page #amount {
+        height: 45px;
+        line-height: 1.5;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .checkout-page .form-control-sm {
+        font-size: 13px;
+        padding: 7px 10px;
+    }
+
+    .checkout-page .form-select.form-select-sm {
+        font-size: 13px;
+        padding: 7px 10px;
+    }
+
+    .checkout-page .form-text {
+        font-size: 13px;
+        margin-top: 4px;
+    }
+
+    .checkout-page .invalid-feedback {
+        font-size: 13px;
+        margin-top: 4px;
+    }
+
+    .checkout-page .alert {
+        padding: 12px 16px;
+        font-size: 14px;
+        margin-bottom: 0.75rem;
+    }
+
+    .checkout-page .alert i {
+        font-size: 14px;
+    }
+
+    /* Input group pour desktop */
+    .checkout-page .input-group {
+        flex-wrap: wrap;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .checkout-page .input-group .form-control {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: calc(100% - 100px);
+        box-sizing: border-box;
+        overflow: hidden;
+        font-size: 15px;
+        padding: 10px 12px;
+    }
+
+    .checkout-page .input-group .btn {
+        white-space: nowrap;
+        padding: 10px 16px;
+        font-size: 14px;
+        flex-shrink: 0;
+        min-width: 90px;
+        max-width: 100px;
+        box-sizing: border-box;
+    }
+
+    .checkout-page #validatePromoCodeBtn {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-width: 90px;
+        max-width: 100px;
+    }
+
+    /* Terms section pour desktop */
+    .checkout-page .terms-section .form-check {
+        align-items: center; /* centrer verticalement */
+    }
+    
+    .checkout-page .terms-section .form-check-label {
+        font-size: 14px;
+    }
+
+    .checkout-page .terms-section .form-check-input {
+        width: 1.25em;
+        height: 1.25em;
+        margin-top: 0; /* centré verticalement */
+    }
+}
 
 .benefit-item {
     display: inline-flex;
@@ -1148,52 +1272,57 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .checkout-wrapper {
-        padding: 0 1rem;
+        padding: 0 0.25rem;
     }
     
     .checkout-page .checkout-wrapper {
-        padding: 1rem;
+        padding: 0.25rem;
     }
     
     .checkout-header {
-        padding: 0.5rem 0;
-        margin-bottom: 0.5rem;
+        padding: 0.25rem 0;
+        margin-bottom: 0.25rem;
     }
     
     /* Colonnes s'empilent sur tablette */
     .row.g-4 {
-        margin: 0;
-        --bs-gutter-x: 0.5rem;
-        --bs-gutter-y: 0.5rem;
+        margin: 0 !important;
+        --bs-gutter-x: 0.25rem;
+        --bs-gutter-y: 0.25rem;
     }
     
     .row.g-4 > .col-12 {
-        padding-left: 0;
-        padding-right: 0;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-bottom: 0.125rem !important;
     }
     
     .order-summary-card {
         position: relative;
-        margin-top: 0;
-        margin-bottom: 0.25rem;
-        padding: 0.5rem;
+        margin: 0 !important;
+        padding: 0.375rem;
         top: 0;
+        width: 100%;
+        max-width: 100%;
     }
     
     .continue-shopping-btn {
-        font-size: 13px;
+        font-size: 12px !important;
+        padding: 8px 12px !important;
     }
     
     /* Progress section padding sur tablette */
     .checkout-progress {
         background: white;
         border-radius: 8px;
-        padding: 0.5rem 0.75rem;
-        margin: 0 0 0.25rem 0;
+        padding: 0.375rem 0.5rem;
+        margin: 0 0 0.125rem 0;
     }
     
     .checkout-progress.mb-4 {
-        margin-bottom: 0.25rem !important;
+        margin-bottom: 0.125rem !important;
     }
     
     .progress-steps {
@@ -1203,22 +1332,29 @@ document.addEventListener('DOMContentLoaded', function() {
     .payment-section {
         background: white;
         border-radius: 8px;
-        padding: 0.5rem;
-        margin-bottom: 0.125rem;
+        padding: 0.375rem;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
     }
     
     /* Réduire les margins entre les colonnes */
     .row.g-4 > .col-12 {
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.125rem !important;
     }
     
     .section-title {
-        padding: 0.5rem 0.75rem;
-        margin-bottom: 0.5rem;
+        font-size: 15px !important;
+        padding: 0.375rem 0.5rem !important;
+        margin-bottom: 0.375rem !important;
+    }
+    
+    .section-title i {
+        font-size: 15px !important;
     }
     
     .form-section {
-        padding: 0.5rem;
+        padding: 0.375rem;
         max-width: 100%;
         box-sizing: border-box;
         overflow: hidden;
@@ -1228,6 +1364,50 @@ document.addEventListener('DOMContentLoaded', function() {
         max-width: 100%;
         box-sizing: border-box;
         overflow: hidden;
+    }
+    
+    /* Forcer les tailles des champs de formulaire */
+    .form-label {
+        font-size: 12px !important;
+        margin-bottom: 4px !important;
+        font-weight: 500 !important;
+    }
+    
+    .form-control,
+    .form-select {
+        font-size: 13px !important;
+        padding: 8px 10px !important;
+        border-radius: 6px !important;
+    }
+    
+    .form-control-sm {
+        font-size: 12px !important;
+        padding: 6px 8px !important;
+    }
+    
+    .form-select.form-select-sm {
+        font-size: 12px !important;
+        padding: 6px 8px !important;
+    }
+    
+    .form-text {
+        font-size: 11px !important;
+        margin-top: 3px !important;
+    }
+    
+    .invalid-feedback {
+        font-size: 11px !important;
+        margin-top: 3px !important;
+    }
+    
+    .alert {
+        padding: 10px 12px !important;
+        font-size: 12px !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .alert i {
+        font-size: 12px !important;
     }
     
     /* Input group responsive pour tablette */
@@ -1242,63 +1422,114 @@ document.addEventListener('DOMContentLoaded', function() {
     .input-group .form-control {
         flex: 1 1 auto;
         min-width: 0;
-        max-width: calc(100% - 90px);
+        max-width: calc(100% - 80px);
         box-sizing: border-box;
         overflow: hidden;
+        font-size: 13px !important;
+        padding: 8px 10px !important;
     }
     
     .input-group .btn {
         white-space: nowrap;
-        padding: 10px 10px;
-        font-size: 12px;
+        padding: 8px 10px !important;
+        font-size: 11px !important;
         flex-shrink: 0;
-        min-width: 80px;
-        max-width: 90px;
+        min-width: 70px;
+        max-width: 80px;
         box-sizing: border-box;
     }
     
     #validatePromoCodeBtn {
-        padding: 10px 8px !important;
-        font-size: 12px !important;
-        min-width: 75px !important;
-        max-width: 85px !important;
+        padding: 8px 8px !important;
+        font-size: 11px !important;
+        min-width: 70px !important;
+        max-width: 80px !important;
     }
     
     /* Payment button pour tablette */
     .payment-actions {
         display: flex;
         justify-content: center;
+        padding: 0 0.5rem !important;
     }
     
     #payButton {
-        width: auto !important;
+        width: 100% !important;
         max-width: 100%;
-        padding: 12px 28px !important;
+        padding: 12px 24px !important;
         font-size: 15px !important;
+    }
+    
+    /* Order summary */
+    .summary-title {
+        font-size: 15px !important;
+        margin-bottom: 0.5rem !important;
+        padding: 0.25rem 0.375rem !important;
+    }
+    
+    .order-item {
+        padding: 0.375rem 0 !important;
+        font-size: 13px !important;
+    }
+    
+    .item-title {
+        font-size: 12px !important;
+    }
+    
+    .item-instructor {
+        font-size: 10px !important;
+    }
+    
+    .item-price {
+        font-size: 13px !important;
+    }
+    
+    .order-total {
+        font-size: 14px !important;
+        padding-top: 0.375rem !important;
+    }
+    
+    .order-total .text-primary {
+        font-size: 16px !important;
+    }
+    
+    /* Terms section */
+    .terms-section .form-check {
+        align-items: center !important; /* centrer verticalement */
+    }
+    
+    .terms-section .form-check-label {
+        font-size: 13px !important;
+    }
+    
+    .terms-section .form-check-input {
+        width: 1.1em !important;
+        height: 1.1em !important;
+        margin-top: 0 !important; /* centré verticalement */
     }
 }
 
 @media (max-width: 767.98px) {
     /* Réduire encore plus les paddings et margins sur mobile - style analytics */
     .checkout-wrapper {
-        padding: 0 0.75rem !important;
+        padding: 0 0.25rem !important;
         max-width: 100%;
     }
     
     .checkout-page .checkout-wrapper {
-        padding: 0.75rem !important;
+        padding: 0.25rem !important;
     }
     
     /* Header responsive */
     .checkout-header {
-        padding: 0.375rem 0;
-        margin-bottom: 0.5rem;
+        padding: 0.25rem 0;
+        margin-bottom: 0.25rem;
     }
     
     .checkout-header .checkout-wrapper {
         flex-direction: column;
-        gap: 12px;
-        padding: 0 0.5rem;
+        gap: 8px;
+        padding: 0 0.25rem;
     }
     
     .checkout-title-section {
@@ -1306,31 +1537,31 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .checkout-title {
-        font-size: 22px;
+        font-size: 18px !important;
         margin-bottom: 4px;
     }
     
     .checkout-subtitle {
-        font-size: 14px;
+        font-size: 12px !important;
     }
     
     .continue-shopping-btn {
         width: 100%;
         justify-content: center;
-        padding: 10px 16px;
-        font-size: 13px;
+        padding: 8px 12px !important;
+        font-size: 12px !important;
     }
     
     /* Progress responsive */
     .checkout-progress {
-        margin: 0 0 0.25rem 0 !important;
+        margin: 0 0 0.125rem 0 !important;
         background: white;
         border-radius: 8px;
-        padding: 0.375rem 0.5rem;
+        padding: 0.25rem 0.375rem;
     }
     
     .checkout-progress.mb-4 {
-        margin-bottom: 0.25rem !important;
+        margin-bottom: 0.125rem !important;
     }
     
     .progress-steps {
@@ -1370,19 +1601,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /* Colonnes responsive */
     .row.g-4 {
-        margin: 0;
-        --bs-gutter-x: 0.375rem;
-        --bs-gutter-y: 0.375rem;
+        margin: 0 !important;
+        --bs-gutter-x: 0.125rem;
+        --bs-gutter-y: 0.125rem;
     }
     
     .row.g-4 > .col-12 {
         padding-left: 0 !important;
         padding-right: 0 !important;
-        margin-bottom: 0.25rem;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-bottom: 0.125rem !important;
     }
     
     .row.g-4 > .col-12:last-child {
-        margin-bottom: 0;
+        margin-bottom: 0 !important;
     }
     
     /* Order summary en premier sur mobile */
@@ -1398,18 +1631,20 @@ document.addEventListener('DOMContentLoaded', function() {
     .payment-section {
         background: white;
         border-radius: 8px;
-        padding: 0.375rem;
-        margin-bottom: 0.125rem;
+        padding: 0.25rem;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
     }
     
     .section-title {
-        font-size: 16px;
-        margin-bottom: 0.5rem;
-        padding: 0.375rem 0.5rem;
+        font-size: 14px !important;
+        margin-bottom: 0.375rem !important;
+        padding: 0.25rem 0.375rem !important;
     }
     
     .section-title i {
-        font-size: 16px;
+        font-size: 14px !important;
     }
     
     /* Form responsive */
@@ -1444,45 +1679,50 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .form-label {
-        font-size: 14px;
-        margin-bottom: 6px;
+        font-size: 12px !important;
+        margin-bottom: 4px !important;
         display: block;
-        font-weight: 500;
+        font-weight: 500 !important;
     }
     
     .form-control,
     .form-select {
-        font-size: 14px;
-        padding: 10px 12px;
+        font-size: 13px !important;
+        padding: 8px 10px !important;
         width: 100%;
         max-width: 100%;
-        border-radius: 6px;
+        border-radius: 6px !important;
+    }
+    
+    .form-control-sm {
+        font-size: 12px !important;
+        padding: 6px 8px !important;
     }
     
     .form-select.form-select-sm {
-        font-size: 13px;
-        padding: 6px 10px;
+        font-size: 12px !important;
+        padding: 6px 8px !important;
     }
     
     .form-text {
-        font-size: 12px;
-        margin-top: 4px;
+        font-size: 11px !important;
+        margin-top: 3px !important;
     }
     
     .invalid-feedback {
-        font-size: 12px;
-        margin-top: 4px;
+        font-size: 11px !important;
+        margin-top: 3px !important;
     }
     
     .alert {
-        padding: 12px 14px;
-        font-size: 13px;
-        margin-bottom: 0.75rem !important;
-        border-radius: 6px;
+        padding: 10px 12px !important;
+        font-size: 12px !important;
+        margin-bottom: 0.5rem !important;
+        border-radius: 6px !important;
     }
     
     .alert i {
-        font-size: 13px;
+        font-size: 12px !important;
     }
     
     /* Input group responsive */
@@ -1523,12 +1763,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /* Terms section responsive */
     .terms-section {
-        margin-top: 0.75rem;
+        margin-top: 0.5rem;
+    }
+    
+    .terms-section .form-check {
+        align-items: center !important; /* centrer verticalement */
     }
     
     .terms-section .form-check-label {
-        font-size: 13px;
+        font-size: 12px !important;
         line-height: 1.4;
+    }
+    
+    .terms-section .form-check-input {
+        width: 1em !important;
+        height: 1em !important;
+        margin-top: 0 !important; /* centré verticalement */
     }
     
     /* Payment actions responsive */
@@ -1537,53 +1787,56 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .btn-lg {
-        padding: 14px 20px;
-        font-size: 15px;
+        padding: 12px 18px !important;
+        font-size: 14px !important;
         width: 100%;
         max-width: 100%;
-        border-radius: 6px;
+        border-radius: 6px !important;
     }
     
     .payment-actions {
         display: flex;
         justify-content: center;
+        padding: 0 0.375rem !important;
     }
     
     #payButton {
-        width: auto !important;
+        width: 100% !important;
         max-width: 100%;
         padding: 12px 24px !important;
+        font-size: 14px !important;
     }
     
     /* Order summary responsive */
     .order-summary-card {
         position: relative !important;
-        margin-top: 0;
-        margin-bottom: 0.25rem;
-        padding: 0.375rem;
+        margin: 0 !important;
+        padding: 0.25rem;
         border-radius: 8px;
         top: 0 !important;
+        width: 100%;
+        max-width: 100%;
     }
     
     .summary-title {
-        font-size: 16px;
-        margin-bottom: 0.75rem !important;
-        padding: 0.375rem 0.5rem;
+        font-size: 14px !important;
+        margin-bottom: 0.5rem !important;
+        padding: 0.25rem 0.375rem !important;
     }
     
     .order-items {
-        max-height: 200px;
+        max-height: 180px;
         overflow-y: auto;
-        margin-bottom: 0.5rem;
-        padding: 0 0.375rem;
+        margin-bottom: 0.375rem;
+        padding: 0 0.25rem;
     }
     
     .order-item {
-        padding: 0.5rem 0;
-        font-size: 14px;
+        padding: 0.375rem 0 !important;
+        font-size: 12px !important;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 3px;
     }
     
     .order-item .item-info {
@@ -1593,40 +1846,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .order-item .item-price {
-        font-size: 14px;
+        font-size: 12px !important;
         flex-shrink: 0;
         align-self: flex-end;
         font-weight: 700;
     }
     
     .item-title {
-        font-size: 13px;
+        font-size: 12px !important;
         line-height: 1.3;
         word-wrap: break-word;
-        margin-bottom: 4px;
+        margin-bottom: 3px;
     }
     
     .item-instructor {
-        font-size: 11px;
+        font-size: 10px !important;
         margin: 0;
     }
     
     .order-total {
-        font-size: 16px;
-        padding-top: 0.5rem;
+        font-size: 14px !important;
+        padding-top: 0.375rem !important;
         border-top: 2px solid #003366;
-        margin-top: 0.5rem;
-        padding-left: 0.375rem;
-        padding-right: 0.375rem;
+        margin-top: 0.375rem;
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
     }
     
     .order-total .d-flex {
-        font-size: 16px;
+        font-size: 14px !important;
         align-items: center;
     }
     
     .order-total .text-primary {
-        font-size: 18px;
+        font-size: 16px !important;
     }
 }
 
@@ -1749,18 +2002,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* Améliorations responsives de la case à cocher des conditions */
 .terms-section .form-check {
-    display: grid; /* placer la case et le label sur une même ligne */
-    grid-template-columns: auto 1fr; /* checkbox + label prend tout l'espace restant */
-    column-gap: 10px;
-    align-items: start;
+    display: flex; /* utiliser flexbox pour un meilleur alignement */
+    align-items: center; /* centrer verticalement avec la checkbox */
+    gap: 10px;
     margin: 0;
 }
 
 .terms-section .form-check-input {
-    margin-top: 2px;
+    margin-top: 0; /* pas de marge, centré verticalement */
     flex: 0 0 auto; /* ne pas s'étirer */
     width: 1.25em;
     height: 1.25em;
+    cursor: pointer;
 }
 
 .terms-section .form-check-label {
@@ -1769,6 +2022,8 @@ document.addEventListener('DOMContentLoaded', function() {
     word-break: break-word;
     margin: 0; /* supprimer toute marge par défaut */
     cursor: pointer;
+    line-height: 1.5;
+    padding-top: 0;
 }
 
 .terms-section .invalid-feedback {
@@ -1789,43 +2044,47 @@ document.addEventListener('DOMContentLoaded', function() {
 @media (max-width: 768px) {
     .terms-section .form-check-label {
         font-size: 13px;
-        line-height: 1.4;
+        line-height: 1.5;
     }
     
     .terms-section .form-check-input {
-        transform: scale(1.1);
-        margin-top: 3px;
+        margin-top: 0; /* centré verticalement */
+        width: 1.2em;
+        height: 1.2em;
     }
     
     .terms-section .form-check {
-        column-gap: 8px;
+        align-items: center; /* centrer verticalement */
+        gap: 8px;
     }
 }
 
 @media (max-width: 480px) {
     .terms-section .form-check-label {
-        font-size: 12px;
-        line-height: 1.35;
+        font-size: 11px !important;
+        line-height: 1.4;
     }
     
     .terms-section .form-check-input {
-        transform: scale(1.05);
-        margin-top: 2px;
+        margin-top: 0 !important; /* centré verticalement */
+        width: 0.95em !important;
+        height: 0.95em !important;
     }
     
     .terms-section .form-check {
-        column-gap: 6px;
+        align-items: center; /* centrer verticalement */
+        gap: 5px;
     }
 }
 
 @media (max-width: 480px) {
     /* Styles pour très petits écrans - style analytics */
     .checkout-wrapper {
-        padding: 0 0.5rem !important;
+        padding: 0 0.125rem !important;
     }
     
     .checkout-page .checkout-wrapper {
-        padding: 0.5rem !important;
+        padding: 0.125rem !important;
     }
     
     .checkout-header {
@@ -1838,16 +2097,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .checkout-title {
-        font-size: 20px;
+        font-size: 16px !important;
     }
     
     .checkout-subtitle {
-        font-size: 13px;
+        font-size: 11px !important;
     }
     
     .continue-shopping-btn {
-        padding: 10px 14px;
-        font-size: 12px;
+        padding: 8px 12px !important;
+        font-size: 11px !important;
     }
     
     .checkout-progress {
@@ -1892,18 +2151,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .payment-section {
-        padding: 0.375rem;
-        margin-bottom: 0.125rem;
+        padding: 0.25rem;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
     }
     
     .section-title {
-        font-size: 15px;
-        margin-bottom: 0.5rem;
-        padding: 0.375rem 0.5rem;
+        font-size: 13px !important;
+        margin-bottom: 0.375rem !important;
+        padding: 0.25rem 0.375rem !important;
     }
     
     .section-title i {
-        font-size: 15px;
+        font-size: 13px !important;
     }
     
     .form-section {
@@ -1920,33 +2181,42 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .form-label {
-        font-size: 13px;
-        margin-bottom: 5px;
+        font-size: 11px !important;
+        margin-bottom: 3px !important;
     }
     
     .form-control,
     .form-select {
-        font-size: 13px;
-        padding: 9px 11px;
+        font-size: 12px !important;
+        padding: 7px 9px !important;
+    }
+    
+    .form-control-sm {
+        font-size: 11px !important;
+        padding: 5px 7px !important;
     }
     
     .form-select.form-select-sm {
-        font-size: 12px;
-        padding: 5px 8px;
+        font-size: 11px !important;
+        padding: 5px 7px !important;
     }
     
     .form-text {
-        font-size: 11px;
+        font-size: 10px !important;
     }
     
     .invalid-feedback {
-        font-size: 11px;
+        font-size: 10px !important;
     }
     
     .alert {
-        padding: 10px 12px;
-        font-size: 12px;
-        margin-bottom: 0.5rem !important;
+        padding: 8px 10px !important;
+        font-size: 11px !important;
+        margin-bottom: 0.375rem !important;
+    }
+    
+    .alert i {
+        font-size: 11px !important;
     }
     
     .input-group {
@@ -2004,77 +2274,95 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .order-summary-card {
-        padding: 0.375rem;
-        margin-bottom: 0.25rem;
+        padding: 0.25rem;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
     }
     
     .summary-title {
-        font-size: 15px;
-        margin-bottom: 0.5rem !important;
-        padding: 0.375rem 0.5rem;
+        font-size: 13px !important;
+        margin-bottom: 0.375rem !important;
+        padding: 0.25rem 0.375rem !important;
     }
     
     .order-items {
-        max-height: 180px;
-        padding: 0 0.375rem;
+        max-height: 160px;
+        padding: 0 0.25rem;
     }
     
     .order-item {
-        padding: 0.5rem 0;
+        padding: 0.375rem 0 !important;
+        font-size: 11px !important;
     }
     
     .item-title {
-        font-size: 12px;
-        margin-bottom: 3px;
+        font-size: 11px !important;
+        margin-bottom: 2px;
     }
     
     .item-instructor {
-        font-size: 10px;
+        font-size: 9px !important;
     }
     
     .item-price {
-        font-size: 13px;
+        font-size: 11px !important;
     }
     
     .order-total {
-        font-size: 15px;
-        padding-top: 0.5rem;
-        padding-left: 0.375rem;
-        padding-right: 0.375rem;
+        font-size: 13px !important;
+        padding-top: 0.375rem !important;
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+    
+    .order-total .d-flex {
+        font-size: 13px !important;
     }
     
     .order-total .text-primary {
-        font-size: 17px;
+        font-size: 15px !important;
     }
     
     .terms-section {
-        margin-top: 0.5rem;
+        margin-top: 0.375rem;
     }
     
     .terms-section .form-check-label {
-        font-size: 12px;
+        font-size: 11px !important;
         line-height: 1.35;
     }
     
+    .terms-section .form-check-input {
+        width: 0.95em !important;
+        height: 0.95em !important;
+        margin-top: 0 !important; /* centré verticalement */
+    }
+    
+    .terms-section .form-check {
+        align-items: center !important; /* centrer verticalement */
+    }
+    
     .payment-actions {
-        margin-top: 0.5rem;
+        margin-top: 0.375rem;
     }
     
     .btn-lg {
-        font-size: 14px;
-        padding: 13px 18px;
+        font-size: 13px !important;
+        padding: 10px 16px !important;
     }
     
     .payment-actions {
         display: flex;
         justify-content: center;
+        padding: 0 0.25rem !important;
     }
     
     #payButton {
-        width: auto !important;
+        width: 100% !important;
         max-width: 100%;
         padding: 12px 20px !important;
-        font-size: 14px !important;
+        font-size: 13px !important;
     }
 }
 </style>

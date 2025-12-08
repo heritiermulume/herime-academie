@@ -869,8 +869,26 @@ body {
                         <!-- Author Info -->
                         <div class="modern-testimonial-author">
                             <div class="modern-testimonial-avatar">
-                                <img src="{{ $testimonial->photo ? (str_starts_with($testimonial->photo, 'http') ? $testimonial->photo : \App\Helpers\FileHelper::url($testimonial->photo)) : 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->name) . '&background=003366&color=fff&size=50' }}" 
-                                     alt="{{ $testimonial->name }}" class="rounded-circle">
+                                @php
+                                    $avatarUrl = '';
+                                    if (!empty($testimonial->photo) && trim($testimonial->photo) !== '') {
+                                        if (str_starts_with($testimonial->photo, 'http')) {
+                                            $avatarUrl = $testimonial->photo;
+                                        } else {
+                                            $avatarUrl = \App\Helpers\FileHelper::url($testimonial->photo);
+                                        }
+                                        // Si FileHelper retourne une chaîne vide, utiliser l'avatar par défaut
+                                        if (empty($avatarUrl) || trim($avatarUrl) === '') {
+                                            $avatarUrl = 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->name) . '&background=003366&color=fff&size=128&bold=true';
+                                        }
+                                    } else {
+                                        $avatarUrl = 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->name) . '&background=003366&color=fff&size=128&bold=true';
+                                    }
+                                @endphp
+                                <img src="{{ $avatarUrl }}" 
+                                     alt="{{ $testimonial->name }}" 
+                                     class="rounded-circle"
+                                     onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($testimonial->name) }}&background=003366&color=fff&size=128&bold=true';">
                             </div>
                             <div class="modern-testimonial-info">
                                 <h6 class="modern-testimonial-name">{{ $testimonial->name }}</h6>

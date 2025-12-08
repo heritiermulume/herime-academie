@@ -1606,6 +1606,14 @@ body.has-global-announcement:has(.course-details-page) {
     border-bottom: 1px solid var(--border-color);
 }
 
+.price-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+}
+
 .price-free {
     font-size: 1.5rem;
     font-weight: 700;
@@ -1651,6 +1659,10 @@ body.has-global-announcement:has(.course-details-page) {
     font-size: 0.6875rem;
     margin-bottom: 0.375rem;
     display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 .countdown-text {
@@ -1659,8 +1671,9 @@ body.has-global-announcement:has(.course-details-page) {
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.25rem;
+    white-space: nowrap;
 }
 
 .countdown-text span {
@@ -2479,12 +2492,16 @@ button.mobile-price-slider__btn--download i,
     }
     
     .countdown-label {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .countdown-text {
-        font-size: 0.85rem;
-        flex-wrap: wrap;
+        font-size: 0.8rem;
+        flex-wrap: nowrap;
+        white-space: nowrap;
     }
     
     .sidebar-card {
@@ -3611,9 +3628,11 @@ button.mobile-price-slider__btn--download i,
                     <div class="sidebar-card">
                         <div class="price-display">
                             @if($course->is_free)
+                                <div class="price-label text-muted small mb-2">Prix</div>
                                 <div class="price-free">Gratuit</div>
                             @else
                                 @if($course->is_sale_active && $course->active_sale_price !== null)
+                                    <div class="price-label text-muted small mb-2">Prix promotionnel</div>
                                     <div class="price-current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</div>
                                     <div class="price-original">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
                                     @if($course->sale_discount_percentage)
@@ -3624,7 +3643,7 @@ button.mobile-price-slider__btn--download i,
                                     @if($course->is_sale_active && $course->sale_end_at)
                                     <div class="promotion-countdown mt-3" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
                                         <div class="countdown-label text-muted small mb-1">
-                                            <i class="fas fa-clock me-1"></i>Promotion se termine dans :
+                                            <i class="fas fa-clock me-1"></i>Se termine dans : 
                                         </div>
                                         <div class="countdown-text text-danger fw-bold">
                                             <span class="countdown-days">0</span>j 
@@ -3634,6 +3653,7 @@ button.mobile-price-slider__btn--download i,
                                     </div>
                                     @endif
                                 @else
+                                    <div class="price-label text-muted small mb-2">Prix</div>
                                     <div class="price-current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</div>
                                 @endif
                             @endif

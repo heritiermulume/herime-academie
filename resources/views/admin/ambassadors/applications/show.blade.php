@@ -11,19 +11,7 @@
 @endsection
 
 @section('admin-content')
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+    {{-- Les messages seront affichés via toast --}}
 
     <div class="row g-4">
         <!-- Informations du candidat -->
@@ -230,8 +218,7 @@
                                         <small class="text-muted d-block mb-2">Document PDF fourni par le candidat</small>
                                         <a href="{{ route('ambassador-application.download-document', $application) }}" 
                                            class="btn btn-outline-primary btn-sm" 
-                                           target="_blank"
-                                           onclick="event.preventDefault(); window.open(this.href, '_blank');">
+                                           download>
                                             <i class="fas fa-download me-1"></i>Télécharger le document
                                         </a>
                                     </div>
@@ -460,4 +447,209 @@
         }
     </style>
     @endpush
+
+@push('scripts')
+<script>
+// Système de toast moderne
+function showToast(message, type = 'success') {
+    // Créer le conteneur de toast s'il n'existe pas
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+
+    // Créer le toast
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icons = {
+        'success': 'fa-check-circle',
+        'error': 'fa-exclamation-circle',
+        'warning': 'fa-exclamation-triangle',
+        'info': 'fa-info-circle'
+    };
+    const icon = icons[type] || icons['info'];
+    
+    toast.innerHTML = `
+        <div class="toast__icon">
+            <i class="fas ${icon}"></i>
+        </div>
+        <div class="toast__content">
+            <div class="toast__message">${message}</div>
+        </div>
+        <button class="toast__close" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+
+    // Ajouter le toast au conteneur
+    toastContainer.appendChild(toast);
+
+    // Animation d'entrée
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+
+    // Suppression automatique après 4 secondes
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.remove();
+            }
+        }, 300);
+    }, 4000);
+}
+
+// Afficher les messages de session Laravel avec des toasts
+document.addEventListener('DOMContentLoaded', function() {
+    @if(session('success'))
+        showToast('{{ session('success') }}', 'success');
+    @endif
+    
+    @if(session('error'))
+        showToast('{{ session('error') }}', 'error');
+    @endif
+    
+    @if(session('info'))
+        showToast('{{ session('info') }}', 'info');
+    @endif
+    
+    @if($errors->any())
+        @foreach($errors->all() as $error)
+            showToast('{{ $error }}', 'error');
+        @endforeach
+    @endif
+});
+</script>
+
+<style>
+.toast-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 400px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.3);
+    border-left: 4px solid #22c55e;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    pointer-events: auto;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast-success {
+    border-left-color: #22c55e;
+}
+
+.toast-info {
+    border-left-color: #3b82f6;
+}
+
+.toast-warning {
+    border-left-color: #f59e0b;
+}
+
+.toast-error {
+    border-left-color: #ef4444;
+}
+
+.toast__icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.875rem;
+}
+
+.toast-success .toast__icon {
+    background: #dcfce7;
+    color: #22c55e;
+}
+
+.toast-info .toast__icon {
+    background: #dbeafe;
+    color: #3b82f6;
+}
+
+.toast-warning .toast__icon {
+    background: #fef3c7;
+    color: #f59e0b;
+}
+
+.toast-error .toast__icon {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.toast__content {
+    flex: 1;
+}
+
+.toast__message {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1f2937;
+    line-height: 1.5;
+}
+
+.toast__close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    font-size: 0.75rem;
+}
+
+.toast__close:hover {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+@media (max-width: 768px) {
+    .toast-container {
+        top: 70px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+
+    .toast {
+        padding: 0.875rem 1rem;
+    }
+}
+</style>
+@endpush
 @endsection

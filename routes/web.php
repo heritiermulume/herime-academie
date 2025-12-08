@@ -408,6 +408,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/ambassadors/{ambassador}/generate-promo-code', [App\Http\Controllers\Admin\AmbassadorController::class, 'generatePromoCode'])
             ->middleware('sso.validate')
             ->name('ambassadors.generate-promo-code');
+        Route::get('/ambassadors/{ambassador}/check-promo-code', [App\Http\Controllers\Admin\AmbassadorController::class, 'checkPromoCodeUnique'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.check-promo-code');
+        Route::put('/ambassadors/{ambassador}/update-promo-code', [App\Http\Controllers\Admin\AmbassadorController::class, 'updatePromoCode'])
+            ->middleware('sso.validate')
+            ->name('ambassadors.update-promo-code');
         Route::delete('/ambassadors/{ambassador}', [App\Http\Controllers\Admin\AmbassadorController::class, 'destroy'])
             ->middleware('sso.validate')
             ->name('ambassadors.destroy');

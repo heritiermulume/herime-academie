@@ -3556,35 +3556,12 @@
                                 Formateurs
                             </a>
                         </div>
-                        @auth
-                            @php
-                                $isAmbassador = \App\Models\Ambassador::where('user_id', auth()->id())
-                                    ->where('is_active', true)
-                                    ->exists();
-                            @endphp
-                            @if(!$isAmbassador)
-                                <div class="list-group-item">
-                                    <a href="{{ route('ambassador-application.index') }}">
-                                        <i class="fas fa-handshake"></i>
-                                        Ambassadeur
-                                    </a>
-                                </div>
-                            @else
-                                <div class="list-group-item">
-                                    <a href="{{ route('ambassador.dashboard') }}">
-                                        <i class="fas fa-tachometer-alt"></i>
-                                        Ambassadeur
-                                    </a>
-                                </div>
-                            @endif
-                        @else
-                            <div class="list-group-item">
-                                <a href="{{ route('ambassador-application.index') }}">
-                                    <i class="fas fa-handshake"></i>
-                                    Ambassadeur
-                                </a>
-                            </div>
-                        @endauth
+                        <div class="list-group-item">
+                            <a href="{{ route('ambassador-application.index') }}">
+                                <i class="fas fa-handshake"></i>
+                                Ambassadeurs
+                            </a>
+                        </div>
                         <div class="list-group-item">
                             <a href="{{ route('contact') }}">
                                 <i class="fas fa-envelope"></i>
@@ -4673,7 +4650,8 @@
         
         /* Compteur à rebours pour les promotions */
         function initPromotionCountdowns() {
-            const countdowns = document.querySelectorAll('.promotion-countdown[data-sale-end]');
+            // Sélectionner à la fois les compteurs desktop et mobile
+            const countdowns = document.querySelectorAll('.promotion-countdown[data-sale-end], .mobile-price-slider__countdown[data-sale-end]');
             
             countdowns.forEach((countdown, index) => {
                 // Ne pas initialiser plusieurs fois le même compteur
@@ -4782,11 +4760,23 @@
                     monthsEl.nextElementSibling.style.display = displayMonths;
                 }
             }
-            if (daysEl && daysEl.parentElement) {
-                daysEl.parentElement.style.display = days > 0 || months > 0 || years > 0 ? 'inline' : 'none';
+            // Masquer les jours individuellement si zéro
+            if (daysEl) {
+                const displayDays = days > 0 || months > 0 || years > 0 ? 'inline' : 'none';
+                daysEl.style.display = displayDays;
             }
-            if (hoursEl && hoursEl.parentElement) {
-                hoursEl.parentElement.style.display = hours > 0 || days > 0 || months > 0 || years > 0 ? 'inline' : 'none';
+            
+            // Masquer les heures individuellement si zéro (mais garder visible si on a encore des minutes)
+            if (hoursEl) {
+                const displayHours = hours > 0 || days > 0 || months > 0 || years > 0 ? 'inline' : 'none';
+                hoursEl.style.display = displayHours;
+            }
+            
+            // S'assurer que le parent countdown-text reste toujours visible si on a du temps restant
+            const countdownText = element.querySelector('.countdown-text');
+            if (countdownText) {
+                const hasTimeRemaining = minutes > 0 || hours > 0 || days > 0 || months > 0 || years > 0;
+                countdownText.style.display = hasTimeRemaining ? '' : 'none';
             }
         }
         

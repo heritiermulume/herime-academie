@@ -107,9 +107,19 @@
                     Partagez vos connaissances et aidez d'autres personnes à réussir. Rejoignez notre communauté de formateurs experts.
                 </p>
                 @auth
-                    @if(auth()->user()->role !== 'instructor')
+                    @php
+                        $hasApplication = \App\Models\InstructorApplication::where('user_id', auth()->id())->exists();
+                    @endphp
+                    @if(auth()->user()->role !== 'instructor' && !$hasApplication)
                         <a href="{{ route('instructor-application.index') }}" class="btn btn-warning btn-lg">
                             <i class="fas fa-rocket me-2"></i>Devenir formateur
+                        </a>
+                    @elseif($hasApplication)
+                        @php
+                            $application = \App\Models\InstructorApplication::where('user_id', auth()->id())->first();
+                        @endphp
+                        <a href="{{ route('instructor-application.status', $application) }}" class="btn btn-warning btn-lg">
+                            <i class="fas fa-eye me-2"></i>Voir ma candidature
                         </a>
                     @endif
                 @else

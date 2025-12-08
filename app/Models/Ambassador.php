@@ -87,6 +87,7 @@ class Ambassador extends Model
 
     /**
      * Generate a unique promo code for this ambassador
+     * Note: Les anciens codes doivent être désactivés avant d'appeler cette méthode
      */
     public function generatePromoCode(): AmbassadorPromoCode
     {

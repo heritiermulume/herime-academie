@@ -31,11 +31,12 @@ class AmbassadorApplicationController extends Controller
                 ->where('is_active', true)
                 ->exists();
 
-            if ($isAmbassador) {
-                return redirect()->route('ambassador.dashboard');
+            // Ne plus rediriger vers le dashboard, permettre l'accès à la page
+            // Le dashboard reste accessible via le menu dropdown du profil
+            // Ne pas charger l'application si l'utilisateur est déjà ambassadeur
+            if (!$isAmbassador) {
+                $application = AmbassadorApplication::where('user_id', Auth::id())->first();
             }
-
-            $application = AmbassadorApplication::where('user_id', Auth::id())->first();
         }
 
         return view('ambassador-application.index', compact('application', 'isAmbassador'));
@@ -289,6 +290,16 @@ class AmbassadorApplicationController extends Controller
             abort(403);
         }
 
+        // Si l'utilisateur est déjà ambassadeur actif, bloquer l'accès
+        $isAmbassador = Ambassador::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->exists();
+
+        if ($isAmbassador) {
+            return redirect()->route('ambassador.dashboard')
+                ->with('info', 'Vous êtes déjà ambassadeur. Vous n\'avez plus besoin de compléter votre candidature.');
+        }
+
         if (!$application->canBeEdited()) {
             return redirect()->route('ambassador-application.status', $application);
         }
@@ -303,6 +314,16 @@ class AmbassadorApplicationController extends Controller
     {
         if ($application->user_id !== Auth::id()) {
             abort(403);
+        }
+
+        // Si l'utilisateur est déjà ambassadeur actif, bloquer l'accès
+        $isAmbassador = Ambassador::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->exists();
+
+        if ($isAmbassador) {
+            return redirect()->route('ambassador.dashboard')
+                ->with('info', 'Vous êtes déjà ambassadeur. Vous n\'avez plus besoin de compléter votre candidature.');
         }
 
         // Vérifier que la candidature peut être modifiée
@@ -335,6 +356,16 @@ class AmbassadorApplicationController extends Controller
             abort(403);
         }
 
+        // Si l'utilisateur est déjà ambassadeur actif, bloquer l'accès
+        $isAmbassador = Ambassador::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->exists();
+
+        if ($isAmbassador) {
+            return redirect()->route('ambassador.dashboard')
+                ->with('info', 'Vous êtes déjà ambassadeur. Vous n\'avez plus besoin de compléter votre candidature.');
+        }
+
         if (!$application->canBeEdited()) {
             return redirect()->route('ambassador-application.status', $application);
         }
@@ -349,6 +380,16 @@ class AmbassadorApplicationController extends Controller
     {
         if ($application->user_id !== Auth::id()) {
             abort(403);
+        }
+
+        // Si l'utilisateur est déjà ambassadeur actif, bloquer l'accès
+        $isAmbassador = Ambassador::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->exists();
+
+        if ($isAmbassador) {
+            return redirect()->route('ambassador.dashboard')
+                ->with('info', 'Vous êtes déjà ambassadeur. Vous n\'avez plus besoin de compléter votre candidature.');
         }
 
         // Vérifier que la candidature peut être modifiée
@@ -370,8 +411,24 @@ class AmbassadorApplicationController extends Controller
                 
                 // Vérifier que le chemin est valide et dans le bon répertoire
                 if (str_starts_with($documentPath, \App\Services\FileUploadService::TEMPORARY_BASE_PATH . '/')) {
-                    // Le fichier est déjà uploadé via chunks, on peut l'utiliser directement
-                    // Optionnellement, on peut le déplacer vers le répertoire final
+                    // Le fichier est dans le dossier temporaire, le promouvoir vers le dossier final
+                    try {
+                        $finalPath = $this->fileUploadService->promoteTemporaryFile(
+                            $documentPath,
+                            'ambassador-applications/documents'
+                        );
+                        $application->document_path = $finalPath;
+                    } catch (\Exception $e) {
+                        Log::error('Error promoting temporary file for ambassador application', [
+                            'application_id' => $application->id,
+                            'temporary_path' => $documentPath,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // Si la promotion échoue, utiliser le chemin temporaire comme fallback
+                        $application->document_path = $documentPath;
+                    }
+                } else {
+                    // Le chemin n'est pas temporaire, l'utiliser directement
                     $application->document_path = $documentPath;
                 }
             } 
@@ -427,6 +484,16 @@ class AmbassadorApplicationController extends Controller
             abort(403);
         }
 
+        // Si l'utilisateur est déjà ambassadeur actif, bloquer l'accès
+        $isAmbassador = Ambassador::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->exists();
+
+        if ($isAmbassador) {
+            return redirect()->route('ambassador.dashboard')
+                ->with('info', 'Vous êtes déjà ambassadeur. Vous n\'avez plus besoin d\'accéder à votre candidature.');
+        }
+
         $application->load(['user', 'reviewer']);
 
         return view('ambassador-application.status', compact('application'));
@@ -441,6 +508,16 @@ class AmbassadorApplicationController extends Controller
             abort(403);
         }
 
+        // Si l'utilisateur est déjà ambassadeur actif, bloquer l'accès
+        $isAmbassador = Ambassador::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->exists();
+
+        if ($isAmbassador) {
+            return redirect()->route('ambassador.dashboard')
+                ->with('info', 'Vous êtes déjà ambassadeur. Vous n\'avez plus besoin d\'abandonner votre candidature.');
+        }
+
         if (!$application->canBeEdited()) {
             return redirect()->route('ambassador-application.status', $application)
                 ->with('error', 'Cette candidature ne peut plus être abandonnée.');
@@ -448,7 +525,7 @@ class AmbassadorApplicationController extends Controller
 
         // Supprimer le document PDF si présent
         if ($application->document_path) {
-            Storage::delete($application->document_path);
+            $this->fileUploadService->deleteFile($application->document_path);
         }
 
         $application->delete();
@@ -466,11 +543,51 @@ class AmbassadorApplicationController extends Controller
             abort(403);
         }
 
-        if (!$application->document_path) {
-            abort(404);
+        // Si l'utilisateur est déjà ambassadeur actif (et n'est pas admin), bloquer l'accès
+        if (!Auth::user()->isAdmin()) {
+            $isAmbassador = Ambassador::where('user_id', Auth::id())
+                ->where('is_active', true)
+                ->exists();
+
+            if ($isAmbassador) {
+                return redirect()->route('ambassador.dashboard')
+                    ->with('info', 'Vous êtes déjà ambassadeur. Vous n\'avez plus besoin d\'accéder à votre candidature.');
+            }
         }
 
-        return Storage::download($application->document_path);
+        if (!$application->document_path) {
+            abort(404, 'Aucun document n\'a été fourni pour cette candidature.');
+        }
+
+        $disk = Storage::disk('local');
+        $documentPath = $application->document_path;
+        
+        // Essayer plusieurs variantes du chemin
+        $pathsToTry = [
+            $documentPath,
+            ltrim($documentPath, '/'),
+            str_replace('storage/', '', $documentPath),
+        ];
+        
+        $foundPath = null;
+        foreach ($pathsToTry as $path) {
+            if ($disk->exists($path)) {
+                $foundPath = $path;
+                break;
+            }
+        }
+        
+        if (!$foundPath) {
+            Log::error('Ambassador application document not found', [
+                'application_id' => $application->id,
+                'document_path' => $documentPath,
+                'tried_paths' => $pathsToTry,
+            ]);
+            abort(404, 'Le document n\'a pas été trouvé.');
+        }
+
+        // Utiliser Storage::download() avec le chemin trouvé
+        return $disk->download($foundPath);
     }
 
     /**
@@ -597,7 +714,8 @@ class AmbassadorApplicationController extends Controller
      */
     private function getPawaPayConfiguration(): array
     {
-        $apiUrl = config('services.pawapay.api_url', config('services.pawapay.base_url', 'https://api.sandbox.pawapay.io/v2'));
+        // Utiliser la même logique que PawaPayController::activeConf() pour garantir la cohérence
+        $baseUrl = rtrim(config('services.pawapay.base_url'), '/');
         $apiKey = config('services.pawapay.api_key');
         
         if (!$apiKey) {
@@ -607,11 +725,12 @@ class AmbassadorApplicationController extends Controller
 
         try {
             // Utiliser l'endpoint active-conf selon la documentation pawaPay
+            // Utiliser PAYOUT pour les paramètres de paiement des ambassadeurs
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->get("{$apiUrl}/active-conf", [
+            ])->get("{$baseUrl}/active-conf", [
                 'operationType' => 'PAYOUT',
             ]);
 

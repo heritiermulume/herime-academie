@@ -7,6 +7,7 @@ use App\Models\AmbassadorApplication;
 use App\Models\Ambassador;
 use App\Models\User;
 use App\Models\AmbassadorCommission;
+use App\Models\AmbassadorPromoCode;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -260,7 +261,51 @@ class AmbassadorController extends Controller
 
         $commissions = $commissionsQuery->paginate(20, ['*'], 'commissions_page');
 
-        return view('admin.ambassadors.index', compact('ambassadors', 'applications', 'commissions', 'tab'));
+        // Statistiques pour l'onglet Ambassadeurs
+        $ambassadorStats = [
+            'total' => Ambassador::count(),
+            'active' => Ambassador::where('is_active', true)->count(),
+            'inactive' => Ambassador::where('is_active', false)->count(),
+            'total_earnings' => (float) AmbassadorCommission::sum('commission_amount'),
+            'paid_earnings' => (float) AmbassadorCommission::where('status', 'paid')->sum('commission_amount'),
+            'pending_earnings' => (float) AmbassadorCommission::where('status', 'pending')->sum('commission_amount'),
+            'total_referrals' => (int) \App\Models\Order::whereNotNull('ambassador_id')->distinct('user_id')->count('user_id'),
+            'total_sales' => (int) \App\Models\Order::whereNotNull('ambassador_id')->count(),
+        ];
+
+        // Statistiques pour l'onglet Candidatures
+        $applicationStats = [
+            'total' => AmbassadorApplication::count(),
+            'pending' => AmbassadorApplication::where('status', 'pending')->count(),
+            'under_review' => AmbassadorApplication::where('status', 'under_review')->count(),
+            'approved' => AmbassadorApplication::where('status', 'approved')->count(),
+            'rejected' => AmbassadorApplication::where('status', 'rejected')->count(),
+        ];
+
+        // Statistiques pour l'onglet Commissions
+        $commissionStats = [
+            'total' => AmbassadorCommission::count(),
+            'pending' => AmbassadorCommission::where('status', 'pending')->count(),
+            'approved' => AmbassadorCommission::where('status', 'approved')->count(),
+            'paid' => AmbassadorCommission::where('status', 'paid')->count(),
+            'total_amount' => (float) AmbassadorCommission::sum('commission_amount'),
+            'paid_amount' => (float) AmbassadorCommission::where('status', 'paid')->sum('commission_amount'),
+            'pending_amount' => (float) AmbassadorCommission::where('status', 'pending')->sum('commission_amount'),
+        ];
+
+        $currencyCode = Setting::getBaseCurrency();
+        $currencyCode = is_array($currencyCode) ? ($currencyCode['code'] ?? 'USD') : ($currencyCode ?? 'USD');
+
+        return view('admin.ambassadors.index', compact(
+            'ambassadors', 
+            'applications', 
+            'commissions', 
+            'tab',
+            'ambassadorStats',
+            'applicationStats',
+            'commissionStats',
+            'currencyCode'
+        ));
     }
 
     /**
@@ -270,13 +315,39 @@ class AmbassadorController extends Controller
     {
         $ambassador->load(['user', 'application', 'promoCodes', 'commissions.order', 'orders']);
 
-        $commissionsStats = [
-            'total' => $ambassador->commissions()->sum('commission_amount'),
-            'pending' => $ambassador->commissions()->where('status', 'pending')->sum('commission_amount'),
-            'paid' => $ambassador->commissions()->where('status', 'paid')->sum('commission_amount'),
+        // Calculer toutes les statistiques en temps réel à partir de la base de données
+        $stats = [
+            // Gains totaux : somme de toutes les commissions depuis la table ambassador_commissions
+            'total_earnings' => (float) $ambassador->commissions()->sum('commission_amount'),
+            
+            // Gains en attente : somme des commissions avec statut 'pending'
+            'pending_earnings' => (float) $ambassador->commissions()
+                ->where('status', 'pending')
+                ->sum('commission_amount'),
+            
+            // Gains payés : somme des commissions avec statut 'paid'
+            'paid_earnings' => (float) $ambassador->commissions()
+                ->where('status', 'paid')
+                ->sum('commission_amount'),
+            
+            // Total des références : nombre d'utilisateurs uniques ayant utilisé le code promo de l'ambassadeur
+            'total_referrals' => (int) \App\Models\Order::where('ambassador_id', $ambassador->id)
+                ->distinct()
+                ->count('user_id'),
+            
+            // Total des ventes : nombre total de commandes générées par cet ambassadeur depuis la table orders
+            'total_sales' => (int) $ambassador->orders()->count(),
+            
+            // Statistiques des commissions détaillées
+            'commissions' => [
+                'total' => (float) $ambassador->commissions()->sum('commission_amount'),
+                'pending' => (float) $ambassador->commissions()->where('status', 'pending')->sum('commission_amount'),
+                'paid' => (float) $ambassador->commissions()->where('status', 'paid')->sum('commission_amount'),
+                'approved' => (float) $ambassador->commissions()->where('status', 'approved')->sum('commission_amount'),
+            ],
         ];
 
-        return view('admin.ambassadors.show', compact('ambassador', 'commissionsStats'));
+        return view('admin.ambassadors.show', compact('ambassador', 'stats'));
     }
 
     /**
@@ -351,11 +422,201 @@ class AmbassadorController extends Controller
     /**
      * Générer un nouveau code promo pour un ambassadeur
      */
-    public function generatePromoCode(Ambassador $ambassador)
+    public function generatePromoCode(Request $request, Ambassador $ambassador)
     {
-        $promoCode = $ambassador->generatePromoCode();
+        DB::beginTransaction();
+        try {
+            // Récupérer l'ancien code promo actif avant de le désactiver
+            $oldPromoCode = $ambassador->activePromoCode();
+            
+            // Désactiver tous les codes promo existants de cet ambassadeur
+            $ambassador->promoCodes()->update(['is_active' => false]);
+            
+            // Générer un nouveau code promo
+            $promoCode = $ambassador->generatePromoCode();
 
-        return back()->with('success', 'Code promo généré avec succès: ' . $promoCode->code);
+            DB::commit();
+
+            // Envoyer un email à l'ambassadeur
+            try {
+                $ambassador->load('user');
+                $mailable = new \App\Mail\AmbassadorPromoCodeUpdated(
+                    $ambassador, 
+                    $promoCode, 
+                    $oldPromoCode,
+                    true // isNewCode
+                );
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($ambassador->user, $mailable);
+            } catch (\Exception $e) {
+                \Log::error('Error sending ambassador promo code email: ' . $e->getMessage());
+                // Ne pas bloquer la génération si l'email échoue
+            }
+
+            $message = 'Code promo généré avec succès: ' . $promoCode->code;
+            
+            // Retourner une réponse JSON pour les requêtes AJAX
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'promo_code' => [
+                        'id' => $promoCode->id,
+                        'code' => $promoCode->code,
+                        'usage_count' => $promoCode->usage_count,
+                        'max_usage' => $promoCode->max_usage,
+                        'expires_at' => $promoCode->expires_at ? $promoCode->expires_at->format('d/m/Y H:i') : null,
+                    ]
+                ]);
+            }
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $errorMessage = 'Erreur lors de la génération du code promo: ' . $e->getMessage();
+            
+            // Retourner une réponse JSON pour les requêtes AJAX
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage
+                ], 500);
+            }
+            
+            return back()->with('error', $errorMessage);
+        }
+    }
+
+    /**
+     * Vérifier l'unicité d'un code promo
+     */
+    public function checkPromoCodeUnique(Request $request, Ambassador $ambassador)
+    {
+        $request->validate([
+            'code' => 'required|string|max:50',
+            'promo_code_id' => 'nullable|exists:ambassador_promo_codes,id',
+        ]);
+
+        $code = strtoupper($request->code);
+        $promoCodeId = $request->promo_code_id;
+
+        // Vérifier si le code existe déjà (en excluant le code promo actuel si fourni)
+        $exists = AmbassadorPromoCode::where('code', $code);
+        
+        if ($promoCodeId) {
+            $exists->where('id', '!=', $promoCodeId);
+        }
+        
+        $codeExists = $exists->exists();
+
+        return response()->json([
+            'available' => !$codeExists,
+            'message' => $codeExists 
+                ? 'Ce code promo est déjà utilisé par un autre ambassadeur.' 
+                : 'Ce code promo est disponible.'
+        ]);
+    }
+
+    /**
+     * Mettre à jour le code promo d'un ambassadeur
+     */
+    public function updatePromoCode(Request $request, Ambassador $ambassador)
+    {
+        try {
+            $request->validate([
+                'promo_code_id' => 'required|exists:ambassador_promo_codes,id',
+                'code' => [
+                    'required',
+                    'string',
+                    'max:50',
+                    'regex:/^[A-Z0-9\-]+$/',
+                    function ($attribute, $value, $fail) use ($request) {
+                        // Vérifier l'unicité en excluant le code promo actuel
+                        $exists = AmbassadorPromoCode::where('code', strtoupper($value))
+                            ->where('id', '!=', $request->promo_code_id)
+                            ->exists();
+                        
+                        if ($exists) {
+                            $fail('Ce code promo est déjà utilisé par un autre ambassadeur.');
+                        }
+                    },
+                ],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->validator->errors()->first('code') ?? 'Erreur de validation',
+                    'errors' => $e->validator->errors()
+                ], 422);
+            }
+            throw $e;
+        }
+
+        DB::beginTransaction();
+        try {
+            $promoCode = AmbassadorPromoCode::where('id', $request->promo_code_id)
+                ->where('ambassador_id', $ambassador->id)
+                ->firstOrFail();
+
+            // Sauvegarder l'ancien code avant la mise à jour
+            $oldCode = $promoCode->code;
+            $oldPromoCode = clone $promoCode;
+            $oldPromoCode->code = $oldCode;
+
+            $promoCode->update([
+                'code' => strtoupper($request->code),
+            ]);
+
+            // Recharger le code promo pour avoir les données à jour
+            $promoCode->refresh();
+
+            DB::commit();
+
+            // Envoyer un email à l'ambassadeur seulement si le code a vraiment changé
+            if ($oldCode !== strtoupper($request->code)) {
+                try {
+                    $ambassador->load('user');
+                    $mailable = new \App\Mail\AmbassadorPromoCodeUpdated(
+                        $ambassador, 
+                        $promoCode, 
+                        $oldPromoCode,
+                        false // isNewCode = false car c'est une modification
+                    );
+                    $communicationService = app(\App\Services\CommunicationService::class);
+                    $communicationService->sendEmailAndWhatsApp($ambassador->user, $mailable);
+                } catch (\Exception $e) {
+                    \Log::error('Error sending ambassador promo code update email: ' . $e->getMessage());
+                    // Ne pas bloquer la mise à jour si l'email échoue
+                }
+            }
+
+            $message = 'Code promo mis à jour avec succès: ' . $promoCode->code;
+            
+            // Retourner une réponse JSON pour les requêtes AJAX
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'code' => $promoCode->code
+                ]);
+            }
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $errorMessage = 'Erreur lors de la mise à jour: ' . $e->getMessage();
+            
+            // Retourner une réponse JSON pour les requêtes AJAX
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage
+                ], 500);
+            }
+            
+            return back()->with('error', $errorMessage);
+        }
     }
 
     /**

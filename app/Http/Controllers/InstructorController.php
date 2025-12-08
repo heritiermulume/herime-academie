@@ -396,6 +396,7 @@ class InstructorController extends Controller
             'pawapay_phone' => 'nullable|string|max:20',
             'pawapay_provider' => 'nullable|string|max:50',
             'pawapay_country' => 'nullable|string|size:3',
+            'pawapay_currency' => 'nullable|string|size:3',
         ]);
 
         // Mettre à jour les champs pawaPay
@@ -404,6 +405,7 @@ class InstructorController extends Controller
             'pawapay_phone' => $request->pawapay_phone,
             'pawapay_provider' => $request->pawapay_provider,
             'pawapay_country' => $request->pawapay_country,
+            'pawapay_currency' => $request->pawapay_currency,
         ]);
 
         return redirect()->route('instructor.payment-settings')
@@ -415,7 +417,8 @@ class InstructorController extends Controller
      */
     private function getPawaPayConfiguration(): array
     {
-        $apiUrl = config('services.pawapay.api_url', config('services.pawapay.base_url', 'https://api.sandbox.pawapay.io/v2'));
+        // Utiliser la même logique que PawaPayController::activeConf() pour garantir la cohérence
+        $baseUrl = rtrim(config('services.pawapay.base_url'), '/');
         $apiKey = config('services.pawapay.api_key');
         
         if (!$apiKey) {
@@ -431,7 +434,7 @@ class InstructorController extends Controller
                 'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->get("{$apiUrl}/active-conf", [
+            ])->get("{$baseUrl}/active-conf", [
                 'operationType' => 'PAYOUT',
             ]);
 

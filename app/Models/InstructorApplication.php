@@ -75,9 +75,11 @@ class InstructorApplication extends Model
 
     /**
      * Check if the application can be edited
+     * Une candidature ne peut être modifiée que si elle est en statut 'pending'
+     * Une fois soumise (status != 'pending'), elle ne peut plus être modifiée ou abandonnée
      */
     public function canBeEdited(): bool
     {
-        return in_array($this->status, ['pending', 'rejected']);
+        return $this->status === 'pending';
     }
 }

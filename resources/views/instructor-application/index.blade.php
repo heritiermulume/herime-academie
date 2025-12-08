@@ -3,6 +3,24 @@
 @section('title', 'Devenir Formateur - Herime Academie')
 
 @section('content')
+@if(session('error'))
+    <div class="container mt-3">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+@endif
+
+@if(session('success'))
+    <div class="container mt-3">
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+@endif
+
 <!-- Hero Section -->
 <section class="page-header-section" style="background: linear-gradient(135deg, #003366 0%, #004080 100%); padding: 2rem 0;">
     <div class="container">
@@ -11,9 +29,13 @@
                 <h1 class="h2 h1-md fw-bold mb-3">Devenir Formateur</h1>
                 <p class="lead mb-4">Partagez votre expertise et transformez des vies grâce à l'éducation en ligne</p>
                 @auth
-                    @if(auth()->user()->role !== 'instructor')
+                    @if(auth()->user()->role !== 'instructor' && (!isset($application) || !$application))
                         <a href="{{ route('instructor-application.create') }}" class="btn btn-light btn-lg px-3 px-md-5">
                             <i class="fas fa-rocket me-2"></i>Postuler maintenant
+                        </a>
+                    @elseif(isset($application) && $application)
+                        <a href="{{ route('instructor-application.status', $application) }}" class="btn btn-light btn-lg px-3 px-md-5">
+                            <i class="fas fa-eye me-2"></i>Voir ma candidature
                         </a>
                     @endif
                 @else
@@ -34,19 +56,27 @@
                     <div class="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center shadow-sm" role="alert">
                         <div class="mb-3 mb-md-0">
                             <h5 class="fw-bold mb-1"><i class="fas fa-hourglass-half me-2"></i>Candidature en cours</h5>
-                            <p class="mb-0">Vous avez déjà une candidature au profil formateur. Vous pouvez suivre son statut ou la recommencer depuis le début.</p>
+                            <p class="mb-0">
+                                @if($application->canBeEdited())
+                                    Vous avez déjà une candidature au profil formateur. Vous pouvez suivre son statut ou la recommencer depuis le début.
+                                @else
+                                    Votre candidature a été soumise et est en cours de traitement. Vous pouvez suivre son statut ci-dessous.
+                                @endif
+                            </p>
                         </div>
                         <div class="d-flex gap-2">
                             <a href="{{ route('instructor-application.status', $application) }}" class="btn btn-outline-primary">
                                 <i class="fas fa-eye me-1"></i>Voir le statut
                             </a>
-                            <form method="POST" action="{{ route('instructor-application.abandon', $application) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir abandonner votre candidature et recommencer ?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-undo me-1"></i>Abandonner et recommencer
-                                </button>
-                            </form>
+                            @if($application->canBeEdited())
+                                <form method="POST" action="{{ route('instructor-application.abandon', $application) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir abandonner votre candidature et recommencer ?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-undo me-1"></i>Abandonner et recommencer
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -224,10 +254,16 @@
 
                 <!-- CTA Section -->
                 @auth
-                    @if(auth()->user()->role !== 'instructor')
+                    @if(auth()->user()->role !== 'instructor' && (!isset($application) || !$application))
                         <div class="text-center mt-4 mt-md-5">
                             <a href="{{ route('instructor-application.create') }}" class="btn btn-primary btn-lg px-3 px-md-5 py-2 py-md-3">
                                 <i class="fas fa-rocket me-2"></i>Commencer ma candidature
+                            </a>
+                        </div>
+                    @elseif(isset($application) && $application)
+                        <div class="text-center mt-4 mt-md-5">
+                            <a href="{{ route('instructor-application.status', $application) }}" class="btn btn-primary btn-lg px-3 px-md-5 py-2 py-md-3">
+                                <i class="fas fa-eye me-2"></i>Voir le statut de ma candidature
                             </a>
                         </div>
                     @endif

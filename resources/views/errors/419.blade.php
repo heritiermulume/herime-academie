@@ -15,11 +15,6 @@
                         </div>
                     </div>
 
-                    <!-- Error Code -->
-                    <h1 class="display-1 fw-bold mb-3" style="color: #8b5cf6; font-size: 6rem; line-height: 1;">
-                        419
-                    </h1>
-
                     <!-- Error Title -->
                     <h2 class="h3 fw-bold mb-3" style="color: #1e293b;">
                         Page expirée
