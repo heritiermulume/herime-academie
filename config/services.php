@@ -35,20 +35,19 @@ return [
         ],
     ],
 
-    // Paiements: nous utilisons exclusivement pawaPay. Les autres intégrations sont désactivées.
+    // Paiements: nous utilisons exclusivement Moneroo. Les autres intégrations sont désactivées.
 
-    'pawapay' => [
-        'base_url' => env('PAWAPAY_BASE_URL', 'https://api.sandbox.pawapay.io/v2'),
-        'api_url' => env('PAWAPAY_API_URL', 'https://api.sandbox.pawapay.io/v2'),
-        'api_key' => env('PAWAPAY_API_KEY'),
-        'api_token' => env('PAWAPAY_API_TOKEN'), // Token pour les payouts
-        'webhook_secret' => env('PAWAPAY_WEBHOOK_SECRET'), // Secret pour valider les signatures webhook
-        'default_country' => env('PAWAPAY_DEFAULT_COUNTRY', 'COD'),
-        'default_currency' => env('PAWAPAY_DEFAULT_CURRENCY', 'CDF'),
-        'callback_url' => env('PAWAPAY_CALLBACK_URL', env('APP_URL') . '/api/pawapay/payout/callback'),
-        // Public URLs where the provider can redirect after auth (Wave, etc.)
-        'successful_url' => env('PAWAPAY_SUCCESSFUL_URL', env('APP_URL') . '/payments/pawapay/success'),
-        'failed_url' => env('PAWAPAY_FAILED_URL', env('APP_URL') . '/payments/pawapay/failed'),
+    'moneroo' => [
+        'base_url' => env('MONEROO_BASE_URL', 'https://api.moneroo.io/v1'),
+        'api_key' => env('MONEROO_API_KEY'),
+        'webhook_secret' => env('MONEROO_WEBHOOK_SECRET'), // Secret pour valider les signatures webhook
+        'default_country' => env('MONEROO_DEFAULT_COUNTRY', 'SN'),
+        'default_currency' => env('MONEROO_DEFAULT_CURRENCY', 'USD'),
+        'company_name' => env('MONEROO_COMPANY_NAME', 'Herime Académie'), // Nom de l'entreprise affiché sur Moneroo
+        'webhook_url' => env('MONEROO_WEBHOOK_URL', env('APP_URL') . '/moneroo/webhook'),
+        'successful_url' => env('MONEROO_SUCCESSFUL_URL', env('APP_URL') . '/moneroo/success'),
+        'failed_url' => env('MONEROO_FAILED_URL', env('APP_URL') . '/moneroo/failed'),
+        'payout_callback_url' => env('MONEROO_PAYOUT_CALLBACK_URL', env('APP_URL') . '/api/moneroo/payout/callback'),
     ],
 
     'sso' => [

@@ -1,7 +1,7 @@
 @extends('instructors.admin.layout')
 
 @section('admin-title', 'Configuration de paiement')
-@section('admin-subtitle', 'Configurez votre moyen de règlement pour recevoir vos paiements automatiquement via pawaPay.')
+@section('admin-subtitle', 'Configurez votre moyen de règlement pour recevoir vos paiements automatiquement via Moneroo.')
 
 @section('admin-content')
     <form action="{{ route('instructor.payment-settings.update') }}" method="POST" enctype="multipart/form-data">
@@ -23,10 +23,10 @@
                         Si activé, vous recevrez automatiquement vos paiements après chaque vente de cours. Un pourcentage de commission sera déduit automatiquement.
                     </small>
                     
-                    <div id="pawapay-fields" style="display: {{ old('is_external_instructor', $instructor->is_external_instructor) ? 'block' : 'none' }};">
+                    <div id="moneroo-fields" style="display: {{ old('is_external_instructor', $instructor->is_external_instructor) ? 'block' : 'none' }};">
                         @php
-                            $countries = $pawapayData['countries'] ?? [];
-                            $providers = $pawapayData['providers'] ?? [];
+                            $countries = $monerooData['countries'] ?? ($pawapayData['countries'] ?? []);
+                            $providers = $monerooData['providers'] ?? ($pawapayData['providers'] ?? []);
                             $selectedCountry = old('pawapay_country', $instructor->pawapay_country);
                             $selectedProvider = old('pawapay_provider', $instructor->pawapay_provider);
                             $selectedCurrency = old('pawapay_currency', $instructor->pawapay_currency ?? '');
@@ -49,7 +49,7 @@
                         @if(empty($countries) && empty($providers))
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle me-2"></i>
-                                Impossible de charger les données pawaPay. Veuillez vérifier la configuration de l'API.
+                                Impossible de charger les données Moneroo. Veuillez vérifier la configuration de l'API.
                             </div>
                         @endif
                         
@@ -157,17 +157,17 @@
 
 @push('scripts')
 <script>
-// Afficher/masquer les champs pawaPay
+// Afficher/masquer les champs Moneroo
 function toggleExternalInstructorFields() {
     const isExternal = document.getElementById('is_external_instructor');
-    const pawapayFields = document.getElementById('pawapay-fields');
+    const monerooFields = document.getElementById('moneroo-fields');
     
-    if (isExternal && pawapayFields) {
+    if (isExternal && monerooFields) {
         if (isExternal.checked) {
-            pawapayFields.style.display = 'block';
+            monerooFields.style.display = 'block';
             updateProviders(); // Initialiser les providers et l'état des champs
         } else {
-            pawapayFields.style.display = 'none';
+            monerooFields.style.display = 'none';
         }
     }
 }

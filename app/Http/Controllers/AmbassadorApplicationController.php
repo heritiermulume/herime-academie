@@ -699,54 +699,82 @@ class AmbassadorApplicationController extends Controller
 
         $user = Auth::user();
 
-        // Récupérer les données pawaPay
-        $pawapayData = $this->getPawaPayConfiguration();
+        // Récupérer les données Moneroo
+        $monerooData = $this->getMonerooConfiguration();
 
         return view('ambassadors.admin.payment-settings', [
             'ambassador' => $ambassador,
             'user' => $user,
-            'pawapayData' => $pawapayData,
+            'monerooData' => $monerooData,
         ]);
     }
 
     /**
-     * Récupérer la configuration pawaPay (pays et providers)
+     * Récupérer la configuration Moneroo (pays et providers)
      */
-    private function getPawaPayConfiguration(): array
+    private function getMonerooConfiguration(): array
     {
-        // Utiliser la même logique que PawaPayController::activeConf() pour garantir la cohérence
-        $baseUrl = rtrim(config('services.pawapay.base_url'), '/');
-        $apiKey = config('services.pawapay.api_key');
+        // Utiliser l'API Moneroo pour récupérer les méthodes disponibles
+        $baseUrl = rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
+        $apiKey = config('services.moneroo.api_key');
         
         if (!$apiKey) {
-            Log::error('PAWAPAY_API_KEY non configurée.');
+            Log::error('MONEROO_API_KEY non configurée.');
             return ['countries' => [], 'providers' => []];
         }
 
         try {
-            // Utiliser l'endpoint active-conf selon la documentation pawaPay
-            // Utiliser PAYOUT pour les paramètres de paiement des ambassadeurs
+            // Utiliser l'endpoint /payouts/methods selon la documentation Moneroo
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->get("{$baseUrl}/active-conf", [
-                'operationType' => 'PAYOUT',
-            ]);
+            ])->get("{$baseUrl}/payouts/methods");
 
             if ($response->successful()) {
-                $data = $response->json();
+                $responseData = $response->json();
+                // Format Moneroo: { "success": true, "data": {...} }
+                $data = $responseData['data'] ?? $responseData;
                 
-                Log::info('pawaPay configuration retrieved', [
-                    'has_countries' => isset($data['countries']),
-                    'countries_count' => isset($data['countries']) ? count($data['countries']) : 0,
+                Log::info('Moneroo configuration retrieved', [
+                    'has_data' => !empty($data),
                 ]);
                 
-                // Extraire les pays et providers selon la structure de la réponse
+                // Extraire les pays et providers selon la structure de la réponse Moneroo
                 $countries = [];
                 $providers = [];
                 
-                if (isset($data['countries']) && is_array($data['countries'])) {
+                // Moneroo peut retourner les méthodes différemment
+                if (isset($data['methods']) && is_array($data['methods'])) {
+                    foreach ($data['methods'] as $method) {
+                        $countryCode = $method['country'] ?? '';
+                        $providerCode = $method['payment_method'] ?? $method['provider'] ?? '';
+                        $providerName = $method['name'] ?? $providerCode;
+                        $currencies = $method['currencies'] ?? ($method['currency'] ? [$method['currency']] : []);
+                        
+                        if ($countryCode && !isset($countries[$countryCode])) {
+                            $countries[$countryCode] = [
+                                'code' => $countryCode,
+                                'name' => $countryCode,
+                                'prefix' => '',
+                                'flag' => '',
+                                'currency' => !empty($currencies) ? $currencies[0] : '',
+                            ];
+                        }
+                        
+                        if ($providerCode) {
+                            $providers[] = [
+                                'code' => $providerCode,
+                                'name' => $providerName,
+                                'country' => $countryCode,
+                                'currencies' => $currencies,
+                                'currency' => !empty($currencies) ? $currencies[0] : '',
+                                'logo' => $method['logo'] ?? '',
+                            ];
+                        }
+                    }
+                    $countries = array_values($countries);
+                } elseif (isset($data['countries']) && is_array($data['countries'])) {
                     foreach ($data['countries'] as $country) {
                         $countryCode = $country['country'] ?? '';
                         $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $countryCode;
@@ -836,7 +864,7 @@ class AmbassadorApplicationController extends Controller
                     return strcmp($a['name'], $b['name']);
                 });
                 
-                Log::info('pawaPay configuration processed', [
+                Log::info('Moneroo configuration processed', [
                     'countries_count' => count($countries),
                     'providers_count' => count($providers),
                 ]);
@@ -846,13 +874,13 @@ class AmbassadorApplicationController extends Controller
                     'providers' => $providers,
                 ];
             } else {
-                Log::warning('Échec de la récupération de la configuration pawaPay', [
+                Log::warning('Échec de la récupération de la configuration Moneroo', [
                     'status' => $response->status(),
                     'response' => $response->body(),
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération de la configuration pawaPay', [
+            Log::error('Erreur lors de la récupération de la configuration Moneroo', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -873,23 +901,23 @@ class AmbassadorApplicationController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'pawapay_phone' => 'required|string|max:20',
-            'pawapay_provider' => 'required|string|max:50',
-            'pawapay_country' => 'required|string|size:3',
-            'pawapay_currency' => 'required|string|size:3',
+            'moneroo_phone' => 'required|string|max:20',
+            'moneroo_provider' => 'required|string|max:50',
+            'moneroo_country' => 'required|string|size:3',
+            'moneroo_currency' => 'required|string|size:3',
         ], [
-            'pawapay_phone.required' => 'Le numéro de téléphone mobile money est obligatoire.',
-            'pawapay_provider.required' => 'Le fournisseur mobile money est obligatoire.',
-            'pawapay_country.required' => 'Le pays est obligatoire.',
-            'pawapay_currency.required' => 'La devise est obligatoire.',
+            'moneroo_phone.required' => 'Le numéro de téléphone mobile money est obligatoire.',
+            'moneroo_provider.required' => 'Le fournisseur mobile money est obligatoire.',
+            'moneroo_country.required' => 'Le pays est obligatoire.',
+            'moneroo_currency.required' => 'La devise est obligatoire.',
         ]);
 
-        // Mettre à jour les champs pawaPay
+        // Mettre à jour les champs Moneroo
         $user->update([
-            'pawapay_phone' => $request->pawapay_phone,
-            'pawapay_provider' => $request->pawapay_provider,
-            'pawapay_country' => $request->pawapay_country,
-            'pawapay_currency' => $request->pawapay_currency,
+            'moneroo_phone' => $request->moneroo_phone,
+            'moneroo_provider' => $request->moneroo_provider,
+            'moneroo_country' => $request->moneroo_country,
+            'moneroo_currency' => $request->moneroo_currency,
         ]);
 
         return redirect()->route('ambassador.payment-settings')

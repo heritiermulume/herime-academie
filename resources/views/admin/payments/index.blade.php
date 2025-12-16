@@ -43,7 +43,8 @@
                             <label class="form-label fw-semibold">Méthode de paiement</label>
                             <select name="method" class="form-select">
                                 <option value="">Tous moyens</option>
-                                <option value="pawapay" {{ request('method')==='pawapay' ? 'selected' : '' }}>pawaPay</option>
+                                <option value="moneroo" {{ request('method')==='moneroo' ? 'selected' : '' }}>Moneroo</option>
+                                <option value="pawapay" {{ request('method')==='pawapay' ? 'selected' : '' }}>PawaPay (ancien)</option>
                             </select>
                         </div>
                         <div>

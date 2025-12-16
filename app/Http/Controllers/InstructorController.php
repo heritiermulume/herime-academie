@@ -375,12 +375,13 @@ class InstructorController extends Controller
     {
         $instructor = auth()->user();
         
-        // Récupérer les données pawaPay
-        $pawapayData = $this->getPawaPayConfiguration();
+        // Récupérer les données Moneroo
+        $monerooData = $this->getMonerooConfiguration();
         
         return view('instructors.admin.payment-settings', [
             'instructor' => $instructor,
-            'pawapayData' => $pawapayData,
+            'monerooData' => $monerooData,
+            'pawapayData' => $monerooData, // Compatibilité avec les vues existantes
         ]);
     }
 
@@ -399,7 +400,7 @@ class InstructorController extends Controller
             'pawapay_currency' => 'nullable|string|size:3',
         ]);
 
-        // Mettre à jour les champs pawaPay
+        // Mettre à jour les champs de paiement (compatibilité avec anciens champs PawaPay)
         $instructor->update([
             'is_external_instructor' => $request->has('is_external_instructor'),
             'pawapay_phone' => $request->pawapay_phone,
@@ -413,47 +414,77 @@ class InstructorController extends Controller
     }
 
     /**
-     * Récupérer la configuration pawaPay (pays et providers)
+     * Récupérer la configuration Moneroo (pays et providers)
      */
-    private function getPawaPayConfiguration(): array
+    private function getMonerooConfiguration(): array
     {
-        // Utiliser la même logique que PawaPayController::activeConf() pour garantir la cohérence
-        $baseUrl = rtrim(config('services.pawapay.base_url'), '/');
-        $apiKey = config('services.pawapay.api_key');
+        // Utiliser l'API Moneroo pour récupérer les méthodes disponibles
+        $baseUrl = rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
+        $apiKey = config('services.moneroo.api_key');
         
         if (!$apiKey) {
-            Log::error('PAWAPAY_API_KEY non configurée.');
+            Log::error('MONEROO_API_KEY non configurée.');
             return ['countries' => [], 'providers' => []];
         }
 
         try {
-            // Utiliser l'endpoint active-conf selon la documentation pawaPay
-            // https://docs.pawapay.io/v2/docs/payouts
-            // IMPORTANT: Utiliser operationType=PAYOUT pour les payouts (pas DEPOSIT)
+            // Utiliser l'endpoint /payouts/methods selon la documentation Moneroo
+            // https://docs.moneroo.io/fr/payouts/methodes-disponibles
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->get("{$baseUrl}/active-conf", [
-                'operationType' => 'PAYOUT',
-            ]);
+            ])->get("{$baseUrl}/payouts/methods");
 
             if ($response->successful()) {
-                $data = $response->json();
+                $responseData = $response->json();
+                // Format Moneroo: { "success": true, "data": {...} }
+                $data = $responseData['data'] ?? $responseData;
                 
-                Log::info('pawaPay configuration retrieved', [
-                    'has_countries' => isset($data['countries']),
-                    'countries_count' => isset($data['countries']) ? count($data['countries']) : 0,
+                Log::info('Moneroo configuration retrieved', [
+                    'has_data' => !empty($data),
                 ]);
                 
-                // Extraire les pays et providers selon la structure de la réponse
+                // Extraire les pays et providers selon la structure de la réponse Moneroo
                 $countries = [];
                 $providers = [];
                 
-                if (isset($data['countries']) && is_array($data['countries'])) {
+                // Moneroo peut retourner les méthodes différemment
+                // Adapter selon le format réel de la réponse
+                if (isset($data['methods']) && is_array($data['methods'])) {
+                    // Si la réponse contient un tableau de méthodes
+                    foreach ($data['methods'] as $method) {
+                        $countryCode = $method['country'] ?? '';
+                        $providerCode = $method['payment_method'] ?? $method['provider'] ?? '';
+                        $providerName = $method['name'] ?? $providerCode;
+                        $currencies = $method['currencies'] ?? ($method['currency'] ? [$method['currency']] : []);
+                        
+                        // Ajouter le pays s'il n'existe pas
+                        if ($countryCode && !isset($countries[$countryCode])) {
+                            $countries[$countryCode] = [
+                                'code' => $countryCode,
+                                'name' => $countryCode, // Peut être amélioré avec un mapping
+                                'prefix' => '',
+                                'flag' => '',
+                            ];
+                        }
+                        
+                        // Ajouter le provider
+                        if ($providerCode) {
+                            $providers[] = [
+                                'code' => $providerCode,
+                                'name' => $providerName,
+                                'country' => $countryCode,
+                                'currencies' => $currencies,
+                                'logo' => $method['logo'] ?? '',
+                            ];
+                        }
+                    }
+                } elseif (isset($data['countries']) && is_array($data['countries'])) {
+                    // Format similaire à PawaPay (pour compatibilité)
                     foreach ($data['countries'] as $country) {
-                        $countryCode = $country['country'] ?? '';
-                        $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $countryCode;
+                        $countryCode = $country['country'] ?? $country['code'] ?? '';
+                        $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $country['name'] ?? $countryCode;
                         
                         $countries[] = [
                             'code' => $countryCode,
@@ -465,18 +496,27 @@ class InstructorController extends Controller
                         // Extraire les providers pour ce pays
                         if (isset($country['providers']) && is_array($country['providers'])) {
                             foreach ($country['providers'] as $provider) {
-                                $providerCode = $provider['provider'] ?? '';
+                                $providerCode = $provider['provider'] ?? $provider['payment_method'] ?? '';
                                 $providerName = $provider['displayName'] ?? $provider['name'] ?? $providerCode;
+                                $currencies = $provider['currencies'] ?? ($provider['currency'] ? [$provider['currency']] : []);
                                 
                                 $providers[] = [
                                     'code' => $providerCode,
                                     'name' => $providerName,
                                     'country' => $countryCode,
+                                    'currencies' => $currencies,
                                     'logo' => $provider['logo'] ?? '',
                                 ];
                             }
                         }
                     }
+                }
+                
+                // Convertir le tableau associatif de pays en tableau indexé si nécessaire
+                if (!empty($countries) && isset($countries[0]) && is_array($countries[0])) {
+                    $countries = array_values($countries);
+                } else {
+                    $countries = array_values($countries);
                 }
                 
                 // Trier les pays par nom
@@ -489,7 +529,7 @@ class InstructorController extends Controller
                     return strcmp($a['name'], $b['name']);
                 });
                 
-                Log::info('pawaPay configuration processed', [
+                Log::info('Moneroo configuration processed', [
                     'countries_count' => count($countries),
                     'providers_count' => count($providers),
                 ]);
@@ -499,13 +539,13 @@ class InstructorController extends Controller
                     'providers' => $providers,
                 ];
             } else {
-                Log::warning('Échec de la récupération de la configuration pawaPay', [
+                Log::warning('Échec de la récupération de la configuration Moneroo', [
                     'status' => $response->status(),
                     'response' => $response->body(),
                 ]);
             }
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération de la configuration pawaPay', [
+            Log::error('Erreur lors de la récupération de la configuration Moneroo', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

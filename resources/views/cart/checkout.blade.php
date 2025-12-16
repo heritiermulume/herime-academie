@@ -54,55 +54,30 @@
                     </div>
                 </div>
 
-                <!-- pawaPay Payment -->
+                <!-- Moneroo Payment -->
                 <div class="payment-section">
                     <h4 class="section-title mb-4">
-                        <i class="fas fa-mobile-alt me-2"></i>Paiement Mobile Money
+                        <i class="fas fa-mobile-alt me-2"></i>Paiement Mobile Money via Moneroo
                     </h4>
+                    
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Paiement sécurisé</strong><br>
+                        Vous serez redirigé vers la page de paiement sécurisée de Moneroo pour compléter votre transaction.
+                        Vous pourrez y sélectionner votre pays, opérateur mobile money et saisir votre numéro de téléphone.
+                    </div>
 
-                    <form id="pawapayForm" method="POST" onsubmit="return false;">
+                    <form id="monerooForm" method="POST" onsubmit="return false;">
                         @csrf
                         
                         <div class="form-section">
-                            <div class="row g-3 mb-3">
-                                <div class="col-12">
-                                    <label class="form-label"><i class="fas fa-flag me-1"></i>Pays</label>
-                                    <select id="country" class="form-select"></select>
+                            <div class="mb-4">
+                                <label class="form-label"><i class="fas fa-coins me-1"></i>Montant à payer</label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <strong class="fs-4 text-primary">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($total) }}</strong>
+                                    <small class="text-muted">({{ config('services.moneroo.default_currency') }})</small>
                                 </div>
-                                <div class="col-12">
-                                    <label class="form-label"><i class="fas fa-coins me-1"></i>Montant à payer</label>
-                                    <div class="d-flex gap-2">
-                                        <div style="flex: 0 0 100px;">
-                                            <select id="currencySelect" class="form-select"></select>
-                                        </div>
-                                        <div style="flex: 1;">
-                                            {{-- Montant initial dans la devise de base du site (configurée dans /admin/settings) --}}
-                                            <input type="text" id="amount" class="form-control" value="{{ number_format($total, 2, '.', '') }}" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="invalid-feedback" id="amountError"></div>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-network-wired me-1"></i>Opérateur</label>
-                                <div id="providers" class="d-flex flex-wrap gap-2"></div>
-                                <small class="form-text text-muted">Sélectionnez votre opérateur.</small>
-                            </div>
-                                    
-                            <div class="mb-3">
-                                <label class="form-label"><i class="fas fa-phone me-1"></i>Numéro de téléphone</label>
-                                <div class="d-flex gap-2">
-                                    <div style="flex: 0 0 100px;">
-                                        <label class="form-label small mb-1" style="font-size: 0.75rem;">Indicatif</label>
-                                        <input type="text" id="prefix" class="form-control" value="243" readonly>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <label class="form-label small mb-1" style="font-size: 0.75rem;">Numéro (sans indicatif)</label>
-                                        <input type="tel" id="phoneNumber" class="form-control" placeholder="783 456 789" required>
-                                        <div class="invalid-feedback" id="phoneError">Veuillez saisir un numéro de téléphone valide.</div>
-                                    </div>
-                                </div>
+                                <small class="form-text text-muted">Le montant sera converti automatiquement selon votre opérateur sur la page Moneroo.</small>
                             </div>
 
                             <!-- Code Promo Ambassadeur -->
@@ -139,12 +114,15 @@
                                 </div>
                             </div>
 
-                            <input type="hidden" id="currency" value="{{ config('services.pawapay.default_currency') }}">
+                            <input type="hidden" id="amount" value="{{ number_format($total, 2, '.', '') }}">
+                            <input type="hidden" id="currency" value="{{ config('services.moneroo.default_currency') }}">
                         </div>
 
                         <div class="payment-actions mt-4">
                             <button type="button" id="payButton" class="btn btn-primary btn-lg w-100">
-                                <span id="payButtonText">Payer maintenant</span>
+                                <span id="payButtonText">
+                                    <i class="fas fa-credit-card me-2"></i>Payer avec Moneroo
+                                </span>
                             </button>
                         </div>
 
@@ -186,20 +164,13 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const providersContainer = document.getElementById('providers');
-    const countrySelect = document.getElementById('country');
-    const prefixInput = document.getElementById('prefix');
-    const phoneNumberInput = document.getElementById('phoneNumber');
+    // Éléments simplifiés pour intégration standard Moneroo
     const amountInput = document.getElementById('amount');
     const currencyInput = document.getElementById('currency');
-    const currencySelect = document.getElementById('currencySelect');
     const payButton = document.getElementById('payButton');
     const payButtonText = document.getElementById('payButtonText');
     const paymentNotice = document.getElementById('paymentNotice');
     const termsCheckbox = document.getElementById('terms');
-    let selectedProvider = null;
-    let cachedActiveConf = null;
-    let currentProviderRules = null; // min/max/decimals
     
     // IMPORTANT: Le montant de base est dans la devise de base du site (configurée dynamiquement dans /admin/settings)
     // Ce montant provient des prix des cours stockés dans la base de données (dans la devise de base)
@@ -209,125 +180,22 @@ document.addEventListener('DOMContentLoaded', function() {
     let exchangeRates = {}; // Cache des taux de change
 
     async function loadCountries() {
-        // Récupère toute la configuration active (sans filtre pays)
-        const res = await fetch(`{{ route('pawapay.active-conf') }}`);
-        if (!res.ok) {
-            countrySelect.innerHTML = '<option>Chargement impossible</option>';
-            return;
-        }
-        const data = await res.json();
-        cachedActiveConf = data;
-        const countries = data.countries || [];
-        // Construire la liste des pays disponibles
-        let html = '';
-        countries.forEach(c => {
-            const selected = c.country === `{{ config('services.pawapay.default_country') }}` ? 'selected' : '';
-            const label = (c.displayName && (c.displayName.fr || c.displayName.en)) || c.country;
-            html += `<option value="${c.country}" ${selected}>${label}</option>`;
-        });
-        // Si aucun pays dans la conf, fallback sur défaut
-        if (!html) {
-            html = `<option value="{{ config('services.pawapay.default_country') }}" selected>{{ config('services.pawapay.default_country') }}</option>`;
-        }
-        countrySelect.innerHTML = html;
-        // Déclencher chargement des fournisseurs pour le pays sélectionné
-        onCountryChange();
+        // Cette fonction n'est plus utilisée pour l'intégration standard Moneroo
+        // Moneroo collectera les informations sur leur page de paiement
+        // Conservée pour compatibilité mais ne fait rien
+        return;
     }
 
     function onCountryChange() {
-        providersContainer.innerHTML = '<div class="text-muted">Chargement des fournisseurs…</div>';
-        currencySelect.innerHTML = '<option value="">Chargement...</option>';
-        selectedProvider = null;
-        
-        const data = cachedActiveConf || { countries: [] };
-        const country = (data.countries || []).find(c => c.country === countrySelect.value) || null;
-        if (!country) {
-            providersContainer.innerHTML = '<div class="text-danger">Aucun fournisseur disponible.</div>';
-            currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
-            selectedProvider = null;
-            updatePayButtonState();
-            return;
-        }
-        prefixInput.value = country.prefix || prefixInput.value;
-        const providers = country.providers || [];
-        renderProviders(providers);
+        // Fonction désactivée - non utilisée pour intégration standard Moneroo
     }
 
     function renderProviders(providers) {
-        providersContainer.innerHTML = '';
-        if (providers.length === 0) {
-            providersContainer.innerHTML = '<div class="text-danger">Aucun fournisseur disponible.</div>';
-            currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
-            selectedProvider = null;
-            updatePayButtonState();
-                return;
-            }
-            
-        providers.forEach((p, index) => {
-            const card = document.createElement('div');
-            card.className = 'provider-card';
-            card.innerHTML = `
-                <div class="provider-logo"><img src="${p.logo}" alt="${p.displayName || p.provider}"></div>
-                <div class="provider-name">${p.displayName || p.provider}</div>
-            `;
-            
-            // Sélectionner automatiquement le premier fournisseur
-            if (index === 0) {
-                selectedProvider = p.provider;
-                card.classList.add('active');
-                setupCurrenciesForProvider(p);
-            }
-            
-            card.addEventListener('click', () => {
-                selectedProvider = p.provider;
-                [...providersContainer.children].forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
-                setupCurrenciesForProvider(p);
-            });
-            providersContainer.appendChild(card);
-        });
+        // Fonction désactivée - non utilisée pour intégration standard Moneroo
     }
 
     function setupCurrenciesForProvider(provider) {
-        if (!provider) {
-            currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
-            currencyInput.value = '';
-            amountInput.value = baseAmount.toFixed(2);
-            updatePayButtonState();
-                return;
-            }
-            
-        const currencies = (provider.currencies || []).filter(c => !!c.currency);
-        let html = '';
-        
-        if (currencies.length === 0) {
-            // Aucune devise dans la config, utiliser la devise par défaut
-            const defaultCurrency = '{{ config('services.pawapay.default_currency') }}';
-            html = `<option value="${defaultCurrency}" selected>${defaultCurrency}</option>`;
-            currencySelect.innerHTML = html;
-            currencyInput.value = defaultCurrency;
-            convertAmount(defaultCurrency);
-        } else {
-            currencies.forEach((c, index) => {
-                const code = c.currency;
-                const selected = index === 0 ? 'selected' : '';
-                html += `<option value="${code}" ${selected}>${code}</option>`;
-            });
-            currencySelect.innerHTML = html;
-            // Définir règles min/max/decimals pour DEPOSIT si fournies
-            const selectedCurrency = currencies[0]; // Première devise par défaut
-            const opTypes = selectedCurrency && selectedCurrency.operationTypes ? selectedCurrency.operationTypes : null;
-            const deposit = opTypes && opTypes.DEPOSIT ? opTypes.DEPOSIT : null;
-            currentProviderRules = deposit ? {
-                minAmount: deposit.minAmount ? parseFloat(deposit.minAmount) : null,
-                maxAmount: deposit.maxAmount ? parseFloat(deposit.maxAmount) : null,
-                decimalsInAmount: deposit.decimalsInAmount || 'TWO_PLACES',
-            } : null;
-            
-            currencyInput.value = selectedCurrency.currency;
-            convertAmount(selectedCurrency.currency);
-        }
-        updatePayButtonState();
+        // Fonction désactivée - non utilisée pour intégration standard Moneroo
     }
 
     /**
@@ -335,39 +203,10 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {string} targetCurrency - La devise cible sélectionnée (ex: CDF, XOF, etc.)
      */
     async function convertAmount(targetCurrency) {
-        if (!targetCurrency || !selectedProvider) {
-            // Pas de devise sélectionnée, afficher le montant dans la devise de base
+        // Plus nécessaire pour intégration standard Moneroo
+        // Moneroo gérera la conversion sur leur page
+        if (amountInput) {
             amountInput.value = baseAmount.toFixed(2);
-            validateAmount();
-            updatePayButtonState();
-                    return;
-                }
-        
-        // Si la devise cible est la même que la devise de base du site, pas de conversion nécessaire
-        if (targetCurrency === baseCurrency) {
-            amountInput.value = baseAmount.toFixed(2);
-            validateAmount();
-            updatePayButtonState();
-                    return;
-                }
-                
-        // Récupérer le taux de change depuis la devise de base du site vers la devise cible sélectionnée
-        // Exemple: Si baseCurrency = 'USD' et targetCurrency = 'CDF', on convertit USD -> CDF
-        try {
-            const rate = await getExchangeRate(baseCurrency, targetCurrency);
-            const convertedAmount = baseAmount * rate;
-            
-            // Formater selon les règles du fournisseur
-            const decimals = currentProviderRules?.decimalsInAmount === 'NONE' ? 0 : 2;
-            amountInput.value = convertedAmount.toFixed(decimals);
-            
-            validateAmount();
-            updatePayButtonState();
-        } catch (error) {
-            // En cas d'erreur, garder le montant original
-            amountInput.value = baseAmount.toFixed(2);
-            validateAmount();
-            updatePayButtonState();
         }
     }
     
@@ -411,39 +250,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function currencyChanged() {
-        if (!selectedProvider) {
-            currencySelect.innerHTML = '<option value="">Aucune devise disponible</option>';
-            return;
-        }
-        
-        currencyInput.value = currencySelect.value;
-        
-        // Mettre à jour les règles si nécessaire
-        const provider = findProviderByCode(selectedProvider);
-        if (provider) {
-            const currencies = (provider.currencies || []).filter(c => !!c.currency);
-            const selectedCurrency = currencies.find(c => c.currency === currencySelect.value);
-            if (selectedCurrency) {
-                const opTypes = selectedCurrency.operationTypes || {};
-                const deposit = opTypes.DEPOSIT || {};
-                currentProviderRules = {
-                    minAmount: deposit.minAmount ? parseFloat(deposit.minAmount) : null,
-                    maxAmount: deposit.maxAmount ? parseFloat(deposit.maxAmount) : null,
-                    decimalsInAmount: deposit.decimalsInAmount || 'TWO_PLACES',
-                };
-            }
-        }
-        
-        convertAmount(currencySelect.value);
+        // Fonction désactivée - non utilisée pour intégration standard Moneroo
     }
     
     function findProviderByCode(providerCode) {
-        if (!cachedActiveConf) return null;
-        const countries = cachedActiveConf.countries || [];
-        for (const country of countries) {
-            const provider = (country.providers || []).find(p => p.provider === providerCode);
-            if (provider) return provider;
-        }
+        // Fonction désactivée - non utilisée pour intégration standard Moneroo
         return null;
     }
 
@@ -458,11 +269,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function validatePhone() {
-        const digits = phoneNumberInput.value.replace(/\D/g,'');
-        const valid = digits.length >= 7; // règle simple; peut être affinée par pays
-        if (!valid) setInvalid(phoneNumberInput, document.getElementById('phoneError'), 'Numéro invalide.');
-        else clearInvalid(phoneNumberInput, document.getElementById('phoneError'));
-        return valid;
+        // Plus nécessaire pour intégration standard Moneroo
+        // Moneroo validera le téléphone sur leur page
+        return true;
     }
 
     function validateTerms() {
@@ -473,39 +282,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function validateAmount() {
+        // Validation simplifiée pour intégration standard Moneroo
         const val = parseFloat(amountInput.value);
-        let ok = true;
-        let msg = '';
-        if (Number.isNaN(val)) { ok = false; msg = 'Montant invalide.'; }
-        if (ok && currentProviderRules) {
-            if (currentProviderRules.minAmount !== null && val < currentProviderRules.minAmount) { ok = false; msg = `Montant minimum: ${currentProviderRules.minAmount}`; }
-            if (currentProviderRules.maxAmount !== null && val > currentProviderRules.maxAmount) { ok = false; msg = `Montant maximum: ${currentProviderRules.maxAmount}`; }
+        if (Number.isNaN(val) || val <= 0) {
+            return false;
         }
-        if (!ok) setInvalid(amountInput, document.getElementById('amountError'), msg);
-        else clearInvalid(amountInput, document.getElementById('amountError'));
-        return ok;
+        return true;
     }
 
     function updatePayButtonState() {
-        // Le fournisseur doit être sélectionné
-        if (!selectedProvider) {
-            payButton.disabled = true;
-            return;
-        }
-        
-        const ready = validatePhone() && validateTerms() && validateAmount();
+        // Pour l'intégration standard Moneroo, seule la validation des termes est nécessaire
+        const ready = validateTerms();
         payButton.disabled = !ready;
     }
 
     async function initiateDeposit() {
-        if (!validateTerms() | !validatePhone() | !selectedProvider | !validateAmount()) {
+        // Validation minimale pour intégration standard Moneroo
+        if (!validateTerms()) {
             updatePayButtonState();
             return;
         }
-        // S'assurer que la devise est synchronisée
-        currencyInput.value = currencySelect.value;
         
-        const fullPhone = `${prefixInput.value}${phoneNumberInput.value.replace(/\D/g,'')}`;
         payButton.disabled = true;
         payButtonText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Initialisation…';
         paymentNotice.style.display = 'none';
@@ -514,13 +311,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const ambassadorPromoCodeInput = document.getElementById('ambassadorPromoCode');
         const ambassadorPromoCode = ambassadorPromoCodeInput ? ambassadorPromoCodeInput.value.trim().toUpperCase() : '';
 
-        // Payload avec montant converti et devise sélectionnée pour l'opérateur
+        // Payload simplifié pour intégration standard Moneroo
+        // Moneroo collectera pays, opérateur et téléphone sur leur page
         const payload = {
-            amount: parseFloat(amountInput.value), // Montant converti dans la devise sélectionnée
-            currency: currencySelect.value, // Devise sélectionnée (assurée d'être à jour)
-            phoneNumber: fullPhone,
-            provider: selectedProvider,
-            country: countrySelect.value,
+            amount: parseFloat(amountInput.value) || baseAmount, // Montant dans la devise de base
+            currency: currencyInput.value || '{{ config('services.moneroo.default_currency') }}', // Devise de base
             ambassador_promo_code: ambassadorPromoCode || null, // Code promo ambassadeur optionnel
             _token: '{{ csrf_token() }}'
         };
@@ -531,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         let res;
         try {
-            res = await fetch(`{{ route('pawapay.initiate') }}`, {
+            res = await fetch(`{{ route('moneroo.initiate') }}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
                 body: JSON.stringify(payload),
@@ -545,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
             paymentNotice.innerText = 'Temps dépassé lors de l\'initialisation du paiement. La commande a été annulée.';
             paymentNotice.style.display = 'block';
             // Annuler la dernière commande en attente côté serveur
-            try { await fetch(`{{ url('/pawapay/cancel-latest') }}`, { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }); } catch(e){}
+            try { await fetch(`{{ url('/moneroo/cancel-latest') }}`, { method: 'POST', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } }); } catch(e){}
             return;
         } finally {
             clearTimeout(timeoutId);
@@ -571,73 +366,43 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Gestion du nextStep selon la documentation pawaPay
-        if (data.nextStep === 'REDIRECT_TO_AUTH_URL' && data.authorizationUrl) {
-            // Rediriger vers l'URL d'autorisation (pour flux Wave, etc.)
-            window.location.href = data.authorizationUrl;
-            return;
-        } else if (data.nextStep === 'GET_AUTH_URL') {
-            // L'URL d'autorisation n'est pas encore disponible, on doit poller
-            paymentNotice.style.display = 'block';
-            paymentNotice.className = 'alert alert-info mt-3';
-            paymentNotice.textContent = 'Attente de l\'URL d\'autorisation…';
-            pollForAuthUrl(depositId);
+        // Intégration standard Moneroo : redirection obligatoire vers leur page de checkout
+        // Format selon la documentation: data.checkout_url
+        const paymentId = data.payment_id || data.data?.id || data.id;
+        const redirectUrl = data.checkout_url 
+                         || data.data?.checkout_url
+                         || data.redirect_url 
+                         || data.authorizationUrl 
+                         || data.authorization_url
+                         || data.data?.redirect_url 
+                         || data.data?.authorizationUrl
+                         || data.data?.authorization_url
+                         || data.payment_url
+                         || data.url;
+        
+        if (redirectUrl) {
+            // Rediriger immédiatement vers la page de paiement Moneroo
+            // Moneroo gérera la collecte des informations (pays, opérateur, téléphone)
+            window.location.href = redirectUrl;
             return;
         }
 
-        // Flux standard : polling pour le statut final
-        // Le polling est nécessaire pour donner un feedback immédiat à l'utilisateur
-        // et gérer les différents statuts (COMPLETED, FAILED, etc.)
-        if (data.depositId) {
-            paymentNotice.style.display = 'block';
-            paymentNotice.className = 'alert alert-info mt-3';
-            paymentNotice.textContent = 'Paiement initié. Veuillez approuver le paiement sur votre téléphone…';
-            pollStatus(data.depositId);
-        }
+        // Si pas d'URL de redirection, c'est une erreur
+        payButton.disabled = false;
+        payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
+        paymentNotice.className = 'alert alert-danger mt-2';
+        paymentNotice.textContent = 'Erreur : Impossible d\'obtenir l\'URL de paiement Moneroo. Veuillez réessayer ou contacter le support.';
+        paymentNotice.style.display = 'block';
+        console.error('Moneroo: Pas d\'URL de redirection dans la réponse', data);
     }
 
-    // Polling pour obtenir l'URL d'autorisation (cas Wave, etc.)
-    async function pollForAuthUrl(depositId) {
-        const maxAttempts = 10; // 10 tentatives maximum
-        let attempts = 0;
-        
-        const poll = async () => {
-            if (attempts >= maxAttempts) {
-                paymentNotice.className = 'alert alert-warning mt-3';
-                paymentNotice.textContent = 'Délai dépassé lors de l\'obtention de l\'URL d\'autorisation.';
-                payButton.disabled = false;
-                payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Payer maintenant';
-                return;
-            }
-            
-            attempts++;
-            const res = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
-            if (!res.ok) {
-                setTimeout(poll, 1000);
-                return;
-            }
-            
-            const data = await res.json();
-            
-            if (data.nextStep === 'REDIRECT_TO_AUTH_URL' && data.authorizationUrl) {
-                // URL d'autorisation disponible, rediriger
-                paymentNotice.textContent = 'Redirection en cours…';
-                setTimeout(() => window.location.href = data.authorizationUrl, 500);
-            } else {
-                // Continuer à poller
-                setTimeout(poll, 1000);
-            }
-        };
-        
-        poll();
-    }
 
     // Polling pour le statut final du paiement
-    // Selon la documentation pawaPay officielle:
-    // - Ne PAS imposer de timeout strict (pawaPay gère les délais)
+    // Selon la documentation Moneroo officielle:
+    // - Ne PAS imposer de timeout strict (Moneroo gère les délais)
     // - Le webhook est la source de vérité
     // - Le polling sert uniquement au feedback immédiat utilisateur
-    async function pollStatus(depositId) {
+    async function pollStatus(paymentId) {
         let stopped = false;
         let lastStatus = null;
         let startTime = Date.now();
@@ -667,7 +432,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Vérifier le statut
             try {
-                const res = await fetch(`{{ url('/pawapay/status') }}/${depositId}`);
+                const res = await fetch(`{{ url('/moneroo/status') }}/${paymentId}`);
                 if (!res.ok) {
                     setTimeout(poll, 2000);
                     return;
@@ -682,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     paymentNotice.className = 'alert alert-danger mt-3';
                     paymentNotice.innerHTML = `
                         <strong>Transaction introuvable</strong><br>
-                        La transaction n'a pas été trouvée dans le système pawaPay.
+                        La transaction n'a pas été trouvée dans le système Moneroo.
                         Veuillez contacter le support si vous avez approuvé le paiement.
                     `;
                     payButton.disabled = false;
@@ -695,8 +460,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     lastStatus = status;
                 }
                 
-                // Gérer tous les statuts possibles selon la documentation pawaPay
-                if (status === 'COMPLETED') {
+                // Gérer tous les statuts possibles selon la documentation Moneroo
+                if (status === 'completed') {
                     stopped = true;
                     paymentNotice.className = 'alert alert-success mt-3';
                     paymentNotice.textContent = 'Paiement réussi ! Redirection…';
@@ -704,29 +469,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Rediriger vers la page de succès
                     setTimeout(() => {
-                        window.location.href = `{{ route('pawapay.success') }}?depositId=${depositId}`;
+                        window.location.href = `{{ route('moneroo.success') }}?payment_id=${paymentId}`;
                     }, 1000);
                     
-                } else if (status === 'FAILED') {
+                } else if (status === 'failed' || status === 'cancelled' || status === 'expired' || status === 'rejected') {
                     stopped = true;
                     paymentNotice.className = 'alert alert-danger mt-3';
                     paymentNotice.textContent = 'Le paiement a échoué. Veuillez réessayer.';
                     payButton.disabled = false;
                     payButtonText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Réessayer';
                     
-                } else if (status === 'IN_RECONCILIATION') {
-                    // En réconciliation : pawaPay gère automatiquement
-                    if (status !== lastStatus) {
-                        paymentNotice.className = 'alert alert-warning mt-3';
-                        paymentNotice.innerHTML = `
-                            <strong><i class="fas fa-clock me-1"></i>Réconciliation en cours</strong><br>
-                            Votre paiement est en cours de validation automatique par pawaPay.
-                            Vous recevrez une confirmation dès que c'est terminé.
-                        `;
-                    }
-                    setTimeout(poll, 3000); // Poll plus lentement pour réconciliation
-                    
-                } else if (status === 'PROCESSING' || status === 'ACCEPTED') {
+                } else if (status === 'pending' || status === 'processing') {
                     // En cours de traitement : continuer à poller
                     if (status !== lastStatus) {
                         paymentNotice.className = 'alert alert-info mt-3';
@@ -749,7 +502,8 @@ document.addEventListener('DOMContentLoaded', function() {
         poll();
     }
 
-    countrySelect.addEventListener('change', onCountryChange);
+    // Plus besoin d'écouter les changements - Moneroo gère tout sur leur page
+    // countrySelect.addEventListener('change', onCountryChange);
     // Fonction pour valider le code promo ambassadeur
     async function validatePromoCode() {
         const promoCodeInput = document.getElementById('ambassadorPromoCode');
@@ -770,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         try {
             // Vérifier le code via une route dédiée ou via l'API
-            const response = await fetch(`{{ route('pawapay.initiate') }}`, {
+            const response = await fetch(`{{ route('moneroo.initiate') }}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -832,10 +586,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     payButton.addEventListener('click', initiateDeposit);
-    phoneNumberInput.addEventListener('input', () => { validatePhone(); updatePayButtonState(); });
     termsCheckbox.addEventListener('change', () => { validateTerms(); updatePayButtonState(); });
-    currencySelect.addEventListener('change', currencyChanged);
-    loadCountries();
+    // Plus besoin de charger les pays/opérateurs - Moneroo le fera sur leur page
     updatePayButtonState();
 });
 </script>

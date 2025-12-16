@@ -13,7 +13,7 @@ use App\Mail\InvoiceMail;
 use App\Mail\PaymentFailedMail;
 use App\Notifications\PaymentReceived;
 use App\Services\EmailService;
-use App\Services\PawaPayService;
+use App\Services\MonerooPayoutService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -563,17 +563,21 @@ class PaymentController extends Controller
                     continue;
                 }
 
-                // Vérifier que toutes les informations pawaPay sont configurées
-                if (!$instructor->pawapay_phone || !$instructor->pawapay_provider || !$instructor->pawapay_country) {
-                    Log::warning("Formateur avec paiements automatiques activés mais informations pawaPay incomplètes", [
+                // Vérifier que toutes les informations de paiement sont configurées
+                $phone = $instructor->moneroo_phone ?? $instructor->pawapay_phone;
+                $provider = $instructor->moneroo_provider ?? $instructor->pawapay_provider;
+                $country = $instructor->moneroo_country ?? $instructor->pawapay_country;
+                
+                if (!$phone || !$provider || !$country) {
+                    Log::warning("Formateur avec paiements automatiques activés mais informations Moneroo incomplètes", [
                         'instructor_id' => $instructor->id,
                         'instructor_name' => $instructor->name,
                         'course_id' => $course->id,
                         'course_title' => $course->title,
                         'order_id' => $order->id,
-                        'has_phone' => !empty($instructor->pawapay_phone),
-                        'has_provider' => !empty($instructor->pawapay_provider),
-                        'has_country' => !empty($instructor->pawapay_country),
+                        'has_phone' => !empty($phone),
+                        'has_provider' => !empty($provider),
+                        'has_country' => !empty($country),
                         'message' => 'Le formateur a activé les paiements automatiques mais n\'a pas fourni toutes les informations de paiement nécessaires',
                     ]);
                     continue;
@@ -602,17 +606,17 @@ class PaymentController extends Controller
                 // Utiliser la devise de la commande
                 $currency = $order->currency ?? Setting::getBaseCurrency();
 
-                // Initier le payout via pawaPay
-                $pawaPayService = new PawaPayService();
-                $result = $pawaPayService->initiatePayout(
+                // Initier le payout via Moneroo
+                $monerooPayoutService = new MonerooPayoutService();
+                $result = $monerooPayoutService->initiatePayout(
                     $instructor->id,
                     $order->id,
                     $course->id,
                     $payoutAmount,
                     $currency,
-                    $instructor->pawapay_phone,
-                    $instructor->pawapay_provider,
-                    $instructor->pawapay_country
+                    $instructor->moneroo_phone ?? $instructor->pawapay_phone,
+                    $instructor->moneroo_provider ?? $instructor->pawapay_provider,
+                    $instructor->moneroo_country ?? $instructor->pawapay_country
                 );
 
                 if ($result['success']) {

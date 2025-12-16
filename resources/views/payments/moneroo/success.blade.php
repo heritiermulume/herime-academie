@@ -224,24 +224,6 @@
                 <i class="fas fa-info-circle"></i>
                 <strong>Accès immédiat :</strong> Vous avez maintenant accès à tous les cours que vous avez achetés. Vous pouvez y accéder depuis votre tableau de bord étudiant.
             </div>
-            @elseif(isset($reconciliation_warning) && $reconciliation_warning)
-            <div class="order-details-card">
-                <h5 class="order-details-title">
-                    <i class="fas fa-clock me-2"></i>Paiement en cours de validation
-                </h5>
-                
-                <div style="text-align: center; padding: 1rem 0;">
-                    <i class="fas fa-spinner fa-spin fa-2x text-warning mb-3"></i>
-                    <p class="text-muted">
-                        Votre paiement est en cours de validation par notre système de réconciliation automatique. 
-                        Ce processus permet de garantir la cohérence de votre transaction.
-                    </p>
-                    <p class="text-muted">
-                        Vous recevrez une confirmation par email dès que le paiement sera confirmé. 
-                        Cela peut prendre quelques minutes.
-                    </p>
-                </div>
-            </div>
             @elseif(isset($processing_warning) && $processing_warning)
             <div class="order-details-card">
                 <h5 class="order-details-title">
@@ -275,3 +257,4 @@
     </div>
 </div>
 @endsection
+

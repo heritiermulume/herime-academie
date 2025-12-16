@@ -16,16 +16,18 @@ return new class extends Migration
             $table->foreignId('instructor_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
             $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
-            $table->string('payout_id')->unique(); // UUIDv4 pour pawaPay
+            $table->string('payout_id')->unique(); // ID unique pour Moneroo
             $table->decimal('amount', 10, 2); // Montant à payer au formateur
             $table->decimal('commission_percentage', 5, 2); // Pourcentage de commission retenu
             $table->decimal('commission_amount', 10, 2); // Montant de la commission
             $table->string('currency', 3)->default('USD');
             $table->string('status')->default('pending'); // pending, processing, completed, failed
-            $table->string('pawapay_status')->nullable(); // Status retourné par pawaPay
-            $table->string('provider_transaction_id')->nullable(); // ID de transaction pawaPay
+            $table->string('pawapay_status')->nullable(); // Status retourné par PawaPay (ancien, pour compatibilité)
+            $table->string('moneroo_status')->nullable(); // Status retourné par Moneroo
+            $table->string('provider_transaction_id')->nullable(); // ID de transaction du fournisseur
             $table->text('failure_reason')->nullable();
-            $table->json('pawapay_response')->nullable(); // Réponse complète de pawaPay
+            $table->json('pawapay_response')->nullable(); // Réponse complète de PawaPay (ancien, pour compatibilité)
+            $table->json('moneroo_response')->nullable(); // Réponse complète de Moneroo
             $table->timestamp('processed_at')->nullable();
             $table->timestamps();
             

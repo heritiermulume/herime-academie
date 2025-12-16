@@ -96,7 +96,7 @@
                         </div>
                         
                         <div id="external-instructor-section" class="mt-4 pt-3 border-top" style="display: {{ $user->role === 'instructor' ? 'block' : 'none' }};">
-                            <h6 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>Formateur externe (pawaPay)</h6>
+                            <h6 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>Formateur externe (Moneroo)</h6>
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="is_external_instructor" name="is_external_instructor" value="1" 
                                        {{ old('is_external_instructor', $user->is_external_instructor) ? 'checked' : '' }}
@@ -107,20 +107,20 @@
                                 </label>
                             </div>
                             <small class="text-muted d-block mb-3">
-                                Si activé, ce formateur recevra automatiquement ses paiements via pawaPay après chaque vente de cours.
+                                Si activé, ce formateur recevra automatiquement ses paiements via Moneroo après chaque vente de cours.
                             </small>
                             
-                            <div id="pawapay-fields" style="display: {{ old('is_external_instructor', $user->is_external_instructor) && $user->role === 'instructor' ? 'block' : 'none' }};">
+                            <div id="moneroo-fields" style="display: {{ old('is_external_instructor', $user->is_external_instructor) && $user->role === 'instructor' ? 'block' : 'none' }};">
                                 @php
-                                    $countries = $pawapayData['countries'] ?? [];
-                                    $providers = $pawapayData['providers'] ?? [];
+                                    $countries = $monerooData['countries'] ?? ($pawapayData['countries'] ?? []);
+                                    $providers = $monerooData['providers'] ?? ($pawapayData['providers'] ?? []);
                                     $selectedCountry = old('pawapay_country', $user->pawapay_country);
                                 @endphp
                                 
                                 @if(empty($countries) && empty($providers))
                                     <div class="alert alert-warning">
                                         <i class="fas fa-exclamation-triangle me-2"></i>
-                                        Impossible de charger les données pawaPay. Veuillez vérifier la configuration de l'API.
+                                        Impossible de charger les données Moneroo. Veuillez vérifier la configuration de l'API.
                                     </div>
                                 @endif
                                 
@@ -166,7 +166,7 @@
                                         <small class="text-muted">Sélectionnez le provider mobile money</small>
                                     </div>
                                     <div>
-                                        <label for="pawapay_phone" class="form-label fw-bold">Numéro de téléphone pawaPay</label>
+                                        <label for="pawapay_phone" class="form-label fw-bold">Numéro de téléphone Moneroo</label>
                                         <input type="text" 
                                                class="form-control @error('pawapay_phone') is-invalid @enderror" 
                                                id="pawapay_phone" 
@@ -460,12 +460,12 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
-// Afficher/masquer les champs pawaPay et la section complète
+// Afficher/masquer les champs Moneroo et la section complète
 function toggleExternalInstructorFields() {
     const roleSelect = document.getElementById('role');
     const role = roleSelect ? roleSelect.value : '';
     const isExternal = document.getElementById('is_external_instructor');
-    const pawapayFields = document.getElementById('pawapay-fields');
+    const monerooFields = document.getElementById('moneroo-fields');
     const externalInstructorSection = document.getElementById('external-instructor-section');
     
     // Si le rôle n'est pas "instructor", masquer toute la section et désactiver la checkbox
@@ -477,8 +477,8 @@ function toggleExternalInstructorFields() {
             isExternal.disabled = true;
             isExternal.checked = false;
         }
-        if (pawapayFields) {
-            pawapayFields.style.display = 'none';
+        if (monerooFields) {
+            monerooFields.style.display = 'none';
         }
         return;
     }
@@ -491,12 +491,12 @@ function toggleExternalInstructorFields() {
         isExternal.disabled = false;
     }
     
-    // Afficher/masquer les champs pawaPay selon l'état de la checkbox
-    if (isExternal && pawapayFields) {
+    // Afficher/masquer les champs Moneroo selon l'état de la checkbox
+    if (isExternal && monerooFields) {
         if (isExternal.checked) {
-            pawapayFields.style.display = 'block';
+            monerooFields.style.display = 'block';
         } else {
-            pawapayFields.style.display = 'none';
+            monerooFields.style.display = 'none';
         }
     }
 }
@@ -626,13 +626,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (roleSelect) {
         roleSelect.addEventListener('change', function() {
             toggleExternalInstructorFields();
-            // Réinitialiser les champs pawaPay si le rôle change
+            // Réinitialiser les champs Moneroo si le rôle change
             const countrySelect = document.getElementById('pawapay_country');
             const providerSelect = document.getElementById('pawapay_provider');
             const phoneInput = document.getElementById('pawapay_phone');
             
             if (this.value !== 'instructor') {
-                // Si le rôle n'est plus "instructor", effacer tous les champs pawaPay
+                // Si le rôle n'est plus "instructor", effacer tous les champs Moneroo
                 if (countrySelect) countrySelect.value = '';
                 if (providerSelect) providerSelect.value = '';
                 if (phoneInput) phoneInput.value = '';

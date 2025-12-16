@@ -27,7 +27,7 @@ class InstructorPayoutReceived extends Notification
      */
     public function via(object $notifiable): array
     {
-        // Ne pas utiliser 'mail' ici car l'email est envoyé directement dans PawaPayService
+        // Ne pas utiliser 'mail' ici car l'email est envoyé directement dans MonerooPayoutService
         // Cela évite d'envoyer l'email deux fois
         return ['database'];
     }

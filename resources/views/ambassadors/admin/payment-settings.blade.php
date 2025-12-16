@@ -17,11 +17,11 @@
                     </small>
                     
                     @php
-                        $countries = $pawapayData['countries'] ?? [];
-                        $providers = $pawapayData['providers'] ?? [];
-                        $selectedCountry = old('pawapay_country', $user->pawapay_country);
-                        $selectedProvider = old('pawapay_provider', $user->pawapay_provider);
-                        $selectedCurrency = old('pawapay_currency', $user->pawapay_currency ?? '');
+                        $countries = $monerooData['countries'] ?? [];
+                        $providers = $monerooData['providers'] ?? [];
+                        $selectedCountry = old('moneroo_country', $user->moneroo_country);
+                        $selectedProvider = old('moneroo_provider', $user->moneroo_provider);
+                        $selectedCurrency = old('moneroo_currency', $user->moneroo_currency ?? '');
                         $availableCurrencies = [];
                         if ($selectedProvider) {
                             foreach ($providers as $provider) {
@@ -41,16 +41,16 @@
                     @if(empty($countries) && empty($providers))
                         <div class="alert alert-warning">
                             <i class="fas fa-exclamation-triangle me-2"></i>
-                            Impossible de charger les données pawaPay. Veuillez vérifier la configuration de l'API.
+                            Impossible de charger les données Moneroo. Veuillez vérifier la configuration de l'API.
                         </div>
                     @endif
                     
                     <div class="admin-form-grid">
                         <div>
-                            <label for="pawapay_country" class="form-label fw-bold">Pays <span class="text-danger">*</span></label>
-                            <select class="form-select @error('pawapay_country') is-invalid @enderror" 
-                                    id="pawapay_country" 
-                                    name="pawapay_country"
+                            <label for="moneroo_country" class="form-label fw-bold">Pays <span class="text-danger">*</span></label>
+                            <select class="form-select @error('moneroo_country') is-invalid @enderror" 
+                                    id="moneroo_country" 
+                                    name="moneroo_country"
                                     required
                                     onchange="updateProviders()">
                                 <option value="">Sélectionner un pays</option>
@@ -61,17 +61,17 @@
                                     </option>
                                 @endforeach
                             </select>
-                            @error('pawapay_country')
+                            @error('moneroo_country')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <small class="text-muted">Sélectionnez votre pays</small>
                         </div>
 
                         <div>
-                            <label for="pawapay_provider" class="form-label fw-bold">Fournisseur <span class="text-danger">*</span></label>
-                            <select class="form-select @error('pawapay_provider') is-invalid @enderror" 
-                                    id="pawapay_provider" 
-                                    name="pawapay_provider"
+                            <label for="moneroo_provider" class="form-label fw-bold">Fournisseur <span class="text-danger">*</span></label>
+                            <select class="form-select @error('moneroo_provider') is-invalid @enderror" 
+                                    id="moneroo_provider" 
+                                    name="moneroo_provider"
                                     required
                                     onchange="updatePhoneField(); updateCurrencyField();"
                                     disabled>
@@ -86,17 +86,17 @@
                                     </option>
                                 @endforeach
                             </select>
-                            @error('pawapay_provider')
+                            @error('moneroo_provider')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <small class="text-muted">Sélectionnez votre fournisseur mobile money</small>
                         </div>
 
                         <div>
-                            <label for="pawapay_currency" class="form-label fw-bold">Devise <span class="text-danger">*</span></label>
-                            <select class="form-select @error('pawapay_currency') is-invalid @enderror" 
-                                    id="pawapay_currency" 
-                                    name="pawapay_currency"
+                            <label for="moneroo_currency" class="form-label fw-bold">Devise <span class="text-danger">*</span></label>
+                            <select class="form-select @error('moneroo_currency') is-invalid @enderror" 
+                                    id="moneroo_currency" 
+                                    name="moneroo_currency"
                                     data-selected-currency="{{ $selectedCurrency }}"
                                     required
                                     onchange="updateFieldsState()"
@@ -109,23 +109,23 @@
                                     </option>
                                 @endforeach
                             </select>
-                            @error('pawapay_currency')
+                            @error('moneroo_currency')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <small class="text-muted">Sélectionnez la devise de l'opérateur</small>
                         </div>
 
                         <div>
-                            <label for="pawapay_phone" class="form-label fw-bold">Numéro de téléphone mobile money <span class="text-danger">*</span></label>
+                            <label for="moneroo_phone" class="form-label fw-bold">Numéro de téléphone mobile money <span class="text-danger">*</span></label>
                             <input type="text" 
-                                   class="form-control @error('pawapay_phone') is-invalid @enderror" 
-                                   id="pawapay_phone" 
-                                   name="pawapay_phone" 
-                                   value="{{ old('pawapay_phone', $user->pawapay_phone) }}"
+                                   class="form-control @error('moneroo_phone') is-invalid @enderror" 
+                                   id="moneroo_phone" 
+                                   name="moneroo_phone" 
+                                   value="{{ old('moneroo_phone', $user->moneroo_phone) }}"
                                    placeholder="820000000"
                                    required
                                    disabled>
-                            @error('pawapay_phone')
+                            @error('moneroo_phone')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <small class="text-muted">Numéro sans indicatif pays (ex: 820000000 pour la RDC)</small>
@@ -153,8 +153,8 @@ let allProviderOptions = [];
 
 // Mettre à jour les providers disponibles selon le pays sélectionné
 function updateProviders() {
-    const countrySelect = document.getElementById('pawapay_country');
-    const providerSelect = document.getElementById('pawapay_provider');
+    const countrySelect = document.getElementById('moneroo_country');
+    const providerSelect = document.getElementById('moneroo_provider');
     
     if (!countrySelect || !providerSelect) return;
     
@@ -212,7 +212,7 @@ function updateProviders() {
     }
     
     // Effacer la devise sélectionnée quand le pays change
-    const currencySelect = document.getElementById('pawapay_currency');
+    const currencySelect = document.getElementById('moneroo_currency');
     if (currencySelect) {
         currencySelect.value = '';
         currencySelect.innerHTML = '<option value="">Sélectionner une devise</option>';
@@ -237,8 +237,8 @@ function updatePhoneField() {
 
 // Mettre à jour le champ devise selon le provider sélectionné
 function updateCurrencyField() {
-    const providerSelect = document.getElementById('pawapay_provider');
-    const currencySelect = document.getElementById('pawapay_currency');
+    const providerSelect = document.getElementById('moneroo_provider');
+    const currencySelect = document.getElementById('moneroo_currency');
     
     if (!providerSelect || !currencySelect) return;
     
@@ -302,10 +302,10 @@ function updateCurrencyField() {
 
 // Mettre à jour l'état de tous les champs selon les sélections
 function updateFieldsState() {
-    const countrySelect = document.getElementById('pawapay_country');
-    const providerSelect = document.getElementById('pawapay_provider');
-    const currencySelect = document.getElementById('pawapay_currency');
-    const phoneInput = document.getElementById('pawapay_phone');
+    const countrySelect = document.getElementById('moneroo_country');
+    const providerSelect = document.getElementById('moneroo_provider');
+    const currencySelect = document.getElementById('moneroo_currency');
+    const phoneInput = document.getElementById('moneroo_phone');
     
     if (!countrySelect || !providerSelect || !currencySelect || !phoneInput) return;
     
@@ -342,7 +342,7 @@ function updateFieldsState() {
 // Initialiser au chargement
 document.addEventListener('DOMContentLoaded', function() {
     // Stocker toutes les options de providers au chargement initial
-    const providerSelect = document.getElementById('pawapay_provider');
+    const providerSelect = document.getElementById('moneroo_provider');
     if (providerSelect) {
         allProviderOptions = Array.from(providerSelect.querySelectorAll('option[data-country]')).map(option => {
             let currencies = [];
@@ -373,8 +373,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser le champ devise (après updateProviders pour que le provider soit chargé)
     // Attendre un peu pour s'assurer que tout est initialisé, surtout si un provider est déjà sélectionné
     setTimeout(function() {
-        const providerSelect = document.getElementById('pawapay_provider');
-        const currencySelect = document.getElementById('pawapay_currency');
+        const providerSelect = document.getElementById('moneroo_provider');
+        const currencySelect = document.getElementById('moneroo_currency');
         
         // Si un provider est déjà sélectionné, charger les devises
         if (providerSelect && providerSelect.value && currencySelect) {

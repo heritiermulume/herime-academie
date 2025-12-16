@@ -62,7 +62,7 @@
                                     </div>
                                     <div class="form-text mt-2">
                                         <i class="fas fa-info-circle me-1"></i>
-                                        Pourcentage retenu sur les paiements aux formateurs externes. Le reste sera envoyé via pawaPay.
+                                        Pourcentage retenu sur les paiements aux formateurs externes. Le reste sera envoyé via Moneroo.
                                     </div>
                                 </div>
 

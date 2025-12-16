@@ -17,10 +17,12 @@ class InstructorPayout extends Model
         'commission_amount',
         'currency',
         'status',
-        'pawapay_status',
+        'pawapay_status', // Compatibilité avec anciennes données
+        'moneroo_status',
         'provider_transaction_id',
         'failure_reason',
-        'pawapay_response',
+        'pawapay_response', // Compatibilité avec anciennes données
+        'moneroo_response',
         'processed_at',
     ];
 
@@ -28,7 +30,8 @@ class InstructorPayout extends Model
         'amount' => 'decimal:2',
         'commission_percentage' => 'decimal:2',
         'commission_amount' => 'decimal:2',
-        'pawapay_response' => 'array',
+        'pawapay_response' => 'array', // Compatibilité avec anciennes données
+        'moneroo_response' => 'array',
         'processed_at' => 'datetime',
     ];
 

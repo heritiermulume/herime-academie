@@ -40,10 +40,10 @@ class User extends Authenticatable
         'sso_provider',
         'sso_metadata',
         'is_external_instructor',
-        'pawapay_phone',
-        'pawapay_provider',
-        'pawapay_country',
-        'pawapay_currency',
+        'moneroo_phone',
+        'moneroo_provider',
+        'moneroo_country',
+        'moneroo_currency',
     ];
 
     /**

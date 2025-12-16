@@ -20,8 +20,8 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\LearningController;
 use App\Http\Controllers\YouTubeAccessController;
 use App\Http\Controllers\FilterController;
-use App\Http\Controllers\PawaPayController;
-use App\Http\Controllers\PawaPayPayoutController;
+use App\Http\Controllers\MonerooController;
+use App\Http\Controllers\MonerooPayoutController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\TemporaryUploadController;
 use App\Http\Controllers\Auth\SSOController;
@@ -645,7 +645,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/earnings', [AffiliateController::class, 'earnings'])->name('earnings');
     });
 
-    // Payment routes (désactivées - nous utilisons uniquement pawaPay)
+    // Payment routes (désactivées - nous utilisons uniquement Moneroo)
     // Route::prefix('payments')->name('payments.')->group(function () {
     //     Route::post('/process', [PaymentController::class, 'process'])->name('process');
     //     Route::get('/success', [PaymentController::class, 'success'])->name('success');
@@ -818,37 +818,39 @@ Route::post('/admin/uploads/chunk', [ChunkUploadController::class, 'handle'])
 
 
 
-// pawaPay routes
-Route::prefix('pawapay')->name('pawapay.')->group(function () {
+// Moneroo routes
+Route::prefix('moneroo')->name('moneroo.')->group(function () {
+    // Méthodes de paiement disponibles (publiques pour permettre le chargement avant connexion)
+    Route::get('/methods', [MonerooController::class, 'availableMethods'])->name('methods');
+    
     // Endpoints nécessitant l'auth (depuis le checkout)
     Route::middleware('auth')->group(function () {
-        Route::get('/active-conf', [PawaPayController::class, 'activeConf'])->name('active-conf');
-        Route::post('/initiate', [PawaPayController::class, 'initiate'])->name('initiate');
-        Route::get('/status/{depositId}', [PawaPayController::class, 'status'])->name('status');
-        Route::post('/cancel/{depositId}', [PawaPayController::class, 'cancel'])->name('cancel');
-        Route::post('/cancel-latest', [PawaPayController::class, 'cancelLatestPending'])->name('cancel-latest');
+        Route::post('/initiate', [MonerooController::class, 'initiate'])->name('initiate');
+        Route::get('/status/{paymentId}', [MonerooController::class, 'status'])->name('status');
+        Route::post('/cancel/{paymentId}', [MonerooController::class, 'cancel'])->name('cancel');
+        Route::post('/cancel-latest', [MonerooController::class, 'cancelLatestPending'])->name('cancel-latest');
     });
 
-    // Redirections de succès/échec (publiques car pawaPay peut rappeler sans session)
-    Route::get('/success', [PawaPayController::class, 'successfulRedirect'])->name('success');
-    Route::get('/failed', [PawaPayController::class, 'failedRedirect'])->name('failed');
+    // Redirections de succès/échec (publiques car Moneroo peut rappeler sans session)
+    Route::get('/success', [MonerooController::class, 'successfulRedirect'])->name('success');
+    Route::get('/failed', [MonerooController::class, 'failedRedirect'])->name('failed');
 
-    // Webhook callback from pawaPay (no CSRF)
-    Route::post('/webhook', [PawaPayController::class, 'webhook'])
+    // Webhook callback from Moneroo (no CSRF)
+    Route::post('/webhook', [MonerooController::class, 'webhook'])
         ->name('webhook')
         ->withoutMiddleware(['web']);
 });
 
-// pawaPay Payout routes (pour les paiements aux formateurs externes)
-Route::prefix('api/pawapay/payout')->name('pawapay.payout.')->group(function () {
-    // Callback pour les payouts (pas de CSRF car appelé par pawaPay)
-    Route::post('/callback', [PawaPayPayoutController::class, 'callback'])
+// Moneroo Payout routes (pour les paiements aux formateurs externes)
+Route::prefix('api/moneroo/payout')->name('moneroo.payout.')->group(function () {
+    // Callback pour les payouts (pas de CSRF car appelé par Moneroo)
+    Route::post('/callback', [MonerooPayoutController::class, 'callback'])
         ->name('callback')
         ->withoutMiddleware(['web']);
 
     // Vérifier le statut d'un payout (nécessite auth pour l'admin)
     Route::middleware('auth')->group(function () {
-        Route::get('/status/{payoutId}', [PawaPayPayoutController::class, 'checkStatus'])
+        Route::get('/status/{payoutId}', [MonerooPayoutController::class, 'checkStatus'])
             ->name('status');
     });
 });

@@ -24,22 +24,16 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * Controller pour gérer les paiements pawaPay
+ * Controller pour gérer les paiements Moneroo
  * 
- * Gestion conforme à la documentation pawaPay v2:
- * - https://docs.pawapay.io/v2/docs/deposits
+ * Gestion conforme à la documentation Moneroo:
+ * - https://docs.moneroo.io/fr/payments/initialiser-un-paiement
  * 
  * Statuts gérés:
- * - ACCEPTED: Paiement accepté pour traitement
- * - PROCESSING: En cours de traitement
- * - COMPLETED: Paiement réussi
- * - FAILED: Paiement échoué
- * - IN_RECONCILIATION: En réconciliation (géré automatiquement par pawaPay)
- * 
- * Flux nextStep:
- * - FINAL_STATUS: Flux standard (PIN prompt)
- * - GET_AUTH_URL: Attente de l'URL d'autorisation
- * - REDIRECT_TO_AUTH_URL: Redirection vers l'URL d'autorisation (Wave, etc.)
+ * - pending: Paiement en attente
+ * - processing: En cours de traitement
+ * - completed: Paiement réussi
+ * - failed: Paiement échoué
  * 
  * PRINCIPES IMPORTANTS (selon la documentation officielle):
  * 
@@ -47,80 +41,121 @@ use Illuminate\Support\Facades\Notification;
  *    - Ne PAS poller pour le statut final côté frontend
  *    - S'appuyer uniquement sur le webhook pour les mises à jour
  * 
- * 2. La réconciliation est automatique
- *    - Tous les paiements sont réconciliés automatiquement par pawaPay
- *    - IN_RECONCILIATION ne nécessite aucune action
- *    - Les paiements réussis sont réconciliés plus rapidement
- * 
- * 3. Les redirections (successful/failed URLs) servent uniquement à vérifier le statut
+ * 2. Les redirections (successful/failed URLs) servent uniquement à vérifier le statut
  *    - Utilisées uniquement pour afficher le bon message à l'utilisateur
  *    - Le webhook reste la source de vérité
  * 
- * 4. Stocker le depositId avant l'initiation pour pouvoir réconciliés en cas de problème
- * 
- * 5. Ne JAMAIS annuler automatiquement les paiements en cours de traitement
- *    - Laisser pawaPay gérer les timeouts
- *    - La réconciliation résoudra automatiquement tous les cas
+ * 3. Format de réponse Moneroo: { "success": true, "message": "...", "data": {} }
  */
-class PawaPayController extends Controller
+class MonerooController extends Controller
 {
     private function baseUrl(): string
     {
-        return rtrim(config('services.pawapay.base_url'), '/');
+        return rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
     }
 
     private function authHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer ' . config('services.pawapay.api_key'),
+            'Authorization' => 'Bearer ' . config('services.moneroo.api_key'),
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
         ];
     }
 
     /**
-     * Valider la signature d'un webhook pawaPay
+     * Extraire le prénom du nom complet
+     */
+    private function extractFirstName(string $fullName): string
+    {
+        $parts = explode(' ', trim($fullName));
+        return $parts[0] ?? $fullName;
+    }
+
+    /**
+     * Extraire le nom de famille du nom complet
+     */
+    private function extractLastName(string $fullName): string
+    {
+        $parts = explode(' ', trim($fullName));
+        if (count($parts) > 1) {
+            return implode(' ', array_slice($parts, 1));
+        }
+        return ''; // Si un seul mot, retourner une chaîne vide
+    }
+
+    /**
+     * Convertir le montant dans la plus petite unité de la devise
+     * Pour XOF (Franc CFA), il n'y a pas de sous-unité, donc on arrondit à l'entier
+     * Pour les devises avec centimes (USD, EUR, etc.), multiplier par 100
+     */
+    private function convertAmountToSmallestUnit(float $amount, string $currency): int
+    {
+        // Devises sans sous-unité (comme XOF, JPY, etc.)
+        $noSubunitCurrencies = ['XOF', 'XAF', 'JPY', 'KRW', 'CLP', 'VND'];
+        
+        if (in_array(strtoupper($currency), $noSubunitCurrencies)) {
+            // Arrondir à l'entier le plus proche
+            return (int) round($amount);
+        }
+        
+        // Pour les autres devises (USD, EUR, etc.), multiplier par 100 pour obtenir les centimes
+        return (int) round($amount * 100);
+    }
+
+    /**
+     * Valider la signature d'un webhook Moneroo
      * 
-     * Selon la documentation: https://docs.pawapay.io/using_the_api
-     * Les webhooks incluent un header X-PawaPay-Signature avec une signature HMAC-SHA256
+     * Selon la documentation Moneroo, les webhooks peuvent inclure une signature
+     * pour validation de sécurité
      */
     private function validateWebhookSignature(string $payload, ?string $signature): bool
     {
         // Si pas de signature dans la config, ne pas valider (sandbox/local dev)
-        $webhookSecret = config('services.pawapay.webhook_secret');
+        $webhookSecret = config('services.moneroo.webhook_secret');
         if (!$webhookSecret || !$signature) {
-            \Log::warning('pawaPay webhook: No webhook secret or signature configured', [
+            \Log::warning('Moneroo webhook: No webhook secret or signature configured', [
                 'has_secret' => (bool) $webhookSecret,
                 'has_signature' => (bool) $signature,
             ]);
             return true; // Autoriser en développement
         }
 
-        // Calculer la signature attendue
+        // Calculer la signature attendue (HMAC-SHA256 selon la documentation)
         $expectedSignature = hash_hmac('sha256', $payload, $webhookSecret);
 
         // Comparaison sécurisée (évite timing attacks)
         return hash_equals($expectedSignature, $signature);
     }
 
-    public function activeConf(Request $request)
+    /**
+     * Récupérer les méthodes de paiement disponibles
+     * Moneroo fournit les méthodes disponibles via l'endpoint /payments/methods
+     */
+    public function availableMethods(Request $request)
     {
-        // Annuler côté backend les commandes trop anciennes sans cron/queue
+        // Annuler côté backend les commandes trop anciennes sans cron/queue (si connecté)
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
-        $operationType = 'DEPOSIT';
 
-        $query = ['operationType' => $operationType];
-        // Si un pays est fourni, on filtre; sinon on récupère toute la configuration active
+        $query = [];
+        // Si un pays est fourni, on filtre
         if ($request->filled('country')) {
             $query['country'] = $request->query('country');
         }
 
         $response = Http::withHeaders($this->authHeaders())
-            ->get($this->baseUrl() . '/active-conf', $query);
+            ->get($this->baseUrl() . '/payments/methods', $query);
 
-        return response()->json($response->json(), $response->status());
+        $responseData = $response->json();
+        
+        // Adapter le format de réponse Moneroo au format attendu par le frontend
+        if (isset($responseData['success']) && $responseData['success'] && isset($responseData['data'])) {
+            return response()->json($responseData['data'], $response->status());
+        }
+
+        return response()->json($responseData, $response->status());
     }
 
     public function initiate(Request $request)
@@ -159,10 +194,8 @@ class PawaPayController extends Controller
         $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:1',
             'currency' => 'nullable|string',
-            'phoneNumber' => 'required|string',
-            'provider' => 'required|string',
-            'country' => 'nullable|string',
             'ambassador_promo_code' => 'nullable|string',
+            // Note: phoneNumber, provider, country ne sont plus requis car Moneroo les collectera sur leur page
         ]);
 
         if ($validator->fails()) {
@@ -174,6 +207,12 @@ class PawaPayController extends Controller
         }
 
         $data = $validator->validated();
+        
+        // Pour l'intégration standard Moneroo, ces champs sont optionnels
+        // Initialiser avec des valeurs par défaut si elles ne sont pas présentes
+        $data['phoneNumber'] = $data['phoneNumber'] ?? null;
+        $data['country'] = $data['country'] ?? null;
+        $data['provider'] = $data['provider'] ?? null;
 
         $user = auth()->user();
 
@@ -225,14 +264,14 @@ class PawaPayController extends Controller
         
         // IMPORTANT: Utiliser le montant converti et la devise envoyés par le frontend
         $paymentAmount = (float) $data['amount']; // Montant converti dans la devise sélectionnée
-        $paymentCurrency = $data['currency'] ?? config('services.pawapay.default_currency'); // Devise sélectionnée
+        $paymentCurrency = $data['currency'] ?? config('services.moneroo.default_currency', 'USD'); // Devise sélectionnée
 
 		// Calculer un taux de conversion approximatif (si possible)
 		$exchangeRate = $subtotal > 0 ? round($paymentAmount / (float) $subtotal, 8) : null;
 
 		// Créer l'Order (montants dans la devise de base du site) et conserver les métadonnées de paiement
 		$order = Order::create([
-            'order_number' => 'PP-' . strtoupper(Str::random(8)) . '-' . time(),
+            'order_number' => 'MON-' . strtoupper(Str::random(8)) . '-' . time(),
             'user_id' => $user->id,
             'ambassador_id' => $ambassador?->id,
             'ambassador_promo_code_id' => $ambassadorPromoCode?->id,
@@ -245,15 +284,15 @@ class PawaPayController extends Controller
 			'payment_amount' => $paymentAmount,
 			'exchange_rate' => $exchangeRate,
             'status' => 'pending',
-            'payment_method' => 'pawapay',
-            'payment_provider' => $data['provider'] ?? null,
-			'payer_phone' => $data['phoneNumber'],
-			'payer_country' => $data['country'] ?? config('services.pawapay.default_country'),
+            'payment_method' => 'moneroo',
+            'payment_provider' => $data['provider'], // Peut être null pour intégration standard
+			'payer_phone' => $data['phoneNumber'], // Optionnel - Moneroo collectera sur leur page
+			'payer_country' => $data['country'] ?? config('services.moneroo.default_country', 'SN'),
 			'customer_ip' => $request->ip(),
 			'user_agent' => $request->userAgent(),
             'billing_address' => [
-                'phone' => $data['phoneNumber'],
-                'country' => $data['country'] ?? config('services.pawapay.default_country'),
+                'phone' => $data['phoneNumber'], // Optionnel - Moneroo collectera sur leur page
+                'country' => $data['country'] ?? config('services.moneroo.default_country', 'SN'),
                 'payment_currency' => $paymentCurrency, // Devise utilisée pour le paiement
                 'payment_amount' => $paymentAmount, // Montant dans la devise de paiement
             ],
@@ -272,42 +311,109 @@ class PawaPayController extends Controller
             ]);
         }
 
-		$depositId = (string) Str::uuid();
+		$paymentId = 'pay_' . strtoupper(Str::random(16)) . '_' . time();
 
 		// Sauvegarder la référence fournisseur sur la commande pour suivi centralisé
 		$order->update([
-			'payment_reference' => $depositId,
+			'payment_reference' => $paymentId,
 		]);
-        // CRITIQUE: Utiliser le montant converti et la devise sélectionnée pour pawaPay
+        
+        // Intégration standard Moneroo selon la documentation: https://docs.moneroo.io/fr/payments/integration-standard
+        // Endpoint: POST /v1/payments/initialize
+        // Format requis: amount (integer), currency, description, return_url, customer.email, customer.first_name, customer.last_name
+        // IMPORTANT: Selon la documentation Moneroo, le montant doit être un entier
+        // D'après les tests, Moneroo semble attendre le montant en unité de base (pas en centimes)
+        // Exemple: 199.99 USD doit être envoyé comme 200 (dollars arrondis), pas 19999 (centimes)
+        // Cela évite que Moneroo affiche 19999 au lieu de 199.99 dans leur interface
+        $amountInSmallestUnit = (int) round($paymentAmount); // Montant en unité de base arrondi à l'entier
+        
 		$payload = [
-            'depositId' => $depositId,
-            'amount' => (string) $paymentAmount, // Montant converti dans la devise sélectionnée
-            'currency' => $paymentCurrency, // Devise sélectionnée par l'utilisateur
-            'payer' => [
-                'type' => 'MMO',
-                'accountDetails' => [
-                    'phoneNumber' => $data['phoneNumber'],
-                    'provider' => $data['provider'],
-                ],
+            'amount' => $amountInSmallestUnit, // Montant en unité de la devise (integer requis par Moneroo)
+            'currency' => $paymentCurrency,
+            'description' => config('services.moneroo.company_name', 'Herime Académie') . ' - Paiement commande ' . $order->order_number,
+            'return_url' => config('services.moneroo.successful_url', route('moneroo.success')) . '?payment_id=' . $paymentId,
+            'customer' => [
+                'email' => $user->email,
+                'first_name' => $this->extractFirstName($user->name),
+                'last_name' => $this->extractLastName($user->name),
             ],
-            'successfulUrl' => config('services.pawapay.successful_url') . '?depositId=' . $depositId,
-            'failedUrl' => config('services.pawapay.failed_url') . '?depositId=' . $depositId,
+            'metadata' => [
+                'order_id' => (string) $order->id,
+                'order_number' => $order->order_number,
+                'user_id' => (string) $user->id,
+            ],
         ];
+        
+        // Ajouter customer.phone et country si disponibles (optionnels)
+        if (!empty($data['phoneNumber'])) {
+            $payload['customer']['phone'] = $data['phoneNumber'];
+        }
+        if (!empty($data['country'])) {
+            $payload['customer']['country'] = $data['country'];
+        }
 
         try {
-            // Pas de timeout côté app; on laisse le fournisseur gérer le délai
+            // Appel API Moneroo pour initialiser le paiement (intégration standard)
+            // Endpoint selon la documentation: POST /v1/payments/initialize
+            \Log::info('Moneroo: Envoi de la requête d\'initialisation', [
+                'url' => $this->baseUrl() . '/payments/initialize',
+                'payload' => $payload,
+                'amount_converted' => $amountInSmallestUnit,
+                'original_amount' => $paymentAmount,
+                'currency' => $paymentCurrency,
+            ]);
+            
             $response = Http::withHeaders($this->authHeaders())
-                ->post($this->baseUrl() . '/deposits', $payload);
+                ->post($this->baseUrl() . '/payments/initialize', $payload);
 
-            if (!$response->successful()) {
+            $responseData = $response->json();
+            
+            \Log::info('Moneroo: Réponse brute de l\'API', [
+                'status' => $response->status(),
+                'response_data' => $responseData,
+                'response_body' => $response->body(),
+            ]);
+            
+            // Format de réponse Moneroo: 
+            // - Succès standard: HTTP 201 avec { "success": true, "data": { "id": "...", "checkout_url": "..." } }
+            // - Succès alternatif: HTTP 201 avec { "success": false, "error": { "data": { "id": "...", "checkout_url": "..." } } }
+            // - Échec: HTTP 400+ avec message d'erreur
+            // Vérifier d'abord le statut HTTP, puis la présence des données nécessaires
+            $hasCheckoutUrl = isset($responseData['data']['checkout_url']) || 
+                             isset($responseData['error']['data']['checkout_url']);
+            
+            $isSuccess = $response->successful() && (
+                // Cas 1: Réponse standard avec success: true
+                (isset($responseData['success']) && $responseData['success'] === true) ||
+                // Cas 2: Statut 201 avec checkout_url présent (même si success: false dans la structure)
+                ($response->status() === 201 && $hasCheckoutUrl)
+            );
+            
+            if (!$isSuccess) {
                 // Réponse d'échec: annuler la commande et marquer paiement failed
-                $error = $response->json();
-                $failureReason = $error['message'] ?? 'Échec de l\'initialisation fournisseur';
+                $error = $responseData;
+                \Log::error('Moneroo: Échec de l\'initialisation du paiement', [
+                    'error' => $error,
+                    'payload' => $payload,
+                    'amount_converted' => $amountInSmallestUnit,
+                    'original_amount' => $paymentAmount,
+                    'currency' => $paymentCurrency,
+                    'response_status' => $response->status(),
+                    'response_body' => $response->body(),
+                ]);
+                
+                // Traduire les erreurs courantes en messages plus compréhensibles
+                $errorMessage = $error['message'] ?? 'Échec de l\'initialisation du paiement';
+                if (str_contains($errorMessage, 'No payment methods enabled for this currency')) {
+                    $failureReason = 'Aucune méthode de paiement activée pour la devise ' . $paymentCurrency . '. Veuillez contacter le support ou activer les méthodes de paiement pour cette devise dans votre compte Moneroo.';
+                } else {
+                    $failureReason = $errorMessage;
+                }
                 Payment::create([
                     'order_id' => $order->id,
-                    'payment_method' => 'pawapay',
-                    'provider' => $data['provider'] ?? null,
-                    'payment_id' => $depositId,
+                    'payment_method' => 'moneroo',
+                    'provider' => $data['provider'] ?? null, // Peut être null pour intégration standard
+                    'payment_id' => $paymentId,
                     'amount' => $paymentAmount,
                     'currency' => $paymentCurrency,
                     'status' => 'failed',
@@ -341,26 +447,48 @@ class PawaPayController extends Controller
                 ], $response->status());
             }
 
-            // Tenter d'obtenir un tableau associatif fiable depuis la réponse fournisseur
-            $responseData = $response->json();
-            if (!is_array($responseData)) {
-                $raw = $response->body();
-                $decoded = json_decode($raw, true);
-                $responseData = is_array($decoded) ? $decoded : ['raw' => $raw];
+            // Extraire les données de la réponse Moneroo (intégration standard)
+            // Format de réponse selon la documentation: { "success": true, "data": { "id": "...", "checkout_url": "..." } }
+            // Mais parfois Moneroo retourne: { "success": false, "error": { "data": { "id": "...", "checkout_url": "..." } } }
+            $paymentData = $responseData['data'] ?? $responseData['error']['data'] ?? $responseData;
+            $actualPaymentId = $paymentData['id'] ?? $paymentId;
+            $status = $paymentData['status'] ?? 'pending';
+            
+            // Pour l'intégration standard, Moneroo retourne checkout_url dans data
+            // Selon la documentation: data.checkout_url
+            // Mais parfois dans error.data.checkout_url (format alternatif)
+            $redirectUrl = $paymentData['checkout_url'] 
+                        ?? $paymentData['checkoutUrl']
+                        ?? ($responseData['error']['data']['checkout_url'] ?? null)
+                        ?? $paymentData['redirect_url'] 
+                        ?? $paymentData['authorizationUrl'] 
+                        ?? $paymentData['authorization_url']
+                        ?? $paymentData['url']
+                        ?? null;
+            
+            \Log::info('Moneroo: Réponse de l\'API', [
+                'response_data' => $responseData,
+                'payment_data' => $paymentData,
+                'redirect_url' => $redirectUrl,
+                'actual_payment_id' => $actualPaymentId,
+            ]);
+            
+            // Si pas d'URL de redirection, c'est une erreur pour l'intégration standard
+            if (!$redirectUrl) {
+                \Log::error('Moneroo: Pas d\'URL checkout_url dans la réponse', [
+                    'response' => $responseData,
+                    'payment_data' => $paymentData,
+                    'response_keys' => array_keys($paymentData ?? []),
+                ]);
+                throw new \Exception('Moneroo n\'a pas retourné d\'URL de checkout pour la page de paiement');
             }
-
-            // Extraire des champs attendus par le frontend si présents
-            $flatStatus = $responseData['status'] ?? ($responseData['data']['status'] ?? null);
-            $flatNextStep = $responseData['nextStep'] ?? ($responseData['data']['nextStep'] ?? null);
-            $flatAuthUrl = $responseData['authUrl'] ?? ($responseData['authorizationUrl'] ?? ($responseData['data']['authUrl'] ?? null));
-            $flatRedirectUrl = $responseData['redirectUrl'] ?? ($responseData['data']['redirectUrl'] ?? null);
 
             // Créer un Payment en attente uniquement en cas de succès d'initiation
             Payment::create([
                 'order_id' => $order->id,
-                'payment_method' => 'pawapay',
-                'provider' => $data['provider'] ?? null,
-                'payment_id' => $depositId,
+                'payment_method' => 'moneroo',
+                'provider' => $data['provider'] ?? null, // Peut être null pour intégration standard
+                'payment_id' => $actualPaymentId,
                 'amount' => $paymentAmount,
                 'currency' => $paymentCurrency,
                 'status' => 'pending',
@@ -370,26 +498,24 @@ class PawaPayController extends Controller
                 ],
             ]);
 
-            // Revenir au format exact initial: nos champs + payload fournisseur à la racine
-            if (!is_array($responseData)) {
-                $responseData = [];
-            }
+            // Mettre à jour la référence de paiement avec l'ID réel de Moneroo
+            $order->update([
+                'payment_reference' => $actualPaymentId,
+            ]);
 
-            // Dériver quelques champs attendus par le frontend (compat)
-            $flat = is_array($responseData) && isset($responseData['data']) && is_array($responseData['data'])
-                ? $responseData['data']
-                : (is_array($responseData) ? $responseData : []);
-            $derived = [
-                'status' => $flat['status'] ?? ($responseData['status'] ?? null),
-                'nextStep' => $flat['nextStep'] ?? ($responseData['nextStep'] ?? null),
-                'authUrl' => $flat['authUrl'] ?? ($flat['authorizationUrl'] ?? ($responseData['authUrl'] ?? ($responseData['authorizationUrl'] ?? null))),
-            ];
-
-            $out = array_merge([
+            // Retourner la réponse au format attendu par le frontend
+            // Format selon la documentation Moneroo: data.checkout_url
+            $out = [
                 'success' => true,
-                'depositId' => $depositId,
+                'payment_id' => $actualPaymentId,
                 'order_id' => $order->id,
-            ], $derived, (is_array($responseData) ? $responseData : []));
+                'status' => $status,
+                'checkout_url' => $redirectUrl, // Format Moneroo standard (priorité)
+                'redirect_url' => $redirectUrl, // Pour compatibilité
+                'data' => array_merge($paymentData, [
+                    'checkout_url' => $redirectUrl, // Format Moneroo standard dans data aussi
+                ]),
+            ];
 
             return response()->json($out, 200, ['Content-Type' => 'application/json; charset=utf-8']);
         } catch (\Throwable $e) {
@@ -397,9 +523,9 @@ class PawaPayController extends Controller
             $failureReason = 'Erreur technique lors de l\'initialisation';
             Payment::create([
                 'order_id' => $order->id,
-                'payment_method' => 'pawapay',
-                'provider' => $data['provider'] ?? null,
-                'payment_id' => $depositId,
+                'payment_method' => 'moneroo',
+                'provider' => $data['provider'] ?? null, // Peut être null pour intégration standard
+                'payment_id' => $paymentId,
                 'amount' => $paymentAmount,
                 'currency' => $paymentCurrency,
                 'status' => 'failed',
@@ -436,125 +562,68 @@ class PawaPayController extends Controller
         }
     }
 
-    public function status(string $depositId)
+    public function status(string $paymentId)
     {
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
         
         $response = Http::withHeaders($this->authHeaders())
-            ->get($this->baseUrl() . "/deposits/{$depositId}");
+            ->get($this->baseUrl() . "/payments/{$paymentId}");
 
-        $statusData = $response->json();
+        $responseData = $response->json();
         
-        // Selon la documentation pawaPay, la réponse peut avoir deux formats:
-        // 1. Format simple: { "status": "COMPLETED", ... }
-        // 2. Format wrapper: { "status": "FOUND", "data": { "status": "COMPLETED", ... } }
+        // Format de réponse Moneroo: { "success": true, "message": "...", "data": {} }
+        $paymentData = $responseData['data'] ?? $responseData;
+        $status = $paymentData['status'] ?? null;
         
-        // Vérifier si c'est le format wrapper
-        if (isset($statusData['status']) && isset($statusData['data'])) {
-            // Format wrapper: extraire le data
-            $actualData = $statusData['data'];
-            $metaStatus = $statusData['status']; // "FOUND" ou "NOT_FOUND"
-            
-            // Si NOT_FOUND, retourner une réponse appropriée
-            if ($metaStatus === 'NOT_FOUND') {
-                \Log::warning('pawaPay deposit not found', ['depositId' => $depositId]);
-                return response()->json([
-                    'status' => 'NOT_FOUND',
-                    'message' => 'Deposit not found',
-                ], $response->status());
-            }
-            
-            \Log::info('pawaPay status check (wrapper format)', [
-                'depositId' => $depositId,
-                'meta_status' => $metaStatus,
-                'deposit_status' => $actualData['status'] ?? null,
-                'nextStep' => $actualData['nextStep'] ?? null,
-                'full_response' => $statusData,
-            ]);
-            // Synchroniser l'état local si le statut provider est terminal (échec/annulation)
-            try {
-                $providerStatus = $actualData['status'] ?? null;
-                if (in_array($providerStatus, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT'])) {
-                    $payment = Payment::where('payment_method', 'pawapay')
-                        ->where('payment_id', $depositId)
-                        ->with('order')
-                        ->first();
-                    if ($payment) {
-                        if ($payment->status === 'pending') {
-                            $payment->update([
-                                'status' => 'failed',
-                                'failure_reason' => $actualData['statusReason'] ?? ($actualData['message'] ?? 'Paiement échoué'),
-                            ]);
-                        }
-                        if ($payment->order && !in_array($payment->order->status, ['paid', 'completed'])) {
-                            $payment->order->update(['status' => 'cancelled']);
-                        }
+        \Log::info('Moneroo status check', [
+            'payment_id' => $paymentId,
+            'status' => $status,
+            'full_response' => $responseData,
+        ]);
+        
+        // Synchroniser l'état local si le statut est terminal (échec/annulation)
+        try {
+            if (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
+                $payment = Payment::where('payment_method', 'moneroo')
+                    ->where('payment_id', $paymentId)
+                    ->with('order')
+                    ->first();
+                if ($payment) {
+                    if ($payment->status === 'pending') {
+                        $payment->update([
+                            'status' => 'failed',
+                            'failure_reason' => $paymentData['failure_reason'] ?? ($paymentData['message'] ?? 'Paiement échoué'),
+                        ]);
+                    }
+                    if ($payment->order && !in_array($payment->order->status, ['paid', 'completed'])) {
+                        $payment->order->update(['status' => 'cancelled']);
                     }
                 }
-            } catch (\Throwable $e) {
-                \Log::error('pawaPay status sync (wrapper) failed', [
-                    'depositId' => $depositId,
-                    'error' => $e->getMessage(),
-                ]);
             }
-            
-            // Retourner le format flat pour compatibilité avec le frontend
-            return response()->json($actualData, $response->status());
-        } else {
-            // Format simple: retourner tel quel
-            \Log::info('pawaPay status check (simple format)', [
-                'depositId' => $depositId,
-                'status' => $statusData['status'] ?? null,
-                'nextStep' => $statusData['nextStep'] ?? null,
-                'full_response' => $statusData,
+        } catch (\Throwable $e) {
+            \Log::error('Moneroo status sync failed', [
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
             ]);
-            // Synchroniser l'état local si statut terminal (échec/annulation)
-            try {
-                $providerStatus = $statusData['status'] ?? null;
-                if (in_array($providerStatus, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT'])) {
-                    $payment = Payment::where('payment_method', 'pawapay')
-                        ->where('payment_id', $depositId)
-                        ->with('order')
-                        ->first();
-                    if ($payment) {
-                        if ($payment->status === 'pending') {
-                            $payment->update([
-                                'status' => 'failed',
-                                'failure_reason' => $statusData['statusReason'] ?? ($statusData['message'] ?? 'Paiement échoué'),
-                            ]);
-                        }
-                        if ($payment->order && !in_array($payment->order->status, ['paid', 'completed'])) {
-                            $payment->order->update(['status' => 'cancelled']);
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Log::error('pawaPay status sync (simple) failed', [
-                    'depositId' => $depositId,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-            return response()->json($statusData, $response->status());
         }
+        
+        return response()->json($paymentData, $response->status());
     }
 
     public function webhook(Request $request)
     {
         // IMPORTANT: Toujours retourner 200 OK si le webhook est reçu avec succès
-        // Selon la documentation pawaPay: https://docs.pawapay.io/v2/docs/what_to_know#callbacks
-        // "We expect you to return HTTP 200 OK response to consider the callback delivered"
-        // Si on retourne un code d'erreur, pawaPay réessaiera pendant 15 minutes
+        // Selon la documentation Moneroo, on doit retourner 200 OK pour confirmer la réception
         
         // IMPORTANT: Valider la signature du webhook pour sécurité
-        // Selon la documentation pawaPay: https://docs.pawapay.io/using_the_api
-        $signature = $request->header('X-PawaPay-Signature');
+        $signature = $request->header('X-Moneroo-Signature') ?? $request->header('X-Signature');
         $payloadContent = $request->getContent();
         
         if ($signature && !$this->validateWebhookSignature($payloadContent, $signature)) {
-            \Log::error('pawaPay webhook: Invalid signature - potential security threat', [
-                'depositId' => $request->input('depositId'),
+            \Log::error('Moneroo webhook: Invalid signature - potential security threat', [
+                'payment_id' => $request->input('data.id') ?? $request->input('id'),
                 'ip' => $request->ip(),
             ]);
             // CRITIQUE: Retourner 200 pour éviter les retry, mais logger comme erreur
@@ -562,46 +631,44 @@ class PawaPayController extends Controller
         }
 
         $payload = $request->all();
-        $depositId = $payload['depositId'] ?? null;
-        $status = $payload['status'] ?? null;
-        $nextStep = $payload['nextStep'] ?? null;
+        // Format Moneroo: { "success": true, "message": "...", "data": { "id": "...", "status": "..." } }
+        $paymentData = $payload['data'] ?? $payload;
+        $paymentId = $paymentData['id'] ?? null;
+        $status = $paymentData['status'] ?? null;
 
-        if (!$depositId) {
-            \Log::warning('pawaPay webhook: depositId missing', ['payload' => $payload]);
-            // Retourner 200 OK même si depositId manquant (éviter retry)
-            return response()->json(['received' => false, 'message' => 'depositId missing'], 200);
+        if (!$paymentId) {
+            \Log::warning('Moneroo webhook: payment_id missing', ['payload' => $payload]);
+            // Retourner 200 OK même si payment_id manquant (éviter retry)
+            return response()->json(['received' => false, 'message' => 'payment_id missing'], 200);
         }
 
-        $payment = Payment::where('payment_method', 'pawapay')
-            ->where('payment_id', $depositId)
+        $payment = Payment::where('payment_method', 'moneroo')
+            ->where('payment_id', $paymentId)
             ->with(['order.orderItems', 'order.user'])
             ->first();
 
         if (!$payment) {
-            \Log::warning('pawaPay webhook: Payment not found', ['depositId' => $depositId]);
+            \Log::warning('Moneroo webhook: Payment not found', ['payment_id' => $paymentId]);
             // Retourner 200 OK même si payment non trouvé (éviter retry sur transaction inexistante)
             return response()->json(['received' => false, 'message' => 'Payment not found'], 200);
         }
 
         // CRITIQUE: Envelopper le traitement dans un try-catch pour toujours retourner 200 OK
-        // Selon la documentation, on DOIT retourner 200 OK même en cas d'erreur
-        // sinon pawaPay réessaiera pendant 15 minutes
+        // Selon la documentation Moneroo, on DOIT retourner 200 OK même en cas d'erreur
         try {
             // Log de tous les callbacks reçus pour traçabilité
-            \Log::info('pawaPay webhook received', [
-                'depositId' => $depositId,
+            \Log::info('Moneroo webhook received', [
+                'payment_id' => $paymentId,
                 'status' => $status,
-                'nextStep' => $nextStep,
                 'current_order_status' => $payment->order?->status,
             ]);
 
-            // Mapper le statut pawaPay vers le statut local
+            // Mapper le statut Moneroo vers le statut local
+            // Selon la documentation Moneroo: pending, processing, completed, failed, cancelled, expired, rejected
             $mapped = match ($status) {
-                'COMPLETED' => 'completed',
-                'FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT' => 'failed',
-                'ACCEPTED' => 'pending',
-                'PROCESSING' => 'pending',
-                'IN_RECONCILIATION' => 'pending', // Géré automatiquement par pawaPay, on attend
+                'completed' => 'completed',
+                'failed', 'cancelled', 'expired', 'rejected' => 'failed',
+                'pending', 'processing' => 'pending',
                 default => 'pending',
             };
 
@@ -614,16 +681,16 @@ class PawaPayController extends Controller
             $payment->update([
                 'status' => $mapped,
                 'payment_data' => $paymentData,
-                'processed_at' => ($status === 'COMPLETED') ? now() : null,
+                'processed_at' => ($status === 'completed') ? now() : null,
             ]);
 
             // Traiter selon le statut final
-			if ($status === 'COMPLETED' && $payment->order) {
+			if ($status === 'completed' && $payment->order) {
 				// Mettre à jour la commande avec la référence et les frais si fournis
-				$feeAmount = $payload['feeAmount'] ?? ($payload['fees']['amount'] ?? null);
-				$feeCurrency = $payload['feeCurrency'] ?? ($payload['fees']['currency'] ?? null);
+				$feeAmount = $paymentData['fee'] ?? ($paymentData['fees']['amount'] ?? null);
+				$feeCurrency = $paymentData['fee_currency'] ?? ($paymentData['fees']['currency'] ?? null);
 				$updates = [
-					'payment_reference' => $payment->order->payment_reference ?: ($payload['depositId'] ?? null),
+					'payment_reference' => $payment->order->payment_reference ?: ($paymentData['id'] ?? $paymentId),
 				];
 				if ($feeAmount !== null) {
 					$updates['provider_fee'] = (float) $feeAmount; // interprété dans la devise de paiement
@@ -640,13 +707,13 @@ class PawaPayController extends Controller
 				]));
                 // Paiement réussi : finaliser la commande et créer les inscriptions
                 $this->finalizeOrderAfterPayment($payment->order);
-                \Log::info('pawaPay: Order finalized after successful payment', [
+                \Log::info('Moneroo: Order finalized after successful payment', [
                     'order_id' => $payment->order->id,
-                    'depositId' => $depositId,
+                    'payment_id' => $paymentId,
                 ]);
-            } elseif (in_array($status, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT']) && $payment->order) {
+            } elseif (in_array($status, ['failed', 'cancelled', 'expired', 'rejected']) && $payment->order) {
                 // Échec : enregistrer la raison et annuler la commande
-                $failureReason = $payload['statusReason'] ?? $payload['message'] ?? ($payload['reason'] ?? 'Paiement échoué');
+                $failureReason = $paymentData['failure_reason'] ?? $paymentData['message'] ?? ($payload['message'] ?? 'Paiement échoué');
                 $payment->update(['failure_reason' => $failureReason]);
                 
                 // Annuler la commande seulement si elle n'est pas déjà payée (éviter doublon)
@@ -669,23 +736,16 @@ class PawaPayController extends Controller
                     \Log::error("Erreur lors de l'envoi de l'email d'échec de paiement pour la commande {$payment->order->id}: " . $e->getMessage());
                 }
                 
-                \Log::info('pawaPay: Order cancelled after failed payment', [
+                \Log::info('Moneroo: Order cancelled after failed payment', [
                     'order_id' => $payment->order->id,
-                    'depositId' => $depositId,
+                    'payment_id' => $paymentId,
                     'reason' => $failureReason,
                 ]);
-            } elseif ($status === 'IN_RECONCILIATION' && $payment->order) {
-                // En réconciliation : attendre le statut final
-                // Ne rien faire, pawaPay va automatiquement résoudre et renvoyer un callback
-                \Log::info('pawaPay: Payment in reconciliation', [
-                    'order_id' => $payment->order->id,
-                    'depositId' => $depositId,
-                ]);
-            } elseif ($status === 'ACCEPTED' || $status === 'PROCESSING') {
+            } elseif ($status === 'pending' || $status === 'processing') {
                 // En attente de traitement ou traitement en cours
-                \Log::info('pawaPay: Payment accepted/processing', [
+                \Log::info('Moneroo: Payment pending/processing', [
                     'order_id' => $payment->order?->id,
-                    'depositId' => $depositId,
+                    'payment_id' => $paymentId,
                     'status' => $status,
                 ]);
             }
@@ -694,9 +754,9 @@ class PawaPayController extends Controller
             
         } catch (\Throwable $e) {
             // CRITIQUE: Logger l'erreur mais retourner 200 OK
-            // pawaPay ne réessaiera pas si on retourne 200
-            \Log::error('pawaPay webhook: Exception during processing', [
-                'depositId' => $depositId,
+            // Moneroo ne réessaiera pas si on retourne 200
+            \Log::error('Moneroo webhook: Exception during processing', [
+                'payment_id' => $paymentId,
                 'status' => $status,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -711,23 +771,24 @@ class PawaPayController extends Controller
     }
 
     /**
-     * Annuler une commande par depositId (annulation manuelle uniquement)
+     * Annuler une commande par payment_id (annulation manuelle uniquement)
      * 
-     * Selon la documentation pawaPay, la réconciliation est automatique.
-     * Cette fonction est uniquement pour les annulations explicites par l'utilisateur.
-     * Elle ne devrait PAS être appelée automatiquement (pas de timeout cancellation).
+     * Selon la documentation Moneroo, cette fonction est uniquement pour les annulations explicites par l'utilisateur.
      */
-    public function cancel(string $depositId)
+    public function cancel(string $paymentId)
     {
-        $payment = Payment::where('payment_id', $depositId)->with('order')->first();
+        $payment = Payment::where('payment_method', 'moneroo')
+            ->where('payment_id', $paymentId)
+            ->with('order')
+            ->first();
         if (!$payment) {
             return response()->json(['success' => false, 'message' => 'Transaction introuvable'], 404);
         }
 
         // Vérifier que le paiement n'est pas déjà complété
         if ($payment->status === 'completed' || in_array($payment->order?->status ?? null, ['paid', 'completed'])) {
-            \Log::warning('pawaPay cancel: Cannot cancel - payment already completed', [
-                'depositId' => $depositId,
+            \Log::warning('Moneroo cancel: Cannot cancel - payment already completed', [
+                'payment_id' => $paymentId,
                 'payment_status' => $payment->status,
                 'order_status' => $payment->order?->status,
             ]);
@@ -765,9 +826,9 @@ class PawaPayController extends Controller
                 }
             }
             
-            \Log::info('pawaPay: Payment cancelled by user', [
-                'depositId' => $depositId,
-                'payment_id' => $payment->id,
+            \Log::info('Moneroo: Payment cancelled by user', [
+                'payment_id' => $paymentId,
+                'payment_db_id' => $payment->id,
             ]);
         }
 
@@ -810,7 +871,7 @@ class PawaPayController extends Controller
             $order->refresh();
             $order->load('orderItems', 'user');
             
-            \Log::info('pawaPay: Starting finalization', [
+            \Log::info('Moneroo: Starting finalization', [
                 'order_id' => $order->id,
                 'current_status' => $order->status,
                 'order_total' => $order->total,
@@ -820,7 +881,7 @@ class PawaPayController extends Controller
             
             // Vérifier si déjà finalisée (idempotence)
             if (in_array($order->status, ['paid', 'completed'])) {
-                \Log::info('pawaPay: Order already finalized', [
+                \Log::info('Moneroo: Order already finalized', [
                     'order_id' => $order->id,
                     'status' => $order->status,
                 ]);
@@ -833,13 +894,13 @@ class PawaPayController extends Controller
             // Si la collection est vide, charger directement depuis la DB
             if ($orderItems->isEmpty()) {
                 $orderItems = OrderItem::where('order_id', $order->id)->get();
-                \Log::info('pawaPay: OrderItems loaded directly from DB', [
+                \Log::info('Moneroo: OrderItems loaded directly from DB', [
                     'order_id' => $order->id,
                     'items_count' => $orderItems->count(),
                 ]);
             }
             
-            \Log::info('pawaPay: OrderItems loaded', [
+            \Log::info('Moneroo: OrderItems loaded', [
                 'order_id' => $order->id,
                 'order_items_count' => $orderItems->count(),
                 'items_data' => $orderItems->map(fn($item) => [
@@ -850,7 +911,7 @@ class PawaPayController extends Controller
             ]);
             
             if ($orderItems->isEmpty()) {
-                \Log::warning('pawaPay: No order items found for enrollment - proceeding to mark order paid', [
+                \Log::warning('Moneroo: No order items found for enrollment - proceeding to mark order paid', [
                     'order_id' => $order->id,
                 ]);
             }
@@ -861,7 +922,7 @@ class PawaPayController extends Controller
 				'paid_at' => $order->paid_at ?: now(),
 			]);
 
-			\Log::info('pawaPay: Order marked as paid', [
+			\Log::info('Moneroo: Order marked as paid', [
                 'order_id' => $order->id,
                 'update_successful' => $updated,
                 'new_status' => $order->fresh()->status,
@@ -871,7 +932,7 @@ class PawaPayController extends Controller
             $enrollmentsCreated = 0;
             
             foreach ($orderItems as $orderItem) {
-                \Log::info('pawaPay: Processing order item', [
+                \Log::info('Moneroo: Processing order item', [
                     'order_id' => $order->id,
                     'order_item_id' => $orderItem->id,
                     'course_id' => $orderItem->course_id,
@@ -893,14 +954,14 @@ class PawaPayController extends Controller
                     ]);
                     $enrollmentsCreated++;
                     
-                    \Log::info('pawaPay: Enrollment created', [
+                    \Log::info('Moneroo: Enrollment created', [
                         'enrollment_id' => $enrollment->id,
                         'order_id' => $order->id,
                         'course_id' => $orderItem->course_id,
                         'user_id' => $order->user_id,
                     ]);
                 } else {
-                    \Log::info('pawaPay: Enrollment already exists', [
+                    \Log::info('Moneroo: Enrollment already exists', [
                         'order_id' => $order->id,
                         'course_id' => $orderItem->course_id,
                         'existing_enrollment_id' => $existingEnrollment->id,
@@ -908,7 +969,7 @@ class PawaPayController extends Controller
                 }
             }
 
-            \Log::info('pawaPay: Enrollments created', [
+            \Log::info('Moneroo: Enrollments created', [
                 'order_id' => $order->id,
                 'enrollments_created' => $enrollmentsCreated,
                 'total_order_items' => $orderItems->count(),
@@ -919,7 +980,7 @@ class PawaPayController extends Controller
 			$cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
 			Session::forget('cart');
 			
-			\Log::info('pawaPay: Cart emptied', [
+			\Log::info('Moneroo: Cart emptied', [
 				'user_id' => $order->user_id,
 				'cart_items_before' => $cartItemsBeforeDelete,
 				'cart_items_deleted' => $cartItemsDeleted,
@@ -948,7 +1009,7 @@ class PawaPayController extends Controller
             // Envoyer les emails de paiement (même logique que Enrollment::sendEnrollmentNotifications)
             $this->sendPaymentEmails($order);
             
-            \Log::info('pawaPay: Finalization completed successfully', [
+            \Log::info('Moneroo: Finalization completed successfully', [
                 'order_id' => $order->id,
                 'final_status' => $order->fresh()->status,
             ]);
@@ -960,38 +1021,51 @@ class PawaPayController extends Controller
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
-        $depositId = $request->query('depositId');
         
-        if ($depositId) {
-            $payment = Payment::where('payment_method', 'pawapay')
-                ->where('payment_id', $depositId)
+        // Moneroo peut envoyer payment_id (notre référence) ou paymentId (ID Moneroo) dans les paramètres
+        $paymentId = $request->query('payment_id') 
+                  ?? $request->query('paymentId') 
+                  ?? $request->input('payment_id')
+                  ?? $request->input('paymentId');
+        
+        \Log::info('Moneroo: successfulRedirect appelé', [
+            'payment_id' => $request->query('payment_id'),
+            'paymentId' => $request->query('paymentId'),
+            'paymentStatus' => $request->query('paymentStatus'),
+            'all_params' => $request->all(),
+        ]);
+        
+        if ($paymentId) {
+            // Chercher le paiement par payment_id (notre référence) ou par le payment_id de Moneroo
+            $payment = Payment::where('payment_method', 'moneroo')
+                ->where(function($query) use ($paymentId) {
+                    $query->where('payment_id', $paymentId)
+                          ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
+                          ->orWhereJsonContains('payment_data->data->id', $paymentId);
+                })
                 ->with('order')
                 ->first();
 
             if ($payment && $payment->order) {
-                // VALIDATION RECOMMANDÉE : Vérifier le statut auprès de pawaPay
+                // VALIDATION RECOMMANDÉE : Vérifier le statut auprès de Moneroo
                 // comme recommandé dans la documentation pour garantir la cohérence
+                // Utiliser l'ID Moneroo (py_xxx) si disponible, sinon notre payment_id
+                $monerooPaymentId = $payment->payment_data['response']['data']['id'] 
+                                 ?? $payment->payment_data['data']['id'] 
+                                 ?? $paymentId;
+                
                 $statusResponse = Http::withHeaders($this->authHeaders())
-                    ->get($this->baseUrl() . "/deposits/{$depositId}");
+                    ->get($this->baseUrl() . "/payments/{$monerooPaymentId}");
 
                 if ($statusResponse->successful()) {
-                    $statusData = $statusResponse->json();
-                    // Gérer le format wrapper: { status: "FOUND", data: { status: "COMPLETED", ... } }
-                    if (isset($statusData['status']) && isset($statusData['data']) && is_array($statusData['data'])) {
-                        $actualData = $statusData['data'];
-                        $status = $actualData['status'] ?? null;
-                        $nextStep = $actualData['nextStep'] ?? null;
-                        $authUrl = $actualData['authUrl'] ?? ($actualData['authorizationUrl'] ?? null);
-                    } else {
-                        $status = $statusData['status'] ?? null;
-                        $nextStep = $statusData['nextStep'] ?? null;
-                        $authUrl = $statusData['authUrl'] ?? ($statusData['authorizationUrl'] ?? null);
-                    }
+                    $responseData = $statusResponse->json();
+                    // Format Moneroo: { "success": true, "message": "...", "data": { "id": "...", "status": "..." } }
+                    $statusData = $responseData['data'] ?? $responseData;
+                    $status = $statusData['status'] ?? null;
 
-                    \Log::info('pawaPay: Status check on successful redirect', [
-                        'depositId' => $depositId,
+                    \Log::info('Moneroo: Status check on successful redirect', [
+                        'payment_id' => $paymentId,
                         'status' => $status,
-                        'nextStep' => $nextStep,
                         'local_payment_status' => $payment->status,
                         'order_status' => $payment->order->status,
                     ]);
@@ -1005,8 +1079,8 @@ class PawaPayController extends Controller
                         $this->finalizeOrderAfterPayment($payment->order);
                     }
 
-                    // Traiter tous les statuts possibles
-                    if ($status === 'COMPLETED') {
+                    // Traiter tous les statuts possibles selon Moneroo
+                    if ($status === 'completed') {
                         // Paiement complété : s'assurer que tout est finalisé
                         if ($payment->status !== 'completed') {
                             $payment->update([
@@ -1027,11 +1101,10 @@ class PawaPayController extends Controller
                         }
 
                         // Sauvegarder référence et frais si fournis
-                        $feeSource = isset($actualData) ? $actualData : $statusData;
-                        $feeAmount = $feeSource['feeAmount'] ?? ($feeSource['fees']['amount'] ?? null);
-                        $feeCurrency = $feeSource['feeCurrency'] ?? ($feeSource['fees']['currency'] ?? null);
+                        $feeAmount = $statusData['fee'] ?? ($statusData['fees']['amount'] ?? null);
+                        $feeCurrency = $statusData['fee_currency'] ?? ($statusData['fees']['currency'] ?? null);
 						$updates = [
-							'payment_reference' => $payment->order->payment_reference ?: ($depositId ?? null),
+							'payment_reference' => $payment->order->payment_reference ?: ($paymentId ?? null),
 						];
 						if ($feeAmount !== null) {
 							$updates['provider_fee'] = (float) $feeAmount;
@@ -1066,11 +1139,11 @@ class PawaPayController extends Controller
                         $this->sendPaymentEmails($orderFresh);
 
                         $order = $payment->order->fresh();
-                        return view('payments.pawapay.success', compact('order'));
+                        return view('payments.moneroo.success', compact('order'));
                         
-                    } elseif (in_array($status, ['FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'TIMED_OUT', 'TIMEOUT'])) {
+                    } elseif (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
                         // Échec : rediriger vers la page d'échec
-                        $failureReason = $statusData['statusReason'] ?? $statusData['message'] ?? ($statusData['reason'] ?? 'Paiement échoué');
+                        $failureReason = $statusData['failure_reason'] ?? $statusData['message'] ?? ($responseData['message'] ?? 'Paiement échoué');
                         $payment->update([
                             'status' => 'failed',
                             'failure_reason' => $failureReason,
@@ -1098,56 +1171,46 @@ class PawaPayController extends Controller
                             \Log::error("Erreur lors de l'envoi de l'email d'échec sur redirect pour la commande {$payment->order->id}: " . $e->getMessage());
                         }
                         
-                        \Log::warning('pawaPay: Redirected to failed page', [
-                            'depositId' => $depositId,
+                        \Log::warning('Moneroo: Redirected to failed page', [
+                            'payment_id' => $paymentId,
                             'reason' => $failureReason,
                         ]);
                         
-                        return redirect()->route('pawapay.failed');
+                        return redirect()->route('moneroo.failed');
                         
-                    } elseif ($status === 'IN_RECONCILIATION') {
-                        // En réconciliation : informer l'utilisateur que le paiement est en cours de validation
-                        \Log::info('pawaPay: Payment in reconciliation on redirect', ['depositId' => $depositId]);
-                        
-                        return view('payments.pawapay.success', [
-                            'order' => null,
-                            'reconciliation_warning' => true,
-                            'depositId' => $depositId,
-                        ]);
-                        
-                    } elseif ($status === 'PROCESSING' || $status === 'ACCEPTED') {
+                    } elseif ($status === 'pending' || $status === 'processing') {
                         // En cours de traitement : informer l'utilisateur
-                        \Log::info('pawaPay: Payment still processing on redirect', [
-                            'depositId' => $depositId,
+                        \Log::info('Moneroo: Payment still processing on redirect', [
+                            'payment_id' => $paymentId,
                             'status' => $status,
                         ]);
                         
-                        return view('payments.pawapay.success', [
+                        return view('payments.moneroo.success', [
                             'order' => null,
                             'processing_warning' => true,
-                            'depositId' => $depositId,
+                            'payment_id' => $paymentId,
                         ]);
                     } else {
                         // Statut inconnu : afficher quand même la page de succès
-                        \Log::warning('pawaPay: Unknown status on redirect', [
-                            'depositId' => $depositId,
+                        \Log::warning('Moneroo: Unknown status on redirect', [
+                            'payment_id' => $paymentId,
                             'status' => $status,
                         ]);
                         
                         $order = $payment->order->fresh();
-                        return view('payments.pawapay.success', compact('order'));
+                        return view('payments.moneroo.success', compact('order'));
                     }
                 } else {
                     // Erreur lors de la vérification : continuer avec le statut local
-                    \Log::warning('pawaPay: Failed to check status on redirect', [
-                        'depositId' => $depositId,
+                    \Log::warning('Moneroo: Failed to check status on redirect', [
+                        'payment_id' => $paymentId,
                         'response_status' => $statusResponse->status(),
                     ]);
                 }
             }
         }
 
-        return view('payments.pawapay.success');
+        return view('payments.moneroo.success');
     }
 
     public function failedRedirect(Request $request)
@@ -1155,11 +1218,11 @@ class PawaPayController extends Controller
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
-        // Si pawaPay redirige avec un depositId, synchroniser l'état local
-        $depositId = $request->query('depositId');
-        if ($depositId) {
-            $payment = Payment::where('payment_method', 'pawapay')
-                ->where('payment_id', $depositId)
+        // Si Moneroo redirige avec un payment_id, synchroniser l'état local
+        $paymentId = $request->query('payment_id') ?? $request->query('paymentId');
+        if ($paymentId) {
+            $payment = Payment::where('payment_method', 'moneroo')
+                ->where('payment_id', $paymentId)
                 ->with('order')
                 ->first();
 
@@ -1190,19 +1253,19 @@ class PawaPayController extends Controller
                     \Log::error("Erreur lors de l'envoi de l'email d'échec sur failedRedirect pour la commande {$payment->order->id}: " . $e->getMessage());
                 }
 
-                \Log::info('pawaPay: Order/payment marked cancelled/failed on failed redirect', [
-                    'depositId' => $depositId,
-                    'payment_id' => $payment->id,
+                \Log::info('Moneroo: Order/payment marked cancelled/failed on failed redirect', [
+                    'payment_id' => $paymentId,
+                    'payment_db_id' => $payment->id,
                     'order_id' => $payment->order->id,
                 ]);
             } else {
-                \Log::warning('pawaPay: Failed redirect with unknown depositId', [
-                    'depositId' => $depositId,
+                \Log::warning('Moneroo: Failed redirect with unknown payment_id', [
+                    'payment_id' => $paymentId,
                 ]);
             }
         }
 
-        return view('payments.pawapay.failed');
+        return view('payments.moneroo.failed');
     }
 
     /**
@@ -1353,7 +1416,7 @@ class PawaPayController extends Controller
             $order->load(['ambassador', 'ambassadorPromoCode']);
             
             if (!$order->ambassador || !$order->ambassador->is_active) {
-                \Log::warning('pawaPay: Cannot create ambassador commission - ambassador not found or inactive', [
+                \Log::warning('Moneroo: Cannot create ambassador commission - ambassador not found or inactive', [
                     'order_id' => $order->id,
                     'ambassador_id' => $order->ambassador_id,
                 ]);
@@ -1370,7 +1433,7 @@ class PawaPayController extends Controller
             // Vérifier si une commission existe déjà pour cette commande
             $existingCommission = AmbassadorCommission::where('order_id', $order->id)->first();
             if ($existingCommission) {
-                \Log::info('pawaPay: Ambassador commission already exists', [
+                \Log::info('Moneroo: Ambassador commission already exists', [
                     'order_id' => $order->id,
                     'commission_id' => $existingCommission->id,
                 ]);
@@ -1398,7 +1461,7 @@ class PawaPayController extends Controller
                 $order->ambassadorPromoCode->incrementUsage();
             }
 
-            \Log::info('pawaPay: Ambassador commission created', [
+            \Log::info('Moneroo: Ambassador commission created', [
                 'order_id' => $order->id,
                 'commission_id' => $commission->id,
                 'ambassador_id' => $order->ambassador_id,
@@ -1408,7 +1471,7 @@ class PawaPayController extends Controller
 
             return $commission;
         } catch (\Exception $e) {
-            \Log::error('pawaPay: Error creating ambassador commission', [
+            \Log::error('Moneroo: Error creating ambassador commission', [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

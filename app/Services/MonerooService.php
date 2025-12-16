@@ -7,21 +7,32 @@ use App\Notifications\InstructorPayoutReceived;
 use App\Mail\InstructorPayoutReceivedMail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
-class PawaPayService
+class MonerooService
 {
     private string $apiUrl;
-    private string $apiToken;
+    private string $apiKey;
     private string $callbackUrl;
 
     public function __construct()
     {
-        $this->apiUrl = config('services.pawapay.api_url', config('services.pawapay.base_url', 'https://api.sandbox.pawapay.io/v2'));
-        $this->apiToken = config('services.pawapay.api_token', config('services.pawapay.api_key'));
-        $this->callbackUrl = config('services.pawapay.callback_url', route('pawapay.payout.callback'));
+        $this->apiUrl = rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
+        $this->apiKey = config('services.moneroo.api_key');
+        $this->callbackUrl = config('services.moneroo.callback_url', route('moneroo.payout.callback'));
+    }
+
+    /**
+     * Obtenir les en-têtes d'authentification pour les requêtes API
+     */
+    private function authHeaders(): array
+    {
+        return [
+            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+        ];
     }
 
     /**
@@ -37,48 +48,60 @@ class PawaPayService
         string $provider,
         string $country
     ): array {
-        // Générer un UUIDv4 pour le payout
-        $payoutId = (string) Str::uuid();
+        // Générer un ID unique pour le payout
+        $payoutId = 'payout_' . strtoupper(Str::random(16)) . '_' . time();
 
-        // Préparer le payload selon la documentation pawaPay
+        // Préparer le payload selon la documentation Moneroo
         $payload = [
-            'payoutId' => $payoutId,
-            'amount' => number_format($amount, 2, '.', ''),
+            'amount' => (string) number_format($amount, 2, '.', ''),
             'currency' => $currency,
             'recipient' => [
-                'type' => 'MMO',
-                'accountDetails' => [
-                    'phoneNumber' => $phoneNumber,
-                    'provider' => $provider,
-                ],
+                'type' => 'mobile_money',
+                'phone' => $phoneNumber,
+                'provider' => $provider,
+                'country' => $country,
+            ],
+            'callback_url' => $this->callbackUrl,
+            'metadata' => [
+                'payout_id' => $payoutId,
+                'instructor_id' => $instructorId,
+                'order_id' => $orderId,
+                'course_id' => $courseId,
             ],
         ];
 
         try {
-            // Faire l'appel API à pawaPay
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-                'Content-Type' => 'application/json',
-            ])->post("{$this->apiUrl}/payouts", $payload);
+            // Faire l'appel API à Moneroo
+            $response = Http::withHeaders($this->authHeaders())
+                ->post("{$this->apiUrl}/payouts", $payload);
 
             $responseData = $response->json();
+
+            // Vérifier le format de réponse Moneroo: { "success": true, "message": "...", "data": {} }
+            $isSuccess = $response->successful() && 
+                        isset($responseData['success']) && 
+                        $responseData['success'] === true;
+
+            $payoutData = $responseData['data'] ?? [];
+            $actualPayoutId = $payoutData['id'] ?? $payoutId;
+            $status = $payoutData['status'] ?? 'pending';
 
             // Enregistrer le payout dans la base de données
             $payout = InstructorPayout::create([
                 'instructor_id' => $instructorId,
                 'order_id' => $orderId,
                 'course_id' => $courseId,
-                'payout_id' => $payoutId,
+                'payout_id' => $actualPayoutId,
                 'amount' => $amount,
                 'currency' => $currency,
-                'status' => $response->successful() && isset($responseData['status']) && $responseData['status'] === 'ACCEPTED' ? 'processing' : 'pending',
-                'pawapay_status' => $responseData['status'] ?? null,
-                'pawapay_response' => $responseData,
+                'status' => $this->mapMonerooStatusToLocalStatus($status),
+                'moneroo_status' => $status,
+                'moneroo_response' => $responseData,
             ]);
 
-            if ($response->successful() && isset($responseData['status']) && $responseData['status'] === 'ACCEPTED') {
-                Log::info("Payout initié avec succès", [
-                    'payout_id' => $payoutId,
+            if ($isSuccess) {
+                Log::info("Payout Moneroo initié avec succès", [
+                    'payout_id' => $actualPayoutId,
                     'instructor_id' => $instructorId,
                     'order_id' => $orderId,
                     'amount' => $amount,
@@ -87,12 +110,12 @@ class PawaPayService
                 return [
                     'success' => true,
                     'payout' => $payout,
-                    'payout_id' => $payoutId,
-                    'status' => $responseData['status'] ?? 'ACCEPTED',
+                    'payout_id' => $actualPayoutId,
+                    'status' => $status,
                 ];
             } else {
-                Log::error("Échec de l'initiation du payout", [
-                    'payout_id' => $payoutId,
+                Log::error("Échec de l'initiation du payout Moneroo", [
+                    'payout_id' => $actualPayoutId,
                     'response' => $responseData,
                     'status_code' => $response->status(),
                 ]);
@@ -109,7 +132,7 @@ class PawaPayService
                 ];
             }
         } catch (\Exception $e) {
-            Log::error("Exception lors de l'initiation du payout", [
+            Log::error("Exception lors de l'initiation du payout Moneroo", [
                 'payout_id' => $payoutId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -128,27 +151,28 @@ class PawaPayService
     public function checkPayoutStatus(string $payoutId): array
     {
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-            ])->get("{$this->apiUrl}/payouts/{$payoutId}");
+            $response = Http::withHeaders($this->authHeaders())
+                ->get("{$this->apiUrl}/payouts/{$payoutId}");
 
             if ($response->successful()) {
                 $responseData = $response->json();
+                $payoutData = $responseData['data'] ?? $responseData;
 
                 // Mettre à jour le payout dans la base de données
                 $payout = InstructorPayout::where('payout_id', $payoutId)->first();
                 if ($payout) {
                     // Sauvegarder l'ancien statut pour vérifier si on passe à "completed"
                     $oldStatus = $payout->status;
-                    $newStatus = $this->mapPawaPayStatusToLocalStatus($responseData['status'] ?? null);
+                    $monerooStatus = $payoutData['status'] ?? null;
+                    $newStatus = $this->mapMonerooStatusToLocalStatus($monerooStatus);
                     $isNewlyCompleted = ($oldStatus !== 'completed' && $newStatus === 'completed');
 
                     $payout->update([
-                        'pawapay_status' => $responseData['status'] ?? null,
-                        'provider_transaction_id' => $responseData['providerTransactionId'] ?? null,
-                        'pawapay_response' => $responseData,
+                        'moneroo_status' => $monerooStatus,
+                        'provider_transaction_id' => $payoutData['transaction_id'] ?? $payoutData['reference'] ?? null,
+                        'moneroo_response' => $responseData,
                         'status' => $newStatus,
-                        'processed_at' => isset($responseData['status']) && in_array($responseData['status'], ['COMPLETED', 'FAILED']) ? now() : null,
+                        'processed_at' => in_array($monerooStatus, ['completed', 'failed']) ? now() : null,
                     ]);
 
                     // Recharger le payout avec les relations pour les notifications
@@ -163,8 +187,8 @@ class PawaPayService
 
                 return [
                     'success' => true,
-                    'status' => $responseData['status'] ?? null,
-                    'data' => $responseData,
+                    'status' => $monerooStatus,
+                    'data' => $payoutData,
                 ];
             } else {
                 return [
@@ -174,7 +198,7 @@ class PawaPayService
                 ];
             }
         } catch (\Exception $e) {
-            Log::error("Exception lors de la vérification du statut du payout", [
+            Log::error("Exception lors de la vérification du statut du payout Moneroo", [
                 'payout_id' => $payoutId,
                 'error' => $e->getMessage(),
             ]);
@@ -187,48 +211,47 @@ class PawaPayService
     }
 
     /**
-     * Traiter le callback de pawaPay
+     * Traiter le callback de Moneroo
      */
     public function handleCallback(array $callbackData): bool
     {
-        $payoutId = $callbackData['payoutId'] ?? null;
+        $payoutId = $callbackData['data']['id'] ?? $callbackData['id'] ?? null;
 
         if (!$payoutId) {
-            Log::error("Callback pawaPay sans payoutId", ['data' => $callbackData]);
+            Log::error("Callback Moneroo sans payoutId", ['data' => $callbackData]);
             return false;
         }
 
         $payout = InstructorPayout::where('payout_id', $payoutId)->first();
 
         if (!$payout) {
-            Log::error("Payout non trouvé pour le callback", ['payout_id' => $payoutId]);
+            Log::error("Payout non trouvé pour le callback Moneroo", ['payout_id' => $payoutId]);
             return false;
         }
 
-        $status = $callbackData['status'] ?? null;
-        $mappedStatus = $this->mapPawaPayStatusToLocalStatus($status);
+        $payoutData = $callbackData['data'] ?? $callbackData;
+        $status = $payoutData['status'] ?? null;
+        $mappedStatus = $this->mapMonerooStatusToLocalStatus($status);
 
         // Sauvegarder l'ancien statut pour vérifier si on passe à "completed"
         $oldStatus = $payout->status;
         $isNewlyCompleted = ($oldStatus !== 'completed' && $mappedStatus === 'completed');
 
         $updateData = [
-            'pawapay_status' => $status,
+            'moneroo_status' => $status,
             'status' => $mappedStatus,
-            'pawapay_response' => $callbackData,
+            'moneroo_response' => $callbackData,
         ];
 
-        if (isset($callbackData['providerTransactionId'])) {
-            $updateData['provider_transaction_id'] = $callbackData['providerTransactionId'];
+        if (isset($payoutData['transaction_id']) || isset($payoutData['reference'])) {
+            $updateData['provider_transaction_id'] = $payoutData['transaction_id'] ?? $payoutData['reference'];
         }
 
-        if (isset($callbackData['failureReason'])) {
-            $updateData['failure_reason'] = is_array($callbackData['failureReason'])
-                ? ($callbackData['failureReason']['failureMessage'] ?? json_encode($callbackData['failureReason']))
-                : $callbackData['failureReason'];
+        if (isset($payoutData['failure_reason']) || isset($payoutData['error'])) {
+            $updateData['failure_reason'] = $payoutData['failure_reason'] ?? $payoutData['error'];
         }
 
-        if (in_array($status, ['COMPLETED', 'FAILED'])) {
+        if (in_array($status, ['completed', 'failed'])) {
             $updateData['processed_at'] = now();
         }
 
@@ -243,7 +266,7 @@ class PawaPayService
             $this->sendPayoutNotificationAndEmail($payout);
         }
 
-        Log::info("Callback pawaPay traité", [
+        Log::info("Callback Moneroo traité", [
             'payout_id' => $payoutId,
             'status' => $status,
             'mapped_status' => $mappedStatus,
@@ -254,16 +277,14 @@ class PawaPayService
     }
 
     /**
-     * Mapper le statut pawaPay vers le statut local
+     * Mapper le statut Moneroo vers le statut local
      */
-    private function mapPawaPayStatusToLocalStatus(?string $pawapayStatus): string
+    private function mapMonerooStatusToLocalStatus(?string $monerooStatus): string
     {
-        return match($pawapayStatus) {
-            'ACCEPTED' => 'processing',
-            'PROCESSING' => 'processing',
-            'COMPLETED' => 'completed',
-            'FAILED' => 'failed',
-            'IN_RECONCILIATION' => 'processing',
+        return match($monerooStatus) {
+            'pending', 'processing' => 'processing',
+            'completed', 'success' => 'completed',
+            'failed', 'error' => 'failed',
             default => 'pending',
         };
     }
@@ -302,11 +323,9 @@ class PawaPayService
                     'error' => $emailException->getMessage(),
                     'trace' => $emailException->getTraceAsString(),
                 ]);
-                // Ne pas relancer l'exception pour ne pas bloquer le processus
             }
 
-            // Envoyer la notification (pour la base de données et l'affichage dans la navbar)
-            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            // Envoyer la notification
             try {
                 Notification::sendNow($instructor, new InstructorPayoutReceived($payout));
 
@@ -322,41 +341,11 @@ class PawaPayService
                     'error' => $notifException->getMessage(),
                     'trace' => $notifException->getTraceAsString(),
                 ]);
-                // Ne pas relancer l'exception pour ne pas bloquer le processus
             }
         } catch (\Exception $e) {
-            // Logger l'erreur mais ne pas faire échouer le processus de callback
             Log::error("Erreur lors de l'envoi de la notification/email de payout pour le payout {$payout->id}: " . $e->getMessage());
             Log::error("Stack trace: " . $e->getTraceAsString());
         }
-    }
-
-    /**
-     * Prédire le provider à partir du numéro de téléphone
-     */
-    public function predictProvider(string $phoneNumber, string $country): ?string
-    {
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
-            ])->get("{$this->apiUrl}/toolkit/predict-provider", [
-                'phoneNumber' => $phoneNumber,
-                'country' => $country,
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                return $data['provider'] ?? null;
-            }
-        } catch (\Exception $e) {
-            Log::error("Erreur lors de la prédiction du provider", [
-                'phone' => $phoneNumber,
-                'country' => $country,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        return null;
     }
 }
 

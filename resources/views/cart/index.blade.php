@@ -152,7 +152,7 @@
                         
                         <!-- Checkout Button -->
                         @auth
-                            <button type="button" class="checkout-btn" onclick="proceedToCheckout()">
+                            <button type="button" class="checkout-btn" id="proceedToCheckoutBtn">
                                 <i class="fas fa-credit-card"></i>
                                 Procéder au paiement
                             </button>
@@ -1221,6 +1221,161 @@
 </style>
 
 <script>
+// Fonction pour procéder au paiement Moneroo directement depuis le panier
+// Cette fonction surcharge celle définie dans app.blade.php pour la page cart
+// Elle doit être définie après le chargement du DOM pour prendre le dessus sur app.blade.php
+(function() {
+    'use strict';
+    
+    // Fonction Moneroo pour la page cart
+    async function proceedToCheckoutMoneroo(event) {
+        console.log('proceedToCheckoutMoneroo() appelée depuis cart/index.blade.php', event);
+        
+        // Empêcher tout comportement par défaut
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        // Désactiver le bouton pour éviter les doubles clics
+        const checkoutBtn = document.getElementById('proceedToCheckoutBtn') || document.querySelector('.checkout-btn');
+        const originalContent = checkoutBtn ? checkoutBtn.innerHTML : '';
+        
+        if (checkoutBtn) {
+            checkoutBtn.disabled = true;
+            checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initialisation du paiement...';
+        }
+        
+        try {
+            // Utiliser directement le montant PHP depuis le backend
+            const totalAmount = {{ $total ?? 0 }};
+            
+            console.log('Montant du panier:', totalAmount);
+            
+            if (!totalAmount || totalAmount <= 0) {
+                throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
+            }
+            
+            // Récupérer la devise de base depuis la configuration
+            const currency = '{{ config("services.moneroo.default_currency", "USD") }}';
+            
+            console.log('Initiation du paiement Moneroo avec:', { amount: totalAmount, currency });
+            
+            // Initier le paiement Moneroo directement
+            const response = await fetch('{{ route("moneroo.initiate") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: totalAmount,
+                    currency: currency,
+                    _token: '{{ csrf_token() }}'
+                })
+            });
+            
+            console.log('Réponse HTTP:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+                console.error('Erreur HTTP:', errorData);
+                
+                // Extraire le message d'erreur détaillé de Moneroo si disponible
+                let errorMessage = errorData.message || `Erreur HTTP ${response.status}`;
+                if (errorData.error && errorData.error.message) {
+                    errorMessage = errorData.error.message;
+                }
+                
+                throw new Error(errorMessage);
+            }
+            
+            const data = await response.json();
+            
+            console.log('Réponse Moneroo complète:', JSON.stringify(data, null, 2));
+            
+            if (!data.success) {
+                // Extraire le message d'erreur détaillé de Moneroo si disponible
+                let errorMessage = data.message || 'Erreur lors de l\'initialisation du paiement';
+                if (data.error && data.error.message) {
+                    errorMessage = data.error.message;
+                }
+                throw new Error(errorMessage);
+            }
+            
+            // Récupérer l'URL de checkout Moneroo (intégration standard)
+            // Format selon la documentation: data.checkout_url
+            const redirectUrl = data.checkout_url 
+                             || data.data?.checkout_url
+                             || data.redirect_url 
+                             || data.data?.redirect_url
+                             || data.authorizationUrl 
+                             || data.authorization_url
+                             || data.data?.authorizationUrl
+                             || data.data?.authorization_url
+                             || data.payment_url
+                             || data.url;
+            
+            console.log('URL de checkout extraite:', redirectUrl);
+            console.log('data.checkout_url:', data.checkout_url);
+            console.log('data.data?.checkout_url:', data.data?.checkout_url);
+            console.log('data.redirect_url:', data.redirect_url);
+            
+            if (redirectUrl) {
+                // Rediriger immédiatement vers la page de checkout Moneroo
+                console.log('Redirection vers Moneroo checkout:', redirectUrl);
+                // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
+                window.location.replace(redirectUrl);
+                return; // S'assurer que la fonction s'arrête ici
+            } else {
+                console.error('Pas d\'URL de checkout trouvée dans la réponse:', data);
+                alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
+                throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
+            }
+            
+        } catch (error) {
+            console.error('Erreur lors de l\'initialisation du paiement:', error);
+            
+            // Afficher un message d'erreur plus convivial avec détails
+            const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
+            
+            // Vérifier si c'est une erreur de configuration Moneroo
+            let userFriendlyMessage = errorMessage;
+            if (errorMessage.includes('No payment methods enabled for this currency')) {
+                userFriendlyMessage = 'La devise sélectionnée n\'a pas de méthodes de paiement activées dans votre compte Moneroo.\n\n' +
+                    'Veuillez activer les méthodes de paiement pour cette devise dans votre dashboard Moneroo, ou contactez le support technique.';
+            } else if (errorMessage.includes('payment methods')) {
+                userFriendlyMessage = 'Problème de configuration des méthodes de paiement.\n\n' + errorMessage;
+            }
+            
+            alert('Erreur lors du paiement:\n\n' + userFriendlyMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
+            
+            // Réactiver le bouton
+            if (checkoutBtn) {
+                checkoutBtn.disabled = false;
+                checkoutBtn.innerHTML = originalContent;
+            }
+        }
+    }
+    
+    // Surcharger la fonction globale proceedToCheckout après le chargement du DOM
+    // pour qu'elle prenne le dessus sur celle de app.blade.php
+    document.addEventListener('DOMContentLoaded', function() {
+        // Vérifier si on est sur la page cart
+        if (window.location.pathname.includes('/cart') && !window.location.pathname.includes('/checkout')) {
+            // Surcharger la fonction proceedToCheckout pour utiliser Moneroo
+            window.proceedToCheckout = async function(event) {
+                console.log('window.proceedToCheckout() surchargée pour utiliser Moneroo');
+                return proceedToCheckoutMoneroo(event);
+            };
+        }
+    });
+    
+    // Exposer la fonction pour qu'elle soit accessible immédiatement
+    window.proceedToCheckoutMoneroo = proceedToCheckoutMoneroo;
+})();
+
 // Fonction pour confirmer la suppression d'un cours (appelée depuis le modal)
 function confirmRemoveItem() {
     const confirmBtn = document.getElementById('confirmRemoveItemBtn');
@@ -1452,10 +1607,249 @@ function clearCart() {
     });
 }
 
-// Fonction pour procéder au checkout
-function proceedToCheckout() {
-    window.location.href = '{{ route("cart.checkout") }}';
-}
+// Fonction pour procéder au paiement Moneroo directement depuis le panier
+async function proceedToCheckout(event) {
+    // Empêcher tout comportement par défaut
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    // Désactiver le bouton pour éviter les doubles clics
+    const checkoutBtn = document.getElementById('proceedToCheckoutBtn') || document.querySelector('.checkout-btn');
+    const originalContent = checkoutBtn ? checkoutBtn.innerHTML : '';
+    
+    if (checkoutBtn) {
+        checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initialisation du paiement...';
+    }
+    
+    try {
+        // Utiliser directement le montant PHP depuis le backend
+        const totalAmount = {{ $total ?? 0 }};
+        
+        if (!totalAmount || totalAmount <= 0) {
+            throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
+        }
+        
+        // Récupérer la devise de base depuis la configuration
+        const currency = '{{ config("services.moneroo.default_currency", "USD") }}';
+        
+        // Initier le paiement Moneroo directement
+        const response = await fetch('{{ route("moneroo.initiate") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                amount: totalAmount,
+                currency: currency,
+                _token: '{{ csrf_token() }}'
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+            throw new Error(errorData.message || `Erreur HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        console.log('Réponse Moneroo complète:', JSON.stringify(data, null, 2));
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Erreur lors de l\'initialisation du paiement');
+        }
+        
+        // Récupérer l'URL de checkout Moneroo (intégration standard)
+        // Format selon la documentation: data.checkout_url
+        const redirectUrl = data.checkout_url 
+                         || data.data?.checkout_url
+                         || data.redirect_url 
+                         || data.data?.redirect_url
+                         || data.authorizationUrl 
+                         || data.authorization_url
+                         || data.data?.authorizationUrl
+                         || data.data?.authorization_url
+                         || data.payment_url
+                         || data.url;
+        
+        console.log('URL de checkout extraite:', redirectUrl);
+        console.log('data.checkout_url:', data.checkout_url);
+        console.log('data.data?.checkout_url:', data.data?.checkout_url);
+        console.log('data.redirect_url:', data.redirect_url);
+        
+        if (redirectUrl) {
+            // Rediriger immédiatement vers la page de checkout Moneroo
+            console.log('Redirection vers Moneroo checkout:', redirectUrl);
+            // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
+            window.location.replace(redirectUrl);
+            return; // S'assurer que la fonction s'arrête ici
+        } else {
+            console.error('Pas d\'URL de checkout trouvée dans la réponse:', data);
+            alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
+            throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
+        }
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation du paiement:', error);
+        
+        // Afficher un message d'erreur plus convivial
+        const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
+        alert('Erreur: ' + errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
+        
+        // Réactiver le bouton
+        if (checkoutBtn) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.innerHTML = originalContent;
+        }
+    }
+};
+
+// Surcharger la fonction proceedToCheckout de app.blade.php pour utiliser Moneroo
+// Cette fonction sera appelée depuis le bouton checkout sur la page cart
+window.proceedToCheckout = window.proceedToCheckout || async function proceedToCheckout(event) {
+    // Si on est sur la page cart, utiliser Moneroo
+    if (window.location.pathname.includes('/cart') && !window.location.pathname.includes('/checkout')) {
+        // Appeler la fonction Moneroo définie plus haut
+        if (typeof proceedToCheckoutMoneroo === 'function') {
+            return proceedToCheckoutMoneroo(event);
+        }
+    }
+    // Sinon, utiliser le comportement par défaut de app.blade.php
+    const courseId = null;
+    const redirectToCheckout = () => {
+        window.location.href = '{{ route("cart.checkout") }}';
+    };
+    if (!courseId) {
+        redirectToCheckout();
+        return;
+    }
+};
+
+// Renommer la fonction Moneroo pour éviter les conflits
+const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) {
+    console.log('proceedToCheckoutMoneroo() appelée', event);
+    
+    // Empêcher tout comportement par défaut
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    // Désactiver le bouton pour éviter les doubles clics
+    const checkoutBtn = document.getElementById('proceedToCheckoutBtn') || document.querySelector('.checkout-btn');
+    const originalContent = checkoutBtn ? checkoutBtn.innerHTML : '';
+    
+    if (checkoutBtn) {
+        checkoutBtn.disabled = true;
+        checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initialisation du paiement...';
+    }
+    
+    try {
+        // Utiliser directement le montant PHP depuis le backend
+        const totalAmount = {{ $total ?? 0 }};
+        
+        console.log('Montant du panier:', totalAmount);
+        
+        if (!totalAmount || totalAmount <= 0) {
+            throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
+        }
+        
+        // Récupérer la devise de base depuis la configuration
+        const currency = '{{ config("services.moneroo.default_currency", "USD") }}';
+        
+        console.log('Initiation du paiement Moneroo avec:', { amount: totalAmount, currency });
+        
+        // Initier le paiement Moneroo directement
+        const response = await fetch('{{ route("moneroo.initiate") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                amount: totalAmount,
+                currency: currency,
+                _token: '{{ csrf_token() }}'
+            })
+        });
+        
+        console.log('Réponse HTTP:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
+            console.error('Erreur HTTP:', errorData);
+            
+            // Extraire le message d'erreur détaillé de Moneroo si disponible
+            let errorMessage = errorData.message || `Erreur HTTP ${response.status}`;
+            if (errorData.error && errorData.error.message) {
+                errorMessage = errorData.error.message;
+            }
+            
+            throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        
+        console.log('Réponse Moneroo complète:', JSON.stringify(data, null, 2));
+        
+        if (!data.success) {
+            // Extraire le message d'erreur détaillé de Moneroo si disponible
+            let errorMessage = data.message || 'Erreur lors de l\'initialisation du paiement';
+            if (data.error && data.error.message) {
+                errorMessage = data.error.message;
+            }
+            throw new Error(errorMessage);
+        }
+        
+        // Récupérer l'URL de checkout Moneroo (intégration standard)
+        // Format selon la documentation: data.checkout_url
+        const redirectUrl = data.checkout_url 
+                         || data.data?.checkout_url
+                         || data.redirect_url 
+                         || data.data?.redirect_url
+                         || data.authorizationUrl 
+                         || data.authorization_url
+                         || data.data?.authorizationUrl
+                         || data.data?.authorization_url
+                         || data.payment_url
+                         || data.url;
+        
+        console.log('URL de checkout extraite:', redirectUrl);
+        console.log('data.checkout_url:', data.checkout_url);
+        console.log('data.data?.checkout_url:', data.data?.checkout_url);
+        console.log('data.redirect_url:', data.redirect_url);
+        
+        if (redirectUrl) {
+            // Rediriger immédiatement vers la page de checkout Moneroo
+            console.log('Redirection vers Moneroo checkout:', redirectUrl);
+            // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
+            window.location.replace(redirectUrl);
+            return; // S'assurer que la fonction s'arrête ici
+        } else {
+            console.error('Pas d\'URL de checkout trouvée dans la réponse:', data);
+            alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
+            throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
+        }
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation du paiement:', error);
+        
+        // Afficher un message d'erreur plus convivial
+        const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
+        alert('Erreur: ' + errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
+        
+        // Réactiver le bouton
+        if (checkoutBtn) {
+            checkoutBtn.disabled = false;
+            checkoutBtn.innerHTML = originalContent;
+        }
+    }
+};
 
 // Fonction pour mettre à jour les recommandations
 function updateRecommendations() {
@@ -1783,6 +2177,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // Gestionnaire d'événement pour le bouton "Procéder au paiement"
+    const proceedToCheckoutBtn = document.getElementById('proceedToCheckoutBtn');
+    if (proceedToCheckoutBtn) {
+        proceedToCheckoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Bouton checkout cliqué, appel de proceedToCheckoutMoneroo()');
+            // Utiliser directement la fonction Moneroo pour éviter le conflit avec app.blade.php
+            if (typeof window.proceedToCheckoutMoneroo === 'function') {
+                window.proceedToCheckoutMoneroo(e);
+            } else {
+                console.error('proceedToCheckoutMoneroo n\'est pas définie');
+            }
+            return false;
+        });
+    } else {
+        console.warn('Bouton proceedToCheckoutBtn non trouvé');
+    }
 });
 </script>
 @endsection

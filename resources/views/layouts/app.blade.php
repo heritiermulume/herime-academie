@@ -4388,13 +4388,13 @@
         // Fonction globale pour procéder au checkout depuis n'importe quelle page
         // Si un courseId est fourni, on tente d'ajouter d'abord le cours au panier
         function proceedToCheckout(courseId = null) {
-            const redirectToCheckout = () => {
-                window.location.href = '{{ route("cart.checkout") }}';
+            const redirectToCart = () => {
+                window.location.href = '{{ route("cart.index") }}';
             };
 
             // Si aucun courseId ou bouton depuis page panier, on redirige directement
             if (!courseId) {
-                redirectToCheckout();
+                redirectToCart();
                 return;
             }
 
@@ -4440,14 +4440,14 @@
                 if (data.success) {
                     updateCartCount();
                     // Laisse une petite marge pour mise à jour UI avant redirection
-                    setTimeout(redirectToCheckout, 150);
+                    setTimeout(redirectToCart, 150);
                 } else {
-                    // Même en cas d'échec d'ajout, tenter la redirection checkout
-                    redirectToCheckout();
+                    // Même en cas d'échec d'ajout, tenter la redirection vers le panier
+                    redirectToCart();
                 }
             })
             .catch(() => {
-                redirectToCheckout();
+                redirectToCart();
             });
         }
 

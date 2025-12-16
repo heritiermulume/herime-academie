@@ -214,7 +214,7 @@
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li>
-                                                <a class="dropdown-item" href="{{ route('pawapay.payout.status', $payout->payout_id) }}" target="_blank">
+                                                <a class="dropdown-item" href="{{ route('moneroo.payout.status', $payout->payout_id) }}" target="_blank">
                                                     <i class="fas fa-sync me-2"></i>Vérifier le statut
                                                 </a>
                                             </li>
