@@ -1040,6 +1040,22 @@ class MonerooController extends Controller
                 ->first();
 
             if ($payment && $payment->order) {
+                // SÉCURITÉ : Vérifier que la commande appartient à l'utilisateur connecté
+                // pour éviter qu'un utilisateur puisse accéder à la commande d'un autre
+                if (auth()->check() && $payment->order->user_id !== auth()->id()) {
+                    \Log::warning('Moneroo: Attempted access to another user order', [
+                        'payment_id' => $paymentId,
+                        'order_id' => $payment->order->id,
+                        'order_user_id' => $payment->order->user_id,
+                        'current_user_id' => auth()->id(),
+                        'ip' => $request->ip(),
+                    ]);
+                    
+                    return redirect()->route('orders.index')->with('error', 
+                        'Vous n\'avez pas l\'autorisation d\'accéder à cette commande.'
+                    );
+                }
+                
                 // VALIDATION RECOMMANDÉE : Vérifier le statut auprès de Moneroo
                 // comme recommandé dans la documentation pour garantir la cohérence
                 // Utiliser l'ID Moneroo (py_xxx) si disponible, sinon notre payment_id
@@ -1194,7 +1210,27 @@ class MonerooController extends Controller
             }
         }
 
-        return view('payments.moneroo.success');
+        // CRITIQUE: Si on arrive ici, c'est qu'aucun payment_id valide n'est fourni
+        // NE JAMAIS afficher la page de succès sans commande vérifiée
+        \Log::warning('Moneroo: successfulRedirect called without valid payment_id or payment not found', [
+            'url' => $request->fullUrl(),
+            'query_params' => $request->query(),
+            'user_id' => auth()->id(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        // Rediriger vers la liste des commandes avec un message approprié
+        if (auth()->check()) {
+            return redirect()->route('orders.index')->with('warning', 
+                'Impossible de retrouver les détails de votre paiement. Veuillez vérifier vos commandes ci-dessous.'
+            );
+        }
+
+        // Si non authentifié, rediriger vers la page d'accueil
+        return redirect()->route('home')->with('error', 
+            'Session expirée. Veuillez vous reconnecter pour vérifier votre paiement.'
+        );
     }
 
     public function failedRedirect(Request $request)
@@ -1281,8 +1317,17 @@ class MonerooController extends Controller
                     'payment_id' => $paymentId,
                 ]);
             }
+        } else {
+            // Aucun payment_id fourni : logger et afficher message générique
+            \Log::warning('Moneroo: failedRedirect called without payment_id', [
+                'url' => $request->fullUrl(),
+                'query_params' => $request->query(),
+                'user_id' => auth()->id(),
+            ]);
         }
 
+        // La page failed est moins critique, on peut l'afficher même sans payment_id
+        // car elle informe juste l'utilisateur d'un échec
         return view('payments.moneroo.failed');
     }
 

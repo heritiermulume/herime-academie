@@ -3,6 +3,31 @@
 @section('title', 'Paiement réussi')
 
 @section('content')
+
+{{-- SÉCURITÉ: Redirection automatique si aucune commande n'est fournie --}}
+@if(!isset($order) && !isset($processing_warning))
+    <script>
+        // Rediriger immédiatement vers les commandes
+        window.location.href = "{{ route('orders.index') }}";
+    </script>
+    
+    <div class="container py-5">
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+            <h4>⚠️ Impossible de retrouver votre commande</h4>
+            <p>Redirection en cours vers vos commandes...</p>
+            <a href="{{ route('orders.index') }}" class="btn btn-primary mt-3">
+                <i class="fas fa-list me-2"></i>Voir mes commandes
+            </a>
+        </div>
+    </div>
+    
+    {{-- Empêcher l'affichage du reste de la page --}}
+    @php
+        // Cette section est un fallback au cas où le JavaScript ne s'exécute pas
+        // Le contrôleur devrait déjà avoir redirigé, mais c'est une double sécurité
+    @endphp
+@else
 <style>
 :root {
     --primary-color: #003366;
@@ -256,5 +281,6 @@
         </div>
     </div>
 </div>
+@endif {{-- Fin de la protection contre affichage sans commande --}}
 @endsection
 
