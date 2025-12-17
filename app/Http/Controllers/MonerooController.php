@@ -712,8 +712,10 @@ class MonerooController extends Controller
                     'payment_id' => $paymentId,
                 ]);
             } elseif (in_array($status, ['failed', 'cancelled', 'expired', 'rejected']) && $payment->order) {
-                // Échec : enregistrer la raison et annuler la commande
-                $failureReason = $paymentData['failure_reason'] ?? $paymentData['message'] ?? ($payload['message'] ?? 'Paiement échoué');
+                // Échec : enregistrer la raison détaillée et annuler la commande
+                // Extraire la raison d'échec de plusieurs sources possibles selon la structure Moneroo
+                $failureReason = $this->extractFailureReason($paymentData, $payload, $status);
+                
                 $payment->update(['failure_reason' => $failureReason]);
                 
                 // Annuler la commande seulement si elle n'est pas déjà payée (éviter doublon)
@@ -730,7 +732,10 @@ class MonerooController extends Controller
                         $mailable = new PaymentFailedMail($payment->order, $failureReason);
                         $communicationService = app(\App\Services\CommunicationService::class);
                         $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
-                        \Log::info("Email d'échec de paiement envoyé pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
+                        \Log::info("Email d'échec de paiement envoyé pour la commande {$payment->order->order_number} à {$payment->order->user->email}", [
+                            'failure_reason' => $failureReason,
+                            'status' => $status,
+                        ]);
                     }
                 } catch (\Exception $e) {
                     \Log::error("Erreur lors de l'envoi de l'email d'échec de paiement pour la commande {$payment->order->id}: " . $e->getMessage());
@@ -739,7 +744,9 @@ class MonerooController extends Controller
                 \Log::info('Moneroo: Order cancelled after failed payment', [
                     'order_id' => $payment->order->id,
                     'payment_id' => $paymentId,
+                    'status' => $status,
                     'reason' => $failureReason,
+                    'full_payload' => $payload, // Logger le payload complet pour analyse
                 ]);
             } elseif ($status === 'pending' || $status === 'processing') {
                 // En attente de traitement ou traitement en cours
@@ -768,6 +775,43 @@ class MonerooController extends Controller
                 'error' => 'Error processing callback (logged)',
             ], 200);
         }
+    }
+
+    /**
+     * Extraire la raison d'échec du paiement depuis les données Moneroo
+     * 
+     * Cette méthode cherche la raison d'échec dans plusieurs champs possibles
+     * pour capturer tous les cas d'erreur (solde insuffisant, transaction rejetée, etc.)
+     * 
+     * @param array $paymentData Les données du paiement
+     * @param array $payload Le payload complet du webhook
+     * @param string $status Le statut du paiement
+     * @return string La raison d'échec formatée
+     */
+    private function extractFailureReason(array $paymentData, array $payload, string $status): string
+    {
+        // Chercher la raison d'échec dans plusieurs champs possibles
+        $reason = $paymentData['failure_reason'] 
+               ?? $paymentData['error_message'] 
+               ?? $paymentData['error'] 
+               ?? $paymentData['message'] 
+               ?? $payload['message'] 
+               ?? $payload['error_message']
+               ?? null;
+        
+        // Si une raison spécifique est trouvée, la retourner
+        if ($reason && is_string($reason)) {
+            return $reason;
+        }
+        
+        // Sinon, mapper le statut vers un message compréhensible
+        return match ($status) {
+            'failed' => 'Le paiement a échoué. Veuillez vérifier vos informations de paiement et réessayer.',
+            'cancelled' => 'Le paiement a été annulé.',
+            'expired' => 'Le délai de paiement a expiré.',
+            'rejected' => 'Le paiement a été rejeté. Cela peut être dû à un solde insuffisant ou à une restriction sur votre compte.',
+            default => 'Le paiement n\'a pas pu être complété.',
+        };
     }
 
     /**
@@ -1142,8 +1186,9 @@ class MonerooController extends Controller
                         return view('payments.moneroo.success', compact('order'));
                         
                     } elseif (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
-                        // Échec : rediriger vers la page d'échec
-                        $failureReason = $statusData['failure_reason'] ?? $statusData['message'] ?? ($responseData['message'] ?? 'Paiement échoué');
+                        // Échec : extraire la raison détaillée et rediriger vers la page d'échec
+                        $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
+                        
                         $payment->update([
                             'status' => 'failed',
                             'failure_reason' => $failureReason,
@@ -1165,7 +1210,10 @@ class MonerooController extends Controller
                                 $mailable = new PaymentFailedMail($payment->order, $failureReason);
                         $communicationService = app(\App\Services\CommunicationService::class);
                         $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
-                                \Log::info("Email d'échec envoyé sur redirect pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
+                                \Log::info("Email d'échec envoyé sur redirect pour la commande {$payment->order->order_number} à {$payment->order->user->email}", [
+                                    'failure_reason' => $failureReason,
+                                    'status' => $status,
+                                ]);
                             }
                         } catch (\Exception $e) {
                             \Log::error("Erreur lors de l'envoi de l'email d'échec sur redirect pour la commande {$payment->order->id}: " . $e->getMessage());
@@ -1173,7 +1221,9 @@ class MonerooController extends Controller
                         
                         \Log::warning('Moneroo: Redirected to failed page', [
                             'payment_id' => $paymentId,
+                            'status' => $status,
                             'reason' => $failureReason,
+                            'full_status_data' => $statusData, // Logger les données complètes pour analyse
                         ]);
                         
                         return redirect()->route('moneroo.failed');

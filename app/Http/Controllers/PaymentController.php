@@ -213,52 +213,120 @@ class PaymentController extends Controller
         $orderId = $request->get('order_id');
         $order = Order::findOrFail($orderId);
 
-        // Mettre à jour le statut de la commande
-        $order->update([
-            'status' => 'paid',
-            'paid_at' => now(),
+        // CRITIQUE: Ne JAMAIS marquer automatiquement un paiement comme réussi sans vérification
+        // Selon les bonnes pratiques de sécurité des paiements en ligne:
+        // 1. La redirection vers la page de succès ne garantit PAS que le paiement a réussi
+        // 2. Il faut TOUJOURS vérifier le statut auprès du fournisseur de paiement
+        // 3. Le webhook est la source de vérité - cette page sert uniquement à afficher le statut
+
+        // Récupérer le paiement pour vérifier son statut réel
+        $payment = $order->payments()->first();
+        
+        if (!$payment) {
+            Log::warning('PaymentController: Aucun paiement trouvé pour la commande', [
+                'order_id' => $orderId,
+            ]);
+            return view('payments.error', [
+                'message' => 'Aucun paiement trouvé pour cette commande.'
+            ]);
+        }
+
+        // Vérifier le statut auprès du fournisseur selon la méthode de paiement
+        $verifiedStatus = $this->verifyPaymentStatus($payment);
+        
+        Log::info('PaymentController: Vérification du statut de paiement', [
+            'order_id' => $orderId,
+            'payment_id' => $payment->payment_id,
+            'local_status' => $payment->status,
+            'verified_status' => $verifiedStatus,
         ]);
 
-        // Mettre à jour le paiement
-        $payment = $order->payments()->first();
-        if ($payment) {
-            $payment->update([
-                'status' => 'completed',
-                'processed_at' => now(),
+        // Traiter selon le statut vérifié
+        if ($verifiedStatus === 'completed') {
+            // Paiement vérifié comme complété - finaliser la commande si pas déjà fait
+            if (!in_array($order->status, ['paid', 'completed'])) {
+                // Mettre à jour le statut de la commande
+                $order->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                ]);
+
+                // Mettre à jour le paiement
+                $payment->update([
+                    'status' => 'completed',
+                    'processed_at' => now(),
+                ]);
+
+                // Créer l'inscription de l'étudiant
+                // La méthode createAndNotify envoie automatiquement les notifications et emails
+                foreach ($order->orderItems as $item) {
+                    // Vérifier si l'utilisateur n'est pas déjà inscrit
+                    $existingEnrollment = \App\Models\Enrollment::where('user_id', $order->user_id)
+                        ->where('course_id', $item->course_id)
+                        ->first();
+
+                    if (!$existingEnrollment) {
+                        $enrollment = \App\Models\Enrollment::createAndNotify([
+                            'user_id' => $order->user_id,
+                            'course_id' => $item->course_id,
+                            'order_id' => $order->id,
+                            'status' => 'active',
+                        ]);
+                    }
+                }
+
+                // Mettre à jour le coupon si utilisé
+                if ($order->coupon) {
+                    $order->coupon->increment('used_count');
+                }
+
+                // Charger les relations nécessaires pour les emails et notifications
+                $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+
+                // Envoyer la notification de confirmation de paiement
+                $this->sendPaymentConfirmation($order);
+
+                // Envoyer la facture par email
+                $this->sendInvoiceEmail($order);
+
+                // Payer les formateurs externes si nécessaire
+                $this->processExternalInstructorPayouts($order);
+            }
+
+            return view('payments.success', compact('order'));
+            
+        } elseif (in_array($verifiedStatus, ['failed', 'cancelled', 'expired', 'rejected'])) {
+            // Paiement échoué - rediriger vers la page d'échec
+            $failureReason = $payment->failure_reason ?? 'Le paiement n\'a pas pu être complété.';
+            
+            // Mettre à jour les statuts si pas déjà fait
+            if ($payment->status === 'pending') {
+                $payment->update([
+                    'status' => 'failed',
+                    'failure_reason' => $failureReason,
+                ]);
+            }
+            
+            if (!in_array($order->status, ['paid', 'completed'])) {
+                $order->update(['status' => 'cancelled']);
+            }
+
+            // Charger les relations nécessaires pour l'email
+            $order->load(['user', 'orderItems.course', 'payments']);
+            
+            // Envoyer l'email d'échec de paiement
+            $this->sendPaymentFailureEmail($order, $failureReason);
+            
+            return redirect()->route('payments.cancel', ['order_id' => $orderId]);
+            
+        } else {
+            // Statut en attente ou inconnu - afficher un message d'attente
+            return view('payments.pending', [
+                'order' => $order,
+                'payment' => $payment,
+                'message' => 'Votre paiement est en cours de traitement. Vous recevrez une confirmation par email dès qu\'il sera validé.',
             ]);
         }
-
-        // Créer l'inscription de l'étudiant
-        // La méthode createAndNotify envoie automatiquement les notifications et emails
-        foreach ($order->orderItems as $item) {
-            $enrollment = \App\Models\Enrollment::createAndNotify([
-                'user_id' => $order->user_id,
-                'course_id' => $item->course_id,
-                'order_id' => $order->id,
-                'status' => 'active',
-            ]);
-
-            // Note: Le compteur d'étudiants est maintenant calculé dynamiquement via les enrollments
-        }
-
-        // Mettre à jour le coupon si utilisé
-        if ($order->coupon) {
-            $order->coupon->increment('used_count');
-        }
-
-        // Charger les relations nécessaires pour les emails et notifications
-        $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
-
-        // Envoyer la notification de confirmation de paiement
-        $this->sendPaymentConfirmation($order);
-
-        // Envoyer la facture par email
-        $this->sendInvoiceEmail($order);
-
-        // Payer les formateurs externes si nécessaire
-        $this->processExternalInstructorPayouts($order);
-
-        return view('payments.success', compact('order'));
     }
 
     public function cancel(Request $request)
@@ -266,20 +334,52 @@ class PaymentController extends Controller
         $orderId = $request->get('order_id');
         $order = Order::findOrFail($orderId);
 
-        // Mettre à jour le statut de la commande
-        $order->update(['status' => 'cancelled']);
-
-        // Mettre à jour le paiement
+        // Récupérer le paiement
         $payment = $order->payments()->first();
+        
+        // Vérifier le statut réel auprès du fournisseur de paiement
         if ($payment) {
-            $payment->update(['status' => 'cancelled']);
+            $verifiedStatus = $this->verifyPaymentStatus($payment);
+            
+            Log::info('PaymentController: Annulation demandée - vérification du statut', [
+                'order_id' => $orderId,
+                'payment_id' => $payment->payment_id,
+                'local_status' => $payment->status,
+                'verified_status' => $verifiedStatus,
+            ]);
+            
+            // Si le paiement est déjà complété, ne pas annuler
+            if ($verifiedStatus === 'completed') {
+                Log::warning('PaymentController: Tentative d\'annulation d\'un paiement complété', [
+                    'order_id' => $orderId,
+                    'payment_id' => $payment->payment_id,
+                ]);
+                
+                return redirect()->route('payments.success', ['order_id' => $orderId])
+                    ->with('warning', 'Ce paiement a déjà été complété et ne peut pas être annulé.');
+            }
+        }
+
+        // Mettre à jour le statut de la commande seulement si pas déjà payée
+        if (!in_array($order->status, ['paid', 'completed'])) {
+            $order->update(['status' => 'cancelled']);
+        }
+
+        // Mettre à jour le paiement seulement si pas déjà complété
+        if ($payment && !in_array($payment->status, ['completed'])) {
+            $payment->update([
+                'status' => 'cancelled',
+                'failure_reason' => 'Annulation par l\'utilisateur',
+            ]);
         }
 
         // Charger les relations nécessaires pour l'email
         $order->load(['user', 'orderItems.course', 'payments']);
         
-        // Envoyer l'email d'annulation de paiement
-        $this->sendPaymentFailureEmail($order, 'Paiement annulé par l\'utilisateur');
+        // Envoyer l'email d'annulation de paiement uniquement si pas déjà payé
+        if (!in_array($order->status, ['paid', 'completed'])) {
+            $this->sendPaymentFailureEmail($order, 'Paiement annulé par l\'utilisateur');
+        }
 
         return view('payments.cancel', compact('order'));
     }
@@ -374,6 +474,94 @@ class PaymentController extends Controller
             // Envoyer l'email d'échec de paiement
             $this->sendPaymentFailureEmail($order, $failureReason);
         }
+    }
+
+    /**
+     * Vérifier le statut du paiement auprès du fournisseur de paiement
+     * 
+     * Cette méthode interroge l'API du fournisseur pour obtenir le statut réel
+     * @param Payment $payment Le paiement à vérifier
+     * @return string Le statut vérifié ('completed', 'failed', 'pending', etc.)
+     */
+    private function verifyPaymentStatus(Payment $payment): string
+    {
+        try {
+            // Vérifier selon la méthode de paiement
+            switch ($payment->payment_method) {
+                case 'stripe':
+                    return $this->verifyStripePayment($payment);
+                    
+                case 'moneroo':
+                    return $this->verifyMonerooPayment($payment);
+                    
+                case 'paypal':
+                    return $this->verifyPayPalPayment($payment);
+                    
+                default:
+                    // Si la méthode n'est pas supportée, retourner le statut local
+                    Log::warning('PaymentController: Méthode de paiement non supportée pour vérification', [
+                        'payment_id' => $payment->id,
+                        'payment_method' => $payment->payment_method,
+                    ]);
+                    return $payment->status;
+            }
+        } catch (\Exception $e) {
+            Log::error('PaymentController: Erreur lors de la vérification du statut', [
+                'payment_id' => $payment->id,
+                'payment_method' => $payment->payment_method,
+                'error' => $e->getMessage(),
+            ]);
+            
+            // En cas d'erreur, retourner le statut local
+            return $payment->status;
+        }
+    }
+
+    /**
+     * Vérifier le statut d'un paiement Stripe
+     */
+    private function verifyStripePayment(Payment $payment): string
+    {
+        try {
+            $paymentIntent = PaymentIntent::retrieve($payment->payment_id);
+            
+            // Mapper les statuts Stripe vers nos statuts locaux
+            return match ($paymentIntent->status) {
+                'succeeded' => 'completed',
+                'canceled' => 'cancelled',
+                'requires_payment_method', 'requires_confirmation', 'requires_action' => 'pending',
+                default => 'failed',
+            };
+        } catch (\Exception $e) {
+            Log::error('PaymentController: Erreur lors de la vérification Stripe', [
+                'payment_id' => $payment->payment_id,
+                'error' => $e->getMessage(),
+            ]);
+            return $payment->status;
+        }
+    }
+
+    /**
+     * Vérifier le statut d'un paiement Moneroo
+     */
+    private function verifyMonerooPayment(Payment $payment): string
+    {
+        // Utiliser le service Moneroo pour vérifier
+        // Note: Cette méthode est déjà bien implémentée dans MonerooController
+        // On retourne simplement le statut local car Moneroo utilise son propre contrôleur
+        return $payment->status;
+    }
+
+    /**
+     * Vérifier le statut d'un paiement PayPal
+     */
+    private function verifyPayPalPayment(Payment $payment): string
+    {
+        // TODO: Implémenter la vérification PayPal
+        Log::warning('PaymentController: Vérification PayPal non implémentée', [
+            'payment_id' => $payment->id,
+        ]);
+        return $payment->status;
     }
 
     /**
