@@ -398,12 +398,12 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .balance-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
     color: white;
     padding: 2rem;
     border-radius: 16px;
     text-align: center;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 10px 30px rgba(30, 58, 138, 0.3);
 }
 
 .balance-card h4 {
@@ -481,7 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .btn-primary-custom {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
     color: white;
     padding: 0.75rem 2rem;
     border-radius: 8px;
@@ -492,7 +492,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .btn-primary-custom:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+    color: white;
 }
 
 .btn-outline-custom {
