@@ -12,6 +12,20 @@
         </div>
     @endif
 
+    @if(session('info'))
+        <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+            <i class="fas fa-info-circle me-2"></i>{{ session('info') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body admin-panel__body--padded">
             <div class="row g-4">
@@ -149,13 +163,14 @@
                                            role="switch" 
                                            name="wallet_auto_release_enabled" 
                                            id="wallet_auto_release_enabled"
+                                           value="on"
                                            {{ $walletSettings['auto_release_enabled'] ? 'checked' : '' }}>
                                     <label class="form-check-label fw-semibold" for="wallet_auto_release_enabled">
                                         Activer la libération automatique des fonds
                                     </label>
                                     <div class="form-text mt-2">
                                         <i class="fas fa-info-circle me-1"></i>
-                                        Si activé, les fonds bloqués seront automatiquement libérés après la période de blocage (via cron job).
+                                        Si activé, les fonds bloqués seront automatiquement libérés après la période de blocage (quotidiennement à 2h du matin).
                                     </div>
                                 </div>
 
@@ -173,6 +188,30 @@
                                     </a>
                                 </div>
                             </form>
+
+                            {{-- Formulaire de test de libération --}}
+                            <hr class="my-4">
+                            <div class="alert alert-info d-flex align-items-start gap-3">
+                                <div>
+                                    <i class="fas fa-flask fa-2x text-primary"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-2">Tester le système de libération</h6>
+                                    <p class="mb-3 small">
+                                        Vérifiez si des fonds sont prêts à être libérés. Cette action ne libérera rien, 
+                                        elle vous montrera uniquement ce qui serait libéré lors de l'exécution automatique.
+                                    </p>
+                                    <form method="POST" action="{{ route('admin.settings.wallet.test-release') }}" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-play-circle me-1"></i>Tester maintenant
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                         </div>
                     </div>
                 </div>

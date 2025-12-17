@@ -624,6 +624,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings', [AdminController::class, 'updateSettings'])
             ->middleware('sso.validate')
             ->name('settings.update');
+        Route::post('/settings/wallet/test-release', [AdminController::class, 'testWalletRelease'])
+            ->middleware('sso.validate')
+            ->name('settings.wallet.test-release');
         
         // Instructor payouts management
         Route::get('/instructor-payouts', [AdminController::class, 'instructorPayouts'])->name('instructor-payouts');

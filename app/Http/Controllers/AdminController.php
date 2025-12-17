@@ -3411,7 +3411,6 @@ class AdminController extends Controller
             // Paramètres Wallet
             'wallet_holding_period_days' => 'nullable|integer|min:0|max:365',
             'wallet_minimum_payout_amount' => 'nullable|numeric|min:0',
-            'wallet_auto_release_enabled' => 'nullable|boolean',
         ]);
 
         Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
@@ -3424,21 +3423,69 @@ class AdminController extends Controller
             Setting::set('ambassador_commission_rate', $request->ambassador_commission_rate, 'number', 'Pourcentage de commission versé aux ambassadeurs sur chaque vente réalisée avec leur code promo');
         }
 
-        // Paramètres Wallet
-        if ($request->has('wallet_holding_period_days')) {
-            Setting::set('wallet_holding_period_days', $request->wallet_holding_period_days, 'number', 'Nombre de jours pendant lesquels les fonds sont bloqués avant d\'être disponibles au retrait');
-        }
+        // Paramètres Wallet - Toujours sauvegarder, même avec des valeurs par défaut
+        Setting::set(
+            'wallet_holding_period_days', 
+            $request->input('wallet_holding_period_days', 7), 
+            'number', 
+            'Nombre de jours pendant lesquels les fonds sont bloqués avant d\'être disponibles au retrait'
+        );
 
-        if ($request->has('wallet_minimum_payout_amount')) {
-            Setting::set('wallet_minimum_payout_amount', $request->wallet_minimum_payout_amount, 'number', 'Montant minimum pour effectuer un retrait');
-        }
+        Setting::set(
+            'wallet_minimum_payout_amount', 
+            $request->input('wallet_minimum_payout_amount', 5), 
+            'number', 
+            'Montant minimum pour effectuer un retrait'
+        );
 
-        if ($request->has('wallet_auto_release_enabled')) {
-            Setting::set('wallet_auto_release_enabled', $request->wallet_auto_release_enabled ? 1 : 0, 'boolean', 'Activer la libération automatique des fonds bloqués');
-        }
+        // Le checkbox renvoie 'on' quand coché, null quand décoché
+        Setting::set(
+            'wallet_auto_release_enabled', 
+            $request->input('wallet_auto_release_enabled') === 'on' ? 1 : 0, 
+            'boolean', 
+            'Activer la libération automatique des fonds bloqués'
+        );
+
+        \Log::info('Paramètres Wallet mis à jour', [
+            'wallet_holding_period_days' => $request->input('wallet_holding_period_days'),
+            'wallet_minimum_payout_amount' => $request->input('wallet_minimum_payout_amount'),
+            'wallet_auto_release_enabled' => $request->input('wallet_auto_release_enabled'),
+        ]);
 
         return redirect()->route('admin.settings')
             ->with('success', 'Paramètres mis à jour avec succès.');
+    }
+
+    /**
+     * Tester manuellement la libération des fonds bloqués
+     */
+    public function testWalletRelease(Request $request)
+    {
+        try {
+            // Exécuter la commande de libération en mode simulation
+            \Artisan::call('wallet:release-holds', ['--dry-run' => true]);
+            $output = \Artisan::output();
+            
+            // Extraire le nombre de holds à libérer depuis la sortie
+            preg_match('/(\d+) hold\(s\) à traiter/', $output, $matches);
+            $holdsCount = $matches[1] ?? 0;
+            
+            if ($holdsCount > 0) {
+                return redirect()->route('admin.settings')
+                    ->with('info', "Test réussi ! {$holdsCount} fond(s) sont prêts à être libérés. Le système les libérera automatiquement à 2h du matin si l'option est activée.");
+            } else {
+                return redirect()->route('admin.settings')
+                    ->with('info', 'Aucun fonds à libérer pour le moment. Le système fonctionne correctement.');
+            }
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du test de libération des fonds', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('admin.settings')
+                ->with('error', 'Erreur lors du test : ' . $e->getMessage());
+        }
     }
 
     /**

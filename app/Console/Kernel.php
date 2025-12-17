@@ -25,6 +25,16 @@ class Kernel extends ConsoleKernel
             $securityService->monitorSuspiciousActivity();
         })->everySixHours()->name('youtube-monitor-activity');
 
+        // Libération automatique des fonds bloqués (quotidiennement à 2h du matin)
+        $schedule->command('wallet:release-holds')
+            ->dailyAt('02:00')
+            ->timezone('Africa/Kinshasa')
+            ->name('wallet-release-holds')
+            ->when(function() {
+                // Vérifier si la libération automatique est activée
+                return \App\Models\Setting::get('wallet_auto_release_enabled', true);
+            });
+
     }
 
     /**
