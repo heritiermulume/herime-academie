@@ -62,7 +62,7 @@
             <h4>💡 Pourquoi certains fonds sont-ils bloqués ?</h4>
             <p>
                 Pour garantir la sécurité des transactions, les nouveaux gains sont bloqués pendant 
-                <strong>{{ config('wallet.holding_period_days', 7) }} jours</strong> avant d'être disponibles au retrait.
+                <strong>{{ \App\Models\Setting::get('wallet_holding_period_days', 7) }} jours</strong> avant d'être disponibles au retrait.
                 Cette période permet de gérer d'éventuels litiges ou remboursements.
             </p>
         </div>

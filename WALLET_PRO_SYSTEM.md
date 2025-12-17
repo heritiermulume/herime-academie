@@ -38,20 +38,35 @@ php artisan wallet:release-holds --force
 
 ## ⚙️ Configuration
 
-### Fichier `.env`
+### 🎛️ Interface d'Administration (Recommandé)
 
-```env
-# Période de blocage en jours (par défaut: 7)
-WALLET_HOLDING_PERIOD_DAYS=7
+Les paramètres du Wallet sont configurables dynamiquement depuis l'interface d'administration :
 
-# Montant minimum de retrait (par défaut: 5)
-WALLET_MINIMUM_PAYOUT=5
+**👉 Administration → Paramètres → Configuration du Wallet**
 
-# Fréquence de libération automatique (daily, hourly, twiceDaily)
-WALLET_AUTO_RELEASE_SCHEDULE=daily
+URL : `https://academie.herime.com/admin/settings`
+
+Vous pouvez y configurer :
+- **Période de blocage** : Durée (en jours) pendant laquelle les fonds sont bloqués
+- **Montant minimum de retrait** : Seuil minimum pour effectuer un retrait
+- **Libération automatique** : Activer/désactiver la libération automatique des fonds
+
+### 🔧 Initialisation des Paramètres
+
+Si les paramètres n'existent pas dans la base de données, exécutez :
+
+```bash
+php artisan wallet:init-settings
 ```
 
-### Fichier `config/wallet.php`
+Cette commande crée les paramètres par défaut :
+- `wallet_holding_period_days` : 7 jours
+- `wallet_minimum_payout_amount` : 5 (devise de base)
+- `wallet_auto_release_enabled` : activé
+
+### 📄 Fichier de Configuration (Fallback)
+
+Le fichier `config/wallet.php` sert de fallback si les paramètres ne sont pas dans la base de données :
 
 ```php
 return [
@@ -60,6 +75,8 @@ return [
     'auto_release_schedule' => env('WALLET_AUTO_RELEASE_SCHEDULE', 'daily'),
 ];
 ```
+
+**Note** : Les paramètres de la base de données (via l'administration) ont la priorité sur le fichier de configuration.
 
 ## 🔧 Utilisation dans le Code
 

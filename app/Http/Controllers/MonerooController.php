@@ -238,12 +238,22 @@ class MonerooController extends Controller
             return optional($item->course)->current_price ?? optional($item->course)->price ?? 0;
         });
         
-        // Valider et appliquer le code promo d'ambassadeur si fourni
+        // Valider et appliquer le code promo d'ambassadeur si fourni (requête ou session)
         $ambassadorPromoCode = null;
         $ambassador = null;
+        
+        // Vérifier d'abord dans la requête, puis dans la session
+        $promoCodeData = null;
         if ($request->filled('ambassador_promo_code')) {
-            $promoCode = AmbassadorPromoCode::where('code', $request->ambassador_promo_code)
+            $promoCodeData = ['code' => $request->ambassador_promo_code];
+        } elseif (Session::has('applied_promo_code')) {
+            $promoCodeData = Session::get('applied_promo_code');
+        }
+        
+        if ($promoCodeData) {
+            $promoCode = AmbassadorPromoCode::where('code', $promoCodeData['code'] ?? null)
                 ->where('is_active', true)
+                ->with('ambassador')
                 ->first();
 
             if ($promoCode && $promoCode->isValid()) {
@@ -255,6 +265,11 @@ class MonerooController extends Controller
                     // Le code promo est valide, on l'associera à la commande
                     // Note: Les codes promo d'ambassadeur ne donnent pas de réduction,
                     // ils servent uniquement à attribuer la commission à l'ambassadeur
+                    \Log::info('Moneroo: Ambassador promo code applied to order', [
+                        'code' => $promoCode->code,
+                        'ambassador_id' => $ambassador->id,
+                        'ambassador_name' => $ambassador->user->name ?? 'N/A',
+                    ]);
                 } else {
                     $ambassadorPromoCode = null;
                     $ambassador = null;
@@ -973,11 +988,15 @@ class MonerooController extends Controller
 			$cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
 			Session::forget('cart');
 			
-			\Log::info('Moneroo: Cart emptied', [
+			// Retirer le code promo de la session après utilisation
+			Session::forget('applied_promo_code');
+			
+			\Log::info('Moneroo: Cart and promo code cleared', [
 				'user_id' => $order->user_id,
 				'cart_items_before' => $cartItemsBeforeDelete,
 				'cart_items_deleted' => $cartItemsDeleted,
 				'session_cart_cleared' => true,
+				'promo_code_cleared' => true,
 			]);
             
             // Créer la commission d'ambassadeur si un code promo a été utilisé

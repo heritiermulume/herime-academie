@@ -126,7 +126,7 @@ class Wallet extends Model
         try {
             // Utiliser le délai configuré ou le délai par défaut (7 jours)
             if ($holdingDays === null) {
-                $holdingDays = (int) config('wallet.holding_period_days', 7);
+                $holdingDays = (int) \App\Models\Setting::get('wallet_holding_period_days', 7);
             }
 
             $balanceBefore = $this->balance;

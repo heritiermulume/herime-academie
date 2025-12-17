@@ -3373,6 +3373,13 @@ class AdminController extends Controller
         $baseCurrency = Setting::getBaseCurrency();
         $commissionPercentage = Setting::get('external_instructor_commission_percentage', 20);
         
+        // Paramètres Wallet
+        $walletSettings = [
+            'holding_period_days' => Setting::get('wallet_holding_period_days', 7),
+            'minimum_payout_amount' => Setting::get('wallet_minimum_payout_amount', 5),
+            'auto_release_enabled' => Setting::get('wallet_auto_release_enabled', true),
+        ];
+        
         // Liste des devises courantes
         $currencies = [
             'USD' => 'USD - Dollar américain',
@@ -3389,7 +3396,7 @@ class AdminController extends Controller
             'ZAR' => 'ZAR - Rand sud-africain',
         ];
         
-        return view('admin.settings.index', compact('baseCurrency', 'currencies', 'settings', 'commissionPercentage'));
+        return view('admin.settings.index', compact('baseCurrency', 'currencies', 'settings', 'commissionPercentage', 'walletSettings'));
     }
 
     /**
@@ -3401,6 +3408,10 @@ class AdminController extends Controller
             'base_currency' => 'required|string|size:3|uppercase',
             'external_instructor_commission_percentage' => 'nullable|numeric|min:0|max:100',
             'ambassador_commission_rate' => 'nullable|numeric|min:0|max:100',
+            // Paramètres Wallet
+            'wallet_holding_period_days' => 'nullable|integer|min:0|max:365',
+            'wallet_minimum_payout_amount' => 'nullable|numeric|min:0',
+            'wallet_auto_release_enabled' => 'nullable|boolean',
         ]);
 
         Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
@@ -3411,6 +3422,19 @@ class AdminController extends Controller
 
         if ($request->has('ambassador_commission_rate')) {
             Setting::set('ambassador_commission_rate', $request->ambassador_commission_rate, 'number', 'Pourcentage de commission versé aux ambassadeurs sur chaque vente réalisée avec leur code promo');
+        }
+
+        // Paramètres Wallet
+        if ($request->has('wallet_holding_period_days')) {
+            Setting::set('wallet_holding_period_days', $request->wallet_holding_period_days, 'number', 'Nombre de jours pendant lesquels les fonds sont bloqués avant d\'être disponibles au retrait');
+        }
+
+        if ($request->has('wallet_minimum_payout_amount')) {
+            Setting::set('wallet_minimum_payout_amount', $request->wallet_minimum_payout_amount, 'number', 'Montant minimum pour effectuer un retrait');
+        }
+
+        if ($request->has('wallet_auto_release_enabled')) {
+            Setting::set('wallet_auto_release_enabled', $request->wallet_auto_release_enabled ? 1 : 0, 'boolean', 'Activer la libération automatique des fonds bloqués');
         }
 
         return redirect()->route('admin.settings')

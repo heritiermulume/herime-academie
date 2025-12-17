@@ -245,55 +245,55 @@ class PaymentController extends Controller
         if ($verifiedStatus === 'completed') {
             // Paiement vérifié comme complété - finaliser la commande si pas déjà fait
             if (!in_array($order->status, ['paid', 'completed'])) {
-                // Mettre à jour le statut de la commande
-                $order->update([
-                    'status' => 'paid',
-                    'paid_at' => now(),
-                ]);
+        // Mettre à jour le statut de la commande
+        $order->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
 
-                // Mettre à jour le paiement
-                $payment->update([
-                    'status' => 'completed',
-                    'processed_at' => now(),
-                ]);
+        // Mettre à jour le paiement
+            $payment->update([
+                'status' => 'completed',
+                'processed_at' => now(),
+            ]);
 
-                // Créer l'inscription de l'étudiant
-                // La méthode createAndNotify envoie automatiquement les notifications et emails
-                foreach ($order->orderItems as $item) {
+        // Créer l'inscription de l'étudiant
+        // La méthode createAndNotify envoie automatiquement les notifications et emails
+        foreach ($order->orderItems as $item) {
                     // Vérifier si l'utilisateur n'est pas déjà inscrit
                     $existingEnrollment = \App\Models\Enrollment::where('user_id', $order->user_id)
                         ->where('course_id', $item->course_id)
                         ->first();
 
                     if (!$existingEnrollment) {
-                        $enrollment = \App\Models\Enrollment::createAndNotify([
-                            'user_id' => $order->user_id,
-                            'course_id' => $item->course_id,
-                            'order_id' => $order->id,
-                            'status' => 'active',
-                        ]);
+            $enrollment = \App\Models\Enrollment::createAndNotify([
+                'user_id' => $order->user_id,
+                'course_id' => $item->course_id,
+                'order_id' => $order->id,
+                'status' => 'active',
+            ]);
                     }
-                }
+        }
 
-                // Mettre à jour le coupon si utilisé
-                if ($order->coupon) {
-                    $order->coupon->increment('used_count');
-                }
+        // Mettre à jour le coupon si utilisé
+        if ($order->coupon) {
+            $order->coupon->increment('used_count');
+        }
 
-                // Charger les relations nécessaires pour les emails et notifications
-                $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+        // Charger les relations nécessaires pour les emails et notifications
+        $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
 
-                // Envoyer la notification de confirmation de paiement
-                $this->sendPaymentConfirmation($order);
+        // Envoyer la notification de confirmation de paiement
+        $this->sendPaymentConfirmation($order);
 
-                // Envoyer la facture par email
-                $this->sendInvoiceEmail($order);
+        // Envoyer la facture par email
+        $this->sendInvoiceEmail($order);
 
-                // Payer les formateurs externes si nécessaire
-                $this->processExternalInstructorPayouts($order);
+        // Payer les formateurs externes si nécessaire
+        $this->processExternalInstructorPayouts($order);
             }
 
-            return view('payments.success', compact('order'));
+        return view('payments.success', compact('order'));
             
         } elseif (in_array($verifiedStatus, ['failed', 'cancelled', 'expired', 'rejected'])) {
             // Paiement échoué - rediriger vers la page d'échec
@@ -378,7 +378,7 @@ class PaymentController extends Controller
         
         // Envoyer l'email d'annulation de paiement uniquement si pas déjà payé
         if (!in_array($order->status, ['paid', 'completed'])) {
-            $this->sendPaymentFailureEmail($order, 'Paiement annulé par l\'utilisateur');
+        $this->sendPaymentFailureEmail($order, 'Paiement annulé par l\'utilisateur');
         }
 
         return view('payments.cancel', compact('order'));
@@ -706,8 +706,8 @@ class PaymentController extends Controller
 
             // 1. Envoyer l'email ET WhatsApp d'échec
             try {
-                $mailable = new PaymentFailedMail($order, $failureReason);
-                $communicationService = app(\App\Services\CommunicationService::class);
+            $mailable = new PaymentFailedMail($order, $failureReason);
+            $communicationService = app(\App\Services\CommunicationService::class);
                 $communicationService->sendEmailAndWhatsApp($user, $mailable);
                 \Log::info("Email et WhatsApp d'échec envoyés pour la commande {$order->order_number}", [
                     'order_id' => $order->id,

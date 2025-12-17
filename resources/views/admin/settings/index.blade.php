@@ -92,6 +92,78 @@
                                     <strong>Note :</strong> Les prix sont désormais stockés et affichés dans la devise de base du site. Lors du paiement, le montant peut être débité dans une autre devise selon l’opérateur sélectionné, avec conversion appliquée depuis la devise de base.
                                 </div>
 
+                                <hr class="my-4">
+
+                                {{-- Section Wallet --}}
+                                <h5 class="mb-4 d-flex align-items-center gap-2">
+                                    <span class="admin-nav__icon" style="background: rgba(139, 92, 246, 0.15); color: #6d28d9;">
+                                        <i class="fas fa-wallet"></i>
+                                    </span>
+                                    Configuration du Wallet Ambassadeurs
+                                </h5>
+
+                                <div>
+                                    <label for="wallet_holding_period_days" class="form-label fw-semibold">
+                                        Période de blocage (en jours)
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" 
+                                               name="wallet_holding_period_days" 
+                                               id="wallet_holding_period_days" 
+                                               class="form-control form-control-lg" 
+                                               value="{{ $walletSettings['holding_period_days'] }}"
+                                               min="0" 
+                                               max="365" 
+                                               step="1">
+                                        <span class="input-group-text">jours</span>
+                                    </div>
+                                    <div class="form-text mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Durée pendant laquelle les fonds sont bloqués avant d'être disponibles au retrait. Recommandé : 7 jours.
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="wallet_minimum_payout_amount" class="form-label fw-semibold">
+                                        Montant minimum de retrait
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" 
+                                               name="wallet_minimum_payout_amount" 
+                                               id="wallet_minimum_payout_amount" 
+                                               class="form-control form-control-lg" 
+                                               value="{{ $walletSettings['minimum_payout_amount'] }}"
+                                               min="0" 
+                                               step="0.01">
+                                        <span class="input-group-text">{{ $baseCurrency }}</span>
+                                    </div>
+                                    <div class="form-text mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Montant minimum que les ambassadeurs doivent avoir pour effectuer un retrait.
+                                    </div>
+                                </div>
+
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           role="switch" 
+                                           name="wallet_auto_release_enabled" 
+                                           id="wallet_auto_release_enabled"
+                                           {{ $walletSettings['auto_release_enabled'] ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-semibold" for="wallet_auto_release_enabled">
+                                        Activer la libération automatique des fonds
+                                    </label>
+                                    <div class="form-text mt-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Si activé, les fonds bloqués seront automatiquement libérés après la période de blocage (via cron job).
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-warning mb-0">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Important :</strong> La période de blocage protège contre les litiges et remboursements. Réduire cette période peut augmenter les risques.
+                                </div>
+
                                 <div class="d-flex flex-wrap gap-2">
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-save me-2"></i>Enregistrer les modifications
