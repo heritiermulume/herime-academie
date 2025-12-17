@@ -150,6 +150,38 @@
                             </div>
                         </div>
                         
+                        <!-- Promo Code Section -->
+                        <div class="promo-code-section">
+                            <div class="promo-checkbox-wrapper">
+                                <input type="checkbox" id="applyPromoCode" class="promo-checkbox">
+                                <label for="applyPromoCode" class="promo-checkbox-label">
+                                    <i class="fas fa-tag me-2"></i>
+                                    Appliquer le code promo
+                                </label>
+                            </div>
+                            
+                            <div id="promoCodeInput" class="promo-input-container" style="display: none;">
+                                <div class="input-group">
+                                    <input type="text" 
+                                           id="promoCodeField" 
+                                           class="form-control promo-input" 
+                                           placeholder="Entrez le code promo de l'ambassadeur"
+                                           maxlength="50">
+                                    <button type="button" 
+                                            class="btn btn-primary apply-promo-btn" 
+                                            id="applyPromoBtn"
+                                            onclick="applyPromoCode()">
+                                        <i class="fas fa-check me-1"></i>
+                                        Appliquer
+                                    </button>
+                                </div>
+                                <small class="promo-help-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Utilisez le code fourni par votre ambassadeur
+                                </small>
+                            </div>
+                        </div>
+                        
                         <!-- Checkout Button -->
                         @auth
                             <button type="button" class="checkout-btn" id="proceedToCheckoutBtn">
