@@ -3457,38 +3457,6 @@ class AdminController extends Controller
     }
 
     /**
-     * Tester manuellement la libération des fonds bloqués
-     */
-    public function testWalletRelease(Request $request)
-    {
-        try {
-            // Exécuter la commande de libération en mode simulation
-            \Artisan::call('wallet:release-holds', ['--dry-run' => true]);
-            $output = \Artisan::output();
-            
-            // Extraire le nombre de holds à libérer depuis la sortie
-            preg_match('/(\d+) hold\(s\) à traiter/', $output, $matches);
-            $holdsCount = $matches[1] ?? 0;
-            
-            if ($holdsCount > 0) {
-                return redirect()->route('admin.settings')
-                    ->with('info', "Test réussi ! {$holdsCount} fond(s) sont prêts à être libérés. Le système les libérera automatiquement à 2h du matin si l'option est activée.");
-            } else {
-                return redirect()->route('admin.settings')
-                    ->with('info', 'Aucun fonds à libérer pour le moment. Le système fonctionne correctement.');
-            }
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors du test de libération des fonds', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return redirect()->route('admin.settings')
-                ->with('error', 'Erreur lors du test : ' . $e->getMessage());
-        }
-    }
-
-    /**
      * Afficher la liste des payouts aux formateurs externes
      */
     public function instructorPayouts(Request $request)

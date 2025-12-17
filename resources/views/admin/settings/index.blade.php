@@ -188,27 +188,6 @@
                                     </a>
                                 </div>
                             </form>
-
-                            {{-- Formulaire de test de libération --}}
-                            <hr class="my-4">
-                            <div class="alert alert-info d-flex align-items-start gap-3">
-                                <div>
-                                    <i class="fas fa-flask fa-2x text-primary"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-2">Tester le système de libération</h6>
-                                    <p class="mb-3 small">
-                                        Vérifiez si des fonds sont prêts à être libérés. Cette action ne libérera rien, 
-                                        elle vous montrera uniquement ce qui serait libéré lors de l'exécution automatique.
-                                    </p>
-                                    <form method="POST" action="{{ route('admin.settings.wallet.test-release') }}" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-play-circle me-1"></i>Tester maintenant
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
