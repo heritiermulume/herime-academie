@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\CartItem;
+use App\Models\AmbassadorPromoCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 
@@ -36,7 +37,10 @@ class CartController extends Controller
         // Obtenir les cours populaires pour le panier vide
         $popularCourses = $this->getPopularCoursesForCart();
         
-        return view('cart.index', compact('cartItems', 'subtotal', 'tax', 'total', 'recommendedCourses', 'popularCourses'));
+        // Récupérer le code promo appliqué depuis la session
+        $appliedPromoCode = Session::get('applied_promo_code');
+        
+        return view('cart.index', compact('cartItems', 'subtotal', 'tax', 'total', 'recommendedCourses', 'popularCourses', 'appliedPromoCode'));
     }
 
     /**
@@ -917,5 +921,120 @@ public function add(Request $request)
     private function saveSessionCart($cart)
     {
         Session::put('cart', $cart);
+    }
+
+    /**
+     * Appliquer un code promo
+     */
+    public function applyPromoCode(Request $request)
+    {
+        try {
+            $request->validate([
+                'promo_code' => 'required|string|max:50'
+            ]);
+
+            $code = strtoupper(trim($request->promo_code));
+
+            // Rechercher le code promo
+            $promoCode = AmbassadorPromoCode::where('code', $code)
+                ->with('ambassador.user')
+                ->first();
+
+            if (!$promoCode) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Code promo invalide ou introuvable.'
+                ], 404);
+            }
+
+            // Vérifier si le code promo est valide
+            if (!$promoCode->isValid()) {
+                $message = 'Ce code promo n\'est plus valide.';
+                
+                if (!$promoCode->is_active) {
+                    $message = 'Ce code promo a été désactivé.';
+                } elseif ($promoCode->expires_at && $promoCode->expires_at->isPast()) {
+                    $message = 'Ce code promo a expiré.';
+                } elseif ($promoCode->max_usage && $promoCode->usage_count >= $promoCode->max_usage) {
+                    $message = 'Ce code promo a atteint sa limite d\'utilisation.';
+                }
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $message
+                ], 400);
+            }
+
+            // Vérifier si l'ambassadeur est actif
+            if (!$promoCode->ambassador->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'L\'ambassadeur associé à ce code n\'est plus actif.'
+                ], 400);
+            }
+
+            // Stocker le code promo dans la session
+            Session::put('applied_promo_code', [
+                'code' => $promoCode->code,
+                'ambassador_id' => $promoCode->ambassador_id,
+                'promo_code_id' => $promoCode->id,
+                'ambassador_name' => $promoCode->ambassador->user->name ?? 'Ambassadeur'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Code promo appliqué avec succès!',
+                'promo_code' => $promoCode->code,
+                'ambassador_name' => $promoCode->ambassador->user->name ?? 'Ambassadeur',
+                'discount' => 0 // Pour l'instant pas de réduction, juste le tracking
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Veuillez entrer un code promo valide.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error applying promo code', [
+                'error' => $e->getMessage(),
+                'code' => $request->promo_code ?? null,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors de l\'application du code promo.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Retirer un code promo
+     */
+    public function removePromoCode(Request $request)
+    {
+        try {
+            // Retirer le code promo de la session
+            Session::forget('applied_promo_code');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Code promo retiré avec succès.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error removing promo code', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors du retrait du code promo.'
+            ], 500);
+        }
     }
 }

@@ -127,6 +127,8 @@ Route::middleware('sync.cart')->group(function () {
     Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
     Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
     Route::delete('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+    Route::post('/cart/apply-promo', [CartController::class, 'applyPromoCode'])->name('cart.apply-promo');
+    Route::delete('/cart/remove-promo', [CartController::class, 'removePromoCode'])->name('cart.remove-promo');
     Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
     Route::get('/cart/content', [CartController::class, 'getCartContent'])->name('cart.content');
     Route::get('/cart/summary', [CartController::class, 'getSummary'])->name('cart.summary');

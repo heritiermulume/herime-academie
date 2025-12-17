@@ -153,14 +153,27 @@
                         <!-- Promo Code Section -->
                         <div class="promo-code-section">
                             <div class="promo-checkbox-wrapper">
-                                <input type="checkbox" id="applyPromoCode" class="promo-checkbox">
+                                <input type="checkbox" id="applyPromoCode" class="promo-checkbox" {{ $appliedPromoCode ? 'checked' : '' }}>
                                 <label for="applyPromoCode" class="promo-checkbox-label">
                                     <i class="fas fa-tag me-2"></i>
                                     Appliquer le code promo
                                 </label>
                             </div>
                             
-                            <div id="promoCodeInput" class="promo-input-container" style="display: none;">
+                            <div id="promoCodeInput" class="promo-input-container" style="display: {{ $appliedPromoCode ? 'block' : 'none' }};">
+                                @if($appliedPromoCode)
+                                <!-- Code promo déjà appliqué -->
+                                <div class="promo-applied">
+                                    <div class="promo-applied-text">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Code <span class="promo-code-display">{{ $appliedPromoCode['code'] }}</span> appliqué</span>
+                                    </div>
+                                    <button type="button" class="remove-promo-btn" onclick="removePromoCode()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                @else
+                                <!-- Formulaire de saisie du code promo -->
                                 <div class="input-group">
                                     <input type="text" 
                                            id="promoCodeField" 
@@ -179,6 +192,7 @@
                                     <i class="fas fa-info-circle me-1"></i>
                                     Utilisez le code fourni par votre ambassadeur
                                 </small>
+                                @endif
                             </div>
                         </div>
                         
@@ -753,6 +767,160 @@
 
 .security-badge i {
     color: #28a745;
+}
+
+/* Promo Code Section */
+.promo-code-section {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(0, 51, 102, 0.03) 0%, rgba(0, 51, 102, 0.06) 100%);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 51, 102, 0.1);
+}
+
+.promo-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.promo-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #003366;
+    margin: 0;
+}
+
+.promo-checkbox-label {
+    display: flex;
+    align-items: center;
+    margin: 0 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1c1d1f;
+    cursor: pointer;
+    user-select: none;
+}
+
+.promo-checkbox-label i {
+    color: #003366;
+    font-size: 13px;
+}
+
+.promo-input-container {
+    margin-top: 12px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.promo-input-container .input-group {
+    margin-bottom: 8px;
+}
+
+.promo-input {
+    font-size: 14px;
+    padding: 10px 12px;
+    border: 1px solid #d1d7dc;
+    border-radius: 4px 0 0 4px;
+    transition: border-color 0.2s ease;
+}
+
+.promo-input:focus {
+    border-color: #003366;
+    box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+    outline: none;
+}
+
+.apply-promo-btn {
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #003366 0%, #001a33 100%);
+    border: none;
+    border-radius: 0 4px 4px 0;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.apply-promo-btn:hover {
+    background: linear-gradient(135deg, #001a33 0%, #003366 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 51, 102, 0.2);
+}
+
+.apply-promo-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.promo-help-text {
+    display: block;
+    font-size: 12px;
+    color: #6a6f73;
+    margin-top: 4px;
+}
+
+.promo-help-text i {
+    color: #003366;
+}
+
+/* Applied promo code badge */
+.promo-applied {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    margin-top: 12px;
+}
+
+.promo-applied-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #155724;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.promo-applied-text i {
+    color: #28a745;
+}
+
+.promo-code-display {
+    font-family: 'Courier New', monospace;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.remove-promo-btn {
+    background: transparent;
+    border: none;
+    color: #721c24;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.remove-promo-btn:hover {
+    background-color: rgba(220, 53, 69, 0.1);
 }
 
 /* Responsive Design */
@@ -2106,10 +2274,193 @@ function updateCartCount() {
 
 // Fonction supprimée - plus nécessaire avec la nouvelle approche
 
+// Fonction pour appliquer le code promo
+function applyPromoCode() {
+    const promoCodeField = document.getElementById('promoCodeField');
+    const applyBtn = document.getElementById('applyPromoBtn');
+    const promoCode = promoCodeField ? promoCodeField.value.trim() : '';
+    
+    if (!promoCode) {
+        showNotification('Veuillez entrer un code promo', 'error');
+        return;
+    }
+    
+    // Désactiver le bouton pendant la requête
+    if (applyBtn) {
+        applyBtn.disabled = true;
+        applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Vérification...';
+    }
+    
+    // Appeler l'API pour vérifier le code promo
+    fetch('{{ route("cart.apply-promo") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            promo_code: promoCode
+        })
+    })
+    .then(async response => {
+        const contentType = response.headers.get('content-type');
+        
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Réponse non-JSON:', text.substring(0, 200));
+            throw new Error('Erreur lors de la vérification du code promo');
+        }
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Code promo invalide');
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('Code promo appliqué avec succès!', 'success');
+            // Mettre à jour le résumé du panier
+            updateCartSummary();
+            // Afficher le badge de code promo appliqué
+            displayAppliedPromo(promoCode, data.discount);
+        } else {
+            showNotification(data.message || 'Code promo invalide', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        showNotification(error.message || 'Erreur lors de l\'application du code promo', 'error');
+    })
+    .finally(() => {
+        // Réactiver le bouton
+        if (applyBtn) {
+            applyBtn.disabled = false;
+            applyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Appliquer';
+        }
+    });
+}
+
+// Fonction pour afficher le code promo appliqué
+function displayAppliedPromo(code, discount) {
+    const promoInputContainer = document.getElementById('promoCodeInput');
+    if (!promoInputContainer) return;
+    
+    // Créer le badge de code promo appliqué
+    const appliedBadge = document.createElement('div');
+    appliedBadge.className = 'promo-applied';
+    appliedBadge.innerHTML = `
+        <div class="promo-applied-text">
+            <i class="fas fa-check-circle"></i>
+            <span>Code <span class="promo-code-display">${code}</span> appliqué</span>
+        </div>
+        <button type="button" class="remove-promo-btn" onclick="removePromoCode()">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    // Remplacer le champ de saisie par le badge
+    promoInputContainer.innerHTML = '';
+    promoInputContainer.appendChild(appliedBadge);
+    promoInputContainer.style.display = 'block';
+}
+
+// Fonction pour retirer le code promo
+function removePromoCode() {
+    fetch('{{ route("cart.remove-promo") }}', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Code promo retiré', 'success');
+            // Réinitialiser l'affichage
+            resetPromoCodeSection();
+            // Mettre à jour le résumé
+            updateCartSummary();
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        showNotification('Erreur lors du retrait du code promo', 'error');
+    });
+}
+
+// Fonction pour réinitialiser la section code promo
+function resetPromoCodeSection() {
+    const promoCheckbox = document.getElementById('applyPromoCode');
+    const promoInputContainer = document.getElementById('promoCodeInput');
+    
+    if (promoCheckbox) {
+        promoCheckbox.checked = false;
+    }
+    
+    if (promoInputContainer) {
+        promoInputContainer.innerHTML = `
+            <div class="input-group">
+                <input type="text" 
+                       id="promoCodeField" 
+                       class="form-control promo-input" 
+                       placeholder="Entrez le code promo de l'ambassadeur"
+                       maxlength="50">
+                <button type="button" 
+                        class="btn btn-primary apply-promo-btn" 
+                        id="applyPromoBtn"
+                        onclick="applyPromoCode()">
+                    <i class="fas fa-check me-1"></i>
+                    Appliquer
+                </button>
+            </div>
+            <small class="promo-help-text">
+                <i class="fas fa-info-circle me-1"></i>
+                Utilisez le code fourni par votre ambassadeur
+            </small>
+        `;
+        promoInputContainer.style.display = 'none';
+    }
+}
+
 // Initialiser la page au chargement
 document.addEventListener('DOMContentLoaded', function() {
     // Mettre à jour le compteur du panier au chargement
     updateCartCount();
+    
+    // Gestionnaire pour le checkbox du code promo
+    const promoCheckbox = document.getElementById('applyPromoCode');
+    const promoInputContainer = document.getElementById('promoCodeInput');
+    
+    if (promoCheckbox && promoInputContainer) {
+        promoCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                promoInputContainer.style.display = 'block';
+                // Focus sur le champ de saisie
+                const promoInput = document.getElementById('promoCodeField');
+                if (promoInput) {
+                    setTimeout(() => promoInput.focus(), 100);
+                }
+            } else {
+                promoInputContainer.style.display = 'none';
+            }
+        });
+    }
+    
+    // Gestionnaire pour la touche Enter dans le champ du code promo
+    document.addEventListener('keypress', function(e) {
+        const promoCodeField = document.getElementById('promoCodeField');
+        if (e.target === promoCodeField && e.key === 'Enter') {
+            e.preventDefault();
+            applyPromoCode();
+        }
+    });
     
     // Initialiser le modal de suppression d'un cours
     const removeItemModal = document.getElementById('removeItemModal');
