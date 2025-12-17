@@ -797,9 +797,14 @@ class Course extends Model
                 
             case 'login':
             default:
+                // Générer l'URL SSO pour la connexion
+                $currentUrl = url()->current();
+                $callbackUrl = route('sso.callback', ['redirect' => $currentUrl]);
+                $ssoLoginUrl = config('services.sso.base_url', 'https://compte.herime.com') . '/login?force_token=1&redirect=' . urlencode($callbackUrl);
+                
                 return [
                     'type' => 'link',
-                    'url' => route('login'),
+                    'url' => $ssoLoginUrl,
                     'class' => 'btn btn-primary',
                     'text' => 'Se connecter',
                     'icon' => 'fas fa-sign-in-alt'
