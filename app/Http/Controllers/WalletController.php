@@ -7,6 +7,7 @@ use App\Models\WalletTransaction;
 use App\Models\WalletPayout;
 use App\Models\Ambassador;
 use App\Services\MonerooPayoutService;
+use App\Services\WalletAutoReleaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +17,15 @@ use Illuminate\Support\Facades\Http;
 class WalletController extends Controller
 {
     protected $monerooPayoutService;
+    protected $autoReleaseService;
 
-    public function __construct(MonerooPayoutService $monerooPayoutService)
-    {
+    public function __construct(
+        MonerooPayoutService $monerooPayoutService,
+        WalletAutoReleaseService $autoReleaseService
+    ) {
         $this->middleware('auth');
         $this->monerooPayoutService = $monerooPayoutService;
+        $this->autoReleaseService = $autoReleaseService;
     }
 
     /**
@@ -47,6 +52,15 @@ class WalletController extends Controller
                 'is_active' => true,
             ]
         );
+
+        // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés lors de l'accès au wallet
+        $releasedCount = $this->autoReleaseService->releaseExpiredHoldsForWallet($wallet);
+        
+        // Recharger le wallet si des fonds ont été libérés
+        if ($releasedCount > 0) {
+            $wallet->refresh();
+            session()->flash('success', "{$releasedCount} fond(s) ont été automatiquement libérés et sont maintenant disponibles au retrait !");
+        }
 
         // Récupérer les statistiques du wallet
         $stats = $wallet->getStats();
@@ -87,6 +101,13 @@ class WalletController extends Controller
         $user = Auth::user();
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
+        // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés lors de l'accès aux transactions
+        $releasedCount = $this->autoReleaseService->releaseExpiredHoldsForWallet($wallet);
+        
+        if ($releasedCount > 0) {
+            $wallet->refresh();
+        }
+
         $query = $wallet->transactions()->orderBy('created_at', 'desc');
 
         // Filtrer par type
@@ -121,6 +142,13 @@ class WalletController extends Controller
         $user = Auth::user();
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
+        // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés lors de l'accès aux payouts
+        $releasedCount = $this->autoReleaseService->releaseExpiredHoldsForWallet($wallet);
+        
+        if ($releasedCount > 0) {
+            $wallet->refresh();
+        }
+
         $query = $wallet->payouts()->orderBy('created_at', 'desc');
 
         // Filtrer par statut
@@ -149,6 +177,14 @@ class WalletController extends Controller
     {
         $user = Auth::user();
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
+
+        // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés avant de créer un payout
+        $releasedCount = $this->autoReleaseService->releaseExpiredHoldsForWallet($wallet);
+        
+        if ($releasedCount > 0) {
+            $wallet->refresh();
+            session()->flash('success', "{$releasedCount} fond(s) ont été automatiquement libérés et sont maintenant disponibles au retrait !");
+        }
 
         // Récupérer la configuration Moneroo (pays et providers)
         $monerooData = $this->getMonerooConfiguration();
@@ -179,6 +215,17 @@ class WalletController extends Controller
 
         $user = Auth::user();
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
+
+        // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés avant de vérifier le solde
+        $releasedCount = $this->autoReleaseService->releaseExpiredHoldsForWallet($wallet);
+        
+        if ($releasedCount > 0) {
+            $wallet->refresh();
+            Log::info('Fonds automatiquement libérés avant retrait', [
+                'wallet_id' => $wallet->id,
+                'released_count' => $releasedCount,
+            ]);
+        }
 
         // Vérifier que le wallet a suffisamment de solde DISPONIBLE
         if (!$wallet->hasBalance($request->amount)) {

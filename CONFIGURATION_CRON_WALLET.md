@@ -1,8 +1,18 @@
 # ⏰ Configuration du Cron pour la Libération Automatique des Fonds
 
-## 📋 Vue d'ensemble
+## ⚠️ MISE À JOUR IMPORTANTE
 
-Le système de libération automatique des fonds nécessite que le **Laravel Scheduler** soit configuré correctement sur votre serveur. Cette documentation explique comment le configurer et vérifier qu'il fonctionne.
+**La libération automatique des fonds ne dépend PLUS du cron !**
+
+Le système a été repensé pour fonctionner **directement dans l'application**, sans dépendance externe. Les fonds sont automatiquement libérés lors de l'accès au wallet par l'utilisateur.
+
+📖 **Voir la nouvelle documentation** : `WALLET_LIBERATION_AUTOMATIQUE_INTEGREE.md`
+
+---
+
+## 📋 Vue d'ensemble (Documentation Historique)
+
+Cette documentation est conservée pour référence historique. Le système de libération automatique des fonds **ne nécessite PLUS** que le **Laravel Scheduler** soit configuré sur votre serveur.
 
 ## 🔧 Configuration du Cron Job
 
