@@ -176,9 +176,9 @@
 
             <div class="action-buttons">
                 @auth
-                <a href="{{ route('cart.checkout') }}" class="btn btn-primary-custom">
+                <button type="button" class="btn btn-primary-custom" id="retryPaymentBtn" onclick="retryPayment(event)">
                     <i class="fas fa-redo me-2"></i>Réessayer le paiement
-                </a>
+                </button>
                 <a href="{{ route('cart.index') }}" class="btn btn-outline-custom">
                     <i class="fas fa-shopping-cart me-2"></i>Revenir au panier
                 </a>
@@ -208,5 +208,106 @@
         </div>
     </div>
 </div>
+
+<script>
+// Fonction pour réessayer le paiement en initialisant directement Moneroo
+async function retryPayment(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    const retryBtn = document.getElementById('retryPaymentBtn');
+    const originalContent = retryBtn ? retryBtn.innerHTML : '';
+    
+    if (retryBtn) {
+        retryBtn.disabled = true;
+        retryBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Initialisation du paiement...';
+    }
+    
+    try {
+        // Récupérer les informations du panier
+        const response = await fetch('{{ route("cart.summary") }}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Impossible de récupérer les informations du panier');
+        }
+        
+        const cartData = await response.json();
+        
+        if (!cartData.success || !cartData.total || cartData.total <= 0) {
+            // Si le panier est vide, rediriger vers le panier
+            alert('Votre panier est vide. Veuillez ajouter des cours avant de procéder au paiement.');
+            window.location.href = '{{ route("cart.index") }}';
+            return;
+        }
+        
+        const totalAmount = cartData.total;
+        const currency = '{{ config("services.moneroo.default_currency", "USD") }}';
+        
+        console.log('Réessai du paiement Moneroo avec:', { amount: totalAmount, currency });
+        
+        // Initier le paiement Moneroo
+        const paymentResponse = await fetch('{{ route("moneroo.initiate") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                amount: totalAmount,
+                currency: currency,
+                _token: '{{ csrf_token() }}'
+            })
+        });
+        
+        if (!paymentResponse.ok) {
+            const errorData = await paymentResponse.json().catch(() => ({ message: 'Erreur serveur' }));
+            throw new Error(errorData.message || `Erreur HTTP ${paymentResponse.status}`);
+        }
+        
+        const data = await paymentResponse.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Erreur lors de l\'initialisation du paiement');
+        }
+        
+        // Récupérer l'URL de checkout Moneroo
+        const redirectUrl = data.checkout_url 
+                         || data.data?.checkout_url
+                         || data.redirect_url 
+                         || data.data?.redirect_url
+                         || data.authorizationUrl 
+                         || data.authorization_url
+                         || data.payment_url
+                         || data.url;
+        
+        if (redirectUrl) {
+            console.log('Redirection vers Moneroo checkout:', redirectUrl);
+            window.location.replace(redirectUrl);
+            return;
+        } else {
+            throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo');
+        }
+        
+    } catch (error) {
+        console.error('Erreur lors du réessai de paiement:', error);
+        alert('Erreur: ' + (error.message || 'Une erreur est survenue') + '\n\nVeuillez réessayer ou contacter le support.');
+        
+        // Réactiver le bouton
+        if (retryBtn) {
+            retryBtn.disabled = false;
+            retryBtn.innerHTML = originalContent;
+        }
+    }
+}
+</script>
 @endsection
 
