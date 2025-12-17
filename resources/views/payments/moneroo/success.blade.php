@@ -7,17 +7,17 @@
 {{-- SÉCURITÉ: Redirection automatique si aucune commande n'est fournie --}}
 @if(!isset($order) && !isset($processing_warning))
     <script>
-        // Rediriger immédiatement vers les commandes
-        window.location.href = "{{ route('orders.index') }}";
+        // Rediriger immédiatement vers la page d'échec
+        window.location.href = "{{ route('moneroo.failed') }}";
     </script>
     
     <div class="container py-5">
         <div class="alert alert-warning text-center">
             <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
             <h4>⚠️ Impossible de retrouver votre commande</h4>
-            <p>Redirection en cours vers vos commandes...</p>
-            <a href="{{ route('orders.index') }}" class="btn btn-primary mt-3">
-                <i class="fas fa-list me-2"></i>Voir mes commandes
+            <p>Redirection en cours...</p>
+            <a href="{{ route('moneroo.failed') }}" class="btn btn-danger mt-3">
+                <i class="fas fa-times me-2"></i>Retour
             </a>
         </div>
     </div>

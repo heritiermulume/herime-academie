@@ -1051,8 +1051,8 @@ class MonerooController extends Controller
                         'ip' => $request->ip(),
                     ]);
                     
-                    return redirect()->route('orders.index')->with('error', 
-                        'Vous n\'avez pas l\'autorisation d\'accéder à cette commande.'
+                    return redirect()->route('moneroo.failed')->with('error', 
+                        'Accès non autorisé. Veuillez vérifier votre paiement.'
                     );
                 }
                 
@@ -1220,16 +1220,9 @@ class MonerooController extends Controller
             'user_agent' => $request->userAgent(),
         ]);
 
-        // Rediriger vers la liste des commandes avec un message approprié
-        if (auth()->check()) {
-            return redirect()->route('orders.index')->with('warning', 
-                'Impossible de retrouver les détails de votre paiement. Veuillez vérifier vos commandes ci-dessous.'
-            );
-        }
-
-        // Si non authentifié, rediriger vers la page d'accueil
-        return redirect()->route('home')->with('error', 
-            'Session expirée. Veuillez vous reconnecter pour vérifier votre paiement.'
+        // Rediriger vers la page d'échec pour que l'utilisateur puisse réessayer
+        return redirect()->route('moneroo.failed')->with('error', 
+            'Impossible de retrouver les détails de votre paiement. Veuillez réessayer.'
         );
     }
 

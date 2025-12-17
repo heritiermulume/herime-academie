@@ -140,22 +140,70 @@
             <h1 class="result-title">Paiement échoué</h1>
             <p class="result-subtitle">Votre transaction n'a pas pu être effectuée.</p>
 
+            {{-- Afficher le message d'erreur de la session --}}
+            @if(session('error'))
+            <div class="error-info mb-3">
+                <i class="fas fa-times-circle"></i>
+                <strong>Erreur :</strong><br>
+                {{ session('error') }}
+            </div>
+            @endif
+
+            @if(session('warning'))
+            <div class="error-info mb-3" style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); border-color: #ffc107;">
+                <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+                <strong>Attention :</strong><br>
+                {{ session('warning') }}
+            </div>
+            @endif
+
             <div class="error-info">
-                <i class="fas fa-exclamation-triangle"></i>
+                <i class="fas fa-info-circle"></i>
                 <strong>Que s'est-il passé ?</strong><br>
-                Le paiement a été annulé ou a échoué. Vérifiez que vous avez suffisamment de fonds dans votre portefeuille mobile money et réessayez. Si le problème persiste, contactez le support.
+                Le paiement a été annulé ou a échoué. Voici quelques raisons possibles :
+                <ul class="mt-2 mb-0">
+                    <li>Solde insuffisant dans votre portefeuille mobile money</li>
+                    <li>Transaction refusée par l'opérateur</li>
+                    <li>Délai de paiement dépassé</li>
+                    <li>Problème de connexion réseau</li>
+                </ul>
+            </div>
+
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-lightbulb me-2"></i>
+                <strong>Conseil :</strong> Vérifiez votre solde et réessayez. Si le problème persiste, contactez notre support.
             </div>
 
             <div class="action-buttons">
+                @auth
                 <a href="{{ route('cart.checkout') }}" class="btn btn-primary-custom">
                     <i class="fas fa-redo me-2"></i>Réessayer le paiement
                 </a>
                 <a href="{{ route('cart.index') }}" class="btn btn-outline-custom">
                     <i class="fas fa-shopping-cart me-2"></i>Revenir au panier
                 </a>
+                @endauth
+                
                 <a href="{{ route('home') }}" class="btn btn-outline-custom">
                     <i class="fas fa-home me-2"></i>Retour à l'accueil
                 </a>
+                
+                @auth
+                <a href="{{ route('orders.index') }}" class="btn btn-outline-custom">
+                    <i class="fas fa-list me-2"></i>Mes commandes
+                </a>
+                @endauth
+            </div>
+
+            {{-- Section d'aide supplémentaire --}}
+            <div class="mt-4 text-center">
+                <p class="text-muted">
+                    <i class="fas fa-question-circle me-1"></i>
+                    Besoin d'aide ? 
+                    <a href="mailto:support@herime-academie.com" class="text-primary">
+                        Contactez notre support
+                    </a>
+                </p>
             </div>
         </div>
     </div>
