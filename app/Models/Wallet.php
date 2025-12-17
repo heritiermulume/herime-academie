@@ -15,7 +15,9 @@ class Wallet extends Model
         'user_id',
         'currency',
         'balance',
-        'pending_balance',
+        'available_balance',
+        'held_balance',
+        'reserved_balance',
         'total_earned',
         'total_withdrawn',
         'is_active',
@@ -24,7 +26,9 @@ class Wallet extends Model
 
     protected $casts = [
         'balance' => 'decimal:2',
-        'pending_balance' => 'decimal:2',
+        'available_balance' => 'decimal:2',
+        'held_balance' => 'decimal:2',
+        'reserved_balance' => 'decimal:2',
         'total_earned' => 'decimal:2',
         'total_withdrawn' => 'decimal:2',
         'is_active' => 'boolean',
@@ -56,7 +60,23 @@ class Wallet extends Model
     }
 
     /**
-     * Créditer le wallet
+     * Relation : Le wallet a plusieurs holds (périodes de blocage)
+     */
+    public function holds(): HasMany
+    {
+        return $this->hasMany(WalletHold::class);
+    }
+
+    /**
+     * Relation : Holds actifs
+     */
+    public function activeHolds(): HasMany
+    {
+        return $this->hasMany(WalletHold::class)->where('status', 'held');
+    }
+
+    /**
+     * Créditer le wallet (directement disponible)
      */
     public function credit(float $amount, string $type, string $description = null, $transactionable = null, array $metadata = []): WalletTransaction
     {
@@ -64,6 +84,7 @@ class Wallet extends Model
         try {
             $balanceBefore = $this->balance;
             $this->balance += $amount;
+            $this->available_balance += $amount;
             $this->total_earned += $amount;
             $this->last_transaction_at = now();
             $this->save();
@@ -91,18 +112,97 @@ class Wallet extends Model
     }
 
     /**
+     * Créditer le wallet avec période de blocage (holding period)
+     */
+    public function creditWithHold(
+        float $amount, 
+        string $type, 
+        int $holdingDays = null, 
+        string $description = null, 
+        $transactionable = null, 
+        array $metadata = []
+    ): array {
+        \DB::beginTransaction();
+        try {
+            // Utiliser le délai configuré ou le délai par défaut (7 jours)
+            if ($holdingDays === null) {
+                $holdingDays = (int) config('wallet.holding_period_days', 7);
+            }
+
+            $balanceBefore = $this->balance;
+            
+            // Augmenter le solde total et le solde bloqué
+            $this->balance += $amount;
+            $this->held_balance += $amount;
+            $this->total_earned += $amount;
+            $this->last_transaction_at = now();
+            $this->save();
+
+            // Créer la transaction
+            $transaction = $this->transactions()->create([
+                'type' => $type,
+                'amount' => $amount,
+                'currency' => $this->currency,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $this->balance,
+                'status' => 'completed',
+                'description' => $description . ' (Disponible dans ' . $holdingDays . ' jours)',
+                'reference' => $this->generateReference(),
+                'transactionable_type' => $transactionable ? get_class($transactionable) : null,
+                'transactionable_id' => $transactionable ? $transactionable->id : null,
+                'metadata' => array_merge($metadata, [
+                    'holding_period_days' => $holdingDays,
+                    'held' => true,
+                ]),
+            ]);
+
+            // Créer le hold
+            $hold = $this->holds()->create([
+                'wallet_transaction_id' => $transaction->id,
+                'amount' => $amount,
+                'currency' => $this->currency,
+                'reason' => $type,
+                'description' => $description,
+                'held_at' => now(),
+                'held_until' => now()->addDays($holdingDays),
+                'status' => 'held',
+                'metadata' => $metadata,
+            ]);
+
+            \DB::commit();
+            
+            \Log::info('Crédit avec hold créé', [
+                'wallet_id' => $this->id,
+                'amount' => $amount,
+                'holding_days' => $holdingDays,
+                'held_until' => $hold->held_until,
+            ]);
+
+            return [
+                'transaction' => $transaction,
+                'hold' => $hold,
+            ];
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            throw $e;
+        }
+    }
+
+    /**
      * Débiter le wallet
      */
     public function debit(float $amount, string $type, string $description = null, $transactionable = null, array $metadata = []): WalletTransaction
     {
         \DB::beginTransaction();
         try {
-            if ($this->balance < $amount) {
-                throw new \Exception("Solde insuffisant. Vous avez {$this->balance} {$this->currency}, mais vous essayez de retirer {$amount} {$this->currency}.");
+            // Vérifier le solde DISPONIBLE (pas le solde total)
+            if ($this->available_balance < $amount) {
+                throw new \Exception("Solde disponible insuffisant. Vous avez {$this->available_balance} {$this->currency} disponibles, mais vous essayez de retirer {$amount} {$this->currency}.");
             }
 
             $balanceBefore = $this->balance;
             $this->balance -= $amount;
+            $this->available_balance -= $amount;
             $this->total_withdrawn += $amount;
             $this->last_transaction_at = now();
             $this->save();
@@ -138,11 +238,28 @@ class Wallet extends Model
     }
 
     /**
-     * Vérifier si le wallet a suffisamment de solde
+     * Vérifier si le wallet a suffisamment de solde DISPONIBLE
      */
     public function hasBalance(float $amount): bool
     {
-        return $this->balance >= $amount;
+        return $this->available_balance >= $amount;
+    }
+
+    /**
+     * Libérer tous les holds éligibles
+     */
+    public function releaseExpiredHolds(): int
+    {
+        $releasedCount = 0;
+        $holds = $this->holds()->releasable()->get();
+
+        foreach ($holds as $hold) {
+            if ($hold->release()) {
+                $releasedCount++;
+            }
+        }
+
+        return $releasedCount;
     }
 
     /**

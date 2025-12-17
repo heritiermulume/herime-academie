@@ -180,10 +180,15 @@ class WalletController extends Controller
         $user = Auth::user();
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
-        // Vérifier que le wallet a suffisamment de solde
+        // Vérifier que le wallet a suffisamment de solde DISPONIBLE
         if (!$wallet->hasBalance($request->amount)) {
+            $heldInfo = '';
+            if ($wallet->held_balance > 0) {
+                $heldInfo = " Vous avez {$wallet->held_balance} {$wallet->currency} en période de blocage qui seront bientôt disponibles.";
+            }
+            
             return redirect()->back()
-                ->with('error', "Solde insuffisant. Vous avez {$wallet->formatted_balance}, mais vous essayez de retirer {$request->amount} {$request->currency}.")
+                ->with('error', "Solde disponible insuffisant. Vous avez {$wallet->available_balance} {$wallet->currency} disponibles, mais vous essayez de retirer {$request->amount} {$request->currency}.{$heldInfo}")
                 ->withInput();
         }
 

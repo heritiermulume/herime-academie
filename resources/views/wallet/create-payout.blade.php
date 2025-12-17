@@ -7,10 +7,17 @@
 <div class="payout-form-container">
     <div class="wallet-balance-info">
         <div class="balance-card">
-            <i class="fas fa-wallet fa-2x mb-3"></i>
-            <h4>Solde disponible</h4>
-            <div class="balance-amount">{{ number_format($wallet->balance, 2) }} {{ $wallet->currency }}</div>
-            <p class="text-muted mt-2">Montant minimum de retrait : 5 {{ $wallet->currency }}</p>
+            <i class="fas fa-hand-holding-usd fa-2x mb-3"></i>
+            <h4>Solde disponible au retrait</h4>
+            <div class="balance-amount">{{ number_format($wallet->available_balance, 2) }} {{ $wallet->currency }}</div>
+            <p class="text-muted mt-2">Montant minimum de retrait : {{ config('wallet.minimum_payout_amount', 5) }} {{ $wallet->currency }}</p>
+            
+            @if($wallet->held_balance > 0)
+            <div class="held-balance-info">
+                <i class="fas fa-lock me-1"></i>
+                <span>{{ number_format($wallet->held_balance, 2) }} {{ $wallet->currency }} en période de blocage</span>
+            </div>
+            @endif
         </div>
     </div>
 
@@ -342,20 +349,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Validation du formulaire
     const form = document.getElementById('payoutForm');
     const amountInput = document.getElementById('amount');
-    const maxBalance = parseFloat('{{ $wallet->balance }}');
+    const maxBalance = parseFloat('{{ $wallet->available_balance }}');
+    const heldBalance = parseFloat('{{ $wallet->held_balance }}');
+    const minPayout = parseFloat('{{ config("wallet.minimum_payout_amount", 5) }}');
 
     form.addEventListener('submit', function(e) {
         const amount = parseFloat(amountInput.value);
         
-        if (isNaN(amount) || amount < 5) {
+        if (isNaN(amount) || amount < minPayout) {
             e.preventDefault();
-            alert('Le montant minimum de retrait est de 5 {{ $wallet->currency }}');
+            alert('Le montant minimum de retrait est de ' + minPayout + ' {{ $wallet->currency }}');
             return;
         }
         
         if (amount > maxBalance) {
             e.preventDefault();
-            alert('Le montant demandé dépasse votre solde disponible (' + maxBalance.toFixed(2) + ' {{ $wallet->currency }})');
+            let message = 'Le montant demandé dépasse votre solde disponible (' + maxBalance.toFixed(2) + ' {{ $wallet->currency }})';
+            if (heldBalance > 0) {
+                message += '\n\nVous avez ' + heldBalance.toFixed(2) + ' {{ $wallet->currency }} en période de blocage qui seront bientôt disponibles.';
+            }
+            alert(message);
             return;
         }
 
@@ -399,6 +412,17 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 2.5rem;
     font-weight: 700;
     margin: 1rem 0;
+}
+
+.held-balance-info {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .payout-form-card {
