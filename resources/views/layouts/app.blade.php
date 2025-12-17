@@ -4828,6 +4828,9 @@
     @stack('scripts')
     
     <!-- Moneroo Failure Detector - Détecte les erreurs de paiement et envoie les notifications -->
+    <!-- Chargé uniquement sur les pages de paiement pour éviter les logs inutiles -->
+    @if(request()->is('moneroo/*') || request()->is('cart') || request()->is('cart/*'))
     <script src="{{ asset('js/moneroo-failure-detector.js') }}"></script>
+    @endif
 </body>
 </html>

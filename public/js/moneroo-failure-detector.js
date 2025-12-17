@@ -20,7 +20,7 @@
         checkInterval: 2000, // Vérifier toutes les 2 secondes
         maxChecks: 30, // Maximum 30 vérifications (1 minute)
         reportEndpoint: '/moneroo/report-failure',
-        debug: true, // Activer les logs en développement
+        debug: false, // Désactiver les logs en production
     };
     
     let checkCount = 0;
