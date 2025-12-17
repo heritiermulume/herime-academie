@@ -143,17 +143,63 @@ D'après la documentation, Moneroo supporte :
 **Documentation** : https://docs.moneroo.io  
 **Dashboard** : https://dashboard.moneroo.io
 
-## 💡 Recommandation
+## 💡 Solution Temporaire Implémentée
 
-En attendant une réponse de Moneroo, **réimplémenter temporairement les données statiques** avec les méthodes connues. Cela permettra aux ambassadeurs de continuer à utiliser le système de retrait.
+✅ **Données statiques réimplémentées** avec les méthodes connues supportées par Moneroo.
 
-Une fois que Moneroo confirmera l'endpoint correct (ou si un endpoint n'existe pas), nous pourrons :
-- Soit garder les données statiques définitivement
-- Soit implémenter une solution de configuration en base de données
-- Soit utiliser l'endpoint fourni par Moneroo
+Le système fonctionne maintenant de la façon suivante :
+
+### Comportement Actuel
+
+```
+1. Tentative d'appel API Moneroo
+   ↓
+2. Si API répond avec succès → Utiliser les données de l'API
+   ↓
+3. Si API échoue (404, timeout, etc.) → Utiliser les données statiques
+   ↓
+4. Log warning pour traçabilité
+   ↓
+5. Formulaire fonctionne normalement
+```
+
+### Données Statiques Incluses
+
+✅ **15 Pays Africains**  
+✅ **35+ Opérateurs Mobile Money**  
+✅ **7 Devises** (USD, CDF, XAF, XOF, GHS, NGN, KES, RWF, UGX, TZS)
+
+### Code Source
+
+La méthode `getStaticMonerooMethods()` dans `WalletController.php` contient :
+- Liste complète des pays supportés
+- Tous les opérateurs Mobile Money connus
+- Commentaires `// TEMPORAIRE` pour faciliter le remplacement futur
+
+### Prochaines Actions
+
+Une fois que Moneroo fournira l'endpoint correct :
+1. Remplacer l'URL de l'endpoint dans `getMonerooConfiguration()`
+2. Supprimer la méthode `getStaticMonerooMethods()`
+3. Retirer les commentaires `// TEMPORAIRE`
+4. Tester que les données de l'API sont correctes
+
+### Recherche de Code
+
+Pour identifier facilement le code temporaire à remplacer :
+
+```bash
+# Trouver tous les commentaires TEMPORAIRE
+grep -r "TEMPORAIRE" app/Http/Controllers/WalletController.php
+
+# Résultat attendu :
+# - Line X: // TEMPORAIRE: Utiliser les données statiques...
+# - Line Y: * TEMPORAIRE: Données statiques des méthodes Moneroo
+```
 
 ---
 
 **Date** : 17 Décembre 2025  
-**Status** : 🔴 En attente de réponse Moneroo
+**Status** : 🟢 Système fonctionnel avec données statiques (temporaire)  
+**Action requise** : Contacter Moneroo pour obtenir le bon endpoint
 

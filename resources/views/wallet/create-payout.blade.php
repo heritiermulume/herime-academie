@@ -78,18 +78,11 @@
             @if(empty($countries) && empty($providers))
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Erreur de connexion à l'API Moneroo</strong>
-                    <p class="mb-2 mt-2">Impossible de charger les méthodes de paiement.</p>
-                    
-                    @if(isset($monerooData['error']))
-                        <p class="mb-2"><strong>Détail:</strong> {{ $monerooData['error'] }}</p>
-                    @endif
-                    
-                    <hr class="my-2">
+                    <strong>Impossible de charger les méthodes de paiement</strong>
+                    <p class="mb-2 mt-2">Le système ne peut pas récupérer les méthodes de paiement. Veuillez contacter le support.</p>
                     <p class="mb-0 small">
                         <i class="fas fa-info-circle me-1"></i>
-                        Vérifiez que votre <code>MONEROO_API_KEY</code> est correctement configurée dans le fichier <code>.env</code>
-                        et que l'API Moneroo est accessible.
+                        Email : academie@herime.com
                     </p>
                 </div>
             @endif
