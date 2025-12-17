@@ -10,7 +10,7 @@
             <i class="fas fa-hand-holding-usd fa-2x mb-3"></i>
             <h4>Solde disponible au retrait</h4>
             <div class="balance-amount">{{ number_format($wallet->available_balance, 2) }} {{ $wallet->currency }}</div>
-            <p class="text-muted mt-2">Montant minimum de retrait : {{ \App\Models\Setting::get('wallet_minimum_payout_amount', 5) }} {{ $wallet->currency }}</p>
+            <p class="text-white mt-2" style="opacity: 0.9;">Montant minimum de retrait : {{ \App\Models\Setting::get('wallet_minimum_payout_amount', 5) }} {{ $wallet->currency }}</p>
             
             @if($wallet->held_balance > 0)
             <div class="held-balance-info">
