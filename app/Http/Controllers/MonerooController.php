@@ -425,20 +425,8 @@ class MonerooController extends Controller
                 ]);
                 $order->update(['status' => 'cancelled']);
                 
-                // Charger les relations nécessaires pour l'email
-                $order->load(['user', 'orderItems.course', 'payments']);
-                
-                // Envoyer l'email d'échec de paiement
-                try {
-                    if ($order->user && $order->user->email) {
-                        $mailable = new PaymentFailedMail($order, $failureReason);
-                        $communicationService = app(\App\Services\CommunicationService::class);
-                        $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
-                        \Log::info("Email d'échec d'initialisation envoyé pour la commande {$order->order_number} à {$order->user->email}");
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("Erreur lors de l'envoi de l'email d'échec d'initialisation pour la commande {$order->id}: " . $e->getMessage());
-                }
+                // Envoyer email ET notification d'échec
+                $this->sendPaymentFailureNotifications($order, $failureReason);
                 
                 return response()->json([
                     'success' => false,
@@ -540,20 +528,8 @@ class MonerooController extends Controller
             ]);
             $order->update(['status' => 'cancelled']);
             
-            // Charger les relations nécessaires pour l'email
-            $order->load(['user', 'orderItems.course', 'payments']);
-            
-            // Envoyer l'email d'échec de paiement
-            try {
-                if ($order->user && $order->user->email) {
-                    $mailable = new PaymentFailedMail($order, $failureReason);
-                    $communicationService = app(\App\Services\CommunicationService::class);
-                    $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
-                    \Log::info("Email d'échec technique envoyé pour la commande {$order->order_number} à {$order->user->email}");
-                }
-            } catch (\Exception $emailException) {
-                \Log::error("Erreur lors de l'envoi de l'email d'échec technique pour la commande {$order->id}: " . $emailException->getMessage());
-            }
+            // Envoyer email ET notification d'échec
+            $this->sendPaymentFailureNotifications($order, $failureReason);
             
             return response()->json([
                 'success' => false,
@@ -723,23 +699,8 @@ class MonerooController extends Controller
                     $payment->order->update(['status' => 'cancelled']);
                 }
                 
-                // Charger les relations nécessaires pour l'email
-                $payment->order->load(['user', 'orderItems.course', 'payments']);
-                
-                // Envoyer l'email d'échec de paiement
-                try {
-                    if ($payment->order->user && $payment->order->user->email) {
-                        $mailable = new PaymentFailedMail($payment->order, $failureReason);
-                        $communicationService = app(\App\Services\CommunicationService::class);
-                        $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
-                        \Log::info("Email d'échec de paiement envoyé pour la commande {$payment->order->order_number} à {$payment->order->user->email}", [
-                            'failure_reason' => $failureReason,
-                            'status' => $status,
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("Erreur lors de l'envoi de l'email d'échec de paiement pour la commande {$payment->order->id}: " . $e->getMessage());
-                }
+                // Envoyer email ET notification d'échec
+                $this->sendPaymentFailureNotifications($payment->order, $failureReason);
                 
                 \Log::info('Moneroo: Order cancelled after failed payment', [
                     'order_id' => $payment->order->id,
@@ -854,20 +815,8 @@ class MonerooController extends Controller
             if ($payment->order) {
                 $payment->order->update(['status' => 'cancelled']);
                 
-                // Charger les relations nécessaires pour l'email
-                $payment->order->load(['user', 'orderItems.course', 'payments']);
-                
-                // Envoyer l'email d'annulation de paiement
-                try {
-                    if ($payment->order->user && $payment->order->user->email) {
-                        $mailable = new PaymentFailedMail($payment->order, $failureReason);
-                        $communicationService = app(\App\Services\CommunicationService::class);
-                        $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
-                        \Log::info("Email d'annulation envoyé pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("Erreur lors de l'envoi de l'email d'annulation pour la commande {$payment->order->id}: " . $e->getMessage());
-                }
+                // Envoyer email ET notification d'échec
+                $this->sendPaymentFailureNotifications($payment->order, $failureReason);
             }
             
             \Log::info('Moneroo: Payment cancelled by user', [
@@ -1201,23 +1150,8 @@ class MonerooController extends Controller
                             $payment->order->update(['status' => 'cancelled']);
                         }
                         
-                        // Charger les relations nécessaires pour l'email
-                        $payment->order->load(['user', 'orderItems.course', 'payments']);
-                        
-                        // Envoyer l'email d'échec de paiement
-                        try {
-                            if ($payment->order->user && $payment->order->user->email) {
-                                $mailable = new PaymentFailedMail($payment->order, $failureReason);
-                        $communicationService = app(\App\Services\CommunicationService::class);
-                        $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
-                                \Log::info("Email d'échec envoyé sur redirect pour la commande {$payment->order->order_number} à {$payment->order->user->email}", [
-                                    'failure_reason' => $failureReason,
-                                    'status' => $status,
-                                ]);
-                            }
-                        } catch (\Exception $e) {
-                            \Log::error("Erreur lors de l'envoi de l'email d'échec sur redirect pour la commande {$payment->order->id}: " . $e->getMessage());
-                        }
+                        // Envoyer email ET notification d'échec
+                        $this->sendPaymentFailureNotifications($payment->order, $failureReason);
                         
                         \Log::warning('Moneroo: Redirected to failed page', [
                             'payment_id' => $paymentId,
@@ -1288,20 +1222,8 @@ class MonerooController extends Controller
                     $payment->order->update(['status' => 'cancelled']);
                 }
 
-                // Charger les relations nécessaires pour l'email
-                $payment->order->load(['user', 'orderItems.course', 'payments']);
-                
-                // Envoyer l'email d'échec de paiement (vérifier qu'il n'a pas déjà été envoyé)
-                try {
-                    if ($payment->order->user && $payment->order->user->email) {
-                        $mailable = new PaymentFailedMail($payment->order, $failureReason);
-                        $communicationService = app(\App\Services\CommunicationService::class);
-                        $communicationService->sendEmailAndWhatsApp($payment->order->user, $mailable);
-                        \Log::info("Email d'échec envoyé sur failedRedirect pour la commande {$payment->order->order_number} à {$payment->order->user->email}");
-                    }
-                } catch (\Exception $e) {
-                    \Log::error("Erreur lors de l'envoi de l'email d'échec sur failedRedirect pour la commande {$payment->order->id}: " . $e->getMessage());
-                }
+                // Envoyer email ET notification d'échec
+                $this->sendPaymentFailureNotifications($payment->order, $failureReason);
 
                 \Log::info('Moneroo: Order/payment marked cancelled/failed on failed redirect', [
                     'payment_id' => $paymentId,
@@ -1423,6 +1345,102 @@ class MonerooController extends Controller
         }
     }
 
+    /**
+     * Envoyer les notifications d'échec de paiement (Email + Notification in-app)
+     * 
+     * Cette méthode centralise l'envoi des emails et notifications pour tous les cas d'échec:
+     * - Échec d'initialisation
+     * - Solde insuffisant
+     * - Carte rejetée
+     * - Paiement annulé
+     * - Délai expiré
+     * - Erreur technique
+     * - Annulation automatique
+     * 
+     * @param Order $order La commande concernée
+     * @param string|null $failureReason La raison de l'échec
+     * @return void
+     */
+    private function sendPaymentFailureNotifications(Order $order, ?string $failureReason = null): void
+    {
+        try {
+            // Charger les relations nécessaires si pas déjà chargées
+            if (!$order->relationLoaded('user')) {
+                $order->load('user');
+            }
+            if (!$order->relationLoaded('orderItems')) {
+                $order->load('orderItems.course');
+            }
+            if (!$order->relationLoaded('payments')) {
+                $order->load('payments');
+            }
+
+            $user = $order->user;
+
+            if (!$user || !$user->email) {
+                \Log::warning("Impossible d'envoyer les notifications d'échec: utilisateur ou email manquant", [
+                    'order_id' => $order->id,
+                    'user_id' => $order->user_id,
+                ]);
+                return;
+            }
+
+            // Raison d'échec par défaut si non fournie
+            $failureReason = $failureReason ?? 'Le paiement n\'a pas pu être complété';
+
+            // 1. Envoyer l'email ET WhatsApp d'échec
+            try {
+                $mailable = new PaymentFailedMail($order, $failureReason);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                \Log::info("Email et WhatsApp d'échec envoyés pour la commande {$order->order_number}", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'failure_reason' => $failureReason,
+                ]);
+            } catch (\Exception $emailException) {
+                \Log::error("Erreur lors de l'envoi de l'email d'échec", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $emailException->getMessage(),
+                    'trace' => $emailException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer le processus
+            }
+
+            // 2. Envoyer la notification in-app (pour la navbar)
+            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+            try {
+                Notification::sendNow($user, new \App\Notifications\PaymentFailed($order, $failureReason));
+                
+                \Log::info("Notification PaymentFailed envoyée à l'utilisateur {$user->id} pour la commande {$order->id}", [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'failure_reason' => $failureReason,
+                ]);
+            } catch (\Exception $notifException) {
+                \Log::error("Erreur lors de l'envoi de la notification PaymentFailed", [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'error' => $notifException->getMessage(),
+                    'trace' => $notifException->getTraceAsString(),
+                ]);
+                // Ne pas relancer l'exception pour ne pas bloquer le processus
+            }
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'envoi des notifications d'échec de paiement", [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
     private function autoCancelStale(int $userId): void
     {
         $timeoutMinutes = (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30));
@@ -1441,18 +1459,9 @@ class MonerooController extends Controller
                     'failure_reason' => 'Annulation automatique après délai',
                 ]);
             
-            // Envoyer l'email d'annulation automatique
-            try {
-                if ($order->user && $order->user->email) {
-                    $failureReason = 'Annulation automatique après délai d\'attente';
-                    $mailable = new PaymentFailedMail($order, $failureReason);
-                    $communicationService = app(\App\Services\CommunicationService::class);
-                    $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
-                    \Log::info("Email d'annulation automatique envoyé pour la commande {$order->order_number} à {$order->user->email}");
-                }
-            } catch (\Exception $e) {
-                \Log::error("Erreur lors de l'envoi de l'email d'annulation automatique pour la commande {$order->id}: " . $e->getMessage());
-            }
+            // Envoyer email ET notification d'annulation automatique
+            $failureReason = 'Annulation automatique après délai d\'attente';
+            $this->sendPaymentFailureNotifications($order, $failureReason);
         }
     }
 

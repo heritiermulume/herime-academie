@@ -315,7 +315,7 @@ class PaymentController extends Controller
             $order->load(['user', 'orderItems.course', 'payments']);
             
             // Envoyer l'email d'échec de paiement
-            $this->sendPaymentFailureEmail($order, $failureReason);
+            $this->sendPaymentFailureNotifications($order, $failureReason);
             
             return redirect()->route('payments.cancel', ['order_id' => $orderId]);
             
@@ -472,7 +472,7 @@ class PaymentController extends Controller
             $order->load(['user', 'orderItems.course', 'payments']);
             
             // Envoyer l'email d'échec de paiement
-            $this->sendPaymentFailureEmail($order, $failureReason);
+            $this->sendPaymentFailureNotifications($order, $failureReason);
         }
     }
 
@@ -683,9 +683,11 @@ class PaymentController extends Controller
     }
 
     /**
-     * Envoyer l'email d'échec de paiement
+     * Envoyer les notifications d'échec de paiement (Email + Notification in-app)
+     * 
+     * Cette méthode centralise l'envoi des emails et notifications pour tous les cas d'échec
      */
-    private function sendPaymentFailureEmail(Order $order, ?string $failureReason = null)
+    private function sendPaymentFailureNotifications(Order $order, ?string $failureReason = null): void
     {
         try {
             // Charger les relations nécessaires si pas déjà chargées
@@ -695,19 +697,42 @@ class PaymentController extends Controller
 
             // Vérifier que l'utilisateur existe et a un email
             if (!$order->user || !$order->user->email) {
-                \Log::warning("Impossible d'envoyer l'email d'échec : utilisateur ou email manquant pour la commande {$order->id}");
+                \Log::warning("Impossible d'envoyer les notifications d'échec : utilisateur ou email manquant pour la commande {$order->id}");
                 return;
             }
 
-            // Envoyer l'email d'échec de manière synchrone (immédiate)
-            $mailable = new PaymentFailedMail($order, $failureReason);
-            $communicationService = app(\App\Services\CommunicationService::class);
-            $communicationService->sendEmailAndWhatsApp($order->user, $mailable);
+            $user = $order->user;
+            $failureReason = $failureReason ?? 'Le paiement n\'a pas pu être complété';
 
-            \Log::info("Email d'échec de paiement envoyé pour la commande {$order->order_number} à {$order->user->email}");
+            // 1. Envoyer l'email ET WhatsApp d'échec
+            try {
+                $mailable = new PaymentFailedMail($order, $failureReason);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                \Log::info("Email et WhatsApp d'échec envoyés pour la commande {$order->order_number}", [
+                    'order_id' => $order->id,
+                    'user_email' => $user->email,
+                    'failure_reason' => $failureReason,
+                ]);
+            } catch (\Exception $emailException) {
+                \Log::error("Erreur lors de l'envoi de l'email d'échec", [
+                    'order_id' => $order->id,
+                    'error' => $emailException->getMessage(),
+                ]);
+            }
+
+            // 2. Envoyer la notification in-app (pour la navbar)
+            try {
+                Notification::sendNow($user, new \App\Notifications\PaymentFailed($order, $failureReason));
+                \Log::info("Notification PaymentFailed envoyée pour la commande {$order->order_number}");
+            } catch (\Exception $notifException) {
+                \Log::error("Erreur lors de l'envoi de la notification PaymentFailed", [
+                    'order_id' => $order->id,
+                    'error' => $notifException->getMessage(),
+                ]);
+            }
         } catch (\Exception $e) {
-            // Logger l'erreur mais ne pas faire échouer le processus
-            \Log::error("Erreur lors de l'envoi de l'email d'échec de paiement pour la commande {$order->id}: " . $e->getMessage());
+            \Log::error("Erreur lors de l'envoi des notifications d'échec de paiement pour la commande {$order->id}: " . $e->getMessage());
             \Log::error("Stack trace: " . $e->getTraceAsString());
         }
     }
