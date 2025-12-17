@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\InstructorPayout;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletPayout;
 use App\Notifications\InstructorPayoutReceived;
 use App\Mail\InstructorPayoutReceivedMail;
 use Illuminate\Support\Facades\Http;
@@ -448,6 +450,391 @@ class MonerooPayoutService
         } catch (\Exception $e) {
             Log::error("Erreur lors de l'envoi de la notification/email de payout pour le payout {$payout->id}: " . $e->getMessage());
             Log::error("Stack trace: " . $e->getTraceAsString());
+        }
+    }
+
+    /**
+     * Initier un payout vers un wallet d'ambassadeur
+     * 
+     * Documentation: https://docs.moneroo.io/fr/payouts/initialiser-un-transfert
+     */
+    public function initiateWalletPayout(
+        Wallet $wallet,
+        float $amount,
+        string $currency,
+        string $phoneNumber,
+        string $method,
+        string $country,
+        string $description = null
+    ): array {
+        try {
+            $user = $wallet->user;
+            
+            if (!$user) {
+                return [
+                    'success' => false,
+                    'error' => 'Utilisateur non trouvé pour ce wallet',
+                ];
+            }
+
+            // Vérifier que le wallet a suffisamment de solde
+            if (!$wallet->hasBalance($amount)) {
+                return [
+                    'success' => false,
+                    'error' => 'Solde insuffisant',
+                    'balance' => $wallet->balance,
+                    'requested' => $amount,
+                ];
+            }
+
+            // Extraire le prénom et le nom de famille
+            $names = $this->extractNames($user->name);
+            
+            // Convertir le montant en entier selon la devise
+            $amountInteger = $this->convertAmountToInteger($amount, $currency);
+            
+            // Obtenir les champs recipient selon la méthode
+            $recipientFields = $this->getRecipientFields($method, $phoneNumber, $country);
+            
+            // Préparer le payload selon la documentation Moneroo
+            $payload = [
+                'amount' => $amountInteger,
+                'currency' => strtoupper($currency),
+                'description' => $description ?? (config('services.moneroo.company_name', 'Herime Académie') . ' - Retrait wallet'),
+                'method' => $method, // Code de la méthode (ex: mtn_cd, airtel_cd, etc.)
+                'customer' => [
+                    'email' => $user->email,
+                    'first_name' => $names['first_name'],
+                    'last_name' => $names['last_name'],
+                    'phone' => $phoneNumber,
+                    'country' => $country,
+                ],
+                'recipient' => $recipientFields,
+                'metadata' => [
+                    'user_id' => $user->id,
+                    'wallet_id' => $wallet->id,
+                    'payout_type' => 'wallet_withdrawal',
+                ],
+            ];
+
+            Log::info('Moneroo: Initiation du payout wallet', [
+                'user_id' => $user->id,
+                'wallet_id' => $wallet->id,
+                'amount' => $amountInteger,
+                'currency' => $currency,
+                'method' => $method,
+            ]);
+
+            // Créer le payout dans la base de données AVANT l'appel API
+            // Cela permet de débiter le wallet immédiatement et d'éviter les doubles demandes
+            $walletPayout = WalletPayout::create([
+                'wallet_id' => $wallet->id,
+                'amount' => $amount,
+                'currency' => $currency,
+                'status' => 'pending',
+                'method' => $method,
+                'phone' => $phoneNumber,
+                'country' => $country,
+                'description' => $description ?? 'Retrait wallet',
+                'customer_email' => $user->email,
+                'customer_first_name' => $names['first_name'],
+                'customer_last_name' => $names['last_name'],
+                'initiated_at' => now(),
+            ]);
+
+            // Débiter le wallet immédiatement
+            try {
+                $transaction = $wallet->debit(
+                    $amount,
+                    'payout',
+                    'Retrait wallet #' . $walletPayout->id,
+                    $walletPayout,
+                    ['payout_id' => $walletPayout->id, 'method' => $method]
+                );
+                
+                // Lier la transaction au payout
+                $walletPayout->wallet_transaction_id = $transaction->id;
+                $walletPayout->save();
+            } catch (\Exception $e) {
+                // Si le débit échoue, supprimer le payout et retourner l'erreur
+                $walletPayout->delete();
+                return [
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                ];
+            }
+
+            // Faire l'appel API à Moneroo
+            $response = Http::withHeaders($this->authHeaders())
+                ->post("{$this->apiUrl}/payouts/initialize", $payload);
+
+            $responseData = $response->json();
+
+            Log::info('Moneroo: Réponse de l\'API payout wallet', [
+                'status' => $response->status(),
+                'response' => $responseData,
+            ]);
+
+            // Vérifier le format de réponse Moneroo: { "success": true, "message": "...", "data": { "id": "..." } }
+            $isSuccess = $response->successful() && 
+                        isset($responseData['success']) && 
+                        $responseData['success'] === true;
+
+            $payoutData = $responseData['data'] ?? [];
+            $actualPayoutId = $payoutData['id'] ?? null;
+
+            if ($isSuccess && $actualPayoutId) {
+                // Mettre à jour le payout avec l'ID Moneroo
+                $walletPayout->update([
+                    'moneroo_id' => $actualPayoutId,
+                    'status' => 'processing',
+                    'moneroo_data' => $responseData,
+                ]);
+
+                Log::info("Payout wallet Moneroo initié avec succès", [
+                    'moneroo_id' => $actualPayoutId,
+                    'wallet_payout_id' => $walletPayout->id,
+                    'user_id' => $user->id,
+                    'amount' => $amount,
+                ]);
+
+                return [
+                    'success' => true,
+                    'payout' => $walletPayout,
+                    'moneroo_id' => $actualPayoutId,
+                    'status' => $payoutData['status'] ?? 'processing',
+                ];
+            } else {
+                // En cas d'échec, annuler le payout et rembourser le wallet
+                $failureReason = $responseData['message'] ?? 'Erreur inconnue lors de l\'initiation du payout';
+                
+                Log::error("Échec de l'initiation du payout wallet Moneroo", [
+                    'wallet_payout_id' => $walletPayout->id,
+                    'response' => $responseData,
+                    'status_code' => $response->status(),
+                ]);
+
+                // Annuler le payout (cela remboursera automatiquement le wallet)
+                $walletPayout->cancel($failureReason);
+
+                return [
+                    'success' => false,
+                    'payout' => $walletPayout,
+                    'error' => $failureReason,
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error("Exception lors de l'initiation du payout wallet Moneroo", [
+                'wallet_id' => $wallet->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Vérifier le statut d'un payout wallet
+     * 
+     * Documentation: https://docs.moneroo.io/fr/payouts/verifier-un-transfert
+     */
+    public function checkWalletPayoutStatus(string $monerooId): array
+    {
+        try {
+            // Endpoint: GET /v1/payouts/{payoutId}/verify
+            $response = Http::withHeaders($this->authHeaders())
+                ->get("{$this->apiUrl}/payouts/{$monerooId}/verify");
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                $payoutData = $responseData['data'] ?? $responseData;
+
+                // Mettre à jour le payout dans la base de données
+                $walletPayout = WalletPayout::where('moneroo_id', $monerooId)->first();
+                
+                if ($walletPayout) {
+                    $monerooStatus = $payoutData['status'] ?? null;
+                    $newStatus = $this->mapMonerooStatusToWalletPayoutStatus($monerooStatus);
+
+                    $updateData = [
+                        'status' => $newStatus,
+                        'moneroo_data' => array_merge($walletPayout->moneroo_data ?? [], $payoutData),
+                    ];
+
+                    // Mettre à jour les frais si disponibles
+                    if (isset($payoutData['fee'])) {
+                        $updateData['fee'] = $payoutData['fee'];
+                    }
+
+                    if (isset($payoutData['net_amount'])) {
+                        $updateData['net_amount'] = $payoutData['net_amount'];
+                    }
+
+                    // Mettre à jour le failure_reason si disponible
+                    if (isset($payoutData['failure_reason']) || isset($payoutData['error'])) {
+                        $updateData['failure_reason'] = $payoutData['failure_reason'] ?? $payoutData['error'];
+                    }
+
+                    // Mettre à jour completed_at ou failed_at
+                    if ($newStatus === 'completed' && !$walletPayout->completed_at) {
+                        $updateData['completed_at'] = now();
+                    } elseif ($newStatus === 'failed' && !$walletPayout->failed_at) {
+                        $updateData['failed_at'] = now();
+                        
+                        // Si le payout échoue, rembourser le wallet
+                        if ($walletPayout->status !== 'failed') {
+                            $this->refundFailedWalletPayout($walletPayout);
+                        }
+                    }
+
+                    $walletPayout->update($updateData);
+                }
+
+                return [
+                    'success' => true,
+                    'status' => $monerooStatus,
+                    'data' => $payoutData,
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'error' => 'Impossible de récupérer le statut du payout',
+                    'status_code' => $response->status(),
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error("Exception lors de la vérification du statut du payout wallet Moneroo", [
+                'moneroo_id' => $monerooId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Traiter le callback de Moneroo pour les payouts wallet
+     */
+    public function handleWalletPayoutCallback(array $callbackData): bool
+    {
+        $monerooId = $callbackData['data']['id'] ?? $callbackData['id'] ?? null;
+
+        if (!$monerooId) {
+            Log::error("Callback Moneroo wallet payout sans ID", ['data' => $callbackData]);
+            return false;
+        }
+
+        $walletPayout = WalletPayout::where('moneroo_id', $monerooId)->first();
+
+        if (!$walletPayout) {
+            Log::error("Wallet payout non trouvé pour le callback Moneroo", ['moneroo_id' => $monerooId]);
+            return false;
+        }
+
+        $payoutData = $callbackData['data'] ?? $callbackData;
+        $monerooStatus = $payoutData['status'] ?? null;
+        $newStatus = $this->mapMonerooStatusToWalletPayoutStatus($monerooStatus);
+
+        $updateData = [
+            'status' => $newStatus,
+            'moneroo_data' => array_merge($walletPayout->moneroo_data ?? [], $callbackData),
+        ];
+
+        if (isset($payoutData['fee'])) {
+            $updateData['fee'] = $payoutData['fee'];
+        }
+
+        if (isset($payoutData['net_amount'])) {
+            $updateData['net_amount'] = $payoutData['net_amount'];
+        }
+
+        if (isset($payoutData['failure_reason']) || isset($payoutData['error'])) {
+            $updateData['failure_reason'] = $payoutData['failure_reason'] ?? $payoutData['error'];
+        }
+
+        if ($newStatus === 'completed' && !$walletPayout->completed_at) {
+            $updateData['completed_at'] = now();
+        } elseif ($newStatus === 'failed' && !$walletPayout->failed_at) {
+            $updateData['failed_at'] = now();
+            
+            // Si le payout échoue, rembourser le wallet
+            if ($walletPayout->status !== 'failed') {
+                $this->refundFailedWalletPayout($walletPayout);
+            }
+        }
+
+        $walletPayout->update($updateData);
+
+        Log::info("Callback Moneroo wallet payout traité", [
+            'moneroo_id' => $monerooId,
+            'wallet_payout_id' => $walletPayout->id,
+            'status' => $monerooStatus,
+            'new_status' => $newStatus,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Mapper le statut Moneroo vers le statut local pour wallet payouts
+     */
+    private function mapMonerooStatusToWalletPayoutStatus(?string $monerooStatus): string
+    {
+        return match($monerooStatus) {
+            'pending' => 'pending',
+            'processing' => 'processing',
+            'completed', 'success' => 'completed',
+            'failed', 'error' => 'failed',
+            'cancelled' => 'cancelled',
+            default => 'pending',
+        };
+    }
+
+    /**
+     * Rembourser le wallet en cas d'échec du payout
+     */
+    private function refundFailedWalletPayout(WalletPayout $walletPayout): void
+    {
+        try {
+            $wallet = $walletPayout->wallet;
+            
+            if (!$wallet) {
+                Log::error("Wallet non trouvé pour le remboursement du payout échoué", [
+                    'wallet_payout_id' => $walletPayout->id,
+                ]);
+                return;
+            }
+
+            // Créditer le wallet du montant du payout échoué
+            $wallet->credit(
+                $walletPayout->amount,
+                'refund',
+                'Remboursement du retrait échoué #' . $walletPayout->id,
+                $walletPayout,
+                [
+                    'payout_id' => $walletPayout->id,
+                    'failure_reason' => $walletPayout->failure_reason,
+                ]
+            );
+
+            Log::info("Wallet remboursé pour le payout échoué", [
+                'wallet_payout_id' => $walletPayout->id,
+                'wallet_id' => $wallet->id,
+                'amount' => $walletPayout->amount,
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Erreur lors du remboursement du wallet pour le payout échoué", [
+                'wallet_payout_id' => $walletPayout->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
     }
 }

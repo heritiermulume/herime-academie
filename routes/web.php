@@ -298,10 +298,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Dashboard ambassadeur
         Route::get('/ambassador/dashboard', [App\Http\Controllers\AmbassadorApplicationController::class, 'dashboard'])->name('ambassador.dashboard');
         Route::get('/ambassador/analytics', [App\Http\Controllers\AmbassadorApplicationController::class, 'analytics'])->name('ambassador.analytics');
-        Route::get('/ambassador/payment-settings', [App\Http\Controllers\AmbassadorApplicationController::class, 'paymentSettings'])->name('ambassador.payment-settings');
-        Route::post('/ambassador/payment-settings', [App\Http\Controllers\AmbassadorApplicationController::class, 'updatePaymentSettings'])
-            ->middleware('sso.validate')
-            ->name('ambassador.payment-settings.update');
+        // Routes Wallet (remplace les anciennes routes payment-settings)
+        Route::get('/ambassador/payment-settings', [App\Http\Controllers\WalletController::class, 'index'])->name('ambassador.payment-settings');
+        Route::get('/wallet', [App\Http\Controllers\WalletController::class, 'index'])->name('wallet.index');
+        Route::get('/wallet/transactions', [App\Http\Controllers\WalletController::class, 'transactions'])->name('wallet.transactions');
+        Route::get('/wallet/payouts', [App\Http\Controllers\WalletController::class, 'payouts'])->name('wallet.payouts');
+        Route::get('/wallet/payout/create', [App\Http\Controllers\WalletController::class, 'createPayout'])->name('wallet.create-payout');
+        Route::post('/wallet/payout', [App\Http\Controllers\WalletController::class, 'storePayout'])->name('wallet.store-payout');
+        Route::get('/wallet/payout/{payout}', [App\Http\Controllers\WalletController::class, 'showPayout'])->name('wallet.show-payout');
+        Route::delete('/wallet/payout/{payout}', [App\Http\Controllers\WalletController::class, 'cancelPayout'])->name('wallet.cancel-payout');
+        Route::post('/wallet/payout/{payout}/check-status', [App\Http\Controllers\WalletController::class, 'checkPayoutStatus'])->name('wallet.check-payout-status');
     });
 
     // Instructor routes (only for approved instructors) - avec validation SSO pour les POST/PUT/DELETE
@@ -839,6 +845,11 @@ Route::prefix('moneroo')->name('moneroo.')->group(function () {
     // Webhook callback from Moneroo (no CSRF)
     Route::post('/webhook', [MonerooController::class, 'webhook'])
         ->name('webhook')
+        ->withoutMiddleware(['web']);
+    
+    // Webhook callback for wallet payouts from Moneroo (no CSRF)
+    Route::post('/webhook/payout', [App\Http\Controllers\WalletController::class, 'webhookPayout'])
+        ->name('webhook.payout')
         ->withoutMiddleware(['web']);
 });
 
