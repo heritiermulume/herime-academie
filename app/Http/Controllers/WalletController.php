@@ -370,8 +370,8 @@ class WalletController extends Controller
         $apiKey = config('services.moneroo.api_key');
         
         if (!$apiKey) {
-            Log::error('MONEROO_API_KEY non configurée.');
-            return ['countries' => [], 'providers' => []];
+            Log::error('MONEROO_API_KEY non configurée. Utilisation des données par défaut.');
+            return $this->getDefaultMonerooData();
         }
 
         try {
@@ -501,17 +501,270 @@ class WalletController extends Controller
                     'providers' => $providers,
                 ];
             } else {
-                Log::warning('Échec de la récupération de la configuration Moneroo', [
+                Log::warning('Échec de la récupération de la configuration Moneroo. Utilisation des données par défaut.', [
                     'status' => $response->status(),
                     'response' => $response->body(),
                 ]);
+                return $this->getDefaultMonerooData();
             }
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération de la configuration Moneroo', [
+            Log::error('Erreur lors de la récupération de la configuration Moneroo. Utilisation des données par défaut.', [
                 'error' => $e->getMessage(),
             ]);
+            return $this->getDefaultMonerooData();
         }
         
-        return ['countries' => [], 'providers' => []];
+        // Si aucune donnée n'a été retournée, utiliser les données par défaut
+        return $this->getDefaultMonerooData();
+    }
+
+    /**
+     * Obtenir les données Moneroo par défaut (fallback)
+     */
+    private function getDefaultMonerooData(): array
+    {
+        return [
+            'countries' => [
+                [
+                    'code' => 'CD',
+                    'name' => 'République Démocratique du Congo',
+                    'prefix' => '+243',
+                    'flag' => '🇨🇩',
+                    'currency' => 'USD',
+                ],
+                [
+                    'code' => 'CM',
+                    'name' => 'Cameroun',
+                    'prefix' => '+237',
+                    'flag' => '🇨🇲',
+                    'currency' => 'XAF',
+                ],
+                [
+                    'code' => 'CI',
+                    'name' => 'Côte d\'Ivoire',
+                    'prefix' => '+225',
+                    'flag' => '🇨🇮',
+                    'currency' => 'XOF',
+                ],
+                [
+                    'code' => 'SN',
+                    'name' => 'Sénégal',
+                    'prefix' => '+221',
+                    'flag' => '🇸🇳',
+                    'currency' => 'XOF',
+                ],
+                [
+                    'code' => 'ML',
+                    'name' => 'Mali',
+                    'prefix' => '+223',
+                    'flag' => '🇲🇱',
+                    'currency' => 'XOF',
+                ],
+                [
+                    'code' => 'BJ',
+                    'name' => 'Bénin',
+                    'prefix' => '+229',
+                    'flag' => '🇧🇯',
+                    'currency' => 'XOF',
+                ],
+                [
+                    'code' => 'GH',
+                    'name' => 'Ghana',
+                    'prefix' => '+233',
+                    'flag' => '🇬🇭',
+                    'currency' => 'GHS',
+                ],
+                [
+                    'code' => 'KE',
+                    'name' => 'Kenya',
+                    'prefix' => '+254',
+                    'flag' => '🇰🇪',
+                    'currency' => 'KES',
+                ],
+                [
+                    'code' => 'RW',
+                    'name' => 'Rwanda',
+                    'prefix' => '+250',
+                    'flag' => '🇷🇼',
+                    'currency' => 'RWF',
+                ],
+                [
+                    'code' => 'UG',
+                    'name' => 'Ouganda',
+                    'prefix' => '+256',
+                    'flag' => '🇺🇬',
+                    'currency' => 'UGX',
+                ],
+            ],
+            'providers' => [
+                // RDC
+                [
+                    'code' => 'vodacom_mpesa',
+                    'name' => 'Vodacom M-Pesa',
+                    'country' => 'CD',
+                    'currencies' => ['USD', 'CDF'],
+                    'currency' => 'USD',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'airtel_money',
+                    'name' => 'Airtel Money',
+                    'country' => 'CD',
+                    'currencies' => ['USD', 'CDF'],
+                    'currency' => 'USD',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'orange_money',
+                    'name' => 'Orange Money',
+                    'country' => 'CD',
+                    'currencies' => ['USD', 'CDF'],
+                    'currency' => 'USD',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'africell_money',
+                    'name' => 'Africell Money',
+                    'country' => 'CD',
+                    'currencies' => ['USD', 'CDF'],
+                    'currency' => 'USD',
+                    'logo' => '',
+                ],
+                // Cameroun
+                [
+                    'code' => 'mtn_momo',
+                    'name' => 'MTN Mobile Money',
+                    'country' => 'CM',
+                    'currencies' => ['XAF'],
+                    'currency' => 'XAF',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'orange_money',
+                    'name' => 'Orange Money',
+                    'country' => 'CM',
+                    'currencies' => ['XAF'],
+                    'currency' => 'XAF',
+                    'logo' => '',
+                ],
+                // Côte d'Ivoire
+                [
+                    'code' => 'mtn_momo',
+                    'name' => 'MTN Mobile Money',
+                    'country' => 'CI',
+                    'currencies' => ['XOF'],
+                    'currency' => 'XOF',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'orange_money',
+                    'name' => 'Orange Money',
+                    'country' => 'CI',
+                    'currencies' => ['XOF'],
+                    'currency' => 'XOF',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'moov_money',
+                    'name' => 'Moov Money',
+                    'country' => 'CI',
+                    'currencies' => ['XOF'],
+                    'currency' => 'XOF',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'wave',
+                    'name' => 'Wave',
+                    'country' => 'CI',
+                    'currencies' => ['XOF'],
+                    'currency' => 'XOF',
+                    'logo' => '',
+                ],
+                // Sénégal
+                [
+                    'code' => 'orange_money',
+                    'name' => 'Orange Money',
+                    'country' => 'SN',
+                    'currencies' => ['XOF'],
+                    'currency' => 'XOF',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'free_money',
+                    'name' => 'Free Money',
+                    'country' => 'SN',
+                    'currencies' => ['XOF'],
+                    'currency' => 'XOF',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'wave',
+                    'name' => 'Wave',
+                    'country' => 'SN',
+                    'currencies' => ['XOF'],
+                    'currency' => 'XOF',
+                    'logo' => '',
+                ],
+                // Kenya
+                [
+                    'code' => 'mpesa',
+                    'name' => 'M-Pesa',
+                    'country' => 'KE',
+                    'currencies' => ['KES'],
+                    'currency' => 'KES',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'airtel_money',
+                    'name' => 'Airtel Money',
+                    'country' => 'KE',
+                    'currencies' => ['KES'],
+                    'currency' => 'KES',
+                    'logo' => '',
+                ],
+                // Rwanda
+                [
+                    'code' => 'mtn_momo',
+                    'name' => 'MTN Mobile Money',
+                    'country' => 'RW',
+                    'currencies' => ['RWF'],
+                    'currency' => 'RWF',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'airtel_money',
+                    'name' => 'Airtel Money',
+                    'country' => 'RW',
+                    'currencies' => ['RWF'],
+                    'currency' => 'RWF',
+                    'logo' => '',
+                ],
+                // Ghana
+                [
+                    'code' => 'mtn_momo',
+                    'name' => 'MTN Mobile Money',
+                    'country' => 'GH',
+                    'currencies' => ['GHS'],
+                    'currency' => 'GHS',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'vodafone_cash',
+                    'name' => 'Vodafone Cash',
+                    'country' => 'GH',
+                    'currencies' => ['GHS'],
+                    'currency' => 'GHS',
+                    'logo' => '',
+                ],
+                [
+                    'code' => 'airtel_tigo',
+                    'name' => 'AirtelTigo Money',
+                    'country' => 'GH',
+                    'currencies' => ['GHS'],
+                    'currency' => 'GHS',
+                    'logo' => '',
+                ],
+            ],
+        ];
     }
 }
