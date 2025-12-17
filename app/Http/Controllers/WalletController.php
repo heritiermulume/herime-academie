@@ -557,7 +557,7 @@ class WalletController extends Controller
                     'name' => 'République Démocratique du Congo',
                     'prefix' => '+243',
                     'flag' => '🇨🇩',
-                    'currency' => 'USD',
+                    'currency' => 'CDF',
                 ],
                 [
                     'code' => 'CM',

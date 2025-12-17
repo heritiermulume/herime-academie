@@ -23,12 +23,12 @@
             'active' => ['ambassador.analytics'],
         ],
         [
-            'label' => 'Configuration de paiement',
-            'label_mobile' => 'Configuration',
-            'icon' => 'fas fa-money-bill-wave',
+            'label' => 'Wallet',
+            'label_mobile' => 'Wallet',
+            'icon' => 'fas fa-wallet',
             'route' => 'ambassador.payment-settings',
             'url' => route('ambassador.payment-settings'),
-            'active' => ['ambassador.payment-settings'],
+            'active' => ['ambassador.payment-settings', 'wallet.*'],
         ],
     ];
 
