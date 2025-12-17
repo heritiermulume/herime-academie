@@ -5,60 +5,8 @@
 
 @section('admin-content')
 <div class="transactions-page">
-    {{-- Filtres --}}
-    <div class="filters-card">
-        <form method="GET" action="{{ route('wallet.transactions') }}" class="filters-form">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label for="type" class="form-label">Type</label>
-                    <select name="type" id="type" class="form-select">
-                        <option value="">Tous les types</option>
-                        <option value="credit" {{ request('type') == 'credit' ? 'selected' : '' }}>Crédit</option>
-                        <option value="debit" {{ request('type') == 'debit' ? 'selected' : '' }}>Débit</option>
-                        <option value="commission" {{ request('type') == 'commission' ? 'selected' : '' }}>Commission</option>
-                        <option value="payout" {{ request('type') == 'payout' ? 'selected' : '' }}>Retrait</option>
-                        <option value="refund" {{ request('type') == 'refund' ? 'selected' : '' }}>Remboursement</option>
-                        <option value="bonus" {{ request('type') == 'bonus' ? 'selected' : '' }}>Bonus</option>
-                    </select>
-                </div>
-
-                <div class="col-md-3">
-                    <label for="status" class="form-label">Statut</label>
-                    <select name="status" id="status" class="form-select">
-                        <option value="">Tous les statuts</option>
-                        <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Complété</option>
-                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>En attente</option>
-                        <option value="failed" {{ request('status') == 'failed' ? 'selected' : '' }}>Échoué</option>
-                        <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Annulé</option>
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <label for="from" class="form-label">Du</label>
-                    <input type="date" name="from" id="from" class="form-control" value="{{ request('from') }}">
-                </div>
-
-                <div class="col-md-2">
-                    <label for="to" class="form-label">Au</label>
-                    <input type="date" name="to" id="to" class="form-control" value="{{ request('to') }}">
-                </div>
-
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-2"></i>Filtrer
-                    </button>
-                </div>
-            </div>
-
-            @if(request()->hasAny(['type', 'status', 'from', 'to']))
-            <div class="mt-3">
-                <a href="{{ route('wallet.transactions') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-times me-2"></i>Réinitialiser les filtres
-                </a>
-            </div>
-            @endif
-        </form>
-    </div>
+    {{-- Nouveau système de filtres global --}}
+    <x-wallet-filters type="transactions" :filters="request()->all()" />
 
     {{-- Solde actuel --}}
     <div class="balance-summary">
@@ -146,7 +94,6 @@
     padding: 0;
 }
 
-.filters-card,
 .balance-summary,
 .transactions-card {
     background: white;
@@ -155,18 +102,6 @@
     margin-bottom: 1.5rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.filters-form .form-label {
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 0.5rem;
-}
-
-.filters-form .form-select,
-.filters-form .form-control {
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
 }
 
 .balance-summary {

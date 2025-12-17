@@ -200,10 +200,14 @@
                         
                         <!-- Checkout Button -->
                         @auth
-                            <button type="button" class="checkout-btn" id="proceedToCheckoutBtn">
+                            <button type="button" class="checkout-btn" id="proceedToCheckoutBtn" data-can-checkout="true">
                                 <i class="fas fa-credit-card"></i>
                                 Procéder au paiement
                             </button>
+                            <small class="checkout-blocked-text" id="checkoutBlockedText" style="display: none; color: #dc3545; margin-top: 8px;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Veuillez saisir un code promo valide ou décochez la case pour continuer
+                            </small>
                         @else
                             @php
                                 $finalLoginCart = url()->full();
@@ -756,6 +760,27 @@
     text-decoration: none;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 51, 102, 0.3);
+}
+
+.checkout-btn:disabled,
+.checkout-btn[data-can-checkout="false"] {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+    cursor: not-allowed;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.checkout-btn:disabled:hover,
+.checkout-btn[data-can-checkout="false"]:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.checkout-blocked-text {
+    display: block;
+    font-size: 13px;
+    text-align: center;
+    font-weight: 500;
 }
 
 .security-badge {
@@ -1448,12 +1473,16 @@
     
     // Fonction Moneroo pour la page cart
     async function proceedToCheckoutMoneroo(event) {
-        console.log('proceedToCheckoutMoneroo() appelée depuis cart/index.blade.php', event);
-        
         // Empêcher tout comportement par défaut
         if (event) {
             event.preventDefault();
             event.stopPropagation();
+        }
+        
+        // Vérifier si le checkout est autorisé (code promo valide ou non utilisé)
+        if (!canProceedToCheckout()) {
+            showNotification('Veuillez saisir un code promo valide ou décochez la case pour continuer', 'error');
+            return false;
         }
         
         // Désactiver le bouton pour éviter les doubles clics
@@ -1469,16 +1498,12 @@
             // Utiliser directement le montant PHP depuis le backend
             const totalAmount = {{ $total ?? 0 }};
             
-            console.log('Montant du panier:', totalAmount);
-            
             if (!totalAmount || totalAmount <= 0) {
                 throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
             }
             
             // Récupérer la devise de base depuis la configuration
             const currency = '{{ config("services.moneroo.default_currency", "USD") }}';
-            
-            console.log('Initiation du paiement Moneroo avec:', { amount: totalAmount, currency });
             
             // Initier le paiement Moneroo directement
             const response = await fetch('{{ route("moneroo.initiate") }}', {
@@ -1493,13 +1518,10 @@
                     currency: currency,
                     _token: '{{ csrf_token() }}'
                 })
-            });
-            
-            console.log('Réponse HTTP:', response.status, response.statusText);
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
-                console.error('Erreur HTTP:', errorData);
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
                 
                 // Extraire le message d'erreur détaillé de Moneroo si disponible
                 let errorMessage = errorData.message || `Erreur HTTP ${response.status}`;
@@ -1511,8 +1533,6 @@
             }
             
             const data = await response.json();
-            
-            console.log('Réponse Moneroo complète:', JSON.stringify(data, null, 2));
             
             if (!data.success) {
                 // Extraire le message d'erreur détaillé de Moneroo si disponible
@@ -1536,27 +1556,18 @@
                              || data.payment_url
                              || data.url;
             
-            console.log('URL de checkout extraite:', redirectUrl);
-            console.log('data.checkout_url:', data.checkout_url);
-            console.log('data.data?.checkout_url:', data.data?.checkout_url);
-            console.log('data.redirect_url:', data.redirect_url);
-            
             if (redirectUrl) {
                 // Rediriger immédiatement vers la page de checkout Moneroo
-                console.log('Redirection vers Moneroo checkout:', redirectUrl);
                 // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
                 window.location.replace(redirectUrl);
                 return; // S'assurer que la fonction s'arrête ici
             } else {
-                console.error('Pas d\'URL de checkout trouvée dans la réponse:', data);
                 alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
                 throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
             }
-            
-        } catch (error) {
-            console.error('Erreur lors de l\'initialisation du paiement:', error);
-            
-            // Afficher un message d'erreur plus convivial avec détails
+        
+    } catch (error) {
+        // Afficher un message d'erreur plus convivial avec détails
             const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
             
             // Vérifier si c'est une erreur de configuration Moneroo
@@ -1585,7 +1596,6 @@
         if (window.location.pathname.includes('/cart') && !window.location.pathname.includes('/checkout')) {
             // Surcharger la fonction proceedToCheckout pour utiliser Moneroo
             window.proceedToCheckout = async function(event) {
-                console.log('window.proceedToCheckout() surchargée pour utiliser Moneroo');
                 return proceedToCheckoutMoneroo(event);
             };
         }
@@ -1599,7 +1609,6 @@
 function confirmRemoveItem() {
     const confirmBtn = document.getElementById('confirmRemoveItemBtn');
     if (!confirmBtn) {
-        console.error('Confirm button not found');
         showNotification('Erreur: Bouton de confirmation introuvable', 'error');
         return;
     }
@@ -1607,7 +1616,6 @@ function confirmRemoveItem() {
     // Récupérer l'ID du cours depuis le dataset ou l'attribut
     let courseId = confirmBtn.dataset.courseId || confirmBtn.getAttribute('data-course-id');
     if (!courseId) {
-        console.error('Course ID not found in button dataset');
         showNotification('Erreur: ID du cours introuvable', 'error');
         return;
     }
@@ -1647,7 +1655,6 @@ function removeItem(courseId) {
     // S'assurer que courseId est un nombre
     courseId = parseInt(courseId);
     if (isNaN(courseId)) {
-        console.error('Invalid course ID:', courseId);
         showNotification('Erreur: ID du cours invalide', 'error');
         return;
     }
@@ -1669,7 +1676,6 @@ function removeItem(courseId) {
 
             if (!contentType || !contentType.includes('application/json')) {
                 const text = await response.text();
-                console.error('Réponse non-JSON (removeItem):', text.substring(0, 200));
 
                 if (response.status === 401 || response.status === 403) {
                     throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
@@ -1718,7 +1724,6 @@ function removeItem(courseId) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             showNotification(error.message || 'Une erreur est survenue lors de la suppression', 'error');
 
             if (error.message && error.message.toLowerCase().includes('session')) {
@@ -1780,7 +1785,6 @@ function clearCart() {
 
         if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
-            console.error('Réponse non-JSON (clearCart):', text.substring(0, 200));
 
             if (response.status === 401 || response.status === 403) {
                 throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
@@ -1815,7 +1819,6 @@ function clearCart() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
         showNotification(error.message || 'Une erreur est survenue lors du vidage du panier', 'error');
 
         if (error.message && error.message.toLowerCase().includes('session')) {
@@ -1832,6 +1835,12 @@ async function proceedToCheckout(event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
+    }
+    
+    // Vérifier si le checkout est autorisé (code promo valide ou non utilisé)
+    if (!canProceedToCheckout()) {
+        showNotification('Veuillez saisir un code promo valide ou décochez la case pour continuer', 'error');
+        return false;
     }
     
     // Désactiver le bouton pour éviter les doubles clics
@@ -1876,8 +1885,6 @@ async function proceedToCheckout(event) {
         
         const data = await response.json();
         
-        console.log('Réponse Moneroo complète:', JSON.stringify(data, null, 2));
-        
         if (!data.success) {
             throw new Error(data.message || 'Erreur lors de l\'initialisation du paiement');
         }
@@ -1895,26 +1902,17 @@ async function proceedToCheckout(event) {
                          || data.payment_url
                          || data.url;
         
-        console.log('URL de checkout extraite:', redirectUrl);
-        console.log('data.checkout_url:', data.checkout_url);
-        console.log('data.data?.checkout_url:', data.data?.checkout_url);
-        console.log('data.redirect_url:', data.redirect_url);
-        
         if (redirectUrl) {
             // Rediriger immédiatement vers la page de checkout Moneroo
-            console.log('Redirection vers Moneroo checkout:', redirectUrl);
             // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
             window.location.replace(redirectUrl);
             return; // S'assurer que la fonction s'arrête ici
         } else {
-            console.error('Pas d\'URL de checkout trouvée dans la réponse:', data);
             alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
             throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
         }
         
     } catch (error) {
-        console.error('Erreur lors de l\'initialisation du paiement:', error);
-        
         // Afficher un message d'erreur plus convivial
         const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
         alert('Erreur: ' + errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
@@ -1950,8 +1948,6 @@ window.proceedToCheckout = window.proceedToCheckout || async function proceedToC
 
 // Renommer la fonction Moneroo pour éviter les conflits
 const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) {
-    console.log('proceedToCheckoutMoneroo() appelée', event);
-    
     // Empêcher tout comportement par défaut
     if (event) {
         event.preventDefault();
@@ -1971,16 +1967,12 @@ const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) 
         // Utiliser directement le montant PHP depuis le backend
         const totalAmount = {{ $total ?? 0 }};
         
-        console.log('Montant du panier:', totalAmount);
-        
         if (!totalAmount || totalAmount <= 0) {
             throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
         }
         
         // Récupérer la devise de base depuis la configuration
         const currency = '{{ config("services.moneroo.default_currency", "USD") }}';
-        
-        console.log('Initiation du paiement Moneroo avec:', { amount: totalAmount, currency });
         
         // Initier le paiement Moneroo directement
         const response = await fetch('{{ route("moneroo.initiate") }}', {
@@ -1997,11 +1989,8 @@ const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) 
             })
         });
         
-        console.log('Réponse HTTP:', response.status, response.statusText);
-        
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
-            console.error('Erreur HTTP:', errorData);
             
             // Extraire le message d'erreur détaillé de Moneroo si disponible
             let errorMessage = errorData.message || `Erreur HTTP ${response.status}`;
@@ -2013,8 +2002,6 @@ const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) 
         }
         
         const data = await response.json();
-        
-        console.log('Réponse Moneroo complète:', JSON.stringify(data, null, 2));
         
         if (!data.success) {
             // Extraire le message d'erreur détaillé de Moneroo si disponible
@@ -2038,26 +2025,17 @@ const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) 
                          || data.payment_url
                          || data.url;
         
-        console.log('URL de checkout extraite:', redirectUrl);
-        console.log('data.checkout_url:', data.checkout_url);
-        console.log('data.data?.checkout_url:', data.data?.checkout_url);
-        console.log('data.redirect_url:', data.redirect_url);
-        
         if (redirectUrl) {
             // Rediriger immédiatement vers la page de checkout Moneroo
-            console.log('Redirection vers Moneroo checkout:', redirectUrl);
             // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
             window.location.replace(redirectUrl);
             return; // S'assurer que la fonction s'arrête ici
         } else {
-            console.error('Pas d\'URL de checkout trouvée dans la réponse:', data);
             alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
             throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
         }
         
     } catch (error) {
-        console.error('Erreur lors de l\'initialisation du paiement:', error);
-        
         // Afficher un message d'erreur plus convivial
         const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
         alert('Erreur: ' + errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
@@ -2137,7 +2115,7 @@ function updateCartSummary() {
         }
     })
     .catch(error => {
-        console.error('Error updating cart summary:', error);
+        // Erreur silencieuse
     });
 }
 
@@ -2178,7 +2156,6 @@ function addToCartFromCartPage(courseId) {
         // Si ce n'est pas du JSON, c'est probablement une erreur HTML
         if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
-            console.error('Réponse non-JSON reçue:', text.substring(0, 200));
             
             if (response.status === 401 || response.status === 403) {
                 throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
@@ -2220,7 +2197,6 @@ function addToCartFromCartPage(courseId) {
         }
     })
     .catch(error => {
-        console.error('Erreur AJAX:', error);
         showNotification(error.message || 'Erreur lors de l\'ajout au panier', 'error');
         
         if (error.message && error.message.toLowerCase().includes('session')) {
@@ -2295,6 +2271,8 @@ function updateCartCount() {
 
 // Variable pour le timeout de debounce
 let promoValidationTimeout = null;
+// Variable pour tracker l'état du code promo
+let promoCodeStatus = 'none'; // none, validating, valid, invalid
 
 // Fonction pour valider le code promo en temps réel
 function validatePromoCodeRealtime(promoCode) {
@@ -2312,6 +2290,9 @@ function validatePromoCodeRealtime(promoCode) {
     
     // Afficher le spinner
     showPromoValidationIcon('loading');
+    promoCodeStatus = 'validating';
+    updateCheckoutButtonState();
+    
     if (promoCodeField) {
         promoCodeField.classList.remove('is-valid', 'is-invalid');
         promoCodeField.classList.add('is-validating');
@@ -2335,7 +2316,6 @@ function validatePromoCodeRealtime(promoCode) {
         
         if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
-            console.error('Réponse non-JSON:', text.substring(0, 200));
             throw new Error('Erreur lors de la vérification du code promo');
         }
         
@@ -2349,6 +2329,7 @@ function validatePromoCodeRealtime(promoCode) {
     .then(data => {
         if (data.success) {
             // Code valide
+            promoCodeStatus = 'valid';
             showPromoValidationIcon('valid');
             if (promoCodeField) {
                 promoCodeField.classList.remove('is-validating', 'is-invalid');
@@ -2356,6 +2337,9 @@ function validatePromoCodeRealtime(promoCode) {
             }
             if (helpText) helpText.style.display = 'block';
             if (errorText) errorText.style.display = 'none';
+            
+            // Mettre à jour l'état du bouton de paiement
+            updateCheckoutButtonState();
             
             // Afficher un message de succès discret
             showNotification('Code promo appliqué avec succès!', 'success');
@@ -2369,6 +2353,7 @@ function validatePromoCodeRealtime(promoCode) {
             }, 500);
         } else {
             // Code invalide
+            promoCodeStatus = 'invalid';
             showPromoValidationIcon('invalid');
             if (promoCodeField) {
                 promoCodeField.classList.remove('is-validating', 'is-valid');
@@ -2379,11 +2364,14 @@ function validatePromoCodeRealtime(promoCode) {
                 errorText.style.display = 'block';
                 errorMessage.textContent = data.message || 'Code promo invalide';
             }
+            
+            // Mettre à jour l'état du bouton de paiement
+            updateCheckoutButtonState();
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
         // Code invalide ou erreur
+        promoCodeStatus = 'invalid';
         showPromoValidationIcon('invalid');
         if (promoCodeField) {
             promoCodeField.classList.remove('is-validating', 'is-valid');
@@ -2394,6 +2382,9 @@ function validatePromoCodeRealtime(promoCode) {
             errorText.style.display = 'block';
             errorMessage.textContent = error.message || 'Erreur lors de la vérification';
         }
+        
+        // Mettre à jour l'état du bouton de paiement
+        updateCheckoutButtonState();
     });
 }
 
@@ -2433,6 +2424,57 @@ function resetPromoValidationState() {
     }
     if (helpText) helpText.style.display = 'block';
     if (errorText) errorText.style.display = 'none';
+    
+    // Réinitialiser le statut
+    promoCodeStatus = 'none';
+    updateCheckoutButtonState();
+}
+
+// Fonction pour vérifier si le checkout est autorisé
+function canProceedToCheckout() {
+    const promoCheckbox = document.getElementById('applyPromoCode');
+    const promoCodeField = document.getElementById('promoCodeField');
+    
+    // Si le checkbox n'est pas coché, le paiement est autorisé
+    if (!promoCheckbox || !promoCheckbox.checked) {
+        return true;
+    }
+    
+    // Si le checkbox est coché, vérifier l'état du code promo
+    const hasAppliedPromo = document.querySelector('.promo-applied') !== null;
+    
+    if (hasAppliedPromo) {
+        // Code promo déjà appliqué et valide
+        return true;
+    }
+    
+    // Si on est en train de saisir, vérifier le statut
+    if (promoCodeField && promoCodeField.value.trim()) {
+        // Le code doit être valide pour permettre le checkout
+        return promoCodeStatus === 'valid';
+    }
+    
+    // Si le checkbox est coché mais aucun code n'est saisi, bloquer
+    return false;
+}
+
+// Fonction pour mettre à jour l'état du bouton de paiement
+function updateCheckoutButtonState() {
+    const checkoutBtn = document.getElementById('proceedToCheckoutBtn');
+    const blockedText = document.getElementById('checkoutBlockedText');
+    
+    if (!checkoutBtn) return;
+    
+    const canCheckout = canProceedToCheckout();
+    
+    // Mettre à jour l'attribut data et le disabled
+    checkoutBtn.setAttribute('data-can-checkout', canCheckout ? 'true' : 'false');
+    checkoutBtn.disabled = !canCheckout;
+    
+    // Afficher/masquer le message d'avertissement
+    if (blockedText) {
+        blockedText.style.display = canCheckout ? 'none' : 'block';
+    }
 }
 
 // Fonction pour afficher le code promo appliqué
@@ -2457,6 +2499,11 @@ function displayAppliedPromo(code, discount) {
     promoInputContainer.innerHTML = '';
     promoInputContainer.appendChild(appliedBadge);
     promoInputContainer.style.display = 'block';
+    
+    // Marquer le statut comme valide
+    promoCodeStatus = 'valid';
+    // Mettre à jour l'état du bouton de paiement
+    updateCheckoutButtonState();
 }
 
 // Fonction pour retirer le code promo
@@ -2478,10 +2525,13 @@ function removePromoCode() {
             resetPromoCodeSection();
             // Mettre à jour le résumé
             updateCartSummary();
+            // Réinitialiser le statut
+            promoCodeStatus = 'none';
+            // Mettre à jour l'état du bouton de paiement
+            updateCheckoutButtonState();
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
         showNotification('Erreur lors du retrait du code promo', 'error');
     });
 }
@@ -2579,6 +2629,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (promoInput) {
                     setTimeout(() => promoInput.focus(), 100);
                 }
+                // Mettre à jour l'état du bouton de paiement
+                updateCheckoutButtonState();
             } else {
                 promoInputContainer.style.display = 'none';
                 // Réinitialiser l'état si on décoche
@@ -2590,6 +2642,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Attacher le listener au champ de code promo
     attachPromoCodeInputListener();
     
+    // Initialiser l'état du bouton de paiement
+    // Si un code promo est déjà appliqué, le statut est "valid"
+    if (document.querySelector('.promo-applied')) {
+        promoCodeStatus = 'valid';
+    }
+    updateCheckoutButtonState();
+    
     // Initialiser le modal de suppression d'un cours
     const removeItemModal = document.getElementById('removeItemModal');
     if (removeItemModal) {
@@ -2597,7 +2656,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Bouton qui a déclenché le modal
             const button = event.relatedTarget;
             if (!button) {
-                console.error('Button not found in event');
                 return;
             }
             
@@ -2616,8 +2674,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (confirmBtn) {
                 confirmBtn.setAttribute('data-course-id', courseId);
                 confirmBtn.dataset.courseId = courseId;
-            } else {
-                console.error('Confirm button not found');
             }
         });
         
@@ -2647,8 +2703,6 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             confirmRemoveItem();
         });
-    } else {
-        console.error('Confirm remove button not found in DOM');
     }
     
     // Initialiser le modal Bootstrap si disponible
@@ -2695,17 +2749,12 @@ document.addEventListener('DOMContentLoaded', function() {
         proceedToCheckoutBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Bouton checkout cliqué, appel de proceedToCheckoutMoneroo()');
             // Utiliser directement la fonction Moneroo pour éviter le conflit avec app.blade.php
             if (typeof window.proceedToCheckoutMoneroo === 'function') {
                 window.proceedToCheckoutMoneroo(e);
-            } else {
-                console.error('proceedToCheckoutMoneroo n\'est pas définie');
             }
             return false;
         });
-    } else {
-        console.warn('Bouton proceedToCheckoutBtn non trouvé');
     }
 });
 </script>

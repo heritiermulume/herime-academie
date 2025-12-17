@@ -99,6 +99,12 @@ class WalletController extends Controller
     public function transactions(Request $request)
     {
         $user = Auth::user();
+        
+        // Vérifier que l'utilisateur est un ambassadeur actif
+        $ambassador = Ambassador::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->firstOrFail();
+            
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
         // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés lors de l'accès aux transactions
@@ -108,28 +114,72 @@ class WalletController extends Controller
             $wallet->refresh();
         }
 
-        $query = $wallet->transactions()->orderBy('created_at', 'desc');
+        // Validation des entrées
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:255',
+            'type' => 'nullable|string|in:credit,debit,commission,payout,refund,bonus',
+            'status' => 'nullable|string|in:completed,pending,failed,cancelled',
+            'from' => 'nullable|date|before_or_equal:today',
+            'to' => 'nullable|date|after_or_equal:from|before_or_equal:today',
+            'min_amount' => 'nullable|numeric|min:0',
+            'max_amount' => 'nullable|numeric|min:0|gte:min_amount',
+            'sort_by' => 'nullable|string|in:created_at,amount,balance_after',
+            'sort_order' => 'nullable|string|in:asc,desc',
+            'per_page' => 'nullable|integer|in:10,20,30,50,100',
+        ]);
+
+        $query = $wallet->transactions();
+
+        // 🔒 PROTECTION : S'assurer que seules les transactions de l'utilisateur sont accessibles
+        $query->whereHas('wallet', function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        });
+
+        // Recherche globale
+        if ($request->filled('search')) {
+            $searchTerm = $validated['search'];
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('reference', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('description', 'like', '%' . $searchTerm . '%');
+            });
+        }
 
         // Filtrer par type
         if ($request->filled('type')) {
-            $query->where('type', $request->type);
+            $query->where('type', $validated['type']);
         }
 
         // Filtrer par statut
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('status', $validated['status']);
         }
 
         // Filtrer par période
         if ($request->filled('from')) {
-            $query->where('created_at', '>=', $request->from);
+            $query->whereDate('created_at', '>=', $validated['from']);
         }
 
         if ($request->filled('to')) {
-            $query->where('created_at', '<=', $request->to);
+            $query->whereDate('created_at', '<=', $validated['to']);
         }
 
-        $transactions = $query->paginate(30);
+        // Filtrer par montant
+        if ($request->filled('min_amount')) {
+            $query->where('amount', '>=', $validated['min_amount']);
+        }
+
+        if ($request->filled('max_amount')) {
+            $query->where('amount', '<=', $validated['max_amount']);
+        }
+
+        // Tri
+        $sortBy = $validated['sort_by'] ?? 'created_at';
+        $sortOrder = $validated['sort_order'] ?? 'desc';
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Pagination
+        $perPage = $validated['per_page'] ?? 20;
+        $transactions = $query->paginate($perPage)->withQueryString();
 
         return view('wallet.transactions', compact('wallet', 'transactions'));
     }
@@ -140,6 +190,12 @@ class WalletController extends Controller
     public function payouts(Request $request)
     {
         $user = Auth::user();
+        
+        // Vérifier que l'utilisateur est un ambassadeur actif
+        $ambassador = Ambassador::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->firstOrFail();
+            
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
         // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés lors de l'accès aux payouts
@@ -149,23 +205,56 @@ class WalletController extends Controller
             $wallet->refresh();
         }
 
-        $query = $wallet->payouts()->orderBy('created_at', 'desc');
+        // Validation des entrées
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:255',
+            'status' => 'nullable|string|in:pending,processing,completed,failed,cancelled',
+            'from' => 'nullable|date|before_or_equal:today',
+            'to' => 'nullable|date|after_or_equal:from|before_or_equal:today',
+            'sort_by' => 'nullable|string|in:created_at,amount',
+            'sort_order' => 'nullable|string|in:asc,desc',
+            'per_page' => 'nullable|integer|in:10,20,30,50,100',
+        ]);
+
+        $query = $wallet->payouts();
+
+        // 🔒 PROTECTION : S'assurer que seuls les payouts de l'utilisateur sont accessibles
+        $query->whereHas('wallet', function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        });
+
+        // Recherche globale
+        if ($request->filled('search')) {
+            $searchTerm = $validated['search'];
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('moneroo_id', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('phone', 'like', '%' . $searchTerm . '%')
+                  ->orWhere('description', 'like', '%' . $searchTerm . '%');
+            });
+        }
 
         // Filtrer par statut
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('status', $validated['status']);
         }
 
         // Filtrer par période
         if ($request->filled('from')) {
-            $query->where('created_at', '>=', $request->from);
+            $query->whereDate('created_at', '>=', $validated['from']);
         }
 
         if ($request->filled('to')) {
-            $query->where('created_at', '<=', $request->to);
+            $query->whereDate('created_at', '<=', $validated['to']);
         }
 
-        $payouts = $query->paginate(20);
+        // Tri
+        $sortBy = $validated['sort_by'] ?? 'created_at';
+        $sortOrder = $validated['sort_order'] ?? 'desc';
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Pagination
+        $perPage = $validated['per_page'] ?? 20;
+        $payouts = $query->paginate($perPage)->withQueryString();
 
         return view('wallet.payouts', compact('wallet', 'payouts'));
     }
@@ -176,6 +265,12 @@ class WalletController extends Controller
     public function createPayout()
     {
         $user = Auth::user();
+        
+        // 🔒 PROTECTION : Vérifier que l'utilisateur est un ambassadeur actif
+        $ambassador = Ambassador::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->firstOrFail();
+            
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
         // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés avant de créer un payout
@@ -197,23 +292,35 @@ class WalletController extends Controller
      */
     public function storePayout(Request $request)
     {
-        $request->validate([
-            'amount' => 'required|numeric|min:5',
-            'method' => 'required|string',
-            'phone' => 'required|string',
-            'country' => 'required|string|size:2',
-            'currency' => 'required|string|size:3',
+        // 🔒 PROTECTION : Validation stricte des entrées
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:5|max:100000',
+            'method' => 'required|string|in:mtn,orange,airtel,africell,vodacom',
+            'phone' => ['required', 'string', 'regex:/^\+?[0-9]{10,15}$/'],
+            'country' => 'required|string|size:2|in:CD,CM,CI,SN,BJ,TG,BF,ML,NE,GN,RW,UG,KE,TZ',
+            'currency' => 'required|string|size:3|in:USD,CDF,XAF,XOF',
             'description' => 'nullable|string|max:255',
         ], [
             'amount.required' => 'Le montant est obligatoire.',
             'amount.min' => 'Le montant minimum est de 5.',
+            'amount.max' => 'Le montant maximum est de 100,000.',
             'method.required' => 'La méthode de paiement est obligatoire.',
+            'method.in' => 'La méthode de paiement sélectionnée n\'est pas valide.',
             'phone.required' => 'Le numéro de téléphone est obligatoire.',
+            'phone.regex' => 'Le format du numéro de téléphone n\'est pas valide.',
             'country.required' => 'Le pays est obligatoire.',
+            'country.in' => 'Le pays sélectionné n\'est pas supporté.',
             'currency.required' => 'La devise est obligatoire.',
+            'currency.in' => 'La devise sélectionnée n\'est pas supportée.',
         ]);
 
         $user = Auth::user();
+        
+        // 🔒 PROTECTION : Vérifier que l'utilisateur est un ambassadeur actif
+        $ambassador = Ambassador::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->firstOrFail();
+            
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
         // 🔓 LIBÉRATION AUTOMATIQUE : Libérer les fonds expirés avant de vérifier le solde
@@ -239,15 +346,15 @@ class WalletController extends Controller
                 ->withInput();
         }
 
-        // Initier le payout via Moneroo
+        // Initier le payout via Moneroo avec les données validées
         $result = $this->monerooPayoutService->initiateWalletPayout(
             $wallet,
-            $request->amount,
-            $request->currency,
-            $request->phone,
-            $request->method,
-            $request->country,
-            $request->description
+            $validated['amount'],
+            $validated['currency'],
+            $validated['phone'],
+            $validated['method'],
+            $validated['country'],
+            $validated['description'] ?? null
         );
 
         if ($result['success']) {
@@ -266,8 +373,13 @@ class WalletController extends Controller
     public function showPayout(WalletPayout $payout)
     {
         $user = Auth::user();
+        
+        // 🔒 PROTECTION : Vérifier que l'utilisateur est un ambassadeur actif
+        $ambassador = Ambassador::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->firstOrFail();
 
-        // Vérifier que le payout appartient bien à l'utilisateur
+        // 🔒 PROTECTION : Vérifier que le payout appartient bien à l'utilisateur
         if ($payout->wallet->user_id !== $user->id) {
             abort(403, 'Vous n\'avez pas accès à ce retrait.');
         }
@@ -281,8 +393,13 @@ class WalletController extends Controller
     public function cancelPayout(WalletPayout $payout)
     {
         $user = Auth::user();
+        
+        // 🔒 PROTECTION : Vérifier que l'utilisateur est un ambassadeur actif
+        $ambassador = Ambassador::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->firstOrFail();
 
-        // Vérifier que le payout appartient bien à l'utilisateur
+        // 🔒 PROTECTION : Vérifier que le payout appartient bien à l'utilisateur
         if ($payout->wallet->user_id !== $user->id) {
             abort(403, 'Vous n\'avez pas accès à ce retrait.');
         }
@@ -309,8 +426,13 @@ class WalletController extends Controller
     public function checkPayoutStatus(WalletPayout $payout)
     {
         $user = Auth::user();
+        
+        // 🔒 PROTECTION : Vérifier que l'utilisateur est un ambassadeur actif
+        $ambassador = Ambassador::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->firstOrFail();
 
-        // Vérifier que le payout appartient bien à l'utilisateur
+        // 🔒 PROTECTION : Vérifier que le payout appartient bien à l'utilisateur
         if ($payout->wallet->user_id !== $user->id) {
             abort(403, 'Vous n\'avez pas accès à ce retrait.');
         }
