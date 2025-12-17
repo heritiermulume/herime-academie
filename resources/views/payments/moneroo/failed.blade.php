@@ -197,7 +197,7 @@
                 <p class="text-muted">
                     <i class="fas fa-question-circle me-1"></i>
                     Besoin d'aide ? 
-                    <a href="mailto:support@herime-academie.com" class="text-primary">
+                    <a href="mailto:academie@herime.com" class="text-primary">
                         Contactez notre support
                     </a>
                 </p>
