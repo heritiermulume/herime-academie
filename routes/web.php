@@ -829,6 +829,7 @@ Route::prefix('moneroo')->name('moneroo.')->group(function () {
         Route::get('/status/{paymentId}', [MonerooController::class, 'status'])->name('status');
         Route::post('/cancel/{paymentId}', [MonerooController::class, 'cancel'])->name('cancel');
         Route::post('/cancel-latest', [MonerooController::class, 'cancelLatestPending'])->name('cancel-latest');
+        Route::post('/report-failure', [MonerooController::class, 'reportClientSideFailure'])->name('report-failure');
     });
 
     // Redirections de succès/échec (publiques car Moneroo peut rappeler sans session)

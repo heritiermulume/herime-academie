@@ -1202,8 +1202,10 @@ class MonerooController extends Controller
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
+        
         // Si Moneroo redirige avec un payment_id, synchroniser l'état local
         $paymentId = $request->query('payment_id') ?? $request->query('paymentId');
+        
         if ($paymentId) {
             $payment = Payment::where('payment_method', 'moneroo')
                 ->where('payment_id', $paymentId)
@@ -1211,10 +1213,52 @@ class MonerooController extends Controller
                 ->first();
 
             if ($payment && $payment->order) {
+                // IMPORTANT: Vérifier d'abord le statut réel auprès de Moneroo
+                // pour obtenir la raison d'échec exacte (solde insuffisant, carte rejetée, etc.)
+                $monerooPaymentId = $payment->payment_data['response']['data']['id'] 
+                                 ?? $payment->payment_data['data']['id'] 
+                                 ?? $paymentId;
+                
+                try {
+                    $statusResponse = Http::withHeaders($this->authHeaders())
+                        ->get($this->baseUrl() . "/payments/{$monerooPaymentId}");
+
+                    if ($statusResponse->successful()) {
+                        $responseData = $statusResponse->json();
+                        $statusData = $responseData['data'] ?? $responseData;
+                        $status = $statusData['status'] ?? 'failed';
+                        
+                        // Extraire la raison d'échec détaillée depuis l'API
+                        $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
+                        
+                        \Log::info('Moneroo: Status check on failed redirect', [
+                            'payment_id' => $paymentId,
+                            'status' => $status,
+                            'failure_reason' => $failureReason,
+                            'full_status_data' => $statusData,
+                        ]);
+                    } else {
+                        // Si la vérification échoue, utiliser une raison générique
+                        $failureReason = 'Le paiement n\'a pas pu être complété';
+                        \Log::warning('Moneroo: Failed to verify status on failed redirect', [
+                            'payment_id' => $paymentId,
+                            'response_status' => $statusResponse->status(),
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    $failureReason = 'Le paiement n\'a pas pu être complété';
+                    \Log::error('Moneroo: Exception while verifying status on failed redirect', [
+                        'payment_id' => $paymentId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+                
                 // Marquer le paiement comme échoué si encore en attente
-                $failureReason = 'Annulation par l\'utilisateur (redirect)';
                 if ($payment->status === 'pending') {
-                    $payment->update(['status' => 'failed', 'failure_reason' => $failureReason]);
+                    $payment->update([
+                        'status' => 'failed',
+                        'failure_reason' => $failureReason,
+                    ]);
                 }
 
                 // Annuler la commande si elle n'est pas déjà payée/terminée
@@ -1222,13 +1266,15 @@ class MonerooController extends Controller
                     $payment->order->update(['status' => 'cancelled']);
                 }
 
-                // Envoyer email ET notification d'échec
+                // CRITIQUE: Envoyer email ET notification d'échec
+                // Même si le webhook sera appelé plus tard, on envoie maintenant pour informer l'utilisateur immédiatement
                 $this->sendPaymentFailureNotifications($payment->order, $failureReason);
 
                 \Log::info('Moneroo: Order/payment marked cancelled/failed on failed redirect', [
                     'payment_id' => $paymentId,
                     'payment_db_id' => $payment->id,
                     'order_id' => $payment->order->id,
+                    'failure_reason' => $failureReason,
                 ]);
             } else {
                 \Log::warning('Moneroo: Failed redirect with unknown payment_id', [
@@ -1238,6 +1284,125 @@ class MonerooController extends Controller
         }
 
         return view('payments.moneroo.failed');
+    }
+
+    /**
+     * Endpoint pour signaler un échec de paiement détecté côté client
+     * 
+     * Utilisé quand Moneroo affiche un message d'erreur (ex: solde insuffisant)
+     * avant même que l'utilisateur ne soit redirigé
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function reportClientSideFailure(Request $request)
+    {
+        try {
+            $paymentId = $request->input('payment_id');
+            $failureMessage = $request->input('failure_message');
+            $failureType = $request->input('failure_type', 'unknown');
+            
+            if (!$paymentId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'payment_id requis',
+                ], 400);
+            }
+            
+            \Log::info('Moneroo: Client-side failure reported', [
+                'payment_id' => $paymentId,
+                'failure_message' => $failureMessage,
+                'failure_type' => $failureType,
+                'user_agent' => $request->userAgent(),
+                'ip' => $request->ip(),
+            ]);
+            
+            // Chercher le paiement
+            $payment = Payment::where('payment_method', 'moneroo')
+                ->where('payment_id', $paymentId)
+                ->with('order')
+                ->first();
+            
+            if (!$payment || !$payment->order) {
+                \Log::warning('Moneroo: Payment not found for client-side failure', [
+                    'payment_id' => $paymentId,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Paiement introuvable',
+                ], 404);
+            }
+            
+            // Mapper le type d'échec vers une raison compréhensible
+            $failureReason = $this->mapClientFailureToReason($failureType, $failureMessage);
+            
+            // Marquer comme échoué si encore en attente
+            if ($payment->status === 'pending') {
+                $payment->update([
+                    'status' => 'failed',
+                    'failure_reason' => $failureReason,
+                    'payment_data' => array_merge($payment->payment_data ?? [], [
+                        'client_side_failure' => [
+                            'message' => $failureMessage,
+                            'type' => $failureType,
+                            'reported_at' => now()->toIso8601String(),
+                        ],
+                    ]),
+                ]);
+            }
+            
+            // Annuler la commande si pas déjà payée
+            if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                $payment->order->update(['status' => 'cancelled']);
+            }
+            
+            // Envoyer les notifications immédiatement
+            $this->sendPaymentFailureNotifications($payment->order, $failureReason);
+            
+            \Log::info('Moneroo: Client-side failure processed and notifications sent', [
+                'payment_id' => $paymentId,
+                'order_id' => $payment->order->id,
+                'failure_reason' => $failureReason,
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Échec signalé et notifications envoyées',
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Moneroo: Error processing client-side failure', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du traitement',
+            ], 500);
+        }
+    }
+    
+    /**
+     * Mapper le type d'échec client vers une raison compréhensible
+     */
+    private function mapClientFailureToReason(string $type, ?string $message): string
+    {
+        // Si un message spécifique est fourni, l'utiliser
+        if ($message && strlen($message) > 10) {
+            return $message;
+        }
+        
+        // Sinon, mapper selon le type
+        return match($type) {
+            'insufficient_funds' => 'Solde insuffisant. Veuillez recharger votre compte et réessayer.',
+            'invalid_card' => 'Carte invalide ou expirée. Veuillez vérifier vos informations.',
+            'transaction_declined' => 'Transaction refusée par votre banque. Veuillez contacter votre banque.',
+            'network_error' => 'Erreur de connexion. Veuillez vérifier votre connexion internet.',
+            'timeout' => 'Délai d\'attente dépassé. Veuillez réessayer.',
+            'user_cancelled' => 'Paiement annulé par l\'utilisateur.',
+            default => 'Le paiement n\'a pas pu être complété. Veuillez réessayer.',
+        };
     }
 
     /**

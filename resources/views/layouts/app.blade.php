@@ -4826,5 +4826,8 @@
     <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
     
     @stack('scripts')
-    </body>
+    
+    <!-- Moneroo Failure Detector - Détecte les erreurs de paiement et envoie les notifications -->
+    <script src="{{ asset('js/moneroo-failure-detector.js') }}"></script>
+</body>
 </html>
