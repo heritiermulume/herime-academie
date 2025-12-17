@@ -173,24 +173,26 @@
                                     </button>
                                 </div>
                                 @else
-                                <!-- Formulaire de saisie du code promo -->
-                                <div class="input-group">
+                                <!-- Formulaire de saisie du code promo avec validation en temps réel -->
+                                <div class="promo-input-wrapper">
                                     <input type="text" 
                                            id="promoCodeField" 
-                                           class="form-control promo-input" 
+                                           class="form-control promo-input-realtime" 
                                            placeholder="Entrez le code promo de l'ambassadeur"
                                            maxlength="50">
-                                    <button type="button" 
-                                            class="btn btn-primary apply-promo-btn" 
-                                            id="applyPromoBtn"
-                                            onclick="applyPromoCode()">
-                                        <i class="fas fa-check me-1"></i>
-                                        Appliquer
-                                    </button>
+                                    <div class="promo-validation-icon" id="promoValidationIcon">
+                                        <i class="fas fa-spinner fa-spin" style="display: none;"></i>
+                                        <i class="fas fa-check-circle text-success" style="display: none;"></i>
+                                        <i class="fas fa-times-circle text-danger" style="display: none;"></i>
+                                    </div>
                                 </div>
-                                <small class="promo-help-text">
+                                <small class="promo-help-text" id="promoHelpText">
                                     <i class="fas fa-info-circle me-1"></i>
                                     Utilisez le code fourni par votre ambassadeur
+                                </small>
+                                <small class="promo-error-text" id="promoErrorText" style="display: none;">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    <span id="promoErrorMessage"></span>
                                 </small>
                                 @endif
                             </div>
@@ -825,45 +827,51 @@
     }
 }
 
-.promo-input-container .input-group {
+.promo-input-wrapper {
+    position: relative;
     margin-bottom: 8px;
 }
 
-.promo-input {
+.promo-input-realtime {
     font-size: 14px;
-    padding: 10px 12px;
+    padding: 10px 45px 10px 12px;
     border: 1px solid #d1d7dc;
-    border-radius: 4px 0 0 4px;
-    transition: border-color 0.2s ease;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    width: 100%;
 }
 
-.promo-input:focus {
+.promo-input-realtime:focus {
     border-color: #003366;
     box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
     outline: none;
 }
 
-.apply-promo-btn {
-    padding: 10px 16px;
-    background: linear-gradient(135deg, #003366 0%, #001a33 100%);
-    border: none;
-    border-radius: 0 4px 4px 0;
-    color: white;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.2s ease;
-    white-space: nowrap;
+.promo-input-realtime.is-validating {
+    border-color: #ffc107;
 }
 
-.apply-promo-btn:hover {
-    background: linear-gradient(135deg, #001a33 0%, #003366 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 51, 102, 0.2);
+.promo-input-realtime.is-valid {
+    border-color: #28a745;
+    background-color: #f8fff9;
 }
 
-.apply-promo-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+.promo-input-realtime.is-invalid {
+    border-color: #dc3545;
+    background-color: #fff8f8;
+}
+
+.promo-validation-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    pointer-events: none;
+}
+
+.promo-validation-icon i {
+    transition: opacity 0.2s ease;
 }
 
 .promo-help-text {
@@ -875,6 +883,17 @@
 
 .promo-help-text i {
     color: #003366;
+}
+
+.promo-error-text {
+    display: block;
+    font-size: 12px;
+    color: #dc3545;
+    margin-top: 4px;
+}
+
+.promo-error-text i {
+    color: #dc3545;
 }
 
 /* Applied promo code badge */
@@ -2274,21 +2293,28 @@ function updateCartCount() {
 
 // Fonction supprimée - plus nécessaire avec la nouvelle approche
 
-// Fonction pour appliquer le code promo
-function applyPromoCode() {
+// Variable pour le timeout de debounce
+let promoValidationTimeout = null;
+
+// Fonction pour valider le code promo en temps réel
+function validatePromoCodeRealtime(promoCode) {
     const promoCodeField = document.getElementById('promoCodeField');
-    const applyBtn = document.getElementById('applyPromoBtn');
-    const promoCode = promoCodeField ? promoCodeField.value.trim() : '';
+    const validationIcon = document.getElementById('promoValidationIcon');
+    const helpText = document.getElementById('promoHelpText');
+    const errorText = document.getElementById('promoErrorText');
+    const errorMessage = document.getElementById('promoErrorMessage');
     
-    if (!promoCode) {
-        showNotification('Veuillez entrer un code promo', 'error');
+    if (!promoCode || promoCode.length < 3) {
+        // Reset l'état si le code est trop court
+        resetPromoValidationState();
         return;
     }
     
-    // Désactiver le bouton pendant la requête
-    if (applyBtn) {
-        applyBtn.disabled = true;
-        applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Vérification...';
+    // Afficher le spinner
+    showPromoValidationIcon('loading');
+    if (promoCodeField) {
+        promoCodeField.classList.remove('is-valid', 'is-invalid');
+        promoCodeField.classList.add('is-validating');
     }
     
     // Appeler l'API pour vérifier le code promo
@@ -2322,26 +2348,91 @@ function applyPromoCode() {
     })
     .then(data => {
         if (data.success) {
+            // Code valide
+            showPromoValidationIcon('valid');
+            if (promoCodeField) {
+                promoCodeField.classList.remove('is-validating', 'is-invalid');
+                promoCodeField.classList.add('is-valid');
+            }
+            if (helpText) helpText.style.display = 'block';
+            if (errorText) errorText.style.display = 'none';
+            
+            // Afficher un message de succès discret
             showNotification('Code promo appliqué avec succès!', 'success');
+            
             // Mettre à jour le résumé du panier
             updateCartSummary();
-            // Afficher le badge de code promo appliqué
-            displayAppliedPromo(promoCode, data.discount);
+            
+            // Afficher le badge de code promo appliqué après un court délai
+            setTimeout(() => {
+                displayAppliedPromo(promoCode, data.discount);
+            }, 500);
         } else {
-            showNotification(data.message || 'Code promo invalide', 'error');
+            // Code invalide
+            showPromoValidationIcon('invalid');
+            if (promoCodeField) {
+                promoCodeField.classList.remove('is-validating', 'is-valid');
+                promoCodeField.classList.add('is-invalid');
+            }
+            if (helpText) helpText.style.display = 'none';
+            if (errorText) {
+                errorText.style.display = 'block';
+                errorMessage.textContent = data.message || 'Code promo invalide';
+            }
         }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        showNotification(error.message || 'Erreur lors de l\'application du code promo', 'error');
-    })
-    .finally(() => {
-        // Réactiver le bouton
-        if (applyBtn) {
-            applyBtn.disabled = false;
-            applyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Appliquer';
+        // Code invalide ou erreur
+        showPromoValidationIcon('invalid');
+        if (promoCodeField) {
+            promoCodeField.classList.remove('is-validating', 'is-valid');
+            promoCodeField.classList.add('is-invalid');
+        }
+        if (helpText) helpText.style.display = 'none';
+        if (errorText) {
+            errorText.style.display = 'block';
+            errorMessage.textContent = error.message || 'Erreur lors de la vérification';
         }
     });
+}
+
+// Fonction pour afficher l'icône appropriée
+function showPromoValidationIcon(state) {
+    const validationIcon = document.getElementById('promoValidationIcon');
+    if (!validationIcon) return;
+    
+    const spinner = validationIcon.querySelector('.fa-spinner');
+    const checkIcon = validationIcon.querySelector('.fa-check-circle');
+    const errorIcon = validationIcon.querySelector('.fa-times-circle');
+    
+    // Cacher toutes les icônes
+    if (spinner) spinner.style.display = 'none';
+    if (checkIcon) checkIcon.style.display = 'none';
+    if (errorIcon) errorIcon.style.display = 'none';
+    
+    // Afficher l'icône appropriée
+    if (state === 'loading' && spinner) {
+        spinner.style.display = 'inline-block';
+    } else if (state === 'valid' && checkIcon) {
+        checkIcon.style.display = 'inline-block';
+    } else if (state === 'invalid' && errorIcon) {
+        errorIcon.style.display = 'inline-block';
+    }
+}
+
+// Fonction pour réinitialiser l'état de validation
+function resetPromoValidationState() {
+    const promoCodeField = document.getElementById('promoCodeField');
+    const helpText = document.getElementById('promoHelpText');
+    const errorText = document.getElementById('promoErrorText');
+    
+    showPromoValidationIcon(null);
+    if (promoCodeField) {
+        promoCodeField.classList.remove('is-validating', 'is-valid', 'is-invalid');
+    }
+    if (helpText) helpText.style.display = 'block';
+    if (errorText) errorText.style.display = 'none';
 }
 
 // Fonction pour afficher le code promo appliqué
@@ -2406,27 +2497,68 @@ function resetPromoCodeSection() {
     
     if (promoInputContainer) {
         promoInputContainer.innerHTML = `
-            <div class="input-group">
+            <div class="promo-input-wrapper">
                 <input type="text" 
                        id="promoCodeField" 
-                       class="form-control promo-input" 
+                       class="form-control promo-input-realtime" 
                        placeholder="Entrez le code promo de l'ambassadeur"
                        maxlength="50">
-                <button type="button" 
-                        class="btn btn-primary apply-promo-btn" 
-                        id="applyPromoBtn"
-                        onclick="applyPromoCode()">
-                    <i class="fas fa-check me-1"></i>
-                    Appliquer
-                </button>
+                <div class="promo-validation-icon" id="promoValidationIcon">
+                    <i class="fas fa-spinner fa-spin" style="display: none;"></i>
+                    <i class="fas fa-check-circle text-success" style="display: none;"></i>
+                    <i class="fas fa-times-circle text-danger" style="display: none;"></i>
+                </div>
             </div>
-            <small class="promo-help-text">
+            <small class="promo-help-text" id="promoHelpText">
                 <i class="fas fa-info-circle me-1"></i>
                 Utilisez le code fourni par votre ambassadeur
             </small>
+            <small class="promo-error-text" id="promoErrorText" style="display: none;">
+                <i class="fas fa-exclamation-circle me-1"></i>
+                <span id="promoErrorMessage"></span>
+            </small>
         `;
         promoInputContainer.style.display = 'none';
+        
+        // Réattacher l'événement input après la réinitialisation
+        setTimeout(() => {
+            attachPromoCodeInputListener();
+        }, 100);
     }
+}
+
+// Fonction pour attacher l'événement input au champ de code promo
+function attachPromoCodeInputListener() {
+    const promoCodeField = document.getElementById('promoCodeField');
+    
+    if (promoCodeField) {
+        // Retirer les anciens listeners pour éviter les doublons
+        promoCodeField.removeEventListener('input', handlePromoCodeInput);
+        
+        // Ajouter le listener avec debounce
+        promoCodeField.addEventListener('input', handlePromoCodeInput);
+    }
+}
+
+// Gestionnaire d'événement pour le champ de saisie
+function handlePromoCodeInput(e) {
+    const promoCode = e.target.value.trim().toUpperCase();
+    
+    // Annuler le timeout précédent
+    if (promoValidationTimeout) {
+        clearTimeout(promoValidationTimeout);
+    }
+    
+    // Si le champ est vide, réinitialiser l'état
+    if (!promoCode) {
+        resetPromoValidationState();
+        return;
+    }
+    
+    // Attendre 800ms après la dernière frappe avant de valider
+    promoValidationTimeout = setTimeout(() => {
+        validatePromoCodeRealtime(promoCode);
+    }, 800);
 }
 
 // Initialiser la page au chargement
@@ -2449,18 +2581,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } else {
                 promoInputContainer.style.display = 'none';
+                // Réinitialiser l'état si on décoche
+                resetPromoValidationState();
             }
         });
     }
     
-    // Gestionnaire pour la touche Enter dans le champ du code promo
-    document.addEventListener('keypress', function(e) {
-        const promoCodeField = document.getElementById('promoCodeField');
-        if (e.target === promoCodeField && e.key === 'Enter') {
-            e.preventDefault();
-            applyPromoCode();
-        }
-    });
+    // Attacher le listener au champ de code promo
+    attachPromoCodeInputListener();
     
     // Initialiser le modal de suppression d'un cours
     const removeItemModal = document.getElementById('removeItemModal');
