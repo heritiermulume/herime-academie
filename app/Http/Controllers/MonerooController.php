@@ -296,7 +296,7 @@ class MonerooController extends Controller
                 // on le considère comme expiré/non traité pour permettre une nouvelle tentative.
                 $paymentAgeMinutes = now()->diffInMinutes($existingPayment->created_at);
 
-                if ($paymentAgeMinutes <= 2) {
+                if ($paymentAgeMinutes <= 1) {
                     \Log::info('Moneroo: Reusing existing pending payment', [
                         'user_id' => $user->id,
                         'existing_order_id' => $recentPendingOrder->id,
