@@ -1,7 +1,15 @@
 @extends('students.admin.layout')
 
 @section('admin-title', 'Commande ' . $order->order_number)
-@section('admin-subtitle', 'Détails de la commande et accès aux cours associés.')
+@section('admin-subtitle')
+@php
+    $hasDownloadable = $order->orderItems->contains(function($item) {
+        return $item->course && $item->course->is_downloadable;
+    });
+    $generalLabel = $hasDownloadable ? 'produits' : 'cours';
+@endphp
+Détails de la commande et accès aux {{ $generalLabel }} associés.
+@endsection
 
 @section('admin-actions')
     <a href="{{ route('orders.index') }}" class="admin-btn ghost">
@@ -19,6 +27,18 @@
         'cancelled' => ['label' => 'Annulée', 'badge' => 'error'],
     ];
     $statusData = $statusLabels[$order->status] ?? ['label' => ucfirst($order->status), 'badge' => 'info'];
+    
+    // Fonction helper pour obtenir le terme approprié selon le type de contenu
+    $getContentLabel = function($course) {
+        if (!$course) return 'cours';
+        return $course->is_downloadable ? 'produit digital' : 'cours';
+    };
+    
+    // Vérifier si la commande contient des produits téléchargeables
+    $hasDownloadableItems = $order->orderItems->contains(function($item) {
+        return $item->course && $item->course->is_downloadable;
+    });
+    $generalLabel = $hasDownloadableItems ? 'produits' : 'cours';
 @endphp
 
 <div class="student-order-show">
@@ -74,11 +94,11 @@
                     @endphp
                     @if($firstCourse && $firstCourse->is_downloadable)
                         <a href="{{ route('courses.show', $firstCourse->slug) }}" class="admin-btn primary sm">
-                            <i class="fas fa-eye me-1"></i>Voir le cours
+                            <i class="fas fa-eye me-1"></i>Voir
                         </a>
                     @else
                         <a href="{{ route('learning.course', $firstCourse->slug) }}" class="admin-btn success sm">
-                            <i class="fas fa-play me-1"></i>Commencer un cours
+                            <i class="fas fa-play me-1"></i>Commencer le cours
                         </a>
                     @endif
                 @endif
@@ -118,8 +138,8 @@
 
     <div class="admin-card">
         <div class="student-order-show__section-header">
-            <h3 class="admin-card__title">Cours inclus</h3>
-            <p class="admin-card__subtitle">Liste des cours associés à cette commande.</p>
+            <h3 class="admin-card__title">{{ ucfirst($generalLabel) }} inclus</h3>
+            <p class="admin-card__subtitle">Liste des {{ $generalLabel }} associés à cette commande.</p>
         </div>
 
         @if($order->orderItems && $order->orderItems->count() > 0)
@@ -128,7 +148,7 @@
                     @php($course = $item->course)
                     <div class="order-course-card">
                         <div class="order-course-card__meta">
-                            <h4>{{ $course->title ?? 'Cours supprimé' }}</h4>
+                            <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : 'Cours supprimé') : 'Contenu supprimé') }}</h4>
                             <p>
                                 {{ $course->instructor->name ?? 'Formateur inconnu' }}
                                 @if($course && $course->category)
@@ -145,7 +165,7 @@
                         @if($course)
                             <div class="order-course-card__actions">
                                 <a href="{{ route('courses.show', $course->slug) }}" class="admin-btn ghost sm">
-                                    <i class="fas fa-eye me-1"></i>Voir le cours
+                                    <i class="fas fa-eye me-1"></i>Voir {{ $getContentLabel($course) }}
                                 </a>
                             </div>
                         @endif
@@ -155,9 +175,9 @@
         @else
             <div class="admin-empty-state">
                 <i class="fas fa-tags"></i>
-                <p>Aucun cours enregistré pour cette commande.</p>
+                <p>Aucun {{ $generalLabel }} enregistré pour cette commande.</p>
                 @if($order->status === 'pending')
-                    <small class="text-muted">Les cours seront ajoutés une fois le paiement confirmé.</small>
+                    <small class="text-muted">Les {{ $generalLabel }} seront ajoutés une fois le paiement confirmé.</small>
                 @endif
             </div>
         @endif
@@ -166,18 +186,28 @@
     @if($order->enrollments->isNotEmpty())
         <div class="admin-card">
             <div class="student-order-show__section-header">
-                <h3 class="admin-card__title">Accès aux cours</h3>
-                <p class="admin-card__subtitle">Vous pouvez démarrer vos cours immédiatement.</p>
+                <h3 class="admin-card__title">Accès aux {{ $generalLabel }}</h3>
+                <p class="admin-card__subtitle">
+                    @if($hasDownloadableItems)
+                        Vous pouvez télécharger vos produits immédiatement.
+                    @else
+                        Vous pouvez démarrer vos cours immédiatement.
+                    @endif
+                </p>
             </div>
             <div class="student-order-show__enrollments">
                 @foreach($order->enrollments as $enrollment)
                     @php($course = $enrollment->course)
                     <div class="order-enrollment-card">
                         <div>
-                            <h4>{{ $course->title ?? 'Cours supprimé' }}</h4>
+                            <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : 'Cours supprimé') : 'Contenu supprimé') }}</h4>
                             <p>
-                                Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y') }}
-                                · Progression {{ $enrollment->progress }}%
+                                @if($course && $course->is_downloadable)
+                                    Acheté le {{ optional($enrollment->created_at)->format('d/m/Y') }}
+                                @else
+                                    Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y') }}
+                                    · Progression {{ $enrollment->progress }}%
+                                @endif
                             </p>
                         </div>
                         @if($course)
