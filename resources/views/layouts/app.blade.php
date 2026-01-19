@@ -604,6 +604,18 @@
             color: #94a3b8;
         }
 
+        .course-card .course-price-container {
+            display: flex;
+            flex-direction: row;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .course-card .course-price-row {
+            display: flex;
+            align-items: baseline;
+        }
+
         .course-card .duration {
             color: #64748b;
             font-size: 0.75rem;
@@ -756,6 +768,19 @@
         }
         
         /* Sur mobile : format compact du compteur */
+        @media (max-width: 991.98px) {
+            /* Alignement des prix en colonne sur mobile/tablette */
+            .course-card .course-price-container {
+                flex-direction: column !important;
+                gap: 0.25rem !important;
+            }
+
+            .course-card .course-price-row {
+                display: flex !important;
+                align-items: baseline !important;
+            }
+        }
+
         @media (max-width: 767.98px) {
             /* Format compact sur mobile */
             .course-card .promotion-countdown .countdown-text {
@@ -1016,6 +1041,16 @@
             
             .course-card .price .text-muted {
                 font-size: 0.875rem;
+            }
+
+            .course-card .course-price-container {
+                flex-direction: column !important;
+                gap: 0.25rem !important;
+            }
+
+            .course-card .course-price-row {
+                display: flex !important;
+                align-items: baseline !important;
             }
             
             .course-card .duration {

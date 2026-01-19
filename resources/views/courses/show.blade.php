@@ -3808,8 +3808,14 @@ button.mobile-price-slider__btn--download i,
                                                     <span class="text-success fw-bold">Gratuit</span>
                                                 @else
                                                     @if($relatedCourse->is_sale_active && $relatedCourse->active_sale_price !== null)
-                                                        <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->active_sale_price) }}</span>
-                                                        <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->price) }}</small>
+                                                        <div class="course-price-container">
+                                                            <div class="course-price-row">
+                                                                <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->active_sale_price) }}</span>
+                                                            </div>
+                                                            <div class="course-price-row">
+                                                                <small class="text-muted text-decoration-line-through">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->price) }}</small>
+                                                            </div>
+                                                        </div>
                                                     @else
                                                         <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->price) }}</span>
                                                     @endif

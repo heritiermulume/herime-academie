@@ -210,8 +210,14 @@
                                                         <span class="text-success fw-bold">Gratuit</span>
                                                     @else
                                                         @if($course->is_sale_active && $course->active_sale_price !== null)
-                                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</span>
-                                                            <small class="text-muted text-decoration-line-through ms-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
+                                                            <div class="course-price-container">
+                                                                <div class="course-price-row">
+                                                                    <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</span>
+                                                                </div>
+                                                                <div class="course-price-row">
+                                                                    <small class="text-muted text-decoration-line-through">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
+                                                                </div>
+                                                            </div>
                                                         @else
                                                             <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                                                         @endif
@@ -947,8 +953,14 @@ function createCourseElement(course) {
     const priceHtml = course.is_free ? 
         '<span class="text-success fw-bold">Gratuit</span>' :
         hasActiveSale ?
-            `<span class="text-primary fw-bold">$${parseFloat(course.active_sale_price).toFixed(2)}</span>
-             <small class="text-muted text-decoration-line-through ms-1">$${parseFloat(course.price).toFixed(2)}</small>` :
+            `<div class="course-price-container">
+                <div class="course-price-row">
+                    <span class="text-primary fw-bold">$${parseFloat(course.active_sale_price).toFixed(2)}</span>
+                </div>
+                <div class="course-price-row">
+                    <small class="text-muted text-decoration-line-through">$${parseFloat(course.price).toFixed(2)}</small>
+                </div>
+            </div>` :
             `<span class="text-primary fw-bold">$${parseFloat(course.price).toFixed(2)}</span>`;
     
     const badgesHtml = `
