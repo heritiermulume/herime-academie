@@ -617,6 +617,15 @@
             width: auto;
         }
 
+        .course-card .course-price-row .text-primary {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .course-card .course-price-row .text-muted.text-decoration-line-through {
+            font-size: 0.75rem;
+        }
+
         .course-card .duration {
             color: #64748b;
             font-size: 0.75rem;
@@ -781,6 +790,15 @@
                 display: flex !important;
                 align-items: baseline !important;
                 width: 100% !important;
+            }
+
+            .course-card .course-price-row .text-primary {
+                font-size: 1rem !important;
+                font-weight: 700 !important;
+            }
+
+            .course-card .course-price-row .text-muted.text-decoration-line-through {
+                font-size: 0.75rem !important;
             }
 
             .course-card .course-price-row .promotion-countdown {
@@ -4429,7 +4447,7 @@
 
         // Fonction globale pour procéder au checkout depuis n'importe quelle page
         // Si un courseId est fourni, on tente d'ajouter d'abord le cours au panier
-        function proceedToCheckout(courseId = null) {
+        window.proceedToCheckout = function proceedToCheckout(courseId = null) {
             const redirectToCart = () => {
                 window.location.href = '{{ route("cart.index") }}';
             };

@@ -3715,7 +3715,7 @@ button.mobile-price-slider__btn--download i,
                 <div class="content-card">
                     <h2 class="section-title-modern">
                         <i class="fas fa-thumbs-up"></i>
-                        'Recommandés'
+                        Recommandés
                     </h2>
                     <div class="row g-3">
                         @foreach($relatedCourses as $relatedCourse)
