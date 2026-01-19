@@ -632,17 +632,21 @@ class MonerooController extends Controller
             }
 
             // Créer un Payment en attente uniquement en cas de succès d'initiation
+            // IMPORTANT: Stocker notre référence locale dans payment_id pour la redirection
+            // et l'ID Moneroo dans payment_data pour la vérification
             Payment::create([
                 'order_id' => $order->id,
                 'payment_method' => 'moneroo',
                 'provider' => $data['provider'] ?? null, // Peut être null pour intégration standard
-                'payment_id' => $actualPaymentId,
+                'payment_id' => $paymentId, // Notre référence locale (utilisée dans return_url)
                 'amount' => $paymentAmount,
                 'currency' => $paymentCurrency,
                 'status' => 'pending',
                 'payment_data' => [
                     'request' => $payload,
                     'response' => $responseData,
+                    'moneroo_id' => $actualPaymentId, // ID Moneroo réel (pour vérification API)
+                    'local_reference' => $paymentId, // Notre référence locale
                 ],
             ]);
 
@@ -1221,15 +1225,37 @@ class MonerooController extends Controller
         }
         
         if ($paymentId) {
-            // Chercher le paiement par payment_id (notre référence) ou par le payment_id de Moneroo
+            // Chercher le paiement par payment_id (notre référence) ou par l'ID Moneroo
+            // Moneroo peut rediriger avec notre référence locale OU avec son propre ID
             $payment = Payment::where('payment_method', 'moneroo')
                 ->where(function($query) use ($paymentId) {
-                    $query->where('payment_id', $paymentId)
-                          ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
-                          ->orWhereJsonContains('payment_data->data->id', $paymentId);
+                    $query->where('payment_id', $paymentId) // Notre référence locale
+                          ->orWhereJsonContains('payment_data->moneroo_id', $paymentId) // ID Moneroo stocké
+                          ->orWhereJsonContains('payment_data->response->data->id', $paymentId) // Format alternatif
+                          ->orWhereJsonContains('payment_data->data->id', $paymentId); // Format alternatif
                 })
                 ->with('order')
                 ->first();
+            
+            // Si pas trouvé, essayer de chercher directement par l'ID Moneroo dans tous les paiements récents
+            if (!$payment) {
+                \Log::warning('Moneroo: Payment not found with initial search in successfulRedirect, trying alternative methods', [
+                    'payment_id' => $paymentId,
+                ]);
+                
+                // Chercher dans les paiements récents (dernières 24h) par l'ID Moneroo
+                $payment = Payment::where('payment_method', 'moneroo')
+                    ->where('created_at', '>=', now()->subHours(24))
+                    ->where(function($query) use ($paymentId) {
+                        $query->whereJsonContains('payment_data->moneroo_id', $paymentId)
+                              ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
+                              ->orWhereJsonContains('payment_data->data->id', $paymentId)
+                              ->orWhere('payment_id', $paymentId);
+                    })
+                    ->with('order')
+                    ->latest()
+                    ->first();
+            }
 
             if ($payment && $payment->order) {
                 // SÉCURITÉ : Vérifier que la commande appartient à l'utilisateur connecté
@@ -1253,9 +1279,11 @@ class MonerooController extends Controller
                 // Utiliser l'ID Moneroo (py_xxx) si disponible, sinon notre payment_id
                 // IMPORTANT: Utiliser l'endpoint /verify selon la documentation Moneroo
                 // https://docs.moneroo.io/payments/transaction-verification
-                $monerooPaymentId = $payment->payment_data['response']['data']['id'] 
+                // Récupérer l'ID Moneroo depuis payment_data (stocké lors de la création)
+                $monerooPaymentId = $payment->payment_data['moneroo_id'] 
+                                 ?? $payment->payment_data['response']['data']['id'] 
                                  ?? $payment->payment_data['data']['id'] 
-                                 ?? $paymentId;
+                                 ?? $paymentId; // Fallback: utiliser le paymentId de la redirection
                 
                 $statusResponse = Http::withHeaders($this->authHeaders())
                     ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
@@ -1437,9 +1465,96 @@ class MonerooController extends Controller
                     'payment_id' => $paymentId,
                 ]);
             }
+        } else {
+            // PaymentId fourni mais paiement non trouvé localement
+            // Essayer de vérifier directement via l'API Moneroo
+            \Log::warning('Moneroo: Payment not found locally in successfulRedirect, trying direct API verification', [
+                'payment_id' => $paymentId,
+                'paymentStatus' => $paymentStatus,
+            ]);
+            
+            // Vérifier le statut directement via l'API même si le paiement n'est pas trouvé localement
+            if ($paymentId) {
+                try {
+                    $statusResponse = Http::withHeaders($this->authHeaders())
+                        ->get($this->baseUrl() . "/payments/{$paymentId}/verify");
+                    
+                    if ($statusResponse->successful()) {
+                        $responseData = $statusResponse->json();
+                        $statusData = $responseData['data'] ?? $responseData;
+                        $status = $statusData['status'] ?? null;
+                        $isProcessed = $statusData['is_processed'] ?? false;
+                        
+                        \Log::info('Moneroo: Direct API verification result', [
+                            'payment_id' => $paymentId,
+                            'status' => $status,
+                            'is_processed' => $isProcessed,
+                            'paymentStatus' => $paymentStatus,
+                        ]);
+                        
+                        // Si le paiement est réussi selon l'API, chercher la commande par order_id dans metadata
+                        if (($status === 'success' && $isProcessed) || ($paymentStatus && in_array(strtolower($paymentStatus), ['success', 'completed']))) {
+                            // Essayer de trouver la commande via les metadata
+                            $orderId = $statusData['metadata']['order_id'] ?? null;
+                            
+                            if ($orderId) {
+                                $order = Order::find($orderId);
+                                if ($order && (!$order->user_id || !auth()->check() || $order->user_id === auth()->id())) {
+                                    \Log::info('Moneroo: Order found via metadata, finalizing payment', [
+                                        'order_id' => $order->id,
+                                        'payment_id' => $paymentId,
+                                    ]);
+                                    
+                                    // Créer ou mettre à jour le paiement
+                                    $payment = Payment::firstOrCreate(
+                                        [
+                                            'payment_method' => 'moneroo',
+                                            'payment_id' => $paymentId,
+                                        ],
+                                        [
+                                            'order_id' => $order->id,
+                                            'amount' => $statusData['amount'] ?? $order->total,
+                                            'currency' => $statusData['currency']['code'] ?? $order->currency,
+                                            'status' => 'completed',
+                                            'processed_at' => $statusData['processed_at'] ? \Carbon\Carbon::parse($statusData['processed_at']) : now(),
+                                            'payment_data' => [
+                                                'moneroo_id' => $paymentId,
+                                                'direct_verification' => true,
+                                                'status_data' => $statusData,
+                                            ],
+                                        ]
+                                    );
+                                    
+                                    if ($payment->status !== 'completed') {
+                                        $payment->update([
+                                            'status' => 'completed',
+                                            'processed_at' => $statusData['processed_at'] ? \Carbon\Carbon::parse($statusData['processed_at']) : now(),
+                                        ]);
+                                    }
+                                    
+                                    if (!in_array($order->status, ['paid', 'completed'])) {
+                                        $order->update([
+                                            'status' => 'paid',
+                                            'paid_at' => $order->paid_at ?: now(),
+                                        ]);
+                                        $this->finalizeOrderAfterPayment($order);
+                                    }
+                                    
+                                    return view('payments.moneroo.success', compact('order'));
+                                }
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Moneroo: Exception while verifying unknown payment via API in successfulRedirect', [
+                        'payment_id' => $paymentId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
         }
 
-        // CRITIQUE: Si on arrive ici, c'est qu'aucun payment_id valide n'est fourni
+        // CRITIQUE: Si on arrive ici, c'est qu'aucun payment_id valide n'est fourni ou paiement non trouvé
         // NE JAMAIS afficher la page de succès sans commande vérifiée
         \Log::warning('Moneroo: successfulRedirect called without valid payment_id or payment not found', [
             'url' => $request->fullUrl(),
@@ -1508,9 +1623,11 @@ class MonerooController extends Controller
                 // pour obtenir la raison d'échec exacte (solde insuffisant, carte rejetée, etc.)
                 // IMPORTANT: Utiliser l'endpoint /verify selon la documentation Moneroo
                 // https://docs.moneroo.io/payments/transaction-verification
-                $monerooPaymentId = $payment->payment_data['response']['data']['id'] 
+                // Récupérer l'ID Moneroo depuis payment_data (stocké lors de la création)
+                $monerooPaymentId = $payment->payment_data['moneroo_id'] 
+                                 ?? $payment->payment_data['response']['data']['id'] 
                                  ?? $payment->payment_data['data']['id'] 
-                                 ?? $paymentId;
+                                 ?? $paymentId; // Fallback: utiliser le paymentId de la redirection
                 
                 try {
                     $statusResponse = Http::withHeaders($this->authHeaders())
@@ -1620,8 +1737,47 @@ class MonerooController extends Controller
                     'failure_reason' => $failureReason,
                 ]);
             } else {
+                // Paiement non trouvé localement mais paymentId fourni
+                // Essayer de vérifier directement via l'API Moneroo
+                \Log::warning('Moneroo: Payment not found locally, trying direct API verification', [
+                    'payment_id' => $paymentId,
+                    'paymentStatus' => $paymentStatus,
+                ]);
+                
+                // Si paymentStatus indique un succès, vérifier via l'API
+                if ($paymentStatus && in_array(strtolower($paymentStatus), ['success', 'completed'])) {
+                    try {
+                        $statusResponse = Http::withHeaders($this->authHeaders())
+                            ->get($this->baseUrl() . "/payments/{$paymentId}/verify");
+                        
+                        if ($statusResponse->successful()) {
+                            $responseData = $statusResponse->json();
+                            $statusData = $responseData['data'] ?? $responseData;
+                            $status = $statusData['status'] ?? null;
+                            $isProcessed = $statusData['is_processed'] ?? false;
+                            
+                            if ($status === 'success' && $isProcessed) {
+                                \Log::warning('Moneroo: Payment verified as success via API but not found locally', [
+                                    'payment_id' => $paymentId,
+                                    'status' => $status,
+                                    'is_processed' => $isProcessed,
+                                ]);
+                                
+                                // Rediriger vers success même si le paiement n'est pas trouvé localement
+                                return redirect()->route('moneroo.success', ['payment_id' => $paymentId, 'paymentStatus' => 'success']);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error('Moneroo: Exception while verifying unknown payment via API', [
+                            'payment_id' => $paymentId,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+                
                 \Log::warning('Moneroo: Failed redirect with unknown payment_id', [
                     'payment_id' => $paymentId,
+                    'paymentStatus' => $paymentStatus,
                 ]);
             }
         } else {
