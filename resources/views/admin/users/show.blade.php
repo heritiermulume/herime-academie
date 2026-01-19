@@ -75,7 +75,11 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
 
                         <dt class="col-sm-4">Date de naissance</dt>
                         <dd class="col-sm-8">
-                            {{ $user->date_of_birth ? $user->date_of_birth->format('d/m/Y') . ' (' . $user->date_of_birth->age . ' ans)' : 'Non renseignée' }}
+                            @if($user->date_of_birth && $user->date_of_birth instanceof \Carbon\Carbon)
+                                {{ $user->date_of_birth->format('d/m/Y') . ' (' . $user->date_of_birth->age . ' ans)' }}
+                            @else
+                                Non renseignée
+                            @endif
                         </dd>
 
                         <dt class="col-sm-4">Genre</dt>
@@ -278,7 +282,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                             <td class="text-center">
                                                 @if($course && !isset($access->is_purchased_not_enrolled) && !isset($access->is_downloaded_free))
                                                     <button type="button" class="btn btn-sm btn-danger btn-action-small" 
-                                                            onclick="confirmRevokeAccess({{ $user->id }}, {{ $course->id }}, '{{ $course->title }}')"
+                                                            onclick="confirmRevokeAccess({{ $user->id }}, {{ $course->id }}, {{ json_encode($course->title) }})"
                                                             title="Enlever l'accès">
                                                         <i class="fas fa-ban"></i>
                                                     </button>
