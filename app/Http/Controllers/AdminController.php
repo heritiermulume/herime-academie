@@ -1061,44 +1061,76 @@ class AdminController extends Controller
 
     public function showUser(User $user)
     {
-        // Charger les inscriptions avec les cours
+        // Charger les inscriptions avec les cours (exclure les cours supprimés)
         $enrollments = $user->enrollments()
             ->where('status', '!=', 'cancelled')
+            ->whereHas('course') // S'assurer que le cours existe toujours
             ->with(['course.instructor', 'course.category', 'order'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->filter(function($enrollment) {
+                // Filtrer les enrollments dont le cours n'existe plus
+                return $enrollment->course !== null;
+            });
         
         // Récupérer les cours achetés (via commandes payées) qui n'ont pas d'inscription
         $purchasedCourseIds = $enrollments->pluck('course_id')->filter()->all();
         $purchasedCourses = \App\Models\Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($query) use ($purchasedCourseIds) {
-                $query->whereNotIn('course_id', $purchasedCourseIds)
+                $query->whereNotIn('course_id', $purchasedCourseIds ?: [0])
+                    ->whereNotNull('course_id')
                     ->whereHas('course', function($q) {
                         $q->where('is_published', true);
                     });
             })
             ->with(['orderItems.course.instructor', 'orderItems.course.category'])
             ->get()
-            ->flatMap(function($order) {
-                return $order->orderItems->filter(function($item) use ($purchasedCourseIds) {
-                    return $item->course && 
-                           $item->course->is_published && 
-                           !in_array($item->course_id, $purchasedCourseIds);
-                })->map(function($item) use ($order) {
-                    // Créer un objet similaire à un enrollment pour la compatibilité avec la vue
-                    return (object)[
-                        'id' => null,
-                        'course_id' => $item->course_id,
-                        'course' => $item->course,
-                        'status' => 'purchased',
-                        'progress' => 0,
-                        'order_id' => $order->id,
-                        'order' => $order,
-                        'created_at' => $order->created_at,
-                        'is_purchased_not_enrolled' => true,
-                    ];
-                });
+            ->flatMap(function($order) use ($purchasedCourseIds) {
+                if (!$order->orderItems) {
+                    return collect();
+                }
+                
+                return $order->orderItems
+                    ->filter(function($item) use ($purchasedCourseIds) {
+                        // Vérifier que le cours existe et est publié
+                        if (!$item->course_id || !$item->course) {
+                            return false;
+                        }
+                        
+                        try {
+                            return $item->course->is_published && 
+                                   !in_array($item->course_id, $purchasedCourseIds);
+                        } catch (\Exception $e) {
+                            \Log::warning('Erreur lors du filtrage des cours achetés', [
+                                'order_id' => $order->id ?? null,
+                                'order_item_id' => $item->id ?? null,
+                                'course_id' => $item->course_id ?? null,
+                                'error' => $e->getMessage(),
+                            ]);
+                            return false;
+                        }
+                    })
+                    ->map(function($item) use ($order) {
+                        // Vérifier à nouveau que le cours existe avant de créer l'objet
+                        if (!$item->course) {
+                            return null;
+                        }
+                        
+                        // Créer un objet similaire à un enrollment pour la compatibilité avec la vue
+                        return (object)[
+                            'id' => null,
+                            'course_id' => $item->course_id,
+                            'course' => $item->course,
+                            'status' => 'purchased',
+                            'progress' => 0,
+                            'order_id' => $order->id,
+                            'order' => $order,
+                            'created_at' => $order->created_at,
+                            'is_purchased_not_enrolled' => true,
+                        ];
+                    })
+                    ->filter(); // Filtrer les valeurs null
             });
         
         // Récupérer les cours téléchargeables gratuits téléchargés au moins une fois
@@ -1109,6 +1141,7 @@ class AdminController extends Controller
             ->all();
         
         $downloadedFreeCourseIds = \App\Models\CourseDownload::where('user_id', $user->id)
+            ->whereNotNull('course_id')
             ->whereHas('course', function($q) {
                 $q->where('is_downloadable', true)
                   ->where('is_free', true)
@@ -1118,31 +1151,48 @@ class AdminController extends Controller
             ->unique()
             ->filter(function($courseId) use ($allAccessCourseIds) {
                 // Exclure ceux déjà dans les enrollments ou les cours achetés
-                return !in_array($courseId, $allAccessCourseIds);
+                return $courseId && !in_array($courseId, $allAccessCourseIds);
             })
             ->all();
         
         $downloadedFreeCourses = collect();
         if (!empty($downloadedFreeCourseIds)) {
             $downloadedFreeCourses = \App\Models\Course::whereIn('id', $downloadedFreeCourseIds)
+                ->where('is_published', true) // S'assurer que le cours est toujours publié
                 ->with(['instructor', 'category'])
                 ->get()
-                ->map(function($course) {
-                    return (object)[
-                        'id' => null,
-                        'course_id' => $course->id,
-                        'course' => $course,
-                        'status' => 'downloaded',
-                        'progress' => 0,
-                        'order_id' => null,
-                        'order' => null,
-                        'created_at' => \App\Models\CourseDownload::where('user_id', $user->id)
+                ->filter(function($course) {
+                    // Filtrer les cours qui n'existent plus ou ne sont plus publiés
+                    return $course !== null;
+                })
+                ->map(function($course) use ($user) {
+                    try {
+                        $downloadDate = \App\Models\CourseDownload::where('user_id', $user->id)
                             ->where('course_id', $course->id)
                             ->orderBy('created_at', 'desc')
-                            ->first()?->created_at ?? now(),
-                        'is_downloaded_free' => true,
-                    ];
-                });
+                            ->first()?->created_at ?? now();
+                        
+                        return (object)[
+                            'id' => null,
+                            'course_id' => $course->id,
+                            'course' => $course,
+                            'status' => 'downloaded',
+                            'progress' => 0,
+                            'order_id' => null,
+                            'order' => null,
+                            'created_at' => $downloadDate,
+                            'is_downloaded_free' => true,
+                        ];
+                    } catch (\Exception $e) {
+                        \Log::warning('Erreur lors de la création de l\'objet cours téléchargé', [
+                            'user_id' => $user->id,
+                            'course_id' => $course->id ?? null,
+                            'error' => $e->getMessage(),
+                        ]);
+                        return null;
+                    }
+                })
+                ->filter(); // Filtrer les valeurs null
         }
         
         // Combiner toutes les sources d'accès

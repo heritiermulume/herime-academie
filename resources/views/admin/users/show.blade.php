@@ -280,9 +280,9 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                 @endif
                                             </td>
                                             <td class="text-center">
-                                                @if($course && !isset($access->is_purchased_not_enrolled) && !isset($access->is_downloaded_free))
+                                                @if($course && $course->id && !isset($access->is_purchased_not_enrolled) && !isset($access->is_downloaded_free))
                                                     <button type="button" class="btn btn-sm btn-danger btn-action-small" 
-                                                            onclick="confirmRevokeAccess({{ $user->id }}, {{ $course->id }}, {{ json_encode($course->title) }})"
+                                                            onclick="confirmRevokeAccess({{ $user->id }}, {{ $course->id }}, {{ json_encode($course->title ?? 'Cours') }})"
                                                             title="Enlever l'accès">
                                                         <i class="fas fa-ban"></i>
                                                     </button>
