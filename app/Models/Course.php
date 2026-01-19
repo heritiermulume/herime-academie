@@ -208,11 +208,25 @@ class Course extends Model
      */
     public function getPurchasesCountAttribute()
     {
-        return $this->orderItems()
-            ->whereHas('order', function($query) {
-                $query->whereIn('status', ['paid', 'completed']);
-            })
-            ->count();
+        try {
+            // Vérifier si la relation orderItems existe
+            if (!method_exists($this, 'orderItems')) {
+                return 0;
+            }
+            
+            return $this->orderItems()
+                ->whereHas('order', function($query) {
+                    $query->whereIn('status', ['paid', 'completed']);
+                })
+                ->count();
+        } catch (\Throwable $e) {
+            // En cas d'erreur (table manquante, relation non définie, etc.), retourner 0
+            \Log::warning('Erreur lors du calcul de purchases_count pour le cours ' . $this->id, [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return 0;
+        }
     }
 
     /**

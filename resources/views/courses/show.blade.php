@@ -3159,13 +3159,32 @@ button.mobile-price-slider__btn--download i,
                 @if($course->show_students_count)
                 @php
                     // Toujours afficher les achats sur la page de détail
+                    $totalPurchases = 0;
                     try {
-                        $totalPurchases = $course->purchases_count ?? 0;
-                    } catch (\Exception $e) {
+                        // Essayer d'obtenir le nombre d'achats via l'accesseur
+                        if (method_exists($course, 'getPurchasesCountAttribute') || property_exists($course, 'purchases_count')) {
+                            $totalPurchases = $course->purchases_count ?? 0;
+                        } else {
+                            // Fallback: compter directement depuis la base de données
+                            $totalPurchases = \App\Models\OrderItem::where('course_id', $course->id)
+                                ->whereHas('order', function($query) {
+                                    $query->whereIn('status', ['paid', 'completed']);
+                                })
+                                ->count();
+                        }
+                    } catch (\Throwable $e) {
+                        // En cas d'erreur, utiliser 0
                         $totalPurchases = 0;
+                        // Log l'erreur en développement seulement
+                        if (config('app.debug')) {
+                            \Log::warning('Erreur lors du calcul de purchases_count', [
+                                'course_id' => $course->id,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
                     }
-                    // S'assurer que $totalPurchases est un entier
-                    $totalPurchases = (int) ($totalPurchases ?? 0);
+                    // S'assurer que $totalPurchases est un entier valide
+                    $totalPurchases = max(0, (int) ($totalPurchases ?? 0));
                 @endphp
                 <div class="course-stat-item">
                     <i class="fas fa-shopping-cart"></i>
@@ -3389,15 +3408,23 @@ button.mobile-price-slider__btn--download i,
                             <div class="instructor-stats">
                                 <span><i class="fas fa-book me-1"></i>{{ $course->instructor->courses_count ?? $course->instructor->courses->count() }} cours</span>
                                 <span><i class="fas fa-users me-1"></i>{{ $course->instructor->courses->sum(function($c) { 
-                                    if ($c->is_downloadable) {
-                                        return $c->purchases_count ?? 0;
+                                    try {
+                                        if ($c->is_downloadable) {
+                                            return (int) ($c->purchases_count ?? 0);
+                                        }
+                                        return (int) ($c->enrollments_count ?? $c->enrollments->count() ?? 0);
+                                    } catch (\Throwable $e) {
+                                        return 0;
                                     }
-                                    return $c->enrollments_count ?? $c->enrollments->count();
                                 }) }} {{ $course->instructor->courses->sum(function($c) { 
-                                    if ($c->is_downloadable) {
-                                        return $c->purchases_count ?? 0;
+                                    try {
+                                        if ($c->is_downloadable) {
+                                            return (int) ($c->purchases_count ?? 0);
+                                        }
+                                        return (int) ($c->enrollments_count ?? $c->enrollments->count() ?? 0);
+                                    } catch (\Throwable $e) {
+                                        return 0;
                                     }
-                                    return $c->enrollments_count ?? $c->enrollments->count();
                                 }) > 1 ? 'étudiants' : 'étudiant' }}</span>
                             </div>
                         </div>
@@ -3595,12 +3622,31 @@ button.mobile-price-slider__btn--download i,
                                         
                                         @if($relatedCourse->show_students_count)
                                         @php
+                                            $relatedPurchasesCount = 0;
                                             try {
-                                                $relatedPurchasesCount = $relatedCourseStats['purchases_count'] ?? $relatedCourse->purchases_count ?? 0;
-                                            } catch (\Exception $e) {
+                                                // Essayer d'obtenir le nombre d'achats via les stats ou l'accesseur
+                                                if (isset($relatedCourseStats['purchases_count'])) {
+                                                    $relatedPurchasesCount = $relatedCourseStats['purchases_count'];
+                                                } elseif (method_exists($relatedCourse, 'getPurchasesCountAttribute') || property_exists($relatedCourse, 'purchases_count')) {
+                                                    $relatedPurchasesCount = $relatedCourse->purchases_count ?? 0;
+                                                } else {
+                                                    // Fallback: compter directement depuis la base de données
+                                                    $relatedPurchasesCount = \App\Models\OrderItem::where('course_id', $relatedCourse->id)
+                                                        ->whereHas('order', function($query) {
+                                                            $query->whereIn('status', ['paid', 'completed']);
+                                                        })
+                                                        ->count();
+                                                }
+                                            } catch (\Throwable $e) {
                                                 $relatedPurchasesCount = 0;
+                                                if (config('app.debug')) {
+                                                    \Log::warning('Erreur lors du calcul de purchases_count pour le cours recommandé', [
+                                                        'course_id' => $relatedCourse->id ?? null,
+                                                        'error' => $e->getMessage()
+                                                    ]);
+                                                }
                                             }
-                                            $relatedPurchasesCount = (int) ($relatedPurchasesCount ?? 0);
+                                            $relatedPurchasesCount = max(0, (int) ($relatedPurchasesCount ?? 0));
                                         @endphp
                                         <div class="students-count mb-2">
                                             <small class="text-muted">
