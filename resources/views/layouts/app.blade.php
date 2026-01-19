@@ -614,6 +614,7 @@
         .course-card .course-price-row {
             display: flex;
             align-items: baseline;
+            width: auto;
         }
 
         .course-card .duration {
@@ -773,11 +774,17 @@
             .course-card .course-price-container {
                 flex-direction: column !important;
                 gap: 0.25rem !important;
+                width: 100% !important;
             }
 
             .course-card .course-price-row {
                 display: flex !important;
                 align-items: baseline !important;
+                width: 100% !important;
+            }
+
+            .course-card .course-price-row .promotion-countdown {
+                width: 100% !important;
             }
         }
 

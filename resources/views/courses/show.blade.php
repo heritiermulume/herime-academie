@@ -3715,7 +3715,7 @@ button.mobile-price-slider__btn--download i,
                 <div class="content-card">
                     <h2 class="section-title-modern">
                         <i class="fas fa-thumbs-up"></i>
-                        {{ $course->is_downloadable ? 'Produits digitaux recommandés' : 'Cours recommandés' }}
+                        'Recommandés'
                     </h2>
                     <div class="row g-3">
                         @foreach($relatedCourses as $relatedCourse)
@@ -3870,7 +3870,7 @@ button.mobile-price-slider__btn--download i,
                                     @if($course->is_sale_active && $course->sale_end_at)
                                     <div class="promotion-countdown mt-3" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
                                         <div class="countdown-label text-muted small mb-1">
-                                            <i class="fas fa-clock me-1"></i>Se termine dans : 
+                                            <i class="fas fa-clock me-1"></i>Se termine dans :  
                                         </div>
                                         <div class="countdown-text text-danger fw-bold">
                                             <span class="countdown-days">0</span>j 

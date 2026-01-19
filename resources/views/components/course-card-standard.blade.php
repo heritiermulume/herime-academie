@@ -67,24 +67,26 @@
                                 <div class="course-price-row">
                                     <small class="text-muted text-decoration-line-through">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
                                 </div>
+                                @if($course->is_sale_active && $course->sale_end_at)
+                                <div class="course-price-row">
+                                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                        <i class="fas fa-fire me-1 text-danger"></i>
+                                        <span class="countdown-text">
+                                            <span class="countdown-years">0</span><span>a</span> 
+                                            <span class="countdown-months">0</span><span>m</span> 
+                                            <span class="countdown-days">0</span>j 
+                                            <span class="countdown-hours">0</span>h 
+                                            <span class="countdown-minutes">0</span>min
+                                        </span>
+                                    </div>
+                                </div>
+                                @endif
                             </div>
                         @else
                             <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                         @endif
                     @endif
                 </div>
-                @if($course->is_sale_active && $course->sale_end_at)
-                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
-                        <i class="fas fa-fire me-1 text-danger"></i>
-                        <span class="countdown-text">
-                            <span class="countdown-years">0</span><span>a</span> 
-                            <span class="countdown-months">0</span><span>m</span> 
-                            <span class="countdown-days">0</span>j 
-                            <span class="countdown-hours">0</span>h 
-                            <span class="countdown-minutes">0</span>min
-                        </span>
-                    </div>
-                @endif
             </div>
             
             <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
