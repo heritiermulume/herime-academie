@@ -292,49 +292,17 @@ class MonerooController extends Controller
                 ->first();
 
             if ($existingPayment) {
-                // Si un paiement "pending" existe mais qu'il est trop ancien,
-                // on le considère comme expiré/non traité pour permettre une nouvelle tentative.
-                $paymentAgeMinutes = now()->diffInMinutes($existingPayment->created_at);
+                // Marquer le paiement en attente comme échoué pour permettre la création d'une nouvelle commande
+                \Log::info('Moneroo: Marking existing pending payment as failed to allow new order', [
+                    'user_id' => $user->id,
+                    'order_id' => $recentPendingOrder->id,
+                    'payment_id' => $existingPayment->payment_id,
+                ]);
 
-                if ($paymentAgeMinutes <= 1) {
-                    \Log::info('Moneroo: Reusing existing pending payment', [
-                        'user_id' => $user->id,
-                        'existing_order_id' => $recentPendingOrder->id,
-                        'existing_payment_id' => $existingPayment->payment_id,
-                        'payment_age_minutes' => $paymentAgeMinutes,
-                    ]);
-
-                    // Retourner l'URL de checkout existante si disponible
-                    $checkoutUrl = $existingPayment->payment_data['response']['data']['checkout_url'] 
-                                ?? $existingPayment->payment_data['data']['checkout_url'] 
-                                ?? null;
-
-                    if ($checkoutUrl) {
-                        return response()->json([
-                            'success' => true,
-                            'payment_id' => $existingPayment->payment_id,
-                            'order_id' => $recentPendingOrder->id,
-                            'status' => 'pending',
-                            'checkout_url' => $checkoutUrl,
-                            'redirect_url' => $checkoutUrl,
-                            'message' => 'Un paiement est déjà en cours pour cette commande.',
-                        ], 200);
-                    }
-                } else {
-                    // Paiement en attente mais trop ancien : le marquer comme échoué
-                    // pour qu'une nouvelle commande et un nouveau paiement puissent être créés.
-                    \Log::info('Moneroo: Pending payment considered stale, marking as failed', [
-                        'user_id' => $user->id,
-                        'order_id' => $recentPendingOrder->id,
-                        'payment_id' => $existingPayment->payment_id,
-                        'payment_age_minutes' => $paymentAgeMinutes,
-                    ]);
-
-                    $existingPayment->update([
-                        'status' => 'failed',
-                        'failure_reason' => 'pending_timeout',
-                    ]);
-                }
+                $existingPayment->update([
+                    'status' => 'failed',
+                    'failure_reason' => 'pending_timeout',
+                ]);
             }
             
             // IMPORTANT: Si la commande existe mais que tous les paiements ont échoué,
