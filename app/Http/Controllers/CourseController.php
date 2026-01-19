@@ -192,89 +192,146 @@ class CourseController extends Controller
 
     public function show(Course $course)
     {
-        // Vérifier que le cours est publié, sauf si l'utilisateur est l'instructeur du cours
-        $isInstructor = auth()->check() && auth()->user()->hasRole('instructor') && $course->instructor_id === auth()->id();
-        if (!$course->is_published && !$isInstructor) {
-            abort(404, 'Ce cours n\'est pas disponible.');
-        }
-
-        // Charger toutes les relations nécessaires
-        // Pour les instructeurs, charger toutes les sections et leçons même non publiées
-        $course->load([
-            'instructor' => function($query) {
-                $query->withCount('courses');
-            },
-            'instructor.courses' => function($query) {
-                $query->withCount('enrollments');
-            },
-            'category',
-            'sections' => function($query) use ($isInstructor) {
-                if (!$isInstructor) {
-                    $query->where('is_published', true);
-                }
-                $query->orderBy('sort_order');
-            },
-            'sections.lessons' => function($query) use ($isInstructor) {
-                if (!$isInstructor) {
-                    $query->where('is_published', true);
-                }
-                $query->orderBy('sort_order');
-            },
-            'reviews' => function($query) {
-                $query->where('is_approved', true)->with('user')->latest();
-            },
-            'enrollments' => function($query) {
-                $query->where('status', 'active');
-            },
-        ]);
-        
-        $userId = auth()->id();
-
-        // Vérifier si l'utilisateur est inscrit
-        $isEnrolled = $userId ? $course->isEnrolledBy($userId) : false;
-        $enrollment = $isEnrolled ? $course->getEnrollmentFor($userId) : null;
-
-        $hasPurchased = false;
-        if ($userId) {
-            if ($isEnrolled || $course->is_free) {
-                $hasPurchased = $isEnrolled;
-            } elseif (!$course->is_free) {
-                // Vérifier les commandes payées ou complétées
-                $hasPurchased = Order::where('user_id', $userId)
-                    ->whereIn('status', ['paid', 'completed'])
-                    ->whereHas('orderItems', function ($query) use ($course) {
-                        $query->where('course_id', $course->id);
-                    })
-                    ->exists();
+        try {
+            // Vérifier que le cours est publié, sauf si l'utilisateur est l'instructeur du cours
+            $isInstructor = auth()->check() && auth()->user()->hasRole('instructor') && $course->instructor_id === auth()->id();
+            if (!$course->is_published && !$isInstructor) {
+                abort(404, 'Ce cours n\'est pas disponible.');
             }
+
+            // Charger toutes les relations nécessaires
+            // Pour les instructeurs, charger toutes les sections et leçons même non publiées
+            $course->load([
+                'instructor' => function($query) {
+                    $query->withCount('courses');
+                },
+                'instructor.courses' => function($query) {
+                    $query->withCount('enrollments');
+                },
+                'category',
+                'sections' => function($query) use ($isInstructor) {
+                    if (!$isInstructor) {
+                        $query->where('is_published', true);
+                    }
+                    $query->orderBy('sort_order');
+                },
+                'sections.lessons' => function($query) use ($isInstructor) {
+                    if (!$isInstructor) {
+                        $query->where('is_published', true);
+                    }
+                    $query->orderBy('sort_order');
+                },
+                'reviews' => function($query) {
+                    $query->where('is_approved', true)->with('user')->latest();
+                },
+                'enrollments' => function($query) {
+                    $query->where('status', 'active');
+                },
+            ]);
+            
+            $userId = auth()->id();
+
+            // Vérifier si l'utilisateur est inscrit
+            try {
+                $isEnrolled = $userId ? $course->isEnrolledBy($userId) : false;
+                $enrollment = $isEnrolled ? $course->getEnrollmentFor($userId) : null;
+            } catch (\Throwable $e) {
+                \Log::error('Erreur lors de la vérification de l\'inscription', [
+                    'course_id' => $course->id,
+                    'user_id' => $userId,
+                    'error' => $e->getMessage()
+                ]);
+                $isEnrolled = false;
+                $enrollment = null;
+            }
+
+            $hasPurchased = false;
+            if ($userId) {
+                try {
+                    if ($isEnrolled || $course->is_free) {
+                        $hasPurchased = $isEnrolled;
+                    } elseif (!$course->is_free) {
+                        // Vérifier les commandes payées ou complétées
+                        $hasPurchased = Order::where('user_id', $userId)
+                            ->whereIn('status', ['paid', 'completed'])
+                            ->whereHas('orderItems', function ($query) use ($course) {
+                                $query->where('course_id', $course->id);
+                            })
+                            ->exists();
+                    }
+                } catch (\Throwable $e) {
+                    \Log::error('Erreur lors de la vérification de l\'achat', [
+                        'course_id' => $course->id,
+                        'user_id' => $userId,
+                        'error' => $e->getMessage()
+                    ]);
+                    $hasPurchased = false;
+                }
+            }
+
+            // Obtenir l'état du bouton avec gestion d'erreur
+            try {
+                $buttonState = $course->getButtonStateForUser($userId);
+            } catch (\Throwable $e) {
+                \Log::error('Erreur lors de l\'obtention de buttonState', [
+                    'course_id' => $course->id,
+                    'user_id' => $userId,
+                    'error' => $e->getMessage()
+                ]);
+                $buttonState = 'enroll'; // Valeur par défaut
+            }
+            
+            $canAccessCourse = $isEnrolled || $hasPurchased;
+            $canDownloadCourse = $course->is_downloadable && $canAccessCourse;
+
+            // Calculer les statistiques du cours (simplifiées)
+            $courseStats = [
+                'recent_announcements' => \App\Models\Announcement::where('is_active', true)
+                    ->latest()
+                    ->limit(5)
+                    ->get()
+            ];
+
+            // Cours similaires avec algorithme de recommandation amélioré
+            try {
+                $relatedCourses = $this->getRecommendedCourses($course);
+            } catch (\Throwable $e) {
+                \Log::error('Erreur lors de l\'obtention des cours recommandés', [
+                    'course_id' => $course->id,
+                    'error' => $e->getMessage()
+                ]);
+                $relatedCourses = collect([]); // Collection vide en cas d'erreur
+            }
+
+            return view('courses.show', compact(
+                'course',
+                'isEnrolled',
+                'enrollment',
+                'relatedCourses',
+                'courseStats',
+                'buttonState',
+                'hasPurchased',
+                'canAccessCourse',
+                'canDownloadCourse'
+            ));
+        } catch (\Throwable $e) {
+            \Log::error('Erreur fatale dans CourseController@show', [
+                'course_id' => $course->id ?? null,
+                'course_slug' => $course->slug ?? null,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // En production, afficher une erreur générique
+            if (!config('app.debug')) {
+                abort(500, 'Une erreur est survenue lors du chargement de la page. Veuillez réessayer plus tard.');
+            }
+            
+            // En développement, laisser passer l'erreur pour le debug
+            throw $e;
         }
-
-        $buttonState = $course->getButtonStateForUser($userId);
-        $canAccessCourse = $isEnrolled || $hasPurchased;
-        $canDownloadCourse = $course->is_downloadable && $canAccessCourse;
-
-        // Calculer les statistiques du cours (simplifiées)
-        $courseStats = [
-            'recent_announcements' => \App\Models\Announcement::where('is_active', true)
-                ->latest()
-                ->limit(5)
-                ->get()
-        ];
-
-        // Cours similaires avec algorithme de recommandation amélioré
-        $relatedCourses = $this->getRecommendedCourses($course);
-
-        return view('courses.show', compact(
-            'course',
-            'isEnrolled',
-            'enrollment',
-            'relatedCourses',
-            'courseStats',
-            'buttonState',
-            'hasPurchased',
-            'canAccessCourse',
-            'canDownloadCourse'
-        ));
     }
 
     public function byCategory(Category $category)
