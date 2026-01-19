@@ -1836,6 +1836,12 @@ body.has-global-announcement:has(.course-details-page) {
 
 .mobile-price-slider__prices {
     display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.mobile-price-slider__prices-row {
+    display: flex;
     align-items: baseline;
     gap: 0.5rem;
     flex-wrap: wrap;
@@ -2117,6 +2123,18 @@ button.mobile-price-slider__btn--download i,
     .mobile-price-slider__value {
         font-size: 1.3rem !important;
         font-weight: 700 !important;
+    }
+    
+    .mobile-price-slider__prices {
+        flex-direction: column !important;
+        gap: 0.25rem !important;
+    }
+    
+    .mobile-price-slider__prices-row {
+        display: flex !important;
+        align-items: baseline !important;
+        gap: 0.5rem !important;
+        flex-wrap: wrap !important;
     }
     
     .mobile-price-slider__current {
@@ -2822,6 +2840,18 @@ button.mobile-price-slider__btn--download i,
     .mobile-price-slider__label {
         font-size: 0.55rem;
         margin-bottom: 0.1rem;
+    }
+    
+    .mobile-price-slider__prices {
+        flex-direction: column !important;
+        gap: 0.25rem !important;
+    }
+    
+    .mobile-price-slider__prices-row {
+        display: flex !important;
+        align-items: baseline !important;
+        gap: 0.5rem !important;
+        flex-wrap: wrap !important;
     }
     
     .mobile-price-slider__value,
@@ -4061,11 +4091,15 @@ button.mobile-price-slider__btn--download i,
                 @if($course->is_sale_active && $course->active_sale_price !== null)
                     <div class="mobile-price-slider__label">Prix promotionnel</div>
                     <div class="mobile-price-slider__prices">
-                        <span class="mobile-price-slider__current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</span>
-                        <span class="mobile-price-slider__original">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
-                        @if($course->sale_discount_percentage)
-                            <span class="mobile-price-slider__badge">-{{ $course->sale_discount_percentage }}%</span>
-                        @endif
+                        <div class="mobile-price-slider__prices-row">
+                            <span class="mobile-price-slider__current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</span>
+                            @if($course->sale_discount_percentage)
+                                <span class="mobile-price-slider__badge">-{{ $course->sale_discount_percentage }}%</span>
+                            @endif
+                        </div>
+                        <div class="mobile-price-slider__prices-row">
+                            <span class="mobile-price-slider__original">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
+                        </div>
                     </div>
                     @if($course->is_sale_active && $course->sale_end_at)
                         <div class="mobile-price-slider__countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
