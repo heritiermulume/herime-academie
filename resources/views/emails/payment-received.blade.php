@@ -152,7 +152,7 @@
                 @endif
             </div>
 
-            <p>Vous avez maintenant accès à tous les cours que vous avez achetés.</p>
+            <p>Vous avez maintenant accès à tous les {{ $accessLabel ?? 'contenus' }} que vous avez achetés.</p>
 
             <div class="button-container">
                 <a href="{{ $orderUrl }}" class="button">Voir ma commande</a>

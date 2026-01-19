@@ -42,6 +42,29 @@ class PaymentReceivedMail extends Mailable
         // Charger les relations nécessaires
         $this->order->load(['orderItems.course', 'user']);
 
+        // Déterminer le libellé adapté selon le type de contenus achetés
+        $orderItems = $this->order->orderItems;
+        $hasDownloadable = $orderItems->contains(function ($item) {
+            return $item->course && $item->course->is_downloadable;
+        });
+        $hasNonDownloadable = $orderItems->contains(function ($item) {
+            return $item->course && !$item->course->is_downloadable;
+        });
+
+        if ($hasDownloadable && !$hasNonDownloadable) {
+            // Uniquement des produits digitaux / téléchargeables
+            $accessLabel = 'produits digitaux';
+        } elseif (!$hasDownloadable && $hasNonDownloadable) {
+            // Uniquement des cours classiques
+            $accessLabel = 'cours';
+        } elseif ($hasDownloadable && $hasNonDownloadable) {
+            // Panier mixte
+            $accessLabel = 'cours et produits digitaux';
+        } else {
+            // Fallback générique
+            $accessLabel = 'contenus';
+        }
+
         // Sécuriser le formatage de la date au cas où paid_at serait null ou mal formaté
         $paidAtText = null;
         try {
@@ -60,6 +83,7 @@ class PaymentReceivedMail extends Mailable
             with: [
                 'order' => $this->order,
                 'orderUrl' => $orderUrl,
+                'accessLabel' => $accessLabel,
                 'paidAtText' => $paidAtText,
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],

@@ -3364,7 +3364,7 @@ button.mobile-price-slider__btn--download i,
                 <div class="content-card">
                     <h2 class="section-title-modern">
                         <i class="fas fa-book-open"></i>
-                        Description {{ $course->is_downloadable ? 'du produit digital' : 'du cours' }}
+                        Description
                     </h2>
                     <div class="course-description">
                         {!! nl2br(e($course->description)) !!}
@@ -3421,7 +3421,7 @@ button.mobile-price-slider__btn--download i,
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h2 class="section-title-modern mb-0">
                             <i class="fas fa-list-ul"></i>
-                            Programme {{ $course->is_downloadable ? 'du produit digital' : 'du cours' }}
+                            Contenus
                         </h2>
                         @if(!$course->is_downloadable)
                         <div class="text-muted">

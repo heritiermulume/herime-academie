@@ -339,7 +339,13 @@
                 @endphp
                 <tr>
                     <td>
-                        <div class="course-title">{{ $course->title ?? 'Cours supprimé' }}</div>
+                        <div class="course-title">
+                            @if($course)
+                                {{ $course->title }}
+                            @else
+                                Contenu supprimé
+                            @endif
+                        </div>
                         @if($course && $course->instructor)
                         <div class="course-meta">Formateur : {{ $course->instructor->name }}</div>
                         @endif
