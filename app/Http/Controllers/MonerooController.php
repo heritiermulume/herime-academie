@@ -285,7 +285,7 @@ class MonerooController extends Controller
             ->first();
 
         if ($recentPendingOrder) {
-            // Vérifier si cette commande a déjà un paiement en cours
+            // Vérifier si cette commande a déjà un paiement en cours (pending)
             $existingPayment = $recentPendingOrder->payments()
                 ->where('status', 'pending')
                 ->where('created_at', '>=', now()->subMinutes(10))
@@ -313,6 +313,64 @@ class MonerooController extends Controller
                         'redirect_url' => $checkoutUrl,
                         'message' => 'Un paiement est déjà en cours pour cette commande.',
                     ], 200);
+                }
+            }
+            
+            // IMPORTANT: Si la commande existe mais que tous les paiements ont échoué,
+            // annuler l'ancienne commande et créer une nouvelle pour permettre une nouvelle tentative
+            // Vérifier qu'il n'y a pas de paiement complété (sécurité)
+            $hasCompletedPayment = $recentPendingOrder->payments()
+                ->where('status', 'completed')
+                ->exists();
+            
+            // Vérifier si tous les paiements ont échoué (pas de pending, pas de completed)
+            $allPaymentsFailed = !$hasCompletedPayment 
+                && $recentPendingOrder->payments()
+                    ->where('status', 'failed')
+                    ->exists() 
+                && !$recentPendingOrder->payments()
+                    ->where('status', 'pending')
+                    ->exists();
+
+            if ($hasCompletedPayment) {
+                // Si un paiement est complété, ne pas créer de nouvelle commande
+                // Cela ne devrait pas arriver car on vérifie les commandes payées plus haut,
+                // mais c'est une sécurité supplémentaire
+                \Log::warning('Moneroo: Order has completed payment but status is still pending', [
+                    'user_id' => $user->id,
+                    'order_id' => $recentPendingOrder->id,
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cette commande a déjà un paiement complété. Veuillez vérifier vos commandes.',
+                    'existing_order_id' => $recentPendingOrder->id,
+                    'redirect_url' => route('orders.show', $recentPendingOrder->id),
+                ], 409);
+            } elseif ($allPaymentsFailed) {
+                // Tous les paiements ont échoué : annuler l'ancienne commande et créer une nouvelle
+                \Log::info('Moneroo: Previous payment failed, cancelling old order and creating new one', [
+                    'user_id' => $user->id,
+                    'old_order_id' => $recentPendingOrder->id,
+                    'course_ids' => $courseIds,
+                ]);
+
+                // Annuler l'ancienne commande
+                $recentPendingOrder->update(['status' => 'cancelled']);
+                
+                // Continuer pour créer une nouvelle commande (le code continue après ce bloc)
+            } elseif (!$existingPayment) {
+                // Si pas de paiement en cours et pas tous échoués, vérifier l'âge de la commande
+                // Si elle est trop ancienne (>5 min), l'annuler pour créer une nouvelle
+                $orderAge = now()->diffInMinutes($recentPendingOrder->created_at);
+                if ($orderAge >= 5) {
+                    \Log::info('Moneroo: Old pending order found, cancelling and creating new one', [
+                        'user_id' => $user->id,
+                        'old_order_id' => $recentPendingOrder->id,
+                        'order_age_minutes' => $orderAge,
+                    ]);
+                    
+                    $recentPendingOrder->update(['status' => 'cancelled']);
                 }
             }
         }
