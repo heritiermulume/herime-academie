@@ -35,7 +35,15 @@
                     <div class="recommended-item cart-item-wrapper" id="cart-item-{{ $item['course']->id }}">
                         <!-- Course Image -->
                         <div class="recommended-thumb">
-                            <img src="{{ $item['course']->thumbnail ? $item['course']->thumbnail : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
+                            @php
+                                $thumbnailUrl = '';
+                                try {
+                                    $thumbnailUrl = $item['course']->thumbnail_url ?? '';
+                                } catch (\Throwable $e) {
+                                    \Log::warning('Erreur lors de l\'accès à thumbnail_url dans le panier', ['course_id' => $item['course']->id, 'error' => $e->getMessage()]);
+                                }
+                            @endphp
+                            <img src="{{ $thumbnailUrl ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
                                  alt="{{ $item['course']->title }}">
                         </div>
                         
@@ -69,9 +77,11 @@
                             </div>
                             
                             <div class="recommended-actions">
+                                @if(!$item['course']->is_downloadable)
                                 <span class="badge bg-primary bg-opacity-10 text-info border-0">
                                     {{ $item['course']->stats['total_lessons'] ?? 0 }} leçons
                                 </span>
+                                @endif
                                 <span class="badge bg-primary bg-opacity-10 text-warning border-0">
                                     {{ number_format($item['course']->stats['average_rating'] ?? 0, 1) }}/5
                                 </span>
