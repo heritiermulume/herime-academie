@@ -1189,17 +1189,36 @@ class MonerooController extends Controller
         }
         
         // Moneroo peut envoyer payment_id (notre référence) ou paymentId (ID Moneroo) dans les paramètres
+        // Selon la documentation: https://docs.moneroo.io/payments/standard-integration
+        // Moneroo redirige avec paymentId et paymentStatus dans les query parameters
         $paymentId = $request->query('payment_id') 
                   ?? $request->query('paymentId') 
                   ?? $request->input('payment_id')
                   ?? $request->input('paymentId');
         
+        // Récupérer le paymentStatus depuis les paramètres de redirection Moneroo
+        $paymentStatus = $request->query('paymentStatus') 
+                      ?? $request->input('paymentStatus');
+        
         \Log::info('Moneroo: successfulRedirect appelé', [
             'payment_id' => $request->query('payment_id'),
             'paymentId' => $request->query('paymentId'),
-            'paymentStatus' => $request->query('paymentStatus'),
+            'paymentStatus' => $paymentStatus,
             'all_params' => $request->all(),
         ]);
+        
+        // Si paymentStatus indique un échec, rediriger vers la page failed
+        if ($paymentStatus && in_array(strtolower($paymentStatus), ['failed', 'cancelled', 'expired', 'rejected'])) {
+            \Log::warning('Moneroo: paymentStatus indicates failure, redirecting to failed page', [
+                'payment_id' => $paymentId,
+                'paymentStatus' => $paymentStatus,
+            ]);
+            
+            if ($paymentId) {
+                return redirect()->route('moneroo.failed', ['payment_id' => $paymentId, 'paymentStatus' => $paymentStatus]);
+            }
+            return redirect()->route('moneroo.failed');
+        }
         
         if ($paymentId) {
             // Chercher le paiement par payment_id (notre référence) ou par le payment_id de Moneroo
@@ -1273,7 +1292,11 @@ class MonerooController extends Controller
                     // Traiter tous les statuts possibles selon Moneroo
                     // Selon la documentation: status peut être "success", "pending", "failed"
                     // Un paiement réussi a status="success" et is_processed=true
-                    if ($status === 'success' || ($status === 'completed' && $isProcessed)) {
+                    // Vérifier aussi le paymentStatus de la redirection si disponible
+                    $redirectStatus = strtolower($paymentStatus ?? '');
+                    $isSuccessFromRedirect = in_array($redirectStatus, ['success', 'completed']);
+                    
+                    if ($status === 'success' || ($status === 'completed' && $isProcessed) || ($isSuccessFromRedirect && $isProcessed)) {
                         // Paiement complété : s'assurer que tout est finalisé
                         if ($payment->status !== 'completed') {
                             $payment->update([
@@ -1439,11 +1462,44 @@ class MonerooController extends Controller
         }
         
         // Si Moneroo redirige avec un payment_id, synchroniser l'état local
-        $paymentId = $request->query('payment_id') ?? $request->query('paymentId');
+        // Selon la documentation: https://docs.moneroo.io/payments/standard-integration
+        // Moneroo redirige avec paymentId et paymentStatus dans les query parameters
+        $paymentId = $request->query('payment_id') 
+                  ?? $request->query('paymentId')
+                  ?? $request->input('payment_id')
+                  ?? $request->input('paymentId');
+        
+        // Récupérer le paymentStatus depuis les paramètres de redirection Moneroo
+        $paymentStatus = $request->query('paymentStatus') 
+                      ?? $request->input('paymentStatus');
+        
+        \Log::info('Moneroo: failedRedirect appelé', [
+            'payment_id' => $paymentId,
+            'paymentStatus' => $paymentStatus,
+            'all_params' => $request->all(),
+        ]);
+        
+        // Si paymentStatus indique un succès, rediriger vers la page success
+        if ($paymentStatus && in_array(strtolower($paymentStatus), ['success', 'completed'])) {
+            \Log::warning('Moneroo: paymentStatus indicates success but redirected to failed page', [
+                'payment_id' => $paymentId,
+                'paymentStatus' => $paymentStatus,
+            ]);
+            
+            if ($paymentId) {
+                return redirect()->route('moneroo.success', ['payment_id' => $paymentId, 'paymentStatus' => $paymentStatus]);
+            }
+            return redirect()->route('moneroo.success');
+        }
         
         if ($paymentId) {
+            // Chercher le paiement par payment_id (notre référence) ou par le payment_id de Moneroo
             $payment = Payment::where('payment_method', 'moneroo')
-                ->where('payment_id', $paymentId)
+                ->where(function($query) use ($paymentId) {
+                    $query->where('payment_id', $paymentId)
+                          ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
+                          ->orWhereJsonContains('payment_data->data->id', $paymentId);
+                })
                 ->with('order')
                 ->first();
 
@@ -1470,13 +1526,21 @@ class MonerooController extends Controller
                         // CRITIQUE: Si le statut est "success" et is_processed=true, 
                         // le paiement a réussi même si on est sur la page failed
                         // Cela peut arriver si Moneroo redirige vers failed par erreur
-                        if ($status === 'success' && $isProcessed) {
+                        // Vérifier aussi le paymentStatus de la redirection
+                        $redirectStatus = strtolower($paymentStatus ?? '');
+                        $isSuccessFromRedirect = in_array($redirectStatus, ['success', 'completed']);
+                        $isSuccessFromApi = ($status === 'success' || ($status === 'completed' && $isProcessed));
+                        
+                        if ($isSuccessFromApi || ($isSuccessFromRedirect && $isProcessed)) {
                             \Log::warning('Moneroo: Payment actually succeeded but redirected to failed page', [
                                 'payment_id' => $paymentId,
                                 'moneroo_payment_id' => $monerooPaymentId,
                                 'status' => $status,
+                                'paymentStatus' => $paymentStatus,
                                 'is_processed' => $isProcessed,
                                 'processed_at' => $processedAt,
+                                'is_success_from_api' => $isSuccessFromApi,
+                                'is_success_from_redirect' => $isSuccessFromRedirect,
                             ]);
                             
                             // Traiter comme un succès
@@ -1487,6 +1551,7 @@ class MonerooController extends Controller
                                     'payment_data' => array_merge($payment->payment_data ?? [], [
                                         'redirect_check' => $statusData,
                                         'corrected_from_failed' => true,
+                                        'paymentStatus_from_redirect' => $paymentStatus,
                                     ]),
                                 ]);
                             }
@@ -1500,7 +1565,7 @@ class MonerooController extends Controller
                             }
                             
                             // Rediriger vers la page de succès
-                            return redirect()->route('moneroo.success', ['payment_id' => $paymentId]);
+                            return redirect()->route('moneroo.success', ['payment_id' => $paymentId, 'paymentStatus' => 'success']);
                         }
                         
                         // Extraire la raison d'échec détaillée depuis l'API
