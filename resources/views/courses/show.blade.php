@@ -3907,12 +3907,11 @@ button.mobile-price-slider__btn--download i,
                                                         <i class="fas fa-user-plus me-2"></i>S'inscrire au cours
                                                     </button>
                                                 </form>
+                                            @else
+                                                <button type="button" class="btn btn-secondary btn-lg w-100" disabled>
+                                                    <i class="fas fa-ban me-2"></i>Indisponible
+                                                </button>
                                             @endif
-                                        @endif
-                                        @else
-                                            <button type="button" class="btn btn-secondary btn-lg w-100" disabled>
-                                                <i class="fas fa-ban me-2"></i>Indisponible
-                                            </button>
                                         @endif
                                     @endif
                                 @else
