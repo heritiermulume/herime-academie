@@ -186,12 +186,12 @@
                                                 </div>
                                             </div>
                                             
-                                            @if($course->show_students_count && isset($course->stats['total_students']))
+                                            @if($course->show_students_count && isset($course->stats['purchases_count']))
                                             <div class="students-count mb-2">
                                                 <small class="text-muted">
-                                                    <i class="fas fa-users me-1"></i>
-                                                    {{ number_format($course->stats['total_students'], 0, ',', ' ') }} 
-                                                    {{ $course->stats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                                    <i class="fas fa-shopping-cart me-1"></i>
+                                                    {{ number_format($course->stats['purchases_count'], 0, ',', ' ') }} 
+                                                    {{ $course->stats['purchases_count'] > 1 ? 'achats' : 'achat' }}
                                                 </small>
                                             </div>
                                             @endif
@@ -977,12 +977,12 @@ function createCourseElement(course) {
                             <span class="text-muted">(${course.stats?.total_reviews || 0})</span>
                         </div>
                     </div>
-                    ${course.show_students_count && course.stats?.total_students ? `
+                    ${course.show_students_count && course.stats?.purchases_count ? `
                     <div class="students-count mb-2">
                         <small class="text-muted">
-                            <i class="fas fa-users me-1"></i>
-                            ${parseInt(course.stats.total_students).toLocaleString('fr-FR')} 
-                            ${parseInt(course.stats.total_students) > 1 ? 'étudiants inscrits' : 'étudiant inscrit'}
+                            <i class="fas fa-shopping-cart me-1"></i>
+                            ${parseInt(course.stats.purchases_count).toLocaleString('fr-FR')} 
+                            ${parseInt(course.stats.purchases_count) > 1 ? 'achats' : 'achat'}
                         </small>
                     </div>
                     ` : ''}

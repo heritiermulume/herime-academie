@@ -196,10 +196,57 @@ class Course extends Model
 
     /**
      * Obtenir le nombre total d'étudiants inscrits
+     * Retourne toujours les inscriptions (pas les achats)
      */
     public function getTotalStudentsAttribute()
     {
         return $this->enrollments()->count();
+    }
+
+    /**
+     * Obtenir le nombre d'achats (commandes payées ou complétées)
+     */
+    public function getPurchasesCountAttribute()
+    {
+        return $this->orderItems()
+            ->whereHas('order', function($query) {
+                $query->whereIn('status', ['paid', 'completed']);
+            })
+            ->count();
+    }
+
+    /**
+     * Obtenir le nombre d'acheteurs uniques
+     */
+    public function getUniquePurchasersCountAttribute()
+    {
+        return $this->orderItems()
+            ->whereHas('order', function($query) {
+                $query->whereIn('status', ['paid', 'completed']);
+            })
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->distinct('orders.user_id')
+            ->count('orders.user_id');
+    }
+
+    /**
+     * Obtenir la somme totale des achats (revenus)
+     */
+    public function getTotalPurchasesRevenueAttribute()
+    {
+        return $this->orderItems()
+            ->whereHas('order', function($query) {
+                $query->whereIn('status', ['paid', 'completed']);
+            })
+            ->sum('total');
+    }
+
+    /**
+     * Obtenir le nombre total de téléchargements
+     */
+    public function getTotalDownloadsCountAttribute()
+    {
+        return $this->downloads()->count();
     }
 
     /**
@@ -367,9 +414,14 @@ class Course extends Model
             'total_duration' => $this->sections ? $this->sections->sum(function($section) {
                 return $section->lessons ? $section->lessons->sum('duration') : 0;
             }) : 0,
-            'total_students' => $this->enrollments ? $this->enrollments->count() : 0,
+            'total_students' => $this->total_students, // Nombre d'inscriptions
+            'purchases_count' => $this->purchases_count, // Nombre d'achats (pour tous les cours)
             'average_rating' => $this->reviews ? $this->reviews->avg('rating') ?? 0 : 0,
             'total_reviews' => $this->reviews ? $this->reviews->count() : 0,
+            // Statistiques supplémentaires pour les produits téléchargeables
+            'total_downloads' => $this->is_downloadable ? $this->total_downloads_count : null,
+            'unique_downloads' => $this->is_downloadable ? $this->unique_downloads_count : null,
+            'total_revenue' => $this->is_downloadable ? $this->total_purchases_revenue : null,
         ];
     }
 
@@ -743,14 +795,14 @@ class Course extends Model
                 ];
                 
             case 'purchased':
-                // Si le cours est téléchargeable, proposer l'inscription pour accéder au tableau de bord
+                // Si le cours est téléchargeable, proposer le téléchargement direct (pas d'inscription nécessaire)
                 if ($this->is_downloadable) {
                     return [
-                        'type' => 'form',
-                        'action' => route('student.courses.enroll', $this->slug),
+                        'type' => 'link',
+                        'url' => route('courses.download', $this->slug),
                         'class' => 'btn btn-primary',
-                        'text' => 'S\'inscrire',
-                        'icon' => 'fas fa-user-plus'
+                        'text' => 'Télécharger',
+                        'icon' => 'fas fa-download'
                     ];
                 }
                 

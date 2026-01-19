@@ -1993,7 +1993,9 @@ class AdminController extends Controller
 
     public function showCourse(Course $course)
     {
-        $course->load(['instructor', 'category', 'sections.lessons']);
+        $course->load(['instructor', 'category', 'sections.lessons', 'reviews', 'enrollments', 'orderItems.order']);
+        // Charger les statistiques complètes
+        $course->stats = $course->getCourseStats();
         $baseCurrency = Setting::getBaseCurrency();
         return view('admin.courses.show', compact('course', 'baseCurrency'));
     }

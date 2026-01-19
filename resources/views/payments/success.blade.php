@@ -52,7 +52,7 @@
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-primary text-white py-3">
                     <h5 class="mb-0 fw-bold">
-                        <i class="fas fa-book me-2"></i>Cours achetés
+                        <i class="fas fa-book me-2"></i>Produits achetés
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -71,9 +71,9 @@
                             <div class="col-md-3 text-end">
                                 <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total) }}</div>
                                 @if($item->course->is_downloadable)
-                                    <a href="{{ route('courses.show', $item->course->slug) }}" 
+                                    <a href="{{ route('courses.download', $item->course->slug) }}" 
                                        class="btn btn-primary btn-sm mt-2">
-                                        <i class="fas fa-eye me-1"></i>Voir le cours
+                                        <i class="fas fa-download me-1"></i>Télécharger
                                     </a>
                                 @else
                                     <a href="{{ route('learning.course', $item->course->slug) }}" 

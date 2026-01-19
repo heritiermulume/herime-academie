@@ -662,12 +662,12 @@ body {
                                     </div>
                                 </div>
                                 
-                                @if($course->show_students_count && isset($course->stats['total_students']))
+                                @if($course->show_students_count && isset($course->stats['purchases_count']))
                                 <div class="students-count mb-2">
                                     <small class="text-muted">
-                                        <i class="fas fa-users me-1"></i>
-                                        {{ number_format($course->stats['total_students'], 0, ',', ' ') }} 
-                                        {{ $course->stats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                        <i class="fas fa-shopping-cart me-1"></i>
+                                        {{ number_format($course->stats['purchases_count'], 0, ',', ' ') }} 
+                                        {{ $course->stats['purchases_count'] > 1 ? 'achats' : 'achat' }}
                                     </small>
                                 </div>
                                 @endif
@@ -776,12 +776,12 @@ body {
                                     </div>
                                 </div>
                                 
-                                @if($course->show_students_count && isset($course->stats['total_students']))
+                                @if($course->show_students_count && isset($course->stats['purchases_count']))
                                 <div class="students-count mb-2">
                                     <small class="text-muted">
-                                        <i class="fas fa-users me-1"></i>
-                                        {{ number_format($course->stats['total_students'], 0, ',', ' ') }} 
-                                        {{ $course->stats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                        <i class="fas fa-shopping-cart me-1"></i>
+                                        {{ number_format($course->stats['purchases_count'], 0, ',', ' ') }} 
+                                        {{ $course->stats['purchases_count'] > 1 ? 'achats' : 'achat' }}
                                     </small>
                                 </div>
                                 @endif
@@ -970,12 +970,12 @@ body {
                                     </div>
                                 </div>
                                 
-                                @if($course->show_students_count && isset($course->stats['total_students']))
+                                @if($course->show_students_count && isset($course->stats['purchases_count']))
                                 <div class="students-count mb-2">
                                     <small class="text-muted">
-                                        <i class="fas fa-users me-1"></i>
-                                        {{ number_format($course->stats['total_students'], 0, ',', ' ') }} 
-                                        {{ $course->stats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                        <i class="fas fa-shopping-cart me-1"></i>
+                                        {{ number_format($course->stats['purchases_count'], 0, ',', ' ') }} 
+                                        {{ $course->stats['purchases_count'] > 1 ? 'achats' : 'achat' }}
                                     </small>
                                 </div>
                                 @endif

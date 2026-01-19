@@ -29,8 +29,12 @@
     $totalLessons = $stats['total_lessons'] ?? $lessonsCollection->count();
     $totalDuration = $stats['total_duration'] ?? $lessonsCollection->sum(fn ($lesson) => (int) ($lesson->duration ?? 0));
     $totalStudents = $stats['total_students'] ?? ($course->enrollments_count ?? null);
+    $purchasesCount = $stats['purchases_count'] ?? ($course->purchases_count ?? null);
     $averageRating = $stats['average_rating'] ?? null;
     $totalReviews = $stats['total_reviews'] ?? null;
+    $totalDownloads = $stats['total_downloads'] ?? null;
+    $uniqueDownloads = $stats['unique_downloads'] ?? null;
+    $totalRevenue = $stats['total_revenue'] ?? null;
 
     $requirements = $course->getRequirementsArray();
     $learnings = $course->getWhatYouWillLearnArray();
@@ -406,6 +410,28 @@
                         <dd class="col-sm-6">
                             {{ $totalStudents !== null ? number_format($totalStudents, 0, ',', ' ') : '—' }}
                         </dd>
+
+                        <dt class="col-sm-6">Nombre d'achats</dt>
+                        <dd class="col-sm-6">
+                            {{ $purchasesCount !== null ? number_format($purchasesCount, 0, ',', ' ') : '—' }}
+                        </dd>
+
+                        @if($course->is_downloadable)
+                        <dt class="col-sm-6">Téléchargements totaux</dt>
+                        <dd class="col-sm-6">
+                            {{ $totalDownloads !== null ? number_format($totalDownloads, 0, ',', ' ') : '—' }}
+                        </dd>
+
+                        <dt class="col-sm-6">Téléchargements uniques</dt>
+                        <dd class="col-sm-6">
+                            {{ $uniqueDownloads !== null ? number_format($uniqueDownloads, 0, ',', ' ') : '—' }}
+                        </dd>
+
+                        <dt class="col-sm-6">Revenus totaux</dt>
+                        <dd class="col-sm-6">
+                            {{ $totalRevenue !== null ? \App\Helpers\CurrencyHelper::formatWithSymbol($totalRevenue) : '—' }}
+                        </dd>
+                        @endif
 
                         <dt class="col-sm-6">Note moyenne</dt>
                         <dd class="col-sm-6">

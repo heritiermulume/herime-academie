@@ -290,6 +290,30 @@ class DownloadController extends Controller
      */
     private function hasAccessToCourse(Course $course, $userId)
     {
+        // IMPORTANT: Pour les produits téléchargeables, vérifier uniquement les commandes payées
+        // Pas besoin d'inscription pour les produits téléchargeables (e-books, fichiers, etc.)
+        if ($course->is_downloadable) {
+            // Vérifier si l'utilisateur a une commande payée pour ce produit
+            $hasPaidOrder = \App\Models\Order::where('user_id', $userId)
+                ->whereIn('status', ['paid', 'completed'])
+                ->whereHas('orderItems', function($query) use ($course) {
+                    $query->where('course_id', $course->id);
+                })
+                ->exists();
+            
+            if ($hasPaidOrder) {
+                return true;
+            }
+            
+            // Pour les produits téléchargeables gratuits, vérifier l'inscription
+            if ($course->is_free) {
+                return $course->isEnrolledBy($userId);
+            }
+            
+            return false;
+        }
+        
+        // Pour les cours NON téléchargeables, vérifier l'inscription normalement
         // Pour les cours gratuits, vérifier seulement l'inscription
         if ($course->is_free) {
             return $course->isEnrolledBy($userId);

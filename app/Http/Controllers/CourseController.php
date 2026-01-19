@@ -173,7 +173,12 @@ class CourseController extends Controller
                 'total_duration' => $course->sections->sum(function($section) {
                     return $section->lessons->sum('duration');
                 }),
-                'total_students' => $course->enrollments->count(),
+                'total_students' => $course->total_students, // Nombre d'inscriptions
+                'purchases_count' => $course->purchases_count, // Nombre d'achats (pour tous les cours)
+                // Statistiques supplémentaires pour les produits téléchargeables
+                'total_downloads' => $course->is_downloadable ? $course->total_downloads_count : null,
+                'unique_downloads' => $course->is_downloadable ? $course->unique_downloads_count : null,
+                'total_revenue' => $course->is_downloadable ? $course->total_purchases_revenue : null,
                 'average_rating' => $course->reviews->avg('rating') ?? 0,
                 'total_reviews' => $course->reviews->count(),
             ];
@@ -234,8 +239,9 @@ class CourseController extends Controller
             if ($isEnrolled || $course->is_free) {
                 $hasPurchased = $isEnrolled;
             } elseif (!$course->is_free) {
+                // Vérifier les commandes payées ou complétées
                 $hasPurchased = Order::where('user_id', $userId)
-                    ->where('status', 'paid')
+                    ->whereIn('status', ['paid', 'completed'])
                     ->whereHas('orderItems', function ($query) use ($course) {
                         $query->where('course_id', $course->id);
                     })
@@ -288,7 +294,12 @@ class CourseController extends Controller
                 'total_duration' => $course->sections->sum(function($section) {
                     return $section->lessons->sum('duration');
                 }),
-                'total_students' => $course->enrollments->count(),
+                'total_students' => $course->total_students, // Nombre d'inscriptions
+                'purchases_count' => $course->purchases_count, // Nombre d'achats (pour tous les cours)
+                // Statistiques supplémentaires pour les produits téléchargeables
+                'total_downloads' => $course->is_downloadable ? $course->total_downloads_count : null,
+                'unique_downloads' => $course->is_downloadable ? $course->unique_downloads_count : null,
+                'total_revenue' => $course->is_downloadable ? $course->total_purchases_revenue : null,
                 'average_rating' => $course->reviews->avg('rating') ?? 0,
                 'total_reviews' => $course->reviews->count(),
             ];
@@ -1328,7 +1339,12 @@ class CourseController extends Controller
                 'total_duration' => $course->sections->sum(function($section) {
                     return $section->lessons->sum('duration');
                 }),
-                'total_students' => $course->enrollments->count(),
+                'total_students' => $course->total_students, // Nombre d'inscriptions
+                'purchases_count' => $course->purchases_count, // Nombre d'achats (pour tous les cours)
+                // Statistiques supplémentaires pour les produits téléchargeables
+                'total_downloads' => $course->is_downloadable ? $course->total_downloads_count : null,
+                'unique_downloads' => $course->is_downloadable ? $course->unique_downloads_count : null,
+                'total_revenue' => $course->is_downloadable ? $course->total_purchases_revenue : null,
                 'average_rating' => $course->reviews->avg('rating') ?? 0,
                 'total_reviews' => $course->reviews->count(),
             ];

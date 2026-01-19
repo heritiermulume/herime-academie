@@ -220,13 +220,28 @@ class OrderController extends Controller
                 'confirmed_at' => now(),
             ]);
 
-            // Créer les inscriptions pour chaque cours (si pas déjà inscrit)
+            // Créer les inscriptions UNIQUEMENT pour les cours NON téléchargeables
+            // Les produits téléchargeables (cours téléchargeables, e-books, fichiers) n'ont pas besoin d'inscription
             // Charger les orderItems si pas déjà chargés
             if (!$order->relationLoaded('orderItems')) {
-                $order->load('orderItems');
+                $order->load('orderItems.course');
             }
             
             foreach ($order->orderItems as $item) {
+                // Charger le cours pour vérifier s'il est téléchargeable
+                $course = $item->course;
+                
+                if (!$course) {
+                    continue;
+                }
+                
+                // Si le cours est téléchargeable, ne pas créer d'inscription
+                // L'accès au téléchargement est géré via les commandes payées
+                if ($course->is_downloadable) {
+                    continue;
+                }
+                
+                // Pour les cours non téléchargeables, créer l'inscription normalement
                 // Vérifier si l'utilisateur est déjà inscrit à ce cours
                 $existingEnrollment = Enrollment::where('user_id', $order->user_id)
                     ->where('course_id', $item->course_id)

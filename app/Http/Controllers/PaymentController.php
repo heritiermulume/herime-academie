@@ -257,22 +257,41 @@ class PaymentController extends Controller
                 'processed_at' => now(),
             ]);
 
-        // Créer l'inscription de l'étudiant
-        // La méthode createAndNotify envoie automatiquement les notifications et emails
+        // Créer l'inscription UNIQUEMENT pour les cours NON téléchargeables
+        // Les produits téléchargeables (cours téléchargeables, e-books, fichiers) n'ont pas besoin d'inscription
+        // Charger les orderItems avec les cours si pas déjà chargés
+        if (!$order->relationLoaded('orderItems')) {
+            $order->load('orderItems.course');
+        }
+        
         foreach ($order->orderItems as $item) {
-                    // Vérifier si l'utilisateur n'est pas déjà inscrit
-                    $existingEnrollment = \App\Models\Enrollment::where('user_id', $order->user_id)
-                        ->where('course_id', $item->course_id)
-                        ->first();
+            // Charger le cours pour vérifier s'il est téléchargeable
+            $course = $item->course;
+            
+            if (!$course) {
+                continue;
+            }
+            
+            // Si le cours est téléchargeable, ne pas créer d'inscription
+            // L'accès au téléchargement est géré via les commandes payées
+            if ($course->is_downloadable) {
+                continue;
+            }
+            
+            // Pour les cours non téléchargeables, créer l'inscription normalement
+            // Vérifier si l'utilisateur n'est pas déjà inscrit
+            $existingEnrollment = \App\Models\Enrollment::where('user_id', $order->user_id)
+                ->where('course_id', $item->course_id)
+                ->first();
 
-                    if (!$existingEnrollment) {
-            $enrollment = \App\Models\Enrollment::createAndNotify([
-                'user_id' => $order->user_id,
-                'course_id' => $item->course_id,
-                'order_id' => $order->id,
-                'status' => 'active',
-            ]);
-                    }
+            if (!$existingEnrollment) {
+                $enrollment = \App\Models\Enrollment::createAndNotify([
+                    'user_id' => $order->user_id,
+                    'course_id' => $item->course_id,
+                    'order_id' => $order->id,
+                    'status' => 'active',
+                ]);
+            }
         }
 
         // Mettre à jour le coupon si utilisé
@@ -424,10 +443,34 @@ class PaymentController extends Controller
                 'paid_at' => now(),
             ]);
 
-            // Créer l'inscription de l'étudiant si pas déjà fait
-            // La méthode createAndNotify envoie automatiquement les notifications et emails
-            if (!$order->enrollments()->exists()) {
-                foreach ($order->orderItems as $item) {
+            // Créer l'inscription UNIQUEMENT pour les cours NON téléchargeables
+            // Les produits téléchargeables (cours téléchargeables, e-books, fichiers) n'ont pas besoin d'inscription
+            // Charger les orderItems avec les cours si pas déjà chargés
+            if (!$order->relationLoaded('orderItems')) {
+                $order->load('orderItems.course');
+            }
+            
+            foreach ($order->orderItems as $item) {
+                // Charger le cours pour vérifier s'il est téléchargeable
+                $course = $item->course;
+                
+                if (!$course) {
+                    continue;
+                }
+                
+                // Si le cours est téléchargeable, ne pas créer d'inscription
+                // L'accès au téléchargement est géré via les commandes payées
+                if ($course->is_downloadable) {
+                    continue;
+                }
+                
+                // Pour les cours non téléchargeables, créer l'inscription normalement
+                // Vérifier si l'utilisateur n'est pas déjà inscrit
+                $existingEnrollment = \App\Models\Enrollment::where('user_id', $order->user_id)
+                    ->where('course_id', $item->course_id)
+                    ->first();
+                
+                if (!$existingEnrollment) {
                     $enrollment = \App\Models\Enrollment::createAndNotify([
                         'user_id' => $order->user_id,
                         'course_id' => $item->course_id,
