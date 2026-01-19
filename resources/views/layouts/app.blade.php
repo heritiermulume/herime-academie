@@ -4362,7 +4362,7 @@
         // ========================================
         
         // Fonction globale pour ajouter un cours au panier (utilisée sur tout le site)
-        function addToCart(courseId) {
+        window.addToCart = function addToCart(courseId) {
             fetch('{{ route("cart.add") }}', {
                 method: 'POST',
                 headers: {
