@@ -287,30 +287,31 @@ class DownloadController extends Controller
 
     /**
      * Vérifier si l'utilisateur a accès au cours
+     *
+     * Règles spécifiques :
+     * - Pour les produits téléchargeables (cours téléchargeables) :
+     *   - Si le produit est payant : il suffit d'avoir une commande payée (pas besoin d'inscription)
+     *   - Si le produit est gratuit : aucun achat ni inscription n'est requis, seul le fait d'être connecté suffit
+     * - Pour les cours NON téléchargeables : on conserve la logique existante basée sur l'inscription
      */
     private function hasAccessToCourse(Course $course, $userId)
     {
-        // IMPORTANT: Pour les produits téléchargeables, vérifier uniquement les commandes payées
-        // Pas besoin d'inscription pour les produits téléchargeables (e-books, fichiers, etc.)
         if ($course->is_downloadable) {
-            // Vérifier si l'utilisateur a une commande payée pour ce produit
-            $hasPaidOrder = \App\Models\Order::where('user_id', $userId)
-                ->whereIn('status', ['paid', 'completed'])
-                ->whereHas('orderItems', function($query) use ($course) {
-                    $query->where('course_id', $course->id);
-                })
-                ->exists();
-            
-            if ($hasPaidOrder) {
-                return true;
+            // Pour les produits téléchargeables payants : l'utilisateur doit avoir une commande payée
+            if (! $course->is_free) {
+                $hasPaidOrder = \App\Models\Order::where('user_id', $userId)
+                    ->whereIn('status', ['paid', 'completed'])
+                    ->whereHas('orderItems', function($query) use ($course) {
+                        $query->where('course_id', $course->id);
+                    })
+                    ->exists();
+
+                return $hasPaidOrder;
             }
-            
-            // Pour les produits téléchargeables gratuits, vérifier l'inscription
-            if ($course->is_free) {
-                return $course->isEnrolledBy($userId);
-            }
-            
-            return false;
+
+            // Pour les produits téléchargeables gratuits : aucun achat ni inscription n'est requis,
+            // le simple fait d'être connecté et que le cours soit publié suffit.
+            return true;
         }
         
         // Pour les cours NON téléchargeables, vérifier l'inscription normalement

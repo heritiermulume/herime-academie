@@ -239,13 +239,21 @@
                         </div>
                         <div class="student-course-item__actions">
                             @if($isPurchasedNotEnrolled)
-                                <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <input type="hidden" name="redirect_to" value="dashboard">
-                                    <button type="submit" class="admin-btn primary sm">
-                                        <i class="fas fa-user-plus me-1"></i>S'inscrire
-                                    </button>
-                                </form>
+                                @if($course->is_downloadable ?? false)
+                                    {{-- Produit téléchargeable acheté : accès direct au téléchargement, sans inscription --}}
+                                    <a href="{{ route('courses.download', $course->slug) }}" class="admin-btn primary sm">
+                                        <i class="fas fa-download me-1"></i>Télécharger
+                                    </a>
+                                @else
+                                    {{-- Cours non téléchargeable : conserver la logique d'inscription --}}
+                                    <form action="{{ route('student.courses.enroll', $course->slug) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <input type="hidden" name="redirect_to" value="dashboard">
+                                        <button type="submit" class="admin-btn primary sm">
+                                            <i class="fas fa-user-plus me-1"></i>S'inscrire
+                                        </button>
+                                    </form>
+                                @endif
                             @else
                                 @if($course->is_downloadable ?? false)
                                     <a href="{{ route('courses.download', $course->slug) }}" class="admin-btn primary sm">
