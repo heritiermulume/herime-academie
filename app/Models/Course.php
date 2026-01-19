@@ -189,9 +189,28 @@ class Course extends Model
 
     public function getLessonsCountAttribute()
     {
-        return $this->sections()->with('lessons')->get()->sum(function($section) {
-            return $section->lessons->count();
-        });
+        try {
+            if (!$this->relationLoaded('sections')) {
+                $this->load('sections.lessons');
+            }
+            
+            if (!$this->sections) {
+                return 0;
+            }
+            
+            return $this->sections->sum(function($section) {
+                if (!$section || !$section->lessons) {
+                    return 0;
+                }
+                return $section->lessons->count();
+            });
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getLessonsCountAttribute', [
+                'course_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
     }
 
     /**
@@ -365,9 +384,28 @@ class Course extends Model
      */
     public function getTotalDurationAttribute()
     {
-        return $this->sections()->with('lessons')->get()->sum(function($section) {
-            return $section->lessons->sum('duration');
-        });
+        try {
+            if (!$this->relationLoaded('sections')) {
+                $this->load('sections.lessons');
+            }
+            
+            if (!$this->sections) {
+                return 0;
+            }
+            
+            return $this->sections->sum(function($section) {
+                if (!$section || !$section->lessons) {
+                    return 0;
+                }
+                return $section->lessons->sum('duration') ?? 0;
+            });
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getTotalDurationAttribute', [
+                'course_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
     }
 
     /**
@@ -375,9 +413,28 @@ class Course extends Model
      */
     public function getTotalLessonsAttribute()
     {
-        return $this->sections()->with('lessons')->get()->sum(function($section) {
-            return $section->lessons->count();
-        });
+        try {
+            if (!$this->relationLoaded('sections')) {
+                $this->load('sections.lessons');
+            }
+            
+            if (!$this->sections) {
+                return 0;
+            }
+            
+            return $this->sections->sum(function($section) {
+                if (!$section || !$section->lessons) {
+                    return 0;
+                }
+                return $section->lessons->count();
+            });
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getTotalLessonsAttribute', [
+                'course_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
     }
 
     /**
@@ -405,9 +462,28 @@ class Course extends Model
      */
     public function getDurationAttribute()
     {
-        return $this->sections()->with('lessons')->get()->sum(function($section) {
-            return $section->lessons->sum('duration');
-        });
+        try {
+            if (!$this->relationLoaded('sections')) {
+                $this->load('sections.lessons');
+            }
+            
+            if (!$this->sections) {
+                return 0;
+            }
+            
+            return $this->sections->sum(function($section) {
+                if (!$section || !$section->lessons) {
+                    return 0;
+                }
+                return $section->lessons->sum('duration') ?? 0;
+            });
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getDurationAttribute', [
+                'course_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
     }
 
 
@@ -603,56 +679,82 @@ class Course extends Model
      */
     public function getCourseFeatures(): array
     {
-        $features = [];
-        
-        // Nombre de leçons (toujours affiché si > 0)
-        $totalLessons = $this->getTotalLessonsAttribute();
-        if ($totalLessons > 0) {
+        try {
+            $features = [];
+            
+            // Nombre de leçons (toujours affiché si > 0)
+            try {
+                $totalLessons = $this->getTotalLessonsAttribute();
+                if ($totalLessons > 0) {
+                    $features[] = [
+                        'icon' => 'fa-play-circle',
+                        'text' => $totalLessons . ' leçon' . ($totalLessons > 1 ? 's' : '')
+                    ];
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Erreur lors du calcul de totalLessons dans getCourseFeatures', ['course_id' => $this->id, 'error' => $e->getMessage()]);
+            }
+            
+            // Durée totale (toujours affichée si > 0)
+            try {
+                $totalDuration = $this->getTotalDurationAttribute();
+                if ($totalDuration > 0) {
+                    $features[] = [
+                        'icon' => 'fa-clock',
+                        'text' => $totalDuration . ' minute' . ($totalDuration > 1 ? 's' : '') . ' de contenu'
+                    ];
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Erreur lors du calcul de totalDuration dans getCourseFeatures', ['course_id' => $this->id, 'error' => $e->getMessage()]);
+            }
+            
+            // Accès mobile et desktop (toujours disponible pour les cours en ligne)
             $features[] = [
-                'icon' => 'fa-play-circle',
-                'text' => $totalLessons . ' leçon' . ($totalLessons > 1 ? 's' : '')
+                'icon' => 'fa-mobile-alt',
+                'text' => 'Accès mobile et desktop'
+            ];
+            
+            // Certificat de fin de cours (vérifier si des certificats sont configurés pour ce cours)
+            // On considère qu'un certificat est disponible si le cours a au moins une section avec des leçons
+            try {
+                if ($this->sections && $this->sections->count() > 0) {
+                    $features[] = [
+                        'icon' => 'fa-certificate',
+                        'text' => 'Certificat de fin de cours'
+                    ];
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Erreur lors de la vérification des sections dans getCourseFeatures', ['course_id' => $this->id, 'error' => $e->getMessage()]);
+            }
+            
+            // Accès à vie (par défaut, les cours n'ont pas d'expiration)
+            $features[] = [
+                'icon' => 'fa-infinity',
+                'text' => 'Accès à vie'
+            ];
+            
+            // Téléchargement disponible (si is_downloadable est activé)
+            if ($this->is_downloadable) {
+                $features[] = [
+                    'icon' => 'fa-download',
+                    'text' => 'Téléchargement disponible'
+                ];
+            }
+            
+            return $features;
+        } catch (\Throwable $e) {
+            \Log::error('Erreur fatale dans getCourseFeatures', [
+                'course_id' => $this->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Retourner des features par défaut en cas d'erreur
+            return [
+                ['icon' => 'fa-play-circle', 'text' => 'Contenu vidéo'],
+                ['icon' => 'fa-mobile-alt', 'text' => 'Accès mobile et desktop'],
+                ['icon' => 'fa-infinity', 'text' => 'Accès à vie']
             ];
         }
-        
-        // Durée totale (toujours affichée si > 0)
-        $totalDuration = $this->getTotalDurationAttribute();
-        if ($totalDuration > 0) {
-            $features[] = [
-                'icon' => 'fa-clock',
-                'text' => $totalDuration . ' minute' . ($totalDuration > 1 ? 's' : '') . ' de contenu'
-            ];
-        }
-        
-        // Accès mobile et desktop (toujours disponible pour les cours en ligne)
-        $features[] = [
-            'icon' => 'fa-mobile-alt',
-            'text' => 'Accès mobile et desktop'
-        ];
-        
-        // Certificat de fin de cours (vérifier si des certificats sont configurés pour ce cours)
-        // On considère qu'un certificat est disponible si le cours a au moins une section avec des leçons
-        if ($this->sections->count() > 0) {
-            $features[] = [
-                'icon' => 'fa-certificate',
-                'text' => 'Certificat de fin de cours'
-            ];
-        }
-        
-        // Accès à vie (par défaut, les cours n'ont pas d'expiration)
-        $features[] = [
-            'icon' => 'fa-infinity',
-            'text' => 'Accès à vie'
-        ];
-        
-        // Téléchargement disponible (si is_downloadable est activé)
-        if ($this->is_downloadable) {
-            $features[] = [
-                'icon' => 'fa-download',
-                'text' => 'Téléchargement disponible'
-            ];
-        }
-        
-        return $features;
     }
 
     /**
@@ -660,16 +762,25 @@ class Course extends Model
      */
     public function getThumbnailUrlAttribute(): ?string
     {
-        if (!$this->thumbnail) {
+        try {
+            if (!$this->thumbnail) {
+                return '';
+            }
+
+            if (filter_var($this->thumbnail, FILTER_VALIDATE_URL)) {
+                return $this->thumbnail;
+            }
+
+            $service = app(\App\Services\FileUploadService::class);
+            return $service->getUrl($this->thumbnail, 'courses/thumbnails');
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getThumbnailUrlAttribute', [
+                'course_id' => $this->id,
+                'thumbnail' => $this->thumbnail ?? null,
+                'error' => $e->getMessage()
+            ]);
             return '';
         }
-
-        if (filter_var($this->thumbnail, FILTER_VALIDATE_URL)) {
-            return $this->thumbnail;
-        }
-
-        $service = app(\App\Services\FileUploadService::class);
-        return $service->getUrl($this->thumbnail, 'courses/thumbnails');
     }
 
     /**
@@ -677,21 +788,30 @@ class Course extends Model
      */
     public function getVideoPreviewUrlAttribute(): ?string
     {
-        // Si YouTube est utilisé, retourner l'URL d'embed
-        if ($this->isYoutubePreviewVideo()) {
-            return $this->getSecureYouTubePreviewEmbedUrl();
-        }
-        
-        if (!$this->video_preview) {
+        try {
+            // Si YouTube est utilisé, retourner l'URL d'embed
+            if ($this->isYoutubePreviewVideo()) {
+                return $this->getSecureYouTubePreviewEmbedUrl();
+            }
+            
+            if (!$this->video_preview) {
+                return '';
+            }
+
+            if (filter_var($this->video_preview, FILTER_VALIDATE_URL)) {
+                return $this->video_preview;
+            }
+
+            $service = app(\App\Services\FileUploadService::class);
+            return $service->getUrl($this->video_preview, 'courses/previews');
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getVideoPreviewUrlAttribute', [
+                'course_id' => $this->id,
+                'video_preview' => $this->video_preview ?? null,
+                'error' => $e->getMessage()
+            ]);
             return '';
         }
-
-        if (filter_var($this->video_preview, FILTER_VALIDATE_URL)) {
-            return $this->video_preview;
-        }
-
-        $service = app(\App\Services\FileUploadService::class);
-        return $service->getUrl($this->video_preview, 'courses/previews');
     }
 
     /**

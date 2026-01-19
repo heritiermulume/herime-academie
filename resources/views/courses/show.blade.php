@@ -3054,58 +3054,130 @@ button.mobile-price-slider__btn--download i,
 
 @section('content')
 @php
-    // Toutes les sections sont déjà filtrées par is_published dans le contrôleur
-    $publishedSections = $course->sections->where('is_published', true);
-    
-    $hasVideoPreview = $course->video_preview_url || $course->video_preview_youtube_id;
-    $hasPreviewLessons = $publishedSections->flatMap(function($section) {
-        return $section->lessons->where('is_preview', true)->where('type', 'video');
-    })->count() > 0;
-    $hasAnyPreview = $hasVideoPreview || $hasPreviewLessons;
-    $learnings = $course->getWhatYouWillLearnArray();
-    $requirements = $course->getRequirementsArray();
-    $user = auth()->user();
-    
-    // Calculer les statistiques depuis les données de la base de données
-    $totalLessons = $publishedSections->sum(function($section) { 
-        if (!$section || !$section->lessons) {
-            return 0;
+    // Protection globale pour éviter les erreurs 500
+    try {
+        // Toutes les sections sont déjà filtrées par is_published dans le contrôleur
+        $publishedSections = $course->sections ? $course->sections->where('is_published', true) : collect([]);
+        
+        // Vérifier la vidéo de prévisualisation avec protection
+        $hasVideoPreview = false;
+        try {
+            $hasVideoPreview = ($course->video_preview_url ?? false) || ($course->video_preview_youtube_id ?? false);
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de l\'accès à video_preview_url', ['course_id' => $course->id, 'error' => $e->getMessage()]);
         }
-        return $section->lessons->where('is_published', true)->count(); 
-    }) ?? 0;
-    $totalDuration = $publishedSections->sum(function($section) { 
-        if (!$section || !$section->lessons) {
-            return 0;
+        
+        // Vérifier les leçons d'aperçu avec protection
+        $hasPreviewLessons = false;
+        try {
+            if ($publishedSections->isNotEmpty()) {
+                $hasPreviewLessons = $publishedSections->flatMap(function($section) {
+                    if (!$section || !$section->lessons) {
+                        return collect([]);
+                    }
+                    return $section->lessons->where('is_preview', true)->where('type', 'video');
+                })->count() > 0;
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors du calcul de hasPreviewLessons', ['course_id' => $course->id, 'error' => $e->getMessage()]);
         }
-        return $section->lessons->where('is_published', true)->sum('duration') ?? 0; 
-    }) ?? 0;
-    
-    $languageNames = [
-        'fr' => 'Français', 'en' => 'Anglais', 'es' => 'Espagnol', 'de' => 'Allemand',
-        'it' => 'Italien', 'pt' => 'Portugais', 'ar' => 'Arabe', 'zh' => 'Chinois',
-        'ja' => 'Japonais', 'ko' => 'Coréen', 'ru' => 'Russe', 'nl' => 'Néerlandais',
-    ];
-    $displayLanguage = $languageNames[$course->language] ?? $course->language ?? 'Non spécifiée';
-    
-    // Charger les reviews approuvées pour les statistiques et l'affichage
-    // Utiliser directement le modèle Review pour garantir les bonnes données depuis la base de données
-    
-    // Calculer les statistiques directement depuis la base de données (requêtes séparées)
-    $averageRatingValue = \App\Models\Review::where('course_id', $course->id)
-        ->where('is_approved', true)
-        ->avg('rating');
-    $averageRatingApproved = $averageRatingValue !== null ? round((float)$averageRatingValue, 1) : 0;
-    
-    $reviewsCountApproved = \App\Models\Review::where('course_id', $course->id)
-        ->where('is_approved', true)
-        ->count();
-    
-    // Charger les reviews pour l'affichage avec les relations
-    $approvedReviews = \App\Models\Review::where('course_id', $course->id)
-        ->where('is_approved', true)
-        ->with('user')
-        ->latest()
-        ->get();
+        
+        $hasAnyPreview = $hasVideoPreview || $hasPreviewLessons;
+        
+        // Obtenir les tableaux avec protection
+        try {
+            $learnings = $course->getWhatYouWillLearnArray();
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getWhatYouWillLearnArray', ['course_id' => $course->id, 'error' => $e->getMessage()]);
+            $learnings = [];
+        }
+        
+        try {
+            $requirements = $course->getRequirementsArray();
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getRequirementsArray', ['course_id' => $course->id, 'error' => $e->getMessage()]);
+            $requirements = [];
+        }
+        
+        $user = auth()->user();
+        
+        // Calculer les statistiques depuis les données de la base de données avec protection
+        $totalLessons = 0;
+        try {
+            $totalLessons = $publishedSections->sum(function($section) { 
+                if (!$section || !$section->lessons) {
+                    return 0;
+                }
+                return $section->lessons->where('is_published', true)->count(); 
+            }) ?? 0;
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors du calcul de totalLessons', ['course_id' => $course->id, 'error' => $e->getMessage()]);
+        }
+        
+        $totalDuration = 0;
+        try {
+            $totalDuration = $publishedSections->sum(function($section) { 
+                if (!$section || !$section->lessons) {
+                    return 0;
+                }
+                return $section->lessons->where('is_published', true)->sum('duration') ?? 0; 
+            }) ?? 0;
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors du calcul de totalDuration', ['course_id' => $course->id, 'error' => $e->getMessage()]);
+        }
+        
+        $languageNames = [
+            'fr' => 'Français', 'en' => 'Anglais', 'es' => 'Espagnol', 'de' => 'Allemand',
+            'it' => 'Italien', 'pt' => 'Portugais', 'ar' => 'Arabe', 'zh' => 'Chinois',
+            'ja' => 'Japonais', 'ko' => 'Coréen', 'ru' => 'Russe', 'nl' => 'Néerlandais',
+        ];
+        $displayLanguage = $languageNames[$course->language ?? ''] ?? ($course->language ?? 'Non spécifiée');
+        
+        // Charger les reviews approuvées pour les statistiques et l'affichage avec protection
+        $averageRatingApproved = 0;
+        $reviewsCountApproved = 0;
+        $approvedReviews = collect([]);
+        
+        try {
+            $averageRatingValue = \App\Models\Review::where('course_id', $course->id)
+                ->where('is_approved', true)
+                ->avg('rating');
+            $averageRatingApproved = $averageRatingValue !== null ? round((float)$averageRatingValue, 1) : 0;
+            
+            $reviewsCountApproved = \App\Models\Review::where('course_id', $course->id)
+                ->where('is_approved', true)
+                ->count();
+            
+            $approvedReviews = \App\Models\Review::where('course_id', $course->id)
+                ->where('is_approved', true)
+                ->with('user')
+                ->latest()
+                ->get();
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors du chargement des reviews', ['course_id' => $course->id, 'error' => $e->getMessage()]);
+        }
+    } catch (\Throwable $e) {
+        // En cas d'erreur fatale, utiliser des valeurs par défaut
+        \Log::error('Erreur fatale dans la section @php de courses.show', [
+            'course_id' => $course->id ?? null,
+            'error' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ]);
+        $publishedSections = collect([]);
+        $hasVideoPreview = false;
+        $hasPreviewLessons = false;
+        $hasAnyPreview = false;
+        $learnings = [];
+        $requirements = [];
+        $user = auth()->user();
+        $totalLessons = 0;
+        $totalDuration = 0;
+        $displayLanguage = 'Non spécifiée';
+        $averageRatingApproved = 0;
+        $reviewsCountApproved = 0;
+        $approvedReviews = collect([]);
+    }
 @endphp
 
 <div class="course-details-page">
@@ -3209,8 +3281,16 @@ button.mobile-price-slider__btn--download i,
                 <div class="content-card" style="padding: 0.5rem;">
                     <div class="video-preview-wrapper" data-bs-toggle="modal" data-bs-target="#coursePreviewModal">
                         <div class="ratio ratio-16x9">
-                            @if($course->thumbnail_url)
-                                <img src="{{ $course->thumbnail_url }}" 
+                            @php
+                                $thumbnailUrl = '';
+                                try {
+                                    $thumbnailUrl = $course->thumbnail_url ?? '';
+                                } catch (\Throwable $e) {
+                                    \Log::warning('Erreur lors de l\'accès à thumbnail_url', ['course_id' => $course->id, 'error' => $e->getMessage()]);
+                                }
+                            @endphp
+                            @if($thumbnailUrl)
+                                <img src="{{ $thumbnailUrl }}" 
                                  alt="{{ $course->title }}" 
                                  class="img-fluid" 
                                  style="object-fit: cover;">
@@ -3227,9 +3307,18 @@ button.mobile-price-slider__btn--download i,
                         </div>
                     </div>
                 </div>
-                @elseif($course->thumbnail_url)
+                @else
+                @php
+                    $thumbnailUrlFallback = '';
+                    try {
+                        $thumbnailUrlFallback = $course->thumbnail_url ?? '';
+                    } catch (\Throwable $e) {
+                        \Log::warning('Erreur lors de l\'accès à thumbnail_url (fallback)', ['course_id' => $course->id, 'error' => $e->getMessage()]);
+                    }
+                @endphp
+                @if($thumbnailUrlFallback)
                 <div class="content-card" style="padding: 0.5rem;">
-                    <img src="{{ $course->thumbnail_url }}" 
+                    <img src="{{ $thumbnailUrlFallback }}" 
                          alt="{{ $course->title }}" 
                          class="img-fluid rounded" 
                          style="width: 100%; height: auto; border-radius: 12px;">
@@ -3391,41 +3480,58 @@ button.mobile-price-slider__btn--download i,
                     </h2>
                     <div class="instructor-card">
                         @if($course->instructor)
+                            @php
+                                $instructorAvatar = '';
+                                $instructorName = $course->instructor->name ?? 'Instructeur';
+                                try {
+                                    $instructorAvatar = $course->instructor->avatar_url ?? '';
+                                } catch (\Throwable $e) {
+                                    \Log::warning('Erreur lors de l\'accès à avatar_url', ['instructor_id' => $course->instructor->id ?? null, 'error' => $e->getMessage()]);
+                                }
+                                
+                                $instructorCoursesCount = 0;
+                                $instructorStudentsCount = 0;
+                                try {
+                                    $instructorCoursesCount = $course->instructor->courses_count ?? ($course->instructor->courses ? $course->instructor->courses->count() : 0);
+                                    
+                                    if ($course->instructor->courses) {
+                                        $instructorStudentsCount = $course->instructor->courses->sum(function($c) { 
+                                            try {
+                                                if ($c->is_downloadable) {
+                                                    return (int) ($c->purchases_count ?? 0);
+                                                }
+                                                return (int) ($c->enrollments_count ?? ($c->enrollments ? $c->enrollments->count() : 0));
+                                            } catch (\Throwable $e) {
+                                                return 0;
+                                            }
+                                        });
+                                    }
+                                } catch (\Throwable $e) {
+                                    \Log::warning('Erreur lors du calcul des stats instructeur', ['instructor_id' => $course->instructor->id ?? null, 'error' => $e->getMessage()]);
+                                }
+                            @endphp
                             <div class="instructor-avatar">
-                                <img src="{{ $course->instructor->avatar_url }}" 
-                                     alt="{{ $course->instructor->name }}">
+                                @if($instructorAvatar)
+                                    <img src="{{ $instructorAvatar }}" alt="{{ $instructorName }}">
+                                @else
+                                    <div class="d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 2rem; font-weight: bold; border-radius: 50%; width: 100%; height: 100%;">
+                                        {{ strtoupper(substr($instructorName, 0, 1)) }}
+                                    </div>
+                                @endif
                             </div>
                         @else
                             <div class="instructor-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 2rem; font-weight: bold; border-radius: 50%;">
-                                {{ strtoupper(substr($course->instructor->name, 0, 1)) }}
+                                ?
                             </div>
                         @endif
                         <div class="flex-grow-1">
-                            <h5>{{ $course->instructor->name }}</h5>
-                            @if($course->instructor->bio)
+                            <h5>{{ $course->instructor->name ?? 'Instructeur' }}</h5>
+                            @if($course->instructor && $course->instructor->bio)
                             <p class="text-muted mb-0">{{ Str::limit($course->instructor->bio, 200) }}</p>
                             @endif
                             <div class="instructor-stats">
-                                <span><i class="fas fa-book me-1"></i>{{ $course->instructor->courses_count ?? $course->instructor->courses->count() }} cours</span>
-                                <span><i class="fas fa-users me-1"></i>{{ $course->instructor->courses->sum(function($c) { 
-                                    try {
-                                        if ($c->is_downloadable) {
-                                            return (int) ($c->purchases_count ?? 0);
-                                        }
-                                        return (int) ($c->enrollments_count ?? $c->enrollments->count() ?? 0);
-                                    } catch (\Throwable $e) {
-                                        return 0;
-                                    }
-                                }) }} {{ $course->instructor->courses->sum(function($c) { 
-                                    try {
-                                        if ($c->is_downloadable) {
-                                            return (int) ($c->purchases_count ?? 0);
-                                        }
-                                        return (int) ($c->enrollments_count ?? $c->enrollments->count() ?? 0);
-                                    } catch (\Throwable $e) {
-                                        return 0;
-                                    }
-                                }) > 1 ? 'étudiants' : 'étudiant' }}</span>
+                                <span><i class="fas fa-book me-1"></i>{{ $instructorCoursesCount ?? 0 }} cours</span>
+                                <span><i class="fas fa-users me-1"></i>{{ $instructorStudentsCount ?? 0 }} {{ ($instructorStudentsCount ?? 0) > 1 ? 'étudiants' : 'étudiant' }}</span>
                             </div>
                         </div>
                     </div>
@@ -3877,7 +3983,21 @@ button.mobile-price-slider__btn--download i,
 
                         <h6 class="fw-bold mb-2" style="font-size: 0.9375rem;">Ce {{ $course->is_downloadable ? 'produit digital' : 'cours' }} comprend :</h6>
                         <ul class="course-features-list">
-                            @foreach($course->getCourseFeatures() as $feature)
+                            @php
+                                $courseFeatures = [];
+                                try {
+                                    $courseFeatures = $course->getCourseFeatures();
+                                } catch (\Throwable $e) {
+                                    \Log::warning('Erreur lors de getCourseFeatures', ['course_id' => $course->id, 'error' => $e->getMessage()]);
+                                    // Valeurs par défaut
+                                    $courseFeatures = [
+                                        ['icon' => 'fa-play-circle', 'text' => 'Contenu vidéo'],
+                                        ['icon' => 'fa-mobile-alt', 'text' => 'Accès mobile et desktop'],
+                                        ['icon' => 'fa-infinity', 'text' => 'Accès à vie']
+                                    ];
+                                }
+                            @endphp
+                            @foreach($courseFeatures as $feature)
                             <li>
                                 <i class="fas {{ $feature['icon'] }}"></i>
                                 <span>{{ $feature['text'] }}</span>
