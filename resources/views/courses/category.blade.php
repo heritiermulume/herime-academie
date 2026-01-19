@@ -83,12 +83,20 @@ use Illuminate\Support\Facades\Storage;
                                     </div>
                                 </div>
                                 
-                                @if($course->show_students_count && isset($course->stats['total_students']))
+                                @if($course->show_students_count)
+                                @php
+                                    try {
+                                        $purchasesCount = $course->stats['purchases_count'] ?? $course->purchases_count ?? 0;
+                                    } catch (\Exception $e) {
+                                        $purchasesCount = 0;
+                                    }
+                                    $purchasesCount = (int) ($purchasesCount ?? 0);
+                                @endphp
                                 <div class="students-count mb-2">
                                     <small class="text-muted">
-                                        <i class="fas fa-users me-1"></i>
-                                        {{ number_format($course->stats['total_students'], 0, ',', ' ') }} 
-                                        {{ $course->stats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                        <i class="fas fa-shopping-cart me-1"></i>
+                                        {{ number_format($purchasesCount, 0, ',', ' ') }} 
+                                        {{ $purchasesCount > 1 ? 'achats' : 'achat' }}
                                     </small>
                                 </div>
                                 @endif

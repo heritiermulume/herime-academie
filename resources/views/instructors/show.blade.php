@@ -109,12 +109,20 @@ use Illuminate\Support\Facades\Storage;
                             <h5 class="card-title">{{ $course->title }}</h5>
                             <p class="card-text text-muted">{{ Str::limit($course->short_description, 80) }}</p>
                             
-                            @if($course->show_students_count && isset($course->stats['total_students']))
+                            @if($course->show_students_count)
+                            @php
+                                try {
+                                    $purchasesCount = $course->stats['purchases_count'] ?? $course->purchases_count ?? 0;
+                                } catch (\Exception $e) {
+                                    $purchasesCount = 0;
+                                }
+                                $purchasesCount = (int) ($purchasesCount ?? 0);
+                            @endphp
                             <div class="mb-2">
                                 <small class="text-muted">
-                                    <i class="fas fa-users me-1"></i>
-                                    {{ number_format($course->stats['total_students'], 0, ',', ' ') }} 
-                                    {{ $course->stats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
+                                    <i class="fas fa-shopping-cart me-1"></i>
+                                    {{ number_format($purchasesCount, 0, ',', ' ') }} 
+                                    {{ $purchasesCount > 1 ? 'achats' : 'achat' }}
                                 </small>
                             </div>
                             @endif
@@ -129,9 +137,17 @@ use Illuminate\Support\Facades\Storage;
                                     @endif
                                 </div>
                                 @if($course->show_students_count)
+                                @php
+                                    try {
+                                        $purchasesCount = $course->stats['purchases_count'] ?? $course->purchases_count ?? 0;
+                                    } catch (\Exception $e) {
+                                        $purchasesCount = 0;
+                                    }
+                                    $purchasesCount = (int) ($purchasesCount ?? 0);
+                                @endphp
                                 <small class="text-muted">
-                                    <i class="fas fa-users me-1"></i>{{ number_format($course->stats['total_students'] ?? 0, 0, ',', ' ') }} 
-                                    {{ ($course->stats['total_students'] ?? 0) > 1 ? 'étudiants' : 'étudiant' }}
+                                    <i class="fas fa-shopping-cart me-1"></i>{{ number_format($purchasesCount, 0, ',', ' ') }} 
+                                    {{ $purchasesCount > 1 ? 'achats' : 'achat' }}
                                 </small>
                                 @endif
                             </div>

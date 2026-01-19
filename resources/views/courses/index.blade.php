@@ -186,12 +186,20 @@
                                                 </div>
                                             </div>
                                             
-                                            @if($course->show_students_count && isset($course->stats['purchases_count']))
+                                            @if($course->show_students_count)
+                                            @php
+                                                try {
+                                                    $purchasesCount = $course->stats['purchases_count'] ?? $course->purchases_count ?? 0;
+                                                } catch (\Exception $e) {
+                                                    $purchasesCount = 0;
+                                                }
+                                                $purchasesCount = (int) ($purchasesCount ?? 0);
+                                            @endphp
                                             <div class="students-count mb-2">
                                                 <small class="text-muted">
                                                     <i class="fas fa-shopping-cart me-1"></i>
-                                                    {{ number_format($course->stats['purchases_count'], 0, ',', ' ') }} 
-                                                    {{ $course->stats['purchases_count'] > 1 ? 'achats' : 'achat' }}
+                                                    {{ number_format($purchasesCount, 0, ',', ' ') }} 
+                                                    {{ $purchasesCount > 1 ? 'achats' : 'achat' }}
                                                 </small>
                                             </div>
                                             @endif
@@ -977,12 +985,12 @@ function createCourseElement(course) {
                             <span class="text-muted">(${course.stats?.total_reviews || 0})</span>
                         </div>
                     </div>
-                    ${course.show_students_count && course.stats?.purchases_count ? `
+                    ${course.show_students_count ? `
                     <div class="students-count mb-2">
                         <small class="text-muted">
                             <i class="fas fa-shopping-cart me-1"></i>
-                            ${parseInt(course.stats.purchases_count).toLocaleString('fr-FR')} 
-                            ${parseInt(course.stats.purchases_count) > 1 ? 'achats' : 'achat'}
+                            ${parseInt(course.stats?.purchases_count || 0).toLocaleString('fr-FR')} 
+                            ${parseInt(course.stats?.purchases_count || 0) > 1 ? 'achats' : 'achat'}
                         </small>
                     </div>
                     ` : ''}

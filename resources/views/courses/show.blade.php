@@ -3068,11 +3068,17 @@ button.mobile-price-slider__btn--download i,
     
     // Calculer les statistiques depuis les données de la base de données
     $totalLessons = $publishedSections->sum(function($section) { 
+        if (!$section || !$section->lessons) {
+            return 0;
+        }
         return $section->lessons->where('is_published', true)->count(); 
-    });
+    }) ?? 0;
     $totalDuration = $publishedSections->sum(function($section) { 
-        return $section->lessons->where('is_published', true)->sum('duration'); 
-    });
+        if (!$section || !$section->lessons) {
+            return 0;
+        }
+        return $section->lessons->where('is_published', true)->sum('duration') ?? 0; 
+    }) ?? 0;
     
     $languageNames = [
         'fr' => 'Français', 'en' => 'Anglais', 'es' => 'Espagnol', 'de' => 'Allemand',
@@ -3153,7 +3159,13 @@ button.mobile-price-slider__btn--download i,
                 @if($course->show_students_count)
                 @php
                     // Toujours afficher les achats sur la page de détail
-                    $totalPurchases = $course->purchases_count;
+                    try {
+                        $totalPurchases = $course->purchases_count ?? 0;
+                    } catch (\Exception $e) {
+                        $totalPurchases = 0;
+                    }
+                    // S'assurer que $totalPurchases est un entier
+                    $totalPurchases = (int) ($totalPurchases ?? 0);
                 @endphp
                 <div class="course-stat-item">
                     <i class="fas fa-shopping-cart"></i>
@@ -3581,17 +3593,20 @@ button.mobile-price-slider__btn--download i,
                                             </div>
                                         </div>
                                         
-                                        @if($relatedCourse->show_students_count && isset($relatedCourseStats['total_students']))
+                                        @if($relatedCourse->show_students_count)
+                                        @php
+                                            try {
+                                                $relatedPurchasesCount = $relatedCourseStats['purchases_count'] ?? $relatedCourse->purchases_count ?? 0;
+                                            } catch (\Exception $e) {
+                                                $relatedPurchasesCount = 0;
+                                            }
+                                            $relatedPurchasesCount = (int) ($relatedPurchasesCount ?? 0);
+                                        @endphp
                                         <div class="students-count mb-2">
                                             <small class="text-muted">
-                                                <i class="fas fa-users me-1"></i>
-                                                @if($relatedCourse->is_downloadable)
-                                                    {{ number_format($relatedCourseStats['total_students'], 0, ',', ' ') }} 
-                                                    {{ $relatedCourseStats['total_students'] > 1 ? 'achats' : 'achat' }}
-                                                @else
-                                                    {{ number_format($relatedCourseStats['total_students'], 0, ',', ' ') }} 
-                                                    {{ $relatedCourseStats['total_students'] > 1 ? 'étudiants inscrits' : 'étudiant inscrit' }}
-                                                @endif
+                                                <i class="fas fa-shopping-cart me-1"></i>
+                                                {{ number_format($relatedPurchasesCount, 0, ',', ' ') }} 
+                                                {{ $relatedPurchasesCount > 1 ? 'achats' : 'achat' }}
                                             </small>
                                         </div>
                                         @endif
