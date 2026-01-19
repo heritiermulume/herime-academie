@@ -158,7 +158,7 @@
                 <a href="{{ $orderUrl }}" class="button">Voir ma commande</a>
             </div>
 
-            <p>Merci de votre confiance et bon apprentissage !</p>
+            <p>Merci de votre confiance !</p>
         </div>
 
         <div class="footer">

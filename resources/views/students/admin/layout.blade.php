@@ -13,7 +13,7 @@
             'active' => ['student.dashboard'],
         ],
         [
-            'label' => 'Mes cours',
+            'label' => 'Mes contenus',
             'icon' => 'fas fa-book-open',
             'route' => 'student.courses',
             'url' => url('/student/courses'),

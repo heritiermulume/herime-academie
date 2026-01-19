@@ -1,6 +1,6 @@
 @extends('students.admin.layout')
 
-@section('admin-title', 'Tableau de bord étudiant')
+@section('admin-title', 'Tableau de bord')
 @section('admin-subtitle', 'Suivez votre progression, vos achats et vos réussites en un coup d’œil.')
 
 @section('admin-actions')
@@ -17,9 +17,19 @@
     <div class="admin-panel__body">
         <div class="admin-stats-grid">
             <div class="admin-stat-card">
-                <p class="admin-stat-card__label">Cours inscrits</p>
-                <p class="admin-stat-card__value">{{ number_format($stats['total_courses']) }}</p>
+                <p class="admin-stat-card__label">Contenus inscrits</p>
+                <p class="admin-stat-card__value">{{ number_format($stats['enrolled_courses']) }}</p>
                 <p class="admin-stat-card__muted">{{ $stats['active_courses'] }} en cours · {{ $stats['completed_courses'] }} terminés</p>
+            </div>
+            <div class="admin-stat-card">
+                <p class="admin-stat-card__label">Contenus achetés</p>
+                <p class="admin-stat-card__value">{{ number_format($stats['purchased_courses']) }}</p>
+                <p class="admin-stat-card__muted">Total de vos achats</p>
+            </div>
+            <div class="admin-stat-card">
+                <p class="admin-stat-card__label">Produits téléchargeables</p>
+                <p class="admin-stat-card__value">{{ number_format($stats['purchased_downloadable_courses']) }}</p>
+                <p class="admin-stat-card__muted">Contenus digitaux achetés</p>
             </div>
             <div class="admin-stat-card">
                 <p class="admin-stat-card__label">Progression moyenne</p>
@@ -38,7 +48,7 @@
                 <p class="admin-stat-card__value">
                     {{ $stats['learning_minutes'] > 0 ? number_format(round($stats['learning_minutes'] / 60, 1), 1) : '0' }} h
                 </p>
-                <p class="admin-stat-card__muted">Durée cumulée de vos cours suivis</p>
+                <p class="admin-stat-card__muted">Durée cumulée de vos formations suivies</p>
             </div>
         </div>
 
@@ -59,7 +69,7 @@
                         </p>
                         <div class="student-progress">
                             <div class="student-progress__meta">
-                                <span>Progression du cours</span>
+                                <span>Progression</span>
                                 <strong>{{ $lastUpdatedEnrollment->progress }}%</strong>
                             </div>
                             <div class="student-progress__bar">
@@ -84,7 +94,7 @@
                             </a>
                         @endif
                         <a href="{{ route('student.courses') }}" class="admin-btn ghost">
-                            Voir tous mes cours
+                            Voir tous mes contenus
                         </a>
                     </div>
                 </div>
@@ -94,14 +104,14 @@
             <div class="student-highlight__content">
                 <div>
                     <span class="student-highlight__eyebrow">Commencez votre parcours</span>
-                    <h2 class="student-highlight__title">Inscrivez-vous à votre premier cours</h2>
+                    <h2 class="student-highlight__title">Inscrivez-vous à votre première formation</h2>
                     <p class="student-highlight__subtitle">
-                        Explorez des formations adaptées à vos objectifs et avancez à votre rythme.
+                        Explorez des contenus adaptés à vos objectifs et avancez à votre rythme.
                     </p>
                 </div>
                 <div class="student-highlight__actions">
                     <a href="{{ route('courses.index') }}" class="admin-btn primary lg">
-                        <i class="fas fa-compass me-2"></i>Explorer les cours
+                        <i class="fas fa-compass me-2"></i>Explorer les contenus
                     </a>
                     <a href="{{ route('student.courses') }}" class="admin-btn ghost">
                         Voir l’espace de formation
@@ -116,7 +126,7 @@
     <section class="admin-panel">
         <div class="admin-panel__header">
             <h3>
-                <i class="fas fa-book-open me-2"></i>Mes cours en cours
+                <i class="fas fa-book-open me-2"></i>Mes contenus en cours
             </h3>
             <div class="admin-panel__actions">
                 <a href="{{ route('student.courses') }}" class="admin-btn soft">
@@ -128,9 +138,9 @@
             @if($enrollments->isEmpty())
                 <div class="admin-empty-state">
                     <i class="fas fa-book-open"></i>
-                    <p>Vous n'êtes inscrit à aucun cours pour le moment.</p>
+                    <p>Vous n'êtes inscrit à aucun contenu pour le moment.</p>
                     <a href="{{ route('courses.index') }}" class="admin-btn primary sm mt-3">
-                        Trouver un cours
+                        Trouver un contenu
                     </a>
                 </div>
             @else
@@ -224,7 +234,7 @@
                     <i class="fas fa-shopping-bag"></i>
                     <p>Aucune commande enregistrée pour l’instant.</p>
                     <a href="{{ route('courses.index') }}" class="admin-btn primary sm mt-3">
-                        Acheter un cours
+                        Acheter un contenu
                     </a>
                 </div>
             @else
@@ -278,9 +288,9 @@
             @if($certificates->isEmpty())
                 <div class="admin-empty-state">
                     <i class="fas fa-certificate"></i>
-                    <p>Terminez un cours pour obtenir votre premier certificat.</p>
+                    <p>Terminez une formation pour obtenir votre premier certificat.</p>
                     <a href="{{ route('student.courses') }}" class="admin-btn primary sm mt-3">
-                        Continuer mes cours
+                        Continuer mes formations
                     </a>
                 </div>
             @else
@@ -346,7 +356,7 @@
                             </div>
                             <div class="student-recommendations__actions">
                                 <a href="{{ route('courses.show', $course->slug) }}" class="admin-btn ghost sm">
-                                    Voir le cours
+                                    Voir le contenu
                                 </a>
                             </div>
                         </div>
@@ -496,7 +506,7 @@
 
     .admin-stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         gap: 1.25rem;
     }
 

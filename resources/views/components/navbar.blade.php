@@ -48,7 +48,7 @@
                                         'icon' => 'fas fa-tools',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
+                                        'label' => 'Tableau de bord',
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
@@ -71,7 +71,7 @@
                                         'icon' => 'fas fa-chalkboard-teacher',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
+                                        'label' => 'Tableau de bord',
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
@@ -84,7 +84,7 @@
                                     }
                                 } else {
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
+                                        'label' => 'Tableau de bord',
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
@@ -290,7 +290,7 @@
                                         'icon' => 'fas fa-tools',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
+                                        'label' => 'Tableau de bord',
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
@@ -313,7 +313,7 @@
                                         'icon' => 'fas fa-chalkboard-teacher',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
+                                        'label' => 'Tableau de bord',
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
@@ -326,7 +326,7 @@
                                     }
                                 } else {
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord étudiant',
+                                        'label' => 'Tableau de bord',
                                         'route' => route('student.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
@@ -473,7 +473,7 @@
                                 'icon' => 'fas fa-tools',
                             ];
                             $dashboardLinks[] = [
-                                'label' => 'Tableau de bord étudiant',
+                                'label' => 'Tableau de bord',
                                 'route' => route('student.dashboard'),
                                 'icon' => 'fas fa-user-graduate',
                             ];
@@ -496,7 +496,7 @@
                                 'icon' => 'fas fa-chalkboard-teacher',
                             ];
                             $dashboardLinks[] = [
-                                'label' => 'Tableau de bord étudiant',
+                                'label' => 'Tableau de bord',
                                 'route' => route('student.dashboard'),
                                 'icon' => 'fas fa-user-graduate',
                             ];
@@ -509,7 +509,7 @@
                             }
                         } else {
                             $dashboardLinks[] = [
-                                'label' => 'Tableau de bord étudiant',
+                                'label' => 'Tableau de bord',
                                 'route' => route('student.dashboard'),
                                 'icon' => 'fas fa-user-graduate',
                             ];

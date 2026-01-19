@@ -5,7 +5,7 @@
 
 @section('admin-actions')
     <a href="{{ route('student.courses') }}" class="admin-btn primary">
-        <i class="fas fa-graduation-cap me-2"></i>Retourner à mes cours
+        <i class="fas fa-graduation-cap me-2"></i>Retourner à mes contenus
     </a>
 @endsection
 
@@ -59,7 +59,7 @@
                 <i class="fas fa-certificate"></i>
                 <p>Vous n'avez pas encore obtenu de certificat.</p>
                 <a href="{{ route('student.courses') }}" class="admin-btn primary sm mt-3">
-                    Continuer mes cours
+                    Continuer mes formations
                 </a>
             </div>
         @else

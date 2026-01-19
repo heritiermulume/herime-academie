@@ -1,11 +1,11 @@
 @extends('students.admin.layout')
 
-@section('admin-title', 'Mes cours')
-@section('admin-subtitle', 'Retrouvez l’ensemble de vos cours et reprenez-les quand vous le souhaitez.')
+@section('admin-title', 'Mes contenus')
+@section('admin-subtitle', 'Retrouvez l’ensemble de vos contenus et reprenez-les quand vous le souhaitez.')
 
 @section('admin-actions')
     <a href="{{ route('courses.index') }}" class="admin-btn primary">
-        <i class="fas fa-compass me-2"></i>Explorer de nouveaux cours
+        <i class="fas fa-compass me-2"></i>Explorer de nouveaux contenus
     </a>
 @endsection
 
@@ -16,7 +16,7 @@
             <div class="admin-stat-card">
                 <p class="admin-stat-card__label">Total</p>
                 <p class="admin-stat-card__value">{{ number_format($courseSummary['total']) }}</p>
-                <p class="admin-stat-card__muted">Tous vos cours</p>
+                <p class="admin-stat-card__muted">Tous vos contenus</p>
             </div>
             <div class="admin-stat-card">
                 <p class="admin-stat-card__label">En cours</p>
@@ -42,7 +42,7 @@
 <section class="admin-panel">
     <div class="admin-panel__header">
         <h3>
-            <i class="fas fa-book-open me-2"></i>Tous mes cours
+            <i class="fas fa-book-open me-2"></i>Tous mes contenus
         </h3>
         <div class="admin-panel__actions">
             <a href="{{ route('student.dashboard') }}" class="admin-btn soft">
@@ -113,7 +113,7 @@
         @endphp
         <div class="courses-summary">
             <p class="courses-summary__text">
-                <strong>{{ $enrollments->total() }}</strong> cours
+                <strong>{{ $enrollments->total() }}</strong> contenu{{ $enrollments->total() > 1 ? 's' : '' }}
                 @if(isset($statusFilter) && $statusFilter !== 'all')
                     <span class="courses-summary__filter">
                         · Filtre actif : <strong>{{ $statusesLabels[$statusFilter] ?? $statusFilter }}</strong>
@@ -265,7 +265,7 @@
                 @endforeach
             </div>
 
-            <x-student.pagination :paginator="$enrollments" :showInfo="true" itemName="cours" />
+            <x-student.pagination :paginator="$enrollments" :showInfo="true" itemName="contenu" />
         @endif
     </div>
 </section>

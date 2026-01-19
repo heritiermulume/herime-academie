@@ -112,8 +112,48 @@ class StudentController extends Controller
             ->limit(5)
             ->get();
 
+        // Calculer les cours achetés (via les commandes payées)
+        $purchasedCourses = Order::where('user_id', $student->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function($q) {
+                $q->whereHas('course', function($q2) {
+                    $q2->where('is_published', true);
+                });
+            })
+            ->with(['orderItems.course'])
+            ->get()
+            ->flatMap(function ($order) {
+                return $order->orderItems->filter(function($item) {
+                    return $item->course && $item->course->is_published;
+                })->pluck('course_id');
+            })
+            ->unique()
+            ->count();
+
+        // Calculer les contenus téléchargeables achetés
+        $purchasedDownloadableCourses = Order::where('user_id', $student->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function($q) {
+                $q->whereHas('course', function($q2) {
+                    $q2->where('is_published', true)
+                       ->where('is_downloadable', true);
+                });
+            })
+            ->with(['orderItems.course'])
+            ->get()
+            ->flatMap(function ($order) {
+                return $order->orderItems->filter(function($item) {
+                    return $item->course && $item->course->is_published && $item->course->is_downloadable;
+                })->pluck('course_id');
+            })
+            ->unique()
+            ->count();
+
         $stats = [
             'total_courses' => $allEnrollments->count(),
+            'enrolled_courses' => $allEnrollments->count(), // Cours inscrits
+            'purchased_courses' => $purchasedCourses, // Cours achetés
+            'purchased_downloadable_courses' => $purchasedDownloadableCourses, // Contenus téléchargeables achetés
             'active_courses' => $allEnrollments->where('status', 'active')->count(),
             'completed_courses' => $allEnrollments->where('status', 'completed')->count(),
             'certificates_earned' => $totalCertificates,
