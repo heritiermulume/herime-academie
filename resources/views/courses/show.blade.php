@@ -3894,7 +3894,7 @@ button.mobile-price-slider__btn--download i,
                                     $ssoLoginUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse);
                                 @endphp
                                 <a href="{{ $ssoLoginUrlCourse }}" class="btn btn-primary btn-lg w-100">
-                                    <i class="fas fa-sign-in-alt me-2"></i>Se connecter pour accéder au cours
+                                    <i class="fas fa-sign-in-alt me-2"></i>{{ $course->is_downloadable ? 'Se connecter pour télécharger' : 'Se connecter pour accéder au cours' }}
                                 </a>
                                 @php
                                     $finalRegisterCourse = url()->full();

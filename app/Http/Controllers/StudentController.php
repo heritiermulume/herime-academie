@@ -57,6 +57,8 @@ class StudentController extends Controller
             ->whereHas('course', function($q) {
                 $q->where('is_published', true);
             })
+            // Ne jamais afficher les inscriptions annulées/révoquées dans l'espace étudiant
+            ->where('status', '!=', 'cancelled')
             ->with(['course.instructor', 'course.category', 'order', 'course.downloads'])
             ->orderByDesc('updated_at')
             ->limit(6)
@@ -66,6 +68,7 @@ class StudentController extends Controller
             ->whereHas('course', function($q) {
                 $q->where('is_published', true);
             })
+            ->where('status', '!=', 'cancelled')
             ->with(['course'])
             ->get();
 
@@ -225,6 +228,9 @@ class StudentController extends Controller
             ->whereHas('course', function($q) {
                 $q->where('is_published', true);
             })
+            // Ne jamais remontrer les inscriptions annulées/révoquées dans l'espace étudiant,
+            // même si le filtre de statut est sur "Annulé".
+            ->where('status', '!=', 'cancelled')
             ->with(['course.instructor', 'course.category', 'order', 'course.downloads'])
             ->orderByDesc('updated_at');
 
@@ -271,12 +277,20 @@ class StudentController extends Controller
         
         // Inclure les cours achetés mais non inscrits seulement si le filtre est 'all' ou si on cherche spécifiquement
         if ($statusFilter === 'all' || empty($statusFilter)) {
-            $purchasedCourseIds = $enrollments->pluck('course_id')->filter()->all();
+            // Tenir compte de toutes les inscriptions (y compris annulées) pour éviter
+            // de ré-afficher un cours dont l'accès a été explicitement révoqué.
+            $allEnrollmentCourseIds = $student->enrollments()
+                ->whereHas('course', function($q) {
+                    $q->where('is_published', true);
+                })
+                ->pluck('course_id')
+                ->filter()
+                ->all();
             
             $purchasedButNotEnrolled = Order::where('user_id', $student->id)
                 ->whereIn('status', ['paid', 'completed'])
-                ->whereHas('orderItems', function ($query) use ($purchasedCourseIds) {
-                    $query->whereNotIn('course_id', $purchasedCourseIds)
+                ->whereHas('orderItems', function ($query) use ($allEnrollmentCourseIds) {
+                    $query->whereNotIn('course_id', $allEnrollmentCourseIds)
                         ->whereHas('course', function($q) {
                             $q->where('is_published', true);
                         });
@@ -349,6 +363,8 @@ class StudentController extends Controller
             ->whereHas('course', function($q) {
                 $q->where('is_published', true);
             })
+            // Ne pas compter les inscriptions annulées/révoquées dans les statistiques
+            ->where('status', '!=', 'cancelled')
             ->with('course')
             ->get()
             ->filter(function ($enrollment) use ($downloadedFreeCourseIds) {

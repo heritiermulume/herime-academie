@@ -714,10 +714,10 @@ class Course extends Model
                 'text' => 'Accès mobile et desktop'
             ];
             
-            // Certificat de fin de cours (vérifier si des certificats sont configurés pour ce cours)
+            // Certificat de fin de cours (uniquement pour les cours non téléchargeables)
             // On considère qu'un certificat est disponible si le cours a au moins une section avec des leçons
             try {
-                if ($this->sections && $this->sections->count() > 0) {
+                if (!$this->is_downloadable && $this->sections && $this->sections->count() > 0) {
                     $features[] = [
                         'icon' => 'fa-certificate',
                         'text' => 'Certificat de fin de cours'

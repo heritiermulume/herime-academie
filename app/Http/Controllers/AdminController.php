@@ -1156,8 +1156,13 @@ class AdminController extends Controller
             \Log::error("Erreur lors de l'envoi de l'email de retrait d'accès: " . $e->getMessage());
         }
         
-        // Supprimer l'inscription après l'envoi de la notification
-        $enrollment->delete();
+        // Marquer l'inscription comme annulée (révoquée) au lieu de la supprimer,
+        // pour garder une trace sans qu'elle donne accès au cours côté étudiant.
+        $enrollment->update([
+            'status' => 'cancelled',
+            'progress' => 0,
+            'completed_at' => null,
+        ]);
 
         return redirect()->route('admin.users.show', $user)
             ->with('success', "Accès au cours \"{$courseTitle}\" retiré avec succès. L'utilisateur a été notifié.");
