@@ -164,45 +164,51 @@
                             </div>
                         </div>
                         <div class="student-course-item__progress">
-                            @if(!$isPurchasedNotEnrolled)
-                                <div class="student-progress">
-                                    <div class="student-progress__meta">
-                                        <span>Progression</span>
-                                        <span>{{ $progress }}%</span>
-                                    </div>
-                                    <div class="student-progress__bar">
-                                        <span style="width: {{ $progress }}%"></span>
-                                    </div>
+                            @if($course->is_downloadable ?? false)
+                                {{-- Pour les contenus téléchargeables : pas de progression, ni leçons, ni minutes --}}
+                                <div class="student-course-item__stats">
+                                    @if(isset($course->user_downloads_count))
+                                        <span>
+                                            <i class="fas fa-download me-1"></i>
+                                            {{ $course->user_downloads_count }} téléchargements
+                                        </span>
+                                    @endif
                                 </div>
                             @else
-                                <div class="student-progress">
-                                    <div class="student-progress__meta">
-                                        <span>Statut</span>
-                                        <span>Acheté</span>
+                                @if(!$isPurchasedNotEnrolled)
+                                    <div class="student-progress">
+                                        <div class="student-progress__meta">
+                                            <span>Progression</span>
+                                            <span>{{ $progress }}%</span>
+                                        </div>
+                                        <div class="student-progress__bar">
+                                            <span style="width: {{ $progress }}%"></span>
+                                        </div>
                                     </div>
-                                    <div class="student-progress__bar" style="background-color: rgba(30, 58, 138, 0.1);">
-                                        <span style="width: 0%"></span>
+                                @else
+                                    <div class="student-progress">
+                                        <div class="student-progress__meta">
+                                            <span>Statut</span>
+                                            <span>Acheté</span>
+                                        </div>
+                                        <div class="student-progress__bar" style="background-color: rgba(30, 58, 138, 0.1);">
+                                            <span style="width: 0%"></span>
+                                        </div>
                                     </div>
+                                @endif
+                                <div class="student-course-item__stats">
+                                    <span>
+                                        <i class="fas fa-layer-group me-1"></i>
+                                        {{ $course->lessons_count ?? $course->lessons()->count() }} leçons
+                                    </span>
+                                    @if($course->duration ?? false)
+                                        <span>
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ $course->duration }} min
+                                        </span>
+                                    @endif
                                 </div>
                             @endif
-                            <div class="student-course-item__stats">
-                                <span>
-                                    <i class="fas fa-layer-group me-1"></i>
-                                    {{ $course->lessons_count ?? $course->lessons()->count() }} leçons
-                                </span>
-                                @if($course->duration ?? false)
-                                    <span>
-                                        <i class="fas fa-clock me-1"></i>
-                                        {{ $course->duration }} min
-                                    </span>
-                                @endif
-                                @if(($course->is_downloadable ?? false) && isset($course->user_downloads_count))
-                                    <span>
-                                        <i class="fas fa-download me-1"></i>
-                                        {{ $course->user_downloads_count }} téléchargements
-                                    </span>
-                                @endif
-                            </div>
                             <div class="student-course-item__status">
                                 @if($isPurchasedNotEnrolled)
                                     <span class="admin-badge warning">

@@ -67,18 +67,20 @@
                                 · {{ $highlightCourse->category->name }}
                             @endif
                         </p>
-                        <div class="student-progress">
-                            <div class="student-progress__meta">
-                                <span>Progression</span>
-                                <strong>{{ $lastUpdatedEnrollment->progress }}%</strong>
+                        @if(!($highlightCourse->is_downloadable ?? false))
+                            <div class="student-progress">
+                                <div class="student-progress__meta">
+                                    <span>Progression</span>
+                                    <strong>{{ $lastUpdatedEnrollment->progress }}%</strong>
+                                </div>
+                                <div class="student-progress__bar">
+                                    <span style="width: {{ $lastUpdatedEnrollment->progress }}%"></span>
+                                </div>
+                                <small class="student-progress__hint">
+                                    Dernière mise à jour {{ $lastUpdatedEnrollment->updated_at?->diffForHumans() }}
+                                </small>
                             </div>
-                            <div class="student-progress__bar">
-                                <span style="width: {{ $lastUpdatedEnrollment->progress }}%"></span>
-                            </div>
-                            <small class="student-progress__hint">
-                                Dernière mise à jour {{ $lastUpdatedEnrollment->updated_at?->diffForHumans() }}
-                            </small>
-                        </div>
+                        @endif
                     </div>
                     <div class="student-highlight__actions">
                         @php
@@ -170,30 +172,35 @@
                                     </div>
                                 </div>
                                 <div class="student-course-item__progress">
-                                    <div class="student-progress">
-                                        <div class="student-progress__bar">
-                                            <span style="width: {{ $enrollment->progress }}%"></span>
+                                    @if(!($course->is_downloadable ?? false))
+                                        <div class="student-progress">
+                                            <div class="student-progress__bar">
+                                                <span style="width: {{ $enrollment->progress }}%"></span>
+                                            </div>
+                                            <span class="student-progress__value">{{ $enrollment->progress }}%</span>
                                         </div>
-                                        <span class="student-progress__value">{{ $enrollment->progress }}%</span>
-                                    </div>
-                                    <div class="student-course-item__stats">
-                                        <span>
-                                            <i class="fas fa-layer-group me-1"></i>
-                                            {{ $course->lessons_count ?? $course->lessons()->count() }} leçons
-                                        </span>
-                                        @if($course->duration ?? false)
+                                        <div class="student-course-item__stats">
                                             <span>
-                                                <i class="fas fa-clock me-1"></i>
-                                                {{ $course->duration }} min
+                                                <i class="fas fa-layer-group me-1"></i>
+                                                {{ $course->lessons_count ?? $course->lessons()->count() }} leçons
                                             </span>
-                                        @endif
-                                        @if(($course->is_downloadable ?? false) && isset($course->user_downloads_count))
-                                            <span>
-                                                <i class="fas fa-download me-1"></i>
-                                                {{ $course->user_downloads_count }} téléchargements
-                                            </span>
-                                        @endif
-                                    </div>
+                                            @if($course->duration ?? false)
+                                                <span>
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    {{ $course->duration }} min
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <div class="student-course-item__stats">
+                                            @if(isset($course->user_downloads_count))
+                                                <span>
+                                                    <i class="fas fa-download me-1"></i>
+                                                    {{ $course->user_downloads_count }} téléchargements
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                                 <div class="student-course-item__actions">
                                     @php

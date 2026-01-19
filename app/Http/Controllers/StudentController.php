@@ -69,6 +69,45 @@ class StudentController extends Controller
             ->with(['course'])
             ->get();
 
+        // Pour les cours téléchargeables gratuits, ne les afficher dans l'espace étudiant
+        // que s'ils ont été téléchargés au moins une fois par l'utilisateur.
+        $downloadedFreeCourseIds = CourseDownload::where('user_id', $student->id)
+            ->whereHas('course', function($q) {
+                $q->where('is_downloadable', true)
+                  ->where('is_free', true)
+                  ->where('is_published', true);
+            })
+            ->pluck('course_id')
+            ->unique()
+            ->values();
+
+        $recentEnrollments = $recentEnrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
+            $course = $enrollment->course;
+            if (! $course) {
+                return false;
+            }
+
+            if ($course->is_downloadable && $course->is_free) {
+                // Garder uniquement si le cours a été téléchargé au moins une fois
+                return $downloadedFreeCourseIds->contains($course->id);
+            }
+
+            return true;
+        })->values();
+
+        $allEnrollments = $allEnrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
+            $course = $enrollment->course;
+            if (! $course) {
+                return false;
+            }
+
+            if ($course->is_downloadable && $course->is_free) {
+                return $downloadedFreeCourseIds->contains($course->id);
+            }
+
+            return true;
+        })->values();
+
         $totalCertificates = $student->certificates()
             ->whereHas('course', function($q) {
                 $q->where('is_published', true);
@@ -201,6 +240,32 @@ class StudentController extends Controller
 
         $enrollments = $baseQuery->get();
 
+        // Identifier les cours téléchargeables gratuits déjà téléchargés par l'utilisateur
+        $downloadedFreeCourseIds = CourseDownload::where('user_id', $student->id)
+            ->whereHas('course', function($q) {
+                $q->where('is_downloadable', true)
+                  ->where('is_free', true)
+                  ->where('is_published', true);
+            })
+            ->pluck('course_id')
+            ->unique()
+            ->values();
+
+        // Filtrer les inscriptions : un cours téléchargeable gratuit n'apparaît
+        // que s'il a été téléchargé au moins une fois
+        $enrollments = $enrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
+            $course = $enrollment->course;
+            if (! $course) {
+                return false;
+            }
+
+            if ($course->is_downloadable && $course->is_free) {
+                return $downloadedFreeCourseIds->contains($course->id);
+            }
+
+            return true;
+        })->values();
+
         // Récupérer les cours achetés mais non inscrits (seulement si le filtre le permet)
         $purchasedButNotEnrolled = collect();
         
@@ -278,12 +343,27 @@ class StudentController extends Controller
         }
 
         // Calculer les statistiques AVANT les filtres pour avoir les totaux réels
-        // Compter tous les enrollments par statut (cours inscrits) - sans filtres
+        // Compter tous les enrollments par statut (cours inscrits) - sans filtres,
+        // en appliquant aussi la règle sur les cours téléchargeables gratuits.
         $allEnrollmentsForStats = $student->enrollments()
             ->whereHas('course', function($q) {
                 $q->where('is_published', true);
             })
-            ->get();
+            ->with('course')
+            ->get()
+            ->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
+                $course = $enrollment->course;
+                if (! $course) {
+                    return false;
+                }
+
+                if ($course->is_downloadable && $course->is_free) {
+                    return $downloadedFreeCourseIds->contains($course->id);
+                }
+
+                return true;
+            })
+            ->values();
         
         $enrollmentCounts = $allEnrollmentsForStats
             ->groupBy('status')
