@@ -1,8 +1,16 @@
 @extends('layouts.admin')
 
-@section('title', 'Profil de ' . $user->name)
-@section('admin-title', 'Profil utilisateur')
-@section('admin-subtitle', 'Consultez les informations synchronisées et l\'activité de ' . ($user->name ?? 'l\'utilisateur'))
+@section('title')
+Profil de {{ $user->name }}
+@endsection
+
+@section('admin-title')
+Profil utilisateur
+@endsection
+
+@section('admin-subtitle')
+Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l'utilisateur" }}
+@endsection
 @section('admin-actions')
     <a href="{{ route('admin.users') }}" class="btn btn-light">
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
@@ -184,7 +192,9 @@
                                 </thead>
                                 <tbody>
                                     @foreach($allAccess as $access)
-                                        @php($course = $access->course ?? null)
+                                        @php
+                                            $course = $access->course ?? null;
+                                        @endphp
                                         <tr>
                                             <td>
                                                 @if($course && $course->thumbnail_url)
@@ -441,9 +451,13 @@
                                 <option value="">Sélectionner un cours...</option>
                                 @foreach($allCourses as $course)
                                     @php
-                                        $hasAccess = $allAccess->contains(function($access) use ($course) {
-                                            return ($access->course_id ?? null) == $course->id;
-                                        });
+                                        $hasAccess = false;
+                                        foreach ($allAccess as $access) {
+                                            if (($access->course_id ?? null) == $course->id) {
+                                                $hasAccess = true;
+                                                break;
+                                            }
+                                        }
                                     @endphp
                                     @if(!$hasAccess)
                                         <option value="{{ $course->id }}">
@@ -463,11 +477,23 @@
                                     @endif
                                 @endforeach
                             </select>
-                            @if($allCourses->filter(function($course) use ($allAccess) {
-                                return !$allAccess->contains(function($access) use ($course) {
-                                    return ($access->course_id ?? null) == $course->id;
-                                });
-                            })->count() == 0)
+                            @php
+                                $availableCoursesCount = 0;
+                                foreach ($allCourses as $course) {
+                                    $hasAccess = false;
+                                    foreach ($allAccess as $access) {
+                                        if (($access->course_id ?? null) == $course->id) {
+                                            $hasAccess = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!$hasAccess) {
+                                        $availableCoursesCount++;
+                                    }
+                                }
+                                $hasNoAvailableCourses = $availableCoursesCount == 0;
+                            @endphp
+                            @if($hasNoAvailableCourses)
                                 <small class="text-muted d-block mt-2">
                                     <i class="fas fa-info-circle me-1"></i>
                                     Tous les cours disponibles sont déjà accessibles à cet utilisateur.
@@ -482,12 +508,23 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary" 
-                                @if($allCourses->filter(function($course) use ($allAccess) {
-                                    return !$allAccess->contains(function($access) use ($course) {
-                                        return ($access->course_id ?? null) == $course->id;
-                                    });
-                                })->count() == 0) disabled @endif>
+                        @php
+                            $hasAvailableCourses = false;
+                            foreach ($allCourses as $course) {
+                                $hasAccess = false;
+                                foreach ($allAccess as $access) {
+                                    if (($access->course_id ?? null) == $course->id) {
+                                        $hasAccess = true;
+                                        break;
+                                    }
+                                }
+                                if (!$hasAccess) {
+                                    $hasAvailableCourses = true;
+                                    break;
+                                }
+                            }
+                        @endphp
+                        <button type="submit" class="btn btn-primary" {{ $hasAvailableCourses ? '' : 'disabled' }}>
                             <i class="fas fa-gift me-2"></i>Donner l'accès
                         </button>
                     </div>
