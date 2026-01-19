@@ -3220,6 +3220,7 @@ button.mobile-price-slider__btn--download i,
                         <span>{{ $averageRatingApproved > 0 ? number_format($averageRatingApproved, 1) : '0.0' }} ({{ $reviewsCountApproved }} avis)</span>
                     </div>
                 </div>
+                @if(!$course->is_downloadable)
                 <div class="course-stat-item">
                     <i class="fas fa-clock"></i>
                     <span>{{ $totalDuration }} min</span>
@@ -3228,6 +3229,7 @@ button.mobile-price-slider__btn--download i,
                     <i class="fas fa-play-circle"></i>
                     <span>{{ $totalLessons }} leçons</span>
                 </div>
+                @endif
                 @if($course->show_students_count)
                 @php
                     // Toujours afficher les achats sur la page de détail
@@ -3263,10 +3265,12 @@ button.mobile-price-slider__btn--download i,
                     <span>{{ number_format($totalPurchases, 0, ',', ' ') }} {{ $totalPurchases > 1 ? 'achats' : 'achat' }}</span>
                 </div>
                 @endif
+                @if(!$course->is_downloadable)
                 <div class="course-stat-item">
                     <i class="fas fa-language"></i>
                     <span>{{ $displayLanguage }}</span>
                 </div>
+                @endif
             </div>
         </div>
     </section>
@@ -3389,10 +3393,12 @@ button.mobile-price-slider__btn--download i,
                             <i class="fas fa-list-ul"></i>
                             Programme {{ $course->is_downloadable ? 'du produit digital' : 'du cours' }}
                         </h2>
+                        @if(!$course->is_downloadable)
                         <div class="text-muted">
                             <i class="fas fa-play-circle me-1"></i>{{ $totalLessons }} leçon{{ $totalLessons > 1 ? 's' : '' }}
                             <i class="fas fa-clock ms-3 me-1"></i>{{ $totalDuration }} min
                         </div>
+                        @endif
                     </div>
 
                     @foreach($publishedSectionsList as $index => $section)
@@ -3414,10 +3420,12 @@ button.mobile-price-slider__btn--download i,
                                 $sectionLessonsCount = $sectionPublishedLessons->count();
                                 $sectionDuration = $sectionPublishedLessons->sum('duration');
                             @endphp
+                            @if(!$course->is_downloadable)
                             <div class="curriculum-section-stats">
                                 <span><i class="fas fa-play-circle me-1"></i>{{ $sectionLessonsCount }}</span>
                                 <span><i class="fas fa-clock me-1"></i>{{ $sectionDuration }} min</span>
                             </div>
+                            @endif
                         </div>
                         <div class="curriculum-section-content {{ $index === 0 ? 'is-open' : '' }}" id="section{{ $section->id }}">
                             <div class="curriculum-lessons">
@@ -3454,7 +3462,7 @@ button.mobile-price-slider__btn--download i,
                                     <div class="lesson-content">
                                         <div class="lesson-title">{{ $lesson->title }}</div>
                                         <div class="lesson-meta">
-                                            @if($lesson->duration)
+                                            @if(!$course->is_downloadable && $lesson->duration)
                                             <i class="fas fa-clock me-1"></i>{{ $lesson->duration }} min
                                             @endif
                                             @if($isPreview)
