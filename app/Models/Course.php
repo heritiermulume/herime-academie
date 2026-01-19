@@ -836,7 +836,15 @@ class Course extends Model
      */
     public function isYoutubePreviewVideo(): bool
     {
-        return !empty($this->video_preview_youtube_id);
+        try {
+            return !empty($this->video_preview_youtube_id);
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de isYoutubePreviewVideo', [
+                'course_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 
     /**
@@ -844,19 +852,31 @@ class Course extends Model
      */
     public function getSecureYouTubePreviewEmbedUrl(): ?string
     {
-        if (!$this->isYoutubePreviewVideo()) {
+        try {
+            if (!$this->isYoutubePreviewVideo()) {
+                return null;
+            }
+
+            $videoId = $this->video_preview_youtube_id;
+            if (empty($videoId)) {
+                return null;
+            }
+            
+            $params = [
+                'rel' => 0,
+                'modestbranding' => 1,
+                'iv_load_policy' => 3,
+                'origin' => config('video.youtube.embed_domain', request()->getHost()),
+            ];
+
+            return "https://www.youtube.com/embed/{$videoId}?" . http_build_query($params);
+        } catch (\Throwable $e) {
+            \Log::warning('Erreur lors de getSecureYouTubePreviewEmbedUrl', [
+                'course_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
             return null;
         }
-
-        $videoId = $this->video_preview_youtube_id;
-        $params = [
-            'rel' => 0,
-            'modestbranding' => 1,
-            'iv_load_policy' => 3,
-            'origin' => config('video.youtube.embed_domain', request()->getHost()),
-        ];
-
-        return "https://www.youtube.com/embed/{$videoId}?" . http_build_query($params);
     }
 
     /**
