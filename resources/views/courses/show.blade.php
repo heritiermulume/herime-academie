@@ -3324,6 +3324,7 @@ button.mobile-price-slider__btn--download i,
                          style="width: 100%; height: auto; border-radius: 12px;">
                 </div>
                 @endif
+                @endif
 
                 <!-- Course Description -->
                 <div class="content-card">
