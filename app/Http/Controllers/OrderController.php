@@ -84,7 +84,7 @@ class OrderController extends Controller
     /**
      * Afficher les détails d'une commande (étudiant)
      */
-    public function show(Order $order)
+    public function show(Request $request, Order $order)
     {
         // Vérifier que l'utilisateur peut voir cette commande
         if ($order->user_id !== Auth::id()) {
@@ -107,6 +107,19 @@ class OrderController extends Controller
             'orderItems.course.instructor',
             'orderItems.course.category'
         ]);
+        
+        // Si c'est une requête AJAX, retourner le statut en JSON
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'total' => $order->total,
+                'currency' => $order->currency,
+                'created_at' => $order->created_at,
+                'updated_at' => $order->updated_at,
+            ]);
+        }
         
         return view('orders.show', compact('order'));
     }

@@ -1472,6 +1472,8 @@
     'use strict';
     
     // Fonction Moneroo pour la page cart
+    let isProcessingPayment = false; // Flag pour empêcher les soumissions multiples
+    
     async function proceedToCheckoutMoneroo(event) {
         // Empêcher tout comportement par défaut
         if (event) {
@@ -1479,11 +1481,20 @@
             event.stopPropagation();
         }
         
+        // PROTECTION CONTRE LES SOUMISSIONS MULTIPLES
+        if (isProcessingPayment) {
+            console.warn('Paiement déjà en cours de traitement, ignore la nouvelle soumission');
+            return false;
+        }
+        
         // Vérifier si le checkout est autorisé (code promo valide ou non utilisé)
         if (!canProceedToCheckout()) {
             showNotification('Veuillez saisir un code promo valide ou décochez la case pour continuer', 'error');
             return false;
         }
+        
+        // Marquer que le paiement est en cours
+        isProcessingPayment = true;
         
         // Désactiver le bouton pour éviter les doubles clics
         const checkoutBtn = document.getElementById('proceedToCheckoutBtn') || document.querySelector('.checkout-btn');
@@ -1493,6 +1504,10 @@
             checkoutBtn.disabled = true;
             checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initialisation du paiement...';
         }
+        
+        // Stocker dans sessionStorage pour empêcher les soumissions après actualisation
+        sessionStorage.setItem('moneroo_payment_in_progress', 'true');
+        sessionStorage.setItem('moneroo_payment_started_at', Date.now().toString());
         
         try {
             // Utiliser directement le montant PHP depuis le backend
@@ -1557,16 +1572,38 @@
                              || data.url;
             
             if (redirectUrl) {
+                // Stocker l'order_id si disponible pour référence future
+                if (data.order_id) {
+                    sessionStorage.setItem('moneroo_last_order_id', data.order_id.toString());
+                }
+                
                 // Rediriger immédiatement vers la page de checkout Moneroo
                 // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
                 window.location.replace(redirectUrl);
                 return; // S'assurer que la fonction s'arrête ici
             } else {
+                // Réinitialiser le flag en cas d'erreur
+                isProcessingPayment = false;
+                sessionStorage.removeItem('moneroo_payment_in_progress');
+                
                 alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
                 throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
             }
         
     } catch (error) {
+        // Réinitialiser le flag en cas d'erreur
+        isProcessingPayment = false;
+        sessionStorage.removeItem('moneroo_payment_in_progress');
+        
+        // Gérer les erreurs spécifiques
+        if (error.message && error.message.includes('déjà une commande payée')) {
+            // Si l'utilisateur a déjà une commande payée, rediriger vers cette commande
+            const errorData = error.response?.data || {};
+            if (errorData.redirect_url) {
+                window.location.href = errorData.redirect_url;
+                return;
+            }
+        }
         // Afficher un message d'erreur plus convivial avec détails
             const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
             
@@ -1586,6 +1623,10 @@
                 checkoutBtn.disabled = false;
                 checkoutBtn.innerHTML = originalContent;
             }
+            
+            // Réinitialiser le flag
+            isProcessingPayment = false;
+            sessionStorage.removeItem('moneroo_payment_in_progress');
         }
     }
     

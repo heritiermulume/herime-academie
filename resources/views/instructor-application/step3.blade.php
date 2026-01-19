@@ -529,9 +529,7 @@
                 queue: new Set(),
                 timer: null,
                 isSubmitting: false,
-            };
-
-            const getToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            };            const getToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             const isTemporary = (path) => {
                 return typeof path === 'string'
                     && config?.prefix

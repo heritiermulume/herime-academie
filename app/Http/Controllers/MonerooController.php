@@ -230,6 +230,93 @@ class MonerooController extends Controller
             ], 400);
         }
 
+        // PROTECTION CONTRE LES DOUBLES PAIEMENTS
+        // Vérifier si l'utilisateur a déjà une commande payée récente (dernières 24h) avec les mêmes cours
+        $courseIds = $cartItems->pluck('course_id')->sort()->values()->toArray();
+        $recentPaidOrder = Order::where('user_id', $user->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->where('created_at', '>=', now()->subHours(24))
+            ->whereHas('orderItems', function($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            })
+            ->with(['orderItems' => function($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            }])
+            ->get()
+            ->filter(function($order) use ($courseIds) {
+                $orderCourseIds = $order->orderItems->pluck('course_id')->sort()->values()->toArray();
+                return $orderCourseIds === $courseIds;
+            })
+            ->first();
+
+        if ($recentPaidOrder) {
+            \Log::warning('Moneroo: Attempted duplicate payment for already paid order', [
+                'user_id' => $user->id,
+                'existing_order_id' => $recentPaidOrder->id,
+                'existing_order_number' => $recentPaidOrder->order_number,
+                'course_ids' => $courseIds,
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous avez déjà une commande payée pour ces cours. Veuillez vérifier vos commandes.',
+                'existing_order_id' => $recentPaidOrder->id,
+                'existing_order_number' => $recentPaidOrder->order_number,
+                'redirect_url' => route('orders.show', $recentPaidOrder->id),
+            ], 409); // 409 Conflict
+        }
+
+        // PROTECTION CONTRE LES COMMANDES EN ATTENTE MULTIPLES
+        // Vérifier s'il y a une commande en attente récente (dernières 5 minutes) avec les mêmes cours
+        $recentPendingOrder = Order::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('created_at', '>=', now()->subMinutes(5))
+            ->whereHas('orderItems', function($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            })
+            ->with(['orderItems' => function($query) use ($courseIds) {
+                $query->whereIn('course_id', $courseIds);
+            }, 'payments'])
+            ->get()
+            ->filter(function($order) use ($courseIds) {
+                $orderCourseIds = $order->orderItems->pluck('course_id')->sort()->values()->toArray();
+                return $orderCourseIds === $courseIds;
+            })
+            ->first();
+
+        if ($recentPendingOrder) {
+            // Vérifier si cette commande a déjà un paiement en cours
+            $existingPayment = $recentPendingOrder->payments()
+                ->where('status', 'pending')
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->first();
+
+            if ($existingPayment) {
+                \Log::info('Moneroo: Reusing existing pending payment', [
+                    'user_id' => $user->id,
+                    'existing_order_id' => $recentPendingOrder->id,
+                    'existing_payment_id' => $existingPayment->payment_id,
+                ]);
+
+                // Retourner l'URL de checkout existante si disponible
+                $checkoutUrl = $existingPayment->payment_data['response']['data']['checkout_url'] 
+                            ?? $existingPayment->payment_data['data']['checkout_url'] 
+                            ?? null;
+
+                if ($checkoutUrl) {
+                    return response()->json([
+                        'success' => true,
+                        'payment_id' => $existingPayment->payment_id,
+                        'order_id' => $recentPendingOrder->id,
+                        'status' => 'pending',
+                        'checkout_url' => $checkoutUrl,
+                        'redirect_url' => $checkoutUrl,
+                        'message' => 'Un paiement est déjà en cours pour cette commande.',
+                    ], 200);
+                }
+            }
+        }
+
         // Récupérer la devise de base du site
         $baseCurrency = \App\Models\Setting::getBaseCurrency();
         
@@ -559,8 +646,9 @@ class MonerooController extends Controller
             $this->autoCancelStale(auth()->id());
         }
         
+        // Utiliser l'endpoint /verify selon la documentation Moneroo
         $response = Http::withHeaders($this->authHeaders())
-            ->get($this->baseUrl() . "/payments/{$paymentId}");
+            ->get($this->baseUrl() . "/payments/{$paymentId}/verify");
 
         $responseData = $response->json();
         
@@ -655,13 +743,18 @@ class MonerooController extends Controller
             ]);
 
             // Mapper le statut Moneroo vers le statut local
-            // Selon la documentation Moneroo: pending, processing, completed, failed, cancelled, expired, rejected
+            // Selon la documentation Moneroo: success, pending, processing, completed, failed, cancelled, expired, rejected
+            // Note: "success" et "completed" sont équivalents pour un paiement réussi
             $mapped = match ($status) {
-                'completed' => 'completed',
+                'success', 'completed' => 'completed',
                 'failed', 'cancelled', 'expired', 'rejected' => 'failed',
                 'pending', 'processing' => 'pending',
                 default => 'pending',
             };
+
+            // Vérifier aussi is_processed pour confirmer le traitement
+            $isProcessed = $paymentData['is_processed'] ?? false;
+            $processedAt = $paymentData['processed_at'] ?? null;
 
             // Mettre à jour le Payment avec toutes les informations du callback
             $paymentData = array_merge($payment->payment_data ?? [], [
@@ -672,11 +765,14 @@ class MonerooController extends Controller
             $payment->update([
                 'status' => $mapped,
                 'payment_data' => $paymentData,
-                'processed_at' => ($status === 'completed') ? now() : null,
+                'processed_at' => (($status === 'completed' || $status === 'success') && ($isProcessed || $processedAt)) 
+                    ? ($processedAt ? \Carbon\Carbon::parse($processedAt) : now()) 
+                    : null,
             ]);
 
             // Traiter selon le statut final
-			if ($status === 'completed' && $payment->order) {
+            // Un paiement est réussi si status est "success" ou "completed" ET is_processed est true
+			if (($status === 'completed' || $status === 'success') && ($isProcessed || $processedAt) && $payment->order) {
 				// Mettre à jour la commande avec la référence et les frais si fournis
 				$feeAmount = $paymentData['fee'] ?? ($paymentData['fees']['amount'] ?? null);
 				$feeCurrency = $paymentData['fee_currency'] ?? ($paymentData['fees']['currency'] ?? null);
@@ -1078,24 +1174,33 @@ class MonerooController extends Controller
                 // VALIDATION RECOMMANDÉE : Vérifier le statut auprès de Moneroo
                 // comme recommandé dans la documentation pour garantir la cohérence
                 // Utiliser l'ID Moneroo (py_xxx) si disponible, sinon notre payment_id
+                // IMPORTANT: Utiliser l'endpoint /verify selon la documentation Moneroo
+                // https://docs.moneroo.io/payments/transaction-verification
                 $monerooPaymentId = $payment->payment_data['response']['data']['id'] 
                                  ?? $payment->payment_data['data']['id'] 
                                  ?? $paymentId;
                 
                 $statusResponse = Http::withHeaders($this->authHeaders())
-                    ->get($this->baseUrl() . "/payments/{$monerooPaymentId}");
+                    ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
 
                 if ($statusResponse->successful()) {
                     $responseData = $statusResponse->json();
                     // Format Moneroo: { "success": true, "message": "...", "data": { "id": "...", "status": "..." } }
                     $statusData = $responseData['data'] ?? $responseData;
                     $status = $statusData['status'] ?? null;
+                    // Vérifier aussi is_processed et processed_at selon la documentation
+                    $isProcessed = $statusData['is_processed'] ?? false;
+                    $processedAt = $statusData['processed_at'] ?? null;
 
                     \Log::info('Moneroo: Status check on successful redirect', [
                         'payment_id' => $paymentId,
+                        'moneroo_payment_id' => $monerooPaymentId,
                         'status' => $status,
+                        'is_processed' => $isProcessed,
+                        'processed_at' => $processedAt,
                         'local_payment_status' => $payment->status,
                         'order_status' => $payment->order->status,
+                        'full_status_data' => $statusData,
                     ]);
 
                     // Si localement le paiement est déjà complété, forcer la mise à jour de la commande
@@ -1108,7 +1213,9 @@ class MonerooController extends Controller
                     }
 
                     // Traiter tous les statuts possibles selon Moneroo
-                    if ($status === 'completed') {
+                    // Selon la documentation: status peut être "success", "pending", "failed"
+                    // Un paiement réussi a status="success" et is_processed=true
+                    if ($status === 'success' || ($status === 'completed' && $isProcessed)) {
                         // Paiement complété : s'assurer que tout est finalisé
                         if ($payment->status !== 'completed') {
                             $payment->update([
@@ -1167,6 +1274,17 @@ class MonerooController extends Controller
                         $this->sendPaymentEmails($orderFresh);
 
                         $order = $payment->order->fresh();
+                        
+                        // PROTECTION CONTRE LES ACTUALISATIONS : Utiliser un flag pour éviter les traitements multiples
+                        // Si la commande est déjà payée et finalisée, on peut afficher directement
+                        if (in_array($order->status, ['paid', 'completed'])) {
+                            \Log::info('Moneroo: Order already paid, displaying success page', [
+                                'order_id' => $order->id,
+                                'order_status' => $order->status,
+                                'payment_id' => $paymentId,
+                            ]);
+                        }
+                        
                         return view('payments.moneroo.success', compact('order'));
                         
                     } elseif (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
@@ -1225,7 +1343,18 @@ class MonerooController extends Controller
                         'payment_id' => $paymentId,
                         'response_status' => $statusResponse->status(),
                     ]);
+                    
+                    // Si le paiement local est déjà complété, afficher la page de succès
+                    if ($payment->status === 'completed' && in_array($payment->order->status, ['paid', 'completed'])) {
+                        $order = $payment->order->fresh();
+                        return view('payments.moneroo.success', compact('order'));
+                    }
                 }
+            } else {
+                // Paiement trouvé mais pas de commande associée (cas rare)
+                \Log::warning('Moneroo: Payment found but no order associated', [
+                    'payment_id' => $paymentId,
+                ]);
             }
         }
 
@@ -1263,25 +1392,68 @@ class MonerooController extends Controller
             if ($payment && $payment->order) {
                 // IMPORTANT: Vérifier d'abord le statut réel auprès de Moneroo
                 // pour obtenir la raison d'échec exacte (solde insuffisant, carte rejetée, etc.)
+                // IMPORTANT: Utiliser l'endpoint /verify selon la documentation Moneroo
+                // https://docs.moneroo.io/payments/transaction-verification
                 $monerooPaymentId = $payment->payment_data['response']['data']['id'] 
                                  ?? $payment->payment_data['data']['id'] 
                                  ?? $paymentId;
                 
                 try {
                     $statusResponse = Http::withHeaders($this->authHeaders())
-                        ->get($this->baseUrl() . "/payments/{$monerooPaymentId}");
+                        ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
 
                     if ($statusResponse->successful()) {
                         $responseData = $statusResponse->json();
                         $statusData = $responseData['data'] ?? $responseData;
                         $status = $statusData['status'] ?? 'failed';
+                        $isProcessed = $statusData['is_processed'] ?? false;
+                        $processedAt = $statusData['processed_at'] ?? null;
+                        
+                        // CRITIQUE: Si le statut est "success" et is_processed=true, 
+                        // le paiement a réussi même si on est sur la page failed
+                        // Cela peut arriver si Moneroo redirige vers failed par erreur
+                        if ($status === 'success' && $isProcessed) {
+                            \Log::warning('Moneroo: Payment actually succeeded but redirected to failed page', [
+                                'payment_id' => $paymentId,
+                                'moneroo_payment_id' => $monerooPaymentId,
+                                'status' => $status,
+                                'is_processed' => $isProcessed,
+                                'processed_at' => $processedAt,
+                            ]);
+                            
+                            // Traiter comme un succès
+                            if ($payment->status !== 'completed') {
+                                $payment->update([
+                                    'status' => 'completed',
+                                    'processed_at' => $processedAt ? \Carbon\Carbon::parse($processedAt) : now(),
+                                    'payment_data' => array_merge($payment->payment_data ?? [], [
+                                        'redirect_check' => $statusData,
+                                        'corrected_from_failed' => true,
+                                    ]),
+                                ]);
+                            }
+                            
+                            if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                                $payment->order->update([
+                                    'status' => 'paid',
+                                    'paid_at' => $payment->order->paid_at ?: now(),
+                                ]);
+                                $this->finalizeOrderAfterPayment($payment->order);
+                            }
+                            
+                            // Rediriger vers la page de succès
+                            return redirect()->route('moneroo.success', ['payment_id' => $paymentId]);
+                        }
                         
                         // Extraire la raison d'échec détaillée depuis l'API
                         $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
                         
                         \Log::info('Moneroo: Status check on failed redirect', [
                             'payment_id' => $paymentId,
+                            'moneroo_payment_id' => $monerooPaymentId,
                             'status' => $status,
+                            'is_processed' => $isProcessed,
+                            'processed_at' => $processedAt,
                             'failure_reason' => $failureReason,
                             'full_status_data' => $statusData,
                         ]);

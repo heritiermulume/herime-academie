@@ -281,6 +281,106 @@
         </div>
     </div>
 </div>
+
+{{-- PROTECTION CONTRE LES ACTUALISATIONS ET DOUBLES PAIEMENTS --}}
+@if(isset($order))
+<script>
+(function() {
+    'use strict';
+    
+    // Empêcher la soumission multiple du formulaire si l'utilisateur revient en arrière
+    if (window.history && window.history.pushState) {
+        // Remplacer l'état actuel pour éviter que le bouton retour ne déclenche un nouveau paiement
+        window.history.replaceState({ 
+            orderId: {{ $order->id }}, 
+            orderStatus: '{{ $order->status }}',
+            paymentCompleted: true 
+        }, '', window.location.href);
+        
+        // Empêcher le retour en arrière vers la page de paiement
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.paymentCompleted) {
+                // Si l'utilisateur essaie de revenir en arrière après un paiement réussi,
+                // le rediriger vers le tableau de bord
+                window.location.href = "{{ route('student.dashboard') }}";
+            }
+        });
+    }
+    
+        // Vérifier le statut du paiement périodiquement si la commande est encore en attente
+    @if($order->status === 'pending')
+    let checkCount = 0;
+    const maxChecks = 15; // Vérifier pendant 30 secondes (2s * 15)
+    const checkInterval = setInterval(function() {
+        checkCount++;
+        
+        if (checkCount > maxChecks) {
+            clearInterval(checkInterval);
+            return;
+        }
+        
+        // Vérifier le statut de la commande via une requête AJAX simple
+        fetch('{{ route("orders.show", $order->id) }}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            // Si ce n'est pas du JSON, c'est probablement une page HTML
+            // Dans ce cas, recharger la page pour obtenir le statut mis à jour
+            if (checkCount >= 5) { // Après 10 secondes, recharger la page
+                window.location.reload();
+            }
+            return null;
+        })
+        .then(data => {
+            if (data && data.status && ['paid', 'completed'].includes(data.status)) {
+                clearInterval(checkInterval);
+                // Recharger la page pour afficher le statut mis à jour
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking order status:', error);
+            // En cas d'erreur, recharger après quelques tentatives
+            if (checkCount >= 10) {
+                clearInterval(checkInterval);
+                window.location.reload();
+            }
+        });
+    }, 2000); // Vérifier toutes les 2 secondes
+    @endif
+    
+    // Empêcher l'actualisation accidentelle avec F5 si le paiement est complété
+    @if(in_array($order->status, ['paid', 'completed']))
+    let paymentCompleted = true;
+    
+    window.addEventListener('beforeunload', function(e) {
+        if (paymentCompleted) {
+            // Ne pas afficher de message de confirmation si le paiement est complété
+            // L'utilisateur peut actualiser en toute sécurité
+            return;
+        }
+    });
+    @endif
+    
+    // Afficher un message si l'utilisateur actualise la page après un paiement réussi
+    if (sessionStorage.getItem('moneroo_payment_success_{{ $order->id }}')) {
+        console.log('Payment already processed for order {{ $order->id }}');
+    } else {
+        // Marquer que le paiement a été traité
+        sessionStorage.setItem('moneroo_payment_success_{{ $order->id }}', 'true');
+    }
+})();
+</script>
+@endif
+
 @endif {{-- Fin de la protection contre affichage sans commande --}}
 @endsection
 

@@ -25,3 +25,6 @@ class AmbassadorSettingsSeeder extends Seeder
     }
 }
 
+
+
+
