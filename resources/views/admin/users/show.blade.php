@@ -158,18 +158,18 @@
             <section class="admin-panel">
                 <div class="admin-panel__header">
                     <h3>
-                        <i class="fas fa-book me-2"></i>Gestion des cours
+                        <i class="fas fa-book me-2"></i>Gestion des accès aux cours
                     </h3>
                 </div>
                 <div class="admin-panel__body">
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <span class="text-muted">Cours inscrits: {{ $enrollments->count() }}</span>
+                        <span class="text-muted">Accès aux cours: {{ $allAccess->count() }}</span>
                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#grantAccessModal">
                             <i class="fas fa-gift me-2"></i>Donner accès gratuit
                         </button>
                     </div>
                     
-                    @if($enrollments->count() > 0)
+                    @if($allAccess->count() > 0)
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
@@ -183,12 +183,13 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($enrollments as $enrollment)
+                                    @foreach($allAccess as $access)
+                                        @php($course = $access->course ?? null)
                                         <tr>
                                             <td>
-                                                @if($enrollment->course && $enrollment->course->thumbnail_url)
-                                                    <img src="{{ $enrollment->course->thumbnail_url }}" 
-                                                         alt="{{ $enrollment->course->title }}" 
+                                                @if($course && $course->thumbnail_url)
+                                                    <img src="{{ $course->thumbnail_url }}" 
+                                                         alt="{{ $course->title }}" 
                                                          class="rounded"
                                                          style="width: 50px; height: 50px; object-fit: cover;">
                                                 @else
@@ -200,39 +201,61 @@
                                             </td>
                                             <td>
                                                 <div>
-                                                    <strong>{{ $enrollment->course ? $enrollment->course->title : 'Cours supprimé' }}</strong>
-                                                    @if($enrollment->course && $enrollment->course->instructor)
-                                                        <br><small class="text-muted">par {{ $enrollment->course->instructor->name }}</small>
+                                                    <strong>{{ $course ? $course->title : 'Cours supprimé' }}</strong>
+                                                    @if($course && $course->instructor)
+                                                        <br><small class="text-muted">par {{ $course->instructor->name }}</small>
                                                     @endif
                                                 </div>
                                             </td>
                                             <td>
-                                                @switch($enrollment->status)
-                                                    @case('active')
-                                                        <span class="badge bg-success">Actif</span>
-                                                        @break
-                                                    @case('completed')
-                                                        <span class="badge bg-primary">Terminé</span>
-                                                        @break
-                                                    @case('suspended')
-                                                        <span class="badge bg-warning">Suspendu</span>
-                                                        @break
-                                                    @case('cancelled')
-                                                        <span class="badge bg-danger">Annulé</span>
-                                                        @break
-                                                    @default
-                                                        <span class="badge bg-secondary">{{ $enrollment->status }}</span>
-                                                @endswitch
+                                                @if(isset($access->is_purchased_not_enrolled) && $access->is_purchased_not_enrolled)
+                                                    <span class="badge bg-info">
+                                                        <i class="fas fa-shopping-cart me-1"></i>Acheté
+                                                    </span>
+                                                @elseif(isset($access->is_downloaded_free) && $access->is_downloaded_free)
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-download me-1"></i>Téléchargé
+                                                    </span>
+                                                @else
+                                                    @switch($access->status)
+                                                        @case('active')
+                                                            <span class="badge bg-success">Actif</span>
+                                                            @break
+                                                        @case('completed')
+                                                            <span class="badge bg-primary">Terminé</span>
+                                                            @break
+                                                        @case('suspended')
+                                                            <span class="badge bg-warning">Suspendu</span>
+                                                            @break
+                                                        @case('cancelled')
+                                                            <span class="badge bg-danger">Annulé</span>
+                                                            @break
+                                                        @default
+                                                            <span class="badge bg-secondary">{{ $access->status }}</span>
+                                                    @endswitch
+                                                @endif
                                             </td>
                                             <td>
-                                                <div class="progress" style="height: 20px; width: 100px;">
-                                                    <div class="progress-bar" role="progressbar" style="width: {{ $enrollment->progress }}%">
-                                                        {{ number_format($enrollment->progress, 0) }}%
+                                                @if(isset($access->is_purchased_not_enrolled) || isset($access->is_downloaded_free))
+                                                    <span class="text-muted">—</span>
+                                                @else
+                                                    <div class="progress" style="height: 20px; width: 100px;">
+                                                        <div class="progress-bar" role="progressbar" style="width: {{ $access->progress ?? 0 }}%">
+                                                            {{ number_format($access->progress ?? 0, 0) }}%
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                @endif
                                             </td>
                                             <td>
-                                                @if($enrollment->order_id)
+                                                @if(isset($access->is_purchased_not_enrolled) && $access->is_purchased_not_enrolled)
+                                                    <span class="badge bg-primary">
+                                                        <i class="fas fa-shopping-cart me-1"></i>Acheté
+                                                    </span>
+                                                @elseif(isset($access->is_downloaded_free) && $access->is_downloaded_free)
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-download me-1"></i>Téléchargé
+                                                    </span>
+                                                @elseif($access->order_id ?? null)
                                                     <span class="badge bg-primary">
                                                         <i class="fas fa-shopping-cart me-1"></i>Payé
                                                     </span>
@@ -243,12 +266,14 @@
                                                 @endif
                                             </td>
                                             <td class="text-center">
-                                                @if($enrollment->course)
+                                                @if($course && !isset($access->is_purchased_not_enrolled) && !isset($access->is_downloaded_free))
                                                     <button type="button" class="btn btn-sm btn-danger btn-action-small" 
-                                                            onclick="confirmRevokeAccess({{ $user->id }}, {{ $enrollment->course->id }}, '{{ $enrollment->course->title }}')"
+                                                            onclick="confirmRevokeAccess({{ $user->id }}, {{ $course->id }}, '{{ $course->title }}')"
                                                             title="Enlever l'accès">
                                                         <i class="fas fa-ban"></i>
                                                     </button>
+                                                @else
+                                                    <span class="text-muted">—</span>
                                                 @endif
                                             </td>
                                         </tr>
@@ -259,7 +284,7 @@
                     @else
                         <div class="text-center py-4">
                             <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">Cet utilisateur n'est inscrit à aucun cours.</p>
+                            <p class="text-muted">Cet utilisateur n'a accès à aucun cours.</p>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#grantAccessModal">
                                 <i class="fas fa-gift me-2"></i>Donner accès à un cours
                             </button>
@@ -416,11 +441,11 @@
                                 <option value="">Sélectionner un cours...</option>
                                 @foreach($allCourses as $course)
                                     @php
-                                        $isEnrolled = $enrollments->contains(function($enrollment) use ($course) {
-                                            return $enrollment->course_id == $course->id;
+                                        $hasAccess = $allAccess->contains(function($access) use ($course) {
+                                            return ($access->course_id ?? null) == $course->id;
                                         });
                                     @endphp
-                                    @if(!$isEnrolled)
+                                    @if(!$hasAccess)
                                         <option value="{{ $course->id }}">
                                             {{ $course->title }}
                                             @if($course->category)
@@ -438,9 +463,9 @@
                                     @endif
                                 @endforeach
                             </select>
-                            @if($allCourses->filter(function($course) use ($enrollments) {
-                                return !$enrollments->contains(function($enrollment) use ($course) {
-                                    return $enrollment->course_id == $course->id;
+                            @if($allCourses->filter(function($course) use ($allAccess) {
+                                return !$allAccess->contains(function($access) use ($course) {
+                                    return ($access->course_id ?? null) == $course->id;
                                 });
                             })->count() == 0)
                                 <small class="text-muted d-block mt-2">
@@ -458,9 +483,9 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                         <button type="submit" class="btn btn-primary" 
-                                @if($allCourses->filter(function($course) use ($enrollments) {
-                                    return !$enrollments->contains(function($enrollment) use ($course) {
-                                        return $enrollment->course_id == $course->id;
+                                @if($allCourses->filter(function($course) use ($allAccess) {
+                                    return !$allAccess->contains(function($access) use ($course) {
+                                        return ($access->course_id ?? null) == $course->id;
                                     });
                                 })->count() == 0) disabled @endif>
                             <i class="fas fa-gift me-2"></i>Donner l'accès

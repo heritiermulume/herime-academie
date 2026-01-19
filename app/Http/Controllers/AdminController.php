@@ -1063,9 +1063,92 @@ class AdminController extends Controller
     {
         // Charger les inscriptions avec les cours
         $enrollments = $user->enrollments()
+            ->where('status', '!=', 'cancelled')
             ->with(['course.instructor', 'course.category', 'order'])
             ->orderBy('created_at', 'desc')
             ->get();
+        
+        // Récupérer les cours achetés (via commandes payées) qui n'ont pas d'inscription
+        $purchasedCourseIds = $enrollments->pluck('course_id')->filter()->all();
+        $purchasedCourses = \App\Models\Order::where('user_id', $user->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function($query) use ($purchasedCourseIds) {
+                $query->whereNotIn('course_id', $purchasedCourseIds)
+                    ->whereHas('course', function($q) {
+                        $q->where('is_published', true);
+                    });
+            })
+            ->with(['orderItems.course.instructor', 'orderItems.course.category'])
+            ->get()
+            ->flatMap(function($order) {
+                return $order->orderItems->filter(function($item) use ($purchasedCourseIds) {
+                    return $item->course && 
+                           $item->course->is_published && 
+                           !in_array($item->course_id, $purchasedCourseIds);
+                })->map(function($item) use ($order) {
+                    // Créer un objet similaire à un enrollment pour la compatibilité avec la vue
+                    return (object)[
+                        'id' => null,
+                        'course_id' => $item->course_id,
+                        'course' => $item->course,
+                        'status' => 'purchased',
+                        'progress' => 0,
+                        'order_id' => $order->id,
+                        'order' => $order,
+                        'created_at' => $order->created_at,
+                        'is_purchased_not_enrolled' => true,
+                    ];
+                });
+            });
+        
+        // Récupérer les cours téléchargeables gratuits téléchargés au moins une fois
+        $allAccessCourseIds = $enrollments->pluck('course_id')
+            ->merge($purchasedCourses->pluck('course_id'))
+            ->filter()
+            ->unique()
+            ->all();
+        
+        $downloadedFreeCourseIds = \App\Models\CourseDownload::where('user_id', $user->id)
+            ->whereHas('course', function($q) {
+                $q->where('is_downloadable', true)
+                  ->where('is_free', true)
+                  ->where('is_published', true);
+            })
+            ->pluck('course_id')
+            ->unique()
+            ->filter(function($courseId) use ($allAccessCourseIds) {
+                // Exclure ceux déjà dans les enrollments ou les cours achetés
+                return !in_array($courseId, $allAccessCourseIds);
+            })
+            ->all();
+        
+        $downloadedFreeCourses = collect();
+        if (!empty($downloadedFreeCourseIds)) {
+            $downloadedFreeCourses = \App\Models\Course::whereIn('id', $downloadedFreeCourseIds)
+                ->with(['instructor', 'category'])
+                ->get()
+                ->map(function($course) {
+                    return (object)[
+                        'id' => null,
+                        'course_id' => $course->id,
+                        'course' => $course,
+                        'status' => 'downloaded',
+                        'progress' => 0,
+                        'order_id' => null,
+                        'order' => null,
+                        'created_at' => \App\Models\CourseDownload::where('user_id', $user->id)
+                            ->where('course_id', $course->id)
+                            ->orderBy('created_at', 'desc')
+                            ->first()?->created_at ?? now(),
+                        'is_downloaded_free' => true,
+                    ];
+                });
+        }
+        
+        // Combiner toutes les sources d'accès
+        $allAccess = $enrollments->concat($purchasedCourses)->concat($downloadedFreeCourses)
+            ->sortByDesc('created_at')
+            ->values();
         
         // Charger tous les cours disponibles pour le modal d'ajout
         $allCourses = Course::published()
@@ -1073,7 +1156,7 @@ class AdminController extends Controller
             ->orderBy('title')
             ->get();
         
-        return view('admin.users.show', compact('user', 'enrollments', 'allCourses'));
+        return view('admin.users.show', compact('user', 'enrollments', 'allAccess', 'allCourses'));
     }
 
     public function destroyUser(User $user)
