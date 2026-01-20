@@ -137,17 +137,6 @@ if (paymentsFilterForm) {
         }
     });
 }
-
-const paymentsSearchInput = document.querySelector('#paymentsFilterForm input[name=\"search\"]');
-if (paymentsSearchInput) {
-    let searchTimeout;
-    paymentsSearchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            paymentsFilterForm?.submit();
-        }, 500);
-    });
-}
 </script>
 @endpush
 

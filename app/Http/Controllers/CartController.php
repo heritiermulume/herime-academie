@@ -141,7 +141,7 @@ public function add(Request $request)
             ]);
         } catch (\Exception $e) {
             // Gérer toutes les autres erreurs potentielles
-            \Log::error('Error adding course to cart', [
+            \Log::error('Error adding content to cart', [
                 'error' => $e->getMessage(),
                 'content_id' => $request->content_id ?? null,
                 'user_id' => auth()->id(),
@@ -382,7 +382,7 @@ public function add(Request $request)
             // Debug: Log des cours exclus
             \Log::info('Cours exclus pour l\'utilisateur ' . auth()->id() . ':', [
                 'cart_content_ids' => $cartContentIds ?? [],
-                'purchased_content_ids' => $purchasedContentIds,
+                'purchased_content_ids' => $purchasedCourseIds,
                 'free_content_ids' => $freeContentIds,
                 'total_excluded' => count($excludedIds->toArray())
             ]);

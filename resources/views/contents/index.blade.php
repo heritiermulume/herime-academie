@@ -1089,18 +1089,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    // Recherche en temps réel (debounce)
-    const searchInput = document.querySelector('#coursesFilterForm input[name="search"]');
-    if (searchInput) {
-        let searchTimeout;
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                coursesFilterForm?.submit();
-            }, 500);
-        });
-    }
     
     // Mettre à jour le compteur du panier (attendre que la fonction globale soit chargée)
     setTimeout(() => {

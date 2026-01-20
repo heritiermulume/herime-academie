@@ -34,7 +34,7 @@ class CourseModerationNotification extends Notification
             'title' => $payload['title'],
             'excerpt' => $payload['message'],
             'type' => $payload['type'],
-            'button_text' => $this->status === 'approved' ? 'Voir le cours' : 'Explorer les cours',
+            'button_text' => $this->status === 'approved' ? 'Voir le contenu' : 'Explorer les contenus',
             'button_url' => $this->status === 'approved'
                 ? route('contents.show', $this->course->slug)
                 : route('contents.index'),
@@ -49,25 +49,25 @@ class CourseModerationNotification extends Notification
 
         return match ($this->status) {
             'approved' => [
-                'title' => 'Votre cours est publié',
-                'message' => "Le cours « {$courseTitle} » a été approuvé et est maintenant visible sur la plateforme.",
+                'title' => 'Votre contenu est publié',
+                'message' => "Le contenu « {$courseTitle} » a été approuvé et est maintenant visible sur la plateforme.",
                 'type' => 'success',
             ],
             'rejected' => [
-                'title' => 'Votre cours a été rejeté',
+                'title' => 'Votre contenu a été rejeté',
                 'message' => $this->notes
-                    ? "Le cours « {$courseTitle} » a été rejeté. Motif : {$this->notes}"
-                    : "Le cours « {$courseTitle} » a été rejeté. Merci d'apporter les modifications nécessaires.",
+                    ? "Le contenu « {$courseTitle} » a été rejeté. Motif : {$this->notes}"
+                    : "Le contenu « {$courseTitle} » a été rejeté. Merci d'apporter les modifications nécessaires.",
                 'type' => 'error',
             ],
             'unpublished' => [
-                'title' => 'Cours dépublié',
-                'message' => "Le cours « {$courseTitle} » n'est plus visible sur la plateforme. {$this->notes}",
+                'title' => 'Contenu dépublié',
+                'message' => "Le contenu « {$courseTitle} » n'est plus visible sur la plateforme. {$this->notes}",
                 'type' => 'warning',
             ],
             default => [
-                'title' => 'Mise à jour de votre cours',
-                'message' => "Le statut du cours « {$courseTitle} » a été mis à jour.",
+                'title' => 'Mise à jour de votre contenu',
+                'message' => "Le statut du contenu « {$courseTitle} » a été mis à jour.",
                 'type' => 'info',
             ],
         };

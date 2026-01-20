@@ -27,7 +27,7 @@ class CoursePublishedNotification extends Notification
         $providerName = $this->course->provider?->name;
         $categoryName = $this->course->category?->name;
 
-        $message = "Un nouveau cours « {$this->course->title} »";
+        $message = "Un nouveau contenu « {$this->course->title} »";
         if ($providerName) {
             $message .= " animé par {$providerName}";
         }
@@ -38,10 +38,10 @@ class CoursePublishedNotification extends Notification
         }
 
         return [
-            'title' => 'Nouveau cours disponible',
+            'title' => 'Nouveau contenu disponible',
             'excerpt' => $message,
             'type' => 'success',
-            'button_text' => 'Découvrir le cours',
+            'button_text' => 'Découvrir le contenu',
             'button_url' => route('contents.show', $this->course->slug),
             'course_id' => $this->course->id,
             'course_slug' => $this->course->slug,

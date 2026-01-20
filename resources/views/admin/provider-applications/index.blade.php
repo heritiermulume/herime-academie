@@ -798,41 +798,26 @@ function showFailureReason(reason) {
     modal.show();
 }
 
-// Gestion des formulaires de recherche
-document.addEventListener('DOMContentLoaded', function() {
-    // Formulaires de filtres
-    const forms = ['providersFilterForm', 'payoutsFilterForm', 'applicationsFilterForm'];
-    
-    forms.forEach(formId => {
-        const form = document.getElementById(formId);
-        const filtersOffcanvas = document.getElementById(formId.replace('Form', 'Filters'));
+    // Gestion des formulaires de recherche
+    document.addEventListener('DOMContentLoaded', function() {
+        // Formulaires de filtres
+        const forms = ['providersFilterForm', 'payoutsFilterForm', 'applicationsFilterForm'];
         
-        if (form) {
-            form.addEventListener('submit', () => {
-                if (filtersOffcanvas) {
-                    const instance = bootstrap.Offcanvas.getInstance(filtersOffcanvas);
-                    if (instance) {
-                        instance.hide();
+        forms.forEach(formId => {
+            const form = document.getElementById(formId);
+            const filtersOffcanvas = document.getElementById(formId.replace('Form', 'Filters'));
+            
+            if (form) {
+                form.addEventListener('submit', () => {
+                    if (filtersOffcanvas) {
+                        const instance = bootstrap.Offcanvas.getInstance(filtersOffcanvas);
+                        if (instance) {
+                            instance.hide();
+                        }
                     }
-                }
-            });
-        }
-    });
-
-    // Recherche en temps réel
-    const searchInputs = document.querySelectorAll('input[name="search"]');
-    searchInputs.forEach(input => {
-        let searchTimeout;
-        input.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const form = input.closest('form');
-                if (form) {
-                    form.submit();
-                }
-            }, 500);
+                });
+            }
         });
     });
-});
 </script>
 @endpush

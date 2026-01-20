@@ -189,7 +189,7 @@
             
             @if($order->orderItems && $order->orderItems->count() > 0)
             <div class="courses-list">
-                <p><strong>Cours concernés :</strong></p>
+                <p><strong>Contenus concernés :</strong></p>
                 <ul>
                     @foreach($order->orderItems as $item)
                         @if($item->course)
@@ -204,7 +204,7 @@
         <div class="message">
             <p>
                 <strong>Important :</strong><br>
-                Suite à cette suppression, votre accès aux cours associés à cette commande a été retiré. 
+                Suite à cette suppression, votre accès aux contenus associés à cette commande a été retiré. 
                 Si vous avez des questions ou souhaitez contester cette décision, veuillez nous contacter.
             </p>
         </div>

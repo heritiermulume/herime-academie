@@ -928,7 +928,7 @@ function openDeleteModal(userId) {
 
 function confirmRevokeAccess(userId, courseId, courseTitle) {
     document.getElementById('revokeCourseTitle').textContent = courseTitle;
-    document.getElementById('revokeAccessForm').action = `/admin/users/${userId}/courses/${courseId}/revoke-access`;
+    document.getElementById('revokeAccessForm').action = `/admin/users/${userId}/contents/${courseId}/revoke-access`;
     const modal = new bootstrap.Modal(document.getElementById('revokeAccessModal'));
     modal.show();
 }

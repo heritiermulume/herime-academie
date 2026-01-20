@@ -316,17 +316,6 @@ if (usersFilterForm) {
     });
 }
 
-const searchInput = document.querySelector('#usersFilterForm input[name=\"search\"]');
-if (searchInput) {
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            usersFilterForm?.submit();
-        }, 500);
-    });
-}
-
 </script>
 @endpush
 

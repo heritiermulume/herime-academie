@@ -306,17 +306,6 @@ if (categoriesFilterForm) {
     });
 }
 
-const categoriesSearchInput = document.querySelector('#categoriesFilterForm input[name=\"search\"]');
-if (categoriesSearchInput) {
-    let searchTimeout;
-    categoriesSearchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            categoriesFilterForm?.submit();
-        }, 500);
-    });
-}
-
 function resetCategoryForm() {
     // Réinitialiser le formulaire
     document.getElementById('categoryForm').reset();

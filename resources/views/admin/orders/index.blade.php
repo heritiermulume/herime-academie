@@ -322,17 +322,6 @@ if (ordersFilterForm) {
     });
 }
 
-const ordersSearchInput = document.querySelector('#ordersFilterForm input[name="search"]');
-if (ordersSearchInput) {
-    let searchTimeout;
-    ordersSearchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            ordersFilterForm?.submit();
-        }, 500);
-    });
-}
-
 function exportOrders() {
     const urlParams = new URLSearchParams(window.location.search);
     const exportUrl = '{{ route("admin.orders.export") }}?' + urlParams.toString();

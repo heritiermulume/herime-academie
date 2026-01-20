@@ -155,7 +155,7 @@
                 <p class="amount-highlight">{{ number_format($payout->amount, 2) }} {{ $payout->currency }}</p>
                 
                 @if($payout->course)
-                <p><strong>Cours :</strong> {{ $payout->course->title }}</p>
+                <p><strong>Contenu :</strong> {{ $payout->course->title }}</p>
                 @endif
                 
                 @if($payout->order)
@@ -181,7 +181,7 @@
                 <a href="{{ route('provider.dashboard') }}" class="button">Accéder à mon tableau de bord</a>
             </div>
 
-            <p>Merci pour votre contribution et continuez à créer des cours de qualité !</p>
+            <p>Merci pour votre contribution et continuez à créer des contenus de qualité !</p>
         </div>
 
         <div class="footer">

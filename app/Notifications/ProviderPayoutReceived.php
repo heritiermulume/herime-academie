@@ -65,7 +65,7 @@ class ProviderPayoutReceived extends Notification
             ->line('**Montant reçu :** ' . number_format($payout->amount, 2) . ' ' . $payout->currency);
 
         if ($payout->course) {
-            $mail->line('**Cours :** ' . $payout->course->title);
+            $mail->line('**Contenu :** ' . $payout->course->title);
         }
 
         if ($payout->order) {
@@ -108,7 +108,7 @@ class ProviderPayoutReceived extends Notification
             'currency' => $payout->currency,
             'content_id' => $payout->content_id,
             'course_title' => $payout->course?->title,
-            'message' => 'Vous avez reçu un paiement de ' . number_format($payout->amount, 2) . ' ' . $payout->currency . ($payout->course ? ' pour le cours "' . $payout->course->title . '"' : ''),
+            'message' => 'Vous avez reçu un paiement de ' . number_format($payout->amount, 2) . ' ' . $payout->currency . ($payout->course ? ' pour le contenu "' . $payout->course->title . '"' : ''),
             'url' => route('provider.dashboard'),
         ];
     }
