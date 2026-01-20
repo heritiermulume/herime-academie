@@ -1194,6 +1194,25 @@ body.has-global-announcement:has(.course-details-page) {
     border-radius: 0 !important;
 }
 
+/* Réduction de la description prestataire sur mobile */
+@media (max-width: 767.98px) {
+    .instructor-card p,
+    .instructor-card .text-muted {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        margin-bottom: 0.35rem;
+    }
+
+    .instructor-stats {
+        margin-top: 0.4rem;
+        font-size: 0.8rem;
+        line-height: 1.3;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+}
+
 .provider-info h5 {
     font-weight: 700;
     color: var(--primary-color);
