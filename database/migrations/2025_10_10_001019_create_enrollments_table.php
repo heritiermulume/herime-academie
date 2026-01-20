@@ -14,14 +14,14 @@ return new class extends Migration
         Schema::create('enrollments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('content_id');
             $table->unsignedBigInteger('order_id')->nullable();
             $table->enum('status', ['active', 'completed', 'suspended', 'cancelled'])->default('active');
             $table->decimal('progress', 5, 2)->default(0); // pourcentage
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
             
-            $table->unique(['user_id', 'course_id']);
+            $table->unique(['user_id', 'content_id']);
             // La contrainte order_id sera ajoutée dans une migration séparée
         });
     }

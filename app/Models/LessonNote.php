@@ -9,7 +9,7 @@ class LessonNote extends Model
 {
     protected $fillable = [
         'user_id',
-        'course_id',
+        'content_id',
         'lesson_id',
         'content',
         'timestamp',
@@ -29,7 +29,15 @@ class LessonNote extends Model
 
     public function course(): BelongsTo
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'content_id');
+    }
+
+    /**
+     * Alias pour compatibilité avec le nouveau nom
+     */
+    public function content(): BelongsTo
+    {
+        return $this->course();
     }
 
     public function lesson(): BelongsTo

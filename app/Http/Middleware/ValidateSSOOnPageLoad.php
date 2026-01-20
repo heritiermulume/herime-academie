@@ -59,7 +59,7 @@ class ValidateSSOOnPageLoad
                 return $next($request);
             }
 
-            $chunkRoutes = ['admin.uploads.chunk', 'instructor.uploads.chunk'];
+            $chunkRoutes = ['admin.uploads.chunk', 'provider.uploads.chunk'];
             if (in_array($routeName, $chunkRoutes, true) || $request->ajax() || $request->wantsJson()) {
                 return $next($request);
             }

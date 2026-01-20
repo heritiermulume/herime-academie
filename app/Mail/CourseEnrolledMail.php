@@ -40,13 +40,13 @@ class CourseEnrolledMail extends Mailable
     public function content(): Content
     {
         // Charger les relations nécessaires
-        $this->course->load(['instructor', 'category']);
+        $this->course->load(['provider', 'category']);
 
         // Déterminer l'URL appropriée selon le type de cours
         // Pour les cours téléchargeables, rediriger vers la page de détails du cours
         // Pour les cours normaux, rediriger vers la page learning
         if ($this->course->is_downloadable) {
-            $courseUrl = route('courses.show', $this->course->slug);
+            $courseUrl = route('contents.show', $this->course->slug);
             $buttonText = 'Télécharger le cours maintenant';
         } else {
             $courseUrl = route('learning.course', $this->course->slug);

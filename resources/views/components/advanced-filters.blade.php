@@ -1,4 +1,4 @@
-@props(['categories' => [], 'instructors' => [], 'levels' => [], 'languages' => [], 'stats' => []])
+@props(['categories' => [], 'providers' => [], 'levels' => [], 'languages' => [], 'stats' => []])
 
 <div class="advanced-filters bg-light p-4 rounded-3 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -13,7 +13,7 @@
         <div class="col-md-6">
             <label for="search" class="form-label">Rechercher</label>
             <div class="input-group">
-                <input type="text" class="form-control" id="search" name="q" placeholder="Titre, description, instructeur...">
+                <input type="text" class="form-control" id="search" name="q" placeholder="Titre, description, prestataire...">
                 <button class="btn btn-outline-primary" type="button" onclick="searchCourses()">
                     <i class="fas fa-search"></i>
                 </button>
@@ -26,7 +26,7 @@
             <select class="form-select" id="category" name="category_id">
                 <option value="">Toutes les catégories</option>
                 @foreach($categories as $category)
-                    <option value="{{ $category->id }}">{{ $category->name }} ({{ $category->courses_count }})</option>
+                    <option value="{{ $category->id }}">{{ $category->name }} ({{ $category->contents_count }})</option>
                 @endforeach
             </select>
         </div>
@@ -42,13 +42,13 @@
             </select>
         </div>
 
-        <!-- Instructeur -->
+        <!-- Prestataire -->
         <div class="col-md-4">
-            <label for="instructor" class="form-label">Instructeur</label>
-            <select class="form-select" id="instructor" name="instructor_id">
-                <option value="">Tous les instructeurs</option>
-                @foreach($instructors as $instructor)
-                    <option value="{{ $instructor->id }}">{{ $instructor->name }} ({{ $instructor->courses_count }})</option>
+            <label for="provider" class="form-label">Prestataire</label>
+            <select class="form-select" id="provider" name="provider_id">
+                <option value="">Tous les prestataires</option>
+                @foreach($providers as $provider)
+                    <option value="{{ $provider->id }}">{{ $provider->name }} ({{ $provider->contents_count }})</option>
                 @endforeach
             </select>
         </div>
@@ -90,14 +90,14 @@
             </div>
         </div>
 
-        <!-- Nombre d'étudiants minimum -->
+        <!-- Nombre de clients minimum -->
         <div class="col-md-6">
-            <label for="min_students" class="form-label">Étudiants minimum</label>
+            <label for="min_customers" class="form-label">Clients minimum</label>
             <div class="d-flex align-items-center gap-2">
-                <input type="range" class="form-range" id="min_students" name="min_students" 
-                       min="{{ $stats['min_students'] ?? 0 }}" max="{{ $stats['max_students'] ?? 1000 }}" 
-                       step="10" value="{{ $stats['min_students'] ?? 0 }}">
-                <span class="badge bg-primary" id="min_students_value">{{ $stats['min_students'] ?? 0 }}</span>
+                <input type="range" class="form-range" id="min_customers" name="min_customers" 
+                       min="{{ $stats['min_customers'] ?? 0 }}" max="{{ $stats['max_customers'] ?? 1000 }}" 
+                       step="10" value="{{ $stats['min_customers'] ?? 0 }}">
+                <span class="badge bg-primary" id="min_customers_value">{{ $stats['min_customers'] ?? 0 }}</span>
             </div>
         </div>
 
@@ -161,8 +161,8 @@ document.getElementById('min_rating').addEventListener('input', function() {
     document.getElementById('min_rating_value').textContent = this.value;
 });
 
-document.getElementById('min_students').addEventListener('input', function() {
-    document.getElementById('min_students_value').textContent = this.value;
+document.getElementById('min_customers').addEventListener('input', function() {
+    document.getElementById('min_customers_value').textContent = this.value;
 });
 
 document.getElementById('min_duration').addEventListener('input', function() {
@@ -178,7 +178,7 @@ function applyFilters() {
     formData.set('is_featured', document.getElementById('is_featured').checked ? '1' : '0');
     
     // Envoyer la requête de filtrage
-    fetch('{{ route("courses.filter") }}', {
+    fetch('{{ route('contents.filter") }}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -202,7 +202,7 @@ function applyFilters() {
 function searchCourses() {
     const searchTerm = document.getElementById('search').value;
     
-    fetch(`{{ route("courses.search") }}?q=${encodeURIComponent(searchTerm)}`, {
+    fetch(`{{ route('contents.search") }}?q=${encodeURIComponent(searchTerm)}`, {
         method: 'GET',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -225,7 +225,7 @@ function resetFilters() {
     document.getElementById('filterForm').reset();
     // Réinitialiser les valeurs des sliders
     document.getElementById('min_rating_value').textContent = '{{ $stats["min_rating"] ?? 0 }}';
-    document.getElementById('min_students_value').textContent = '{{ $stats["min_students"] ?? 0 }}';
+    document.getElementById('min_customers_value').textContent = '{{ $stats["min_customers"] ?? 0 }}';
     document.getElementById('min_duration_value').textContent = '{{ $stats["min_duration"] ?? 0 }} min';
 }
 

@@ -175,7 +175,7 @@ class CommunicationService
             case \App\Mail\CourseEnrolledMail::class:
                 $course = $mailable->course;
                 $courseUrl = $course->is_downloadable 
-                    ? route('courses.show', $course->slug)
+                    ? route('contents.show', $course->slug)
                     : route('learning.course', $course->slug);
                 $message = "🎓 *Inscription confirmée*\n\n" .
                           "Bonjour *{$userName}*,\n\n" .
@@ -259,7 +259,7 @@ class CommunicationService
                           "Pour plus d'informations, contactez le support.";
                 return $this->formatWhatsAppMessage($message, $user);
             
-            case \App\Mail\InstructorPayoutReceivedMail::class:
+            case \App\Mail\ProviderPayoutReceivedMail::class:
                 $payout = property_exists($mailable, 'payout') ? $mailable->payout : null;
                 if (!$payout) {
                     return null;

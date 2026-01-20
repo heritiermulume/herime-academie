@@ -145,7 +145,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label for="button1_url" class="form-label">URL</label>
-                                    <input type="text" class="form-control" id="button1_url" name="button1_url" value="{{ old('button1_url', route('courses.index')) }}" placeholder="/courses">
+                                    <input type="text" class="form-control" id="button1_url" name="button1_url" value="{{ old('button1_url', route('contents.index')) }}" placeholder="/courses">
                                 </div>
                                 <div class="col-md-2">
                                     <label for="button1_style" class="form-label">Style</label>

@@ -36,7 +36,7 @@
                 <div class="admin-stat-card">
                     <p class="admin-stat-card__label">Terminées</p>
                     <p class="admin-stat-card__value">{{ $stats['completed'] ?? 0 }}</p>
-                    <p class="admin-stat-card__muted">Cours délivrés</p>
+                    <p class="admin-stat-card__muted">Contenus délivrés</p>
                 </div>
                 <div class="admin-stat-card">
                     <p class="admin-stat-card__label">Annulées</p>
@@ -215,7 +215,7 @@
                         <div class="alert alert-info d-flex align-items-start mb-3" role="alert">
                             <i class="fas fa-info-circle me-2 mt-1"></i>
                             <div>
-                                En confirmant cette commande, l'utilisateur aura accès aux cours commandés.
+                                En confirmant cette commande, l'utilisateur aura accès aux contenus commandés.
                             </div>
                         </div>
                         <div class="mb-3">
@@ -273,7 +273,7 @@
                         <div class="alert alert-danger d-flex align-items-start mb-3" role="alert">
                             <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
                             <div>
-                                <strong>Attention !</strong> Cette commande sera annulée et l'accès aux cours sera révoqué.
+                                <strong>Attention !</strong> Cette commande sera annulée et l'accès aux contenus sera révoqué.
                             </div>
                         </div>
                         <div class="mb-3">

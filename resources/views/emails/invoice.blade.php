@@ -346,8 +346,8 @@
                                 Contenu supprimé
                             @endif
                         </div>
-                        @if($course && $course->instructor)
-                        <div class="course-meta">Formateur : {{ $course->instructor->name }}</div>
+                        @if($course && $course->provider)
+                        <div class="course-meta">Prestataire : {{ $course->provider->name }}</div>
                         @endif
                     </td>
                     <td class="text-center">1</td>

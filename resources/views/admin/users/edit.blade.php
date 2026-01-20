@@ -68,10 +68,10 @@
                         <div class="admin-form-grid">
                             <div>
                                 <label for="role" class="form-label fw-bold">Rôle <span class="text-danger">*</span></label>
-                                <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required onchange="toggleExternalInstructorFields()">
+                                <select class="form-select @error('role') is-invalid @enderror" id="role" name="role" required onchange="toggleExternalProviderFields()">
                                     <option value="">Sélectionner un rôle</option>
-                                    <option value="student" {{ old('role', $user->role) == 'student' ? 'selected' : '' }}>Étudiant</option>
-                                    <option value="instructor" {{ old('role', $user->role) == 'instructor' ? 'selected' : '' }}>Formateur</option>
+                                    <option value="customer" {{ old('role', $user->role) == 'customer' ? 'selected' : '' }}>Client</option>
+                                    <option value="provider" {{ old('role', $user->role) == 'provider' ? 'selected' : '' }}>Prestataire</option>
                                     <option value="admin" {{ old('role', $user->role) == 'admin' ? 'selected' : '' }}>Administrateur</option>
                                     <option value="affiliate" {{ old('role', $user->role) == 'affiliate' ? 'selected' : '' }}>Affilié</option>
                                 </select>
@@ -95,22 +95,22 @@
                             </div>
                         </div>
                         
-                        <div id="external-instructor-section" class="mt-4 pt-3 border-top" style="display: {{ $user->role === 'instructor' ? 'block' : 'none' }};">
-                            <h6 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>Formateur externe (Moneroo)</h6>
+                        <div id="external-provider-section" class="mt-4 pt-3 border-top" style="display: {{ $user->role === 'provider' ? 'block' : 'none' }};">
+                            <h6 class="mb-3"><i class="fas fa-money-bill-wave me-2"></i>Prestataire externe (Moneroo)</h6>
                             <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="is_external_instructor" name="is_external_instructor" value="1" 
-                                       {{ old('is_external_instructor', $user->is_external_instructor) ? 'checked' : '' }}
-                                       onchange="toggleExternalInstructorFields()"
-                                       {{ $user->role !== 'instructor' ? 'disabled' : '' }}>
-                                <label class="form-check-label fw-bold" for="is_external_instructor">
-                                    Formateur externe
+                                <input class="form-check-input" type="checkbox" id="is_external_provider" name="is_external_provider" value="1" 
+                                       {{ old('is_external_provider', $user->is_external_provider) ? 'checked' : '' }}
+                                       onchange="toggleExternalProviderFields()"
+                                       {{ $user->role !== 'provider' ? 'disabled' : '' }}>
+                                <label class="form-check-label fw-bold" for="is_external_provider">
+                                    Prestataire externe
                                 </label>
                             </div>
                             <small class="text-muted d-block mb-3">
-                                Si activé, ce formateur recevra automatiquement ses paiements via Moneroo après chaque vente de cours.
+                                Si activé, ce prestataire recevra automatiquement ses paiements via Moneroo après chaque vente de contenu.
                             </small>
                             
-                            <div id="moneroo-fields" style="display: {{ old('is_external_instructor', $user->is_external_instructor) && $user->role === 'instructor' ? 'block' : 'none' }};">
+                            <div id="moneroo-fields" style="display: {{ old('is_external_provider', $user->is_external_provider) && $user->role === 'provider' ? 'block' : 'none' }};">
                                 @php
                                     $countries = $monerooData['countries'] ?? ($pawapayData['countries'] ?? []);
                                     $providers = $monerooData['providers'] ?? ($pawapayData['providers'] ?? []);
@@ -142,7 +142,7 @@
                                         @error('pawapay_country')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
-                                        <small class="text-muted">Sélectionnez le pays du formateur</small>
+                                        <small class="text-muted">Sélectionnez le pays du prestataire</small>
                                     </div>
                                     <div>
                                         <label for="pawapay_provider" class="form-label fw-bold">Fournisseur</label>
@@ -461,17 +461,17 @@ function formatFileSize(bytes) {
 }
 
 // Afficher/masquer les champs Moneroo et la section complète
-function toggleExternalInstructorFields() {
+function toggleExternalProviderFields() {
     const roleSelect = document.getElementById('role');
     const role = roleSelect ? roleSelect.value : '';
-    const isExternal = document.getElementById('is_external_instructor');
+    const isExternal = document.getElementById('is_external_provider');
     const monerooFields = document.getElementById('moneroo-fields');
-    const externalInstructorSection = document.getElementById('external-instructor-section');
+    const externalProviderSection = document.getElementById('external-provider-section');
     
-    // Si le rôle n'est pas "instructor", masquer toute la section et désactiver la checkbox
-    if (role !== 'instructor') {
-        if (externalInstructorSection) {
-            externalInstructorSection.style.display = 'none';
+    // Si le rôle n'est pas "provider", masquer toute la section et désactiver la checkbox
+    if (role !== 'provider') {
+        if (externalProviderSection) {
+            externalProviderSection.style.display = 'none';
         }
         if (isExternal) {
             isExternal.disabled = true;
@@ -483,9 +483,9 @@ function toggleExternalInstructorFields() {
         return;
     }
     
-    // Si le rôle est "instructor", afficher la section et activer la checkbox
-    if (externalInstructorSection) {
-        externalInstructorSection.style.display = 'block';
+    // Si le rôle est "provider", afficher la section et activer la checkbox
+    if (externalProviderSection) {
+        externalProviderSection.style.display = 'block';
     }
     if (isExternal) {
         isExternal.disabled = false;
@@ -613,7 +613,7 @@ function updateFieldsState() {
 
 // Initialiser au chargement
 document.addEventListener('DOMContentLoaded', function() {
-    toggleExternalInstructorFields();
+    toggleExternalProviderFields();
     
     // Initialiser les providers selon le pays sélectionné
     updateProviders();
@@ -625,14 +625,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const roleSelect = document.getElementById('role');
     if (roleSelect) {
         roleSelect.addEventListener('change', function() {
-            toggleExternalInstructorFields();
+            toggleExternalProviderFields();
             // Réinitialiser les champs Moneroo si le rôle change
             const countrySelect = document.getElementById('pawapay_country');
             const providerSelect = document.getElementById('pawapay_provider');
             const phoneInput = document.getElementById('pawapay_phone');
             
-            if (this.value !== 'instructor') {
-                // Si le rôle n'est plus "instructor", effacer tous les champs Moneroo
+            if (this.value !== 'provider') {
+                // Si le rôle n'est plus "provider", effacer tous les champs Moneroo
                 if (countrySelect) countrySelect.value = '';
                 if (providerSelect) providerSelect.value = '';
                 if (phoneInput) phoneInput.value = '';

@@ -63,9 +63,9 @@
                     <select class="form-select" id="recipient_type" name="recipient_type" required>
                         <option value="all">Tous les utilisateurs</option>
                         <option value="role">Par rôle</option>
-                        <option value="course">Utilisateurs inscrits à un cours</option>
+                        <option value="course">Utilisateurs inscrits à un contenu</option>
                         <option value="category">Utilisateurs inscrits à une catégorie</option>
-                        <option value="instructor">Utilisateurs inscrits à un formateur</option>
+                        <option value="provider">Utilisateurs inscrits à un prestataire</option>
                         <option value="registration_date">Par date d'inscription</option>
                         <option value="activity">Par activité</option>
                         <option value="selected">Utilisateurs sélectionnés</option>
@@ -79,14 +79,14 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles[]" value="student" id="role_student">
-                                <label class="form-check-label" for="role_student">Étudiants</label>
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="customer" id="role_customer">
+                                <label class="form-check-label" for="role_customer">Clients</label>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles[]" value="instructor" id="role_instructor">
-                                <label class="form-check-label" for="role_instructor">Formateurs</label>
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="provider" id="role_provider">
+                                <label class="form-check-label" for="role_provider">Prestataires</label>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -110,16 +110,16 @@
                     </div>
                 </div>
 
-                <!-- Sélection par cours -->
+                <!-- Sélection par contenu -->
                 <div class="mb-3" id="course_selection" style="display: none;">
-                    <label class="form-label">Cours *</label>
-                    <select class="form-select" id="course_id" name="course_id">
-                        <option value="">Sélectionner un cours</option>
+                    <label class="form-label">Contenu *</label>
+                    <select class="form-select" id="content_id" name="content_id">
+                        <option value="">Sélectionner un contenu</option>
                         @foreach(\App\Models\Course::where('is_published', true)->orderBy('title')->get() as $course)
                             <option value="{{ $course->id }}">{{ $course->title }}</option>
                         @endforeach
                     </select>
-                    <small class="text-muted">Seuls les utilisateurs inscrits à ce cours recevront le message</small>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à ce contenu recevront le message</small>
                 </div>
 
                 <!-- Sélection par catégorie -->
@@ -131,19 +131,19 @@
                             <option value="{{ $category->id }}">{{ $category->name }}</option>
                         @endforeach
                     </select>
-                    <small class="text-muted">Seuls les utilisateurs inscrits à des cours de cette catégorie recevront le message</small>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à des contenus de cette catégorie recevront le message</small>
                 </div>
 
-                <!-- Sélection par formateur -->
-                <div class="mb-3" id="instructor_selection" style="display: none;">
-                    <label class="form-label">Formateur *</label>
-                    <select class="form-select" id="instructor_id" name="instructor_id">
-                        <option value="">Sélectionner un formateur</option>
-                        @foreach(\App\Models\User::where('role', 'instructor')->where('is_active', true)->orderBy('name')->get() as $instructor)
-                            <option value="{{ $instructor->id }}">{{ $instructor->name }}</option>
+                <!-- Sélection par prestataire -->
+                <div class="mb-3" id="provider_selection" style="display: none;">
+                    <label class="form-label">Prestataire *</label>
+                    <select class="form-select" id="provider_id" name="provider_id">
+                        <option value="">Sélectionner un prestataire</option>
+                        @foreach(\App\Models\User::where('role', 'provider')->where('is_active', true)->orderBy('name')->get() as $provider)
+                            <option value="{{ $provider->id }}">{{ $provider->name }}</option>
                         @endforeach
                     </select>
-                    <small class="text-muted">Seuls les utilisateurs inscrits à des cours de ce formateur recevront le message</small>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à des contenus de ce prestataire recevront le message</small>
                 </div>
 
                 <!-- Sélection par date d'inscription -->
@@ -432,14 +432,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const roleSelection = document.getElementById('role_selection');
         const courseSelection = document.getElementById('course_selection');
         const categorySelection = document.getElementById('category_selection');
-        const instructorSelection = document.getElementById('instructor_selection');
+        const providerSelection = document.getElementById('provider_selection');
         const registrationDateSelection = document.getElementById('registration_date_selection');
         const activitySelection = document.getElementById('activity_selection');
         const singleUserSelection = document.getElementById('single_user_selection');
         const multipleUsersSelection = document.getElementById('multiple_users_selection');
         
         // Masquer toutes les sections
-        [roleSelection, courseSelection, categorySelection, instructorSelection, registrationDateSelection, activitySelection, singleUserSelection, multipleUsersSelection].forEach(el => {
+        [roleSelection, courseSelection, categorySelection, providerSelection, registrationDateSelection, activitySelection, singleUserSelection, multipleUsersSelection].forEach(el => {
             if (el) el.style.display = 'none';
         });
         
@@ -450,8 +450,8 @@ document.addEventListener('DOMContentLoaded', function() {
             courseSelection.style.display = 'block';
         } else if (type === 'category' && categorySelection) {
             categorySelection.style.display = 'block';
-        } else if (type === 'instructor' && instructorSelection) {
-            instructorSelection.style.display = 'block';
+        } else if (type === 'provider' && providerSelection) {
+            providerSelection.style.display = 'block';
         } else if (type === 'registration_date' && registrationDateSelection) {
             registrationDateSelection.style.display = 'block';
         } else if (type === 'activity' && activitySelection) {
@@ -558,13 +558,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 countDiv.style.display = 'none';
             }
         } else if (type === 'course') {
-            const courseId = document.getElementById('course_id')?.value;
+            const courseId = document.getElementById('content_id')?.value;
             if (!courseId) {
                 countDiv.style.display = 'none';
                 return;
             }
             if (sendEmail) {
-                fetch(`{{ route("admin.announcements.count-users") }}?type=course&course_id=${courseId}`)
+                fetch(`{{ route("admin.announcements.count-users") }}?type=course&content_id=${courseId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data && typeof data.count !== 'undefined') {
@@ -574,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
             }
             if (sendWhatsApp) {
-                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=course&course_id=${courseId}`)
+                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=course&content_id=${courseId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data && typeof data.count !== 'undefined') {
@@ -609,14 +609,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     });
             }
-        } else if (type === 'instructor') {
-            const instructorId = document.getElementById('instructor_id')?.value;
-            if (!instructorId) {
+        } else if (type === 'provider') {
+            const providerId = document.getElementById('provider_id')?.value;
+            if (!providerId) {
                 countDiv.style.display = 'none';
                 return;
             }
             if (sendEmail) {
-                fetch(`{{ route("admin.announcements.count-users") }}?type=instructor&instructor_id=${instructorId}`)
+                fetch(`{{ route("admin.announcements.count-users") }}?type=provider&provider_id=${providerId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data && typeof data.count !== 'undefined') {
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
             }
             if (sendWhatsApp) {
-                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=instructor&instructor_id=${instructorId}`)
+                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=provider&provider_id=${providerId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data && typeof data.count !== 'undefined') {
@@ -736,7 +736,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Attacher les événements pour les nouveaux filtres
-    const courseSelect = document.getElementById('course_id');
+    const courseSelect = document.getElementById('content_id');
     if (courseSelect) {
         courseSelect.addEventListener('change', window.updateRecipientCount);
     }
@@ -746,9 +746,9 @@ document.addEventListener('DOMContentLoaded', function() {
         categorySelect.addEventListener('change', window.updateRecipientCount);
     }
     
-    const instructorSelect = document.getElementById('instructor_id');
-    if (instructorSelect) {
-        instructorSelect.addEventListener('change', window.updateRecipientCount);
+    const providerSelect = document.getElementById('provider_id');
+    if (providerSelect) {
+        providerSelect.addEventListener('change', window.updateRecipientCount);
     }
     
     const registrationDateFrom = document.getElementById('registration_date_from');
@@ -959,9 +959,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     isValid = false;
                 }
             } else if (type === 'course') {
-                const courseId = document.getElementById('course_id')?.value;
+                const courseId = document.getElementById('content_id')?.value;
                 if (!courseId) {
-                    alert('Veuillez sélectionner un cours');
+                    alert('Veuillez sélectionner un contenu');
                     isValid = false;
                 }
             } else if (type === 'category') {
@@ -970,10 +970,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('Veuillez sélectionner une catégorie');
                     isValid = false;
                 }
-            } else if (type === 'instructor') {
-                const instructorId = document.getElementById('instructor_id')?.value;
-                if (!instructorId) {
-                    alert('Veuillez sélectionner un formateur');
+            } else if (type === 'provider') {
+                const providerId = document.getElementById('provider_id')?.value;
+                if (!providerId) {
+                    alert('Veuillez sélectionner un prestataire');
                     isValid = false;
                 }
             } else if (type === 'registration_date') {

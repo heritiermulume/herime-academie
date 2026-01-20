@@ -94,7 +94,7 @@ class LessonDiscussionController extends Controller
 
         // Vérifier que le cours n'est pas téléchargeable
         if ($course->is_downloadable) {
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 
@@ -146,7 +146,7 @@ class LessonDiscussionController extends Controller
             if ($isAjax) {
                 return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
             }
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 
@@ -160,7 +160,7 @@ class LessonDiscussionController extends Controller
         
         $discussion = LessonDiscussion::create([
             'user_id' => auth()->id(),
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'lesson_id' => $lesson->id,
             'parent_id' => $parentId,
             'content' => $validated['content'],
@@ -208,7 +208,7 @@ class LessonDiscussionController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
             }
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 
@@ -240,7 +240,7 @@ class LessonDiscussionController extends Controller
                   $request->header('X-Requested-With') === 'XMLHttpRequest' ||
                   $request->header('Accept') === 'application/json';
         
-        if (!auth()->check() || ($discussion->user_id !== auth()->id() && $course->instructor_id !== auth()->id())) {
+        if (!auth()->check() || ($discussion->user_id !== auth()->id() && $course->provider_id !== auth()->id())) {
             if ($isAjax) {
                 return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
             }
@@ -252,7 +252,7 @@ class LessonDiscussionController extends Controller
             if ($isAjax) {
                 return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
             }
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 
@@ -291,7 +291,7 @@ class LessonDiscussionController extends Controller
             if ($isAjax) {
                 return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
             }
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 
@@ -332,11 +332,11 @@ class LessonDiscussionController extends Controller
     }
 
     /**
-     * Épingler/Désépingler une discussion (instructeur uniquement)
+     * Épingler/Désépingler une discussion (prestataire uniquement)
      */
     public function togglePin(Course $course, CourseLesson $lesson, LessonDiscussion $discussion)
     {
-        if (!auth()->check() || $course->instructor_id !== auth()->id()) {
+        if (!auth()->check() || $course->provider_id !== auth()->id()) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
@@ -349,11 +349,11 @@ class LessonDiscussionController extends Controller
     }
 
     /**
-     * Marquer comme répondu (instructeur uniquement)
+     * Marquer comme répondu (prestataire uniquement)
      */
     public function markAsAnswered(Course $course, CourseLesson $lesson, LessonDiscussion $discussion)
     {
-        if (!auth()->check() || $course->instructor_id !== auth()->id()) {
+        if (!auth()->check() || $course->provider_id !== auth()->id()) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 

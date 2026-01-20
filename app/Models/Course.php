@@ -15,6 +15,7 @@ use Illuminate\Support\Carbon;
 
 class Course extends Model
 {
+    protected $table = 'contents';
     /**
      * Résoudre le binding de route pour les routes publiques
      * Ne retourner que les cours publiés pour les routes publiques
@@ -25,20 +26,20 @@ class Course extends Model
         $routeName = $route ? $route->getName() : null;
         $routeUri = $route ? $route->uri() : '';
         
-        // Si on est dans une route admin ou instructor, ne pas filtrer et utiliser l'ID
+        // Si on est dans une route admin ou provider, ne pas filtrer et utiliser l'ID
         $isAdminRoute = $routeName && (
             str_starts_with($routeName, 'admin.') || 
             str_contains($routeName, 'admin')
         );
-        $isInstructorRoute = $routeName && (
-            str_starts_with($routeName, 'instructor.') ||
-            str_contains($routeName, 'instructor')
+        $isProviderRoute = $routeName && (
+            str_starts_with($routeName, 'provider.') ||
+            str_contains($routeName, 'provider')
         );
         $isAdminPath = str_contains(request()->path(), '/admin/') || str_contains(request()->path(), 'admin/');
-        $isInstructorPath = str_contains(request()->path(), '/instructor/') || str_contains(request()->path(), 'instructor/');
+        $isProviderPath = str_contains(request()->path(), '/provider/') || str_contains(request()->path(), 'provider/');
         
-        if ($isAdminRoute || $isInstructorRoute || $isAdminPath || $isInstructorPath) {
-            // Pour les routes admin/instructor, utiliser l'ID si c'est numérique, sinon le slug
+        if ($isAdminRoute || $isProviderRoute || $isAdminPath || $isProviderPath) {
+            // Pour les routes admin/provider, utiliser l'ID si c'est numérique, sinon le slug
             if (is_numeric($value)) {
                 return static::where('id', $value)->firstOrFail();
             }
@@ -60,7 +61,7 @@ class Course extends Model
         return 'slug';
     }
     protected $fillable = [
-        'instructor_id',
+        'provider_id',
         'category_id',
         'title',
         'slug',
@@ -81,7 +82,7 @@ class Course extends Model
         'is_published',
         'is_sale_enabled',
         'is_featured',
-        'show_students_count',
+        'show_customers_count',
         'is_downloadable',
         'download_file_path',
         'level',
@@ -112,7 +113,7 @@ class Course extends Model
             'is_published' => 'boolean',
             'is_sale_enabled' => 'boolean',
             'is_featured' => 'boolean',
-            'show_students_count' => 'boolean',
+            'show_customers_count' => 'boolean',
             'is_downloadable' => 'boolean',
             'video_preview_is_unlisted' => 'boolean',
             'tags' => 'array',
@@ -121,9 +122,17 @@ class Course extends Model
         ];
     }
 
+    public function provider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'provider_id');
+    }
+
+    /**
+     * Alias pour compatibilité avec le code existant
+     */
     public function instructor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'instructor_id');
+        return $this->provider();
     }
 
     public function category(): BelongsTo
@@ -133,22 +142,22 @@ class Course extends Model
 
     public function sections(): HasMany
     {
-        return $this->hasMany(CourseSection::class, 'course_id');
+        return $this->hasMany(CourseSection::class, 'content_id');
     }
 
     public function lessons(): HasMany
     {
-        return $this->hasMany(CourseLesson::class, 'course_id');
+        return $this->hasMany(CourseLesson::class, 'content_id');
     }
 
     public function enrollments(): HasMany
     {
-        return $this->hasMany(Enrollment::class);
+        return $this->hasMany(Enrollment::class, 'content_id');
     }
 
     public function downloads(): HasMany
     {
-        return $this->hasMany(CourseDownload::class);
+        return $this->hasMany(CourseDownload::class, 'content_id');
     }
 
     /**
@@ -169,22 +178,22 @@ class Course extends Model
 
     public function reviews(): HasMany
     {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(Review::class, 'content_id');
     }
 
     public function orderItems(): HasMany
     {
-        return $this->hasMany(OrderItem::class);
+        return $this->hasMany(OrderItem::class, 'content_id');
     }
 
     public function certificates(): HasMany
     {
-        return $this->hasMany(Certificate::class);
+        return $this->hasMany(Certificate::class, 'content_id');
     }
 
     public function lessonProgress(): HasMany
     {
-        return $this->hasMany(LessonProgress::class);
+        return $this->hasMany(LessonProgress::class, 'content_id');
     }
 
     public function getLessonsCountAttribute()
@@ -206,7 +215,7 @@ class Course extends Model
             });
         } catch (\Throwable $e) {
             \Log::warning('Erreur lors de getLessonsCountAttribute', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'error' => $e->getMessage()
             ]);
             return 0;
@@ -214,12 +223,20 @@ class Course extends Model
     }
 
     /**
-     * Obtenir le nombre total d'étudiants inscrits
+     * Obtenir le nombre total de clients inscrits
      * Retourne toujours les inscriptions (pas les achats)
+     */
+    public function getTotalCustomersAttribute()
+    {
+        return $this->enrollments()->count();
+    }
+
+    /**
+     * Alias pour compatibilité avec le code existant (ancien nom: getTotalStudentsAttribute)
      */
     public function getTotalStudentsAttribute()
     {
-        return $this->enrollments()->count();
+        return $this->getTotalCustomersAttribute();
     }
 
     /**
@@ -401,7 +418,7 @@ class Course extends Model
             });
         } catch (\Throwable $e) {
             \Log::warning('Erreur lors de getTotalDurationAttribute', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'error' => $e->getMessage()
             ]);
             return 0;
@@ -430,7 +447,7 @@ class Course extends Model
             });
         } catch (\Throwable $e) {
             \Log::warning('Erreur lors de getTotalLessonsAttribute', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'error' => $e->getMessage()
             ]);
             return 0;
@@ -479,7 +496,7 @@ class Course extends Model
             });
         } catch (\Throwable $e) {
             \Log::warning('Erreur lors de getDurationAttribute', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'error' => $e->getMessage()
             ]);
             return 0;
@@ -504,7 +521,8 @@ class Course extends Model
             'total_duration' => $this->sections ? $this->sections->sum(function($section) {
                 return $section->lessons ? $section->lessons->sum('duration') : 0;
             }) : 0,
-            'total_students' => $this->total_students, // Nombre d'inscriptions
+            'total_customers' => $this->total_customers, // Nombre d'inscriptions
+            'total_students' => $this->total_customers, // Alias pour compatibilité
             'purchases_count' => $this->purchases_count, // Nombre d'achats (pour tous les cours)
             'average_rating' => $this->reviews ? $this->reviews->avg('rating') ?? 0 : 0,
             'total_reviews' => $this->reviews ? $this->reviews->count() : 0,
@@ -658,7 +676,7 @@ class Course extends Model
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
                 ->where('status', 'paid')
                 ->whereHas('orderItems', function($query) {
-                    $query->where('course_id', $this->id);
+                    $query->where('content_id', $this->id);
                 })
                 ->exists();
             
@@ -692,7 +710,7 @@ class Course extends Model
                     ];
                 }
             } catch (\Throwable $e) {
-                \Log::warning('Erreur lors du calcul de totalLessons dans getCourseFeatures', ['course_id' => $this->id, 'error' => $e->getMessage()]);
+                \Log::warning('Erreur lors du calcul de totalLessons dans getCourseFeatures', ['content_id' => $this->id, 'error' => $e->getMessage()]);
             }
             
             // Durée totale (toujours affichée si > 0)
@@ -705,7 +723,7 @@ class Course extends Model
                     ];
                 }
             } catch (\Throwable $e) {
-                \Log::warning('Erreur lors du calcul de totalDuration dans getCourseFeatures', ['course_id' => $this->id, 'error' => $e->getMessage()]);
+                \Log::warning('Erreur lors du calcul de totalDuration dans getCourseFeatures', ['content_id' => $this->id, 'error' => $e->getMessage()]);
             }
             
             // Accès mobile et desktop (toujours disponible pour les cours en ligne)
@@ -724,7 +742,7 @@ class Course extends Model
                     ];
                 }
             } catch (\Throwable $e) {
-                \Log::warning('Erreur lors de la vérification des sections dans getCourseFeatures', ['course_id' => $this->id, 'error' => $e->getMessage()]);
+                \Log::warning('Erreur lors de la vérification des sections dans getCourseFeatures', ['content_id' => $this->id, 'error' => $e->getMessage()]);
             }
             
             // Accès à vie (par défaut, les cours n'ont pas d'expiration)
@@ -744,7 +762,7 @@ class Course extends Model
             return $features;
         } catch (\Throwable $e) {
             \Log::error('Erreur fatale dans getCourseFeatures', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -775,7 +793,7 @@ class Course extends Model
             return $service->getUrl($this->thumbnail, 'courses/thumbnails');
         } catch (\Throwable $e) {
             \Log::warning('Erreur lors de getThumbnailUrlAttribute', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'thumbnail' => $this->thumbnail ?? null,
                 'error' => $e->getMessage()
             ]);
@@ -806,7 +824,7 @@ class Course extends Model
             return $service->getUrl($this->video_preview, 'courses/previews');
         } catch (\Throwable $e) {
             \Log::warning('Erreur lors de getVideoPreviewUrlAttribute', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'video_preview' => $this->video_preview ?? null,
                 'error' => $e->getMessage()
             ]);
@@ -840,7 +858,7 @@ class Course extends Model
             return !empty($this->video_preview_youtube_id);
         } catch (\Throwable $e) {
             \Log::warning('Erreur lors de isYoutubePreviewVideo', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'error' => $e->getMessage()
             ]);
             return false;
@@ -872,7 +890,7 @@ class Course extends Model
             return "https://www.youtube.com/embed/{$videoId}?" . http_build_query($params);
         } catch (\Throwable $e) {
             \Log::warning('Erreur lors de getSecureYouTubePreviewEmbedUrl', [
-                'course_id' => $this->id,
+                'content_id' => $this->id,
                 'error' => $e->getMessage()
             ]);
             return null;
@@ -928,7 +946,7 @@ class Course extends Model
                 if ($this->is_downloadable) {
                     return [
                         'type' => 'link',
-                        'url' => route('courses.download', $this->slug),
+                        'url' => route('contents.download', $this->slug),
                         'class' => 'btn btn-primary',
                         'text' => 'Télécharger',
                         'icon' => 'fas fa-download'
@@ -953,7 +971,7 @@ class Course extends Model
                 if ($this->is_downloadable) {
                     return [
                         'type' => 'link',
-                        'url' => route('courses.download', $this->slug),
+                        'url' => route('contents.download', $this->slug),
                         'class' => 'btn btn-primary',
                         'text' => 'Télécharger',
                         'icon' => 'fas fa-download'
@@ -963,7 +981,7 @@ class Course extends Model
                 // Pour les cours non téléchargeables, proposer de s'inscrire pour commencer l'apprentissage
                 return [
                     'type' => 'form',
-                    'action' => route('student.courses.enroll', $this->slug),
+                    'action' => route('customer.contents.enroll', $this->slug),
                     'class' => 'btn btn-primary',
                     'text' => 'S\'inscrire',
                     'icon' => 'fas fa-user-plus'
@@ -973,7 +991,7 @@ class Course extends Model
                 // Pour les cours gratuits non inscrits, afficher le bouton "S'inscrire" (bleu foncé)
                 return [
                     'type' => 'form',
-                    'action' => route('student.courses.enroll', $this->slug),
+                    'action' => route('customer.contents.enroll', $this->slug),
                     'class' => 'btn btn-primary',
                     'text' => 'S\'inscrire',
                     'icon' => 'fas fa-user-plus'
@@ -1022,19 +1040,19 @@ class Course extends Model
     {
         $status = $status ?? ($this->is_published ? 'approved' : 'pending');
 
-        if (!$this->relationLoaded('instructor')) {
-            $this->load('instructor');
+        if (!$this->relationLoaded('provider')) {
+            $this->load('provider');
         }
 
-        if ($this->instructor) {
+        if ($this->provider) {
             // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-            Notification::sendNow($this->instructor, new CourseModerationNotification($this, $status));
+            Notification::sendNow($this->provider, new CourseModerationNotification($this, $status));
         }
     }
 
-    public function notifyStudentsOfNewCourse(): void
+    public function notifyCustomersOfNewCourse(): void
     {
-        $freshCourse = $this->fresh(['instructor', 'category']);
+        $freshCourse = $this->fresh(['provider', 'category']);
 
         // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
         User::where('is_active', true)

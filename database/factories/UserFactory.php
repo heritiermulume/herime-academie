@@ -24,7 +24,7 @@ class UserFactory extends Factory
     public function definition(): array
     {
         $name = fake()->name();
-        $role = fake()->randomElement(['student', 'instructor', 'affiliate']);
+        $role = fake()->randomElement(['customer', 'provider', 'affiliate']);
         $now = now();
 
         return [

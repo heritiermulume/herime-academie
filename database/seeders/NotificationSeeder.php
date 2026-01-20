@@ -16,12 +16,12 @@ class NotificationSeeder extends Seeder
      */
     public function run(): void
     {
-        // Récupérer les utilisateurs (premier admin, premier instructeur, premier étudiant)
+        // Récupérer les utilisateurs (premier admin, premier prestataire, premier client)
         $admin = User::where('role', 'admin')->first();
-        $instructor = User::where('role', 'instructor')->first();
-        $student = User::where('role', 'student')->first();
+        $provider = User::where('role', 'provider')->first();
+        $customer = User::where('role', 'customer')->first();
         
-        if (!$admin || !$instructor || !$student) {
+        if (!$admin || !$provider || !$customer) {
             $this->command->warn('Utilisateurs de test non trouvés. Veuillez d\'abord exécuter UserSeeder.');
             return;
         }
@@ -42,24 +42,24 @@ class NotificationSeeder extends Seeder
             if ($sampleOrder) {
                 $admin->notify(new \App\Notifications\PaymentReceived($sampleOrder));
             }
-            $admin->notify(new \App\Notifications\CoursePublished($instructor, $courses->first()));
+            $admin->notify(new \App\Notifications\CoursePublished($provider, $courses->first()));
 
-            // Créer des notifications pour l'instructeur
-            $instructor->notify(new \App\Notifications\CourseEnrolled($courses->first()));
+            // Créer des notifications pour le prestataire
+            $provider->notify(new \App\Notifications\CourseEnrolled($courses->first()));
             if ($sampleOrder) {
-                $instructor->notify(new \App\Notifications\PaymentReceived($sampleOrder));
+                $provider->notify(new \App\Notifications\PaymentReceived($sampleOrder));
             }
-            $instructor->notify(new \App\Notifications\NewMessage($admin, 'Bienvenue sur la plateforme !'));
+            $provider->notify(new \App\Notifications\NewMessage($admin, 'Bienvenue sur la plateforme !'));
 
-            // Créer des notifications pour l'étudiant
-            $student->notify(new \App\Notifications\CourseEnrolled($courses->first()));
-            $student->notify(new \App\Notifications\CourseCompleted($courses->first()));
-            $student->notify(new \App\Notifications\NewMessage($instructor, 'Merci de vous être inscrit à mon cours !'));
+            // Créer des notifications pour le client
+            $customer->notify(new \App\Notifications\CourseEnrolled($courses->first()));
+            $customer->notify(new \App\Notifications\CourseCompleted($courses->first()));
+            $customer->notify(new \App\Notifications\NewMessage($provider, 'Merci de vous être inscrit à mon cours !'));
 
             // Créer quelques notifications non lues
-            $student->notify(new \App\Notifications\CourseEnrolled($courses->skip(1)->first()));
+            $customer->notify(new \App\Notifications\CourseEnrolled($courses->skip(1)->first()));
             if ($sampleOrder) {
-                $student->notify(new \App\Notifications\PaymentReceived($sampleOrder));
+                $customer->notify(new \App\Notifications\PaymentReceived($sampleOrder));
             }
 
             $this->command->info('Notifications de test créées avec succès !');

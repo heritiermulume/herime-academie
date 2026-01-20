@@ -130,7 +130,7 @@
         --instructor-muted: #64748b;
     }
 
-    .instructor-admin-shell {
+    .provider-admin-shell {
         display: grid;
         grid-template-columns: 280px 1fr;
         column-gap: 2.75rem;
@@ -405,7 +405,7 @@
     }
 
     @media (max-width: 1024px) {
-        .instructor-admin-shell {
+        .provider-admin-shell {
             grid-template-columns: 1fr;
             padding: 0 1.25rem 2rem;
             padding-top: calc(var(--site-navbar-height, 64px) + 2.6rem);

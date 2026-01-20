@@ -8,7 +8,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-gray-800">Gestion des Statistiques</h1>
-            <p class="text-muted">Surveillez et gérez les statistiques des cours en temps réel</p>
+            <p class="text-muted">Surveillez et gérez les statistiques des contenus en temps réel</p>
         </div>
         <div>
             <button class="btn btn-primary" onclick="recalculateAllStats()">
@@ -29,7 +29,7 @@
                             </div>
                         </div>
                         <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-1">Total des cours</h6>
+                            <h6 class="text-muted mb-1">Total des contenus</h6>
                             <h3 class="mb-0 fw-bold">{{ number_format($stats['total_courses']) }}</h3>
                         </div>
                     </div>
@@ -46,7 +46,7 @@
                             </div>
                         </div>
                         <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-1">Cours publiés</h6>
+                            <h6 class="text-muted mb-1">Contenus publiés</h6>
                             <h3 class="mb-0 fw-bold">{{ number_format($stats['published_courses']) }}</h3>
                         </div>
                     </div>
@@ -128,8 +128,8 @@
         <div class="col-lg-6 mb-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">Cours les plus populaires</h5>
-                    <p class="text-muted small mb-0">Classés par nombre d'étudiants inscrits</p>
+                    <h5 class="mb-0 fw-bold">Contenus les plus populaires</h5>
+                    <p class="text-muted small mb-0">Classés par nombre de clients inscrits</p>
                 </div>
                 <div class="card-body p-0">
                     @if($topCourses->count() > 0)
@@ -141,11 +141,11 @@
                                          alt="{{ $course->title }}" class="rounded me-3" style="width: 60px; height: 40px; object-fit: cover;">
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1 fw-bold">{{ Str::limit($course->title, 40) }}</h6>
-                                        <p class="text-muted small mb-1">{{ $course->instructor->name }}</p>
+                                        <p class="text-muted small mb-1">{{ $course->provider->name }}</p>
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-primary me-2">{{ $course->category->name }}</span>
                                             <small class="text-muted">
-                                                <i class="fas fa-users me-1"></i>{{ number_format($course->enrollments_count) }} étudiants
+                                                <i class="fas fa-users me-1"></i>{{ number_format($course->enrollments_count) }} clients
                                             </small>
                                         </div>
                                     </div>
@@ -160,7 +160,7 @@
                         </div>
                     @else
                         <div class="text-center py-4">
-                            <p class="text-muted">Aucun cours trouvé</p>
+                            <p class="text-muted">Aucun contenu trouvé</p>
                         </div>
                     @endif
                 </div>
@@ -171,7 +171,7 @@
         <div class="col-lg-6 mb-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold">Cours les mieux notés</h5>
+                    <h5 class="mb-0 fw-bold">Contenus les mieux notés</h5>
                     <p class="text-muted small mb-0">Classés par note moyenne</p>
                 </div>
                 <div class="card-body p-0">
@@ -184,7 +184,7 @@
                                          alt="{{ $course->title }}" class="rounded me-3" style="width: 60px; height: 40px; object-fit: cover;">
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1 fw-bold">{{ Str::limit($course->title, 40) }}</h6>
-                                        <p class="text-muted small mb-1">{{ $course->instructor->name }}</p>
+                                        <p class="text-muted small mb-1">{{ $course->provider->name }}</p>
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-primary me-2">{{ $course->category->name }}</span>
                                             <div class="d-flex align-items-center">
@@ -204,7 +204,7 @@
                         </div>
                     @else
                         <div class="text-center py-4">
-                            <p class="text-muted">Aucun cours noté trouvé</p>
+                            <p class="text-muted">Aucun contenu noté trouvé</p>
                         </div>
                     @endif
                 </div>
@@ -221,18 +221,18 @@
                     <h5 class="mb-0 fw-bold">
                         <i class="fas fa-download me-2 text-primary"></i>Statistiques de téléchargements
                     </h5>
-                    <p class="text-muted small mb-0">Analyse détaillée des téléchargements de cours</p>
+                    <p class="text-muted small mb-0">Analyse détaillée des téléchargements de contenus</p>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <!-- Téléchargements par cours -->
+        <!-- Téléchargements par contenu -->
         <div class="col-lg-6 mb-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 py-3">
-                    <h6 class="mb-0 fw-bold">Par cours</h6>
+                    <h6 class="mb-0 fw-bold">Par contenu</h6>
                 </div>
                 <div class="card-body p-0">
                     @if($downloadStats['by_course']->count() > 0)
@@ -240,7 +240,7 @@
                             <table class="table table-hover mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Cours</th>
+                                        <th>Contenu</th>
                                         <th class="text-end">Téléchargements</th>
                                     </tr>
                                 </thead>

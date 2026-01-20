@@ -156,7 +156,7 @@
                             <i class="fas fa-shopping-bag fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">Aucune commande</h5>
                             <p class="text-muted">Vous n'avez pas encore passé de commande.</p>
-                            <a href="{{ route('courses.index') }}" class="btn btn-primary">
+                            <a href="{{ route('contents.index') }}" class="btn btn-primary">
                                 <i class="fas fa-plus me-2"></i>Découvrir nos cours
                             </a>
                         </div>
@@ -199,7 +199,7 @@
                                         </p>
                                     </div>
                                     @if($course->is_downloadable)
-                                        <a href="{{ route('courses.download', $course->slug) }}" 
+                                        <a href="{{ route('contents.download', $course->slug) }}" 
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-download"></i>
                                         </a>

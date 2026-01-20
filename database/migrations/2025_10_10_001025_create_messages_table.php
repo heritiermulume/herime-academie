@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('sender_id');
             $table->unsignedBigInteger('receiver_id');
-            $table->unsignedBigInteger('course_id')->nullable();
+            $table->unsignedBigInteger('content_id')->nullable();
             $table->string('subject');
             $table->text('message');
             $table->boolean('is_read')->default(false);

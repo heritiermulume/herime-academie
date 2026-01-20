@@ -43,54 +43,54 @@
 
                                 if ($user->isAdmin()) {
                                     $dashboardLinks[] = [
-                                        'label' => 'Administrateur',
+                                        'label' => 'Administration',
                                         'route' => route('admin.dashboard'),
                                         'icon' => 'fas fa-tools',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord',
-                                        'route' => route('student.dashboard'),
+                                        'label' => 'Espace client',
+                                        'route' => route('customer.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord formateur',
-                                        'route' => route('instructor.dashboard'),
+                                        'label' => 'Espace Prestataire',
+                                        'route' => route('provider.dashboard'),
                                         'icon' => 'fas fa-chalkboard-teacher',
                                     ];
                                     if ($isAmbassador) {
                                         $dashboardLinks[] = [
-                                            'label' => 'Tableau de bord ambassadeur',
+                                            'label' => 'Espace Ambassadeur',
                                             'route' => route('ambassador.dashboard'),
                                             'icon' => 'fas fa-handshake',
                                         ];
                                     }
-                                } elseif ($user->isInstructor()) {
+                                } elseif ($user->isProvider()) {
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord formateur',
-                                        'route' => route('instructor.dashboard'),
+                                        'label' => 'Espace Prestataire',
+                                        'route' => route('provider.dashboard'),
                                         'icon' => 'fas fa-chalkboard-teacher',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord',
-                                        'route' => route('student.dashboard'),
+                                        'label' => 'Espace client',
+                                        'route' => route('customer.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
                                     if ($isAmbassador) {
                                         $dashboardLinks[] = [
-                                            'label' => 'Tableau de bord ambassadeur',
+                                            'label' => 'Espace Ambassadeur',
                                             'route' => route('ambassador.dashboard'),
                                             'icon' => 'fas fa-handshake',
                                         ];
                                     }
                                 } else {
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord',
-                                        'route' => route('student.dashboard'),
+                                        'label' => 'Espace client',
+                                        'route' => route('customer.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
                                     if ($isAmbassador) {
                                         $dashboardLinks[] = [
-                                            'label' => 'Tableau de bord ambassadeur',
+                                            'label' => 'Espace Ambassadeur',
                                             'route' => route('ambassador.dashboard'),
                                             'icon' => 'fas fa-handshake',
                                         ];
@@ -203,9 +203,9 @@
             
             <!-- Navigation Menu -->
             <div class="navbar-nav me-auto">
-                <a class="nav-link" href="{{ route('courses.index') }}">Cours</a>
+                <a class="nav-link" href="{{ route('contents.index') }}">Contenus</a>
                 <a class="nav-link" href="{{ route('categories.index') }}">Catégories</a>
-                <a class="nav-link" href="{{ route('instructors.index') }}">Formateurs</a>
+                <a class="nav-link" href="{{ route('providers.index') }}">Prestataires</a>
                 <a class="nav-link" href="{{ route('ambassador-application.index') }}">Ambassadeurs</a>
                 <a class="nav-link" href="{{ route('about') }}">À propos</a>
                 <a class="nav-link" href="{{ route('contact') }}">Contact</a>
@@ -285,54 +285,54 @@
 
                                 if ($user->isAdmin()) {
                                     $dashboardLinks[] = [
-                                        'label' => 'Administrateur',
+                                        'label' => 'Administration',
                                         'route' => route('admin.dashboard'),
                                         'icon' => 'fas fa-tools',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord',
-                                        'route' => route('student.dashboard'),
+                                        'label' => 'Espace client',
+                                        'route' => route('customer.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord formateur',
-                                        'route' => route('instructor.dashboard'),
+                                        'label' => 'Espace Prestataire',
+                                        'route' => route('provider.dashboard'),
                                         'icon' => 'fas fa-chalkboard-teacher',
                                     ];
                                     if ($isAmbassador) {
                                         $dashboardLinks[] = [
-                                            'label' => 'Tableau de bord ambassadeur',
+                                            'label' => 'Espace Ambassadeur',
                                             'route' => route('ambassador.dashboard'),
                                             'icon' => 'fas fa-handshake',
                                         ];
                                     }
-                                } elseif ($user->isInstructor()) {
+                                } elseif ($user->isProvider()) {
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord formateur',
-                                        'route' => route('instructor.dashboard'),
+                                        'label' => 'Espace Prestataire',
+                                        'route' => route('provider.dashboard'),
                                         'icon' => 'fas fa-chalkboard-teacher',
                                     ];
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord',
-                                        'route' => route('student.dashboard'),
+                                        'label' => 'Espace client',
+                                        'route' => route('customer.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
                                     if ($isAmbassador) {
                                         $dashboardLinks[] = [
-                                            'label' => 'Tableau de bord ambassadeur',
+                                            'label' => 'Espace Ambassadeur',
                                             'route' => route('ambassador.dashboard'),
                                             'icon' => 'fas fa-handshake',
                                         ];
                                     }
                                 } else {
                                     $dashboardLinks[] = [
-                                        'label' => 'Tableau de bord',
-                                        'route' => route('student.dashboard'),
+                                        'label' => 'Espace client',
+                                        'route' => route('customer.dashboard'),
                                         'icon' => 'fas fa-user-graduate',
                                     ];
                                     if ($isAmbassador) {
                                         $dashboardLinks[] = [
-                                            'label' => 'Tableau de bord ambassadeur',
+                                            'label' => 'Espace Ambassadeur',
                                             'route' => route('ambassador.dashboard'),
                                             'icon' => 'fas fa-handshake',
                                         ];
@@ -407,8 +407,8 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('courses.index') }}">
-                        <i class="fas fa-book me-2"></i>Cours
+                    <a class="nav-link" href="{{ route('contents.index') }}">
+                        <i class="fas fa-book me-2"></i>Contenus
                     </a>
                 </li>
                 <li class="nav-item">
@@ -417,26 +417,26 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('instructors.index') }}">
-                        <i class="fas fa-chalkboard-teacher me-2"></i>Formateurs
+                    <a class="nav-link" href="{{ route('providers.index') }}">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>Prestataires
                     </a>
                 </li>
                 @auth
                     @php
-                        $hasApplication = auth()->user()->role !== 'instructor' && \App\Models\InstructorApplication::where('user_id', auth()->id())->exists();
+                        $hasApplication = auth()->user()->role !== 'provider' && \App\Models\ProviderApplication::where('user_id', auth()->id())->exists();
                     @endphp
-                    @if(auth()->user()->role !== 'instructor' && !$hasApplication)
+                    @if(auth()->user()->role !== 'provider' && !$hasApplication)
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ route('instructor-application.index') }}">
-                                <i class="fas fa-rocket me-2"></i>Devenir Formateur
+                            <a class="nav-link" href="{{ route('provider-application.index') }}">
+                                <i class="fas fa-rocket me-2"></i>Devenir Prestataire
                             </a>
                         </li>
                     @elseif($hasApplication)
                         @php
-                            $application = \App\Models\InstructorApplication::where('user_id', auth()->id())->first();
+                            $application = \App\Models\ProviderApplication::where('user_id', auth()->id())->first();
                         @endphp
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ route('instructor-application.status', $application) }}">
+                            <a class="nav-link" href="{{ route('provider-application.status', $application) }}">
                                 <i class="fas fa-file-alt me-2"></i>Ma candidature
                             </a>
                         </li>
@@ -473,49 +473,49 @@
                                 'icon' => 'fas fa-tools',
                             ];
                             $dashboardLinks[] = [
-                                'label' => 'Tableau de bord',
-                                'route' => route('student.dashboard'),
+                                'label' => 'Espace client',
+                                'route' => route('customer.dashboard'),
                                 'icon' => 'fas fa-user-graduate',
                             ];
                             $dashboardLinks[] = [
-                                'label' => 'Tableau de bord formateur',
-                                'route' => route('instructor.dashboard'),
+                                'label' => 'Espace Prestataire',
+                                'route' => route('provider.dashboard'),
                                 'icon' => 'fas fa-chalkboard-teacher',
                             ];
                             if ($isAmbassador) {
                                 $dashboardLinks[] = [
-                                    'label' => 'Tableau de bord ambassadeur',
+                                    'label' => 'Espace Ambassadeur',
                                     'route' => route('ambassador.dashboard'),
                                     'icon' => 'fas fa-handshake',
                                 ];
                             }
-                        } elseif ($user->isInstructor()) {
+                        } elseif ($user->isProvider()) {
                             $dashboardLinks[] = [
-                                'label' => 'Tableau de bord formateur',
-                                'route' => route('instructor.dashboard'),
+                                'label' => 'Espace Prestataire',
+                                'route' => route('provider.dashboard'),
                                 'icon' => 'fas fa-chalkboard-teacher',
                             ];
                             $dashboardLinks[] = [
-                                'label' => 'Tableau de bord',
-                                'route' => route('student.dashboard'),
+                                'label' => 'Espace client',
+                                'route' => route('customer.dashboard'),
                                 'icon' => 'fas fa-user-graduate',
                             ];
                             if ($isAmbassador) {
                                 $dashboardLinks[] = [
-                                    'label' => 'Tableau de bord ambassadeur',
+                                    'label' => 'Espace Ambassadeur',
                                     'route' => route('ambassador.dashboard'),
                                     'icon' => 'fas fa-handshake',
                                 ];
                             }
                         } else {
                             $dashboardLinks[] = [
-                                'label' => 'Tableau de bord',
-                                'route' => route('student.dashboard'),
+                                'label' => 'Espace client',
+                                'route' => route('customer.dashboard'),
                                 'icon' => 'fas fa-user-graduate',
                             ];
                             if ($isAmbassador) {
                                 $dashboardLinks[] = [
-                                    'label' => 'Tableau de bord ambassadeur',
+                                    'label' => 'Espace Ambassadeur',
                                     'route' => route('ambassador.dashboard'),
                                     'icon' => 'fas fa-handshake',
                                 ];

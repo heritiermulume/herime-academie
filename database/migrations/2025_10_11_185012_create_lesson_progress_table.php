@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('lesson_progress', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('content_id');
             $table->unsignedBigInteger('lesson_id');
             $table->boolean('is_completed')->default(false);
             $table->integer('time_watched')->default(0); // en secondes
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamps();
             
             // Index pour optimiser les requêtes
-            $table->index(['user_id', 'course_id']);
+            $table->index(['user_id', 'content_id']);
             $table->unique(['user_id', 'lesson_id']); // Un seul enregistrement par utilisateur/leçon
         });
     }

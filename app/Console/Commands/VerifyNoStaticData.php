@@ -36,9 +36,9 @@ class VerifyNoStaticData extends Command
         $this->info('1. Vérification de la structure de la base de données...');
         
         try {
-            $columns = DB::select("SHOW COLUMNS FROM courses LIKE 'students_count'");
+            $columns = DB::select("SHOW COLUMNS FROM contents LIKE 'students_count'");
             if (!empty($columns)) {
-                $issues[] = "❌ Le champ 'students_count' existe encore dans la table courses";
+                $issues[] = "❌ Le champ 'students_count' existe encore dans la table contents";
             } else {
                 $this->info("   ✅ Le champ 'students_count' a été supprimé");
             }
@@ -47,9 +47,9 @@ class VerifyNoStaticData extends Command
         }
 
         try {
-            $columns = DB::select("SHOW COLUMNS FROM courses LIKE 'rating'");
+            $columns = DB::select("SHOW COLUMNS FROM contents LIKE 'rating'");
             if (!empty($columns)) {
-                $issues[] = "❌ Le champ 'rating' existe encore dans la table courses";
+                $issues[] = "❌ Le champ 'rating' existe encore dans la table contents";
             } else {
                 $this->info("   ✅ Le champ 'rating' a été supprimé");
             }
@@ -58,9 +58,9 @@ class VerifyNoStaticData extends Command
         }
 
         try {
-            $columns = DB::select("SHOW COLUMNS FROM courses LIKE 'reviews_count'");
+            $columns = DB::select("SHOW COLUMNS FROM contents LIKE 'reviews_count'");
             if (!empty($columns)) {
-                $issues[] = "❌ Le champ 'reviews_count' existe encore dans la table courses";
+                $issues[] = "❌ Le champ 'reviews_count' existe encore dans la table contents";
             } else {
                 $this->info("   ✅ Le champ 'reviews_count' a été supprimé");
             }
@@ -69,9 +69,9 @@ class VerifyNoStaticData extends Command
         }
 
         try {
-            $columns = DB::select("SHOW COLUMNS FROM courses LIKE 'lessons_count'");
+            $columns = DB::select("SHOW COLUMNS FROM contents LIKE 'lessons_count'");
             if (!empty($columns)) {
-                $issues[] = "❌ Le champ 'lessons_count' existe encore dans la table courses";
+                $issues[] = "❌ Le champ 'lessons_count' existe encore dans la table contents";
             } else {
                 $this->info("   ✅ Le champ 'lessons_count' a été supprimé");
             }
@@ -80,9 +80,9 @@ class VerifyNoStaticData extends Command
         }
 
         try {
-            $columns = DB::select("SHOW COLUMNS FROM courses LIKE 'duration'");
+            $columns = DB::select("SHOW COLUMNS FROM contents LIKE 'duration'");
             if (!empty($columns)) {
-                $issues[] = "❌ Le champ 'duration' existe encore dans la table courses";
+                $issues[] = "❌ Le champ 'duration' existe encore dans la table contents";
             } else {
                 $this->info("   ✅ Le champ 'duration' a été supprimé");
             }
@@ -100,14 +100,14 @@ class VerifyNoStaticData extends Command
             
             if ($course) {
                 // Tester les accesseurs dynamiques
-                $studentsCount = $course->students_count;
+                $customersCount = $course->total_customers ?? 0;
                 $rating = $course->rating;
                 $reviewsCount = $course->reviews_count;
                 $lessonsCount = $course->lessons_count;
                 $duration = $course->duration;
                 
                 $this->info("   ✅ Accesseurs dynamiques fonctionnels:");
-                $this->info("      - students_count: {$studentsCount}");
+                $this->info("      - customers_count: {$customersCount}");
                 $this->info("      - rating: " . number_format($rating, 1));
                 $this->info("      - reviews_count: {$reviewsCount}");
                 $this->info("      - lessons_count: {$lessonsCount}");
@@ -131,7 +131,7 @@ class VerifyNoStaticData extends Command
                 $stats = $course->getCourseStats();
                 
                 $this->info("   ✅ Statistiques calculées:");
-                $this->info("      - total_students: {$stats['total_students']}");
+                $this->info("      - total_customers: {$stats['total_customers']}");
                 $this->info("      - average_rating: " . number_format($stats['average_rating'], 1));
                 $this->info("      - total_reviews: {$stats['total_reviews']}");
                 $this->info("      - total_lessons: {$stats['total_lessons']}");

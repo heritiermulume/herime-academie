@@ -5,8 +5,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'Herime Academie - Plateforme d\'apprentissage en ligne')</title>
-    <meta name="description" content="@yield('description', 'Découvrez des milliers de cours en ligne de qualité avec Herime Academie. Formations professionnelles, certifications et expertise garanties.')">
+    <title>@yield('title', 'Herime Académie - Plateforme d\'apprentissage et ressources professionnelles')</title>
+    <meta name="description" content="@yield('description', 'Herime Académie : plateforme d\'apprentissage en ligne et espace de ressources professionnelles. Formations certifiantes et outils experts pour transformer votre carrière et développer vos compétences professionnelles.')">
 
         <!-- Favicon / PWA Icons -->
         <link rel="icon" type="image/png" href="{{ asset('images/icon-herime.png') }}">
@@ -543,7 +543,7 @@
             flex-shrink: 0;
         }
 
-        .course-card .instructor-info {
+        .course-card .provider-info {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -554,7 +554,7 @@
             flex-shrink: 0;
         }
 
-        .course-card .instructor-name {
+        .course-card .provider-name {
             color: #475569;
             font-size: 0.75rem;
             font-weight: 500;
@@ -963,12 +963,12 @@
                 -webkit-line-clamp: 1;
             }
             
-            .course-card .instructor-info {
+            .course-card .provider-info {
                 margin-bottom: 0.25rem;
                 padding: 0.125rem 0.3125rem;
             }
             
-            .course-card .instructor-name {
+            .course-card .provider-name {
                 font-size: 0.6rem;
             }
             
@@ -3583,7 +3583,7 @@
             <i class="fas fa-home"></i>
             <span>Accueil</span>
         </a>
-        <a href="{{ route('courses.index') }}" class="mobile-bottom-nav-item" data-page="courses">
+        <a href="{{ route('contents.index') }}" class="mobile-bottom-nav-item" data-page="courses">
             <i class="fas fa-book"></i>
             <span>Cours</span>
         </a>
@@ -3611,7 +3611,7 @@
                 <div class="modal-body p-0">
                     <div class="list-group list-group-flush">
                         <div class="list-group-item">
-                            <a href="{{ route('instructors.index') }}">
+                            <a href="{{ route('providers.index') }}">
                                 <i class="fas fa-chalkboard-teacher"></i>
                                 Formateurs
                             </a>
@@ -4372,7 +4372,7 @@
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
-                    course_id: courseId
+                    content_id: courseId
                 })
             })
             .then(async response => {
@@ -4467,7 +4467,7 @@
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ course_id: courseId })
+                body: JSON.stringify({ content_id: courseId })
             })
             .then(async response => {
                 // Vérifier le Content-Type de la réponse

@@ -131,7 +131,7 @@
                             </div>
                         </div>
                         <h5 class="card-title fw-bold mb-2">
-                            <a href="{{ route('courses.show', $course->slug) }}" class="text-decoration-none text-dark">
+                            <a href="{{ route('contents.show', $course->slug) }}" class="text-decoration-none text-dark">
                                 {{ Str::limit($course->title, 50) }}
                             </a>
                         </h5>
@@ -142,7 +142,7 @@
                             <div class="instructor-info">
                                 <small class="text-muted">
                                     <i class="fas fa-user me-1"></i>
-                                    {{ $course->instructor->name }}
+                                    {{ $course->provider->name }}
                                 </small>
                             </div>
                             <div class="course-meta">
@@ -153,10 +153,10 @@
                             </div>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="students-count">
+                            <div class="customers-count">
                                 <small class="text-muted">
                                     <i class="fas fa-users me-1"></i>
-                                    {{ number_format($course->students_count) }} étudiants
+                                    {{ number_format($course->customers_count) }} étudiants
                                 </small>
                             </div>
                             <div class="level">
@@ -189,7 +189,7 @@
                             <button class="btn btn-primary" onclick="generateLink({{ $course->id }})">
                                 <i class="fas fa-link me-2"></i>Générer un lien
                             </button>
-                            <a href="{{ route('courses.show', $course->slug) }}" class="btn btn-outline-primary">
+                            <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-outline-primary">
                                 <i class="fas fa-eye me-2"></i>Voir le cours
                             </a>
                         </div>
@@ -318,7 +318,7 @@ function generateLink(courseId) {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ course_id: courseId })
+        body: JSON.stringify({ content_id: courseId })
     })
     .then(response => response.json())
     .then(data => {

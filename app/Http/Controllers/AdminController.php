@@ -15,8 +15,8 @@ use App\Models\Payment;
 use App\Models\Review;
 use App\Models\Setting;
 use App\Models\CourseDownload;
-use App\Models\InstructorApplication;
-use App\Models\InstructorPayout;
+use App\Models\ProviderApplication;
+use App\Models\ProviderPayout;
 use App\Models\Visitor;
 use App\Models\Certificate;
 use App\Traits\DatabaseCompatibility;
@@ -26,7 +26,7 @@ use App\Notifications\AnnouncementPublished;
 use App\Notifications\CategoryCreatedNotification;
 use App\Notifications\CourseModerationNotification;
 use App\Notifications\CoursePublishedNotification;
-use App\Notifications\InstructorApplicationStatusUpdated;
+use App\Notifications\ProviderApplicationStatusUpdated;
 use App\Mail\CustomAnnouncementMail;
 use App\Models\SentEmail;
 use App\Models\ScheduledEmail;
@@ -63,51 +63,51 @@ class AdminController extends Controller
 
     public function dashboard()
     {
-        // Calculer les revenus des cours internes (formateurs internes)
-        // IMPORTANT: Exclure explicitement tous les revenus des formateurs externes
-        // Ce sont uniquement les commandes payées pour les cours dont le formateur n'est PAS externe
-        // Un formateur externe est identifié par: is_external_instructor = true
+        // Calculer les revenus des contenus internes (prestataires internes)
+        // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
+        // Ce sont uniquement les commandes payées pour les contenus dont le prestataire n'est PAS externe
+        // Un prestataire externe est identifié par: is_external_provider = true
         $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('users', 'contents.provider_id', '=', 'users.id')
             ->where('orders.status', 'paid')
             ->where(function($query) {
-                // Exclure explicitement les formateurs externes (is_external_instructor = true)
-                // Inclure uniquement les formateurs internes:
-                //   - is_external_instructor = false (formateur interne explicite)
-                //   - is_external_instructor = null (formateur non configuré comme externe = interne par défaut)
+                // Exclure explicitement les prestataires externes (is_external_provider = true)
+                // Inclure uniquement les prestataires internes:
+                //   - is_external_provider = false (prestataire interne explicite)
+                //   - is_external_provider = null (prestataire non configuré comme externe = interne par défaut)
                 $query->where(function($q) {
-                    $q->where('users.is_external_instructor', false)
-                      ->orWhereNull('users.is_external_instructor');
+                    $q->where('users.is_external_provider', false)
+                      ->orWhereNull('users.is_external_provider');
                 });
             })
             ->sum('order_items.total');
 
-        // Calculer les commissions retenues sur les formateurs externes
-        $commissionsRevenue = InstructorPayout::where('status', 'completed')
+        // Calculer les commissions retenues sur les prestataires externes
+        $commissionsRevenue = ProviderPayout::where('status', 'completed')
             ->sum('commission_amount');
 
         // Revenu total = revenus internes + commissions
         $totalRevenue = $internalRevenue + $commissionsRevenue;
 
-        // Revenus des formateurs externes (montants payés aux formateurs, avant commission)
-        $externalInstructorPayouts = InstructorPayout::where('status', 'completed')
+        // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
+        $externalProviderPayouts = ProviderPayout::where('status', 'completed')
             ->sum('amount');
 
         // Statistiques générales
         $stats = [
             'total_users' => User::count(),
-            'total_students' => User::students()->count(),
-            'total_instructors' => User::instructors()->count(),
+            'total_customers' => User::customers()->count(),
+            'total_providers' => User::providers()->count(),
             'total_courses' => Course::count(),
             'published_courses' => Course::published()->count(),
             'total_orders' => Order::count(),
             'pending_orders' => Order::where('status', 'pending')->count(),
             'paid_orders' => Order::where('status', 'paid')->count(),
             'total_revenue' => $totalRevenue, // Revenu total (internes + commissions)
-            'internal_revenue' => $internalRevenue, // Revenus des cours internes
+            'internal_revenue' => $internalRevenue, // Revenus des contenus internes
             'commissions_revenue' => $commissionsRevenue, // Commissions retenues
-            'external_payouts' => $externalInstructorPayouts, // Montants payés aux formateurs externes
+            'external_payouts' => $externalProviderPayouts, // Montants payés aux prestataires externes
             'total_enrollments' => Enrollment::count(),
         ];
 
@@ -129,8 +129,8 @@ class AdminController extends Controller
 
         // Revenus par catégorie
         $revenueByCategory = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('categories', 'courses.category_id', '=', 'categories.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('categories', 'contents.category_id', '=', 'categories.id')
             ->where('orders.status', 'paid')
             ->select('categories.id', 'categories.name')
             ->selectRaw('SUM(order_items.total) as revenue')
@@ -144,14 +144,14 @@ class AdminController extends Controller
 
         // Cours les plus populaires
         $popularCourses = Course::published()
-            ->with(['instructor', 'category'])
+            ->with(['provider', 'category'])
             ->withCount('enrollments')
             ->orderBy('enrollments_count', 'desc')
             ->limit(5)
             ->get();
 
         // Inscriptions récentes
-        $recentEnrollments = Enrollment::with(['user', 'course.instructor'])
+        $recentEnrollments = Enrollment::with(['user', 'course.provider'])
             ->latest()
             ->limit(10)
             ->get();
@@ -183,30 +183,30 @@ class AdminController extends Controller
 
     public function analytics()
     {
-        // Calculer les revenus des cours internes (formateurs internes)
-        // IMPORTANT: Exclure explicitement tous les revenus des formateurs externes
+        // Calculer les revenus des contenus internes (prestataires internes)
+        // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
         $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('users', 'contents.provider_id', '=', 'users.id')
             ->where('orders.status', 'paid')
             ->where(function($query) {
-                // Exclure explicitement les formateurs externes (is_external_instructor = true)
+                // Exclure explicitement les prestataires externes (is_external_provider = true)
                 $query->where(function($q) {
-                    $q->where('users.is_external_instructor', false)
-                      ->orWhereNull('users.is_external_instructor');
+                    $q->where('users.is_external_provider', false)
+                      ->orWhereNull('users.is_external_provider');
                 });
             })
             ->sum('order_items.total');
 
-        // Calculer les commissions retenues sur les formateurs externes
-        $commissionsRevenue = InstructorPayout::where('status', 'completed')
+        // Calculer les commissions retenues sur les prestataires externes
+        $commissionsRevenue = ProviderPayout::where('status', 'completed')
             ->sum('commission_amount');
 
         // Revenu total = revenus internes + commissions
         $totalRevenue = $internalRevenue + $commissionsRevenue;
 
-        // Revenus des formateurs externes (montants payés aux formateurs, avant commission)
-        $externalInstructorPayouts = InstructorPayout::where('status', 'completed')
+        // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
+        $externalProviderPayouts = ProviderPayout::where('status', 'completed')
             ->sum('amount');
 
         // Statistiques générales
@@ -215,9 +215,9 @@ class AdminController extends Controller
             'total_courses' => Course::count(),
             'total_orders' => Order::count(),
             'total_revenue' => $totalRevenue, // Revenu total (internes + commissions)
-            'internal_revenue' => $internalRevenue, // Revenus des cours internes
+            'internal_revenue' => $internalRevenue, // Revenus des contenus internes
             'commissions_revenue' => $commissionsRevenue, // Commissions retenues
-            'external_payouts' => $externalInstructorPayouts, // Montants payés aux formateurs externes
+            'external_payouts' => $externalProviderPayouts, // Montants payés aux prestataires externes
             'total_enrollments' => Enrollment::count(),
             'total_visits' => Visitor::count(), // Total de toutes les visites
             'total_visitors' => Visitor::count(), // Alias pour compatibilité (total des visites)
@@ -242,13 +242,13 @@ class AdminController extends Controller
 
         // Revenus internes par mois (6 derniers mois)
         $internalRevenueByMonth = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('users', 'contents.provider_id', '=', 'users.id')
             ->where('orders.status', 'paid')
             ->where(function($query) {
                 $query->where(function($q) {
-                    $q->where('users.is_external_instructor', false)
-                      ->orWhereNull('users.is_external_instructor');
+                    $q->where('users.is_external_provider', false)
+                      ->orWhereNull('users.is_external_provider');
                 });
             })
             ->where('orders.created_at', '>=', now()->subMonths(6))
@@ -262,7 +262,7 @@ class AdminController extends Controller
             });
 
         // Commissions par mois (6 derniers mois)
-        $commissionsByMonth = InstructorPayout::where('status', 'completed')
+        $commissionsByMonth = ProviderPayout::where('status', 'completed')
             ->where('created_at', '>=', now()->subMonths(6))
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
             ->groupBy('month')
@@ -287,13 +287,13 @@ class AdminController extends Controller
 
         // Revenus internes par jour (30 derniers jours)
         $internalRevenueByDay = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('users', 'contents.provider_id', '=', 'users.id')
             ->where('orders.status', 'paid')
             ->where(function($query) {
                 $query->where(function($q) {
-                    $q->where('users.is_external_instructor', false)
-                      ->orWhereNull('users.is_external_instructor');
+                    $q->where('users.is_external_provider', false)
+                      ->orWhereNull('users.is_external_provider');
                 });
             })
             ->where('orders.created_at', '>=', now()->subDays(30))
@@ -307,7 +307,7 @@ class AdminController extends Controller
             });
 
         // Commissions par jour (30 derniers jours)
-        $commissionsByDay = InstructorPayout::where('status', 'completed')
+        $commissionsByDay = ProviderPayout::where('status', 'completed')
             ->where('created_at', '>=', now()->subDays(30))
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(commission_amount) as revenue')
             ->groupBy('date')
@@ -347,13 +347,13 @@ class AdminController extends Controller
         // Revenus internes par semaine (12 dernières semaines)
         if ($driver === 'pgsql') {
             $internalRevenueByWeek = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-                ->join('courses', 'order_items.course_id', '=', 'courses.id')
-                ->join('users', 'courses.instructor_id', '=', 'users.id')
+                ->join('contents', 'order_items.content_id', '=', 'contents.id')
+                ->join('users', 'contents.provider_id', '=', 'users.id')
                 ->where('orders.status', 'paid')
                 ->where(function($query) {
                     $query->where(function($q) {
-                        $q->where('users.is_external_instructor', false)
-                          ->orWhereNull('users.is_external_instructor');
+                        $q->where('users.is_external_provider', false)
+                          ->orWhereNull('users.is_external_provider');
                     });
                 })
                 ->where('orders.created_at', '>=', now()->subWeeks(12))
@@ -367,13 +367,13 @@ class AdminController extends Controller
                 });
         } else {
             $internalRevenueByWeek = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-                ->join('courses', 'order_items.course_id', '=', 'courses.id')
-                ->join('users', 'courses.instructor_id', '=', 'users.id')
+                ->join('contents', 'order_items.content_id', '=', 'contents.id')
+                ->join('users', 'contents.provider_id', '=', 'users.id')
                 ->where('orders.status', 'paid')
                 ->where(function($query) {
                     $query->where(function($q) {
-                        $q->where('users.is_external_instructor', false)
-                          ->orWhereNull('users.is_external_instructor');
+                        $q->where('users.is_external_provider', false)
+                          ->orWhereNull('users.is_external_provider');
                     });
                 })
                 ->where('orders.created_at', '>=', now()->subWeeks(12))
@@ -389,7 +389,7 @@ class AdminController extends Controller
 
         // Commissions par semaine (12 dernières semaines)
         if ($driver === 'pgsql') {
-            $commissionsByWeek = InstructorPayout::where('status', 'completed')
+            $commissionsByWeek = ProviderPayout::where('status', 'completed')
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(commission_amount) as revenue")
                 ->groupBy('week')
@@ -400,7 +400,7 @@ class AdminController extends Controller
                     return $item;
                 });
         } else {
-            $commissionsByWeek = InstructorPayout::where('status', 'completed')
+            $commissionsByWeek = ProviderPayout::where('status', 'completed')
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(commission_amount) as revenue')
                 ->groupBy('week')
@@ -414,8 +414,8 @@ class AdminController extends Controller
 
         // Revenus par catégorie
         $revenueByCategory = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('categories', 'courses.category_id', '=', 'categories.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('categories', 'contents.category_id', '=', 'categories.id')
             ->where('orders.status', 'paid')
             ->select('categories.id', 'categories.name')
             ->selectRaw('SUM(order_items.total) as revenue')
@@ -425,19 +425,19 @@ class AdminController extends Controller
 
         // Revenus par cours (top 10)
         $revenueByCourse = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->where('orders.status', 'paid')
-            ->select('courses.id', 'courses.title')
+            ->select('contents.id', 'contents.title')
             ->selectRaw('SUM(order_items.total) as revenue')
-            ->groupBy('courses.id', 'courses.title')
+            ->groupBy('contents.id', 'contents.title')
             ->orderByDesc('revenue')
             ->limit(10)
             ->get();
 
-        // Revenus par formateur (top 10)
-        $revenueByInstructor = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('users', 'courses.instructor_id', '=', 'users.id')
+        // Revenus par prestataire (top 10)
+        $revenueByProvider = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('users', 'contents.provider_id', '=', 'users.id')
             ->where('orders.status', 'paid')
             ->select('users.id', 'users.name')
             ->selectRaw('SUM(order_items.total) as revenue')
@@ -459,13 +459,13 @@ class AdminController extends Controller
 
         // Revenus internes par année
         $internalRevenueByYear = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('users', 'contents.provider_id', '=', 'users.id')
             ->where('orders.status', 'paid')
             ->where(function($query) {
                 $query->where(function($q) {
-                    $q->where('users.is_external_instructor', false)
-                      ->orWhereNull('users.is_external_instructor');
+                    $q->where('users.is_external_provider', false)
+                      ->orWhereNull('users.is_external_provider');
                 });
             })
             ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y', 'year') . ', SUM(order_items.total) as revenue')
@@ -478,7 +478,7 @@ class AdminController extends Controller
             });
 
         // Commissions par année
-        $commissionsByYear = InstructorPayout::where('status', 'completed')
+        $commissionsByYear = ProviderPayout::where('status', 'completed')
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(commission_amount) as revenue')
             ->groupBy('year')
             ->orderBy('year')
@@ -498,7 +498,7 @@ class AdminController extends Controller
         $totalStudents = Enrollment::count();
         $averageRating = Review::avg('rating') ?? 0;
         
-        $courseStats->total_students = $totalStudents;
+        $courseStats->total_customers = $totalStudents;
         $courseStats->average_rating = $averageRating;
 
         $userGrowth = User::selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', COUNT(*) as count')
@@ -516,18 +516,18 @@ class AdminController extends Controller
             ->orderBy('courses_count', 'desc')
             ->get();
 
-        $instructorStats = User::instructors()
-            ->withCount('courses')
-            ->withCount(['courses as total_students' => function($query) {
+        $providerStats = User::providers()
+            ->withCount('contents')
+            ->withCount(['contents as total_customers' => function($query) {
                 $query->withCount('enrollments');
             }])
-            ->orderBy('courses_count', 'desc')
+            ->orderBy('contents_count', 'desc')
             ->limit(10)
             ->get();
 
         // Cours les plus populaires (limité à 8 pour l'affichage horizontal)
         $popularCourses = Course::published()
-            ->with(['instructor', 'category'])
+            ->with(['provider', 'category'])
             ->withCount('enrollments')
             ->orderBy('enrollments_count', 'desc')
             ->limit(8)
@@ -617,11 +617,11 @@ class AdminController extends Controller
             'commissionsByYear',
             'revenueByCategory',
             'revenueByCourse',
-            'revenueByInstructor',
+            'revenueByProvider',
             'courseStats',
             'userGrowth',
             'categoryStats',
-            'instructorStats',
+            'providerStats',
             'popularCourses',
             'paymentsByStatus',
             'paymentsByMethod',
@@ -710,8 +710,8 @@ class AdminController extends Controller
         $days = $request->input('days', 'all');
         
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('categories', 'courses.category_id', '=', 'categories.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('categories', 'contents.category_id', '=', 'categories.id')
             ->where('orders.status', 'paid');
 
         if ($days !== 'all') {
@@ -732,16 +732,16 @@ class AdminController extends Controller
         $days = $request->input('days', 'all');
         
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->where('orders.status', 'paid');
 
         if ($days !== 'all') {
             $query->where('orders.created_at', '>=', now()->subDays((int)$days));
         }
 
-        $data = $query->select('courses.id', 'courses.title')
+        $data = $query->select('contents.id', 'contents.title')
             ->selectRaw('SUM(order_items.total) as revenue')
-            ->groupBy('courses.id', 'courses.title')
+            ->groupBy('contents.id', 'contents.title')
             ->orderByDesc('revenue')
             ->limit(10)
             ->get();
@@ -754,8 +754,8 @@ class AdminController extends Controller
         $days = $request->input('days', 'all');
         
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('courses', 'order_items.course_id', '=', 'courses.id')
-            ->join('users', 'courses.instructor_id', '=', 'users.id')
+            ->join('contents', 'order_items.content_id', '=', 'contents.id')
+            ->join('users', 'contents.provider_id', '=', 'users.id')
             ->where('orders.status', 'paid');
 
         if ($days !== 'all') {
@@ -820,8 +820,8 @@ class AdminController extends Controller
             'active' => User::where('is_active', true)->count(),
             'inactive' => User::where('is_active', false)->count(),
             'verified' => User::where('is_verified', true)->count(),
-            'students' => User::where('role', 'student')->count(),
-            'instructors' => User::where('role', 'instructor')->count(),
+            'customers' => User::where('role', 'customer')->count(),
+            'providers' => User::where('role', 'provider')->count(),
             'admins' => User::whereIn('role', ['admin', 'super_user'])->count(),
             'affiliates' => User::where('role', 'affiliate')->count(),
         ];
@@ -978,9 +978,9 @@ class AdminController extends Controller
         // Les autres données (nom, email, photo) viennent du SSO
         
         $request->validate([
-            'role' => 'required|in:student,instructor,admin,affiliate,super_user',
+            'role' => 'required|in:customer,provider,admin,affiliate,super_user',
             'is_active' => 'boolean',
-            'is_external_instructor' => 'boolean',
+            'is_external_provider' => 'boolean',
             'pawapay_phone' => 'nullable|string|max:20',
             'pawapay_provider' => 'nullable|string|max:50',
             'pawapay_country' => 'nullable|string|size:3',
@@ -991,7 +991,7 @@ class AdminController extends Controller
         $user->update([
             'role' => $request->role,
             'is_active' => $request->has('is_active'),
-            'is_external_instructor' => $request->has('is_external_instructor'),
+            'is_external_provider' => $request->has('is_external_provider'),
             'pawapay_phone' => $request->pawapay_phone,
             'pawapay_provider' => $request->pawapay_provider,
             'pawapay_country' => $request->pawapay_country,
@@ -1064,8 +1064,8 @@ class AdminController extends Controller
         // Charger les inscriptions avec les cours (exclure les cours supprimés)
         $enrollments = $user->enrollments()
             ->where('status', '!=', 'cancelled')
-            ->whereHas('course') // S'assurer que le cours existe toujours
-            ->with(['course.instructor', 'course.category', 'order'])
+            ->whereHas('content') // S'assurer que le cours existe toujours
+            ->with(['course.provider', 'course.category', 'order'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->filter(function($enrollment) {
@@ -1074,17 +1074,17 @@ class AdminController extends Controller
             });
         
         // Récupérer les cours achetés (via commandes payées) qui n'ont pas d'inscription
-        $purchasedCourseIds = $enrollments->pluck('course_id')->filter()->all();
+        $purchasedCourseIds = $enrollments->pluck('content_id')->filter()->all();
         $purchasedCourses = \App\Models\Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($query) use ($purchasedCourseIds) {
-                $query->whereNotIn('course_id', $purchasedCourseIds ?: [0])
-                    ->whereNotNull('course_id')
-                    ->whereHas('course', function($q) {
+                $query->whereNotIn('content_id', $purchasedCourseIds ?: [0])
+                    ->whereNotNull('content_id')
+                    ->whereHas('content', function($q) {
                         $q->where('is_published', true);
                     });
             })
-            ->with(['orderItems.course.instructor', 'orderItems.course.category'])
+            ->with(['orderItems.course.provider', 'orderItems.course.category'])
             ->get()
             ->flatMap(function($order) use ($purchasedCourseIds) {
                 if (!$order->orderItems) {
@@ -1094,18 +1094,18 @@ class AdminController extends Controller
                 return $order->orderItems
                     ->filter(function($item) use ($purchasedCourseIds) {
                         // Vérifier que le cours existe et est publié
-                        if (!$item->course_id || !$item->course) {
+                        if (!$item->content_id || !$item->course) {
                             return false;
                         }
                         
                         try {
                             return $item->course->is_published && 
-                                   !in_array($item->course_id, $purchasedCourseIds);
+                                   !in_array($item->content_id, $purchasedCourseIds);
                         } catch (\Exception $e) {
                             \Log::warning('Erreur lors du filtrage des cours achetés', [
                                 'order_id' => $order->id ?? null,
                                 'order_item_id' => $item->id ?? null,
-                                'course_id' => $item->course_id ?? null,
+                                'content_id' => $item->content_id ?? null,
                                 'error' => $e->getMessage(),
                             ]);
                             return false;
@@ -1120,7 +1120,7 @@ class AdminController extends Controller
                         // Créer un objet similaire à un enrollment pour la compatibilité avec la vue
                         return (object)[
                             'id' => null,
-                            'course_id' => $item->course_id,
+                            'content_id' => $item->content_id,
                             'course' => $item->course,
                             'status' => 'purchased',
                             'progress' => 0,
@@ -1134,24 +1134,24 @@ class AdminController extends Controller
             });
         
         // Récupérer les cours téléchargeables gratuits téléchargés au moins une fois
-        $allAccessCourseIds = $enrollments->pluck('course_id')
-            ->merge($purchasedCourses->pluck('course_id'))
+        $allAccessCourseIds = $enrollments->pluck('content_id')
+            ->merge($purchasedCourses->pluck('content_id'))
             ->filter()
             ->unique()
             ->all();
         
         $downloadedFreeCourseIds = \App\Models\CourseDownload::where('user_id', $user->id)
-            ->whereNotNull('course_id')
-            ->whereHas('course', function($q) {
+            ->whereNotNull('content_id')
+            ->whereHas('content', function($q) {
                 $q->where('is_downloadable', true)
                   ->where('is_free', true)
                   ->where('is_published', true);
             })
-            ->pluck('course_id')
+            ->pluck('content_id')
             ->unique()
-            ->filter(function($courseId) use ($allAccessCourseIds) {
+            ->filter(function($contentId) use ($allAccessCourseIds) {
                 // Exclure ceux déjà dans les enrollments ou les cours achetés
-                return $courseId && !in_array($courseId, $allAccessCourseIds);
+                return $contentId && !in_array($contentId, $allAccessCourseIds);
             })
             ->all();
         
@@ -1159,7 +1159,7 @@ class AdminController extends Controller
         if (!empty($downloadedFreeCourseIds)) {
             $downloadedFreeCourses = \App\Models\Course::whereIn('id', $downloadedFreeCourseIds)
                 ->where('is_published', true) // S'assurer que le cours est toujours publié
-                ->with(['instructor', 'category'])
+                ->with(['provider', 'category'])
                 ->get()
                 ->filter(function($course) {
                     // Filtrer les cours qui n'existent plus ou ne sont plus publiés
@@ -1168,13 +1168,13 @@ class AdminController extends Controller
                 ->map(function($course) use ($user) {
                     try {
                         $downloadDate = \App\Models\CourseDownload::where('user_id', $user->id)
-                            ->where('course_id', $course->id)
+                            ->where('content_id', $course->id)
                             ->orderBy('created_at', 'desc')
                             ->first()?->created_at ?? now();
                         
                         return (object)[
                             'id' => null,
-                            'course_id' => $course->id,
+                            'content_id' => $course->id,
                             'course' => $course,
                             'status' => 'downloaded',
                             'progress' => 0,
@@ -1186,7 +1186,7 @@ class AdminController extends Controller
                     } catch (\Exception $e) {
                         \Log::warning('Erreur lors de la création de l\'objet cours téléchargé', [
                             'user_id' => $user->id,
-                            'course_id' => $course->id ?? null,
+                            'content_id' => $course->id ?? null,
                             'error' => $e->getMessage(),
                         ]);
                         return null;
@@ -1202,7 +1202,7 @@ class AdminController extends Controller
         
         // Charger tous les cours disponibles pour le modal d'ajout
         $allCourses = Course::published()
-            ->with(['instructor', 'category'])
+            ->with(['provider', 'category'])
             ->orderBy('title')
             ->get();
         
@@ -1222,14 +1222,14 @@ class AdminController extends Controller
     public function grantCourseAccess(Request $request, User $user)
     {
         $request->validate([
-            'course_id' => 'required|exists:courses,id',
+            'content_id' => 'required|exists:contents,id',
         ]);
 
-        $course = Course::findOrFail($request->course_id);
+        $course = Course::findOrFail($request->content_id);
 
         // Vérifier si l'utilisateur n'est pas déjà inscrit
         $existingEnrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->first();
 
         if ($existingEnrollment) {
@@ -1241,13 +1241,13 @@ class AdminController extends Controller
         // La méthode createAndNotify envoie automatiquement les notifications et emails
         Enrollment::createAndNotify([
             'user_id' => $user->id,
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'order_id' => null, // Accès gratuit donné par l'admin
             'status' => 'active',
         ]);
 
         return redirect()->route('admin.users.show', $user)
-            ->with('success', "Accès gratuit au cours \"{$course->title}\" accordé avec succès. L'utilisateur a été notifié par email.");
+            ->with('success', "Accès gratuit au contenu \"{$course->title}\" accordé avec succès. L'utilisateur a été notifié par email.");
     }
 
     /**
@@ -1256,7 +1256,7 @@ class AdminController extends Controller
     public function revokeCourseAccess(User $user, Course $course)
     {
         $enrollment = Enrollment::where('user_id', $user->id)
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->first();
 
         if (!$enrollment) {
@@ -1273,11 +1273,11 @@ class AdminController extends Controller
                 $mailable = new \App\Mail\CourseAccessRevokedMail($course);
                 $communicationService = app(\App\Services\CommunicationService::class);
                 $communicationService->sendEmailAndWhatsApp($user, $mailable);
-                \Log::info("Email CourseAccessRevokedMail envoyé directement à {$user->email} pour le cours {$course->id}");
+                \Log::info("Email CourseAccessRevokedMail envoyé directement à {$user->email} pour le contenu {$course->id}");
             } catch (\Exception $emailException) {
                 \Log::error("Erreur lors de l'envoi de l'email CourseAccessRevokedMail", [
                     'user_id' => $user->id,
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'error' => $emailException->getMessage(),
                 ]);
             }
@@ -1290,7 +1290,7 @@ class AdminController extends Controller
         }
         
         // Marquer l'inscription comme annulée (révoquée) au lieu de la supprimer,
-        // pour garder une trace sans qu'elle donne accès au cours côté étudiant.
+        // pour garder une trace sans qu'elle donne accès au cours côté client.
         $enrollment->update([
             'status' => 'cancelled',
             'progress' => 0,
@@ -1312,7 +1312,7 @@ class AdminController extends Controller
     // Gestion des cours
     public function courses(Request $request)
     {
-        $query = Course::with(['instructor', 'category', 'sections', 'lessons']);
+        $query = Course::with(['provider', 'category', 'sections', 'lessons']);
 
         // Recherche par titre ou description
         if ($request->filled('search')) {
@@ -1341,9 +1341,9 @@ class AdminController extends Controller
             }
         }
 
-        // Filtre par instructeur
-        if ($request->filled('instructor')) {
-            $query->where('instructor_id', $request->get('instructor'));
+        // Filtre par prestataire
+        if ($request->filled('provider')) {
+            $query->where('provider_id', $request->get('provider'));
         }
 
         // Tri
@@ -1360,7 +1360,7 @@ class AdminController extends Controller
 
         // Données pour les filtres
         $categories = Category::active()->ordered()->get();
-        $instructors = User::instructors()->get();
+        $providers = User::providers()->get();
 
         // Statistiques
         $stats = [
@@ -1372,18 +1372,18 @@ class AdminController extends Controller
         ];
         
         $baseCurrency = Setting::getBaseCurrency();
-        return view('admin.courses.index', compact('courses', 'categories', 'instructors', 'stats', 'baseCurrency'));
+        return view('admin.contents.index', compact('courses', 'categories', 'providers', 'stats', 'baseCurrency'));
     }
 
     public function createCourse()
     {
         $categories = Category::active()->ordered()->get();
-        // Inclure les instructeurs et les administrateurs dans la liste
-        $instructors = User::whereIn('role', ['instructor', 'admin', 'super_user'])
+        // Inclure les prestataires et les administrateurs dans la liste
+        $providers = User::whereIn('role', ['provider', 'admin', 'super_user'])
             ->orderBy('name')
             ->get();
         $baseCurrency = Setting::getBaseCurrency();
-        return view('admin.courses.create', compact('categories', 'instructors', 'baseCurrency'));
+        return view('admin.contents.create', compact('categories', 'providers', 'baseCurrency'));
     }
 
     public function storeCourse(Request $request)
@@ -1392,7 +1392,7 @@ class AdminController extends Controller
             'title' => 'required|string|max:255',
             'short_description' => 'nullable|string|max:500',
             'description' => 'required|string',
-            'instructor_id' => 'required|exists:users,id',
+            'provider_id' => 'required|exists:users,id',
             'category_id' => 'required|exists:categories,id',
             'price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
@@ -1407,7 +1407,7 @@ class AdminController extends Controller
             'is_published' => 'boolean',
             'is_sale_enabled' => 'boolean',
             'is_featured' => 'boolean',
-            'show_students_count' => 'boolean',
+            'show_customers_count' => 'boolean',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:10',
             'use_external_payment' => 'boolean',
@@ -1461,7 +1461,7 @@ class AdminController extends Controller
         try {
             // Créer le cours
             $courseData = $request->only([
-                'title', 'short_description', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
+                'title', 'short_description', 'description', 'provider_id', 'category_id', 'price', 'sale_price',
                 'sale_start_at', 'sale_end_at',
                 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
@@ -1574,7 +1574,7 @@ class AdminController extends Controller
             // Pour la création : si la checkbox est cochée → true, sinon → true par défaut (comme dans la migration)
             $courseData['is_sale_enabled'] = $request->has('is_sale_enabled') ? (bool) $request->input('is_sale_enabled') : true;
             $courseData['is_featured'] = $request->boolean('is_featured', false);
-            $courseData['show_students_count'] = $request->boolean('show_students_count', false);
+            $courseData['show_customers_count'] = $request->boolean('show_customers_count', false);
             $courseData['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
 
             if ($courseData['is_free']) {
@@ -1641,7 +1641,7 @@ class AdminController extends Controller
                             }
 
                             $section->lessons()->create([
-                                'course_id' => $course->id,
+                                'content_id' => $course->id,
                                 'title' => $lessonData['title'],
                                 'description' => $lessonData['description'] ?? '',
                                 'type' => $lessonData['type'],
@@ -1665,14 +1665,14 @@ class AdminController extends Controller
             $course->refresh();
 
             if ($course->is_published) {
-                $course->notifyStudentsOfNewCourse();
+                $course->notifyCustomersOfNewCourse();
                 $this->notifyInstructorCourseModeration($course, 'approved');
             } else {
                 $this->notifyInstructorCourseModeration($course, 'pending');
             }
 
             $lessonsCount = $course->lessons()->count();
-            return redirect()->route('admin.courses')
+            return redirect()->route('admin.contents')
                 ->with('success', 'Cours créé avec succès avec ' . $lessonsCount . ' leçons.');
 
         } catch (\Exception $e) {
@@ -1686,12 +1686,12 @@ class AdminController extends Controller
     public function editCourse(Course $course)
     {
         $categories = Category::active()->ordered()->get();
-        // Inclure les instructeurs et les administrateurs dans la liste
-        $instructors = User::whereIn('role', ['instructor', 'admin', 'super_user'])
+        // Inclure les prestataires et les administrateurs dans la liste
+        $providers = User::whereIn('role', ['provider', 'admin', 'super_user'])
             ->orderBy('name')
             ->get();
         $baseCurrency = Setting::getBaseCurrency();
-        return view('admin.courses.edit', compact('course', 'categories', 'instructors', 'baseCurrency'));
+        return view('admin.contents.edit', compact('course', 'categories', 'providers', 'baseCurrency'));
     }
 
     public function updateCourse(Request $request, Course $course)
@@ -1700,7 +1700,7 @@ class AdminController extends Controller
             'title' => 'required|string|max:255',
             'short_description' => 'nullable|string|max:500',
             'description' => 'required|string',
-            'instructor_id' => 'required|exists:users,id',
+            'provider_id' => 'required|exists:users,id',
             'category_id' => 'required|exists:categories,id',
             'price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
@@ -1714,7 +1714,7 @@ class AdminController extends Controller
             'is_published' => 'boolean',
             'is_sale_enabled' => 'boolean',
             'is_featured' => 'boolean',
-            'show_students_count' => 'boolean',
+            'show_customers_count' => 'boolean',
             'level' => 'required|in:beginner,intermediate,advanced',
             'language' => 'required|string|max:10',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
@@ -1728,11 +1728,11 @@ class AdminController extends Controller
             'meta_keywords' => 'nullable|string|max:255',
             'tags' => 'nullable|string',
             'sections' => 'nullable|array',
-            'sections.*.id' => 'nullable|integer|exists:course_sections,id',
+            'sections.*.id' => 'nullable|integer|exists:content_sections,id',
             'sections.*.title' => 'required_with:sections|string|max:255',
             'sections.*.description' => 'nullable|string',
             'sections.*.lessons' => 'nullable|array',
-            'sections.*.lessons.*.id' => 'nullable|integer|exists:course_lessons,id',
+            'sections.*.lessons.*.id' => 'nullable|integer|exists:content_lessons,id',
             'sections.*.lessons.*.title' => 'required_with:sections.*.lessons|string|max:255',
             'sections.*.lessons.*.description' => 'nullable|string',
             'sections.*.lessons.*.type' => 'required_with:sections.*.lessons|in:video,text,quiz,assignment',
@@ -1758,7 +1758,7 @@ class AdminController extends Controller
 
         try {
             $data = $request->only([
-                'title', 'short_description', 'description', 'instructor_id', 'category_id', 'price', 'sale_price',
+                'title', 'short_description', 'description', 'provider_id', 'category_id', 'price', 'sale_price',
                 'sale_start_at', 'sale_end_at',
                 'use_external_payment', 'external_payment_url', 'external_payment_text',
                 'level', 'language',
@@ -1893,7 +1893,7 @@ class AdminController extends Controller
             // Pour l'édition : si la checkbox est cochée → true, sinon → false (car l'utilisateur a décidé de la décocher)
             $data['is_sale_enabled'] = $request->has('is_sale_enabled') ? (bool) $request->input('is_sale_enabled') : false;
             $data['is_featured'] = $request->boolean('is_featured', false);
-            $data['show_students_count'] = $request->boolean('show_students_count', false);
+            $data['show_customers_count'] = $request->boolean('show_customers_count', false);
             $data['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
 
             if ($data['is_free']) {
@@ -1981,7 +1981,7 @@ class AdminController extends Controller
                         }
 
                         $lessonAttributes = [
-                            'course_id' => $course->id,
+                            'content_id' => $course->id,
                             'section_id' => $section->id,
                             'title' => $lessonTitle,
                             'description' => $lessonData['description'] ?? '',
@@ -2015,7 +2015,7 @@ class AdminController extends Controller
                             } catch (\Exception $e) {
                                 DB::rollBack();
                                 \Log::error('Erreur upload content_file (update): ' . $e->getMessage(), [
-                                    'course_id' => $course->id,
+                                    'content_id' => $course->id,
                                     'lesson_id' => $lesson?->id,
                                     'file' => $uploaded->getClientOriginalName(),
                                     'size' => $uploaded->getSize(),
@@ -2105,7 +2105,7 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Erreur lors de la mise à jour du cours: ' . $e->getMessage(), [
-                'course_id' => $course->id,
+                'content_id' => $course->id,
                 'trace' => $e->getTraceAsString(),
             ]);
 
@@ -2117,7 +2117,7 @@ class AdminController extends Controller
         $course->refresh();
 
         if (!$wasPublished && $course->is_published) {
-            $course->notifyStudentsOfNewCourse();
+            $course->notifyCustomersOfNewCourse();
             $this->notifyInstructorCourseModeration($course, 'approved');
         } elseif ($wasPublished && !$course->is_published) {
             $this->notifyInstructorCourseModeration($course, 'rejected');
@@ -2125,23 +2125,23 @@ class AdminController extends Controller
             $this->notifyInstructorCourseModeration($course, $course->is_published ? 'approved' : 'pending');
         }
 
-        return redirect()->route('admin.courses')
+        return redirect()->route('admin.contents')
             ->with('success', 'Cours mis à jour avec succès.');
     }
 
     public function showCourse(Course $course)
     {
-        $course->load(['instructor', 'category', 'sections.lessons', 'reviews', 'enrollments', 'orderItems.order']);
+        $course->load(['provider', 'category', 'sections.lessons', 'reviews', 'enrollments', 'orderItems.order']);
         // Charger les statistiques complètes
         $course->stats = $course->getCourseStats();
         $baseCurrency = Setting::getBaseCurrency();
-        return view('admin.courses.show', compact('course', 'baseCurrency'));
+        return view('admin.contents.show', compact('course', 'baseCurrency'));
     }
 
     public function destroyCourse(Course $course)
     {
         $course->delete();
-        return redirect()->route('admin.courses')
+        return redirect()->route('admin.contents')
             ->with('success', 'Cours supprimé avec succès.');
     }
 
@@ -2488,11 +2488,11 @@ class AdminController extends Controller
                 }
             }
         } elseif ($type === 'course') {
-            $courseId = $request->get('course_id');
-            if ($courseId) {
+            $contentId = $request->get('content_id');
+            if ($contentId) {
                 // Récupérer les utilisateurs inscrits à ce cours
-                $query->whereHas('enrollments', function($q) use ($courseId) {
-                    $q->where('course_id', $courseId)
+                $query->whereHas('enrollments', function($q) use ($contentId) {
+                    $q->where('content_id', $contentId)
                       ->where('status', 'active');
                 });
             }
@@ -2502,20 +2502,20 @@ class AdminController extends Controller
                 // Récupérer les utilisateurs inscrits à des cours de cette catégorie
                 $query->whereHas('enrollments', function($q) use ($categoryId) {
                     $q->where('status', 'active')
-                      ->whereHas('course', function($courseQuery) use ($categoryId) {
+                      ->whereHas('content', function($courseQuery) use ($categoryId) {
                           $courseQuery->where('category_id', $categoryId)
                                      ->where('is_published', true);
                       });
                 });
             }
-        } elseif ($type === 'instructor') {
-            $instructorId = $request->get('instructor_id');
-            if ($instructorId) {
-                // Récupérer les utilisateurs inscrits à des cours de ce formateur
-                $query->whereHas('enrollments', function($q) use ($instructorId) {
+        } elseif ($type === 'provider') {
+            $providerId = $request->input('provider_id');
+            if ($providerId) {
+                // Récupérer les utilisateurs inscrits à des cours de ce prestataire
+                $query->whereHas('enrollments', function($q) use ($providerId) {
                     $q->where('status', 'active')
-                      ->whereHas('course', function($courseQuery) use ($instructorId) {
-                          $courseQuery->where('instructor_id', $instructorId)
+                      ->whereHas('content', function($courseQuery) use ($providerId) {
+                          $courseQuery->where('provider_id', $providerId)
                                      ->where('is_published', true);
                       });
                 });
@@ -2592,16 +2592,19 @@ class AdminController extends Controller
     public function sendEmail(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,role,course,category,instructor,registration_date,activity,selected,single',
+            'recipient_type' => 'required|in:all,role,course,category,provider,downloaded_free,purchased,registration_date,activity,selected,single',
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
             'send_type' => 'required|in:now,scheduled',
             'scheduled_at' => 'nullable|required_if:send_type,scheduled|date|after:now',
             'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
-            'course_id' => 'nullable|required_if:recipient_type,course|exists:courses,id',
+            'roles.*' => 'in:customer,provider,admin,affiliate,ambassador',
+            'content_id' => 'nullable|required_if:recipient_type,course|exists:contents,id',
             'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
-            'instructor_id' => 'nullable|required_if:recipient_type,instructor|exists:users,id',
+            'provider_id' => 'nullable|required_if:recipient_type,provider|exists:users,id',
+            'downloaded_content_id' => 'nullable|exists:contents,id',
+            'purchase_type' => 'nullable|required_if:recipient_type,purchased|in:any,paid,completed,specific_content',
+            'purchased_content_id' => 'nullable|required_if:purchase_type,specific_content|exists:contents,id',
             'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
             'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
             'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
@@ -2791,11 +2794,11 @@ class AdminController extends Controller
                 break;
 
             case 'course':
-                $courseId = $request->input('course_id');
-                if ($courseId) {
+                $contentId = $request->input('content_id');
+                if ($contentId) {
                     // Récupérer les utilisateurs inscrits à ce cours
-                    $query->whereHas('enrollments', function($q) use ($courseId) {
-                        $q->where('course_id', $courseId)
+                    $query->whereHas('enrollments', function($q) use ($contentId) {
+                        $q->where('content_id', $contentId)
                           ->where('status', 'active');
                     });
                 } else {
@@ -2809,7 +2812,7 @@ class AdminController extends Controller
                     // Récupérer les utilisateurs inscrits à des cours de cette catégorie
                     $query->whereHas('enrollments', function($q) use ($categoryId) {
                         $q->where('status', 'active')
-                          ->whereHas('course', function($courseQuery) use ($categoryId) {
+                          ->whereHas('content', function($courseQuery) use ($categoryId) {
                               $courseQuery->where('category_id', $categoryId)
                                          ->where('is_published', true);
                           });
@@ -2819,14 +2822,14 @@ class AdminController extends Controller
                 }
                 break;
 
-            case 'instructor':
-                $instructorId = $request->input('instructor_id');
-                if ($instructorId) {
-                    // Récupérer les utilisateurs inscrits à des cours de ce formateur
-                    $query->whereHas('enrollments', function($q) use ($instructorId) {
+            case 'provider':
+                $providerId = $request->input('provider_id');
+                if ($providerId) {
+                    // Récupérer les utilisateurs inscrits à des cours de ce prestataire
+                    $query->whereHas('enrollments', function($q) use ($providerId) {
                         $q->where('status', 'active')
-                          ->whereHas('course', function($courseQuery) use ($instructorId) {
-                              $courseQuery->where('instructor_id', $instructorId)
+                          ->whereHas('content', function($courseQuery) use ($providerId) {
+                              $courseQuery->where('provider_id', $providerId)
                                          ->where('is_published', true);
                           });
                     });
@@ -2881,6 +2884,48 @@ class AdminController extends Controller
                     }
                 } else {
                     return collect();
+                }
+                break;
+
+            case 'downloaded_free':
+                $downloadedContentId = $request->input('downloaded_content_id');
+                // Utilisateurs ayant téléchargé au moins une fois un contenu téléchargeable gratuit
+                $query->whereHas('downloads', function($q) use ($downloadedContentId) {
+                    $q->whereHas('content', function($contentQuery) use ($downloadedContentId) {
+                        $contentQuery->where('is_downloadable', true)
+                                    ->where('is_free', true)
+                                    ->where('is_published', true);
+                        if ($downloadedContentId) {
+                            $contentQuery->where('id', $downloadedContentId);
+                        }
+                    });
+                });
+                break;
+
+            case 'purchased':
+                $purchaseType = $request->input('purchase_type', 'any');
+                $purchasedContentId = $request->input('purchased_content_id');
+                
+                if ($purchaseType === 'specific_content' && $purchasedContentId) {
+                    // Utilisateurs ayant acheté un contenu spécifique
+                    $query->whereHas('orders', function($orderQuery) use ($purchasedContentId) {
+                        $orderQuery->whereIn('status', ['paid', 'completed'])
+                                   ->whereHas('orderItems', function($itemQuery) use ($purchasedContentId) {
+                                       $itemQuery->where('content_id', $purchasedContentId);
+                                   });
+                    });
+                } else {
+                    // Utilisateurs ayant effectué des achats selon le type
+                    $query->whereHas('orders', function($orderQuery) use ($purchaseType) {
+                        if ($purchaseType === 'paid') {
+                            $orderQuery->where('status', 'paid');
+                        } elseif ($purchaseType === 'completed') {
+                            $orderQuery->where('status', 'completed');
+                        } else {
+                            // 'any' - tous les utilisateurs ayant des commandes payées ou complétées
+                            $orderQuery->whereIn('status', ['paid', 'completed']);
+                        }
+                    });
                 }
                 break;
 
@@ -3072,10 +3117,10 @@ class AdminController extends Controller
             });
     }
 
-    protected function notifyStudentsOfNewCourse(Course $course): void
+    protected function notifyCustomersOfNewCourse(Course $course): void
     {
         // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-        User::students()
+        User::customers()
             ->where('is_active', true)
             ->chunk(200, function ($users) use ($course) {
                 Notification::sendNow($users, new CoursePublishedNotification($course));
@@ -3084,13 +3129,13 @@ class AdminController extends Controller
 
     protected function notifyInstructorCourseModeration(Course $course, string $status): void
     {
-        $instructor = $course->instructor;
-        if (!$instructor) {
+        $provider = $course->provider;
+        if (!$provider) {
             return;
         }
 
         // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-        Notification::sendNow($instructor, new CourseModerationNotification($course, $status));
+        Notification::sendNow($provider, new CourseModerationNotification($course, $status));
     }
 
     // Gestion des partenaires
@@ -3400,9 +3445,9 @@ class AdminController extends Controller
                 ->get(),
         ];
 
-        // Cours avec le plus d'étudiants
+        // Contenus avec le plus de clients
         $topCourses = Course::published()
-            ->with(['instructor', 'category'])
+            ->with(['provider', 'category'])
             ->withCount('enrollments')
             ->orderBy('enrollments_count', 'desc')
             ->limit(10)
@@ -3410,7 +3455,7 @@ class AdminController extends Controller
 
         // Cours les mieux notés
         $topRatedCourses = Course::published()
-            ->with(['instructor', 'category'])
+            ->with(['provider', 'category'])
             ->withAvg('reviews', 'rating')
             ->having('reviews_avg_rating', '>', 0)
             ->orderBy('reviews_avg_rating', 'desc')
@@ -3511,7 +3556,7 @@ class AdminController extends Controller
     {
         $settings = Setting::all()->keyBy('key');
         $baseCurrency = Setting::getBaseCurrency();
-        $commissionPercentage = Setting::get('external_instructor_commission_percentage', 20);
+        $commissionPercentage = Setting::get('external_provider_commission_percentage', 20);
         
         // Paramètres Wallet
         $walletSettings = [
@@ -3546,7 +3591,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'base_currency' => 'required|string|size:3|uppercase',
-            'external_instructor_commission_percentage' => 'nullable|numeric|min:0|max:100',
+            'external_provider_commission_percentage' => 'nullable|numeric|min:0|max:100',
             'ambassador_commission_rate' => 'nullable|numeric|min:0|max:100',
             // Paramètres Wallet
             'wallet_holding_period_days' => 'nullable|integer|min:0|max:365',
@@ -3555,8 +3600,8 @@ class AdminController extends Controller
 
         Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
         
-        if ($request->has('external_instructor_commission_percentage')) {
-            Setting::set('external_instructor_commission_percentage', $request->external_instructor_commission_percentage, 'number', 'Pourcentage de commission retenu sur les paiements aux formateurs externes');
+        if ($request->has('external_provider_commission_percentage')) {
+            Setting::set('external_provider_commission_percentage', $request->external_provider_commission_percentage, 'number', 'Pourcentage de commission retenu sur les paiements aux prestataires externes');
         }
 
         if ($request->has('ambassador_commission_rate')) {
@@ -3597,20 +3642,20 @@ class AdminController extends Controller
     }
 
     /**
-     * Afficher la liste des payouts aux formateurs externes
+     * Afficher la liste des payouts aux prestataires externes
      */
-    public function instructorPayouts(Request $request)
+    public function providerPayouts(Request $request)
     {
-        $query = InstructorPayout::with(['instructor', 'order', 'course']);
+        $query = ProviderPayout::with(['provider', 'order', 'course']);
 
         // Filtre par statut
         if ($request->filled('status')) {
             $query->where('status', $request->get('status'));
         }
 
-        // Filtre par formateur
-        if ($request->filled('instructor_id')) {
-            $query->where('instructor_id', $request->get('instructor_id'));
+        // Filtre par prestataire
+        if ($request->input('provider_id')) {
+            $query->where('provider_id', $request->input('provider_id'));
         }
 
         // Recherche par payout_id ou order_number
@@ -3638,21 +3683,21 @@ class AdminController extends Controller
 
         // Statistiques
         $stats = [
-            'total' => InstructorPayout::count(),
-            'pending' => InstructorPayout::where('status', 'pending')->count(),
-            'processing' => InstructorPayout::where('status', 'processing')->count(),
-            'completed' => InstructorPayout::where('status', 'completed')->count(),
-            'failed' => InstructorPayout::where('status', 'failed')->count(),
-            'total_amount' => InstructorPayout::where('status', 'completed')->sum('amount'),
-            'total_commission' => InstructorPayout::where('status', 'completed')->sum('commission_amount'),
+            'total' => ProviderPayout::count(),
+            'pending' => ProviderPayout::where('status', 'pending')->count(),
+            'processing' => ProviderPayout::where('status', 'processing')->count(),
+            'completed' => ProviderPayout::where('status', 'completed')->count(),
+            'failed' => ProviderPayout::where('status', 'failed')->count(),
+            'total_amount' => ProviderPayout::where('status', 'completed')->sum('amount'),
+            'total_commission' => ProviderPayout::where('status', 'completed')->sum('commission_amount'),
         ];
 
-        // Liste des formateurs externes pour le filtre
-        $instructors = User::where('is_external_instructor', true)
-            ->where('role', 'instructor')
+        // Liste des prestataires externes pour le filtre
+        $providers = User::where('is_external_provider', true)
+            ->where('role', 'provider')
             ->get();
 
-        return view('admin.instructor-payouts.index', compact('payouts', 'stats', 'instructors'));
+        return view('admin.provider-payouts.index', compact('payouts', 'stats', 'providers'));
     }
 
     /**
@@ -3691,45 +3736,45 @@ class AdminController extends Controller
     }
 
     /**
-     * Gérer les candidatures formateur
+     * Gérer les candidatures prestataire
      */
-    public function instructorApplications(Request $request)
+    public function providerApplications(Request $request)
     {
-        $tab = $request->get('tab', 'instructors'); // Par défaut: formateurs
+        $tab = $request->get('tab', 'providers'); // Par défaut: prestataires
 
-        // Tab: Formateurs
-        if ($tab === 'instructors') {
-            // Récupérer tous les formateurs (avec ou sans candidature)
-            $instructorsQuery = User::where('role', 'instructor')
-                ->with(['instructorApplication.reviewer']);
+        // Tab: Prestataires
+        if ($tab === 'providers') {
+            // Récupérer tous les prestataires (avec ou sans candidature)
+            $providersQuery = User::where('role', 'provider')
+                ->with(['providerApplication.reviewer']);
 
             // Recherche par nom ou email
             if ($request->filled('search')) {
                 $search = $request->get('search');
-                $instructorsQuery->where(function($q) use ($search) {
+                $providersQuery->where(function($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%");
                 });
             }
 
-            $allInstructors = $instructorsQuery->get();
+            $allProviders = $providersQuery->get();
 
-            // Créer une collection combinée de candidatures réelles et formateurs sans candidature
+            // Créer une collection combinée de candidatures réelles et prestataires sans candidature
             $combinedApplications = collect();
 
-            foreach ($allInstructors as $instructor) {
-                if ($instructor->instructorApplication) {
-                    // Formateur avec candidature - utiliser la candidature réelle
-                    $combinedApplications->push($instructor->instructorApplication);
+            foreach ($allProviders as $provider) {
+                if ($provider->providerApplication) {
+                    // Prestataire avec candidature - utiliser la candidature réelle
+                    $combinedApplications->push($provider->providerApplication);
                 } else {
-                    // Formateur nommé directement par admin - créer un objet virtuel
-                    $virtualApplication = new InstructorApplication();
-                    $virtualApplication->id = 'virtual_' . $instructor->id;
-                    $virtualApplication->user_id = $instructor->id;
-                    $virtualApplication->user = $instructor;
-                    $virtualApplication->status = 'approved'; // Les formateurs nommés sont considérés comme approuvés
-                    $virtualApplication->created_at = $instructor->created_at;
-                    $virtualApplication->reviewed_at = $instructor->created_at;
+                    // Prestataire nommé directement par admin - créer un objet virtuel
+                    $virtualApplication = new ProviderApplication();
+                    $virtualApplication->id = 'virtual_' . $provider->id;
+                    $virtualApplication->user_id = $provider->id;
+                    $virtualApplication->user = $provider;
+                    $virtualApplication->status = 'approved'; // Les prestataires nommés sont considérés comme approuvés
+                    $virtualApplication->created_at = $provider->created_at;
+                    $virtualApplication->reviewed_at = $provider->created_at;
                     $virtualApplication->reviewed_by = null;
                     $virtualApplication->reviewer = null;
                     $virtualApplication->is_virtual = true; // Marqueur pour identifier les candidatures virtuelles
@@ -3785,30 +3830,30 @@ class AdminController extends Controller
                 ['path' => $request->url(), 'query' => $request->query()]
             );
 
-            // Statistiques (incluant les formateurs nommés directement)
+            // Statistiques (incluant les prestataires nommés directement)
             $stats = [
-                'total' => $allInstructors->count(),
+                'total' => $allProviders->count(),
                 'pending' => $combinedApplications->where('status', 'pending')->count(),
                 'under_review' => $combinedApplications->where('status', 'under_review')->count(),
                 'approved' => $combinedApplications->where('status', 'approved')->count(),
                 'rejected' => $combinedApplications->where('status', 'rejected')->count(),
             ];
 
-            return view('admin.instructor-applications.index', compact('applications', 'stats', 'tab'));
+            return view('admin.provider-applications.index', compact('applications', 'stats', 'tab'));
         }
 
-        // Tab: Paiements (intégration de instructorPayouts)
+        // Tab: Paiements (intégration de providerPayouts)
         if ($tab === 'payouts') {
-            $payoutQuery = InstructorPayout::with(['instructor', 'order', 'course']);
+            $payoutQuery = ProviderPayout::with(['provider', 'order', 'course']);
 
             // Filtre par statut
             if ($request->filled('status')) {
                 $payoutQuery->where('status', $request->get('status'));
             }
 
-            // Filtre par formateur
-            if ($request->filled('instructor_id')) {
-                $payoutQuery->where('instructor_id', $request->get('instructor_id'));
+            // Filtre par prestataire
+            if ($request->input('provider_id')) {
+                $payoutQuery->where('provider_id', $request->input('provider_id'));
             }
 
             // Recherche par payout_id ou order_number
@@ -3836,26 +3881,26 @@ class AdminController extends Controller
 
             // Statistiques
             $payoutStats = [
-                'total' => InstructorPayout::count(),
-                'pending' => InstructorPayout::where('status', 'pending')->count(),
-                'processing' => InstructorPayout::where('status', 'processing')->count(),
-                'completed' => InstructorPayout::where('status', 'completed')->count(),
-                'failed' => InstructorPayout::where('status', 'failed')->count(),
-                'total_amount' => InstructorPayout::where('status', 'completed')->sum('amount'),
-                'total_commission' => InstructorPayout::where('status', 'completed')->sum('commission_amount'),
+                'total' => ProviderPayout::count(),
+                'pending' => ProviderPayout::where('status', 'pending')->count(),
+                'processing' => ProviderPayout::where('status', 'processing')->count(),
+                'completed' => ProviderPayout::where('status', 'completed')->count(),
+                'failed' => ProviderPayout::where('status', 'failed')->count(),
+                'total_amount' => ProviderPayout::where('status', 'completed')->sum('amount'),
+                'total_commission' => ProviderPayout::where('status', 'completed')->sum('commission_amount'),
             ];
 
-            // Liste des formateurs externes pour le filtre
-            $instructors = User::where('is_external_instructor', true)
-                ->where('role', 'instructor')
+            // Liste des prestataires externes pour le filtre
+            $providers = User::where('is_external_provider', true)
+                ->where('role', 'provider')
                 ->get();
 
-            return view('admin.instructor-applications.index', compact('payouts', 'payoutStats', 'instructors', 'tab'));
+            return view('admin.provider-applications.index', compact('payouts', 'payoutStats', 'providers', 'tab'));
         }
 
         // Tab: Candidatures
         if ($tab === 'applications') {
-            $applicationsQuery = InstructorApplication::with(['user', 'reviewer']);
+            $applicationsQuery = ProviderApplication::with(['user', 'reviewer']);
 
             // Recherche par nom ou email
             if ($request->filled('search')) {
@@ -3885,33 +3930,33 @@ class AdminController extends Controller
 
             // Statistiques
             $applicationStats = [
-                'total' => InstructorApplication::count(),
-                'pending' => InstructorApplication::where('status', 'pending')->count(),
-                'under_review' => InstructorApplication::where('status', 'under_review')->count(),
-                'approved' => InstructorApplication::where('status', 'approved')->count(),
-                'rejected' => InstructorApplication::where('status', 'rejected')->count(),
+                'total' => ProviderApplication::count(),
+                'pending' => ProviderApplication::where('status', 'pending')->count(),
+                'under_review' => ProviderApplication::where('status', 'under_review')->count(),
+                'approved' => ProviderApplication::where('status', 'approved')->count(),
+                'rejected' => ProviderApplication::where('status', 'rejected')->count(),
             ];
 
-            return view('admin.instructor-applications.index', compact('applications', 'applicationStats', 'tab'));
+            return view('admin.provider-applications.index', compact('applications', 'applicationStats', 'tab'));
         }
 
-        // Par défaut, retourner le tab formateurs
-        return redirect()->route('admin.instructor-applications', ['tab' => 'instructors']);
+        // Par défaut, retourner le tab prestataires
+        return redirect()->route('admin.provider-applications', ['tab' => 'providers']);
     }
 
     /**
      * Afficher une candidature
      */
-    public function showInstructorApplication(InstructorApplication $application)
+    public function showProviderApplication(ProviderApplication $application)
     {
         $application->load(['user', 'reviewer']);
-        return view('admin.instructor-applications.show', compact('application'));
+            return view('admin.provider-applications.show', compact('application'));
     }
 
     /**
      * Mettre à jour le statut d'une candidature
      */
-    public function updateInstructorApplicationStatus(Request $request, InstructorApplication $application)
+    public function updateProviderApplicationStatus(Request $request, ProviderApplication $application)
     {
         $request->validate([
             'status' => 'required|in:pending,under_review,approved,rejected',
@@ -3928,7 +3973,7 @@ class AdminController extends Controller
         // Si approuvée, changer le rôle de l'utilisateur
         if ($request->status === 'approved') {
             $application->user->update([
-                'role' => 'instructor'
+                'role' => 'provider'
             ]);
         }
 
@@ -3938,10 +3983,10 @@ class AdminController extends Controller
 
         if ($application->user) {
             // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-            Notification::sendNow($application->user, new InstructorApplicationStatusUpdated($application));
+            Notification::sendNow($application->user, new ProviderApplicationStatusUpdated($application));
         }
 
-        return redirect()->route('admin.instructor-applications.show', $application)
+        return redirect()->route('admin.provider-applications.show', $application)
             ->with('success', 'Statut de la candidature mis à jour avec succès.');
     }
 
@@ -4044,7 +4089,7 @@ class AdminController extends Controller
      */
     public function reviews(Request $request)
     {
-        $query = Review::with(['user', 'course.instructor', 'course.category']);
+        $query = Review::with(['user', 'course.provider', 'course.category']);
 
         // Recherche par nom d'utilisateur, titre de cours ou commentaire
         if ($request->filled('search')) {
@@ -4078,8 +4123,8 @@ class AdminController extends Controller
         }
 
         // Filtre par cours
-        if ($request->filled('course_id')) {
-            $query->where('course_id', $request->get('course_id'));
+        if ($request->filled('content_id')) {
+            $query->where('content_id', $request->get('content_id'));
         }
 
         // Tri
@@ -4118,7 +4163,7 @@ class AdminController extends Controller
         $review->update(['is_approved' => true]);
 
         // Recalculer la note moyenne du cours
-        $this->recalculateCourseRating($review->course_id);
+        $this->recalculateCourseRating($review->content_id);
 
         return redirect()->route('admin.reviews')
             ->with('success', 'Avis approuvé avec succès.');
@@ -4132,7 +4177,7 @@ class AdminController extends Controller
         $review->update(['is_approved' => false]);
 
         // Recalculer la note moyenne du cours
-        $this->recalculateCourseRating($review->course_id);
+        $this->recalculateCourseRating($review->content_id);
 
         return redirect()->route('admin.reviews')
             ->with('success', 'Avis rejeté avec succès.');
@@ -4143,11 +4188,11 @@ class AdminController extends Controller
      */
     public function deleteReview(Review $review)
     {
-        $courseId = $review->course_id;
+        $contentId = $review->content_id;
         $review->delete();
 
         // Recalculer la note moyenne du cours
-        $this->recalculateCourseRating($courseId);
+        $this->recalculateCourseRating($contentId);
 
         return redirect()->route('admin.reviews')
             ->with('success', 'Avis supprimé avec succès.');
@@ -4156,9 +4201,9 @@ class AdminController extends Controller
     /**
      * Recalculer la note moyenne et le nombre d'avis d'un cours
      */
-    private function recalculateCourseRating($courseId)
+    private function recalculateCourseRating($contentId)
     {
-        $course = Course::find($courseId);
+        $course = Course::find($contentId);
         if (!$course) {
             return;
         }
@@ -4174,7 +4219,7 @@ class AdminController extends Controller
     // Gestion des certificats
     public function certificates(Request $request)
     {
-        $query = Certificate::with(['user', 'course.instructor', 'course.category']);
+        $query = Certificate::with(['user', 'course.provider', 'course.category']);
 
         // Recherche par nom d'utilisateur, titre de cours, numéro de certificat
         if ($request->filled('search')) {
@@ -4198,8 +4243,8 @@ class AdminController extends Controller
         }
 
         // Filtre par cours
-        if ($request->filled('course_id')) {
-            $query->where('course_id', $request->get('course_id'));
+        if ($request->filled('content_id')) {
+            $query->where('content_id', $request->get('content_id'));
         }
 
         // Tri
@@ -4241,7 +4286,7 @@ class AdminController extends Controller
      */
     public function showCertificate(Certificate $certificate)
     {
-        $certificate->load(['user', 'course.instructor', 'course.category']);
+        $certificate->load(['user', 'course.provider', 'course.category']);
         return view('admin.certificates.show', compact('certificate'));
     }
 
@@ -4391,11 +4436,11 @@ class AdminController extends Controller
                 }
             }
         } elseif ($type === 'course') {
-            $courseId = $request->get('course_id');
-            if ($courseId) {
+            $contentId = $request->get('content_id');
+            if ($contentId) {
                 // Récupérer les utilisateurs inscrits à ce cours
-                $query->whereHas('enrollments', function($q) use ($courseId) {
-                    $q->where('course_id', $courseId)
+                $query->whereHas('enrollments', function($q) use ($contentId) {
+                    $q->where('content_id', $contentId)
                       ->where('status', 'active');
                 });
             }
@@ -4405,20 +4450,20 @@ class AdminController extends Controller
                 // Récupérer les utilisateurs inscrits à des cours de cette catégorie
                 $query->whereHas('enrollments', function($q) use ($categoryId) {
                     $q->where('status', 'active')
-                      ->whereHas('course', function($courseQuery) use ($categoryId) {
+                      ->whereHas('content', function($courseQuery) use ($categoryId) {
                           $courseQuery->where('category_id', $categoryId)
                                      ->where('is_published', true);
                       });
                 });
             }
-        } elseif ($type === 'instructor') {
-            $instructorId = $request->get('instructor_id');
-            if ($instructorId) {
-                // Récupérer les utilisateurs inscrits à des cours de ce formateur
-                $query->whereHas('enrollments', function($q) use ($instructorId) {
+        } elseif ($type === 'provider') {
+            $providerId = $request->input('provider_id');
+            if ($providerId) {
+                // Récupérer les utilisateurs inscrits à des cours de ce prestataire
+                $query->whereHas('enrollments', function($q) use ($providerId) {
                     $q->where('status', 'active')
-                      ->whereHas('course', function($courseQuery) use ($instructorId) {
-                          $courseQuery->where('instructor_id', $instructorId)
+                      ->whereHas('content', function($courseQuery) use ($providerId) {
+                          $courseQuery->where('provider_id', $providerId)
                                      ->where('is_published', true);
                       });
                 });
@@ -4477,21 +4522,21 @@ class AdminController extends Controller
     public function sendWhatsApp(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,role,course,category,instructor,registration_date,activity,selected,single',
+            'recipient_type' => 'required|in:all,role,course,category,provider,registration_date,activity,selected,single',
             'message' => 'required|string|max:4096',
             'send_type' => 'required|in:now',
             'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
-            'course_id' => 'nullable|required_if:recipient_type,course|exists:courses,id',
+            'roles.*' => 'in:customer,provider,admin,affiliate,ambassador',
+            'content_id' => 'nullable|required_if:recipient_type,course|exists:contents,id',
             'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
-            'instructor_id' => 'nullable|required_if:recipient_type,instructor|exists:users,id',
+            'provider_id' => 'nullable|required_if:recipient_type,provider|exists:users,id',
             'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
             'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
             'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
             'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
             'user_ids' => 'nullable|required_if:recipient_type,selected|string',
             'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
+            'roles.*' => 'in:customer,provider,admin,affiliate,ambassador',
             'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
             'user_ids' => 'nullable|required_if:recipient_type,selected|string',
         ]);
@@ -4622,10 +4667,10 @@ class AdminController extends Controller
                 break;
 
             case 'course':
-                $courseId = $request->input('course_id');
-                if ($courseId) {
-                    $query->whereHas('enrollments', function($q) use ($courseId) {
-                        $q->where('course_id', $courseId)->where('status', 'active');
+                $contentId = $request->input('content_id');
+                if ($contentId) {
+                    $query->whereHas('enrollments', function($q) use ($contentId) {
+                        $q->where('content_id', $contentId)->where('status', 'active');
                     });
                 } else {
                     return collect();
@@ -4637,7 +4682,7 @@ class AdminController extends Controller
                 if ($categoryId) {
                     $query->whereHas('enrollments', function($q) use ($categoryId) {
                         $q->where('status', 'active')
-                          ->whereHas('course', function($courseQuery) use ($categoryId) {
+                          ->whereHas('content', function($courseQuery) use ($categoryId) {
                               $courseQuery->where('category_id', $categoryId)->where('is_published', true);
                           });
                     });
@@ -4646,13 +4691,13 @@ class AdminController extends Controller
                 }
                 break;
 
-            case 'instructor':
-                $instructorId = $request->input('instructor_id');
-                if ($instructorId) {
-                    $query->whereHas('enrollments', function($q) use ($instructorId) {
+            case 'provider':
+                $providerId = $request->input('provider_id');
+                if ($providerId) {
+                    $query->whereHas('enrollments', function($q) use ($providerId) {
                         $q->where('status', 'active')
-                          ->whereHas('course', function($courseQuery) use ($instructorId) {
-                              $courseQuery->where('instructor_id', $instructorId)->where('is_published', true);
+                          ->whereHas('content', function($courseQuery) use ($providerId) {
+                              $courseQuery->where('provider_id', $providerId)->where('is_published', true);
                           });
                     });
                 } else {
@@ -4688,6 +4733,48 @@ class AdminController extends Controller
                     }
                 } else {
                     return collect();
+                }
+                break;
+
+            case 'downloaded_free':
+                $downloadedContentId = $request->input('downloaded_content_id');
+                // Utilisateurs ayant téléchargé au moins une fois un contenu téléchargeable gratuit
+                $query->whereHas('downloads', function($q) use ($downloadedContentId) {
+                    $q->whereHas('content', function($contentQuery) use ($downloadedContentId) {
+                        $contentQuery->where('is_downloadable', true)
+                                    ->where('is_free', true)
+                                    ->where('is_published', true);
+                        if ($downloadedContentId) {
+                            $contentQuery->where('id', $downloadedContentId);
+                        }
+                    });
+                });
+                break;
+
+            case 'purchased':
+                $purchaseType = $request->input('purchase_type', 'any');
+                $purchasedContentId = $request->input('purchased_content_id');
+                
+                if ($purchaseType === 'specific_content' && $purchasedContentId) {
+                    // Utilisateurs ayant acheté un contenu spécifique
+                    $query->whereHas('orders', function($orderQuery) use ($purchasedContentId) {
+                        $orderQuery->whereIn('status', ['paid', 'completed'])
+                                   ->whereHas('orderItems', function($itemQuery) use ($purchasedContentId) {
+                                       $itemQuery->where('content_id', $purchasedContentId);
+                                   });
+                    });
+                } else {
+                    // Utilisateurs ayant effectué des achats selon le type
+                    $query->whereHas('orders', function($orderQuery) use ($purchaseType) {
+                        if ($purchaseType === 'paid') {
+                            $orderQuery->where('status', 'paid');
+                        } elseif ($purchaseType === 'completed') {
+                            $orderQuery->where('status', 'completed');
+                        } else {
+                            // 'any' - tous les utilisateurs ayant des commandes payées ou complétées
+                            $orderQuery->whereIn('status', ['paid', 'completed']);
+                        }
+                    });
                 }
                 break;
 
@@ -4860,14 +4947,14 @@ class AdminController extends Controller
     public function sendCombined(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,role,course,category,instructor,registration_date,activity,selected,single',
+            'recipient_type' => 'required|in:all,role,course,category,provider,registration_date,activity,selected,single',
             'subject' => 'required|string|max:255',
             'email_content' => 'required|string',
             'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
-            'course_id' => 'nullable|required_if:recipient_type,course|exists:courses,id',
+            'roles.*' => 'in:customer,provider,admin,affiliate,ambassador',
+            'content_id' => 'nullable|required_if:recipient_type,course|exists:contents,id',
             'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
-            'instructor_id' => 'nullable|required_if:recipient_type,instructor|exists:users,id',
+            'provider_id' => 'nullable|required_if:recipient_type,provider|exists:users,id',
             'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
             'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
             'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
@@ -4877,7 +4964,7 @@ class AdminController extends Controller
             'send_email' => 'nullable|boolean',
             'send_whatsapp' => 'nullable|boolean',
             'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:student,instructor,admin,affiliate,ambassador',
+            'roles.*' => 'in:customer,provider,admin,affiliate,ambassador',
             'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
             'user_ids' => 'nullable|required_if:recipient_type,selected|string',
             'attachments' => 'nullable|array',

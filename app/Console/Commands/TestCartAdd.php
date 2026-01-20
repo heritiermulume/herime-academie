@@ -30,7 +30,7 @@ class TestCartAdd extends Command
     public function handle()
     {
         $userId = $this->option('user-id') ?? 5;
-        $courseId = $this->option('course-id') ?? 6;
+        $contentId = $this->option('course-id') ?? 6;
         
         $user = User::find($userId);
         if (!$user) {
@@ -41,9 +41,9 @@ class TestCartAdd extends Command
         auth()->login($user);
         $this->info("Test avec l'utilisateur: {$user->name} (ID: {$user->id})");
         
-        $course = Course::find($courseId);
+        $course = Course::find($contentId);
         if (!$course) {
-            $this->error("Cours avec l'ID {$courseId} non trouvé.");
+            $this->error("Cours avec l'ID {$contentId} non trouvé.");
             return 1;
         }
         
@@ -61,7 +61,7 @@ class TestCartAdd extends Command
         // Vérifier si le cours est déjà dans le panier
         $this->newLine();
         $this->info('2. Vérification des conditions:');
-        $isInCart = $user->cartItems()->where('course_id', $courseId)->exists();
+        $isInCart = $user->cartItems()->where('content_id', $contentId)->exists();
         $this->info("   Cours déjà dans le panier: " . ($isInCart ? 'Oui' : 'Non'));
         
         $isFree = $course->is_free;
@@ -86,7 +86,7 @@ class TestCartAdd extends Command
         
         $cartController = new CartController();
         $request = new Request();
-        $request->merge(['course_id' => $courseId]);
+        $request->merge(['content_id' => $contentId]);
         
         try {
             $response = $cartController->add($request);
@@ -104,7 +104,7 @@ class TestCartAdd extends Command
             $cartItemsFinal = $user->cartItems()->with('course')->get();
             $this->info("   Nombre d'articles: " . $cartItemsFinal->count());
             foreach ($cartItemsFinal as $item) {
-                $this->line("   - {$item->course->title} (ID: {$item->course_id})");
+                $this->line("   - {$item->course->title} (ID: {$item->content_id})");
             }
             
         } catch (\Exception $e) {

@@ -43,7 +43,7 @@ class HandleUploadErrors
 
         // Vérifier les erreurs d'upload PHP (compatible tests et différents serveurs)
         $routeName = $request->route()?->getName();
-        $isChunkUpload = in_array($routeName, ['admin.uploads.chunk', 'instructor.uploads.chunk'], true);
+        $isChunkUpload = in_array($routeName, ['admin.uploads.chunk', 'provider.uploads.chunk'], true);
 
         // Pour les routes de chunk upload, vérifier aussi les erreurs PHP
         if ($request->isMethod('post') && $request->hasFile('file')) {

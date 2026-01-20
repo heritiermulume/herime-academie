@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
         box-sizing: border-box !important;
     }
 
-    .instructor-admin-shell {
+    .provider-admin-shell {
         overflow-x: hidden;
         max-width: 100vw;
     }

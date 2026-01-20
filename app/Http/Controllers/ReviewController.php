@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\Review;
+use App\Models\CourseDownload;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,10 +24,69 @@ class ReviewController extends Controller
 
         $user = Auth::user();
 
-        // Vérifier que l'utilisateur est inscrit au cours ou que le cours est gratuit
-        if (!$course->isEnrolledBy($user->id) && !$course->is_free) {
-            return redirect()->route('courses.show', $course)
-                ->with('error', 'Vous devez être inscrit à ce cours pour le noter.');
+        // Vérifier les conditions selon le type de contenu
+        $canReview = false;
+        $errorMessage = '';
+
+        if ($course->is_downloadable) {
+            // Contenu téléchargeable
+            if ($course->is_free) {
+                // Téléchargeable gratuit : avoir téléchargé au moins une fois
+                $hasDownloaded = CourseDownload::where('content_id', $course->id)
+                    ->where('user_id', $user->id)
+                    ->exists();
+                
+                if ($hasDownloaded) {
+                    $canReview = true;
+                } else {
+                    $errorMessage = 'Vous devez avoir téléchargé ce produit digital au moins une fois pour pouvoir le noter.';
+                }
+            } else {
+                // Téléchargeable payant : avoir payé
+                $hasPurchased = Order::where('user_id', $user->id)
+                    ->whereIn('status', ['paid', 'completed'])
+                    ->whereHas('orderItems', function ($query) use ($course) {
+                        $query->where('content_id', $course->id);
+                    })
+                    ->exists();
+                
+                if ($hasPurchased) {
+                    $canReview = true;
+                } else {
+                    $errorMessage = 'Vous devez avoir acheté ce produit digital pour pouvoir le noter.';
+                }
+            }
+        } else {
+            // Contenu non téléchargeable
+            if ($course->is_free) {
+                // Non téléchargeable gratuit : être inscrit
+                $isEnrolled = $course->isEnrolledBy($user->id);
+                
+                if ($isEnrolled) {
+                    $canReview = true;
+                } else {
+                    $errorMessage = 'Vous devez être inscrit à ce contenu pour pouvoir le noter.';
+                }
+            } else {
+                // Non téléchargeable payant : avoir payé
+                $hasPurchased = Order::where('user_id', $user->id)
+                    ->whereIn('status', ['paid', 'completed'])
+                    ->whereHas('orderItems', function ($query) use ($course) {
+                        $query->where('content_id', $course->id);
+                    })
+                    ->exists();
+                
+                if ($hasPurchased) {
+                    $canReview = true;
+                } else {
+                    $errorMessage = 'Vous devez avoir acheté ce contenu pour pouvoir le noter.';
+                }
+            }
+        }
+
+        if (!$canReview) {
+            return redirect()->route('contents.show', $course)
+                ->with('error', $errorMessage);
         }
 
         // Valider les données
@@ -36,7 +97,7 @@ class ReviewController extends Controller
 
         // Vérifier si l'utilisateur a déjà un avis pour ce cours
         $existingReview = Review::where('user_id', $user->id)
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->first();
 
         if ($existingReview) {
@@ -47,19 +108,19 @@ class ReviewController extends Controller
                 'is_approved' => true, // Approuver automatiquement après modification
             ]);
 
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('success', 'Votre avis a été mis à jour avec succès.');
         } else {
             // Créer un nouvel avis
             Review::create([
                 'user_id' => $user->id,
-                'course_id' => $course->id,
+                'content_id' => $course->id,
                 'rating' => $validated['rating'],
                 'comment' => $validated['comment'] ?? null,
                 'is_approved' => true, // Approuver automatiquement
             ]);
 
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('success', 'Votre avis a été publié avec succès.');
         }
     }
@@ -79,7 +140,7 @@ class ReviewController extends Controller
 
         // Trouver l'avis de l'utilisateur pour ce cours
         $review = Review::where('user_id', $user->id)
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->firstOrFail();
 
         // Vérifier que l'utilisateur est propriétaire de l'avis
@@ -89,7 +150,7 @@ class ReviewController extends Controller
 
         $review->delete();
 
-        return redirect()->route('courses.show', $course)
+        return redirect()->route('contents.show', $course)
             ->with('success', 'Votre avis a été supprimé avec succès.');
     }
 }

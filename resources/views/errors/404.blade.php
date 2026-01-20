@@ -40,7 +40,7 @@
                     <div class="mt-5 pt-4 border-top">
                         <p class="text-muted small mb-3">Vous pouvez aussi :</p>
                         <div class="d-flex flex-wrap justify-content-center gap-3">
-                            <a href="{{ route('courses.index') }}" class="text-decoration-none" style="color: #003366;">
+                            <a href="{{ route('contents.index') }}" class="text-decoration-none" style="color: #003366;">
                                 <i class="fas fa-book me-1"></i>Explorer les cours
                             </a>
                             <a href="{{ route('blog.index') }}" class="text-decoration-none" style="color: #003366;">

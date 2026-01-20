@@ -40,50 +40,50 @@ class HomeController extends Controller
         // Récupérer les données pour la page d'accueil
         $featuredCourses = Course::published()
             ->featured()
-            ->with(['instructor', 'category', 'reviews', 'enrollments'])
+            ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->latest()
             ->limit(3)
             ->get();
 
         $popularCourses = Course::published()
-            ->with(['instructor', 'category', 'reviews', 'enrollments'])
+            ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->popular()
             ->limit(8)
             ->get();
 
         $latestCourses = Course::published()
-            ->with(['instructor', 'category', 'reviews', 'enrollments'])
+            ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->latest()
             ->limit(6)
             ->get();
 
         $topRatedCourses = Course::published()
-            ->with(['instructor', 'category', 'reviews', 'enrollments'])
+            ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->topRated()
             ->limit(6)
             ->get();
 
         // Récupérer les catégories les plus populaires basées sur les inscriptions récentes
         $categories = Category::active()
-            ->withCount(['courses' => function($query) {
+            ->withCount(['contents' => function($query) {
                 $query->where('is_published', true);
             }])
-            ->withCount(['courses as recent_enrollments_count' => function($query) {
+            ->withCount(['contents as recent_enrollments_count' => function($query) {
                 $query->where('is_published', true)
                       ->whereHas('enrollments', function($subQuery) {
                           $subQuery->where('created_at', '>=', now()->subMonth());
                       });
             }])
             ->orderBy('recent_enrollments_count', 'desc')
-            ->orderBy('courses_count', 'desc')
+            ->orderBy('contents_count', 'desc')
             ->orderBy('sort_order', 'asc')
             ->limit(8)
             ->get();
 
-        $instructors = User::instructors()
+        $providers = User::providers()
             ->where('is_active', true)
-            ->withCount('courses')
-            ->orderBy('courses_count', 'desc')
+            ->withCount('contents')
+            ->orderBy('contents_count', 'desc')
             ->limit(6)
             ->get();
 
@@ -111,7 +111,7 @@ class HomeController extends Controller
 
         // Cours tendance (cours avec le plus d'inscriptions récentes)
         $trendingCourses = Course::published()
-            ->with(['instructor', 'category'])
+            ->with(['provider', 'category'])
             ->whereHas('enrollments', function($query) {
                 $query->where('created_at', '>=', now()->subWeek());
             })
@@ -135,7 +135,7 @@ class HomeController extends Controller
             'topRatedCourses',
             'trendingCourses',
             'categories',
-            'instructors',
+            'providers',
             'announcements',
             'partners',
             'testimonials'

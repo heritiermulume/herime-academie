@@ -18,7 +18,7 @@ class Enrollment extends Model
 
     protected $fillable = [
         'user_id',
-        'course_id',
+        'content_id',
         'order_id',
         'status',
         'progress',
@@ -56,7 +56,15 @@ class Enrollment extends Model
 
     public function course(): BelongsTo
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'content_id');
+    }
+
+    /**
+     * Alias pour compatibilité avec le nouveau nom
+     */
+    public function content(): BelongsTo
+    {
+        return $this->course();
     }
 
     public function order(): BelongsTo
@@ -120,15 +128,15 @@ class Enrollment extends Model
             if (!$course || !$user) {
                 \Log::warning("Impossible d'envoyer les notifications d'inscription: cours ou utilisateur manquant", [
                     'enrollment_id' => $this->id,
-                    'course_id' => $this->course_id,
+                    'content_id' => $this->content_id,
                     'user_id' => $this->user_id,
                 ]);
                 return;
             }
 
             // Charger les relations nécessaires du cours
-            if (!$course->relationLoaded('instructor')) {
-                $course->load('instructor');
+            if (!$course->relationLoaded('provider')) {
+                $course->load('provider');
             }
             if (!$course->relationLoaded('category')) {
                 $course->load('category');
@@ -140,7 +148,7 @@ class Enrollment extends Model
                 if (empty($user->email) || !filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
                     \Log::error("Email invalide pour l'utilisateur - impossible d'envoyer CourseEnrolledMail", [
                         'enrollment_id' => $this->id,
-                        'course_id' => $course->id,
+                        'content_id' => $course->id,
                         'user_id' => $user->id,
                         'user_email' => $user->email,
                     ]);
@@ -154,7 +162,7 @@ class Enrollment extends Model
                 
                 \Log::info("Email CourseEnrolledMail envoyé avec succès à {$user->email} pour le cours {$course->id}", [
                     'enrollment_id' => $this->id,
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                     'course_title' => $course->title,
@@ -163,7 +171,7 @@ class Enrollment extends Model
                 // Erreur de transport SMTP (connexion, authentification, etc.)
                 \Log::error("Erreur SMTP lors de l'envoi de l'email CourseEnrolledMail", [
                     'enrollment_id' => $this->id,
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                     'error' => $transportException->getMessage(),
@@ -175,7 +183,7 @@ class Enrollment extends Model
                 // Autres erreurs (validation, template, etc.)
                 \Log::error("Erreur lors de l'envoi de l'email CourseEnrolledMail", [
                     'enrollment_id' => $this->id,
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                     'error' => $emailException->getMessage(),
@@ -187,7 +195,7 @@ class Enrollment extends Model
                 // Capturer toutes les erreurs fatales
                 \Log::error("Erreur fatale lors de l'envoi de l'email CourseEnrolledMail", [
                     'enrollment_id' => $this->id,
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                     'error' => $throwable->getMessage(),
@@ -203,14 +211,14 @@ class Enrollment extends Model
                 
                 \Log::info("Notification CourseEnrolled envoyée à l'utilisateur {$user->id} pour le cours {$course->id}", [
                     'enrollment_id' => $this->id,
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'user_id' => $user->id,
                     'user_email' => $user->email,
                 ]);
             } catch (\Exception $notifException) {
                 \Log::error("Erreur lors de l'envoi de la notification CourseEnrolled", [
                     'enrollment_id' => $this->id,
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'user_id' => $user->id,
                     'error' => $notifException->getMessage(),
                     'trace' => $notifException->getTraceAsString(),
@@ -220,7 +228,7 @@ class Enrollment extends Model
         } catch (\Exception $e) {
             \Log::error("Erreur lors de l'envoi de la notification d'inscription", [
                 'enrollment_id' => $this->id,
-                'course_id' => $this->course_id,
+                'content_id' => $this->content_id,
                 'user_id' => $this->user_id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

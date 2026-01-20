@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::create('cart_items', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('content_id');
             $table->timestamps();
             
             // Index pour optimiser les requêtes
-            $table->index(['user_id', 'course_id']);
-            $table->unique(['user_id', 'course_id']); // Un seul article par cours par utilisateur
+            $table->index(['user_id', 'content_id']);
+            $table->unique(['user_id', 'content_id']); // Un seul article par cours par utilisateur
         });
     }
 

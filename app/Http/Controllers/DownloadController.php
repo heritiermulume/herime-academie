@@ -73,7 +73,7 @@ class DownloadController extends Controller
             $geoInfo = $this->getGeoInfoFromIp($ipAddress);
             
             CourseDownload::create([
-                'course_id' => $course->id,
+                'content_id' => $course->id,
                 'user_id' => Auth::id(),
                 'ip_address' => $ipAddress,
                 'user_agent' => $userAgent,
@@ -168,7 +168,7 @@ class DownloadController extends Controller
     {
         // Récupérer toutes les leçons publiées du cours avec leurs sections
         $course->load([
-            'instructor',
+            'provider',
             'category',
             'sections' => function($query) {
                 $query->where('is_published', true)->orderBy('sort_order');
@@ -252,7 +252,7 @@ class DownloadController extends Controller
         }
 
         // Vérifier si la leçon appartient au cours
-        if ($lesson->course_id !== $course->id) {
+        if ($lesson->content_id !== $course->id) {
             return back()->with('error', 'Cette leçon n\'appartient pas à ce cours.');
         }
 
@@ -302,7 +302,7 @@ class DownloadController extends Controller
                 $hasPaidOrder = \App\Models\Order::where('user_id', $userId)
                     ->whereIn('status', ['paid', 'completed'])
                     ->whereHas('orderItems', function($query) use ($course) {
-                        $query->where('course_id', $course->id);
+                        $query->where('content_id', $course->id);
                     })
                     ->exists();
 
@@ -346,7 +346,7 @@ class DownloadController extends Controller
         $hasPurchased = \App\Models\Order::where('user_id', $userId)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($query) use ($course) {
-                $query->where('course_id', $course->id);
+                $query->where('content_id', $course->id);
             })
             ->exists();
 
@@ -364,7 +364,7 @@ class DownloadController extends Controller
         $content .= "Description:\n";
         $content .= $course->description . "\n\n";
         
-        $content .= "Instructeur: " . $course->instructor->name . "\n";
+        $content .= "Prestataire: " . $course->provider->name . "\n";
         $content .= "Durée: " . $course->duration . " minutes\n";
         $content .= "Niveau: " . ucfirst($course->level) . "\n";
         $content .= "Catégorie: " . $course->category->name . "\n\n";
@@ -524,7 +524,7 @@ class DownloadController extends Controller
 <body>
     <div class="header">
         <h1>' . htmlspecialchars($course->title) . '</h1>
-        <p><strong>Instructeur:</strong> ' . htmlspecialchars($course->instructor->name) . '</p>
+        <p><strong>Prestataire:</strong> ' . htmlspecialchars($course->provider->name) . '</p>
         <p><strong>Durée:</strong> ' . $course->duration . ' minutes</p>
         <p><strong>Niveau:</strong> ' . ucfirst($course->level) . '</p>
     </div>

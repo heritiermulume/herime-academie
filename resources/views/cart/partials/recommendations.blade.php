@@ -2,7 +2,7 @@
 <div class="row g-3">
     @foreach($recommendedCourses as $course)
     <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-        <x-course-card-standard :course="$course" />
+        <x-contenu-card-standard :course="$course" />
     </div>
     @endforeach
 </div>

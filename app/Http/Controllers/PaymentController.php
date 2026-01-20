@@ -33,13 +33,13 @@ class PaymentController extends Controller
     public function process(Request $request)
     {
         $request->validate([
-            'course_id' => 'required|exists:courses,id',
+            'content_id' => 'required|exists:contents,id',
             'payment_method' => 'required|in:stripe,paypal,mobile_money',
             'coupon_code' => 'nullable|string',
             'affiliate_code' => 'nullable|string',
         ]);
 
-        $course = Course::findOrFail($request->course_id);
+        $course = Course::findOrFail($request->content_id);
         
         // Vérifier que le cours est publié
         if (!$course->is_published) {
@@ -129,7 +129,7 @@ class PaymentController extends Controller
 
         OrderItem::create([
             'order_id' => $order->id,
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'price' => $price,
             'sale_price' => $salePriceForOrder,
             'total' => $finalPrice,
@@ -281,13 +281,13 @@ class PaymentController extends Controller
             // Pour les cours non téléchargeables, créer l'inscription normalement
             // Vérifier si l'utilisateur n'est pas déjà inscrit
             $existingEnrollment = \App\Models\Enrollment::where('user_id', $order->user_id)
-                ->where('course_id', $item->course_id)
+                ->where('content_id', $item->content_id)
                 ->first();
 
             if (!$existingEnrollment) {
                 $enrollment = \App\Models\Enrollment::createAndNotify([
                     'user_id' => $order->user_id,
-                    'course_id' => $item->course_id,
+                    'content_id' => $item->content_id,
                     'order_id' => $order->id,
                     'status' => 'active',
                 ]);
@@ -467,13 +467,13 @@ class PaymentController extends Controller
                 // Pour les cours non téléchargeables, créer l'inscription normalement
                 // Vérifier si l'utilisateur n'est pas déjà inscrit
                 $existingEnrollment = \App\Models\Enrollment::where('user_id', $order->user_id)
-                    ->where('course_id', $item->course_id)
+                    ->where('content_id', $item->content_id)
                     ->first();
                 
                 if (!$existingEnrollment) {
                     $enrollment = \App\Models\Enrollment::createAndNotify([
                         'user_id' => $order->user_id,
-                        'course_id' => $item->course_id,
+                        'content_id' => $item->content_id,
                         'order_id' => $order->id,
                         'status' => 'active',
                     ]);
@@ -781,81 +781,81 @@ class PaymentController extends Controller
     }
 
     /**
-     * Traiter les paiements aux formateurs externes après un paiement réussi
+     * Traiter les paiements aux prestataires externes après un paiement réussi
      */
-    private function processExternalInstructorPayouts(Order $order)
+    private function processExternalProviderPayouts(Order $order)
     {
         try {
-            // Charger les orderItems avec les cours et leurs formateurs
-            $order->load(['orderItems.course.instructor']);
+            // Charger les orderItems avec les cours et leurs prestataires
+            $order->load(['orderItems.course.provider']);
 
             foreach ($order->orderItems as $orderItem) {
                 $course = $orderItem->course;
-                $instructor = $course->instructor;
+                $provider = $course->provider;
 
-                // Vérifier que le formateur existe
-                if (!$instructor) {
+                // Vérifier que le prestataire existe
+                if (!$provider) {
                     Log::warning("Formateur introuvable pour le cours", [
-                        'course_id' => $course->id,
+                        'content_id' => $course->id,
                         'order_id' => $order->id,
                     ]);
                     continue;
                 }
 
-                // Vérifier que c'est un formateur externe (is_external_instructor activé ET role = instructor)
-                if (!$instructor->isExternalInstructor()) {
-                    Log::info("Formateur non externe ou paiements automatiques non activés - paiement ignoré", [
-                        'instructor_id' => $instructor->id,
-                        'instructor_name' => $instructor->name,
-                        'instructor_role' => $instructor->role,
-                        'is_external_instructor' => $instructor->is_external_instructor,
-                        'course_id' => $course->id,
+                // Vérifier que c'est un prestataire externe (is_external_provider activé ET role = provider)
+                if (!$provider->isExternalProvider()) {
+                    Log::info("Prestataire non externe ou paiements automatiques non activés - paiement ignoré", [
+                        'provider_id' => $provider->id,
+                        'provider_name' => $provider->name,
+                        'provider_role' => $provider->role,
+                        'is_external_provider' => $provider->is_external_provider,
+                        'content_id' => $course->id,
                         'course_title' => $course->title,
                         'order_id' => $order->id,
-                        'message' => $instructor->role !== 'instructor' 
-                            ? 'L\'utilisateur n\'est pas un formateur' 
-                            : 'Le formateur n\'a pas activé l\'option "Activer les paiements automatiques" dans ses paramètres de paiement',
+                        'message' => $provider->role !== 'provider' 
+                            ? 'L\'utilisateur n\'est pas un prestataire' 
+                            : 'Le prestataire n\'a pas activé l\'option "Activer les paiements automatiques" dans ses paramètres de paiement',
                     ]);
                     continue;
                 }
 
                 // Vérifier que toutes les informations de paiement sont configurées
-                $phone = $instructor->moneroo_phone ?? $instructor->pawapay_phone;
-                $provider = $instructor->moneroo_provider ?? $instructor->pawapay_provider;
-                $country = $instructor->moneroo_country ?? $instructor->pawapay_country;
+                $phone = $provider->moneroo_phone ?? $provider->pawapay_phone;
+                $provider = $provider->moneroo_provider ?? $provider->pawapay_provider;
+                $country = $provider->moneroo_country ?? $provider->pawapay_country;
                 
                 if (!$phone || !$provider || !$country) {
-                    Log::warning("Formateur avec paiements automatiques activés mais informations Moneroo incomplètes", [
-                        'instructor_id' => $instructor->id,
-                        'instructor_name' => $instructor->name,
-                        'course_id' => $course->id,
+                    Log::warning("Prestataire avec paiements automatiques activés mais informations Moneroo incomplètes", [
+                        'provider_id' => $provider->id,
+                        'provider_name' => $provider->name,
+                        'content_id' => $course->id,
                         'course_title' => $course->title,
                         'order_id' => $order->id,
                         'has_phone' => !empty($phone),
                         'has_provider' => !empty($provider),
                         'has_country' => !empty($country),
-                        'message' => 'Le formateur a activé les paiements automatiques mais n\'a pas fourni toutes les informations de paiement nécessaires',
+                        'message' => 'Le prestataire a activé les paiements automatiques mais n\'a pas fourni toutes les informations de paiement nécessaires',
                     ]);
                     continue;
                 }
 
                 // Vérifier si un payout n'a pas déjà été créé pour cette commande et ce cours
                 $existingPayout = \App\Models\InstructorPayout::where('order_id', $order->id)
-                    ->where('course_id', $course->id)
+                    ->where('content_id', $course->id)
                     ->first();
 
                 if ($existingPayout) {
                     Log::info("Payout déjà créé pour ce cours et cette commande", [
                         'payout_id' => $existingPayout->payout_id,
                         'order_id' => $order->id,
-                        'course_id' => $course->id,
+                        'content_id' => $course->id,
                     ]);
                     continue;
                 }
 
                 // Calculer le montant à payer au formateur
                 $coursePrice = $orderItem->total; // Prix payé par l'étudiant (après réduction)
-                $commissionPercentage = Setting::get('external_instructor_commission_percentage', 20);
+                $commissionPercentage = Setting::get('external_provider_commission_percentage', 20);
                 $commissionAmount = ($coursePrice * $commissionPercentage) / 100;
                 $payoutAmount = $coursePrice - $commissionAmount;
 
@@ -865,14 +865,14 @@ class PaymentController extends Controller
                 // Initier le payout via Moneroo
                 $monerooPayoutService = new MonerooPayoutService();
                 $result = $monerooPayoutService->initiatePayout(
-                    $instructor->id,
+                    $provider->id,
                     $order->id,
                     $course->id,
                     $payoutAmount,
                     $currency,
-                    $instructor->moneroo_phone ?? $instructor->pawapay_phone,
-                    $instructor->moneroo_provider ?? $instructor->pawapay_provider,
-                    $instructor->moneroo_country ?? $instructor->pawapay_country
+                    $provider->moneroo_phone ?? $provider->pawapay_phone,
+                    $provider->moneroo_provider ?? $provider->pawapay_provider,
+                    $provider->moneroo_country ?? $provider->pawapay_country
                 );
 
                 if ($result['success']) {
@@ -883,18 +883,18 @@ class PaymentController extends Controller
                         'commission_amount' => $commissionAmount,
                     ]);
 
-                    Log::info("Payout initié avec succès pour le formateur externe", [
+                    Log::info("Payout initié avec succès pour le prestataire externe", [
                         'payout_id' => $result['payout_id'],
-                        'instructor_id' => $instructor->id,
-                        'course_id' => $course->id,
+                        'provider_id' => $provider->id,
+                        'content_id' => $course->id,
                         'order_id' => $order->id,
                         'amount' => $payoutAmount,
                         'commission' => $commissionAmount,
                     ]);
                 } else {
                     Log::error("Échec de l'initiation du payout pour le formateur externe", [
-                        'instructor_id' => $instructor->id,
-                        'course_id' => $course->id,
+                        'provider_id' => $provider->id,
+                        'content_id' => $course->id,
                         'order_id' => $order->id,
                         'error' => $result['error'] ?? 'Erreur inconnue',
                     ]);
@@ -902,7 +902,7 @@ class PaymentController extends Controller
             }
         } catch (\Exception $e) {
             // Logger l'erreur mais ne pas faire échouer le processus de paiement
-            Log::error("Erreur lors du traitement des payouts aux formateurs externes", [
+            Log::error("Erreur lors du traitement des payouts aux prestataires externes", [
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

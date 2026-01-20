@@ -46,7 +46,7 @@ class LessonNoteController extends Controller
 
         // Vérifier que le cours n'est pas téléchargeable
         if ($course->is_downloadable) {
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 
@@ -79,7 +79,7 @@ class LessonNoteController extends Controller
 
         $note = LessonNote::create([
             'user_id' => auth()->id(),
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'lesson_id' => $lesson->id,
             'content' => $validated['content'],
             'timestamp' => $validated['timestamp'] ?? null,
@@ -109,7 +109,7 @@ class LessonNoteController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
             }
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 
@@ -157,7 +157,7 @@ class LessonNoteController extends Controller
             if ($isAjax) {
                 return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
             }
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement.');
         }
 

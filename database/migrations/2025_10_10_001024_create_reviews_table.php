@@ -14,13 +14,13 @@ return new class extends Migration
         Schema::create('reviews', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('content_id');
             $table->integer('rating');
             $table->text('comment')->nullable();
             $table->boolean('is_approved')->default(false);
             $table->timestamps();
             
-            $table->unique(['user_id', 'course_id']);
+            $table->unique(['user_id', 'content_id']);
         });
     }
 

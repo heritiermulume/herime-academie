@@ -2,7 +2,7 @@
 
 @section('title', 'Gestion des avis')
 @section('admin-title', 'Avis et évaluations')
-@section('admin-subtitle', 'Gérez les avis et notes des étudiants sur les cours')
+@section('admin-subtitle', 'Gérez les avis et notes des clients sur les contenus')
 
 @section('admin-content')
     <section class="admin-panel admin-panel--main">
@@ -64,7 +64,7 @@
                 filtersId="reviewsFilters"
                 :hasFilters="true"
                 :searchValue="request('search')"
-                placeholder="Rechercher par étudiant, cours ou commentaire..."
+                placeholder="Rechercher par client, contenu ou commentaire..."
             >
                 <x-slot:filters>
                     <div class="admin-form-grid admin-form-grid--two mb-3">
@@ -88,11 +88,11 @@
                             </select>
                         </div>
                         <div>
-                            <label class="form-label fw-semibold">Cours</label>
-                            <select class="form-select" name="course_id">
-                                <option value="">Tous les cours</option>
+                            <label class="form-label fw-semibold">Contenu</label>
+                            <select class="form-select" name="content_id">
+                                <option value="">Tous les contenus</option>
                                 @foreach($courses as $course)
-                                    <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
+                                    <option value="{{ $course->id }}" {{ request('content_id') == $course->id ? 'selected' : '' }}>
                                         {{ Str::limit($course->title, 50) }}
                                     </option>
                                 @endforeach
@@ -122,8 +122,8 @@
                     <table class="table align-middle">
                         <thead>
                             <tr>
-                                <th style="min-width: 200px; max-width: 250px;">Étudiant</th>
-                                <th style="min-width: 200px; max-width: 300px;">Cours</th>
+                                <th style="min-width: 200px; max-width: 250px;">Client</th>
+                                <th style="min-width: 200px; max-width: 300px;">Contenu</th>
                                 <th class="text-center" style="width: 120px; white-space: nowrap;">Note</th>
                                 <th style="min-width: 200px; max-width: 350px;">Commentaire</th>
                                 <th class="text-center" style="width: 120px; white-space: nowrap;">Statut</th>
@@ -152,8 +152,8 @@
                                     <td style="min-width: 200px; max-width: 300px;">
                                         <div style="min-width: 0; overflow: hidden;">
                                             <div class="fw-semibold text-truncate d-block" style="max-width: 100%;" title="{{ $review->course->title }}">{{ $review->course->title }}</div>
-                                            <div class="text-muted small text-truncate d-block" style="max-width: 100%;" title="Par {{ $review->course->instructor->name }}">
-                                                Par {{ $review->course->instructor->name }}
+                                            <div class="text-muted small text-truncate d-block" style="max-width: 100%;" title="Par {{ $review->course->provider->name }}">
+                                                Par {{ $review->course->provider->name }}
                                             </div>
                                         </div>
                                     </td>
@@ -247,11 +247,11 @@
                     <p class="mb-3">Êtes-vous sûr de vouloir supprimer cet avis ?</p>
                     <div class="alert alert-light border mb-0">
                         <div class="d-flex align-items-center mb-2">
-                            <strong class="me-2">Étudiant :</strong>
+                            <strong class="me-2">Client :</strong>
                             <span id="deleteReviewUserName"></span>
                         </div>
                         <div class="d-flex align-items-center">
-                            <strong class="me-2">Cours :</strong>
+                            <strong class="me-2">Contenu :</strong>
                             <span id="deleteReviewCourseTitle"></span>
                         </div>
                     </div>
@@ -312,12 +312,12 @@ function openDeleteModal(reviewId, userName, courseTitle) {
     max-width: 100%;
 }
 
-/* Colonne Étudiant */
+/* Colonne Client */
 .admin-table table td:first-child {
     max-width: 250px;
 }
 
-/* Colonne Cours */
+    /* Colonne Contenu */
 .admin-table table td:nth-child(2) {
     max-width: 300px;
 }

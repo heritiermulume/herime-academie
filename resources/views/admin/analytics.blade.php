@@ -21,7 +21,7 @@ Analyses & Statistiques
                     <p class="admin-stat-card__muted">Total inscrits</p>
                 </div>
                 <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Cours</p>
+                    <p class="admin-stat-card__label">Contenus</p>
                     <p class="admin-stat-card__value">{{ number_format($stats['total_courses'] ?? 0) }}</p>
                     <p class="admin-stat-card__muted">Catalogue disponible</p>
                 </div>
@@ -150,7 +150,7 @@ Analyses & Statistiques
                         <div class="admin-card__header">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                 <h5 class="admin-card__title mb-0">
-                                    <i class="fas fa-book me-2"></i>Revenus par cours
+                                    <i class="fas fa-book me-2"></i>Revenus par contenu
                                 </h5>
                                 <select id="coursePeriodFilter" class="form-select form-select-sm" style="width: auto; min-width: 100px;" onchange="updateCourseChart()">
                                     <option value="all" selected>Tout</option>
@@ -172,9 +172,9 @@ Analyses & Statistiques
                         <div class="admin-card__header">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                 <h5 class="admin-card__title mb-0">
-                                    <i class="fas fa-user-tie me-2"></i>Revenus par formateur
+                                    <i class="fas fa-user-tie me-2"></i>Revenus par prestataire
                                 </h5>
-                                <select id="instructorPeriodFilter" class="form-select form-select-sm" style="width: auto; min-width: 100px;" onchange="updateInstructorChart()">
+                                <select id="providerPeriodFilter" class="form-select form-select-sm" style="width: auto; min-width: 100px;" onchange="updateProviderChart()">
                                     <option value="all" selected>Tout</option>
                                     <option value="30">30 jours</option>
                                     <option value="90">90 jours</option>
@@ -184,7 +184,7 @@ Analyses & Statistiques
                         </div>
                         <div class="admin-card__body">
                             <div class="chart-container">
-                                <canvas id="revenueByInstructorChart"></canvas>
+                                <canvas id="revenueByProviderChart"></canvas>
                             </div>
                         </div>
                     </div>
@@ -196,7 +196,7 @@ Analyses & Statistiques
     <section class="admin-panel">
         <div class="admin-panel__header">
             <h3>
-                <i class="fas fa-chart-pie me-2"></i>Répartition des cours et paiements
+                <i class="fas fa-chart-pie me-2"></i>Répartition des contenus et paiements
             </h3>
         </div>
         <div class="admin-panel__body">
@@ -205,7 +205,7 @@ Analyses & Statistiques
                     <div class="admin-card shadow-sm h-100">
                         <div class="admin-card__header">
                             <h5 class="admin-card__title">
-                                <i class="fas fa-tags me-2"></i>Cours par catégorie
+                                <i class="fas fa-tags me-2"></i>Contenus par catégorie
                             </h5>
                         </div>
                         <div class="admin-card__body">
@@ -236,7 +236,7 @@ Analyses & Statistiques
     <section class="admin-panel">
         <div class="admin-panel__header">
             <h3>
-                <i class="fas fa-trophy me-2"></i>Performance des cours et transactions
+                <i class="fas fa-trophy me-2"></i>Performance des contenus et transactions
             </h3>
         </div>
         <div class="admin-panel__body">
@@ -245,7 +245,7 @@ Analyses & Statistiques
                     <div class="admin-card shadow-sm h-100">
                         <div class="admin-card__header">
                             <h5 class="admin-card__title">
-                                <i class="fas fa-star me-2"></i>Cours les plus populaires
+                                <i class="fas fa-star me-2"></i>Contenus les plus populaires
                             </h5>
                         </div>
                         <div class="admin-card__body">
@@ -253,7 +253,7 @@ Analyses & Statistiques
                             <div class="modern-courses-container">
                                 <div class="modern-courses-wrapper">
                                     @foreach($popularCourses as $course)
-                                    <a href="{{ route('courses.show', $course->slug) }}" class="modern-course-item" target="_blank">
+                                    <a href="{{ route('contents.show', $course->slug) }}" class="modern-course-item" target="_blank">
                                         <div class="modern-course-thumbnail">
                                             @if($course->thumbnail)
                                                 <img src="{{ $course->thumbnail_url }}" alt="{{ $course->title }}" loading="lazy">
@@ -269,7 +269,7 @@ Analyses & Statistiques
                                         <div class="modern-course-content">
                                             <h6 class="modern-course-name">{{ Str::limit($course->title, 30) }}</h6>
                                             <p class="modern-course-instructor">
-                                                <i class="fas fa-user-tie me-1"></i>{{ Str::limit($course->instructor->name ?? 'N/A', 25) }}
+                                                <i class="fas fa-user-tie me-1"></i>{{ Str::limit($course->provider->name ?? 'N/A', 25) }}
                                             </p>
                                             @if($course->category)
                                             <span class="modern-course-category" style="background: {{ $course->category->color ?? '#003366' }}20; color: {{ $course->category->color ?? '#003366' }};">
@@ -287,7 +287,7 @@ Analyses & Statistiques
                             @else
                             <div class="text-center text-muted py-4">
                                 <i class="fas fa-book-open fa-2x mb-2"></i>
-                                <p>Aucun cours trouvé</p>
+                                <p>Aucun contenu trouvé</p>
                             </div>
                             @endif
                         </div>
@@ -491,7 +491,7 @@ Analyses & Statistiques
                                 <tr>
                                     <td>
                                         <i class="fas fa-graduation-cap text-success me-2"></i>
-                                        Cours publiés
+                                        Contenus publiés
                                     </td>
                                     <td><strong>{{ $courseStats->published_courses ?? 0 }}</strong></td>
                                     <td>
@@ -506,9 +506,9 @@ Analyses & Statistiques
                                 <tr>
                                     <td>
                                         <i class="fas fa-user-graduate text-warning me-2"></i>
-                                        Total des étudiants
+                                        Total des clients
                                     </td>
-                                    <td><strong>{{ $courseStats->total_students ?? 0 }}</strong></td>
+                                    <td><strong>{{ $courseStats->total_customers ?? 0 }}</strong></td>
                                     <td>
                                         <span class="badge bg-primary">
                                             {{ $stats['total_enrollments'] ?? 0 }} inscriptions
@@ -521,7 +521,7 @@ Analyses & Statistiques
                                 <tr>
                                     <td>
                                         <i class="fas fa-star text-info me-2"></i>
-                                        Note moyenne des cours
+                                        Note moyenne des contenus
                                     </td>
                                     <td><strong>{{ number_format($courseStats->average_rating ?? 0, 1) }}/5</strong></td>
                                     <td>
@@ -641,7 +641,7 @@ const commissionsByYearData = @json($commissionsByYear ?? []);
 
 const revenueByCategoryData = @json($revenueByCategory ?? []);
 const revenueByCourseData = @json($revenueByCourse ?? []);
-const revenueByInstructorData = @json($revenueByInstructor ?? []);
+const revenueByProviderData = @json($revenueByProvider ?? []);
 const userGrowthData = @json($userGrowth ?? []);
 
 // Variables globales pour les graphiques
@@ -649,7 +649,7 @@ let revenueChartInstance = null;
 let revenueBreakdownChartInstance = null;
 let revenueByCategoryChartInstance = null;
 let revenueByCourseChartInstance = null;
-let revenueByInstructorChartInstance = null;
+let revenueByProviderChartInstance = null;
 const categoryStats = @json($categoryStats ?? []);
 const paymentsByMethod = @json($paymentsByMethod ?? []);
 const paymentsByStatus = @json($paymentsByStatus ?? []);
@@ -1311,11 +1311,11 @@ function updateCourseChart() {
     });
 }
 
-// Fonction pour mettre à jour le graphique par formateur
-function updateInstructorChart() {
-    const days = document.getElementById('instructorPeriodFilter').value;
+// Fonction pour mettre à jour le graphique par prestataire
+function updateProviderChart() {
+    const days = document.getElementById('providerPeriodFilter').value;
     
-    fetch('{{ route("admin.analytics.revenue-by-instructor") }}?days=' + days, {
+    fetch('{{ route("admin.analytics.revenue-by-provider") }}?days=' + days, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
@@ -1330,13 +1330,13 @@ function updateInstructorChart() {
         });
         const values = data.map(item => parseFloat(item.revenue || 0));
         
-        const ctx = document.getElementById('revenueByInstructorChart');
+        const ctx = document.getElementById('revenueByProviderChart');
         
-        if (revenueByInstructorChartInstance) {
-            revenueByInstructorChartInstance.destroy();
+        if (revenueByProviderChartInstance) {
+            revenueByProviderChartInstance.destroy();
         }
         
-        revenueByInstructorChartInstance = new Chart(ctx, {
+        revenueByProviderChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
@@ -1388,7 +1388,7 @@ function updateInstructorChart() {
 // Initialiser les graphiques
 updateCategoryChart();
 updateCourseChart();
-updateInstructorChart();
+updateProviderChart();
 
 // Graphique de croissance des utilisateurs
 const usersCtx = document.getElementById('usersChart').getContext('2d');
@@ -2038,7 +2038,7 @@ function refreshAnalytics() {
     #revenueBreakdownPeriodFilter,
     #categoryPeriodFilter,
     #coursePeriodFilter,
-    #instructorPeriodFilter,
+    #providerPeriodFilter,
     #revenueStartDate,
     #revenueEndDate,
     #revenueBreakdownStartDate,
@@ -2054,7 +2054,7 @@ function refreshAnalytics() {
     #revenueBreakdownPeriodFilter,
     #categoryPeriodFilter,
     #coursePeriodFilter,
-    #instructorPeriodFilter {
+    #providerPeriodFilter {
         min-width: 65px !important;
         max-width: 75px !important;
     }
@@ -2072,7 +2072,7 @@ function refreshAnalytics() {
     #revenueBreakdownPeriodFilter,
     #categoryPeriodFilter,
     #coursePeriodFilter,
-    #instructorPeriodFilter,
+    #providerPeriodFilter,
     #revenueStartDate,
     #revenueEndDate,
     #revenueBreakdownStartDate,
@@ -2088,7 +2088,7 @@ function refreshAnalytics() {
     #revenueBreakdownPeriodFilter,
     #categoryPeriodFilter,
     #coursePeriodFilter,
-    #instructorPeriodFilter {
+    #providerPeriodFilter {
         min-width: 65px !important;
         max-width: 75px !important;
     }

@@ -27,17 +27,17 @@ class LearningController extends Controller
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
             // Si la vente est désactivée et l'utilisateur n'est pas inscrit, bloquer
             if (!$course->is_sale_enabled) {
-                return redirect()->route('courses.show', $course)
+                return redirect()->route('contents.show', $course)
                     ->with('error', 'Ce cours n\'est pas actuellement disponible.');
             }
             
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Vous devez être inscrit à ce cours pour y accéder.');
         }
 
         // Vérifier que le cours n'est pas téléchargeable (les cours téléchargeables ne sont pas accessibles via l'interface d'apprentissage)
         if ($course->is_downloadable) {
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement. Veuillez le télécharger pour y accéder.');
         }
 
@@ -51,7 +51,7 @@ class LearningController extends Controller
             'sections.lessons' => function($query) {
                 $query->where('is_published', true)->orderBy('sort_order');
             },
-            'instructor' => function($query) {
+            'provider' => function($query) {
                 $query->select('id', 'name', 'email', 'bio', 'avatar', 'created_at');
             },
             'category',
@@ -109,18 +109,18 @@ class LearningController extends Controller
 
         // Vérifier que l'utilisateur est inscrit au cours
         if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Vous devez être inscrit à ce cours pour y accéder.');
         }
 
         // Vérifier que le cours n'est pas téléchargeable (les cours téléchargeables ne sont pas accessibles via l'interface d'apprentissage)
         if ($course->is_downloadable) {
-            return redirect()->route('courses.show', $course)
+            return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement. Veuillez le télécharger pour y accéder.');
         }
 
         // Vérifier que la leçon appartient au cours
-        if ($lesson->course_id !== $course->id) {
+        if ($lesson->content_id !== $course->id) {
             abort(404);
         }
 
@@ -139,10 +139,10 @@ class LearningController extends Controller
 
         // Trouver la leçon précédente et suivante dans tout le cours
         $allLessons = $course->lessons()
-            ->join('course_sections', 'course_lessons.section_id', '=', 'course_sections.id')
-            ->orderBy('course_sections.sort_order')
-            ->orderBy('course_lessons.sort_order')
-            ->select('course_lessons.*')
+            ->join('content_sections', 'content_lessons.section_id', '=', 'content_sections.id')
+            ->orderBy('content_sections.sort_order')
+            ->orderBy('content_lessons.sort_order')
+            ->select('content_lessons.*')
             ->get();
         $currentIndex = $allLessons->search(function($item) use ($lesson) {
             return $item->id === $lesson->id;
@@ -190,7 +190,7 @@ class LearningController extends Controller
 
         $progress = LessonProgress::firstOrCreate([
             'user_id' => auth()->id(),
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'lesson_id' => $lesson->id,
         ]);
 
@@ -224,7 +224,7 @@ class LearningController extends Controller
 
         $progress = LessonProgress::firstOrCreate([
             'user_id' => auth()->id(),
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'lesson_id' => $lesson->id,
         ]);
 
@@ -260,7 +260,7 @@ class LearningController extends Controller
 
         $progress = LessonProgress::firstOrCreate([
             'user_id' => auth()->id(),
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'lesson_id' => $lesson->id,
         ]);
 
@@ -316,7 +316,7 @@ class LearningController extends Controller
         // Créer ou mettre à jour la progression
         $progress = LessonProgress::firstOrCreate([
             'user_id' => auth()->id(),
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'lesson_id' => $lesson->id,
         ]);
 
@@ -343,7 +343,7 @@ class LearningController extends Controller
     private function getUserProgress(Course $course)
     {
         $progress = LessonProgress::where('user_id', auth()->id())
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->with(['lesson' => function ($query) {
                 // S'assurer que la relation lesson est bien chargée avec les champs nécessaires
                 $query->select('id', 'duration', 'title');
@@ -420,11 +420,11 @@ class LearningController extends Controller
         
         // Charger toutes les leçons du cours dans l'ordre
         $allLessons = $course->lessons()
-            ->join('course_sections', 'course_lessons.section_id', '=', 'course_sections.id')
-            ->where('course_lessons.is_published', true)
-            ->orderBy('course_sections.sort_order')
-            ->orderBy('course_lessons.sort_order')
-            ->select('course_lessons.*')
+            ->join('content_sections', 'content_lessons.section_id', '=', 'content_sections.id')
+            ->where('content_lessons.is_published', true)
+            ->orderBy('content_sections.sort_order')
+            ->orderBy('content_lessons.sort_order')
+            ->select('content_lessons.*')
             ->get();
         
         if ($allLessons->isEmpty()) {
@@ -433,7 +433,7 @@ class LearningController extends Controller
         
         // Obtenir toutes les progressions de l'utilisateur pour ce cours
         $progresses = LessonProgress::where('user_id', $userId)
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->with('lesson')
             ->get()
             ->keyBy('lesson_id');
@@ -484,13 +484,13 @@ class LearningController extends Controller
 
         $totalLessons = $course->lessons()->count();
         $completedLessons = LessonProgress::where('user_id', auth()->id())
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->where('is_completed', true)
             ->count();
 
         // Calculer la progression globale en fonction de la progression réelle de chaque leçon
         $allProgress = LessonProgress::where('user_id', auth()->id())
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->with(['lesson' => function ($query) {
                 $query->select('id', 'duration');
             }])
@@ -544,7 +544,7 @@ class LearningController extends Controller
         }
 
         $allProgress = LessonProgress::where('user_id', $userId)
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->with(['lesson' => function ($query) {
                 $query->select('id', 'duration');
             }])
@@ -616,7 +616,7 @@ class LearningController extends Controller
             'quiz_lessons' => $quizLessons,
             'average_rating' => round($averageRating, 1),
             'total_reviews' => $totalReviews,
-            'total_students' => $totalStudents,
+            'total_customers' => $totalStudents,
             'completed_students' => $completedStudents,
             'completion_rate' => round($completionRate, 1),
             'rating_distribution' => $ratingDistribution,
@@ -642,7 +642,7 @@ class LearningController extends Controller
             $userEnrollments = auth()->user()->enrollments()
                 ->whereIn('status', ['active', 'completed'])
                 
-                ->pluck('course_id')
+                ->pluck('content_id')
                 ->toArray();
             $excludedCourseIds = array_merge($excludedCourseIds, $userEnrollments);
         }
@@ -654,7 +654,7 @@ class LearningController extends Controller
             ->where('is_free', false)
             ->where('category_id', $course->category_id)
             ->whereNotIn('id', $excludedCourseIds)
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->orderBy('created_at', 'desc')
             ->limit(2)
             ->get();
@@ -672,7 +672,7 @@ class LearningController extends Controller
             ->where('level', $course->level)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->orderBy('created_at', 'desc')
             ->limit(1)
             ->get();
@@ -684,30 +684,30 @@ class LearningController extends Controller
 
         $recommendations = $recommendations->merge($levelRecommendations);
 
-        // 3. Cours du même instructeur (si l'utilisateur aime le style)
-        $instructorRecommendations = Course::published()
+        // 3. Cours du même prestataire (si l'utilisateur aime le style)
+        $providerRecommendations = Course::published()
             ->where('is_free', false)
-            ->where('instructor_id', $course->instructor_id)
+            ->where('provider_id', $course->provider_id)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->orderBy('created_at', 'desc')
             ->limit(1)
             ->get();
 
         // Filtrer manuellement les cours gratuits et achetés
-        $instructorRecommendations = $instructorRecommendations->filter(function($course) {
+        $providerRecommendations = $providerRecommendations->filter(function($course) {
             return !$course->is_free && !$this->isCoursePurchased($course);
         });
 
-        $recommendations = $recommendations->merge($instructorRecommendations);
+        $recommendations = $recommendations->merge($providerRecommendations);
 
         // 4. Cours populaires récents (tendance)
         $trendingRecommendations = Course::published()
             ->where('is_free', false)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->orderBy('created_at', 'desc')
             ->limit(1)
             ->get();
@@ -734,7 +734,7 @@ class LearningController extends Controller
                     ->whereIn('category_id', $userEnrollments)
                     ->whereNotIn('id', $excludedCourseIds)
                     ->whereNotIn('id', $recommendations->pluck('id'))
-                    ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                    ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
                     ->orderBy('created_at', 'desc')
                     ->limit(1)
                     ->get();
@@ -754,7 +754,7 @@ class LearningController extends Controller
                 ->where('is_free', false)
                 ->whereNotIn('id', $excludedCourseIds)
                 ->whereNotIn('id', $recommendations->pluck('id'))
-                ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
                 ->orderBy('created_at', 'desc')
                 ->limit(4 - $recommendations->count())
                 ->get();
@@ -778,7 +778,7 @@ class LearningController extends Controller
             if (auth()->check()) {
                 $isPurchased = auth()->user()
                     ->enrollments()
-                    ->where('course_id', $course->id)
+                    ->where('content_id', $course->id)
                     ->whereIn('status', ['active', 'completed'])
                     
                     ->exists();
@@ -815,7 +815,7 @@ class LearningController extends Controller
                 'total_duration' => $course->sections ? $course->sections->sum(function($section) {
                     return $section->lessons ? $section->lessons->sum('duration') : 0;
                 }) : 0,
-                'total_students' => $course->enrollments ? $course->enrollments->count() : 0,
+                'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                 'average_rating' => $averageRating,
                 'total_reviews' => $totalReviews,
             ];
@@ -846,7 +846,7 @@ class LearningController extends Controller
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
                 ->where('status', 'paid')
                 ->whereHas('orderItems', function($query) use ($course) {
-                    $query->where('course_id', $course->id);
+                    $query->where('content_id', $course->id);
                 })
                 ->exists();
             

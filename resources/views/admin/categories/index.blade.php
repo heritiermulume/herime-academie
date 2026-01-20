@@ -82,9 +82,9 @@
                             <p class="admin-stat-card__muted">En attente d’activation</p>
                         </div>
                         <div class="admin-stat-card">
-                            <p class="admin-stat-card__label">Cours associés</p>
+                            <p class="admin-stat-card__label">Contenus associés</p>
                             <p class="admin-stat-card__value">{{ $categories->sum('courses_count') }}</p>
-                            <p class="admin-stat-card__muted">Nombre total de cours liés</p>
+                            <p class="admin-stat-card__muted">Nombre total de contenus liés</p>
                         </div>
                     </div>
 
@@ -96,7 +96,7 @@
                                     <tr>
                                         <th>Catégorie</th>
                                         <th>Couleur / Icône</th>
-                                        <th>Cours associés</th>
+                                        <th>Contenus associés</th>
                                         <th>Statut</th>
                                         <th>Date de création</th>
                                         <th class="text-center">Actions</th>

@@ -18,8 +18,8 @@ class NotificationController extends Controller
         $user = Auth::user();
         $notifications = $user->notifications()->paginate(20);
         
-        if (request()->routeIs('instructor.notifications')) {
-            return view('instructors.admin.notifications', compact('notifications'));
+        if (request()->routeIs('provider.notifications')) {
+            return view('providers.admin.notifications', compact('notifications'));
         }
 
         return view('notifications.index', compact('notifications'));

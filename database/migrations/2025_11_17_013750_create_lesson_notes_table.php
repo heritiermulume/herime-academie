@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('lesson_notes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('course_id')->constrained()->onDelete('cascade');
+            $table->foreignId('content_id')->constrained()->onDelete('cascade');
             $table->foreignId('lesson_id')->constrained('course_lessons')->onDelete('cascade');
             $table->text('content');
             $table->integer('timestamp')->nullable()->comment('Timestamp in seconds for video lessons');

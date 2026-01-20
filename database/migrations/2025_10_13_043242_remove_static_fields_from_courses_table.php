@@ -16,7 +16,7 @@ return new class extends Migration
             $table->dropColumn([
                 'duration',        // Calculé à partir des leçons
                 'lessons_count',   // Calculé à partir des sections/leçons
-                'students_count',  // Calculé à partir des enrollments
+                'customers_count',  // Calculé à partir des enrollments
                 'rating',          // Calculé à partir des reviews
                 'reviews_count'    // Calculé à partir des reviews
             ]);
@@ -32,8 +32,8 @@ return new class extends Migration
             // Restaurer les champs statiques si nécessaire
             $table->integer('duration')->default(0)->after('language');
             $table->integer('lessons_count')->default(0)->after('duration');
-            $table->integer('students_count')->default(0)->after('lessons_count');
-            $table->decimal('rating', 3, 2)->default(0)->after('students_count');
+            $table->integer('customers_count')->default(0)->after('lessons_count');
+            $table->decimal('rating', 3, 2)->default(0)->after('customers_count');
             $table->integer('reviews_count')->default(0)->after('rating');
         });
     }

@@ -126,10 +126,10 @@
             </div>
 
             <div class="text-center">
-                <a href="{{ route('student.dashboard') }}" class="btn btn-outline-primary btn-lg me-3">
+                <a href="{{ route('customer.dashboard') }}" class="btn btn-outline-primary btn-lg me-3">
                     <i class="fas fa-tachometer-alt me-2"></i>Aller au tableau de bord
                 </a>
-                <a href="{{ route('courses.index') }}" class="btn btn-outline-secondary btn-lg">
+                <a href="{{ route('contents.index') }}" class="btn btn-outline-secondary btn-lg">
                     <i class="fas fa-search me-2"></i>Découvrir d'autres cours
                 </a>
             </div>

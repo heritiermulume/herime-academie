@@ -40,13 +40,13 @@ class CourseAccessRevokedMail extends Mailable
     public function content(): Content
     {
         // Charger les relations nécessaires
-        $this->course->load(['instructor', 'category']);
+        $this->course->load(['provider', 'category']);
 
         return new Content(
             view: 'emails.course-access-revoked',
             with: [
                 'course' => $this->course,
-                'courseUrl' => route('courses.show', $this->course->slug),
+                'courseUrl' => route('contents.show', $this->course->slug),
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],
         );

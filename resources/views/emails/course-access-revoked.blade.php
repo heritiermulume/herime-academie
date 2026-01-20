@@ -183,10 +183,10 @@
         <div class="course-card">
             <h2>{{ $course->title }}</h2>
             <div class="course-meta">
-                @if($course->instructor)
+                @if($course->provider)
                 <div class="course-meta-item">
                     <strong>Formateur :</strong>
-                    <span>{{ $course->instructor->name }}</span>
+                    <span>{{ $course->provider->name }}</span>
                 </div>
                 @endif
                 @if($course->category)

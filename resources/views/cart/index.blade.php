@@ -12,7 +12,7 @@
                 <p class="cart-subtitle">Découvrez des cours qui vous intéressent</p>
                     </div>
             <div class="cart-actions">
-                <a href="{{ route('courses.index') }}" class="continue-shopping-btn">
+                <a href="{{ route('contents.index') }}" class="continue-shopping-btn">
                     <i class="fas fa-arrow-left"></i>
                     Continuer mes achats
                 </a>
@@ -40,7 +40,7 @@
                                 try {
                                     $thumbnailUrl = $item['course']->thumbnail_url ?? '';
                                 } catch (\Throwable $e) {
-                                    \Log::warning('Erreur lors de l\'accès à thumbnail_url dans le panier', ['course_id' => $item['course']->id, 'error' => $e->getMessage()]);
+                                    \Log::warning('Erreur lors de l\'accès à thumbnail_url dans le panier', ['content_id' => $item['course']->id, 'error' => $e->getMessage()]);
                                 }
                             @endphp
                             <img src="{{ $thumbnailUrl ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" 
@@ -51,7 +51,7 @@
                         <div class="recommended-content flex-grow-1">
                             <div class="d-flex justify-content-between align-items-start mb-0">
                                 <h6 class="flex-grow-1 mb-0">
-                                    <a href="{{ route('courses.show', $item['course']->slug) }}" class="text-decoration-none">
+                                    <a href="{{ route('contents.show', $item['course']->slug) }}" class="text-decoration-none">
                                         {{ $item['course']->title }}
                                     </a>
                                 </h6>
@@ -66,7 +66,7 @@
                             <!-- Formateur, niveau et prix barré sur la même ligne -->
                             <div class="recommended-meta-with-price d-flex justify-content-between align-items-center mb-0">
                                 <div class="recommended-meta">
-                                    <span><i class="fas fa-user me-1"></i>{{ $item['course']->instructor->name }}</span>
+                                    <span><i class="fas fa-user me-1"></i>{{ $item['course']->provider->name }}</span>
                                     <span><i class="fas fa-signal me-1"></i>{{ ucfirst($item['course']->level) }}</span>
                                 </div>
                                 @if($item['course']->is_sale_active && $item['course']->active_sale_price !== null)
@@ -99,7 +99,7 @@
                                     <i class="fas fa-trash"></i>
                                     <span class="btn-text">Supprimer</span>
                                 </button>
-                                <a href="{{ route('courses.show', $item['course']->slug) }}" 
+                                <a href="{{ route('contents.show', $item['course']->slug) }}" 
                                    class="btn btn-sm btn-outline-primary view-btn"
                                    title="Voir le cours">
                                     <i class="fas fa-eye"></i>
@@ -256,7 +256,7 @@
             <div class="row g-3">
                 @foreach($recommendedCourses as $course)
                 <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-                    <x-course-card-standard :course="$course" />
+                    <x-contenu-card-standard :course="$course" />
                 </div>
                 @endforeach
             </div>
@@ -271,7 +271,7 @@
             </div>
             <h3 class="fw-bold mb-3 text-dark">Votre panier est vide</h3>
             <p class="text-muted mb-4 fs-5">Découvrez nos cours et ajoutez-les à votre panier pour commencer votre apprentissage.</p>
-            <a href="{{ route('courses.index') }}" class="btn btn-primary btn-lg">
+            <a href="{{ route('contents.index') }}" class="btn btn-primary btn-lg">
                 <i class="fas fa-search me-2"></i>Explorer les cours
             </a>
         </div>
@@ -291,7 +291,7 @@
             <div class="row g-3">
                 @foreach($popularCourses as $course)
                 <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-                    <x-course-card-standard :course="$course" />
+                    <x-contenu-card-standard :course="$course" />
                 </div>
                 @endforeach
             </div>
@@ -1719,7 +1719,7 @@ function removeItem(courseId) {
             'Accept': 'application/json'
         },
         body: JSON.stringify({
-            course_id: courseId
+            content_id: courseId
         })
     })
         .then(async response => {
@@ -2197,7 +2197,7 @@ function addToCartFromCartPage(courseId) {
             'Accept': 'application/json'
         },
         body: JSON.stringify({
-            course_id: courseId
+            content_id: courseId
         })
     })
     .then(async response => {

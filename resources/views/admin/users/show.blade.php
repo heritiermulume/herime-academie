@@ -49,14 +49,20 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                 @case('admin')
                                     <span class="badge bg-danger">Administrateur</span>
                                     @break
-                                @case('instructor')
-                                    <span class="badge bg-success">Formateur</span>
+                                @case('provider')
+                                    <span class="badge bg-success">Prestataire</span>
+                                    @break
+                                @case('customer')
+                                    <span class="badge bg-primary">Client</span>
                                     @break
                                 @case('affiliate')
                                     <span class="badge bg-info">Affilié</span>
                                     @break
+                                @case('super_user')
+                                    <span class="badge bg-danger">Super Administrateur</span>
+                                    @break
                                 @default
-                                    <span class="badge bg-primary">Étudiant</span>
+                                    <span class="badge bg-secondary">{{ ucfirst($user->role ?? 'utilisateur') }}</span>
                             @endswitch
                         </dd>
 
@@ -170,7 +176,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
             <section class="admin-panel">
                 <div class="admin-panel__header">
                     <h3>
-                        <i class="fas fa-book me-2"></i>Gestion des accès aux cours
+                        <i class="fas fa-book me-2"></i>Gestion des accès aux contenus
                     </h3>
                 </div>
                 <div class="admin-panel__body">
@@ -187,7 +193,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                 <thead>
                                     <tr>
                                         <th style="width: 60px;">Avatar</th>
-                                        <th style="min-width: 250px;">Cours</th>
+                                        <th style="min-width: 250px;">Contenu</th>
                                         <th>Statut</th>
                                         <th>Progression</th>
                                         <th>Type d'accès</th>
@@ -216,8 +222,8 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                             <td>
                                                 <div>
                                                     <strong>{{ $course ? $course->title : 'Cours supprimé' }}</strong>
-                                                    @if($course && $course->instructor)
-                                                        <br><small class="text-muted">par {{ $course->instructor->name }}</small>
+                                                    @if($course && $course->provider)
+                                                        <br><small class="text-muted">par {{ $course->provider->name }}</small>
                                                     @endif
                                                 </div>
                                             </td>
@@ -282,7 +288,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                             <td class="text-center">
                                                 @if($course && $course->id && !isset($access->is_purchased_not_enrolled) && !isset($access->is_downloaded_free))
                                                     <button type="button" class="btn btn-sm btn-danger btn-action-small" 
-                                                            onclick="confirmRevokeAccess({{ $user->id }}, {{ $course->id }}, {{ json_encode($course->title ?? 'Cours') }})"
+                                                            onclick="confirmRevokeAccess({{ $user->id }}, {{ $course->id }}, {{ json_encode($course->title ?? 'Contenu') }})"
                                                             title="Enlever l'accès">
                                                         <i class="fas fa-ban"></i>
                                                     </button>
@@ -298,7 +304,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                     @else
                         <div class="text-center py-4">
                             <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">Cet utilisateur n'a accès à aucun cours.</p>
+                            <p class="text-muted">Cet utilisateur n'a accès à aucun contenu.</p>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#grantAccessModal">
                                 <i class="fas fa-gift me-2"></i>Donner accès à un cours
                             </button>
@@ -364,19 +370,19 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
         </div>
 
         <div class="col-md-4">
-            @if($user->role == 'instructor')
+            @if($user->role == 'provider')
                 <section class="admin-panel">
                     <div class="admin-panel__header">
                         <h3>
-                            <i class="fas fa-chart-bar me-2"></i>Statistiques formateur
+                            <i class="fas fa-chart-bar me-2"></i>Statistiques prestataire
                         </h3>
                     </div>
                     <div class="admin-panel__body">
                         <dl class="row mb-0">
-                            <dt class="col-sm-6">Cours créés</dt>
+                            <dt class="col-sm-6">Contenus créés</dt>
                             <dd class="col-sm-6">{{ $user->courses_count ?? 0 }}</dd>
 
-                            <dt class="col-sm-6">Étudiants</dt>
+                            <dt class="col-sm-6">Clients</dt>
                             <dd class="col-sm-6">{{ $user->enrollments_count ?? 0 }}</dd>
 
                             <dt class="col-sm-6">Note moyenne</dt>
@@ -438,7 +444,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">
-                        <i class="fas fa-gift me-2"></i>Donner accès gratuit à un cours
+                        <i class="fas fa-gift me-2"></i>Donner accès gratuit à un contenu
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -446,18 +452,18 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                     @csrf
                     <div class="modal-body">
                         <p class="text-muted mb-3">
-                            Sélectionnez un cours pour donner un accès gratuit à <strong>{{ $user->name }}</strong>.
+                            Sélectionnez un contenu pour donner un accès gratuit à <strong>{{ $user->name }}</strong>.
                         </p>
                         
                         <div class="mb-3">
-                            <label for="course_id" class="form-label fw-semibold">Cours <span class="text-danger">*</span></label>
-                            <select class="form-select" id="course_id" name="course_id" required>
-                                <option value="">Sélectionner un cours...</option>
+                            <label for="content_id" class="form-label fw-semibold">Contenu <span class="text-danger">*</span></label>
+                            <select class="form-select" id="content_id" name="content_id" required>
+                                <option value="">Sélectionner un contenu...</option>
                                 @foreach($allCourses as $course)
                                     @php
                                         $hasAccess = false;
                                         foreach ($allAccess as $access) {
-                                            if (($access->course_id ?? null) == $course->id) {
+                                            if (($access->content_id ?? null) == $course->id) {
                                                 $hasAccess = true;
                                                 break;
                                             }
@@ -469,8 +475,8 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                             @if($course->category)
                                                 - {{ $course->category->name }}
                                             @endif
-                                            @if($course->instructor)
-                                                ({{ $course->instructor->name }})
+                                            @if($course->provider)
+                                                ({{ $course->provider->name }})
                                             @endif
                                             @if($course->is_free)
                                                 <span class="text-success">[Gratuit]</span>
@@ -486,7 +492,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                 foreach ($allCourses as $course) {
                                     $hasAccess = false;
                                     foreach ($allAccess as $access) {
-                                        if (($access->course_id ?? null) == $course->id) {
+                                        if (($access->content_id ?? null) == $course->id) {
                                             $hasAccess = true;
                                             break;
                                         }
@@ -500,7 +506,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                             @if($hasNoAvailableCourses)
                                 <small class="text-muted d-block mt-2">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Tous les cours disponibles sont déjà accessibles à cet utilisateur.
+                                    Tous les contenus disponibles sont déjà accessibles à cet utilisateur.
                                 </small>
                             @endif
                         </div>
@@ -517,7 +523,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                             foreach ($allCourses as $course) {
                                 $hasAccess = false;
                                 foreach ($allAccess as $access) {
-                                    if (($access->course_id ?? null) == $course->id) {
+                                    if (($access->content_id ?? null) == $course->id) {
                                         $hasAccess = true;
                                         break;
                                     }

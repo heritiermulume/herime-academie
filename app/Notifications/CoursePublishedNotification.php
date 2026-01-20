@@ -14,7 +14,7 @@ class CoursePublishedNotification extends Notification
 
     public function __construct(Course $course)
     {
-        $this->course = $course->loadMissing(['instructor', 'category']);
+        $this->course = $course->loadMissing(['provider', 'category']);
     }
 
     public function via(object $notifiable): array
@@ -24,12 +24,12 @@ class CoursePublishedNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $instructorName = $this->course->instructor?->name;
+        $providerName = $this->course->provider?->name;
         $categoryName = $this->course->category?->name;
 
         $message = "Un nouveau cours « {$this->course->title} »";
-        if ($instructorName) {
-            $message .= " animé par {$instructorName}";
+        if ($providerName) {
+            $message .= " animé par {$providerName}";
         }
         if ($categoryName) {
             $message .= " vient d'être publié dans la catégorie {$categoryName}.";
@@ -42,7 +42,7 @@ class CoursePublishedNotification extends Notification
             'excerpt' => $message,
             'type' => 'success',
             'button_text' => 'Découvrir le cours',
-            'button_url' => route('courses.show', $this->course->slug),
+            'button_url' => route('contents.show', $this->course->slug),
             'course_id' => $this->course->id,
             'course_slug' => $this->course->slug,
         ];

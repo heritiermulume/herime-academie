@@ -33,7 +33,7 @@ class TestCertificateGeneration extends Command
 
         // Récupérer un utilisateur et un cours de test
         $user = User::first();
-        $course = Course::with('instructor')->first();
+        $course = Course::with('provider')->first();
 
         if (!$user || !$course) {
             $this->error('No user or course found. Please create at least one user and one course.');

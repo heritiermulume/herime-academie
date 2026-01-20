@@ -387,7 +387,7 @@
             <section class="admin-panel">
                 <div class="admin-panel__header">
                     <h3>
-                        <i class="fas fa-user-graduate me-2"></i>Étudiant
+                        <i class="fas fa-user-graduate me-2"></i>Client
                     </h3>
                 </div>
                 <div class="admin-panel__body">
@@ -412,7 +412,7 @@
             <section class="admin-panel">
                 <div class="admin-panel__header">
                     <h3>
-                        <i class="fas fa-book me-2"></i>Cours
+                        <i class="fas fa-book me-2"></i>Contenu
                     </h3>
                 </div>
                 <div class="admin-panel__body">
@@ -423,8 +423,8 @@
                     <div class="row">
                         <div class="col-md-6">
                             <p class="mb-1">
-                                <strong>Formateur:</strong> 
-                                {{ $certificate->course->instructor->name ?? 'N/A' }}
+                                <strong>Prestataire:</strong> 
+                                {{ $certificate->course->provider->name ?? 'N/A' }}
                             </p>
                             <p class="mb-1">
                                 <strong>Catégorie:</strong> 
@@ -443,7 +443,7 @@
                         </div>
                     </div>
                     <div class="mt-3">
-                        <a href="{{ route('admin.courses.show', $certificate->course) }}" class="btn btn-sm btn-outline-primary">
+                        <a href="{{ route('admin.contents.show', $certificate->course) }}" class="btn btn-sm btn-outline-primary">
                             <i class="fas fa-eye me-1"></i>Voir le cours
                         </a>
                     </div>
@@ -460,7 +460,7 @@
                 </div>
                 <div class="admin-panel__body">
                     <p class="text-muted small mb-3">
-                        Régénérer le certificat recréera le fichier PDF avec les dernières informations du cours et de l'étudiant.
+                        Régénérer le certificat recréera le fichier PDF avec les dernières informations du contenu et du client.
                     </p>
                     <button type="button" class="btn btn-warning w-100" onclick="openCertificateRegenerateModalShow(this);">
                         <i class="fas fa-sync-alt me-2"></i>Régénérer le certificat

@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\InstructorPayout;
-use App\Notifications\InstructorPayoutReceived;
-use App\Mail\InstructorPayoutReceivedMail;
+use App\Models\ProviderPayout;
+use App\Notifications\ProviderPayoutReceived;
+use App\Mail\ProviderPayoutReceivedMail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -36,12 +36,12 @@ class MonerooService
     }
 
     /**
-     * Initier un payout vers un formateur externe
+     * Initier un payout vers un prestataire externe
      */
     public function initiatePayout(
-        int $instructorId,
+        int $providerId,
         int $orderId,
-        int $courseId,
+        int $contentId,
         float $amount,
         string $currency,
         string $phoneNumber,
@@ -64,9 +64,9 @@ class MonerooService
             'callback_url' => $this->callbackUrl,
             'metadata' => [
                 'payout_id' => $payoutId,
-                'instructor_id' => $instructorId,
+                'provider_id' => $providerId,
                 'order_id' => $orderId,
-                'course_id' => $courseId,
+                'content_id' => $contentId,
             ],
         ];
 
@@ -87,10 +87,10 @@ class MonerooService
             $status = $payoutData['status'] ?? 'pending';
 
             // Enregistrer le payout dans la base de données
-            $payout = InstructorPayout::create([
-                'instructor_id' => $instructorId,
+            $payout = ProviderPayout::create([
+                'provider_id' => $providerId,
                 'order_id' => $orderId,
-                'course_id' => $courseId,
+                'content_id' => $contentId,
                 'payout_id' => $actualPayoutId,
                 'amount' => $amount,
                 'currency' => $currency,
@@ -102,7 +102,7 @@ class MonerooService
             if ($isSuccess) {
                 Log::info("Payout Moneroo initié avec succès", [
                     'payout_id' => $actualPayoutId,
-                    'instructor_id' => $instructorId,
+                    'provider_id' => $providerId,
                     'order_id' => $orderId,
                     'amount' => $amount,
                 ]);
@@ -159,7 +159,7 @@ class MonerooService
                 $payoutData = $responseData['data'] ?? $responseData;
 
                 // Mettre à jour le payout dans la base de données
-                $payout = InstructorPayout::where('payout_id', $payoutId)->first();
+                $payout = ProviderPayout::where('payout_id', $payoutId)->first();
                 if ($payout) {
                     // Sauvegarder l'ancien statut pour vérifier si on passe à "completed"
                     $oldStatus = $payout->status;
@@ -177,10 +177,10 @@ class MonerooService
 
                     // Recharger le payout avec les relations pour les notifications
                     $payout->refresh();
-                    $payout->load(['instructor', 'course', 'order']);
+                    $payout->load(['provider', 'course', 'order']);
 
                     // Envoyer notification et email si le paiement vient d'être complété
-                    if ($isNewlyCompleted && $payout->instructor) {
+                    if ($isNewlyCompleted && $payout->provider) {
                         $this->sendPayoutNotificationAndEmail($payout);
                     }
                 }
@@ -222,7 +222,7 @@ class MonerooService
             return false;
         }
 
-        $payout = InstructorPayout::where('payout_id', $payoutId)->first();
+        $payout = ProviderPayout::where('payout_id', $payoutId)->first();
 
         if (!$payout) {
             Log::error("Payout non trouvé pour le callback Moneroo", ['payout_id' => $payoutId]);
@@ -259,10 +259,10 @@ class MonerooService
 
         // Recharger le payout avec les relations pour les notifications
         $payout->refresh();
-        $payout->load(['instructor', 'course', 'order']);
+        $payout->load(['provider', 'course', 'order']);
 
         // Envoyer notification et email si le paiement vient d'être complété
-        if ($isNewlyCompleted && $payout->instructor) {
+        if ($isNewlyCompleted && $payout->provider) {
             $this->sendPayoutNotificationAndEmail($payout);
         }
 
@@ -290,36 +290,36 @@ class MonerooService
     }
 
     /**
-     * Envoyer la notification et l'email au formateur après un paiement complété
+     * Envoyer la notification et l'email au prestataire après un paiement complété
      */
-    private function sendPayoutNotificationAndEmail(InstructorPayout $payout): void
+    private function sendPayoutNotificationAndEmail(ProviderPayout $payout): void
     {
         try {
-            $instructor = $payout->instructor;
+            $provider = $payout->provider;
 
-            if (!$instructor || !$instructor->email) {
-                Log::warning("Impossible d'envoyer notification/email de payout: formateur ou email manquant", [
+            if (!$provider || !$provider->email) {
+                Log::warning("Impossible d'envoyer notification/email de payout: prestataire ou email manquant", [
                     'payout_id' => $payout->id,
-                    'instructor_id' => $payout->instructor_id,
+                    'provider_id' => $payout->provider_id,
                 ]);
                 return;
             }
 
             // Envoyer l'email directement de manière synchrone
             try {
-                $mailable = new InstructorPayoutReceivedMail($payout);
+                $mailable = new ProviderPayoutReceivedMail($payout);
                 $communicationService = app(\App\Services\CommunicationService::class);
-                $communicationService->sendEmailAndWhatsApp($instructor, $mailable);
-                Log::info("Email InstructorPayoutReceivedMail envoyé à {$instructor->email} pour le payout {$payout->payout_id}", [
+                $communicationService->sendEmailAndWhatsApp($provider, $mailable);
+                Log::info("Email ProviderPayoutReceivedMail envoyé à {$provider->email} pour le payout {$payout->payout_id}", [
                     'payout_id' => $payout->id,
-                    'instructor_id' => $instructor->id,
-                    'instructor_email' => $instructor->email,
+                    'provider_id' => $provider->id,
+                    'provider_email' => $provider->email,
                 ]);
             } catch (\Exception $emailException) {
-                Log::error("Erreur lors de l'envoi de l'email InstructorPayoutReceivedMail", [
+                Log::error("Erreur lors de l'envoi de l'email ProviderPayoutReceivedMail", [
                     'payout_id' => $payout->id,
-                    'instructor_id' => $instructor->id,
-                    'instructor_email' => $instructor->email,
+                    'provider_id' => $provider->id,
+                    'provider_email' => $provider->email,
                     'error' => $emailException->getMessage(),
                     'trace' => $emailException->getTraceAsString(),
                 ]);
@@ -327,17 +327,17 @@ class MonerooService
 
             // Envoyer la notification
             try {
-                Notification::sendNow($instructor, new InstructorPayoutReceived($payout));
+                Notification::sendNow($provider, new ProviderPayoutReceived($payout));
 
-                Log::info("Notification InstructorPayoutReceived envoyée au formateur {$instructor->id} pour le payout {$payout->id}", [
+                Log::info("Notification ProviderPayoutReceived envoyée au prestataire {$provider->id} pour le payout {$payout->id}", [
                     'payout_id' => $payout->id,
-                    'instructor_id' => $instructor->id,
-                    'instructor_email' => $instructor->email,
+                    'provider_id' => $provider->id,
+                    'provider_email' => $provider->email,
                 ]);
             } catch (\Exception $notifException) {
-                Log::error("Erreur lors de l'envoi de la notification InstructorPayoutReceived", [
+                Log::error("Erreur lors de l'envoi de la notification ProviderPayoutReceived", [
                     'payout_id' => $payout->id,
-                    'instructor_id' => $instructor->id,
+                    'provider_id' => $provider->id,
                     'error' => $notifException->getMessage(),
                     'trace' => $notifException->getTraceAsString(),
                 ]);

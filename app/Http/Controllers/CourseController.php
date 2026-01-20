@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Models\Order;
+use App\Models\CourseDownload;
 use Illuminate\Support\Carbon;
 
 class CourseController extends Controller
@@ -31,7 +32,7 @@ class CourseController extends Controller
 
     public function index(Request $request)
     {
-        $query = Course::published()->with(['instructor', 'category']);
+        $query = Course::published()->with(['provider', 'category']);
 
         // Filtres spéciaux pour les sections de la page d'accueil
         if ($request->filled('featured')) {
@@ -72,7 +73,7 @@ class CourseController extends Controller
                 $q->where('title', 'like', "%{$searchTerm}%")
                   ->orWhere('description', 'like', "%{$searchTerm}%")
                   ->orWhere('short_description', 'like', "%{$searchTerm}%")
-                  ->orWhereHas('instructor', function($q) use ($searchTerm) {
+                  ->orWhereHas('provider', function($q) use ($searchTerm) {
                       $q->where('name', 'like', "%{$searchTerm}%");
                   })
                   ->orWhereHas('category', function($q) use ($searchTerm) {
@@ -122,7 +123,7 @@ class CourseController extends Controller
             $page = $request->get('page', 1);
             $perPage = 12;
             
-            $courses = $query->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            $courses = $query->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
                            ->skip(($page - 1) * $perPage)
                            ->take($perPage)
                            ->get();
@@ -160,7 +161,7 @@ class CourseController extends Controller
             ]);
         }
 
-        $courses = $query->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+        $courses = $query->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
                           ->paginate(12)
                           ->withQueryString();
         
@@ -173,7 +174,7 @@ class CourseController extends Controller
                 'total_duration' => $course->sections->sum(function($section) {
                     return $section->lessons->sum('duration');
                 }),
-                'total_students' => $course->total_students, // Nombre d'inscriptions
+                'total_customers' => $course->total_customers, // Nombre d'inscriptions
                 'purchases_count' => $course->purchases_count, // Nombre d'achats (pour tous les cours)
                 // Statistiques supplémentaires pour les produits téléchargeables
                 'total_downloads' => $course->is_downloadable ? $course->total_downloads_count : null,
@@ -187,36 +188,36 @@ class CourseController extends Controller
         
         $categories = Category::active()->ordered()->get();
 
-        return view('courses.index', compact('courses', 'categories'));
+        return view('contents.index', compact('courses', 'categories'));
     }
 
     public function show(Course $course)
     {
         try {
-            // Vérifier que le cours est publié, sauf si l'utilisateur est l'instructeur du cours
-            $isInstructor = auth()->check() && auth()->user()->hasRole('instructor') && $course->instructor_id === auth()->id();
-            if (!$course->is_published && !$isInstructor) {
-                abort(404, 'Ce cours n\'est pas disponible.');
+            // Vérifier que le contenu est publié, sauf si l'utilisateur est le prestataire du contenu
+            $isProvider = auth()->check() && auth()->user()->hasRole('provider') && $course->provider_id === auth()->id();
+            if (!$course->is_published && !$isProvider) {
+                abort(404, 'Ce contenu n\'est pas disponible.');
             }
 
             // Charger toutes les relations nécessaires
-            // Pour les instructeurs, charger toutes les sections et leçons même non publiées
+            // Pour les prestataires, charger toutes les sections et leçons même non publiées
             $course->load([
-                'instructor' => function($query) {
+                'provider' => function($query) {
                     $query->withCount('courses');
                 },
-                'instructor.courses' => function($query) {
+                'provider.contents' => function($query) {
                     $query->withCount('enrollments');
                 },
                 'category',
-                'sections' => function($query) use ($isInstructor) {
-                    if (!$isInstructor) {
+                'sections' => function($query) use ($isProvider) {
+                    if (!$isProvider) {
                         $query->where('is_published', true);
                     }
                     $query->orderBy('sort_order');
                 },
-                'sections.lessons' => function($query) use ($isInstructor) {
-                    if (!$isInstructor) {
+                'sections.lessons' => function($query) use ($isProvider) {
+                    if (!$isProvider) {
                         $query->where('is_published', true);
                     }
                     $query->orderBy('sort_order');
@@ -237,7 +238,7 @@ class CourseController extends Controller
                 $enrollment = $isEnrolled ? $course->getEnrollmentFor($userId) : null;
             } catch (\Throwable $e) {
                 \Log::error('Erreur lors de la vérification de l\'inscription', [
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'user_id' => $userId,
                     'error' => $e->getMessage()
                 ]);
@@ -255,13 +256,13 @@ class CourseController extends Controller
                         $hasPurchased = Order::where('user_id', $userId)
                             ->whereIn('status', ['paid', 'completed'])
                             ->whereHas('orderItems', function ($query) use ($course) {
-                                $query->where('course_id', $course->id);
+                                $query->where('content_id', $course->id);
                             })
                             ->exists();
                     }
                 } catch (\Throwable $e) {
                     \Log::error('Erreur lors de la vérification de l\'achat', [
-                        'course_id' => $course->id,
+                        'content_id' => $course->id,
                         'user_id' => $userId,
                         'error' => $e->getMessage()
                     ]);
@@ -274,7 +275,7 @@ class CourseController extends Controller
                 $buttonState = $course->getButtonStateForUser($userId);
             } catch (\Throwable $e) {
                 \Log::error('Erreur lors de l\'obtention de buttonState', [
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'user_id' => $userId,
                     'error' => $e->getMessage()
                 ]);
@@ -283,6 +284,56 @@ class CourseController extends Controller
             
             $canAccessCourse = $isEnrolled || $hasPurchased;
             $canDownloadCourse = $course->is_downloadable && $canAccessCourse;
+
+            // Calculer si l'utilisateur a téléchargé (pour les contenus téléchargeables gratuits)
+            $hasDownloaded = false;
+            if ($userId && $course->is_downloadable) {
+                try {
+                    $hasDownloaded = \App\Models\CourseDownload::where('content_id', $course->id)
+                        ->where('user_id', $userId)
+                        ->exists();
+                } catch (\Throwable $e) {
+                    \Log::error('Erreur lors de la vérification du téléchargement', [
+                        'content_id' => $course->id,
+                        'user_id' => $userId,
+                        'error' => $e->getMessage()
+                    ]);
+                    $hasDownloaded = false;
+                }
+            }
+
+            // Calculer si l'utilisateur peut noter selon les nouvelles règles
+            $canReview = false;
+            if ($userId) {
+                try {
+                    if ($course->is_downloadable) {
+                        // Contenu téléchargeable
+                        if ($course->is_free) {
+                            // Téléchargeable gratuit : avoir téléchargé au moins une fois
+                            $canReview = $hasDownloaded;
+                        } else {
+                            // Téléchargeable payant : avoir payé
+                            $canReview = $hasPurchased;
+                        }
+                    } else {
+                        // Contenu non téléchargeable
+                        if ($course->is_free) {
+                            // Non téléchargeable gratuit : être inscrit
+                            $canReview = $isEnrolled;
+                        } else {
+                            // Non téléchargeable payant : avoir payé
+                            $canReview = $hasPurchased;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Log::error('Erreur lors de la vérification de canReview', [
+                        'content_id' => $course->id,
+                        'user_id' => $userId,
+                        'error' => $e->getMessage()
+                    ]);
+                    $canReview = false;
+                }
+            }
 
             // Calculer les statistiques du cours (simplifiées)
             $courseStats = [
@@ -297,13 +348,13 @@ class CourseController extends Controller
                 $relatedCourses = $this->getRecommendedCourses($course);
             } catch (\Throwable $e) {
                 \Log::error('Erreur lors de l\'obtention des cours recommandés', [
-                    'course_id' => $course->id,
+                    'content_id' => $course->id,
                     'error' => $e->getMessage()
                 ]);
                 $relatedCourses = collect([]); // Collection vide en cas d'erreur
             }
 
-            return view('courses.show', compact(
+            return view('contents.show', compact(
                 'course',
                 'isEnrolled',
                 'enrollment',
@@ -312,11 +363,13 @@ class CourseController extends Controller
                 'buttonState',
                 'hasPurchased',
                 'canAccessCourse',
-                'canDownloadCourse'
+                'canDownloadCourse',
+                'hasDownloaded',
+                'canReview'
             ));
         } catch (\Throwable $e) {
             \Log::error('Erreur fatale dans CourseController@show', [
-                'course_id' => $course->id ?? null,
+                'content_id' => $course->id ?? null,
                 'course_slug' => $course->slug ?? null,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -338,7 +391,7 @@ class CourseController extends Controller
     {
         $courses = Course::published()
             ->where('category_id', $category->id)
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->latest()
             ->paginate(12);
         
@@ -351,7 +404,7 @@ class CourseController extends Controller
                 'total_duration' => $course->sections->sum(function($section) {
                     return $section->lessons->sum('duration');
                 }),
-                'total_students' => $course->total_students, // Nombre d'inscriptions
+                'total_customers' => $course->total_customers, // Nombre d'inscriptions
                 'purchases_count' => $course->purchases_count, // Nombre d'achats (pour tous les cours)
                 // Statistiques supplémentaires pour les produits téléchargeables
                 'total_downloads' => $course->is_downloadable ? $course->total_downloads_count : null,
@@ -371,7 +424,7 @@ class CourseController extends Controller
             ->limit(6)
             ->get();
 
-        return view('courses.category', compact('courses', 'category', 'otherCategories'));
+        return view('contents.category', compact('courses', 'category', 'otherCategories'));
     }
 
     /**
@@ -385,31 +438,31 @@ class CourseController extends Controller
         }
 
         // Charger les informations de base du cours
-        $course->load(['instructor', 'category']);
+        $course->load(['provider', 'category']);
 
         // Charger les avis approuvés avec pagination
-        $reviews = \App\Models\Review::where('course_id', $course->id)
+        $reviews = \App\Models\Review::where('content_id', $course->id)
             ->where('is_approved', true)
             ->with('user')
             ->latest()
             ->paginate(10);
 
         // Calculer les statistiques des avis
-        $averageRating = round((float)(\App\Models\Review::where('course_id', $course->id)
+        $averageRating = round((float)(\App\Models\Review::where('content_id', $course->id)
             ->where('is_approved', true)
             ->avg('rating') ?? 0), 1);
         
-        $totalReviews = \App\Models\Review::where('course_id', $course->id)
+        $totalReviews = \App\Models\Review::where('content_id', $course->id)
             ->where('is_approved', true)
             ->count();
 
-        return view('courses.reviews', compact('course', 'reviews', 'averageRating', 'totalReviews'));
+        return view('contents.reviews', compact('course', 'reviews', 'averageRating', 'totalReviews'));
     }
 
     public function create()
     {
         $categories = Category::active()->ordered()->get();
-        return view('courses.create', compact('categories'));
+        return view('contents.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -473,10 +526,10 @@ class CourseController extends Controller
         DB::beginTransaction();
 
         try {
-            $instructorId = auth()->id();
+            $providerId = auth()->id();
 
-            if (!$instructorId) {
-                abort(403, 'Vous devez être connecté en tant que formateur pour créer un cours.');
+            if (!$providerId) {
+                abort(403, 'Vous devez être connecté en tant que prestataire pour créer un contenu.');
             }
 
             $data = $request->only([
@@ -497,7 +550,7 @@ class CourseController extends Controller
                 'meta_keywords',
             ]);
 
-            $data['instructor_id'] = $instructorId;
+            $data['provider_id'] = $providerId;
             $data['slug'] = $this->generateUniqueSlug($request->title);
             $data['is_published'] = false;
             $data['is_free'] = false;
@@ -658,8 +711,8 @@ class CourseController extends Controller
                             $filePath = $result['path'];
                         } catch (\Throwable $e) {
                             Log::error('Erreur lors du téléversement du fichier de leçon', [
-                                'instructor_id' => auth()->id(),
-                                'course_id' => $course->id,
+                                'provider_id' => auth()->id(),
+                                'content_id' => $course->id,
                                 'section_index' => $sectionIndex,
                                 'lesson_index' => $lessonIndex,
                                 'message' => $e->getMessage(),
@@ -669,7 +722,7 @@ class CourseController extends Controller
                     }
 
                     $section->lessons()->create([
-                        'course_id' => $course->id,
+                        'content_id' => $course->id,
                         'title' => $lessonTitle,
                         'description' => $lessonData['description'] ?? null,
                         'type' => $lessonType,
@@ -686,13 +739,13 @@ class CourseController extends Controller
 
             DB::commit();
 
-            return redirect()->route('instructor.courses.index')
+            return redirect()->route('provider.contents.index')
                 ->with('success', 'Cours créé avec succès.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             
             Log::error('Erreur de validation lors de la création du cours', [
-                'instructor_id' => auth()->id(),
+                'provider_id' => auth()->id(),
                 'errors' => $e->errors(),
                 'request_data' => $request->except(['thumbnail', 'video_preview_file', 'sections']),
             ]);
@@ -704,7 +757,7 @@ class CourseController extends Controller
             DB::rollBack();
 
             Log::error('Erreur lors de la création du cours', [
-                'instructor_id' => auth()->id(),
+                'provider_id' => auth()->id(),
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -728,7 +781,7 @@ class CourseController extends Controller
             $query->orderBy('sort_order');
         }]);
         
-        return view('courses.edit', compact('course', 'categories'));
+        return view('contents.edit', compact('course', 'categories'));
     }
 
     public function update(Request $request, Course $course)
@@ -806,8 +859,8 @@ class CourseController extends Controller
                 'meta_keywords',
             ]);
 
-            if (auth()->check() && auth()->user()->isInstructor()) {
-                $data['instructor_id'] = $course->instructor_id ?? auth()->id();
+            if (auth()->check() && auth()->user()->isProvider()) {
+                $data['provider_id'] = $course->provider_id ?? auth()->id();
             }
             $data['slug'] = $this->generateUniqueSlug($request->title, $course->id);
 
@@ -1057,8 +1110,8 @@ class CourseController extends Controller
                                     $filePath = $result['path'];
                                 } catch (\Throwable $e) {
                                     Log::error('Erreur lors du téléversement du fichier de leçon', [
-                                        'instructor_id' => auth()->id(),
-                                        'course_id' => $course->id,
+                                        'provider_id' => auth()->id(),
+                                        'content_id' => $course->id,
                                         'section_index' => $sectionIndex,
                                         'lesson_index' => $lessonIndex,
                                         'message' => $e->getMessage(),
@@ -1068,7 +1121,7 @@ class CourseController extends Controller
                             }
 
                             $lessonDataToSave = [
-                                'course_id' => $course->id,
+                                'content_id' => $course->id,
                                 'title' => $lessonTitle,
                                 'description' => $lessonData['description'] ?? null,
                                 'type' => $lessonType,
@@ -1099,14 +1152,14 @@ class CourseController extends Controller
 
             DB::commit();
 
-            return redirect()->route('instructor.courses.edit', $course)
+            return redirect()->route('provider.contents.edit', $course)
                 ->with('success', 'Cours mis à jour avec succès.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
             
             Log::error('Erreur de validation lors de la mise à jour du cours', [
-                'instructor_id' => auth()->id(),
-                'course_id' => $course->id,
+                'provider_id' => auth()->id(),
+                'content_id' => $course->id,
                 'errors' => $e->errors(),
             ]);
 
@@ -1117,8 +1170,8 @@ class CourseController extends Controller
             DB::rollBack();
 
             Log::error('Erreur lors de la mise à jour du cours', [
-                'instructor_id' => auth()->id(),
-                'course_id' => $course->id,
+                'provider_id' => auth()->id(),
+                'content_id' => $course->id,
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -1137,12 +1190,12 @@ class CourseController extends Controller
         
         $course->delete();
         
-        if (Route::has('instructor.courses.index')) {
-            return redirect()->route('instructor.courses.index')
+        if (Route::has('provider.contents.index')) {
+            return redirect()->route('provider.contents.index')
                 ->with('success', 'Cours supprimé avec succès.');
         }
 
-        return redirect('/instructor/courses')
+        return redirect('/provider/contents')
             ->with('success', 'Cours supprimé avec succès.');
     }
 
@@ -1174,7 +1227,7 @@ class CourseController extends Controller
         }
 
         // Vérifier que la leçon appartient au cours
-        if ($lesson->course_id !== $course->id) {
+        if ($lesson->content_id !== $course->id) {
             abort(404);
         }
 
@@ -1182,7 +1235,7 @@ class CourseController extends Controller
         if (!$lesson->is_preview) {
             // Vérifier si l'utilisateur est inscrit au cours
             if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
-                return redirect()->route('courses.show', $course)
+                return redirect()->route('contents.show', $course)
                     ->with('error', 'Vous devez être inscrit à ce cours pour accéder à cette leçon.');
             }
         }
@@ -1201,7 +1254,7 @@ class CourseController extends Controller
         $previousLesson = $currentIndex > 0 ? $allLessons[$currentIndex - 1] : null;
         $nextLesson = $currentIndex < $allLessons->count() - 1 ? $allLessons[$currentIndex + 1] : null;
 
-        return view('courses.lesson', compact('course', 'lesson', 'previousLesson', 'nextLesson'));
+        return view('contents.lesson', compact('course', 'lesson', 'previousLesson', 'nextLesson'));
     }
 
     /**
@@ -1221,7 +1274,7 @@ class CourseController extends Controller
             ->where('id', '!=', $course->id)
             ->where('is_free', false) // Exclure les cours gratuits
             ->whereNotIn('id', $excludedCourseIds) // Exclure les cours déjà achetés et dans le panier
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->withCount(['reviews', 'enrollments'])
             ->withAvg('reviews', 'rating')
             ->orderBy('reviews_avg_rating', 'desc')
@@ -1238,7 +1291,7 @@ class CourseController extends Controller
             ->where('is_free', false) // Exclure les cours gratuits
             ->whereNotIn('id', $excludedCourseIds) // Exclure les cours déjà achetés et dans le panier
             ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->withCount(['reviews', 'enrollments'])
             ->withAvg('reviews', 'rating')
             ->orderBy('enrollments_count', 'desc')
@@ -1254,7 +1307,7 @@ class CourseController extends Controller
             ->where('is_free', false) // Exclure les cours gratuits
             ->whereNotIn('id', $excludedCourseIds) // Exclure les cours déjà achetés et dans le panier
             ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->withCount(['reviews', 'enrollments'])
             ->withAvg('reviews', 'rating')
             ->orderBy('enrollments_count', 'desc')
@@ -1280,7 +1333,7 @@ class CourseController extends Controller
                     ->where('is_free', false) // Exclure les cours gratuits
                     ->whereNotIn('id', $excludedCourseIds) // Exclure les cours déjà achetés et dans le panier
                     ->whereNotIn('id', $recommendations->pluck('id'))
-                    ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                    ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
                     ->withCount(['reviews', 'enrollments'])
                     ->withAvg('reviews', 'rating')
                     ->orderBy('enrollments_count', 'desc')
@@ -1323,7 +1376,7 @@ class CourseController extends Controller
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
                 ->where('status', 'paid')
                 ->whereHas('orderItems', function($query) use ($course) {
-                    $query->where('course_id', $course->id);
+                    $query->where('content_id', $course->id);
                 })
                 ->exists();
             
@@ -1375,7 +1428,7 @@ class CourseController extends Controller
             $purchasedCourseIds = auth()->user()
                 ->enrollments()
                 ->whereIn('status', ['active', 'completed']) // Inclure les cours actifs ET complétés
-                ->pluck('course_id')
+                ->pluck('content_id')
                 ->toArray();
             $excludedIds = $excludedIds->merge($purchasedCourseIds);
         }
@@ -1396,7 +1449,7 @@ class CourseController extends Controller
                 'total_duration' => $course->sections->sum(function($section) {
                     return $section->lessons->sum('duration');
                 }),
-                'total_students' => $course->total_students, // Nombre d'inscriptions
+                'total_customers' => $course->total_customers, // Nombre d'inscriptions
                 'purchases_count' => $course->purchases_count, // Nombre d'achats (pour tous les cours)
                 // Statistiques supplémentaires pour les produits téléchargeables
                 'total_downloads' => $course->is_downloadable ? $course->total_downloads_count : null,
@@ -1417,7 +1470,7 @@ class CourseController extends Controller
             abort(403);
         }
 
-        if ($user->isAdmin() || ($user->isInstructor() && (int) $course->instructor_id === (int) $user->id)) {
+        if ($user->isAdmin() || ($user->isProvider() && (int) $course->provider_id === (int) $user->id)) {
             return;
         }
 
@@ -1559,7 +1612,7 @@ class CourseController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Erreur dans previewData: ' . $e->getMessage(), [
-                'course_id' => $course->id,
+                'content_id' => $course->id,
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json([

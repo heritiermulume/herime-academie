@@ -2,7 +2,7 @@
 
 @section('title', 'Gestion des annonces')
 @section('admin-title', 'Annonces globales')
-@section('admin-subtitle', 'Diffusez des messages clés auprès de vos apprenants et formateurs')
+@section('admin-subtitle', 'Diffusez des messages clés auprès de vos apprenants et prestataires')
 @section('admin-actions')
     <div class="d-flex gap-2">
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAnnouncementModal">

@@ -36,14 +36,14 @@
                                 <x-dropdown-link :href="route('admin.orders.index')">
                                     <i class="fas fa-shopping-bag me-2"></i>Gérer les commandes
                                 </x-dropdown-link>
-                                <x-dropdown-link :href="route('admin.courses.index')">
+                                <x-dropdown-link :href="route('admin.contents.index')">
                                     <i class="fas fa-graduation-cap me-2"></i>Gérer les cours
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('admin.users.index')">
                                     <i class="fas fa-users me-2"></i>Gérer les utilisateurs
                                 </x-dropdown-link>
-                                <x-dropdown-link :href="route('admin.instructor-applications')">
-                                    <i class="fas fa-user-graduate me-2"></i>Candidatures Formateur
+                                <x-dropdown-link :href="route('admin.provider-applications')">
+                                    <i class="fas fa-user-graduate me-2"></i>Candidatures Prestataire
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('admin.ambassadors.applications')">
                                     <i class="fas fa-handshake me-2"></i>Candidatures Ambassadeur
@@ -143,14 +143,14 @@
                 <x-responsive-nav-link :href="route('admin.orders.index')">
                     <i class="fas fa-shopping-bag me-2"></i>Gérer les commandes
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.courses.index')">
+                <x-responsive-nav-link :href="route('admin.contents.index')">
                     <i class="fas fa-graduation-cap me-2"></i>Gérer les cours
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.users.index')">
                     <i class="fas fa-users me-2"></i>Gérer les utilisateurs
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.instructor-applications')">
-                    <i class="fas fa-user-graduate me-2"></i>Candidatures Formateur
+                <x-responsive-nav-link :href="route('admin.provider-applications')">
+                    <i class="fas fa-user-graduate me-2"></i>Candidatures Prestataire
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.ambassadors.applications')">
                     <i class="fas fa-handshake me-2"></i>Candidatures Ambassadeur

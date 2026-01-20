@@ -75,7 +75,7 @@
                 <a href="{{ route('cart.index') }}" class="btn btn-primary btn-lg me-3">
                     <i class="fas fa-shopping-cart me-2"></i>Retour au panier
                 </a>
-                <a href="{{ route('courses.index') }}" class="btn btn-outline-secondary btn-lg">
+                <a href="{{ route('contents.index') }}" class="btn btn-outline-secondary btn-lg">
                     <i class="fas fa-search me-2"></i>Découvrir les cours
                 </a>
             </div>

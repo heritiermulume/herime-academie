@@ -62,7 +62,7 @@ class TestCartRecommendations extends Command
         foreach ($popularCourses as $course) {
             $this->line("   - {$course->title} (ID: {$course->id})");
             $this->line("     Gratuit: " . ($course->is_free ? 'Oui' : 'Non'));
-            $this->line("     Étudiants: {$course->stats['total_students']}");
+            $this->line("     Clients: {$course->stats['total_customers']}");
             $this->line("     Note: " . number_format($course->stats['average_rating'], 1));
         }
 
@@ -104,7 +104,7 @@ class TestCartRecommendations extends Command
         foreach ($recommendedCourses as $course) {
             $this->line("   - {$course->title} (ID: {$course->id})");
             $this->line("     Gratuit: " . ($course->is_free ? 'Oui' : 'Non'));
-            $this->line("     Étudiants: {$course->stats['total_students']}");
+            $this->line("     Clients: {$course->stats['total_customers']}");
         }
 
         $this->newLine();

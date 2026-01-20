@@ -187,7 +187,7 @@
             <section class="admin-panel">
                 <div class="admin-panel__header">
                     <h3>
-                        <i class="fas fa-list me-2"></i>Cours inclus
+                        <i class="fas fa-list me-2"></i>Contenus inclus
                     </h3>
                 </div>
                 <div class="admin-panel__body">
@@ -198,8 +198,8 @@
                                 <table class="table align-middle">
                                     <thead>
                                         <tr>
-                                            <th>Cours</th>
-                                            <th>Formateur</th>
+                                            <th>Contenu</th>
+                                            <th>Prestataire</th>
                                             <th>Catégorie</th>
                                             <th>Prix</th>
                                             <th class="text-center">Actions</th>
@@ -219,7 +219,7 @@
                                                         @endif
                                                         <div>
                                                             @if($item->course)
-                                                                <a href="{{ route('admin.courses.show', $item->course) }}" class="fw-semibold text-decoration-none text-dark">
+                                                                <a href="{{ route('admin.contents.show', $item->course) }}" class="fw-semibold text-decoration-none text-dark">
                                                                     {{ $item->course->title }}
                                                                 </a>
                                                                 <div class="text-muted small">{{ Str::limit($item->course->subtitle ?? '', 60) }}</div>
@@ -231,9 +231,9 @@
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    @if($item->course && $item->course->instructor)
+                                                    @if($item->course && $item->course->provider)
                                                         <span class="admin-chip">
-                                                            <i class="fas fa-user"></i>{{ $item->course->instructor->name }}
+                                                            <i class="fas fa-user"></i>{{ $item->course->provider->name }}
                                                         </span>
                                                     @else
                                                         <span class="text-muted">—</span>
@@ -256,10 +256,10 @@
                                                 <td class="text-center">
                                                     <div class="d-flex gap-2 justify-content-center">
                                                         @if($item->course)
-                                                            <a href="{{ route('admin.courses.show', $item->course) }}" class="btn btn-light btn-sm" title="Voir le cours">
+                                                            <a href="{{ route('admin.contents.show', $item->course) }}" class="btn btn-light btn-sm" title="Voir le contenu">
                                                                 <i class="fas fa-eye"></i>
                                                             </a>
-                                                            <a href="{{ route('courses.show', $item->course->slug) }}" class="btn btn-info btn-sm" target="_blank" title="Voir sur le site">
+                                                            <a href="{{ route('contents.show', $item->course->slug) }}" class="btn btn-info btn-sm" target="_blank" title="Voir sur le site">
                                                                 <i class="fas fa-external-link-alt"></i>
                                                             </a>
                                                         @else
@@ -274,7 +274,7 @@
                             </div>
                         </div>
                     @else
-                        <p class="text-muted mb-0">Aucun cours trouvé pour cette commande.</p>
+                        <p class="text-muted mb-0">Aucun contenu trouvé pour cette commande.</p>
                     @endif
                 </div>
             </section>

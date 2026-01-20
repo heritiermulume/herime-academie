@@ -1,4 +1,4 @@
-@extends('students.admin.layout')
+@extends('customers.admin.layout')
 
 @section('admin-title', 'Commande ' . $order->order_number)
 @section('admin-subtitle')
@@ -93,7 +93,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                         $firstCourse = optional($order->enrollments->first()->course);
                     @endphp
                     @if($firstCourse && $firstCourse->is_downloadable)
-                        <a href="{{ route('courses.show', $firstCourse->slug) }}" class="admin-btn primary sm">
+                        <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
                             <i class="fas fa-eye me-1"></i>Voir
                         </a>
                     @else
@@ -150,7 +150,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                         <div class="order-course-card__meta">
                             <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : 'Cours supprimé') : 'Contenu supprimé') }}</h4>
                             <p>
-                                {{ $course->instructor->name ?? 'Formateur inconnu' }}
+                                {{ $course->provider->name ?? 'Prestataire inconnu' }}
                                 @if($course && $course->category)
                                     · {{ $course->category->name }}
                                 @endif
@@ -164,7 +164,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                         </div>
                         @if($course)
                             <div class="order-course-card__actions">
-                                <a href="{{ route('courses.show', $course->slug) }}" class="admin-btn ghost sm">
+                                <a href="{{ route('contents.show', $course->slug) }}" class="admin-btn ghost sm">
                                     <i class="fas fa-eye me-1"></i>Voir {{ $getContentLabel($course) }}
                                 </a>
                             </div>
@@ -212,7 +212,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                         </div>
                         @if($course)
                             @if($course->is_downloadable)
-                                <a href="{{ route('courses.download', $course->slug) }}" class="admin-btn primary sm">
+                                <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
                                     <i class="fas fa-download me-1"></i>Télécharger
                                 </a>
                             @else

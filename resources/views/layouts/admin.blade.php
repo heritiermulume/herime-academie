@@ -15,10 +15,10 @@
             'active' => ['admin.analytics']
         ],
         [
-            'label' => 'Cours',
+            'label' => 'Contenus',
             'icon' => 'fas fa-book',
-            'route' => 'admin.courses',
-            'active' => ['admin.courses', 'admin.courses.*']
+            'route' => 'admin.contents',
+            'active' => ['admin.contents', 'admin.contents.*']
         ],
         [
             'label' => 'Catégories',
@@ -39,11 +39,11 @@
             'active' => ['admin.users', 'admin.users.*']
         ],
         [
-            'label' => 'Formateurs',
+            'label' => 'Prestataires',
             'icon' => 'fas fa-chalkboard-teacher',
-            'route' => 'admin.instructor-applications',
-            'active' => ['admin.instructor-applications', 'admin.instructor-applications.*'],
-            'available' => Route::has('admin.instructor-applications')
+            'route' => 'admin.provider-applications',
+            'active' => ['admin.provider-applications', 'admin.provider-applications.*'],
+            'available' => Route::has('admin.provider-applications')
         ],
         [
             'label' => 'Ambassadeurs',

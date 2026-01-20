@@ -65,13 +65,13 @@
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold mb-1">{{ $item->course->title }}</h6>
-                                <p class="text-muted small mb-1">{{ $item->course->instructor->name }}</p>
+                                <p class="text-muted small mb-1">{{ $item->course->provider->name }}</p>
                                 <span class="badge bg-primary">{{ $item->course->category->name }}</span>
                             </div>
                             <div class="col-md-3 text-end">
                                 <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total) }}</div>
                                 @if($item->course->is_downloadable)
-                                    <a href="{{ route('courses.download', $item->course->slug) }}" 
+                                    <a href="{{ route('contents.download', $item->course->slug) }}" 
                                        class="btn btn-primary btn-sm mt-2">
                                         <i class="fas fa-download me-1"></i>Télécharger
                                     </a>
@@ -115,10 +115,10 @@
             </div>
 
             <div class="text-center">
-                <a href="{{ route('student.dashboard') }}" class="btn btn-primary btn-lg me-3">
+                <a href="{{ route('customer.dashboard') }}" class="btn btn-primary btn-lg me-3">
                     <i class="fas fa-tachometer-alt me-2"></i>Aller au tableau de bord
                 </a>
-                <a href="{{ route('courses.index') }}" class="btn btn-outline-primary btn-lg">
+                <a href="{{ route('contents.index') }}" class="btn btn-outline-primary btn-lg">
                     <i class="fas fa-search me-2"></i>Découvrir d'autres cours
                 </a>
             </div>

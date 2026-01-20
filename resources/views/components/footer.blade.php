@@ -4,7 +4,7 @@
         <div class="row">
             <div class="col-lg-4 col-md-6 mb-4 text-center text-lg-start">
                 <img src="{{ asset('images/logo-herime-academie-blanc.png') }}" alt="Herime Academie" class="footer-logo">
-                <p class="mb-3">Votre plateforme d'apprentissage en ligne de confiance. Découvrez des milliers de cours de qualité et développez vos compétences.</p>
+                <p class="mb-3"><strong>Herime Académie</strong> est votre plateforme complète : <strong>plateforme d'apprentissage en ligne</strong> et <strong>espace de ressources professionnelles</strong>. Formations certifiantes et ressources premium : tout pour transformer votre carrière et développer vos compétences professionnelles.</p>
                 <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-lg-start">
                     <a href="https://www.linkedin.com/company/herime1" target="_blank" class="text-white" title="LinkedIn">
                         <i class="fab fa-linkedin fa-lg"></i>
@@ -28,8 +28,8 @@
                 <h5>Liens rapides</h5>
                 <ul class="list-unstyled">
                     <li class="mb-2"><a href="{{ route('home') }}">Accueil</a></li>
-                    <li class="mb-2"><a href="{{ route('courses.index') }}">Cours</a></li>
-                    <li class="mb-2"><a href="{{ route('instructors.index') }}">Formateurs</a></li>
+                    <li class="mb-2"><a href="{{ route('contents.index') }}">Contenus</a></li>
+                    <li class="mb-2"><a href="{{ route('providers.index') }}">Prestataires</a></li>
                     <li class="mb-2"><a href="{{ route('about') }}">À propos</a></li>
                     <li class="mb-2"><a href="{{ route('contact') }}">Contact</a></li>
                 </ul>
@@ -39,7 +39,7 @@
                 <h5>Catégories</h5>
                 <ul class="list-unstyled">
                     @foreach(\App\Models\Category::active()->ordered()->limit(5)->get() as $category)
-                        <li class="mb-2"><a href="{{ route('courses.category', $category->slug) }}">{{ $category->name }}</a></li>
+                        <li class="mb-2"><a href="{{ route('contents.category', $category->slug) }}">{{ $category->name }}</a></li>
                     @endforeach
                 </ul>
             </div>
@@ -52,7 +52,7 @@
                 </div>
                 <div class="mb-3">
                     <i class="fas fa-map-marker-alt me-2"></i>
-                    <span>25, Croisement Gambela et Lukandu,<br>Commune de Kasavubu, Kinshasa, RDC</span>
+                    <span>Kinshasa, R.D. Congo</span>
                 </div>
                 <div class="mb-3">
                     <i class="fab fa-whatsapp me-2"></i>

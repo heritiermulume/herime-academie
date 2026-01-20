@@ -39,13 +39,13 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // Instructors
-        $instructors = [
+        // Providers
+        $providers = [
             [
                 'name' => 'Jean-Pierre Mbuyi',
                 'email' => 'jp.mbuyi@herimeacademie.com',
                 'password' => Hash::make('password'),
-                'role' => 'instructor',
+                'role' => 'provider',
                 'is_verified' => true,
                 'is_active' => true,
                 'bio' => 'Développeur Full-Stack avec 10 ans d\'expérience. Expert en Laravel, React et Vue.js.',
@@ -58,7 +58,7 @@ class UserSeeder extends Seeder
                 'name' => 'Marie Kabila',
                 'email' => 'marie.kabila@herimeacademie.com',
                 'password' => Hash::make('password'),
-                'role' => 'instructor',
+                'role' => 'provider',
                 'is_verified' => true,
                 'is_active' => true,
                 'bio' => 'Designer UX/UI et spécialiste en marketing digital. Fondatrice de Design Studio Kinshasa.',
@@ -71,7 +71,7 @@ class UserSeeder extends Seeder
                 'name' => 'Dr. Patrick Lumumba',
                 'email' => 'p.lumumba@herimeacademie.com',
                 'password' => Hash::make('password'),
-                'role' => 'instructor',
+                'role' => 'provider',
                 'is_verified' => true,
                 'is_active' => true,
                 'bio' => 'Expert en business et entrepreneuriat. Coach certifié et consultant en stratégie d\'entreprise.',
@@ -81,13 +81,13 @@ class UserSeeder extends Seeder
             ],
         ];
 
-        foreach ($instructors as $instructor) {
+        foreach ($providers as $provider) {
             \App\Models\User::updateOrCreate(
-                ['email' => $instructor['email']],
-                array_merge($instructor, [
+                ['email' => $provider['email']],
+                array_merge($provider, [
                     'email_verified_at' => $now,
                     'last_login_at' => $now->copy()->subDays(rand(1, 10)),
-                    'sso_id' => 'sso-instructor-' . Str::slug($instructor['name']),
+                    'sso_id' => 'sso-provider-' . Str::slug($provider['name']),
                     'sso_provider' => 'herime',
                     'sso_metadata' => [
                         'synced_at' => $now->toIso8601String(),
@@ -98,23 +98,23 @@ class UserSeeder extends Seeder
             );
         }
 
-        // Students
+        // Customers
         for ($i = 1; $i <= 20; $i++) {
-            $email = 'etudiant' . $i . '@example.com';
+            $email = 'customer' . $i . '@example.com';
             \App\Models\User::updateOrCreate(
                 ['email' => $email],
                 [
-                    'name' => 'Étudiant ' . $i,
+                    'name' => 'Client ' . $i,
                     'password' => Hash::make('password'),
-                    'role' => 'student',
+                    'role' => 'customer',
                     'is_verified' => true,
                     'is_active' => true,
-                    'bio' => 'Étudiant passionné d\'apprentissage en ligne',
+                    'bio' => 'Client passionné d\'apprentissage en ligne',
                     'phone' => '+243' . rand(800000000, 999999999),
-                    'avatar' => 'https://i.pravatar.cc/300?img=' . ($i % 70), // Images différentes pour chaque étudiant
+                    'avatar' => 'https://i.pravatar.cc/300?img=' . ($i % 70), // Images différentes pour chaque client
                     'email_verified_at' => $now,
                     'last_login_at' => $now->copy()->subDays(rand(1, 30)),
-                    'sso_id' => 'sso-student-' . $i,
+                    'sso_id' => 'sso-customer-' . $i,
                     'sso_provider' => 'herime',
                     'sso_metadata' => [
                         'synced_at' => $now->toIso8601String(),

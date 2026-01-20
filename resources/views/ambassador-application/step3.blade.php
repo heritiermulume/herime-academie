@@ -442,7 +442,7 @@
         const CHUNK_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
         const CHUNK_UPLOAD_ENDPOINT = (function() {
             const origin = window.location.origin.replace(/\/+$/, '');
-            const path = "{{ trim(parse_url(route('instructor.uploads.chunk'), PHP_URL_PATH), '/') }}";
+            const path = "{{ trim(parse_url(route('provider.uploads.chunk'), PHP_URL_PATH), '/') }}";
             const endpoint = `${origin}/${path}`;
             console.log('Chunk upload endpoint:', endpoint);
             return endpoint;

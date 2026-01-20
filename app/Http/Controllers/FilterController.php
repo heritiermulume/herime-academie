@@ -19,7 +19,7 @@ class FilterController extends Controller
     public function filterCourses(Request $request)
     {
         $query = Course::published()
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons']);
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons']);
 
         // Filtres de base
         if ($request->filled('category_id')) {
@@ -48,16 +48,16 @@ class FilterController extends Controller
                   ->having('reviews_avg_rating', '>=', $request->min_rating);
         }
 
-        if ($request->filled('min_students')) {
+        if ($request->filled('min_customers')) {
             $query->withCount('enrollments')
-                  ->having('enrollments_count', '>=', $request->min_students);
+                  ->having('enrollments_count', '>=', $request->min_customers);
         }
 
         if ($request->filled('min_duration')) {
             // Filtre par durée minimale (calculée dynamiquement)
             $query->whereHas('sections.lessons', function($q) use ($request) {
                 $q->selectRaw('SUM(duration) as total_duration')
-                  ->groupBy('course_id')
+                  ->groupBy('content_id')
                   ->having('total_duration', '>=', $request->min_duration);
             });
         }
@@ -65,7 +65,7 @@ class FilterController extends Controller
         if ($request->filled('max_duration')) {
             $query->whereHas('sections.lessons', function($q) use ($request) {
                 $q->selectRaw('SUM(duration) as total_duration')
-                  ->groupBy('course_id')
+                  ->groupBy('content_id')
                   ->having('total_duration', '<=', $request->max_duration);
             });
         }
@@ -73,13 +73,13 @@ class FilterController extends Controller
         if ($request->filled('min_lessons')) {
             $query->whereHas('sections.lessons', function($q) use ($request) {
                 $q->selectRaw('COUNT(*) as total_lessons')
-                  ->groupBy('course_id')
+                  ->groupBy('content_id')
                   ->having('total_lessons', '>=', $request->min_lessons);
             });
         }
 
-        if ($request->filled('instructor_id')) {
-            $query->where('instructor_id', $request->instructor_id);
+        if ($request->input('provider_id')) {
+            $query->where('provider_id', $request->provider_id);
         }
 
         // Tri dynamique
@@ -99,14 +99,14 @@ class FilterController extends Controller
             case 'duration':
                 // Tri par durée (nécessite un calcul plus complexe)
                 $query->withCount(['sections as total_duration' => function($q) {
-                    $q->join('course_lessons', 'course_sections.id', '=', 'course_lessons.section_id')
-                      ->selectRaw('SUM(course_lessons.duration)');
+                    $q->join('content_lessons', 'content_sections.id', '=', 'content_lessons.section_id')
+                      ->selectRaw('SUM(content_lessons.duration)');
                 }])->orderBy('total_duration', $sortOrder);
                 break;
             case 'lessons':
                 $query->withCount(['sections as total_lessons' => function($q) {
-                    $q->join('course_lessons', 'course_sections.id', '=', 'course_lessons.section_id')
-                      ->selectRaw('COUNT(course_lessons.id)');
+                    $q->join('content_lessons', 'content_sections.id', '=', 'content_lessons.section_id')
+                      ->selectRaw('COUNT(content_lessons.id)');
                 }])->orderBy('total_lessons', $sortOrder);
                 break;
             default:
@@ -126,7 +126,7 @@ class FilterController extends Controller
             'filters_applied' => $request->only([
                 'category_id', 'level', 'language', 'is_free', 'is_featured',
                 'min_rating', 'min_students', 'min_duration', 'max_duration',
-                'min_lessons', 'instructor_id', 'sort_by', 'sort_order'
+                'min_lessons', 'provider_id', 'sort_by', 'sort_order'
             ])
         ]);
     }
@@ -137,18 +137,18 @@ class FilterController extends Controller
     public function getFilterOptions()
     {
         $categories = Category::active()
-            ->withCount(['courses' => function($query) {
+            ->withCount(['contents' => function($query) {
                 $query->where('is_published', true);
             }])
-            ->having('courses_count', '>', 0)
+            ->having('contents_count', '>', 0)
             ->orderBy('name')
             ->get();
 
-        $instructors = User::instructors()
-            ->whereHas('courses', function($query) {
+        $providers = User::providers()
+            ->whereHas('contents', function($query) {
                 $query->where('is_published', true);
             })
-            ->withCount(['courses' => function($query) {
+            ->withCount(['contents' => function($query) {
                 $query->where('is_published', true);
             }])
             ->orderBy('name')
@@ -170,22 +170,22 @@ class FilterController extends Controller
         $stats = [
             'min_rating' => Course::published()->withAvg('reviews', 'rating')->min('reviews_avg_rating') ?? 0,
             'max_rating' => Course::published()->withAvg('reviews', 'rating')->max('reviews_avg_rating') ?? 5,
-            'min_students' => Course::published()->withCount('enrollments')->min('enrollments_count') ?? 0,
-            'max_students' => Course::published()->withCount('enrollments')->max('enrollments_count') ?? 0,
+            'min_customers' => Course::published()->withCount('enrollments')->min('enrollments_count') ?? 0,
+            'max_customers' => Course::published()->withCount('enrollments')->max('enrollments_count') ?? 0,
             'min_duration' => Course::published()->withCount(['sections as total_duration' => function($q) {
-                $q->join('course_lessons', 'course_sections.id', '=', 'course_lessons.section_id')
-                  ->selectRaw('SUM(course_lessons.duration)');
+                $q->join('content_lessons', 'content_sections.id', '=', 'content_lessons.section_id')
+                  ->selectRaw('SUM(content_lessons.duration)');
             }])->min('total_duration') ?? 0,
             'max_duration' => Course::published()->withCount(['sections as total_duration' => function($q) {
-                $q->join('course_lessons', 'course_sections.id', '=', 'course_lessons.section_id')
-                  ->selectRaw('SUM(course_lessons.duration)');
+                $q->join('content_lessons', 'content_sections.id', '=', 'content_lessons.section_id')
+                  ->selectRaw('SUM(content_lessons.duration)');
             }])->max('total_duration') ?? 0,
         ];
 
         return response()->json([
             'success' => true,
             'categories' => $categories,
-            'instructors' => $instructors,
+            'providers' => $providers,
             'levels' => $levels,
             'languages' => $languages,
             'stats' => $stats
@@ -198,7 +198,7 @@ class FilterController extends Controller
     public function searchCourses(Request $request)
     {
         $query = Course::published()
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons']);
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons']);
 
         if ($request->filled('q')) {
             $searchTerm = $request->q;
@@ -206,7 +206,7 @@ class FilterController extends Controller
                 $q->where('title', 'like', "%{$searchTerm}%")
                   ->orWhere('description', 'like', "%{$searchTerm}%")
                   ->orWhere('short_description', 'like', "%{$searchTerm}%")
-                  ->orWhereHas('instructor', function($q) use ($searchTerm) {
+                  ->orWhereHas('provider', function($q) use ($searchTerm) {
                       $q->where('name', 'like', "%{$searchTerm}%");
                   })
                   ->orWhereHas('category', function($q) use ($searchTerm) {

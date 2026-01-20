@@ -29,7 +29,7 @@ class CategoryCreatedNotification extends Notification
             'excerpt' => "Découvrez les nouveaux cours disponibles dans « {$this->category->name} ».",
             'type' => 'info',
             'button_text' => 'Explorer la catégorie',
-            'button_url' => route('courses.category', $this->category->slug),
+            'button_url' => route('contents.category', $this->category->slug),
             'category_id' => $this->category->id,
             'category_name' => $this->category->name,
             'color' => $this->category->color,

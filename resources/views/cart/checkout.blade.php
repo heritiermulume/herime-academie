@@ -140,7 +140,7 @@
                         <div class="order-item">
                             <div class="item-info">
                                 <h6 class="item-title">{{ $item['course']->title ?? 'Cours' }}</h6>
-                                <p class="item-instructor text-muted">Par {{ $item['course']->instructor->name ?? '' }}</p>
+                                <p class="item-instructor text-muted">Par {{ $item['course']->provider->name ?? '' }}</p>
                             </div>
                             <div class="item-price">
                                 {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}

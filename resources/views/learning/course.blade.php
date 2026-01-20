@@ -216,10 +216,14 @@
     border: 1px solid rgba(255, 204, 51, 0.15);
     box-shadow: 0 25px 50px -12px rgba(0, 51, 102, 0.45);
     overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .learning-card .card-body {
     padding: clamp(1.1rem, 1rem + 0.6vw, 1.6rem);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .learning-meta {
@@ -273,6 +277,7 @@
     border-radius: 16px;
     overflow: hidden;
     background: rgba(0, 51, 102, 0.75);
+    width: 100%;
 }
 
 .outline-section__header {
@@ -296,6 +301,7 @@
 .outline-section__body {
     padding: 0.75rem 1rem 1rem;
     border-top: 1px solid rgba(255, 204, 51, 0.12);
+    width: 100%;
 }
 
 .outline-lesson {
@@ -307,6 +313,8 @@
     border: 1px solid transparent;
     transition: all 0.2s ease;
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .outline-lesson:hover {
@@ -3110,7 +3118,7 @@
         <div class="learning-topbar d-lg-none mb-3">
             <div class="d-flex align-items-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('courses.show', $course->slug) }}" class="btn btn-sm btn-outline-light">
+                    <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-sm btn-outline-light">
                                 <i class="fas fa-arrow-left"></i>
                             </a>
                     <div>
@@ -3169,11 +3177,11 @@
                                 @endphp
                                 <div class="outline-section" data-section-id="{{ $section->id }}">
                                     <button class="outline-section__header {{ $isSectionOpen ? 'active' : '' }}" type="button">
-                                        <div>
+                                        <div class="flex-grow-1">
                                             <p class="text-uppercase small mb-1 fw-semibold" style="color: #94a3b8;">Section {{ $loop->iteration }}</p>
                                             <h6 class="mb-0 fw-semibold" style="color: #f8fafc;">{{ $section->title }}</h6>
                                         </div>
-                                        <div class="text-end">
+                                        <div class="text-end flex-shrink-0">
                                             <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2 py-1">
                                                 {{ $sectionLessons->count() }} leçons
                                             </span>
@@ -3208,7 +3216,7 @@
                                                         <i class="fas fa-file"></i>
                                                     @endswitch
                                                 </div>
-                                                <div class="flex-grow-1">
+                                                <div class="flex-grow-1 min-w-0">
                                                     <p class="outline-lesson__title mb-1">{{ $sectionLesson->title }}</p>
                                                     <div class="outline-lesson__meta">
                                                         @if($sectionLesson->duration)
@@ -3222,7 +3230,7 @@
                                                 @endif
                                             </div>
                                         </div>
-                                                <i class="fas fa-chevron-right text-muted small"></i>
+                                                <i class="fas fa-chevron-right text-muted small flex-shrink-0"></i>
                                             </a>
                                         @endforeach
                                 </div>
@@ -3243,7 +3251,7 @@
                                 <p class="text-uppercase small mb-1" style="color: #94a3b8; letter-spacing: 0.08em;">Cours en formation</p>
                                 <h2 class="mb-0" style="color: #f8fafc; font-size: 1.25rem; font-weight: 700;">{{ $course->title }}</h2>
                             </div>
-                            <a href="{{ route('courses.show', $course->slug) }}" class="btn btn-outline-info btn-sm">
+                            <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-outline-info btn-sm">
                                 <i class="fas fa-info-circle me-2"></i>Détails
                             </a>
                         </div>
@@ -3403,11 +3411,11 @@
                                             @endphp
                                             <div class="outline-section" data-section-id="mobile-overview-{{ $section->id }}">
                                                 <button class="outline-section__header {{ $isSectionOpen ? 'active' : '' }}" type="button">
-                                                    <div>
+                                                    <div class="flex-grow-1">
                                                         <p class="text-uppercase small mb-1 fw-semibold" style="color: #94a3b8;">Section {{ $loop->iteration }}</p>
                                                         <h6 class="mb-0 fw-semibold" style="color: #f8fafc;">{{ $section->title }}</h6>
                                                     </div>
-                                                    <div class="text-end">
+                                                    <div class="text-end flex-shrink-0">
                                                         <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2 py-1">
                                                             {{ $sectionLessons->count() }} leçons
                                                         </span>
@@ -3442,7 +3450,7 @@
                                                                         <i class="fas fa-file"></i>
                                                                 @endswitch
                                                             </div>
-                                                            <div class="flex-grow-1">
+                                                            <div class="flex-grow-1 min-w-0">
                                                                 <p class="outline-lesson__title mb-1">{{ $sectionLesson->title }}</p>
                                                                 <div class="outline-lesson__meta">
                                                                     @if($sectionLesson->duration)
@@ -3451,12 +3459,12 @@
                                                                     @if($progressEntry)
                                                                         <span><i class="fas fa-chart-line me-1 text-success"></i>{{ round($progressEntry->progress_percentage) }}%</span>
                                                                     @endif
-                                                                    @if($isCompleted)
+                                                            @if($isCompleted)
                                                                         <span class="text-success"><i class="fas fa-check-circle me-1"></i>Terminé</span>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                            <i class="fas fa-chevron-right text-muted small"></i>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                            <i class="fas fa-chevron-right text-muted small flex-shrink-0"></i>
                                                         </a>
                                                     @endforeach
                                                 </div>
@@ -3541,7 +3549,7 @@
                         <div class="learning-meta">
                             <div class="learning-meta__item">
                                 <span>Étudiants</span>
-                                <strong>{{ $courseStats['total_students'] ?? 0 }}</strong>
+                                <strong>{{ $courseStats['total_customers'] ?? 0 }}</strong>
                             </div>
                             <div class="learning-meta__item">
                                 <span>Durée totale</span>
@@ -3563,7 +3571,7 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <h6 class="mb-0 text-white fw-bold">Prochaines étapes</h6>
-                            <a href="{{ route('courses.show', $course->slug) }}#curriculum" class="text-info small">Voir le plan complet</a>
+                            <a href="{{ route('contents.show', $course->slug) }}#curriculum" class="text-info small">Voir le plan complet</a>
                         </div>
                         <ul class="insight-list mb-0">
                                     @if(isset($nextLesson))
@@ -3594,14 +3602,14 @@
                             <h6 class="text-white fw-bold mb-3">Cours à explorer ensuite</h6>
                             <div class="recommended-courses">
                                 @foreach($recommendedCourses as $recommended)
-                                    <a href="{{ route('courses.show', $recommended->slug) }}" class="recommended-item">
+                                    <a href="{{ route('contents.show', $recommended->slug) }}" class="recommended-item">
                                         <div class="recommended-thumb">
                                             <img src="{{ $recommended->thumbnail_url ?? 'https://source.unsplash.com/300x200/?learning' }}" alt="{{ $recommended->title }}">
                                         </div>
                                         <div class="recommended-content flex-grow-1">
                                             <h6>{{ $recommended->title }}</h6>
                                             <div class="recommended-meta">
-                                                <span><i class="fas fa-user me-1"></i>{{ $recommended->instructor?->name }}</span>
+                                                <span><i class="fas fa-user me-1"></i>{{ $recommended->provider?->name }}</span>
                                                 <span><i class="fas fa-signal me-1"></i>{{ ucfirst($recommended->level) }}</span>
                                             </div>
                                             <div class="recommended-actions">

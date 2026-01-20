@@ -160,8 +160,8 @@
                                 <select class="form-select @error('role') is-invalid @enderror" 
                                         id="role" name="role" required>
                                     <option value="">Sélectionner un rôle</option>
-                                    <option value="student" {{ old('role') == 'student' ? 'selected' : '' }}>Étudiant</option>
-                                    <option value="instructor" {{ old('role') == 'instructor' ? 'selected' : '' }}>Formateur</option>
+                                    <option value="customer" {{ old('role') == 'customer' ? 'selected' : '' }}>Client</option>
+                                    <option value="provider" {{ old('role') == 'provider' ? 'selected' : '' }}>Prestataire</option>
                                     <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Administrateur</option>
                                     <option value="affiliate" {{ old('role') == 'affiliate' ? 'selected' : '' }}>Affilié</option>
                                 </select>

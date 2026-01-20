@@ -159,9 +159,9 @@
 
         <div class="course-card">
             <h2>{{ $course->title }}</h2>
-            @if($course->instructor)
+            @if($course->provider)
             <p style="color: #666; margin-top: 10px;">
-                <strong>Instructeur:</strong> {{ $course->instructor->name }}
+                <strong>Prestataire:</strong> {{ $course->provider->name }}
             </p>
             @endif
         </div>
@@ -175,7 +175,7 @@
         </div>
 
         <div class="button-container">
-            <a href="{{ route('student.certificates') }}" class="button">Voir tous mes certificats</a>
+            <a href="{{ route('customer.certificates') }}" class="button">Voir tous mes certificats</a>
         </div>
 
         <div class="footer">

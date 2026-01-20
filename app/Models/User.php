@@ -39,7 +39,7 @@ class User extends Authenticatable
         'sso_id',
         'sso_provider',
         'sso_metadata',
-        'is_external_instructor',
+        'is_external_provider',
         'moneroo_phone',
         'moneroo_provider',
         'moneroo_country',
@@ -102,7 +102,15 @@ class User extends Authenticatable
     // Relations
     public function courses()
     {
-        return $this->hasMany(Course::class, 'instructor_id');
+        return $this->hasMany(Course::class, 'provider_id');
+    }
+
+    /**
+     * Alias pour compatibilité avec le nouveau nom
+     */
+    public function contents()
+    {
+        return $this->courses();
     }
 
     public function enrollments()
@@ -155,9 +163,9 @@ class User extends Authenticatable
         return $this->hasMany(CourseDownload::class);
     }
 
-    public function instructorApplication()
+    public function providerApplication()
     {
-        return $this->hasOne(InstructorApplication::class);
+        return $this->hasOne(ProviderApplication::class);
     }
 
     public function ambassadorApplication()
@@ -171,14 +179,14 @@ class User extends Authenticatable
     }
 
     // Scopes
-    public function scopeInstructors($query)
+    public function scopeProviders($query)
     {
-        return $query->where('role', 'instructor');
+        return $query->where('role', 'provider');
     }
 
-    public function scopeStudents($query)
+    public function scopeCustomers($query)
     {
-        return $query->where('role', 'student');
+        return $query->where('role', 'customer');
     }
 
     public function scopeAdmins($query)
@@ -192,15 +200,31 @@ class User extends Authenticatable
         return $query->where('role', 'affiliate');
     }
 
-    // Helper methods
-    public function isInstructor()
+    /**
+     * Alias pour compatibilité avec l'ancien nom
+     */
+    public function scopeInstructors($query)
     {
-        return $this->role === 'instructor';
+        return $query->where('role', 'provider');
     }
 
-    public function isStudent()
+    /**
+     * Alias pour compatibilité avec l'ancien nom
+     */
+    public function scopeStudents($query)
     {
-        return $this->role === 'student';
+        return $query->where('role', 'customer');
+    }
+
+    // Helper methods
+    public function isProvider()
+    {
+        return $this->role === 'provider';
+    }
+
+    public function isCustomer()
+    {
+        return $this->role === 'customer';
     }
 
     public function isAdmin()
@@ -223,9 +247,17 @@ class User extends Authenticatable
         return $this->role === 'affiliate';
     }
 
+    public function isExternalProvider()
+    {
+        return $this->is_external_provider && $this->isProvider();
+    }
+
+    /**
+     * Alias pour compatibilité avec l'ancien nom
+     */
     public function isExternalInstructor()
     {
-        return $this->is_external_instructor && $this->isInstructor();
+        return $this->isExternalProvider();
     }
 
     /**
@@ -243,8 +275,8 @@ class User extends Authenticatable
         return $this->role === $role;
     }
 
-    public function instructorPayouts()
+    public function providerPayouts()
     {
-        return $this->hasMany(InstructorPayout::class, 'instructor_id');
+        return $this->hasMany(ProviderPayout::class, 'provider_id');
     }
 }

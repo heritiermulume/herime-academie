@@ -232,20 +232,20 @@ class MonerooController extends Controller
 
         // PROTECTION CONTRE LES DOUBLES PAIEMENTS
         // Vérifier si l'utilisateur a déjà une commande payée récente (dernières 24h) avec les mêmes cours
-        $courseIds = $cartItems->pluck('course_id')->sort()->values()->toArray();
+        $contentIds = $cartItems->pluck('content_id')->sort()->values()->toArray();
         $recentPaidOrder = Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subHours(24))
-            ->whereHas('orderItems', function($query) use ($courseIds) {
-                $query->whereIn('course_id', $courseIds);
+            ->whereHas('orderItems', function($query) use ($contentIds) {
+                $query->whereIn('content_id', $contentIds);
             })
-            ->with(['orderItems' => function($query) use ($courseIds) {
-                $query->whereIn('course_id', $courseIds);
+            ->with(['orderItems' => function($query) use ($contentIds) {
+                $query->whereIn('content_id', $contentIds);
             }])
             ->get()
-            ->filter(function($order) use ($courseIds) {
-                $orderCourseIds = $order->orderItems->pluck('course_id')->sort()->values()->toArray();
-                return $orderCourseIds === $courseIds;
+            ->filter(function($order) use ($contentIds) {
+                $orderCourseIds = $order->orderItems->pluck('content_id')->sort()->values()->toArray();
+                return $orderCourseIds === $contentIds;
             })
             ->first();
 
@@ -254,7 +254,7 @@ class MonerooController extends Controller
                 'user_id' => $user->id,
                 'existing_order_id' => $recentPaidOrder->id,
                 'existing_order_number' => $recentPaidOrder->order_number,
-                'course_ids' => $courseIds,
+                'content_ids' => $contentIds,
             ]);
             
             return response()->json([
@@ -271,16 +271,16 @@ class MonerooController extends Controller
         $recentPendingOrder = Order::where('user_id', $user->id)
             ->where('status', 'pending')
             ->where('created_at', '>=', now()->subMinutes(5))
-            ->whereHas('orderItems', function($query) use ($courseIds) {
-                $query->whereIn('course_id', $courseIds);
+            ->whereHas('orderItems', function($query) use ($contentIds) {
+                $query->whereIn('content_id', $contentIds);
             })
-            ->with(['orderItems' => function($query) use ($courseIds) {
-                $query->whereIn('course_id', $courseIds);
+            ->with(['orderItems' => function($query) use ($contentIds) {
+                $query->whereIn('content_id', $contentIds);
             }, 'payments'])
             ->get()
-            ->filter(function($order) use ($courseIds) {
-                $orderCourseIds = $order->orderItems->pluck('course_id')->sort()->values()->toArray();
-                return $orderCourseIds === $courseIds;
+            ->filter(function($order) use ($contentIds) {
+                $orderCourseIds = $order->orderItems->pluck('content_id')->sort()->values()->toArray();
+                return $orderCourseIds === $contentIds;
             })
             ->first();
 
@@ -341,7 +341,7 @@ class MonerooController extends Controller
                 \Log::info('Moneroo: Previous payment failed, cancelling old order and creating new one', [
                     'user_id' => $user->id,
                     'old_order_id' => $recentPendingOrder->id,
-                    'course_ids' => $courseIds,
+                    'content_ids' => $contentIds,
                 ]);
 
                 // Annuler l'ancienne commande
@@ -453,7 +453,7 @@ class MonerooController extends Controller
             $coursePrice = $cartItem->course->current_price ?? $cartItem->course->price ?? 0;
             OrderItem::create([
                 'order_id' => $order->id,
-                'course_id' => $cartItem->course_id,
+                'content_id' => $cartItem->content_id,
                 'price' => $cartItem->course->price ?? 0,
                 'sale_price' => $cartItem->course->is_sale_active ? $cartItem->course->active_sale_price : null,
                 'total' => $coursePrice,
@@ -1060,7 +1060,7 @@ class MonerooController extends Controller
                 'order_items_count' => $orderItems->count(),
                 'items_data' => $orderItems->map(fn($item) => [
                     'id' => $item->id,
-                    'course_id' => $item->course_id,
+                    'content_id' => $item->content_id,
                     'price' => $item->price,
                 ])->toArray(),
             ]);
@@ -1093,7 +1093,7 @@ class MonerooController extends Controller
                 \Log::info('Moneroo: Processing order item', [
                     'order_id' => $order->id,
                     'order_item_id' => $orderItem->id,
-                    'course_id' => $orderItem->course_id,
+                    'content_id' => $orderItem->content_id,
                     'user_id' => $order->user_id,
                 ]);
                 
@@ -1104,7 +1104,7 @@ class MonerooController extends Controller
                     \Log::warning('Moneroo: Course not found for order item', [
                         'order_id' => $order->id,
                         'order_item_id' => $orderItem->id,
-                        'course_id' => $orderItem->course_id,
+                        'content_id' => $orderItem->content_id,
                     ]);
                     continue;
                 }
@@ -1115,7 +1115,7 @@ class MonerooController extends Controller
                     $downloadableItems++;
                     \Log::info('Moneroo: Skipping enrollment for downloadable product', [
                         'order_id' => $order->id,
-                        'course_id' => $course->id,
+                        'content_id' => $course->id,
                         'course_title' => $course->title,
                     ]);
                     continue;
@@ -1124,14 +1124,14 @@ class MonerooController extends Controller
                 // Pour les cours non téléchargeables, créer l'inscription normalement
                 // Vérifier si l'utilisateur n'est pas déjà inscrit
                 $existingEnrollment = Enrollment::where('user_id', $order->user_id)
-                    ->where('course_id', $orderItem->course_id)
+                    ->where('content_id', $orderItem->content_id)
                     ->first();
 
                 if (!$existingEnrollment) {
                     // La méthode createAndNotify envoie automatiquement les notifications et emails
                     $enrollment = Enrollment::createAndNotify([
                         'user_id' => $order->user_id,
-                        'course_id' => $orderItem->course_id,
+                        'content_id' => $orderItem->content_id,
                         'order_id' => $order->id,
                         'status' => 'active',
                     ]);
@@ -1140,13 +1140,13 @@ class MonerooController extends Controller
                     \Log::info('Moneroo: Enrollment created for non-downloadable course', [
                         'enrollment_id' => $enrollment->id,
                         'order_id' => $order->id,
-                        'course_id' => $orderItem->course_id,
+                        'content_id' => $orderItem->content_id,
                         'user_id' => $order->user_id,
                     ]);
                 } else {
                     \Log::info('Moneroo: Enrollment already exists', [
                         'order_id' => $order->id,
-                        'course_id' => $orderItem->course_id,
+                        'content_id' => $orderItem->content_id,
                         'existing_enrollment_id' => $existingEnrollment->id,
                     ]);
                 }

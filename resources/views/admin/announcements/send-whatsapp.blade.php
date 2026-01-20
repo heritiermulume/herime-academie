@@ -33,9 +33,11 @@
                     <select class="form-select" id="recipient_type" name="recipient_type" required>
                         <option value="all">Tous les utilisateurs (avec numéro de téléphone)</option>
                         <option value="role">Par rôle</option>
-                        <option value="course">Utilisateurs inscrits à un cours</option>
+                        <option value="course">Utilisateurs inscrits à un contenu</option>
                         <option value="category">Utilisateurs inscrits à une catégorie</option>
-                        <option value="instructor">Utilisateurs inscrits à un formateur</option>
+                        <option value="provider">Utilisateurs inscrits à un prestataire</option>
+                        <option value="downloaded_free">Utilisateurs ayant téléchargé un contenu gratuit</option>
+                        <option value="purchased">Utilisateurs ayant effectué un achat</option>
                         <option value="registration_date">Par date d'inscription</option>
                         <option value="activity">Par activité</option>
                         <option value="selected">Utilisateurs sélectionnés</option>
@@ -49,14 +51,14 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles[]" value="student" id="role_student">
-                                <label class="form-check-label" for="role_student">Étudiants</label>
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="customer" id="role_customer">
+                                <label class="form-check-label" for="role_customer">Clients</label>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles[]" value="instructor" id="role_instructor">
-                                <label class="form-check-label" for="role_instructor">Formateurs</label>
+                                <input class="form-check-input" type="checkbox" name="roles[]" value="provider" id="role_provider">
+                                <label class="form-check-label" for="role_provider">Prestataires</label>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -82,14 +84,14 @@
 
                 <!-- Sélection par cours -->
                 <div class="mb-3" id="course_selection" style="display: none;">
-                    <label class="form-label">Cours *</label>
-                    <select class="form-select" id="course_id" name="course_id">
-                        <option value="">Sélectionner un cours</option>
+                    <label class="form-label">Contenu *</label>
+                    <select class="form-select" id="content_id" name="content_id">
+                        <option value="">Sélectionner un contenu</option>
                         @foreach(\App\Models\Course::where('is_published', true)->orderBy('title')->get() as $course)
                             <option value="{{ $course->id }}">{{ $course->title }}</option>
                         @endforeach
                     </select>
-                    <small class="text-muted">Seuls les utilisateurs inscrits à ce cours recevront le message</small>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à ce contenu recevront le message</small>
                 </div>
 
                 <!-- Sélection par catégorie -->
@@ -101,19 +103,55 @@
                             <option value="{{ $category->id }}">{{ $category->name }}</option>
                         @endforeach
                     </select>
-                    <small class="text-muted">Seuls les utilisateurs inscrits à des cours de cette catégorie recevront le message</small>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à des contenus de cette catégorie recevront le message</small>
                 </div>
 
-                <!-- Sélection par formateur -->
-                <div class="mb-3" id="instructor_selection" style="display: none;">
-                    <label class="form-label">Formateur *</label>
-                    <select class="form-select" id="instructor_id" name="instructor_id">
-                        <option value="">Sélectionner un formateur</option>
-                        @foreach(\App\Models\User::where('role', 'instructor')->where('is_active', true)->orderBy('name')->get() as $instructor)
-                            <option value="{{ $instructor->id }}">{{ $instructor->name }}</option>
+                <!-- Sélection par prestataire -->
+                <div class="mb-3" id="provider_selection" style="display: none;">
+                    <label class="form-label">Prestataire *</label>
+                    <select class="form-select" id="provider_id" name="provider_id">
+                        <option value="">Sélectionner un prestataire</option>
+                        @foreach(\App\Models\User::where('role', 'provider')->where('is_active', true)->orderBy('name')->get() as $provider)
+                            <option value="{{ $provider->id }}">{{ $provider->name }}</option>
                         @endforeach
                     </select>
-                    <small class="text-muted">Seuls les utilisateurs inscrits à des cours de ce formateur recevront le message</small>
+                    <small class="text-muted">Seuls les utilisateurs inscrits à des contenus de ce prestataire recevront le message</small>
+                </div>
+
+                <!-- Sélection par téléchargement de contenu gratuit -->
+                <div class="mb-3" id="downloaded_free_selection" style="display: none;">
+                    <label class="form-label">Contenu téléchargeable gratuit *</label>
+                    <select class="form-select" id="downloaded_content_id" name="downloaded_content_id">
+                        <option value="">Tous les contenus téléchargeables gratuits</option>
+                        @foreach(\App\Models\Course::where('is_published', true)->where('is_downloadable', true)->where('is_free', true)->orderBy('title')->get() as $course)
+                            <option value="{{ $course->id }}">{{ $course->title }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seuls les utilisateurs ayant téléchargé au moins une fois ce contenu (ou tous les contenus téléchargeables gratuits si aucun n'est sélectionné) recevront le message</small>
+                </div>
+
+                <!-- Sélection par achat -->
+                <div class="mb-3" id="purchased_selection" style="display: none;">
+                    <label class="form-label">Type d'achat *</label>
+                    <select class="form-select" id="purchase_type" name="purchase_type">
+                        <option value="any">Tous les utilisateurs ayant effectué un achat</option>
+                        <option value="paid">Utilisateurs ayant des commandes payées</option>
+                        <option value="completed">Utilisateurs ayant des commandes complétées</option>
+                        <option value="specific_content">Utilisateurs ayant acheté un contenu spécifique</option>
+                    </select>
+                    <small class="text-muted">Filtrez les utilisateurs selon leurs achats</small>
+                </div>
+
+                <!-- Sélection par contenu acheté -->
+                <div class="mb-3" id="purchased_content_selection" style="display: none;">
+                    <label class="form-label">Contenu acheté *</label>
+                    <select class="form-select" id="purchased_content_id" name="purchased_content_id">
+                        <option value="">Sélectionner un contenu</option>
+                        @foreach(\App\Models\Course::where('is_published', true)->where('is_free', false)->orderBy('title')->get() as $course)
+                            <option value="{{ $course->id }}">{{ $course->title }}</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seuls les utilisateurs ayant acheté ce contenu recevront le message</small>
                 </div>
 
                 <!-- Sélection par date d'inscription -->
@@ -330,7 +368,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const roleSelection = document.getElementById('role_selection');
         const courseSelection = document.getElementById('course_selection');
         const categorySelection = document.getElementById('category_selection');
-        const instructorSelection = document.getElementById('instructor_selection');
+        const providerSelection = document.getElementById('provider_selection');
+        const downloadedFreeSelection = document.getElementById('downloaded_free_selection');
+        const purchasedSelection = document.getElementById('purchased_selection');
+        const purchasedContentSelection = document.getElementById('purchased_content_selection');
         const registrationDateSelection = document.getElementById('registration_date_selection');
         const activitySelection = document.getElementById('activity_selection');
         const singleUserSelection = document.getElementById('single_user_selection');
@@ -340,7 +381,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (roleSelection) roleSelection.style.display = 'none';
         if (courseSelection) courseSelection.style.display = 'none';
         if (categorySelection) categorySelection.style.display = 'none';
-        if (instructorSelection) instructorSelection.style.display = 'none';
+        if (providerSelection) providerSelection.style.display = 'none';
+        if (downloadedFreeSelection) downloadedFreeSelection.style.display = 'none';
+        if (purchasedSelection) purchasedSelection.style.display = 'none';
+        if (purchasedContentSelection) purchasedContentSelection.style.display = 'none';
         if (registrationDateSelection) registrationDateSelection.style.display = 'none';
         if (activitySelection) activitySelection.style.display = 'none';
         if (singleUserSelection) singleUserSelection.style.display = 'none';
@@ -350,7 +394,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'role' && roleSelection) roleSelection.style.display = 'block';
         else if (type === 'course' && courseSelection) courseSelection.style.display = 'block';
         else if (type === 'category' && categorySelection) categorySelection.style.display = 'block';
-        else if (type === 'instructor' && instructorSelection) instructorSelection.style.display = 'block';
+        else if (type === 'provider' && providerSelection) providerSelection.style.display = 'block';
+        else if (type === 'downloaded_free' && downloadedFreeSelection) downloadedFreeSelection.style.display = 'block';
+        else if (type === 'purchased' && purchasedSelection) purchasedSelection.style.display = 'block';
         else if (type === 'registration_date' && registrationDateSelection) registrationDateSelection.style.display = 'block';
         else if (type === 'activity' && activitySelection) activitySelection.style.display = 'block';
         else if (type === 'single' && singleUserSelection) singleUserSelection.style.display = 'block';
@@ -371,9 +417,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const userSearchResults = document.getElementById('user_search_results');
             const multipleUserSearch = document.getElementById('multiple_user_search');
             const multipleUserSearchResults = document.getElementById('multiple_user_search_results');
-            const courseId = document.getElementById('course_id');
+            const courseId = document.getElementById('content_id');
             const categoryId = document.getElementById('category_id');
-            const instructorId = document.getElementById('instructor_id');
+            const providerId = document.getElementById('provider_id');
+            const downloadedContentId = document.getElementById('downloaded_content_id');
+            const purchaseType = document.getElementById('purchase_type');
+            const purchasedContentId = document.getElementById('purchased_content_id');
             const registrationDateFrom = document.getElementById('registration_date_from');
             const registrationDateTo = document.getElementById('registration_date_to');
             const activityType = document.getElementById('activity_type');
@@ -391,7 +440,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (courseId) courseId.value = '';
             if (categoryId) categoryId.value = '';
-            if (instructorId) instructorId.value = '';
+            if (providerId) providerId.value = '';
+            if (downloadedContentId) downloadedContentId.value = '';
+            if (purchaseType) purchaseType.value = '';
+            if (purchasedContentId) purchasedContentId.value = '';
             if (registrationDateFrom) registrationDateFrom.value = '';
             if (registrationDateTo) registrationDateTo.value = '';
             if (activityType) activityType.value = '';
@@ -452,17 +504,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 countDiv.style.display = 'none';
             }
         } else if (type === 'course') {
-            const courseId = document.getElementById('course_id')?.value;
+            const courseId = document.getElementById('content_id')?.value;
             if (!courseId) {
-                countText.textContent = 'Veuillez sélectionner un cours';
+                countText.textContent = 'Veuillez sélectionner un contenu';
                 countDiv.style.display = 'block';
                 return;
             }
-            fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=course&course_id=${courseId}`)
+            fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=course&content_id=${courseId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data && typeof data.count !== 'undefined') {
-                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à ce cours recevront ce message`;
+                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à ce contenu recevront ce message`;
                         countDiv.style.display = 'block';
                     }
                 })
@@ -482,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     if (data && typeof data.count !== 'undefined') {
-                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à des cours de cette catégorie recevront ce message`;
+                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à des contenus de cette catégorie recevront ce message`;
                         countDiv.style.display = 'block';
                     }
                 })
@@ -491,18 +543,78 @@ document.addEventListener('DOMContentLoaded', function() {
                     countText.textContent = 'Impossible de compter les utilisateurs';
                     countDiv.style.display = 'block';
                 });
-        } else if (type === 'instructor') {
-            const instructorId = document.getElementById('instructor_id')?.value;
-            if (!instructorId) {
-                countText.textContent = 'Veuillez sélectionner un formateur';
+        } else if (type === 'provider') {
+            const providerId = document.getElementById('provider_id')?.value;
+            if (!providerId) {
+                countText.textContent = 'Veuillez sélectionner un prestataire';
                 countDiv.style.display = 'block';
                 return;
             }
-            fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=instructor&instructor_id=${instructorId}`)
+            fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=provider&provider_id=${providerId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data && typeof data.count !== 'undefined') {
-                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à des cours de ce formateur recevront ce message`;
+                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à des contenus de ce prestataire recevront ce message`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
+        } else if (type === 'downloaded_free') {
+            const downloadedContentId = document.getElementById('downloaded_content_id')?.value;
+            let url = `{{ route("admin.announcements.count-users-whatsapp") }}?type=downloaded_free`;
+            if (downloadedContentId) {
+                url += `&downloaded_content_id=${downloadedContentId}`;
+            }
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        const contentText = downloadedContentId ? 'ce contenu' : 'des contenus téléchargeables gratuits';
+                        countText.textContent = `${data.count} utilisateur(s) ayant téléchargé ${contentText} recevront ce message`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
+        } else if (type === 'purchased') {
+            const purchaseType = document.getElementById('purchase_type')?.value;
+            if (!purchaseType) {
+                countText.textContent = 'Veuillez sélectionner un type d\'achat';
+                countDiv.style.display = 'block';
+                return;
+            }
+            let url = `{{ route("admin.announcements.count-users-whatsapp") }}?type=purchased&purchase_type=${purchaseType}`;
+            const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+            if (purchaseType === 'specific_content' && purchasedContentId) {
+                url += `&purchased_content_id=${purchasedContentId}`;
+            }
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        let purchaseText = '';
+                        switch(purchaseType) {
+                            case 'any':
+                                purchaseText = 'ayant effectué un achat';
+                                break;
+                            case 'paid':
+                                purchaseText = 'ayant des commandes payées';
+                                break;
+                            case 'completed':
+                                purchaseText = 'ayant des commandes complétées';
+                                break;
+                            case 'specific_content':
+                                purchaseText = 'ayant acheté ce contenu';
+                                break;
+                        }
+                        countText.textContent = `${data.count} utilisateur(s) ${purchaseText} recevront ce message`;
                         countDiv.style.display = 'block';
                     }
                 })
@@ -602,7 +714,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Attacher les événements pour les nouveaux filtres
-    const courseSelect = document.getElementById('course_id');
+    const courseSelect = document.getElementById('content_id');
     if (courseSelect) {
         courseSelect.addEventListener('change', window.updateRecipientCount);
     }
@@ -612,7 +724,7 @@ document.addEventListener('DOMContentLoaded', function() {
         categorySelect.addEventListener('change', window.updateRecipientCount);
     }
     
-    const instructorSelect = document.getElementById('instructor_id');
+    const providerSelect = document.getElementById('provider_id');
     if (instructorSelect) {
         instructorSelect.addEventListener('change', window.updateRecipientCount);
     }
@@ -831,7 +943,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     isValid = false;
                 }
             } else if (type === 'course') {
-                const courseId = document.getElementById('course_id')?.value;
+                const courseId = document.getElementById('content_id')?.value;
                 if (!courseId) {
                     alert('Veuillez sélectionner un cours');
                     isValid = false;
@@ -842,11 +954,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('Veuillez sélectionner une catégorie');
                     isValid = false;
                 }
-            } else if (type === 'instructor') {
-                const instructorId = document.getElementById('instructor_id')?.value;
-                if (!instructorId) {
-                    alert('Veuillez sélectionner un formateur');
+            } else if (type === 'provider') {
+                const providerId = document.getElementById('provider_id')?.value;
+                if (!providerId) {
+                    alert('Veuillez sélectionner un prestataire');
                     isValid = false;
+                }
+            } else if (type === 'downloaded_free') {
+                // Le contenu téléchargé est optionnel (si vide, tous les contenus téléchargeables gratuits)
+                // Pas de validation nécessaire
+            } else if (type === 'purchased') {
+                const purchaseType = document.getElementById('purchase_type')?.value;
+                if (!purchaseType) {
+                    alert('Veuillez sélectionner un type d\'achat');
+                    isValid = false;
+                } else if (purchaseType === 'specific_content') {
+                    const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+                    if (!purchasedContentId) {
+                        alert('Veuillez sélectionner un contenu');
+                        isValid = false;
+                    }
                 }
             } else if (type === 'registration_date') {
                 const dateFrom = document.getElementById('registration_date_from')?.value;

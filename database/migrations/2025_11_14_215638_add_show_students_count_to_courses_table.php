@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Cette migration sera exécutée avant le renommage, donc on utilise 'courses'
+        // Le renommage en 'show_customers_count' sera fait dans la migration de renommage
         Schema::table('courses', function (Blueprint $table) {
             $table->boolean('show_students_count')->default(false)->after('is_featured');
         });
@@ -21,8 +23,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('courses', function (Blueprint $table) {
-            $table->dropColumn('show_students_count');
+        // Si la table a été renommée, utiliser 'contents', sinon 'courses'
+        $tableName = Schema::hasTable('contents') ? 'contents' : 'courses';
+        $columnName = Schema::hasColumn('contents', 'show_customers_count') ? 'show_customers_count' : 'show_students_count';
+        Schema::table($tableName, function (Blueprint $table) use ($columnName) {
+            $table->dropColumn($columnName);
         });
     }
 };

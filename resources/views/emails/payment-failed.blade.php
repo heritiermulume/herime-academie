@@ -185,7 +185,7 @@
 
             <div class="button-container">
                 <a href="{{ $orderUrl }}" class="button">Voir ma commande</a>
-                <a href="{{ route('courses.index') }}" class="button-secondary">Parcourir les cours</a>
+                <a href="{{ route('contents.index') }}" class="button-secondary">Parcourir les cours</a>
             </div>
 
             <p>Si vous rencontrez des difficultés, n'hésitez pas à nous contacter. Nous sommes là pour vous aider !</p>

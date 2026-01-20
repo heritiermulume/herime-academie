@@ -113,7 +113,7 @@
                         <span>Copier le code promo</span>
                     </button>
                 @endif
-                <a href="{{ route('courses.index') }}" class="dashboard-actions__item">
+                <a href="{{ route('contents.index') }}" class="dashboard-actions__item">
                     <i class="fas fa-book"></i>
                     <span>Découvrir les cours</span>
                 </a>

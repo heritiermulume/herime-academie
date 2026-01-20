@@ -44,10 +44,10 @@
                                 @foreach($recipients as $recipient)
                                 <option value="{{ $recipient->id }}" {{ old('receiver_id') == $recipient->id ? 'selected' : '' }}>
                                     {{ $recipient->name }} 
-                                    @if($recipient->role === 'instructor')
-                                        <span class="text-muted">(Formateur)</span>
-                                    @elseif($recipient->role === 'student')
-                                        <span class="text-muted">(Étudiant)</span>
+                                    @if($recipient->role === 'provider')
+                                        <span class="text-muted">(Prestataire)</span>
+                                    @elseif($recipient->role === 'customer')
+                                        <span class="text-muted">(Client)</span>
                                     @endif
                                 </option>
                                 @endforeach
@@ -59,16 +59,16 @@
 
                         <!-- Course (Optional) -->
                         <div class="mb-4">
-                            <label for="course_id" class="form-label fw-bold">Cours (optionnel)</label>
-                            <select class="form-select @error('course_id') is-invalid @enderror" id="course_id" name="course_id">
+                            <label for="content_id" class="form-label fw-bold">Cours (optionnel)</label>
+                            <select class="form-select @error('content_id') is-invalid @enderror" id="content_id" name="content_id">
                                 <option value="">Sélectionner un cours</option>
                                 @foreach($courses as $course)
-                                <option value="{{ $course->id }}" {{ old('course_id') == $course->id ? 'selected' : '' }}>
+                                <option value="{{ $course->id }}" {{ old('content_id') == $course->id ? 'selected' : '' }}>
                                     {{ $course->title }}
                                 </option>
                                 @endforeach
                             </select>
-                            @error('course_id')
+                            @error('content_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <div class="form-text">Sélectionnez un cours si votre message concerne un cours spécifique</div>
@@ -152,7 +152,7 @@
 // Auto-update course list based on selected recipient
 document.getElementById('receiver_id').addEventListener('change', function() {
     const recipientId = this.value;
-    const courseSelect = document.getElementById('course_id');
+    const courseSelect = document.getElementById('content_id');
     
     if (recipientId) {
         // Enable course selection
@@ -205,7 +205,7 @@ document.querySelectorAll('input, textarea, select').forEach(element => {
             // Save draft to localStorage
             const draft = {
                 receiver_id: formData.get('receiver_id'),
-                course_id: formData.get('course_id'),
+                content_id: formData.get('content_id'),
                 subject: formData.get('subject'),
                 message: formData.get('message')
             };
@@ -221,7 +221,7 @@ window.addEventListener('load', function() {
     if (draft) {
         const draftData = JSON.parse(draft);
         document.getElementById('receiver_id').value = draftData.receiver_id || '';
-        document.getElementById('course_id').value = draftData.course_id || '';
+        document.getElementById('content_id').value = draftData.content_id || '';
         document.getElementById('subject').value = draftData.subject || '';
         document.getElementById('message').value = draftData.message || '';
     }

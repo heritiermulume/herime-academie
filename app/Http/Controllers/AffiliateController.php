@@ -46,7 +46,7 @@ class AffiliateController extends Controller
 
         // Cours populaires pour promotion
         $popularCourses = Course::published()
-            ->with(['instructor', 'category'])
+            ->with(['provider', 'category'])
             ->withCount('enrollments')
             ->orderBy('enrollments_count', 'desc')
             ->limit(6)
@@ -59,7 +59,7 @@ class AffiliateController extends Controller
     {
         $affiliate = auth()->user()->affiliate;
         $courses = Course::published()
-            ->with(['instructor', 'category'])
+            ->with(['provider', 'category'])
             ->latest()
             ->paginate(12);
 
@@ -92,14 +92,14 @@ class AffiliateController extends Controller
     public function generateLink(Request $request)
     {
         $request->validate([
-            'course_id' => 'required|exists:courses,id',
+            'content_id' => 'required|exists:contents,id',
             'custom_text' => 'nullable|string|max:255',
         ]);
 
-        $course = Course::findOrFail($request->course_id);
+        $course = Course::findOrFail($request->content_id);
         $affiliate = auth()->user()->affiliate;
 
-        $baseUrl = route('courses.show', $course->slug);
+        $baseUrl = route('contents.show', $course->slug);
         $affiliateUrl = $baseUrl . '?ref=' . $affiliate->code;
 
         return response()->json([

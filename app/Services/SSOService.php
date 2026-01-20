@@ -88,7 +88,7 @@ class SSOService
                                     $user['role'] = $user['privilege'];
                                 } elseif (isset($user['privileges'])) {
                                     $user['role'] = is_array($user['privileges']) 
-                                        ? ($user['privileges'][0] ?? 'student')
+                                        ? ($user['privileges'][0] ?? 'customer')
                                         : $user['privileges'];
                                 }
                             }
@@ -176,7 +176,7 @@ class SSOService
                                 $user['role'] = $user['privilege'];
                             } elseif (isset($user['privileges'])) {
                                 $user['role'] = is_array($user['privileges']) 
-                                    ? ($user['privileges'][0] ?? 'student')
+                                    ? ($user['privileges'][0] ?? 'customer')
                                     : $user['privileges'];
                             }
                         }
@@ -273,7 +273,7 @@ class SSOService
                 'user_id' => $payload['user_id'] ?? $payload['id'] ?? null,
                 'email' => $payload['email'] ?? null,
                 'name' => $payload['name'] ?? $payload['full_name'] ?? null,
-                'role' => $payload['role'] ?? 'student',
+                'role' => $payload['role'] ?? 'customer',
                 'is_verified' => $payload['is_verified'] ?? false,
                 'is_active' => $payload['is_active'] ?? true,
                 // Récupérer l'avatar/photo depuis le SSO

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('instructor_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
-            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+            $table->foreignId('content_id')->constrained('courses')->onDelete('cascade');
             $table->string('payout_id')->unique(); // ID unique pour Moneroo
             $table->decimal('amount', 10, 2); // Montant à payer au formateur
             $table->decimal('commission_percentage', 5, 2); // Pourcentage de commission retenu

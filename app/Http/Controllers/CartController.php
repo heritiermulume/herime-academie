@@ -52,7 +52,7 @@ public function add(Request $request)
             // Validation des données
             try {
                 $request->validate([
-                    'course_id' => 'required|exists:courses,id'
+                    'content_id' => 'required|exists:contents,id'
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e) {
                 // Retourner une réponse JSON même en cas d'erreur de validation
@@ -63,11 +63,11 @@ public function add(Request $request)
                 ], 422);
             }
 
-            $courseId = $request->course_id;
+            $contentId = $request->content_id;
             
             // Récupérer le cours
             try {
-                $course = Course::findOrFail($courseId);
+                $course = Course::findOrFail($contentId);
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
                 return response()->json([
                     'success' => false,
@@ -109,7 +109,7 @@ public function add(Request $request)
 
             if (auth()->check()) {
                 // Vérifier si le cours est déjà dans le panier
-                if (auth()->user()->cartItems()->where('course_id', $courseId)->exists()) {
+                if (auth()->user()->cartItems()->where('content_id', $contentId)->exists()) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Ce cours est déjà dans votre panier.'
@@ -117,12 +117,12 @@ public function add(Request $request)
                 }
 
                 // Utilisateur connecté : sauvegarder en base de données
-                $this->addToDatabaseCart($courseId);
+                $this->addToDatabaseCart($contentId);
                 $cartCount = auth()->user()->cartItems()->count();
             } else {
                 // Vérifier si le cours est déjà dans le panier de session
                 $cart = $this->getSessionCart();
-                if (isset($cart[$courseId])) {
+                if (isset($cart[$contentId])) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Ce cours est déjà dans votre panier.'
@@ -130,7 +130,7 @@ public function add(Request $request)
                 }
 
                 // Utilisateur non connecté : utiliser la session
-                $this->addToSessionCart($courseId);
+                $this->addToSessionCart($contentId);
                 $cartCount = count($cart) + 1;
             }
 
@@ -143,7 +143,7 @@ public function add(Request $request)
             // Gérer toutes les autres erreurs potentielles
             \Log::error('Error adding course to cart', [
                 'error' => $e->getMessage(),
-                'course_id' => $request->course_id ?? null,
+                'content_id' => $request->content_id ?? null,
                 'user_id' => auth()->id(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -162,22 +162,22 @@ public function add(Request $request)
     public function remove(Request $request)
     {
         $request->validate([
-            'course_id' => 'required|exists:courses,id'
+            'content_id' => 'required|exists:contents,id'
         ]);
 
-        $courseId = $request->course_id;
+        $contentId = $request->content_id;
 
         if (auth()->check()) {
             // Utilisateur connecté : supprimer de la base de données
             CartItem::where('user_id', auth()->id())
-                ->where('course_id', $courseId)
+                ->where('content_id', $contentId)
                 ->delete();
             $cartCount = auth()->user()->cartItems()->count();
         } else {
             // Utilisateur non connecté : utiliser la session
             $cart = $this->getSessionCart();
-            $cart = array_values(array_filter($cart, function($id) use ($courseId) {
-                return $id != $courseId;
+            $cart = array_values(array_filter($cart, function($id) use ($contentId) {
+                return $id != $contentId;
             }));
             $this->saveSessionCart($cart);
             $cartCount = count($cart);
@@ -325,7 +325,7 @@ public function add(Request $request)
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
                 ->where('status', 'paid')
                 ->whereHas('orderItems', function($query) use ($course) {
-                    $query->where('course_id', $course->id);
+                    $query->where('content_id', $course->id);
                 })
                 ->exists();
             
@@ -346,7 +346,7 @@ public function add(Request $request)
         
         // 1. Exclure les cours déjà dans le panier
         if (!empty($cartItems) && is_array($cartItems)) {
-            $cartCourseIds = collect($cartItems)->map(function($item) {
+            $cartContentIds = collect($cartItems)->map(function($item) {
                 // Gérer les deux structures possibles : avec 'course.id' ou directement 'id'
                 if (isset($item['course']['id'])) {
                     return $item['course']['id'];
@@ -360,30 +360,30 @@ public function add(Request $request)
                 return null;
             })->filter()->toArray();
             
-            $excludedIds = $excludedIds->merge($cartCourseIds);
+            $excludedIds = $excludedIds->merge($cartContentIds);
         }
         
         // 2. Exclure les cours gratuits (toujours)
-        $freeCourseIds = Course::published()
+        $freeContentIds = Course::published()
             ->where('is_free', true)
             ->pluck('id')
             ->toArray();
-        $excludedIds = $excludedIds->merge($freeCourseIds);
+        $excludedIds = $excludedIds->merge($freeContentIds);
         
         // 3. Si l'utilisateur est connecté, exclure les cours déjà achetés ou auxquels il est inscrit
         if (auth()->check()) {
             $purchasedCourseIds = auth()->user()
                 ->enrollments()
                 ->whereIn('status', ['active', 'completed']) // Inclure les cours actifs ET complétés
-                ->pluck('course_id')
+                ->pluck('content_id')
                 ->toArray();
             $excludedIds = $excludedIds->merge($purchasedCourseIds);
             
             // Debug: Log des cours exclus
             \Log::info('Cours exclus pour l\'utilisateur ' . auth()->id() . ':', [
-                'cart_course_ids' => $cartCourseIds ?? [],
-                'purchased_course_ids' => $purchasedCourseIds,
-                'free_course_ids' => $freeCourseIds,
+                'cart_content_ids' => $cartContentIds ?? [],
+                'purchased_content_ids' => $purchasedContentIds,
+                'free_content_ids' => $freeContentIds,
                 'total_excluded' => count($excludedIds->toArray())
             ]);
         }
@@ -406,8 +406,8 @@ public function add(Request $request)
         $popularCourses = Course::published()
             ->where('is_free', false) // Exclure les cours gratuits
             ->whereNotIn('id', $excludedCourseIds) // Exclure les cours déjà dans le panier, achetés, etc.
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
-            ->withCount('enrollments') // Pour le tri par nombre d'étudiants
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->withCount('enrollments') // Pour le tri par nombre de clients
             ->orderBy('enrollments_count', 'desc')
             ->orderBy('created_at', 'desc')
             ->limit(20) // Augmenter la limite pour compenser le filtrage
@@ -424,7 +424,7 @@ public function add(Request $request)
             if (auth()->check()) {
                 $isPurchased = auth()->user()
                     ->enrollments()
-                    ->where('course_id', $course->id)
+                    ->where('content_id', $course->id)
                     ->whereIn('status', ['active', 'completed'])
                     
                     ->exists();
@@ -446,7 +446,7 @@ public function add(Request $request)
                 'total_duration' => $course->sections ? $course->sections->sum(function($section) {
                     return $section->lessons ? $section->lessons->sum('duration') : 0;
                 }) : 0,
-                'total_students' => $course->enrollments ? $course->enrollments->count() : 0,
+                'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                 'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
                 'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
             ];
@@ -470,7 +470,7 @@ public function add(Request $request)
             $courses = Course::published()
                 ->where('is_free', false) // Force l'exclusion des cours gratuits
                 ->whereNotIn('id', $excludedCourseIds)
-                ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
                 ->orderBy('created_at', 'desc')
                 ->limit(4)
                 ->get();
@@ -486,7 +486,7 @@ public function add(Request $request)
                 if (auth()->check()) {
                     $isPurchased = auth()->user()
                         ->enrollments()
-                        ->where('course_id', $course->id)
+                        ->where('content_id', $course->id)
                         ->whereIn('status', ['active', 'completed'])
                         
                         ->exists();
@@ -509,7 +509,7 @@ public function add(Request $request)
                     'total_duration' => $course->sections ? $course->sections->sum(function($section) {
                         return $section->lessons ? $section->lessons->sum('duration') : 0;
                     }) : 0,
-                    'total_students' => $course->enrollments ? $course->enrollments->count() : 0,
+                    'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                     'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
                     'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
                 ];
@@ -518,17 +518,17 @@ public function add(Request $request)
         }
 
         $recommendations = collect();
-        $cartCourseIds = collect($cartItems)->pluck('course.id')->toArray();
+        $cartContentIds = collect($cartItems)->pluck('course.id')->toArray();
         $cartCategories = collect($cartItems)->pluck('course.category_id')->unique()->toArray();
         $cartLevels = collect($cartItems)->pluck('course.level')->unique()->toArray();
-        $cartInstructors = collect($cartItems)->pluck('course.instructor_id')->unique()->toArray();
+        $cartInstructors = collect($cartItems)->pluck('course.provider_id')->unique()->toArray();
 
         // 1. Cours complémentaires de la même catégorie
         $categoryRecommendations = Course::published()
             ->where('is_free', false)
             ->whereIn('category_id', $cartCategories)
             ->whereNotIn('id', $excludedCourseIds)
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->orderBy('created_at', 'desc')
             ->limit(2)
             ->get();
@@ -546,7 +546,7 @@ public function add(Request $request)
             ->whereIn('level', $cartLevels)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->orderBy('created_at', 'desc')
             ->limit(1)
             ->get();
@@ -558,30 +558,30 @@ public function add(Request $request)
 
         $recommendations = $recommendations->merge($levelRecommendations);
 
-        // 3. Cours du même instructeur (si l'utilisateur aime le style)
-        $instructorRecommendations = Course::published()
+        // 3. Contenus du même prestataire (si l'utilisateur aime le style)
+        $providerRecommendations = Course::published()
             ->where('is_free', false)
-            ->whereIn('instructor_id', $cartInstructors)
+            ->whereIn('provider_id', $cartInstructors)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->orderBy('created_at', 'desc')
             ->limit(1)
             ->get();
 
         // Filtrer manuellement les cours gratuits et achetés
-        $instructorRecommendations = $instructorRecommendations->filter(function($course) {
+        $providerRecommendations = $providerRecommendations->filter(function($course) {
             return !$course->is_free && !$this->isCoursePurchased($course);
         });
 
-        $recommendations = $recommendations->merge($instructorRecommendations);
+        $recommendations = $recommendations->merge($providerRecommendations);
 
         // 4. Cours populaires récents (tendance)
         $trendingRecommendations = Course::published()
             ->where('is_free', false)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
             ->where('created_at', '>=', now()->subMonth())
             ->orderBy('created_at', 'desc')
             ->limit(1)
@@ -609,7 +609,7 @@ public function add(Request $request)
                     ->whereIn('category_id', $userEnrollments)
                     ->whereNotIn('id', $excludedCourseIds)
                     ->whereNotIn('id', $recommendations->pluck('id'))
-                    ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                    ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
                     ->orderBy('created_at', 'desc')
                     ->limit(1)
                     ->get();
@@ -629,7 +629,7 @@ public function add(Request $request)
                 ->where('is_free', false)
                 ->whereNotIn('id', $excludedCourseIds)
                 ->whereNotIn('id', $recommendations->pluck('id'))
-                ->with(['instructor', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
                 ->orderBy('created_at', 'desc')
                 ->limit(4 - $recommendations->count())
                 ->get();
@@ -653,7 +653,7 @@ public function add(Request $request)
             if (auth()->check()) {
                 $isPurchased = auth()->user()
                     ->enrollments()
-                    ->where('course_id', $course->id)
+                    ->where('content_id', $course->id)
                     ->whereIn('status', ['active', 'completed'])
                     
                     ->exists();
@@ -680,7 +680,7 @@ public function add(Request $request)
                 'total_duration' => $course->sections ? $course->sections->sum(function($section) {
                     return $section->lessons ? $section->lessons->sum('duration') : 0;
                 }) : 0,
-                'total_students' => $course->enrollments ? $course->enrollments->count() : 0,
+                'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                 'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
                 'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
             ];
@@ -724,8 +724,8 @@ public function add(Request $request)
         $cartItems = [];
         $total = 0;
 
-        foreach ($cart as $courseId => $quantity) {
-            $course = Course::find($courseId);
+        foreach ($cart as $contentId => $quantity) {
+            $course = Course::find($contentId);
             // Ne pas inclure les cours non publiés
             if ($course && $course->is_published) {
                 $cartItems[] = [
@@ -755,7 +755,7 @@ public function add(Request $request)
     {
         $cartItems = auth()->user()->cartItems()->with([
             'course.category', 
-            'course.instructor', 
+            'course.provider', 
             'course.reviews', 
             'course.enrollments',
             'course.sections.lessons'
@@ -776,7 +776,7 @@ public function add(Request $request)
                 'total_duration' => $course->sections ? $course->sections->sum(function($section) {
                     return $section->lessons ? $section->lessons->sum('duration') : 0;
                 }) : 0,
-                'total_students' => $course->enrollments ? $course->enrollments->count() : 0,
+                'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                 'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
                 'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
             ];
@@ -798,14 +798,14 @@ public function add(Request $request)
         $cart = $this->getSessionCart();
         $cartItems = [];
 
-        foreach ($cart as $courseId) {
+        foreach ($cart as $contentId) {
             $course = Course::with([
                 'category', 
-                'instructor', 
+                'provider', 
                 'reviews', 
                 'enrollments',
                 'sections.lessons'
-            ])->find($courseId);
+            ])->find($contentId);
             
             // Ne pas inclure les cours non publiés ou non disponibles à la vente
             if ($course && $course->is_published && $course->is_sale_enabled) {
@@ -817,7 +817,7 @@ public function add(Request $request)
                     'total_duration' => $course->sections ? $course->sections->sum(function($section) {
                         return $section->lessons ? $section->lessons->sum('duration') : 0;
                     }) : 0,
-                    'total_students' => $course->enrollments ? $course->enrollments->count() : 0,
+                    'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                     'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
                     'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
                 ];
@@ -837,23 +837,23 @@ public function add(Request $request)
     /**
      * Ajouter un cours au panier en base de données
      */
-    private function addToDatabaseCart($courseId)
+    private function addToDatabaseCart($contentId)
     {
         CartItem::create([
             'user_id' => auth()->id(),
-            'course_id' => $courseId
+            'content_id' => $contentId
         ]);
     }
 
     /**
      * Ajouter un cours au panier en session
      */
-    private function addToSessionCart($courseId)
+    private function addToSessionCart($contentId)
     {
         $cart = $this->getSessionCart();
         
-        if (!in_array($courseId, $cart)) {
-            $cart[] = $courseId;
+        if (!in_array($contentId, $cart)) {
+            $cart[] = $contentId;
             $this->saveSessionCart($cart);
         }
     }
@@ -869,10 +869,10 @@ public function add(Request $request)
 
         $sessionCart = $this->getSessionCart();
         
-        foreach ($sessionCart as $courseId) {
+        foreach ($sessionCart as $contentId) {
             // Vérifier si le cours n'est pas déjà dans le panier de l'utilisateur
-            if (!auth()->user()->cartItems()->where('course_id', $courseId)->exists()) {
-                $this->addToDatabaseCart($courseId);
+            if (!auth()->user()->cartItems()->where('content_id', $contentId)->exists()) {
+                $this->addToDatabaseCart($contentId);
             }
         }
 

@@ -194,7 +194,7 @@
         @foreach($categories as $category)
         <div class="col-6 col-md-4 col-lg-3 category-item">
             <div class="category-card h-100">
-                <a href="{{ route('courses.category', $category->slug) }}" class="text-decoration-none">
+                <a href="{{ route('contents.category', $category->slug) }}" class="text-decoration-none">
                     <div class="card border-0 shadow h-100 hover-lift">
                         <div class="card-body text-center p-3 p-md-4">
                             @if($category->icon)

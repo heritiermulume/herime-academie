@@ -120,7 +120,7 @@ class SSOController extends Controller
         }
 
         // Normaliser le rôle AVANT toute opération
-        $role = $this->normalizeRole($userData['role'] ?? 'student');
+        $role = $this->normalizeRole($userData['role'] ?? 'customer');
 
         // Chercher l'utilisateur par email
         $user = User::where('email', $email)->first();
@@ -253,6 +253,7 @@ class SSOController extends Controller
 
     /**
      * Normaliser le rôle utilisateur
+     * Convertit les anciens rôles (student, instructor) vers les nouveaux (customer, provider)
      * Conserve super_user comme tel (il a accès à l'admin via isAdmin())
      *
      * @param string|null $role
@@ -260,20 +261,39 @@ class SSOController extends Controller
      */
     protected function normalizeRole(?string $role): string
     {
-        $validRoles = ['student', 'instructor', 'admin', 'affiliate', 'super_user'];
+        $validRoles = ['customer', 'provider', 'admin', 'affiliate', 'super_user'];
         
-        // Si aucun rôle fourni, retourner student par défaut
+        // Si aucun rôle fourni, retourner customer par défaut
         if (empty($role)) {
-            return 'student';
+            return 'customer';
+        }
+        
+        // Normaliser la casse
+        $role = strtolower(trim($role));
+        
+        // Convertir les anciens rôles vers les nouveaux rôles
+        $roleMapping = [
+            'student' => 'customer',
+            'instructor' => 'provider',
+        ];
+        
+        if (isset($roleMapping[$role])) {
+            $oldRole = $role;
+            $role = $roleMapping[$role];
+            Log::info('SSO: Converted old role to new role', [
+                'old_role' => $oldRole,
+                'new_role' => $role
+            ]);
         }
         
         // Conserver super_user tel quel (il aura accès à l'admin via isAdmin())
         // S'assurer que le rôle est valide
         if (!in_array($role, $validRoles)) {
-            Log::warning('SSO: Invalid role provided, defaulting to student', [
-                'invalid_role' => $role
+            Log::warning('SSO: Invalid role provided, defaulting to customer', [
+                'invalid_role' => $role,
+                'valid_roles' => $validRoles
             ]);
-            return 'student';
+            return 'customer';
         }
         
         return $role;

@@ -30,13 +30,13 @@
                     <p class="admin-stat-card__muted">Accès autorisés</p>
                 </div>
                 <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Étudiants</p>
-                    <p class="admin-stat-card__value">{{ $stats['students'] }}</p>
+                    <p class="admin-stat-card__label">Clients</p>
+                    <p class="admin-stat-card__value">{{ $stats['customers'] }}</p>
                     <p class="admin-stat-card__muted">Apprenants actifs</p>
                 </div>
                 <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Formateurs</p>
-                    <p class="admin-stat-card__value">{{ $stats['instructors'] }}</p>
+                    <p class="admin-stat-card__label">Prestataires</p>
+                    <p class="admin-stat-card__value">{{ $stats['providers'] }}</p>
                     <p class="admin-stat-card__muted">Experts pédagogiques</p>
                 </div>
                 <div class="admin-stat-card">
@@ -66,8 +66,8 @@
                             <select class="form-select" name="role">
                                 <option value="">Tous les rôles</option>
                                 <option value="admin" {{ request('role') == 'admin' ? 'selected' : '' }}>Administrateur</option>
-                                <option value="instructor" {{ request('role') == 'instructor' ? 'selected' : '' }}>Formateur</option>
-                                <option value="student" {{ request('role') == 'student' ? 'selected' : '' }}>Étudiant</option>
+                                <option value="provider" {{ request('role') == 'provider' ? 'selected' : '' }}>Prestataire</option>
+                                <option value="customer" {{ request('role') == 'customer' ? 'selected' : '' }}>Client</option>
                                 <option value="affiliate" {{ request('role') == 'affiliate' ? 'selected' : '' }}>Affilié</option>
                             </select>
                         </div>
@@ -180,14 +180,14 @@
                                             @case('admin')
                                                 Administrateur
                                                 @break
-                                            @case('instructor')
-                                                Formateur
+                                            @case('provider')
+                                                Prestataire
                                                 @break
                                             @case('affiliate')
                                                 Affilié
                                                 @break
-                                            @case('student')
-                                                Étudiant
+                                            @case('customer')
+                                                Client
                                                 @break
                                             @default
                                                 {{ ucfirst($user->role ?? 'utilisateur') }}

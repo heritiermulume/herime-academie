@@ -145,7 +145,7 @@
         <div class="content">
             <div class="success-badge">✓ Paiement effectué</div>
             
-            <h2>Bonjour {{ $payout->instructor->name }} !</h2>
+            <h2>Bonjour {{ $payout->provider->name }} !</h2>
             
             <p>Nous sommes heureux de vous informer que votre paiement a été effectué avec succès.</p>
 
@@ -178,7 +178,7 @@
             <p>Le montant a été transféré sur votre compte mobile money configuré dans vos paramètres de paiement.</p>
 
             <div class="button-container">
-                <a href="{{ route('instructor.dashboard') }}" class="button">Accéder à mon tableau de bord</a>
+                <a href="{{ route('provider.dashboard') }}" class="button">Accéder à mon tableau de bord</a>
             </div>
 
             <p>Merci pour votre contribution et continuez à créer des cours de qualité !</p>

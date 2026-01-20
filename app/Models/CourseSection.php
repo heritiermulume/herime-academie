@@ -8,8 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CourseSection extends Model
 {
+    protected $table = 'content_sections';
+    
     protected $fillable = [
-        'course_id',
+        'content_id',
         'title',
         'description',
         'sort_order',
@@ -25,7 +27,15 @@ class CourseSection extends Model
 
     public function course(): BelongsTo
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'content_id');
+    }
+
+    /**
+     * Alias pour compatibilité avec le nouveau nom
+     */
+    public function content(): BelongsTo
+    {
+        return $this->course();
     }
 
     public function lessons(): HasMany

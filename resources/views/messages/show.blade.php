@@ -48,9 +48,9 @@
                                 <div>
                                     <h6 class="mb-0 fw-bold">{{ $message->sender->name }}</h6>
                                     <small class="text-muted">
-                                        @if($message->sender->role === 'instructor')
-                                            Formateur
-                                        @elseif($message->sender->role === 'student')
+                                        @if($message->sender->role === 'provider')
+                                            Prestataire
+                                        @elseif($message->sender->role === 'customer')
                                             Étudiant
                                         @elseif($message->sender->role === 'admin')
                                             Administrateur
@@ -170,11 +170,11 @@
                                     <i class="fas fa-clock me-1"></i>{{ $message->course->duration }} min
                                 </small>
                                 <small class="text-muted">
-                                    <i class="fas fa-users me-1"></i>{{ number_format($message->course->students_count) }} étudiants
+                                    <i class="fas fa-users me-1"></i>{{ number_format($message->course->customers_count) }} participants
                                 </small>
                             </div>
                             <div class="mt-2">
-                                <a href="{{ route('courses.show', $message->course->slug) }}" class="btn btn-outline-primary btn-sm">
+                                <a href="{{ route('contents.show', $message->course->slug) }}" class="btn btn-outline-primary btn-sm">
                                     <i class="fas fa-eye me-1"></i>Voir le cours
                                 </a>
                             </div>

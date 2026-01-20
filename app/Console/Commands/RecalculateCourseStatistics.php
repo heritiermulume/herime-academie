@@ -19,7 +19,7 @@ class RecalculateCourseStatistics extends Command
      *
      * @var string
      */
-    protected $description = 'Recalculer les statistiques des cours (nombre d\'étudiants, notes, etc.)';
+    protected $description = 'Recalculer les statistiques des contenus (nombre de clients, notes, etc.)';
 
     /**
      * Execute the console command.
@@ -41,12 +41,12 @@ class RecalculateCourseStatistics extends Command
         return 0;
     }
 
-    private function recalculateSingleCourse($courseId)
+    private function recalculateSingleCourse($contentId)
     {
-        $course = Course::find($courseId);
+        $course = Course::find($contentId);
         
         if (!$course) {
-            $this->error("Cours avec l'ID {$courseId} non trouvé.");
+            $this->error("Cours avec l'ID {$contentId} non trouvé.");
             return;
         }
 
@@ -74,7 +74,7 @@ class RecalculateCourseStatistics extends Command
         $stats = $course->getCourseStats();
         
         $this->line("📊 {$course->title}:");
-        $this->line("   👥 Étudiants: {$stats['total_students']}");
+        $this->line("   👥 Clients: {$stats['total_customers']}");
         $this->line("   ⭐ Note: " . number_format($stats['average_rating'], 1) . " ({$stats['total_reviews']} avis)");
         $this->line("   📚 Leçons: {$stats['total_lessons']}");
         $this->line("   ⏱️  Durée: {$stats['total_duration']} min");

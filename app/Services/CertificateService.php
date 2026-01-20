@@ -19,7 +19,7 @@ class CertificateService
     {
         // Vérifier si un certificat existe déjà pour cet utilisateur et ce cours
         $existingCertificate = Certificate::where('user_id', $user->id)
-            ->where('course_id', $course->id)
+            ->where('content_id', $course->id)
             ->first();
 
         if ($existingCertificate) {
@@ -35,7 +35,7 @@ class CertificateService
         // Créer l'enregistrement du certificat
         $certificate = Certificate::create([
             'user_id' => $user->id,
-            'course_id' => $course->id,
+            'content_id' => $course->id,
             'certificate_number' => $certificateNumber,
             'title' => $course->title,
             'description' => "Certificat de complétion pour le cours : {$course->title}",
@@ -54,15 +54,15 @@ class CertificateService
         $prefix = 'HA'; // Herime Académie
         $year = now()->format('Y');
         $userId = str_pad($user->id, 4, '0', STR_PAD_LEFT);
-        $courseId = str_pad($course->id, 4, '0', STR_PAD_LEFT);
+        $contentId = str_pad($course->id, 4, '0', STR_PAD_LEFT);
         $random = strtoupper(Str::random(4));
 
-        $certificateNumber = "{$prefix}-{$year}-{$userId}-{$courseId}-{$random}";
+        $certificateNumber = "{$prefix}-{$year}-{$userId}-{$contentId}-{$random}";
 
         // Vérifier l'unicité
         while (Certificate::where('certificate_number', $certificateNumber)->exists()) {
             $random = strtoupper(Str::random(4));
-            $certificateNumber = "{$prefix}-{$year}-{$userId}-{$courseId}-{$random}";
+            $certificateNumber = "{$prefix}-{$year}-{$userId}-{$contentId}-{$random}";
         }
 
         return $certificateNumber;
@@ -81,9 +81,9 @@ class CertificateService
 
         $dompdf = new Dompdf($options);
 
-        // Charger l'instructeur si nécessaire
-        if (!$course->relationLoaded('instructor')) {
-            $course->load('instructor');
+        // Charger le prestataire si nécessaire
+        if (!$course->relationLoaded('provider')) {
+            $course->load('provider');
         }
 
         $html = $this->generateCertificateHtml($user, $course, $certificateNumber);
@@ -130,7 +130,7 @@ class CertificateService
     {
         $userName = htmlspecialchars($user->name, ENT_QUOTES, 'UTF-8');
         $courseTitle = htmlspecialchars($course->title, ENT_QUOTES, 'UTF-8');
-        $instructorName = htmlspecialchars($course->instructor->name ?? 'Herime Académie', ENT_QUOTES, 'UTF-8');
+        $providerName = htmlspecialchars($course->provider->name ?? 'Herime Académie', ENT_QUOTES, 'UTF-8');
         $issueDate = now()->format('d/m/Y');
         $certNumber = htmlspecialchars($certificateNumber, ENT_QUOTES, 'UTF-8');
         
@@ -432,8 +432,8 @@ class CertificateService
                     <div class="certificate-footer">
                         <div class="certificate-signature">
                             <div class="signature-line">
-                                <div class="signature-name">{$instructorName}</div>
-                                <div class="signature-title">Instructeur</div>
+                                <div class="signature-name">{$providerName}</div>
+                                <div class="signature-title">Prestataire</div>
                             </div>
                         </div>
                         

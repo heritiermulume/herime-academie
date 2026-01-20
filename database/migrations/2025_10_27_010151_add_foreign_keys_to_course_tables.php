@@ -13,12 +13,12 @@ return new class extends Migration
     {
         // Course sections foreign keys
         Schema::table('course_sections', function (Blueprint $table) {
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('courses')->onDelete('cascade');
         });
 
         // Course lessons foreign keys
         Schema::table('course_lessons', function (Blueprint $table) {
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('courses')->onDelete('cascade');
             $table->foreign('section_id')->references('id')->on('course_sections')->onDelete('cascade');
         });
 
@@ -31,38 +31,38 @@ return new class extends Migration
         // Enrollments foreign keys
         Schema::table('enrollments', function (Blueprint $table) {
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('courses')->onDelete('cascade');
         });
 
         // Certificates foreign keys
         Schema::table('certificates', function (Blueprint $table) {
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('courses')->onDelete('cascade');
         });
 
         // Reviews foreign keys
         Schema::table('reviews', function (Blueprint $table) {
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('courses')->onDelete('cascade');
         });
 
         // Messages foreign keys
         Schema::table('messages', function (Blueprint $table) {
             $table->foreign('sender_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('receiver_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('courses')->onDelete('cascade');
         });
 
         // Cart items foreign keys
         Schema::table('cart_items', function (Blueprint $table) {
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('courses')->onDelete('cascade');
         });
 
         // Lesson progress foreign keys
         Schema::table('lesson_progress', function (Blueprint $table) {
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('courses')->onDelete('cascade');
             $table->foreign('lesson_id')->references('id')->on('course_lessons')->onDelete('cascade');
         });
     }
@@ -74,34 +74,34 @@ return new class extends Migration
     {
         Schema::table('lesson_progress', function (Blueprint $table) {
             $table->dropForeign(['user_id']);
-            $table->dropForeign(['course_id']);
+            $table->dropForeign(['content_id']);
             $table->dropForeign(['lesson_id']);
         });
 
         Schema::table('cart_items', function (Blueprint $table) {
             $table->dropForeign(['user_id']);
-            $table->dropForeign(['course_id']);
+            $table->dropForeign(['content_id']);
         });
 
         Schema::table('messages', function (Blueprint $table) {
             $table->dropForeign(['sender_id']);
             $table->dropForeign(['receiver_id']);
-            $table->dropForeign(['course_id']);
+            $table->dropForeign(['content_id']);
         });
 
         Schema::table('reviews', function (Blueprint $table) {
             $table->dropForeign(['user_id']);
-            $table->dropForeign(['course_id']);
+            $table->dropForeign(['content_id']);
         });
 
         Schema::table('certificates', function (Blueprint $table) {
             $table->dropForeign(['user_id']);
-            $table->dropForeign(['course_id']);
+            $table->dropForeign(['content_id']);
         });
 
         Schema::table('enrollments', function (Blueprint $table) {
             $table->dropForeign(['user_id']);
-            $table->dropForeign(['course_id']);
+            $table->dropForeign(['content_id']);
         });
 
         Schema::table('courses', function (Blueprint $table) {
@@ -110,12 +110,12 @@ return new class extends Migration
         });
 
         Schema::table('course_lessons', function (Blueprint $table) {
-            $table->dropForeign(['course_id']);
+            $table->dropForeign(['content_id']);
             $table->dropForeign(['section_id']);
         });
 
         Schema::table('course_sections', function (Blueprint $table) {
-            $table->dropForeign(['course_id']);
+            $table->dropForeign(['content_id']);
         });
     }
 };

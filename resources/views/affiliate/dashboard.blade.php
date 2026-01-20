@@ -223,15 +223,15 @@
                                          alt="{{ $course->title }}" class="rounded me-3" style="width: 60px; height: 40px; object-fit: cover;">
                                     <div class="flex-grow-1">
                                         <h6 class="mb-1 fw-bold">
-                                            <a href="{{ route('courses.show', $course->slug) }}" class="text-decoration-none text-dark">
+                                            <a href="{{ route('contents.show', $course->slug) }}" class="text-decoration-none text-dark">
                                                 {{ Str::limit($course->title, 40) }}
                                             </a>
                                         </h6>
-                                        <p class="text-muted small mb-1">{{ $course->instructor->name }}</p>
+                                        <p class="text-muted small mb-1">{{ $course->provider->name }}</p>
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="badge bg-primary">{{ $course->category->name }}</span>
                                             <small class="text-muted">
-                                                <i class="fas fa-users me-1"></i>{{ $course->students_count }}
+                                                <i class="fas fa-users me-1"></i>{{ $course->customers_count }}
                                             </small>
                                         </div>
                                         <div class="mt-2">
@@ -269,7 +269,7 @@
                         <button class="btn btn-outline-success" onclick="requestPayout()">
                             <i class="fas fa-money-bill-wave me-2"></i>Demander un paiement
                         </button>
-                        <a href="{{ route('courses.index') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('contents.index') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-search me-2"></i>Explorer les cours
                         </a>
                     </div>
@@ -376,7 +376,7 @@ function generateLink(courseId) {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ course_id: courseId })
+        body: JSON.stringify({ content_id: courseId })
     })
     .then(response => response.json())
     .then(data => {

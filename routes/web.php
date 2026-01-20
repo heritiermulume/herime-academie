@@ -4,9 +4,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\ChunkUploadController;
-use App\Http\Controllers\InstructorController;
-use App\Http\Controllers\InstructorApplicationController;
-use App\Http\Controllers\StudentController;
+use App\Http\Controllers\ProviderController;
+use App\Http\Controllers\ProviderApplicationController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\BannerController;
 // use App\Http\Controllers\PaymentController; // désactivé
@@ -57,9 +57,9 @@ Route::get('/categories', function() {
 })->name('categories.index');
 
 // Filtres et recherche
-Route::post('/courses/filter', [FilterController::class, 'filterCourses'])->name('courses.filter');
-Route::get('/courses/filter-options', [FilterController::class, 'getFilterOptions'])->name('courses.filter-options');
-Route::get('/courses/search', [FilterController::class, 'searchCourses'])->name('courses.search');
+Route::post('/contents/filter', [FilterController::class, 'filterCourses'])->name('contents.filter');
+Route::get('/contents/filter-options', [FilterController::class, 'getFilterOptions'])->name('contents.filter-options');
+Route::get('/contents/search', [FilterController::class, 'searchCourses'])->name('contents.search');
 
 // Test route for categories
 Route::get('/test-categories', function() {
@@ -83,15 +83,15 @@ Route::get('/test-categories-view', function() {
     $categories = App\Models\Category::withCount('courses')->ordered()->paginate(20);
     return view('admin.categories.index', compact('categories'));
 });
-Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
-Route::get('/courses/{course:slug}', [CourseController::class, 'show'])->name('courses.show');
-Route::get('/courses/{course:slug}/reviews', [CourseController::class, 'reviews'])->name('courses.reviews');
-Route::get('/courses/{course:slug}/preview-data', [CourseController::class, 'previewData'])->name('courses.preview-data');
-Route::get('/courses/{course:slug}/lesson/{lesson}', [CourseController::class, 'lesson'])->name('courses.lesson');
-Route::get('/categories/{category:slug}', [CourseController::class, 'byCategory'])->name('courses.category');
-Route::get('/instructors', [InstructorController::class, 'index'])->name('instructors.index');
-Route::get('/instructors/{instructor}', [InstructorController::class, 'show'])->name('instructors.show');
-Route::get('/become-instructor', [InstructorApplicationController::class, 'index'])->name('instructor-application.index');
+Route::get('/contents', [CourseController::class, 'index'])->name('contents.index');
+Route::get('/contents/{course:slug}', [CourseController::class, 'show'])->name('contents.show');
+Route::get('/contents/{course:slug}/reviews', [CourseController::class, 'reviews'])->name('contents.reviews');
+Route::get('/contents/{course:slug}/preview-data', [CourseController::class, 'previewData'])->name('contents.preview-data');
+Route::get('/contents/{course:slug}/lesson/{lesson}', [CourseController::class, 'lesson'])->name('contents.lesson');
+Route::get('/categories/{category:slug}', [CourseController::class, 'byCategory'])->name('contents.category');
+Route::get('/providers', [ProviderController::class, 'index'])->name('providers.index');
+Route::get('/providers/{provider}', [ProviderController::class, 'show'])->name('providers.show');
+Route::get('/become-provider', [ProviderApplicationController::class, 'index'])->name('provider-application.index');
 Route::get('/become-ambassador', [App\Http\Controllers\AmbassadorApplicationController::class, 'index'])->name('ambassador-application.index');
 
 // Blog routes
@@ -110,9 +110,9 @@ Route::get('/newsletter/confirm/{token}', [NewsletterController::class, 'confirm
 
 // Order management routes - avec validation SSO pour les actions de modification
 Route::middleware('auth')->group(function () {
-    // Student order routes (moved under /students/ordres)
-    Route::get('/students/ordres', [App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
-    Route::get('/students/ordres/{order}', [App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
+    // Customer order routes (moved under /customers/ordres)
+    Route::get('/customers/ordres', [App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
+    Route::get('/customers/ordres/{order}', [App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
 });
 
 // SSO routes (must be before auth routes)
@@ -221,60 +221,60 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route('admin.dashboard');
         }
         return match($user->role) {
-            'instructor' => redirect()->route('instructor.dashboard'),
+            'provider' => redirect()->route('provider.dashboard'),
             'affiliate' => redirect()->route('affiliate.dashboard'),
-            default => redirect()->route('student.dashboard'),
+            default => redirect()->route('customer.dashboard'),
         };
     })->name('dashboard');
 
     Route::match(['POST', 'DELETE'], '/uploads/temp', [TemporaryUploadController::class, 'destroy'])
         ->name('uploads.temp.destroy');
 
-    // Student routes
-    Route::prefix('student')->name('student.')->middleware('role:student')->group(function () {
-        Route::get('/dashboard', [StudentController::class, 'dashboard'])->name('dashboard');
-        Route::get('/courses', [StudentController::class, 'courses'])->name('courses');
-        Route::get('/certificates', [StudentController::class, 'certificates'])->name('certificates');
+    // Customer routes
+    Route::prefix('customer')->name('customer.')->middleware('role:customer')->group(function () {
+        Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('dashboard');
+        Route::get('/contents', [CustomerController::class, 'courses'])->name('contents');
+        Route::get('/certificates', [CustomerController::class, 'certificates'])->name('certificates');
     });
     
     // Certificate download route (accessible to authenticated users who own the certificate)
-    Route::get('/certificates/{certificate}/download', [StudentController::class, 'downloadCertificate'])
+    Route::get('/certificates/{certificate}/download', [CustomerController::class, 'downloadCertificate'])
         ->middleware('auth')
         ->name('certificates.download');
     
     // Enrollment route (accessible to all authenticated users) - avec validation SSO
-    Route::post('/student/courses/{course:slug}/enroll', [StudentController::class, 'enroll'])
+    Route::post('/customer/courses/{course:slug}/enroll', [CustomerController::class, 'enroll'])
         ->middleware('sso.validate')
-        ->name('student.courses.enroll');
+        ->name('customer.contents.enroll');
 
     // Review routes (accessible to all authenticated users who are enrolled)
-    Route::post('/courses/{course:slug}/review', [ReviewController::class, 'store'])
+    Route::post('/contents/{course:slug}/review', [ReviewController::class, 'store'])
         ->middleware('sso.validate')
-        ->name('courses.review.store');
-    Route::delete('/courses/{course:slug}/review', [ReviewController::class, 'destroy'])
+        ->name('contents.review.store');
+    Route::delete('/contents/{course:slug}/review', [ReviewController::class, 'destroy'])
         ->middleware('sso.validate')
-        ->name('courses.review.destroy');
+        ->name('contents.review.destroy');
 
-    // Instructor Application routes (accessible to authenticated users) - avec validation SSO pour les POST
+    // Provider Application routes (accessible to authenticated users) - avec validation SSO pour les POST
     Route::middleware('auth')->group(function () {
-        Route::get('/instructor-application/create', [App\Http\Controllers\InstructorApplicationController::class, 'create'])->name('instructor-application.create');
-        Route::post('/instructor-application/step1', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep1'])
+        Route::get('/provider-application/create', [App\Http\Controllers\ProviderApplicationController::class, 'create'])->name('provider-application.create');
+        Route::post('/provider-application/step1', [App\Http\Controllers\ProviderApplicationController::class, 'storeStep1'])
             ->middleware('sso.validate')
-            ->name('instructor-application.store-step1');
-        Route::get('/instructor-application/{application}/step2', [App\Http\Controllers\InstructorApplicationController::class, 'step2'])->name('instructor-application.step2');
-        Route::post('/instructor-application/{application}/step2', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep2'])
+            ->name('provider-application.store-step1');
+        Route::get('/provider-application/{application}/step2', [App\Http\Controllers\ProviderApplicationController::class, 'step2'])->name('provider-application.step2');
+        Route::post('/provider-application/{application}/step2', [App\Http\Controllers\ProviderApplicationController::class, 'storeStep2'])
             ->middleware('sso.validate')
-            ->name('instructor-application.store-step2');
-        Route::get('/instructor-application/{application}/step3', [App\Http\Controllers\InstructorApplicationController::class, 'step3'])->name('instructor-application.step3');
-        Route::post('/instructor-application/{application}/step3', [App\Http\Controllers\InstructorApplicationController::class, 'storeStep3'])
+            ->name('provider-application.store-step2');
+        Route::get('/provider-application/{application}/step3', [App\Http\Controllers\ProviderApplicationController::class, 'step3'])->name('provider-application.step3');
+        Route::post('/provider-application/{application}/step3', [App\Http\Controllers\ProviderApplicationController::class, 'storeStep3'])
             ->middleware('sso.validate')
-            ->name('instructor-application.store-step3');
-        Route::get('/instructor-application/{application}/status', [App\Http\Controllers\InstructorApplicationController::class, 'status'])->name('instructor-application.status');
-        Route::get('/instructor-application/{application}/cv', [App\Http\Controllers\InstructorApplicationController::class, 'downloadCv'])->name('instructor-application.download-cv');
-        Route::get('/instructor-application/{application}/motivation-letter', [App\Http\Controllers\InstructorApplicationController::class, 'downloadMotivationLetter'])->name('instructor-application.download-motivation-letter');
-    Route::delete('/instructor-application/{application}', [App\Http\Controllers\InstructorApplicationController::class, 'abandon'])
+            ->name('provider-application.store-step3');
+        Route::get('/provider-application/{application}/status', [App\Http\Controllers\ProviderApplicationController::class, 'status'])->name('provider-application.status');
+        Route::get('/provider-application/{application}/cv', [App\Http\Controllers\ProviderApplicationController::class, 'downloadCv'])->name('provider-application.download-cv');
+        Route::get('/provider-application/{application}/motivation-letter', [App\Http\Controllers\ProviderApplicationController::class, 'downloadMotivationLetter'])->name('provider-application.download-motivation-letter');
+    Route::delete('/provider-application/{application}', [App\Http\Controllers\ProviderApplicationController::class, 'abandon'])
         ->middleware('sso.validate')
-        ->name('instructor-application.abandon');
+        ->name('provider-application.abandon');
     });
 
     // Ambassador Application routes (accessible to authenticated users) - avec validation SSO pour les POST
@@ -334,24 +334,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('wallet.check-payout-status');
     });
 
-    // Instructor routes (only for approved instructors) - avec validation SSO pour les POST/PUT/DELETE
-    Route::prefix('instructor')->name('instructor.')->middleware('role:instructor')->group(function () {
+    // Provider routes (only for approved providers) - avec validation SSO pour les POST/PUT/DELETE
+    Route::prefix('provider')->name('provider.')->middleware('role:provider')->group(function () {
         Route::get('/courses/list', function () {
-            return redirect()->route('instructor.courses.index');
+            return redirect()->route('provider.contents.index');
         });
-        Route::get('/courses', [InstructorController::class, 'coursesIndex'])->name('courses.index');
-        Route::get('/dashboard', [InstructorController::class, 'dashboard'])->name('dashboard');
-        Route::resource('courses', CourseController::class)->except(['index', 'show'])->middleware('sso.validate');
-        Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
-        Route::get('/courses/{course}/lessons', [InstructorController::class, 'lessons'])->name('courses.lessons');
-        Route::post('/courses/{course}/lessons', [InstructorController::class, 'storeLesson'])
+        Route::get('/contents', [ProviderController::class, 'coursesIndex'])->name('contents.index');
+        Route::get('/dashboard', [ProviderController::class, 'dashboard'])->name('dashboard');
+        Route::resource('contents', CourseController::class)->except(['index', 'show'])->middleware('sso.validate');
+        Route::get('/contents/{course}', [CourseController::class, 'show'])->name('contents.show');
+        Route::get('/contents/{course}/lessons', [ProviderController::class, 'lessons'])->name('contents.lessons');
+        Route::post('/contents/{course}/lessons', [ProviderController::class, 'storeLesson'])
             ->middleware('sso.validate')
-            ->name('courses.lessons.store');
-        Route::get('/students', [InstructorController::class, 'students'])->name('students');
-        Route::get('/analytics', [InstructorController::class, 'analytics'])->name('analytics');
+            ->name('contents.lessons.store');
+        Route::get('/customers', [ProviderController::class, 'customers'])->name('customers');
+        Route::get('/analytics', [ProviderController::class, 'analytics'])->name('analytics');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
-        Route::get('/payment-settings', [InstructorController::class, 'paymentSettings'])->name('payment-settings');
-        Route::post('/payment-settings', [InstructorController::class, 'updatePaymentSettings'])
+        Route::get('/payment-settings', [ProviderController::class, 'paymentSettings'])->name('payment-settings');
+        Route::post('/payment-settings', [ProviderController::class, 'updatePaymentSettings'])
             ->middleware('sso.validate')
             ->name('payment-settings.update');
         
@@ -374,11 +374,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/analytics/revenue-data', [AdminController::class, 'getRevenueData'])->name('analytics.revenue-data');
         Route::get('/analytics/revenue-by-category', [AdminController::class, 'getRevenueByCategory'])->name('analytics.revenue-by-category');
         Route::get('/analytics/revenue-by-course', [AdminController::class, 'getRevenueByCourse'])->name('analytics.revenue-by-course');
-        Route::get('/analytics/revenue-by-instructor', [AdminController::class, 'getRevenueByInstructor'])->name('analytics.revenue-by-instructor');
+        Route::get('/analytics/revenue-by-provider', [AdminController::class, 'getRevenueByProvider'])->name('analytics.revenue-by-provider');
         Route::get('/statistics', [AdminController::class, 'statistics'])->name('statistics');
-        Route::post('/courses/{course}/recalculate-stats', [AdminController::class, 'recalculateCourseStats'])
+        Route::post('/contents/{course}/recalculate-stats', [AdminController::class, 'recalculateCourseStats'])
             ->middleware('sso.validate')
-            ->name('courses.recalculate-stats');
+            ->name('contents.recalculate-stats');
         Route::post('/statistics/recalculate-all', [AdminController::class, 'recalculateAllStats'])
             ->middleware('sso.validate')
             ->name('statistics.recalculate-all');
@@ -405,19 +405,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/users/{user}/grant-course-access', [AdminController::class, 'grantCourseAccess'])
             ->middleware('sso.validate')
             ->name('users.grant-course-access');
-        Route::delete('/users/{user}/courses/{course}/revoke-access', [AdminController::class, 'revokeCourseAccess'])
+        Route::delete('/users/{user}/contents/{course}/revoke-access', [AdminController::class, 'revokeCourseAccess'])
             ->middleware('sso.validate')
-            ->name('users.revoke-course-access');
-        Route::delete('/users/{user}/courses/{course}/unenroll', [AdminController::class, 'unenrollUser'])
+            ->name('users.revoke-content-access');
+        Route::delete('/users/{user}/contents/{course}/unenroll', [AdminController::class, 'unenrollUser'])
             ->middleware('sso.validate')
             ->name('users.unenroll');
         
-        // Instructor Applications management
-        Route::get('/instructor-applications', [AdminController::class, 'instructorApplications'])->name('instructor-applications');
-        Route::get('/instructor-applications/{application}', [AdminController::class, 'showInstructorApplication'])->name('instructor-applications.show');
-        Route::put('/instructor-applications/{application}/status', [AdminController::class, 'updateInstructorApplicationStatus'])
+        // Provider Applications management
+        Route::get('/provider-applications', [AdminController::class, 'providerApplications'])->name('provider-applications');
+        Route::get('/provider-applications/{application}', [AdminController::class, 'showProviderApplication'])->name('provider-applications.show');
+        Route::put('/provider-applications/{application}/status', [AdminController::class, 'updateProviderApplicationStatus'])
             ->middleware('sso.validate')
-            ->name('instructor-applications.update-status');
+            ->name('provider-applications.update-status');
         
         // Ambassador Applications management
         Route::get('/ambassadors/applications', [App\Http\Controllers\Admin\AmbassadorController::class, 'applications'])->name('ambassadors.applications');
@@ -472,19 +472,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('categories.destroy');
         
         // Courses management
-        Route::get('/courses', [AdminController::class, 'courses'])->name('courses');
-        Route::get('/courses/create', [AdminController::class, 'createCourse'])->name('courses.create');
-        Route::post('/courses', [AdminController::class, 'storeCourse'])
+        Route::get('/contents', [AdminController::class, 'courses'])->name('contents');
+        Route::get('/contents/create', [AdminController::class, 'createCourse'])->name('contents.create');
+        Route::post('/contents', [AdminController::class, 'storeCourse'])
             ->middleware('sso.validate')
-            ->name('courses.store');
-        Route::get('/courses/{course}', [AdminController::class, 'showCourse'])->name('courses.show');
-        Route::get('/courses/{course}/edit', [AdminController::class, 'editCourse'])->name('courses.edit');
-        Route::put('/courses/{course}', [AdminController::class, 'updateCourse'])
+            ->name('contents.store');
+        Route::get('/contents/{course}', [AdminController::class, 'showCourse'])->name('contents.show');
+        Route::get('/contents/{course}/edit', [AdminController::class, 'editCourse'])->name('contents.edit');
+        Route::put('/contents/{course}', [AdminController::class, 'updateCourse'])
             ->middleware('sso.validate')
-            ->name('courses.update');
-        Route::delete('/courses/{course}', [AdminController::class, 'destroyCourse'])
+            ->name('contents.update');
+        Route::delete('/contents/{course}', [AdminController::class, 'destroyCourse'])
             ->middleware('sso.validate')
-            ->name('courses.destroy');
+            ->name('contents.destroy');
         
         // Course lessons management (disabled - legacy routes removed)
         
@@ -647,8 +647,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('settings.update');
         
-        // Instructor payouts management
-        Route::get('/instructor-payouts', [AdminController::class, 'instructorPayouts'])->name('instructor-payouts');
+        // Provider payouts management
+        Route::get('/provider-payouts', [AdminController::class, 'providerPayouts'])->name('provider-payouts');
     });
 
     // Profile routes - avec validation SSO pour les modifications
@@ -762,7 +762,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Download routes
-    Route::get('/courses/{course:slug}/download', [DownloadController::class, 'course'])->name('courses.download');
+    Route::get('/contents/{course:slug}/download', [DownloadController::class, 'course'])->name('contents.download');
     Route::get('/courses/{course:slug}/lesson/{lesson}/download', [DownloadController::class, 'lesson'])->name('lessons.download');
 
 
@@ -836,10 +836,10 @@ Route::middleware('auth')->group(function () {
     // Profile routes (handled above)
 });
 
-Route::post('/instructor/uploads/chunk', [ChunkUploadController::class, 'handle'])
+Route::post('/provider/uploads/chunk', [ChunkUploadController::class, 'handle'])
     ->middleware('auth')
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
-    ->name('instructor.uploads.chunk');
+    ->name('provider.uploads.chunk');
 
 Route::post('/admin/uploads/chunk', [ChunkUploadController::class, 'handle'])
     ->middleware('auth')

@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('language', 5)->default('fr');
             $table->integer('duration')->default(0); // en minutes
             $table->integer('lessons_count')->default(0);
-            $table->integer('students_count')->default(0);
+            $table->integer('customers_count')->default(0);
             $table->decimal('rating', 3, 2)->default(0);
             $table->integer('reviews_count')->default(0);
             $table->json('tags')->nullable();

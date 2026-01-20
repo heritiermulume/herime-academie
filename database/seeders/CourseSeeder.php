@@ -12,7 +12,7 @@ class CourseSeeder extends Seeder
      */
     public function run(): void
     {
-        $instructors = \App\Models\User::instructors()->get();
+        $providers = \App\Models\User::providers()->get();
         $categories = \App\Models\Category::all();
         
         // Phrases fixes pour les leçons au lieu de Faker
@@ -293,7 +293,7 @@ class CourseSeeder extends Seeder
             $course = \App\Models\Course::updateOrCreate(
                 ['slug' => $slug],
                 array_merge($courseData, [
-                    'instructor_id' => $instructors->random()->id,
+                    'provider_id' => $providers->random()->id,
                     'category_id' => $categories->random()->id,
                     'thumbnail' => $courseImages[$index % count($courseImages)],
                 ])
@@ -310,7 +310,7 @@ class CourseSeeder extends Seeder
             foreach ($sections as $index => $sectionData) {
                 $section = \App\Models\CourseSection::updateOrCreate(
                     [
-                        'course_id' => $course->id,
+                        'content_id' => $course->id,
                         'sort_order' => $index + 1,
                     ],
                     [
@@ -330,7 +330,7 @@ class CourseSeeder extends Seeder
                     
                     \App\Models\CourseLesson::updateOrCreate(
                         [
-                            'course_id' => $course->id,
+                            'content_id' => $course->id,
                             'section_id' => $section->id,
                             'sort_order' => $i,
                         ],

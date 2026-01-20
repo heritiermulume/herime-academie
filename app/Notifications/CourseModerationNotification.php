@@ -36,8 +36,8 @@ class CourseModerationNotification extends Notification
             'type' => $payload['type'],
             'button_text' => $this->status === 'approved' ? 'Voir le cours' : 'Explorer les cours',
             'button_url' => $this->status === 'approved'
-                ? route('courses.show', $this->course->slug)
-                : route('courses.index'),
+                ? route('contents.show', $this->course->slug)
+                : route('contents.index'),
             'course_id' => $this->course->id,
             'status' => $this->status,
         ];

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CourseDownload extends Model
 {
     protected $fillable = [
-        'course_id',
+        'content_id',
         'user_id',
         'ip_address',
         'user_agent',
@@ -29,7 +29,15 @@ class CourseDownload extends Model
      */
     public function course(): BelongsTo
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'content_id');
+    }
+
+    /**
+     * Alias pour compatibilité avec le nouveau nom
+     */
+    public function content(): BelongsTo
+    {
+        return $this->course();
     }
 
     /**
@@ -45,6 +53,6 @@ class CourseDownload extends Model
      */
     public function category()
     {
-        return $this->hasOneThrough(Category::class, Course::class, 'id', 'id', 'course_id', 'category_id');
+        return $this->hasOneThrough(Category::class, Course::class, 'id', 'id', 'content_id', 'category_id');
     }
 }

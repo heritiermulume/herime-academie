@@ -328,10 +328,10 @@
             <h2>{{ $course->title }}</h2>
             <div class="course-meta">
                 <table class="course-meta-table">
-                    @if($course->instructor)
+                    @if($course->provider)
                     <tr>
                         <td>Formateur</td>
-                        <td>{{ $course->instructor->name }}</td>
+                        <td>{{ $course->provider->name }}</td>
                     </tr>
                     @endif
                     @if($course->category)

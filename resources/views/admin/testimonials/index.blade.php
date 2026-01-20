@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('title', 'Gestion des témoignages')
-@section('admin-title', 'Témoignages des étudiants')
+@section('admin-title', 'Témoignages des clients')
 @section('admin-subtitle', 'Gérez les retours d\'expérience affichés sur la page d\'accueil')
 @section('admin-actions')
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTestimonialModal">
@@ -141,7 +141,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Photo de l'étudiant</label>
+                                <label class="form-label">Photo de l'client</label>
                                 <div class="upload-zone text-center" id="testimonialPhotoUploadZone">
                                     <input type="file"
                                            class="form-control d-none"
@@ -249,7 +249,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Photo de l'étudiant</label>
+                                <label class="form-label">Photo de l'client</label>
                                 <div class="upload-zone text-center" id="editTestimonialPhotoUploadZone">
                                     <input type="file"
                                            class="form-control d-none"

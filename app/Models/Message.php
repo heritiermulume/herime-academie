@@ -10,7 +10,7 @@ class Message extends Model
     protected $fillable = [
         'sender_id',
         'receiver_id',
-        'course_id',
+        'content_id',
         'subject',
         'message',
         'is_read',
@@ -37,7 +37,15 @@ class Message extends Model
 
     public function course(): BelongsTo
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'content_id');
+    }
+
+    /**
+     * Alias pour compatibilité avec le nouveau nom
+     */
+    public function content(): BelongsTo
+    {
+        return $this->course();
     }
 
     public function scopeUnread($query)
@@ -50,9 +58,9 @@ class Message extends Model
         return $query->where('is_read', true);
     }
 
-    public function scopeByCourse($query, $courseId)
+    public function scopeByCourse($query, $contentId)
     {
-        return $query->where('course_id', $courseId);
+        return $query->where('content_id', $contentId);
     }
 
     public function markAsRead()

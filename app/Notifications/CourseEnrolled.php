@@ -42,8 +42,8 @@ class CourseEnrolled extends Notification
     {
         try {
             // Charger les relations nécessaires si elles ne sont pas déjà chargées
-            if (!$this->course->relationLoaded('instructor')) {
-                $this->course->load('instructor');
+            if (!$this->course->relationLoaded('provider')) {
+                $this->course->load('provider');
             }
             if (!$this->course->relationLoaded('category')) {
                 $this->course->load('category');
@@ -80,15 +80,15 @@ class CourseEnrolled extends Notification
     public function toArray(object $notifiable): array
     {
         // Charger les relations nécessaires si elles ne sont pas déjà chargées
-        if (!$this->course->relationLoaded('instructor')) {
-            $this->course->load('instructor');
+        if (!$this->course->relationLoaded('provider')) {
+            $this->course->load('provider');
         }
 
         return [
             'course_id' => $this->course->id,
             'course_title' => $this->course->title,
             'course_slug' => $this->course->slug,
-            'instructor_name' => $this->course->instructor?->name ?? 'Instructeur inconnu',
+            'provider_name' => $this->course->provider?->name ?? 'Prestataire inconnu',
             'message' => 'Vous êtes maintenant inscrit au cours : ' . $this->course->title,
             'type' => 'course_enrolled',
         ];

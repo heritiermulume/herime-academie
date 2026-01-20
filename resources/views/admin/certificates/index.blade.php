@@ -2,7 +2,7 @@
 
 @section('title', 'Gestion des certificats')
 @section('admin-title', 'Gestion des certificats')
-@section('admin-subtitle', 'Consultez et gérez tous les certificats délivrés aux étudiants')
+@section('admin-subtitle', 'Consultez et gérez tous les certificats délivrés aux clients')
 
 @push('modals')
     <!-- Modal de suppression -->
@@ -192,25 +192,25 @@
                 filtersId="certificatesFilters"
                 :hasFilters="true"
                 :searchValue="request('search')"
-                placeholder="Rechercher par étudiant, cours ou numéro de certificat..."
+                placeholder="Rechercher par client, contenu ou numéro de certificat..."
             >
                 <x-slot:filters>
                     <div class="admin-form-grid admin-form-grid--two mb-3">
                         <div>
                             <label class="form-label fw-semibold">Cours</label>
-                            <select class="form-select" name="course_id">
+                            <select class="form-select" name="content_id">
                                 <option value="">Tous les cours</option>
                                 @foreach($courses as $course)
-                                    <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
+                                    <option value="{{ $course->id }}" {{ request('content_id') == $course->id ? 'selected' : '' }}>
                                         {{ Str::limit($course->title, 50) }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
                         <div>
-                            <label class="form-label fw-semibold">Étudiant</label>
+                            <label class="form-label fw-semibold">Client</label>
                             <select class="form-select" name="user_id">
-                                <option value="">Tous les étudiants</option>
+                                <option value="">Tous les clients</option>
                                 @foreach($users as $user)
                                     <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
                                         {{ $user->name }} ({{ $user->email }})
@@ -245,7 +245,7 @@
             </x-admin.search-panel>
 
             <!-- Filtres actifs -->
-            @if(request()->hasAny(['search', 'course_id', 'user_id']))
+            @if(request()->hasAny(['search', 'content_id', 'user_id']))
                 <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
                     <div>
                         <i class="fas fa-filter me-2"></i>
@@ -253,11 +253,11 @@
                         @if(request('search'))
                             | Recherche : <span class="fw-semibold">{{ request('search') }}</span>
                         @endif
-                        @if(request('course_id'))
-                            | Cours : <span class="fw-semibold">{{ $courses->firstWhere('id', request('course_id'))->title ?? 'Inconnu' }}</span>
+                        @if(request('content_id'))
+                            | Contenu : <span class="fw-semibold">{{ $courses->firstWhere('id', request('content_id'))->title ?? 'Inconnu' }}</span>
                         @endif
                         @if(request('user_id'))
-                            | Étudiant : <span class="fw-semibold">{{ $users->firstWhere('id', request('user_id'))->name ?? 'Inconnu' }}</span>
+                            | Client : <span class="fw-semibold">{{ $users->firstWhere('id', request('user_id'))->name ?? 'Inconnu' }}</span>
                         @endif
                     </div>
                     <a href="{{ route('admin.certificates') }}" class="btn btn-sm btn-outline-primary">
@@ -285,8 +285,8 @@
                                         @endif
                                     </a>
                                 </th>
-                                <th style="min-width: 200px; max-width: 250px;">Étudiant</th>
-                                <th style="min-width: 200px; max-width: 300px;">Cours</th>
+                                <th style="min-width: 200px; max-width: 250px;">Client</th>
+                                <th style="min-width: 200px; max-width: 300px;">Contenu</th>
                                 <th style="min-width: 180px; max-width: 250px;">Titre</th>
                                 <th style="min-width: 140px; max-width: 160px; white-space: nowrap;">
                                     <a href="{{ request()->fullUrlWithQuery(['sort' => 'issued_at', 'direction' => request('sort') == 'issued_at' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
@@ -323,9 +323,9 @@
                                     <td style="max-width: 300px;">
                                         <div style="min-width: 0; overflow: hidden;">
                                             <div class="fw-semibold text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->course->title }}">{{ $certificate->course->title }}</div>
-                                            <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->course->instructor->name ?? 'N/A' }}">
+                                            <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $certificate->course->provider->name ?? 'N/A' }}">
                                                 <i class="fas fa-user me-1"></i>
-                                                {{ $certificate->course->instructor->name ?? 'N/A' }}
+                                                {{ $certificate->course->provider->name ?? 'N/A' }}
                                             </small>
                                         </div>
                                     </td>
@@ -442,12 +442,12 @@
         max-width: 180px;
     }
 
-    /* Colonne Étudiant */
+    /* Colonne Client */
     .admin-table table td:nth-child(2) {
         max-width: 250px;
     }
 
-    /* Colonne Cours */
+    /* Colonne Contenu */
     .admin-table table td:nth-child(3) {
         max-width: 300px;
     }

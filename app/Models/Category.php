@@ -30,6 +30,14 @@ class Category extends Model
         return $this->hasMany(Course::class);
     }
 
+    /**
+     * Alias pour compatibilité avec le nouveau nom
+     */
+    public function contents(): HasMany
+    {
+        return $this->courses();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

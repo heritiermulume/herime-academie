@@ -271,7 +271,7 @@
                 <a href="{{ route('orders.index') }}" class="btn btn-primary-custom">
                     <i class="fas fa-list me-2"></i>Voir mes commandes
                 </a>
-                <a href="{{ route('student.dashboard') }}" class="btn btn-outline-custom">
+                <a href="{{ route('customer.dashboard') }}" class="btn btn-outline-custom">
                     <i class="fas fa-tachometer-alt me-2"></i>Mon tableau de bord
                 </a>
                 <a href="{{ route('home') }}" class="btn btn-outline-custom">
@@ -302,7 +302,7 @@
             if (event.state && event.state.paymentCompleted) {
                 // Si l'utilisateur essaie de revenir en arrière après un paiement réussi,
                 // le rediriger vers le tableau de bord
-                window.location.href = "{{ route('student.dashboard') }}";
+                window.location.href = "{{ route('customer.dashboard') }}";
             }
         });
     }

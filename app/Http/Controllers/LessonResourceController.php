@@ -97,7 +97,7 @@ class LessonResourceController extends Controller
     {
         // Vérifier que l'utilisateur est l'instructeur du cours
         $course = $lesson->course;
-        if (!auth()->check() || $course->instructor_id !== auth()->id()) {
+        if (!auth()->check() || $course->provider_id !== auth()->id()) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
@@ -148,7 +148,7 @@ class LessonResourceController extends Controller
     public function update(Request $request, CourseLesson $lesson, LessonResource $resource)
     {
         $course = $lesson->course;
-        if (!auth()->check() || $course->instructor_id !== auth()->id()) {
+        if (!auth()->check() || $course->provider_id !== auth()->id()) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
@@ -174,7 +174,7 @@ class LessonResourceController extends Controller
     public function destroy(CourseLesson $lesson, LessonResource $resource)
     {
         $course = $lesson->course;
-        if (!auth()->check() || $course->instructor_id !== auth()->id()) {
+        if (!auth()->check() || $course->provider_id !== auth()->id()) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 

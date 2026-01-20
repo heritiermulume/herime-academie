@@ -28,13 +28,13 @@ class OrderController extends Controller
         $ordersQuery = Order::where('user_id', $user->id)
             ->with([
                 'enrollments' => function($q) {
-                    $q->whereHas('course', function($q2) {
+                    $q->whereHas('content', function($q2) {
                         $q2->where('is_published', true);
                     });
                 },
                 'enrollments.course',
                 'orderItems' => function($q) {
-                    $q->whereHas('course', function($q2) {
+                    $q->whereHas('content', function($q2) {
                         $q2->where('is_published', true);
                     });
                 },
@@ -73,7 +73,7 @@ class OrderController extends Controller
             'last_order' => (clone $summaryBase)->latest('created_at')->first(),
         ];
 
-        return view('students.orders', [
+        return view('customers.orders', [
             'orders' => $orders,
             'status' => $status,
             'search' => $search,
@@ -93,18 +93,18 @@ class OrderController extends Controller
 
         $order->load([
             'enrollments' => function($q) {
-                $q->whereHas('course', function($q2) {
+                $q->whereHas('content', function($q2) {
                     $q2->where('is_published', true);
                 });
             },
             'enrollments.course',
             'user',
             'orderItems' => function($q) {
-                $q->whereHas('course', function($q2) {
+                $q->whereHas('content', function($q2) {
                     $q2->where('is_published', true);
                 });
             },
-            'orderItems.course.instructor',
+            'orderItems.course.provider',
             'orderItems.course.category'
         ]);
         
@@ -185,7 +185,7 @@ class OrderController extends Controller
      */
     public function adminShow(Order $order)
     {
-        $order->load(['user', 'enrollments.course', 'orderItems.course.instructor', 'orderItems.course.category']);
+        $order->load(['user', 'enrollments.course', 'orderItems.course.provider', 'orderItems.course.category']);
         
         return view('admin.orders.show', compact('order'));
     }
@@ -244,14 +244,14 @@ class OrderController extends Controller
                 // Pour les cours non téléchargeables, créer l'inscription normalement
                 // Vérifier si l'utilisateur est déjà inscrit à ce cours
                 $existingEnrollment = Enrollment::where('user_id', $order->user_id)
-                    ->where('course_id', $item->course_id)
+                    ->where('content_id', $item->content_id)
                     ->first();
                 
                 if (!$existingEnrollment) {
                     // La méthode createAndNotify envoie automatiquement les notifications et emails
                     $enrollment = Enrollment::createAndNotify([
                         'user_id' => $order->user_id,
-                        'course_id' => $item->course_id,
+                        'content_id' => $item->content_id,
                         'order_id' => $order->id,
                         'status' => 'active',
                     ]);

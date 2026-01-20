@@ -53,7 +53,7 @@ class CourseAccessRevoked extends Notification
             'course_id' => $this->course->id,
             'course_title' => $this->course->title,
             'course_slug' => $this->course->slug,
-            'instructor_name' => $this->course->instructor->name ?? 'N/A',
+            'provider_name' => $this->course->provider->name ?? 'N/A',
             'message' => 'Votre accès au cours : ' . $this->course->title . ' a été retiré',
         ];
     }

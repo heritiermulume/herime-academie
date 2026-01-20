@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Herime Academie - Plateforme d\'apprentissage en ligne')
-@section('description', 'Découvrez des milliers de cours en ligne de qualité avec Herime Academie. Formations professionnelles, certifications et expertise garanties.')
+@section('title', 'Herime Académie - Plateforme d\'apprentissage en ligne et espace de ressources professionnelles')
+@section('description', 'Herime Académie est votre plateforme complète : formations en ligne de qualité et ressources professionnelles incontournables. Développez vos compétences et accédez à des outils experts pour votre réussite professionnelle.')
 
 @section('content')
 
@@ -520,15 +520,12 @@ body {
                                 <div class="col-12 col-lg-7 col-xl-6">
                                     <div class="hero-text-content">
                                         <h1 class="display-4 fw-bold mb-4">
-                                            Apprenez sans limites avec 
-                                            <span class="text-warning">Herime Académie</span>
+                                            Votre plateforme complète : 
+                                            <span class="text-warning">Apprentissage en ligne · Ressources Professionnelles</span>
                                         </h1>
-                                        <p class="lead mb-4">
-                                            Découvrez des milliers de cours en ligne de qualité, créés par des experts. 
-                                            Développez vos compétences et boostez votre carrière.
-                                        </p>
+
                                         <div class="d-flex flex-column flex-sm-row gap-3">
-                                            <a href="{{ route('courses.index') }}" class="btn btn-warning btn-lg px-4">
+                                            <a href="{{ route('contents.index') }}" class="btn btn-warning btn-lg px-4">
                                                 <i class="fas fa-play me-2"></i>Commencer à apprendre
                                             </a>
                                             <a href="#categories" class="btn btn-outline-light btn-lg px-4">
@@ -553,7 +550,7 @@ body {
             <div class="col-12 col-lg-8 mx-auto text-center">
                 <h2 class="h3 fw-bold mb-2">Explorez nos catégories</h2>
                 <p class="text-muted" style="font-size: 0.95rem;">
-                    Trouvez le cours parfait dans nos catégories spécialisées
+                    Trouvez le contenu parfait dans nos catégories spécialisées
                 </p>
             </div>
         </div>
@@ -562,7 +559,7 @@ body {
         <div class="modern-categories-container">
             <div class="modern-categories-wrapper" id="categoriesScroll">
                 @foreach($categories as $category)
-                <a href="{{ route('courses.category', $category->slug) }}" class="modern-category-item">
+                <a href="{{ route('contents.category', $category->slug) }}" class="modern-category-item">
                     @if($category->icon)
                     <div class="modern-category-icon" style="background: linear-gradient(135deg, {{ $category->color ?? '#003366' }}, {{ $category->color ?? '#004080' }});">
                         <i class="{{ $category->icon }}"></i>
@@ -598,8 +595,8 @@ body {
             <a href="{{ route('categories.index') }}" class="btn btn-primary btn-lg">
                     Voir toutes les catégories <i class="fas fa-th-large ms-2"></i>
                 </a>    
-            <a href="{{ route('courses.index') }}" class="btn btn-outline-primary btn-lg">
-                    Voir tous les cours <i class="fas fa-arrow-right ms-2"></i>
+            <a href="{{ route('contents.index') }}" class="btn btn-outline-primary btn-lg">
+                    Voir tous les contenus <i class="fas fa-arrow-right ms-2"></i>
                 </a>
 
             </div>
@@ -613,9 +610,9 @@ body {
     <div class="container">
         <div class="row mb-5">
             <div class="col-12 col-lg-8 mx-auto text-center">
-                <h2 class="display-5 fw-bold mb-3">Cours en vedette</h2>
+                <h2 class="display-5 fw-bold mb-3">Contenus en vedette</h2>
                 <p class="lead text-muted">
-                    Découvrez nos cours les plus populaires et les mieux notés
+                    Découvrez nos contenus les plus populaires et les mieux notés
                 </p>
             </div>
         </div>
@@ -626,7 +623,7 @@ body {
             <div class="course-scroll-wrapper" id="featuredCoursesScroll" data-scroll-amount="320">
                 @foreach($featuredCourses as $course)
                 <div class="course-scroll-item">
-                    <div class="course-card" data-course-url="{{ route('courses.show', $course->slug) }}" style="cursor: pointer;">
+                    <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
                         <div class="card" style="position: relative;">
                             <div class="position-relative">
                                 <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
@@ -653,7 +650,7 @@ body {
                                 
                                 <div class="instructor-info">
                                     <small class="instructor-name">
-                                        <i class="fas fa-user me-1"></i>{{ Str::limit($course->instructor->name, 20) }}
+                                        <i class="fas fa-user me-1"></i>{{ Str::limit($course->provider->name, 20) }}
                                     </small>
                                     <div class="rating">
                                         <i class="fas fa-star"></i>
@@ -662,20 +659,45 @@ body {
                                     </div>
                                 </div>
                                 
-                                @if($course->show_students_count)
+                                @if($course->show_customers_count)
                                 @php
-                                    try {
-                                        $purchasesCount = $course->stats['purchases_count'] ?? $course->purchases_count ?? 0;
-                                    } catch (\Exception $e) {
-                                        $purchasesCount = 0;
+                                    $count = 0;
+                                    $label = '';
+                                    $icon = '';
+                                    
+                                    if ($course->is_downloadable) {
+                                        // Cours téléchargeable
+                                        if ($course->is_free) {
+                                            // Téléchargeable gratuit : téléchargements uniques
+                                            $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
+                                            $label = $count > 1 ? 'téléchargements' : 'téléchargement';
+                                            $icon = 'fa-download';
+                                        } else {
+                                            // Téléchargeable payant : nombre d'achats
+                                            $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);
+                                            $label = $count > 1 ? 'achats' : 'achat';
+                                            $icon = 'fa-shopping-cart';
+                                        }
+                                    } else {
+                                        // Cours non téléchargeable
+                                        if ($course->is_free) {
+                                            // Non téléchargeable gratuit : inscriptions
+                                            $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
+                                            $label = $count > 1 ? 'inscriptions' : 'inscription';
+                                            $icon = 'fa-user-plus';
+                                        } else {
+                                            // Non téléchargeable payant : nombre d'achats
+                                            $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);
+                                            $label = $count > 1 ? 'achats' : 'achat';
+                                            $icon = 'fa-shopping-cart';
+                                        }
                                     }
-                                    $purchasesCount = (int) ($purchasesCount ?? 0);
                                 @endphp
-                                <div class="students-count mb-2">
+                                <div class="customers-count mb-2">
                                     <small class="text-muted">
-                                        <i class="fas fa-shopping-cart me-1"></i>
-                                        {{ number_format($purchasesCount, 0, ',', ' ') }} 
-                                        {{ $purchasesCount > 1 ? 'achats' : 'achat' }}
+                                        <i class="fas {{ $icon }} me-1"></i>
+                                        {{ number_format($count, 0, ',', ' ') }} 
+                                        {{ $label }}
                                     </small>
                                 </div>
                                 @endif
@@ -716,7 +738,7 @@ body {
                                 </div>
                                 
                                 <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
-                                    <x-course-button :course="$course" size="small" :show-cart="false" />
+                                    <x-contenu-button :course="$course" size="small" :show-cart="false" />
                                 </div>
                             </div>
                         </div>
@@ -729,8 +751,8 @@ body {
             </button>
         </div>
         <div class="text-center mt-5">
-            <a href="{{ route('courses.index', ['featured' => 1]) }}" class="btn btn-outline-primary btn-lg">
-                Voir tous les cours en vedette <i class="fas fa-arrow-right ms-2"></i>
+            <a href="{{ route('contents.index', ['featured' => 1]) }}" class="btn btn-outline-primary btn-lg">
+                Voir tous les contenus en vedette <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
     </div>
@@ -743,9 +765,9 @@ body {
     <div class="container">
         <div class="row mb-5">
             <div class="col-12 col-lg-8 mx-auto text-center">
-                <h2 class="display-5 fw-bold mb-3">Cours populaires</h2>
+                <h2 class="display-5 fw-bold mb-3">Contenus populaires</h2>
                 <p class="lead text-muted">
-                    Les cours les plus suivis par notre communauté
+                    Les contenus les plus suivis par notre communauté
                 </p>
             </div>
         </div>
@@ -756,7 +778,7 @@ body {
             <div class="course-scroll-wrapper" id="popularCoursesScroll" data-scroll-amount="300">
                 @foreach($popularCourses as $course)
                 <div class="course-scroll-item">
-                    <div class="course-card" data-course-url="{{ route('courses.show', $course->slug) }}" style="cursor: pointer;">
+                    <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
                         <div class="card" style="position: relative;">
                             <div class="position-relative">
                                 <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
@@ -783,7 +805,7 @@ body {
                                 
                                 <div class="instructor-info">
                                     <small class="instructor-name">
-                                        <i class="fas fa-user me-1"></i>{{ Str::limit($course->instructor->name, 20) }}
+                                        <i class="fas fa-user me-1"></i>{{ Str::limit($course->provider->name, 20) }}
                                     </small>
                                     <div class="rating">
                                         <i class="fas fa-star"></i>
@@ -792,20 +814,45 @@ body {
                                     </div>
                                 </div>
                                 
-                                @if($course->show_students_count)
+                                @if($course->show_customers_count)
                                 @php
-                                    try {
-                                        $purchasesCount = $course->stats['purchases_count'] ?? $course->purchases_count ?? 0;
-                                    } catch (\Exception $e) {
-                                        $purchasesCount = 0;
+                                    $count = 0;
+                                    $label = '';
+                                    $icon = '';
+                                    
+                                    if ($course->is_downloadable) {
+                                        // Cours téléchargeable
+                                        if ($course->is_free) {
+                                            // Téléchargeable gratuit : téléchargements uniques
+                                            $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
+                                            $label = $count > 1 ? 'téléchargements' : 'téléchargement';
+                                            $icon = 'fa-download';
+                                        } else {
+                                            // Téléchargeable payant : nombre d'achats
+                                            $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);
+                                            $label = $count > 1 ? 'achats' : 'achat';
+                                            $icon = 'fa-shopping-cart';
+                                        }
+                                    } else {
+                                        // Cours non téléchargeable
+                                        if ($course->is_free) {
+                                            // Non téléchargeable gratuit : inscriptions
+                                            $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
+                                            $label = $count > 1 ? 'inscriptions' : 'inscription';
+                                            $icon = 'fa-user-plus';
+                                        } else {
+                                            // Non téléchargeable payant : nombre d'achats
+                                            $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);
+                                            $label = $count > 1 ? 'achats' : 'achat';
+                                            $icon = 'fa-shopping-cart';
+                                        }
                                     }
-                                    $purchasesCount = (int) ($purchasesCount ?? 0);
                                 @endphp
-                                <div class="students-count mb-2">
+                                <div class="customers-count mb-2">
                                     <small class="text-muted">
-                                        <i class="fas fa-shopping-cart me-1"></i>
-                                        {{ number_format($purchasesCount, 0, ',', ' ') }} 
-                                        {{ $purchasesCount > 1 ? 'achats' : 'achat' }}
+                                        <i class="fas {{ $icon }} me-1"></i>
+                                        {{ number_format($count, 0, ',', ' ') }} 
+                                        {{ $label }}
                                     </small>
                                 </div>
                                 @endif
@@ -846,7 +893,7 @@ body {
                                 </div>
                                 
                                 <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
-                                    <x-course-button :course="$course" size="small" :show-cart="false" />
+                                    <x-contenu-button :course="$course" size="small" :show-cart="false" />
                                 </div>
                             </div>
                         </div>
@@ -859,8 +906,8 @@ body {
             </button>
         </div>
         <div class="text-center mt-5">
-            <a href="{{ route('courses.index', ['popular' => 1]) }}" class="btn btn-outline-primary btn-lg">
-                Voir tous les cours populaires <i class="fas fa-arrow-right ms-2"></i>
+            <a href="{{ route('contents.index', ['popular' => 1]) }}" class="btn btn-outline-primary btn-lg">
+                Voir tous les contenus populaires <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
     </div>
@@ -955,9 +1002,9 @@ body {
     <div class="container">
         <div class="row mb-5">
             <div class="col-12 col-lg-8 mx-auto text-center">
-                <h2 class="display-5 fw-bold mb-3">Cours tendance</h2>
+                <h2 class="display-5 fw-bold mb-3">Contenus tendance</h2>
                 <p class="lead text-muted">
-                    Les cours les plus suivis cette semaine
+                    Les contenus les plus suivis cette semaine
                 </p>
             </div>
         </div>
@@ -968,7 +1015,7 @@ body {
             <div class="course-scroll-wrapper" id="trendingCoursesScroll" data-scroll-amount="300">
                 @foreach($trendingCourses as $course)
                 <div class="course-scroll-item">
-                    <div class="course-card" data-course-url="{{ route('courses.show', $course->slug) }}" style="cursor: pointer;">
+                    <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
                         <div class="card" style="position: relative;">
                             <div class="position-relative">
                                 <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
@@ -993,7 +1040,7 @@ body {
                                 
                                 <div class="instructor-info">
                                     <small class="instructor-name">
-                                        <i class="fas fa-user me-1"></i>{{ Str::limit($course->instructor->name, 20) }}
+                                        <i class="fas fa-user me-1"></i>{{ Str::limit($course->provider->name, 20) }}
                                     </small>
                                     <div class="rating">
                                         <i class="fas fa-star"></i>
@@ -1002,20 +1049,44 @@ body {
                                     </div>
                                 </div>
                                 
-                                @if($course->show_students_count)
+                                @if($course->show_customers_count)
                                 @php
-                                    try {
-                                        $purchasesCount = $course->stats['purchases_count'] ?? $course->purchases_count ?? 0;
-                                    } catch (\Exception $e) {
-                                        $purchasesCount = 0;
+                                    $count = 0;
+                                    $label = '';
+                                    $icon = '';
+                                    
+                                    if ($course->is_downloadable) {
+                                        // Cours téléchargeable
+                                        if ($course->is_free) {
+                                            // Téléchargeable gratuit : téléchargements uniques
+                                            $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
+                                            $label = $count > 1 ? 'téléchargements' : 'téléchargement';
+                                            $icon = 'fa-download';
+                                        } else {
+                                            // Téléchargeable payant : nombre d'achats
+                                            $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);
+                                            $label = $count > 1 ? 'achats' : 'achat';
+                                            $icon = 'fa-shopping-cart';
+                                        }
+                                    } else {
+                                        // Cours non téléchargeable
+                                        $icon = 'fa-user-plus';
+                                        if ($course->is_free) {
+                                            // Non téléchargeable gratuit : inscriptions
+                                            $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
+                                            $label = $count > 1 ? 'participants' : 'participant';                                            
+                                        } else {
+                                            // Non téléchargeable payant : nombre d'achats
+                                            $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);
+                                            $label = $count > 1 ? 'participants' : 'participant';                                    
+                                        }
                                     }
-                                    $purchasesCount = (int) ($purchasesCount ?? 0);
                                 @endphp
-                                <div class="students-count mb-2">
+                                <div class="customers-count mb-2">
                                     <small class="text-muted">
-                                        <i class="fas fa-shopping-cart me-1"></i>
-                                        {{ number_format($purchasesCount, 0, ',', ' ') }} 
-                                        {{ $purchasesCount > 1 ? 'achats' : 'achat' }}
+                                        <i class="fas {{ $icon }} me-1"></i>
+                                        {{ number_format($count, 0, ',', ' ') }} 
+                                        {{ $label }}
                                     </small>
                                 </div>
                                 @endif
@@ -1056,7 +1127,7 @@ body {
                                 </div>
                                 
                                 <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
-                                    <x-course-button :course="$course" size="small" :show-cart="false" />
+                                    <x-contenu-button :course="$course" size="small" :show-cart="false" />
                                 </div>
                             </div>
                         </div>
@@ -1069,8 +1140,8 @@ body {
             </button>
         </div>
         <div class="text-center mt-5">
-            <a href="{{ route('courses.index', ['trending' => 1]) }}" class="btn btn-outline-primary btn-lg">
-                Voir tous les cours tendance <i class="fas fa-arrow-right ms-2"></i>
+            <a href="{{ route('contents.index', ['trending' => 1]) }}" class="btn btn-outline-primary btn-lg">
+                Voir tous les contenus tendance <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
     </div>
@@ -1082,15 +1153,15 @@ body {
     <div class="container">
         <div class="row align-items-center">
             <div class="col-12 col-lg-8 text-center text-lg-start mb-4 mb-lg-0">
-                <h2 class="display-5 fw-bold mb-3">Prêt à commencer votre parcours d'apprentissage ?</h2>
+                <h2 class="display-5 fw-bold mb-3">Prêt à transformer votre carrière et développer vos compétences ?</h2>
                 <p class="lead mb-0">
-                    Rejoignez des milliers d'étudiants qui transforment leur carrière avec Herime Academie.
+                    Rejoignez des milliers de professionnels qui transforment leur carrière et développent leurs compétences avec Herime Académie. Plateforme d'apprentissage en ligne et espace de ressources professionnelles.
                 </p>
             </div>
             <div class="col-12 col-lg-4 text-center text-lg-end">
                 @auth
-                    <a href="{{ route('courses.index') }}" class="btn btn-warning btn-lg px-4">
-                        <i class="fas fa-play me-2"></i>Explorer les cours
+                    <a href="{{ route('contents.index') }}" class="btn btn-warning btn-lg px-4">
+                        <i class="fas fa-play me-2"></i>Explorer les contenus
                     </a>
                 @else
                     <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center justify-content-lg-end">
@@ -1123,7 +1194,7 @@ body {
 // Fonctions pour les boutons de la page d'accueil
 function goToCourses() {
     console.log('Redirection vers la page des cours...');
-    window.location.href = '{{ route("courses.index") }}';
+    window.location.href = '{{ route('contents.index') }}';
 }
 
 function scrollToCategories() {

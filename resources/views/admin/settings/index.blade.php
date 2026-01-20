@@ -61,7 +61,7 @@
 
                                 <div>
                                     <label for="external_instructor_commission_percentage" class="form-label fw-semibold">
-                                        Pourcentage de commission (formateurs externes)
+                                        Pourcentage de commission (prestataires externes)
                                     </label>
                                     <div class="input-group">
                                         <input type="number" 
@@ -76,7 +76,7 @@
                                     </div>
                                     <div class="form-text mt-2">
                                         <i class="fas fa-info-circle me-1"></i>
-                                        Pourcentage retenu sur les paiements aux formateurs externes. Le reste sera envoyé via Moneroo.
+                                        Pourcentage retenu sur les paiements aux prestataires externes. Le reste sera envoyé via Moneroo.
                                     </div>
                                 </div>
 

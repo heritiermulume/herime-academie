@@ -105,10 +105,10 @@
             </div>
 
             <div class="text-center">
-                <a href="{{ route('courses.index') }}" class="btn btn-primary btn-lg me-3">
+                <a href="{{ route('contents.index') }}" class="btn btn-primary btn-lg me-3">
                     <i class="fas fa-redo me-2"></i>Réessayer le paiement
                 </a>
-                <a href="{{ route('courses.index') }}" class="btn btn-outline-primary btn-lg">
+                <a href="{{ route('contents.index') }}" class="btn btn-outline-primary btn-lg">
                     <i class="fas fa-search me-2"></i>Explorer les cours
                 </a>
             </div>

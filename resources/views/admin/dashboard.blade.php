@@ -49,7 +49,7 @@
                     <p class="insight-card__label">Communauté</p>
                     <h3 class="insight-card__value">{{ number_format($stats['total_users']) }}</h3>
                     <p class="insight-card__supplement">
-                        {{ number_format($stats['total_students']) }} étudiants · {{ number_format($stats['total_instructors']) }} formateurs
+                        {{ number_format($stats['total_customers']) }} clients · {{ number_format($stats['total_providers']) }} prestataires
                     </p>
                 </div>
             </div>
@@ -63,7 +63,7 @@
                     <p class="insight-card__label">Catalogue</p>
                     <h3 class="insight-card__value">{{ number_format($stats['total_courses']) }}</h3>
                     <p class="insight-card__supplement">
-                        {{ number_format($stats['published_courses']) }} cours publiés
+                        {{ number_format($stats['published_courses']) }} contenus publiés
                     </p>
                 </div>
             </div>
@@ -156,7 +156,7 @@
                                         <div class="revenue-detail-card__content">
                                             <p class="revenue-detail-card__label">Revenus internes</p>
                                             <h4 class="revenue-detail-card__value">{{ $formatCurrency($stats['internal_revenue']) }}</h4>
-                                            <small class="text-muted">Cours des formateurs internes</small>
+                                            <small class="text-muted">Contenus des prestataires internes</small>
                                         </div>
                                     </div>
                                 </div>
@@ -168,7 +168,7 @@
                                         <div class="revenue-detail-card__content">
                                             <p class="revenue-detail-card__label">Commissions</p>
                                             <h4 class="revenue-detail-card__value">{{ $formatCurrency($stats['commissions_revenue']) }}</h4>
-                                            <small class="text-muted">Retenues sur formateurs externes</small>
+                                            <small class="text-muted">Retenues sur prestataires externes</small>
                                         </div>
                                     </div>
                                 </div>
@@ -180,7 +180,7 @@
                                         <div class="revenue-detail-card__content">
                                             <p class="revenue-detail-card__label">Payouts externes</p>
                                             <h4 class="revenue-detail-card__value">{{ $formatCurrency($stats['external_payouts']) }}</h4>
-                                            <small class="text-muted">Payés aux formateurs externes</small>
+                                            <small class="text-muted">Payés aux prestataires externes</small>
                                         </div>
                                     </div>
                                 </div>
@@ -216,13 +216,13 @@
                                         <span class="admin-actions__dot bg-primary"></span>
                                         <div>
                                             <p class="fw-semibold">Analyser les inscriptions en baisse</p>
-                                            <p class="text-muted small">Comparer les cours les moins dynamiques et proposer une animation.</p>
+                                            <p class="text-muted small">Comparer les contenus les moins dynamiques et proposer une animation.</p>
                                         </div>
                                     </li>
                                     <li class="admin-actions__item">
                                         <span class="admin-actions__dot bg-success"></span>
                                         <div>
-                                            <p class="fw-semibold">Valider les nouvelles candidatures formateur</p>
+                                            <p class="fw-semibold">Valider les nouvelles candidatures prestataire</p>
                                             <p class="text-muted small">Assurer la conformité des profils et planifier l'onboarding.</p>
                                         </div>
                                     </li>
@@ -264,8 +264,8 @@
                         </div>
                         <div class="admin-card__body">
                     <div class="quick-actions-grid">
-                        <a href="{{ route('admin.courses') }}" class="quick-action-link">
-                            <i class="fas fa-book me-2"></i>Gérer les cours
+                        <a href="{{ route('admin.contents') }}" class="quick-action-link">
+                            <i class="fas fa-book me-2"></i>Gérer les contenus
                         </a>
                         <a href="{{ route('admin.categories') }}" class="quick-action-link">
                             <i class="fas fa-tags me-2"></i>Catégories
@@ -276,9 +276,9 @@
                         <a href="{{ route('admin.users') }}" class="quick-action-link">
                             <i class="fas fa-users-cog me-2"></i>Utilisateurs
                         </a>
-                        @if(Route::has('admin.instructor-applications'))
-                            <a href="{{ route('admin.instructor-applications') }}" class="quick-action-link">
-                                <i class="fas fa-chalkboard-teacher me-2"></i>Candidatures formateur
+                        @if(Route::has('admin.provider-applications'))
+                            <a href="{{ route('admin.provider-applications') }}" class="quick-action-link">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>Candidatures prestataire
                             </a>
                         @endif
                         @if(Route::has('admin.banners.index'))
@@ -312,7 +312,7 @@
                     <div class="admin-card shadow-sm h-100">
                         <div class="admin-card__header">
                             <h5 class="admin-card__title">
-                                <i class="fas fa-trophy me-2"></i>Top cours du moment
+                                <i class="fas fa-trophy me-2"></i>Top contenus du moment
                             </h5>
                         </div>
                         <div class="admin-card__body">
@@ -322,8 +322,8 @@
                                         <table class="table align-middle">
                                             <thead>
                                                 <tr>
-                                        <th>Cours</th>
-                                        <th>Formateur</th>
+                                        <th>Contenu</th>
+                                        <th>Prestataire</th>
                                         <th>Catégorie</th>
                                         <th class="text-end">Inscriptions</th>
                                                 </tr>
@@ -335,7 +335,7 @@
                                                             <span class="fw-semibold d-block">{{ Str::limit($course->title, 42) }}</span>
                                                             <small class="text-muted">{{ Str::limit($course->subtitle, 60) }}</small>
                                                         </td>
-                                                        <td>{{ $course->instructor->name ?? 'N/A' }}</td>
+                                                        <td>{{ $course->provider->name ?? 'N/A' }}</td>
                                                         <td><span class="badge bg-light text-muted border">{{ $course->category->name ?? 'Général' }}</span></td>
                                                         <td class="text-end fw-semibold">{{ number_format($course->enrollments_count) }}</td>
                                                     </tr>
@@ -372,10 +372,10 @@
                                             <div>
                                                 <p class="fw-semibold mb-1">{{ $enrollment->user->name ?? 'Utilisateur supprimé' }}</p>
                                                 <p class="text-muted small mb-2">
-                                                    a rejoint <span class="fw-semibold">{{ $enrollment->course->title ?? 'Cours retiré' }}</span>
+                                                    a rejoint <span class="fw-semibold">{{ $enrollment->course->title ?? 'Contenu retiré' }}</span>
                                                 </p>
                                                 <div class="d-flex flex-wrap gap-3 text-muted small">
-                                                    <span><i class="fas fa-chalkboard-teacher me-1 text-primary"></i>{{ $enrollment->course->instructor->name ?? 'Non assigné' }}</span>
+                                                    <span><i class="fas fa-chalkboard-teacher me-1 text-primary"></i>{{ $enrollment->course->provider->name ?? 'Non assigné' }}</span>
                                                     <span><i class="fas fa-layer-group me-1 text-primary"></i>{{ $enrollment->course->category->name ?? 'Général' }}</span>
                                                 </div>
                                             </div>
@@ -439,7 +439,7 @@
                                                 </td>
                                                 <td>
                                                     @foreach($order->orderItems as $item)
-                                                        <div class="text-muted small">{{ Str::limit($item->course->title ?? 'Cours supprimé', 40) }}</div>
+                                                        <div class="text-muted small">{{ Str::limit($item->course->title ?? 'Contenu supprimé', 40) }}</div>
                                                     @endforeach
                                                 </td>
                                                 <td>{{ $formatCurrency($order->total) }}</td>

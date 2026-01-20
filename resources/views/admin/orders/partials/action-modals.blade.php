@@ -10,7 +10,7 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        En confirmant cette commande, l'utilisateur aura accès aux cours commandés.
+                        En confirmant cette commande, l'utilisateur aura accès aux contenus commandés.
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Référence de paiement <span class="text-danger">*</span></label>
@@ -143,7 +143,7 @@
                 <p>Vous êtes sur le point de supprimer définitivement cette commande. Cette action va :</p>
                 <ul>
                     <li>Supprimer complètement la commande de la base de données</li>
-                    <li>Retirer l'accès à tous les cours associés à cette commande</li>
+                    <li>Retirer l'accès à tous les contenus associés à cette commande</li>
                     <li>Supprimer toutes les inscriptions liées à cette commande</li>
                     <li>Supprimer tous les paiements associés</li>
                 </ul>
