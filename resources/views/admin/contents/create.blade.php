@@ -348,7 +348,7 @@
                                     <input class="form-check-input" type="checkbox" id="show_customers_count" name="show_customers_count" value="1" 
                                            {{ old('show_customers_count') ? 'checked' : '' }}>
                                     <label class="form-check-label" for="show_customers_count">
-                                        Afficher le nombre d'clients inscrits sur la carte du contenu
+                                        Afficher le nombre de participants
                                     </label>
                                 </div>
                                 <div class="form-check">

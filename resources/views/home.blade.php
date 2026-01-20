@@ -825,7 +825,7 @@ body {
                                         if ($course->is_free) {
                                             // Téléchargeable gratuit : téléchargements uniques
                                             $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
-                                            $label = $count > 1 ? 'téléchargements' : 'téléchargement';
+                                            $label = $count > 1 ? 'participants' : 'participant';
                                             $icon = 'fa-download';
                                         } else {
                                             // Téléchargeable payant : nombre d'achats
@@ -1060,7 +1060,7 @@ body {
                                         if ($course->is_free) {
                                             // Téléchargeable gratuit : téléchargements uniques
                                             $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
-                                            $label = $count > 1 ? 'téléchargements' : 'téléchargement';
+                                            $label = $count > 1 ? 'participants' : 'participant';
                                             $icon = 'fa-download';
                                         } else {
                                             // Téléchargeable payant : nombre d'achats

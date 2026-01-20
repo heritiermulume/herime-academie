@@ -1166,6 +1166,34 @@ body.has-global-announcement:has(.course-details-page) {
     border-radius: 0 !important;
 }
 
+/* Instructor Card (alias for provider) */
+.instructor-card {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.instructor-avatar {
+    width: 80px !important;
+    height: 80px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    flex-shrink: 0;
+    display: block;
+    aspect-ratio: 1 / 1 !important;
+}
+
+.instructor-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    border-radius: 0 !important;
+}
+
 .provider-info h5 {
     font-weight: 700;
     color: var(--primary-color);
@@ -3577,13 +3605,13 @@ button.mobile-price-slider__btn--download i,
                                 @if($providerAvatar)
                                     <img src="{{ $providerAvatar }}" alt="{{ $providerName }}">
                                 @else
-                                    <div class="d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 2rem; font-weight: bold; border-radius: 50%; width: 100%; height: 100%;">
+                                    <div class="d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 1.2rem; font-weight: bold; border-radius: 50%; width: 100%; height: 100%;">
                                         {{ strtoupper(substr($providerName, 0, 1)) }}
                                     </div>
                                 @endif
                             </div>
                         @else
-                            <div class="instructor-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 2rem; font-weight: bold; border-radius: 50%;">
+                            <div class="instructor-avatar d-flex align-items-center justify-content-center bg-primary text-white" style="font-size: 1.2rem; font-weight: bold; border-radius: 50%;">
                                 ?
                             </div>
                         @endif
@@ -3611,7 +3639,7 @@ button.mobile-price-slider__btn--download i,
                     }
                     $hasUserReview = $userReview !== null;
                 @endphp
-                @if($user && ($isEnrolled || $course->is_free))
+                @if($user && ($canReview ?? false))
                 <div class="content-card">
                     <h2 class="section-title-modern">
                         <i class="fas fa-star"></i>
