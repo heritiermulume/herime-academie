@@ -2688,12 +2688,13 @@ class AdminController extends Controller
      */
     public function sendEmail(Request $request)
     {
-        $request->validate([
-            'recipient_type' => 'required|in:all,role,course,category,provider,downloaded_free,purchased,registration_date,activity,selected,single',
-            'subject' => 'required|string|max:255',
-            'content' => 'required|string',
-            'send_type' => 'required|in:now,scheduled',
-            'scheduled_at' => 'nullable|required_if:send_type,scheduled|date|after:now',
+        try {
+            $request->validate([
+                'recipient_type' => 'required|in:all,role,course,category,provider,downloaded_free,purchased,registration_date,activity,selected,single',
+                'subject' => 'required|string|max:255',
+                'email_content' => 'required|string',
+                'send_type' => 'required|in:now,scheduled',
+                'scheduled_at' => 'nullable|required_if:send_type,scheduled|date|after:now',
             'roles' => 'nullable|required_if:recipient_type,role|array',
             'roles.*' => 'in:customer,provider,admin,affiliate,ambassador',
             'content_id' => 'nullable|required_if:recipient_type,course|exists:contents,id',
@@ -2713,7 +2714,7 @@ class AdminController extends Controller
 
         $recipientType = $request->recipient_type;
         $subject = $request->subject;
-        $content = $request->content;
+        $content = $request->email_content;
 
         // Gérer les pièces jointes
         $attachmentPaths = [];
@@ -2758,29 +2759,55 @@ class AdminController extends Controller
                         // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
                         $mailable = new CustomAnnouncementMail($subject, $content, $attachmentPaths);
                         $communicationService = app(\App\Services\CommunicationService::class);
-                        $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                        $results = $communicationService->sendEmailAndWhatsApp($user, $mailable, null, false);
                         
-                        // Enregistrer l'email envoyé
-                        SentEmail::create([
-                            'user_id' => $user->id,
-                            'recipient_email' => $user->email,
-                            'recipient_name' => $user->name,
-                            'subject' => $subject,
-                            'content' => $content,
-                            'attachments' => $attachmentPaths ?: null,
-                            'type' => 'custom',
-                            'status' => 'sent',
-                            'sent_at' => now(),
-                            'metadata' => [
-                                'recipient_type' => $recipientType,
-                            ],
-                        ]);
-                        
-                        // Notifier l'utilisateur qu'un email lui a été envoyé
-                        // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-                        Notification::sendNow($user, new EmailSentNotification($subject, now()));
-                        
-                        $sentCount++;
+                        // Vérifier si l'envoi a réussi
+                        if ($results['email']['success']) {
+                            // Enregistrer l'email envoyé avec succès
+                            SentEmail::create([
+                                'user_id' => $user->id,
+                                'recipient_email' => $user->email,
+                                'recipient_name' => $user->name,
+                                'subject' => $subject,
+                                'content' => $content,
+                                'attachments' => $attachmentPaths ?: null,
+                                'type' => 'custom',
+                                'status' => 'sent',
+                                'sent_at' => now(),
+                                'metadata' => [
+                                    'recipient_type' => $recipientType,
+                                ],
+                            ]);
+                            
+                            // Notifier l'utilisateur qu'un email lui a été envoyé
+                            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+                            try {
+                                Notification::sendNow($user, new EmailSentNotification($subject, now()));
+                            } catch (\Exception $notifException) {
+                                Log::warning("Impossible d'envoyer la notification email à {$user->email}: " . $notifException->getMessage());
+                            }
+                            
+                            $sentCount++;
+                        } else {
+                            // Enregistrer l'échec
+                            $errorMessage = $results['email']['error'] ?? 'Erreur inconnue lors de l\'envoi de l\'email';
+                            SentEmail::create([
+                                'user_id' => $user->id,
+                                'recipient_email' => $user->email,
+                                'recipient_name' => $user->name,
+                                'subject' => $subject,
+                                'content' => $content,
+                                'attachments' => $attachmentPaths ?: null,
+                                'type' => 'custom',
+                                'status' => 'failed',
+                                'error_message' => $errorMessage,
+                                'metadata' => [
+                                    'recipient_type' => $recipientType,
+                                ],
+                            ]);
+                            $failedCount++;
+                            Log::error("Échec de l'envoi d'email à {$user->email}: {$errorMessage}");
+                        }
                     } catch (\Exception $e) {
                         \Log::error("Erreur lors de l'envoi d'email à {$user->email}: " . $e->getMessage());
                         
@@ -2853,6 +2880,44 @@ class AdminController extends Controller
         
         return redirect()->route('admin.announcements')
             ->with('success', $message);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Erreur de validation
+            Log::error("Erreur de validation lors de l'envoi d'email", [
+                'errors' => $e->errors(),
+                'request_data' => $request->except(['attachments', 'email_content'])
+            ]);
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Erreur de validation',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Exception $e) {
+            // Autres erreurs
+            Log::error("Erreur lors de l'envoi d'email", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'request_data' => $request->except(['attachments', 'email_content'])
+            ]);
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Une erreur est survenue lors de l\'envoi: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return redirect()->back()
+                ->with('error', 'Une erreur est survenue lors de l\'envoi: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
     /**

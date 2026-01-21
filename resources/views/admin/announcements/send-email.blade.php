@@ -320,7 +320,7 @@
 </div>
 
 <!-- Modal pour ajouter un bouton d'action -->
-<div class="modal fade" id="actionButtonModal" tabindex="-1" aria-labelledby="actionButtonModalLabel" aria-hidden="true">
+<div class="modal fade" id="actionButtonModal" tabindex="-1" aria-labelledby="actionButtonModalLabel">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -575,9 +575,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 actionButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    // Ouvrir le modal moderne
-                    const modal = new bootstrap.Modal(document.getElementById('actionButtonModal'));
-                    modal.show();
+                    // Ouvrir le modal moderne - utiliser getInstance ou créer une nouvelle instance
+                    const modalElement = document.getElementById('actionButtonModal');
+                    if (modalElement) {
+                        let modal = bootstrap.Modal.getInstance(modalElement);
+                        if (!modal) {
+                            modal = new bootstrap.Modal(modalElement, {
+                                backdrop: true,
+                                keyboard: true,
+                                focus: true
+                            });
+                        }
+                        modal.show();
+                    }
                 });
             }
         }
@@ -1467,33 +1477,67 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             })
-            .then(response => {
+            .then(async response => {
+                hideLoadingModal();
+                
+                // Vérifier le statut de la réponse
+                if (!response.ok) {
+                    // Erreur HTTP (400, 422, 500, etc.)
+                    let errorMessage = 'Une erreur est survenue lors de l\'envoi.';
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.error) {
+                            errorMessage = errorData.error;
+                        } else if (errorData.errors) {
+                            // Erreurs de validation
+                            const errorList = Object.values(errorData.errors).flat().join('\n');
+                            errorMessage = 'Erreurs de validation:\n' + errorList;
+                        } else if (errorData.message) {
+                            errorMessage = errorData.message;
+                        }
+                    } catch (e) {
+                        errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+                    }
+                    
+                    alert(errorMessage);
+                    if (sendBtn) {
+                        sendBtn.disabled = false;
+                        sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Envoyer l\'email';
+                    }
+                    return;
+                }
+                
                 if (response.redirected) {
                     // Redirection détectée, suivre la redirection
                     window.location.href = response.url;
-                } else {
-                    return response.text();
+                    return;
                 }
-            })
-            .then(data => {
-                hideLoadingModal();
-                if (data) {
-                    // Si pas de redirection, parser la réponse
-                    try {
-                        const json = JSON.parse(data);
-                        if (json.redirect) {
-                            window.location.href = json.redirect;
+                
+                // Parser la réponse JSON
+                try {
+                    const data = await response.json();
+                    if (data.success) {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        } else {
+                            window.location.href = '{{ route("admin.announcements") }}';
                         }
-                    } catch (e) {
-                        // Si ce n'est pas du JSON, c'est probablement du HTML de redirection
-                        window.location.href = '{{ route("admin.announcements") }}';
+                    } else {
+                        alert(data.error || 'Une erreur est survenue lors de l\'envoi.');
+                        if (sendBtn) {
+                            sendBtn.disabled = false;
+                            sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Envoyer l\'email';
+                        }
                     }
+                } catch (e) {
+                    // Si ce n'est pas du JSON, c'est probablement du HTML de redirection
+                    window.location.href = '{{ route("admin.announcements") }}';
                 }
             })
             .catch(error => {
                 console.error('Erreur:', error);
                 hideLoadingModal();
-                alert('Une erreur est survenue lors de l\'envoi. Veuillez réessayer.');
+                alert('Une erreur réseau est survenue lors de l\'envoi. Veuillez vérifier votre connexion et réessayer.');
                 if (sendBtn) {
                     sendBtn.disabled = false;
                     sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Envoyer l\'email';
