@@ -309,29 +309,29 @@ class CustomAnnouncementMail extends Mailable
     {
         // Les images inline sont déjà dans $this->inlineImages avec leurs CID
         // On les embed maintenant avec embedData() pour garantir que le CID correspond exactement
-        foreach ($this->inlineImages as $cidFilename => $imageData) {
-            try {
-                $disk = Storage::disk('local');
-                
-                if ($disk->exists($imageData['path'])) {
-                    // Lire les données binaires de l'image
-                    $imageDataContent = $disk->get($imageData['path']);
-                    $mimeType = $disk->mimeType($imageData['path']) ?: 'image/jpeg';
+        return $this->withSymfonyMessage(function ($message) {
+            foreach ($this->inlineImages as $cidFilename => $imageData) {
+                try {
+                    $disk = Storage::disk('local');
                     
-                    // Embed l'image avec embedData() - le CID sera exactement le nom du fichier
-                    // Cela garantit que cid:image1.jpg dans le HTML correspond à embedData(..., 'image1.jpg')
-                    $this->embedData(
-                        $imageDataContent,
-                        $cidFilename,
-                        ['mime' => $mimeType]
-                    );
+                    if ($disk->exists($imageData['path'])) {
+                        // Lire les données binaires de l'image
+                        $imageDataContent = $disk->get($imageData['path']);
+                        $mimeType = $disk->mimeType($imageData['path']) ?: 'image/jpeg';
+                        
+                        // Embed l'image avec embedData() - le CID sera exactement le nom du fichier
+                        // Cela garantit que cid:image1.jpg dans le HTML correspond à embedData(..., 'image1.jpg')
+                        $message->embedData(
+                            $imageDataContent,
+                            $cidFilename,
+                            ['mime' => $mimeType]
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Erreur lors de l'embed de l'image inline {$cidFilename}: " . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                \Log::error("Erreur lors de l'embed de l'image inline {$cidFilename}: " . $e->getMessage());
             }
-        }
-        
-        return $this;
+        });
     }
 
     /**
