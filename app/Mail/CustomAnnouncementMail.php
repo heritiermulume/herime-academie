@@ -302,6 +302,39 @@ class CustomAnnouncementMail extends Mailable
     }
 
     /**
+     * Build the message (appelé après envelope, content, et attachments)
+     * Utilisé pour embed les images inline avec le bon CID
+     */
+    public function build()
+    {
+        // Les images inline sont déjà dans $this->inlineImages avec leurs CID
+        // On les embed maintenant avec embedData() pour garantir que le CID correspond exactement
+        foreach ($this->inlineImages as $cidFilename => $imageData) {
+            try {
+                $disk = Storage::disk('local');
+                
+                if ($disk->exists($imageData['path'])) {
+                    // Lire les données binaires de l'image
+                    $imageDataContent = $disk->get($imageData['path']);
+                    $mimeType = $disk->mimeType($imageData['path']) ?: 'image/jpeg';
+                    
+                    // Embed l'image avec embedData() - le CID sera exactement le nom du fichier
+                    // Cela garantit que cid:image1.jpg dans le HTML correspond à embedData(..., 'image1.jpg')
+                    $this->embedData(
+                        $imageDataContent,
+                        $cidFilename,
+                        ['mime' => $mimeType]
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error("Erreur lors de l'embed de l'image inline {$cidFilename}: " . $e->getMessage());
+            }
+        }
+        
+        return $this;
+    }
+
+    /**
      * Get the attachments for the message.
      *
      * @return array<int, \Illuminate\Mail\Mailables\Attachment>
@@ -310,7 +343,7 @@ class CustomAnnouncementMail extends Mailable
     {
         $attachments = [];
 
-        // Ajouter les pièces jointes normales
+        // Ajouter les pièces jointes normales (pas les images inline, elles sont gérées dans build())
         foreach ($this->attachments as $attachmentData) {
             try {
                 // Gérer le cas où $attachmentData est un tableau (retour de FileUploadService)
@@ -332,35 +365,6 @@ class CustomAnnouncementMail extends Mailable
             } catch (\Exception $e) {
                 // Logger l'erreur mais continuer avec les autres fichiers
                 \Log::error("Erreur lors de l'ajout de la pièce jointe: " . $e->getMessage());
-            }
-        }
-        
-        // Ajouter les images inline (CID)
-        foreach ($this->inlineImages as $cid => $imageData) {
-            try {
-                $disk = Storage::disk('local');
-                
-                if ($disk->exists($imageData['path'])) {
-                    // Lire les données binaires de l'image
-                    $imageDataContent = $disk->get($imageData['path']);
-                    $mimeType = $disk->mimeType($imageData['path']) ?: 'image/jpeg';
-                    
-                    // Obtenir l'extension du fichier pour le nom
-                    $extension = pathinfo($imageData['name'], PATHINFO_EXTENSION) ?: 'jpg';
-                    $cidFilename = $cid . '.' . $extension;
-                    
-                    // Créer une pièce jointe inline avec CID
-                    // Le CID sera généré automatiquement à partir du nom du fichier
-                    $attachments[] = Attachment::fromData(
-                        fn () => $imageDataContent,
-                        $cidFilename
-                    )
-                    ->withMime($mimeType);
-                } else {
-                    \Log::warning("Image inline introuvable: {$imageData['path']}");
-                }
-            } catch (\Exception $e) {
-                \Log::error("Erreur lors de l'ajout de l'image inline {$cid}: " . $e->getMessage());
             }
         }
 
