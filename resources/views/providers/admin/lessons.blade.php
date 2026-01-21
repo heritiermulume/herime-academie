@@ -14,7 +14,7 @@
 @endsection
 
 @section('admin-actions')
-    <a href="{{ route('provider.contents.edit', $course) }}" class="admin-btn outline">
+    <a href="{{ route('provider.contents.edit', $course->id) }}" class="admin-btn outline">
         <i class="fas fa-pen me-2"></i>Modifier les informations du contenu
     </a>
     <a href="{{ route('provider.contents.index') }}" class="admin-btn soft">
@@ -47,7 +47,7 @@
                 <i class="fas fa-layer-group"></i>
                 <h3>Aucune section définie</h3>
                 <p>Ajoutez votre première section depuis la page d’édition du cours pour commencer à structurer votre formation.</p>
-                <a href="{{ route('provider.contents.edit', $course) }}" class="admin-btn primary">
+                <a href="{{ route('provider.contents.edit', $course->id) }}" class="admin-btn primary">
                     <i class="fas fa-plus me-2"></i>Créer une section
                 </a>
             </div>
@@ -119,7 +119,7 @@
                         @empty
                             <div class="course-lesson course-lesson--empty">
                                 <p>Aucune leçon dans cette section pour le moment.</p>
-                                <a href="{{ route('provider.contents.edit', $course) }}" class="admin-btn primary sm">
+                                <a href="{{ route('provider.contents.edit', $course->id) }}" class="admin-btn primary sm">
                                     <i class="fas fa-plus me-1"></i>Ajouter une leçon
                                 </a>
                             </div>

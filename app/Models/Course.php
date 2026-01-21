@@ -988,12 +988,14 @@ class Course extends Model
                 ];
                 
             case 'free':
-                // Pour les cours gratuits non inscrits, afficher le bouton "S'inscrire" (bleu foncé)
+                // Pour les cours gratuits non inscrits
+                // Si téléchargeable : "Intéresser", sinon : "S'inscrire"
+                $buttonText = $this->is_downloadable ? 'Intéresser' : 'S\'inscrire';
                 return [
                     'type' => 'form',
                     'action' => route('customer.contents.enroll', $this->slug),
                     'class' => 'btn btn-primary',
-                    'text' => 'S\'inscrire',
+                    'text' => $buttonText,
                     'icon' => 'fas fa-user-plus'
                 ];
                 

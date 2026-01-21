@@ -475,16 +475,36 @@ class MonerooController extends Controller
         // Exemple: 199.99 USD doit être envoyé comme 200 (dollars arrondis), pas 19999 (centimes)
         // Cela évite que Moneroo affiche 19999 au lieu de 199.99 dans leur interface
         $amountInSmallestUnit = (int) round($paymentAmount); // Montant en unité de base arrondi à l'entier
-        
-		$payload = [
+
+        // S'assurer que Moneroo reçoit toujours des chaînes non nulles pour first_name / last_name
+        $rawName = $user->name ?? '';
+        $firstName = (string) $this->extractFirstName((string) $rawName);
+        $lastName = (string) $this->extractLastName((string) $rawName);
+
+        // Si le nom complet est vide, dériver un fallback depuis l'email ou utiliser un défaut
+        if ($firstName === '' && !empty($user->email)) {
+            $emailLocal = strstr($user->email, '@', true) ?: $user->email;
+            $firstName = ucfirst($emailLocal);
+        }
+
+        if ($firstName === '') {
+            $firstName = 'Client';
+        }
+
+        // Si aucun nom de famille n'est disponible, réutiliser le prénom ou un fallback
+        if ($lastName === '') {
+            $lastName = $firstName ?: 'Client';
+        }
+
+        $payload = [
             'amount' => $amountInSmallestUnit, // Montant en unité de la devise (integer requis par Moneroo)
             'currency' => $paymentCurrency,
             'description' => config('services.moneroo.company_name', 'Herime Académie') . ' - Paiement commande ' . $order->order_number,
             'return_url' => config('services.moneroo.successful_url', route('moneroo.success')) . '?payment_id=' . $paymentId,
             'customer' => [
                 'email' => $user->email,
-                'first_name' => $this->extractFirstName($user->name),
-                'last_name' => $this->extractLastName($user->name),
+                'first_name' => $firstName,
+                'last_name' => $lastName,
             ],
             'metadata' => [
                 'order_id' => (string) $order->id,
@@ -504,24 +524,10 @@ class MonerooController extends Controller
         try {
             // Appel API Moneroo pour initialiser le paiement (intégration standard)
             // Endpoint selon la documentation: POST /v1/payments/initialize
-            \Log::info('Moneroo: Envoi de la requête d\'initialisation', [
-                'url' => $this->baseUrl() . '/payments/initialize',
-                'payload' => $payload,
-                'amount_converted' => $amountInSmallestUnit,
-                'original_amount' => $paymentAmount,
-                'currency' => $paymentCurrency,
-            ]);
-            
             $response = Http::withHeaders($this->authHeaders())
                 ->post($this->baseUrl() . '/payments/initialize', $payload);
 
             $responseData = $response->json();
-            
-            \Log::info('Moneroo: Réponse brute de l\'API', [
-                'status' => $response->status(),
-                'response_data' => $responseData,
-                'response_body' => $response->body(),
-            ]);
             
             // Format de réponse Moneroo: 
             // - Succès standard: HTTP 201 avec { "success": true, "data": { "id": "...", "checkout_url": "..." } }

@@ -658,10 +658,10 @@
                                             <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-light btn-sm course-actions-btn--mobile" title="Voir le contenu" target="_blank">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            <a href="{{ route('provider.contents.edit', $course) }}" class="btn btn-primary btn-sm course-actions-btn--mobile" title="Modifier le contenu">
+                                            <a href="{{ route('provider.contents.edit', $course->id) }}" class="btn btn-primary btn-sm course-actions-btn--mobile" title="Modifier le contenu">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="{{ route('provider.contents.lessons', $course) }}" class="btn btn-info btn-sm course-actions-btn--mobile" title="Gérer les leçons">
+                                            <a href="{{ route('provider.contents.lessons', $course->id) }}" class="btn btn-info btn-sm course-actions-btn--mobile" title="Gérer les leçons">
                                                 <i class="fas fa-list"></i>
                                             </a>
                                         </div>

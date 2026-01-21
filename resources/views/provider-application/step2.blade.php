@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Candidature Formateur - Étape 2 - Herime Academie')
+@section('title', 'Candidature Prestataire - Étape 2 - Herime Academie')
 
 @section('content')
 <!-- Header -->
@@ -8,7 +8,7 @@
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center text-white">
-                <h1 class="h3 h2-md fw-bold mb-2">Candidature Formateur</h1>
+                <h1 class="h3 h2-md fw-bold mb-2">Candidature Prestataire</h1>
                 <p class="mb-0 small small-md">Étape 2 sur 3 - Spécialisations et formation</p>
             </div>
         </div>

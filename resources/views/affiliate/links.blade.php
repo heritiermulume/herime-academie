@@ -326,7 +326,7 @@ function generateLink(courseId) {
             // Update modal content
             document.getElementById('modalCourseTitle').textContent = data.course_title;
             document.getElementById('modalCoursePrice').textContent = 'Prix: $' + data.course_price;
-            document.getElementById('modalCourseInstructor').textContent = 'Formateur: ' + data.course_instructor;
+            document.getElementById('modalCourseInstructor').textContent = 'Prestataire: ' + data.course_instructor;
             document.getElementById('modalCommission').textContent = '$' + data.estimated_commission;
             document.getElementById('generatedUrl').value = data.url;
             

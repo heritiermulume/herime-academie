@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Devenir Formateur - Herime Academie')
+@section('title', 'Devenir Prestataire - Herime Academie')
 
 @section('content')
 @if(session('error'))

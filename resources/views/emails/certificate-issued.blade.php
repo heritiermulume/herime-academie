@@ -160,8 +160,11 @@
         <div class="course-card">
             <h2>{{ $course->title }}</h2>
             @if($course->provider)
+            @php
+                $providerLabel = $course->is_downloadable ? 'Prestataire' : 'Formateur';
+            @endphp
             <p style="color: #666; margin-top: 10px;">
-                <strong>Prestataire:</strong> {{ $course->provider->name }}
+                <strong>{{ $providerLabel }}:</strong> {{ $course->provider->name }}
             </p>
             @endif
         </div>

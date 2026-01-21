@@ -200,23 +200,23 @@ class CommunicationService
                                   "Merci pour votre confiance !";
                     }
                 } else {
-                    // Contenu non téléchargeable
+                    // Contenu non téléchargeable => parler de *formation* et de *formateur*
                     if ($course->is_free) {
-                        // Non téléchargeable gratuit
+                        // Formation gratuite
                         $courseUrl = route('learning.course', $course->slug);
                         $message = "🎓 *Inscription confirmée !*\n\n" .
                                   "Bonjour *{$userName}*,\n\n" .
-                                  "Félicitations ! Vous êtes maintenant inscrit au cours :\n" .
+                                  "Félicitations ! Vous êtes maintenant inscrit à la formation :\n" .
                                   "*{$course->title}*\n\n" .
                                   "Vous pouvez commencer votre apprentissage dès maintenant.\n\n" .
                                   "👉 {$courseUrl}\n\n" .
                                   "Bon apprentissage !";
                     } else {
-                        // Non téléchargeable payant
+                        // Formation payante
                         $courseUrl = route('learning.course', $course->slug);
                         $message = "✅ *Achat confirmé !*\n\n" .
                                   "Bonjour *{$userName}*,\n\n" .
-                                  "Votre achat a été confirmé avec succès. Vous avez maintenant accès au cours :\n" .
+                                  "Votre achat a été confirmé avec succès. Vous avez maintenant accès à la formation :\n" .
                                   "*{$course->title}*\n\n" .
                                   "Vous pouvez commencer votre apprentissage dès maintenant.\n\n" .
                                   "👉 {$courseUrl}\n\n" .
@@ -300,10 +300,19 @@ class CommunicationService
                 if (!$course) {
                     return null;
                 }
-                $message = "⚠️ *Accès révoqué*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Votre accès au cours *{$course->title}* a été révoqué.\n\n" .
-                          "Pour plus d'informations, contactez le support.";
+                if ($course->is_downloadable) {
+                    // Contenu téléchargeable
+                    $message = "⚠️ *Accès révoqué*\n\n" .
+                              "Bonjour *{$userName}*,\n\n" .
+                              "Votre accès au contenu *{$course->title}* a été révoqué.\n\n" .
+                              "Pour plus d'informations, contactez le support.";
+                } else {
+                    // Formation (non téléchargeable)
+                    $message = "⚠️ *Accès révoqué*\n\n" .
+                              "Bonjour *{$userName}*,\n\n" .
+                              "Votre accès à la formation *{$course->title}* a été révoqué.\n\n" .
+                              "Pour plus d'informations, contactez le support.";
+                }
                 return $this->formatWhatsAppMessage($message, $user);
             
             case \App\Mail\CertificateIssuedMail::class:
@@ -312,9 +321,10 @@ class CommunicationService
                     return null;
                 }
                 $course = $certificate->course;
+                $label = $course->is_downloadable ? 'contenu' : 'formation';
                 $message = "🎉 *Certificat disponible*\n\n" .
                           "Bonjour *{$userName}*,\n\n" .
-                          "Félicitations ! Votre certificat pour le cours *{$course->title}* est disponible.\n\n" .
+                          "Félicitations ! Votre certificat pour la {$label} *{$course->title}* est disponible.\n\n" .
                           "Téléchargez-le depuis votre espace personnel.";
                 return $this->formatWhatsAppMessage($message, $user);
             

@@ -4055,21 +4055,15 @@ button.mobile-price-slider__btn--download i,
                                     @else
                                         {{-- Utilisateur pas encore inscrit au contenu gratuit --}}
                                         @if($course->is_downloadable)
-                                            {{-- Pour les produits téléchargeables gratuits, téléchargement direct --}}
-                                            @if($canDownloadCourse)
-                                                <a href="{{ route('contents.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
-                                                    <i class="fas fa-download me-2"></i>Télécharger
-                                                </a>
-                                            @else
-                                                @if($course->is_sale_enabled ?? true)
-                                                    <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST">
-                                                        @csrf
-                                                        <input type="hidden" name="redirect_to" value="course">
-                                                        <button type="submit" class="btn btn-primary btn-lg w-100">
-                                                            <i class="fas fa-download me-2"></i>Télécharger
-                                                        </button>
-                                                    </form>
-                                                @endif
+                                            {{-- Pour les contenus téléchargeables gratuits : d'abord \"Intéresser\" (inscription), puis \"Télécharger\" une fois inscrit --}}
+                                            @if($course->is_sale_enabled ?? true)
+                                                <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST">
+                                                    @csrf
+                                                    <input type="hidden" name="redirect_to" value="course">
+                                                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                                                        <i class="fas fa-user-plus me-2"></i>Intéresser
+                                                    </button>
+                                                </form>
                                             @endif
                                         @else
                                             {{-- Pour les contenus non téléchargeables, inscription normale --}}
@@ -4285,23 +4279,16 @@ button.mobile-price-slider__btn--download i,
                     @else
                         {{-- Utilisateur pas encore inscrit au cours gratuit --}}
                         @if($course->is_downloadable)
-                            {{-- Pour les produits téléchargeables gratuits, téléchargement direct --}}
-                            @if($canDownloadCourse)
-                                <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
-                                    <i class="fas fa-download"></i>
-                                    <span>Télécharger</span>
-                                </a>
-                            @else
-                                @if($course->is_sale_enabled ?? true)
-                                    <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
-                                        @csrf
-                                        <input type="hidden" name="redirect_to" value="course">
-                                        <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
-                                            <i class="fas fa-download"></i>
-                                            <span>Télécharger</span>
-                                        </button>
-                                    </form>
-                                @endif
+                            {{-- Pour les contenus téléchargeables gratuits : d'abord \"Intéresser\" (inscription), puis \"Télécharger\" une fois inscrit --}}
+                            @if($course->is_sale_enabled ?? true)
+                                <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                    @csrf
+                                    <input type="hidden" name="redirect_to" value="course">
+                                    <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                        <i class="fas fa-user-plus"></i>
+                                        <span>Intéresser</span>
+                                    </button>
+                                </form>
                             @endif
                         @else
                             {{-- Pour les cours non téléchargeables, inscription normale --}}

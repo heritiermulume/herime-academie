@@ -136,25 +136,12 @@ class MonerooPayoutService
                 ],
             ];
 
-            Log::info('Moneroo: Initiation du payout', [
-                'provider_id' => $providerId,
-                'order_id' => $orderId,
-                'amount' => $amountInteger,
-                'currency' => $currency,
-                'method' => $provider,
-            ]);
-
             // Faire l'appel API à Moneroo
             // Endpoint: POST /v1/payouts/initialize
             $response = Http::withHeaders($this->authHeaders())
                 ->post("{$this->apiUrl}/payouts/initialize", $payload);
 
             $responseData = $response->json();
-
-            Log::info('Moneroo: Réponse de l\'API payout', [
-                'status' => $response->status(),
-                'response' => $responseData,
-            ]);
 
             // Vérifier le format de réponse Moneroo: { "success": true, "message": "...", "data": { "id": "..." } }
             $isSuccess = $response->successful() && 

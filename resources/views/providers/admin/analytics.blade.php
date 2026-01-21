@@ -65,7 +65,7 @@
                         </div>
                         <div class="analytics-top__stats">
                             <span><i class="fas fa-star"></i> {{ number_format($course->reviews_avg_rating ?? 0, 1) }}</span>
-                            <a href="{{ route('provider.contents.edit', $course) }}" class="admin-btn outline sm">Gérer</a>
+                            <a href="{{ route('provider.contents.edit', $course->id) }}" class="admin-btn outline sm">Gérer</a>
                         </div>
                     </li>
                 @empty

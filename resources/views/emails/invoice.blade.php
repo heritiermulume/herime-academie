@@ -347,7 +347,10 @@
                             @endif
                         </div>
                         @if($course && $course->provider)
-                        <div class="course-meta">Prestataire : {{ $course->provider->name }}</div>
+                        @php
+                            $providerLabel = $course->is_downloadable ? 'Prestataire' : 'Formateur';
+                        @endphp
+                        <div class="course-meta">{{ $providerLabel }} : {{ $course->provider->name }}</div>
                         @endif
                     </td>
                     <td class="text-center">1</td>

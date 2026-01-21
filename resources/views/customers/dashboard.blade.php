@@ -355,7 +355,7 @@
                             <div class="student-recommendations__content">
                                 <h4>{{ $course->title }}</h4>
                                 <p>
-                                    {{ $course->provider->name ?? 'Formateur' }}
+                                    {{ $course->provider->name ?? 'Prestataire' }}
                                     @if($course->category?->name)
                                         · {{ $course->category->name }}
                                     @endif

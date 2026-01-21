@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Candidature Formateur - Étape 1 - Herime Academie')
+@section('title', 'Candidature Prestataire - Étape 1 - Herime Academie')
 
 @section('content')
 <!-- Header -->

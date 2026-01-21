@@ -184,8 +184,11 @@
             <h2>{{ $course->title }}</h2>
             <div class="course-meta">
                 @if($course->provider)
+                @php
+                    $providerLabel = $course->is_downloadable ? 'Prestataire' : 'Formateur';
+                @endphp
                 <div class="course-meta-item">
-                    <strong>Formateur :</strong>
+                    <strong>{{ $providerLabel }} :</strong>
                     <span>{{ $course->provider->name }}</span>
                 </div>
                 @endif

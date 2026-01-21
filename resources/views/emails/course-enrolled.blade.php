@@ -329,8 +329,11 @@
             <div class="course-meta">
                 <table class="course-meta-table">
                     @if($course->provider)
+                    @php
+                        $providerLabel = $course->is_downloadable ? 'Prestataire' : 'Formateur';
+                    @endphp
                     <tr>
-                        <td>Formateur</td>
+                        <td>{{ $providerLabel }}</td>
                         <td>{{ $course->provider->name }}</td>
                     </tr>
                     @endif

@@ -19,6 +19,10 @@ use App\Models\ProviderApplication;
 use App\Models\ProviderPayout;
 use App\Models\Visitor;
 use App\Models\Certificate;
+use App\Models\LessonProgress;
+use App\Models\LessonNote;
+use App\Models\LessonDiscussion;
+use App\Models\DiscussionLike;
 use App\Traits\DatabaseCompatibility;
 use App\Services\FileUploadService;
 use App\Helpers\FileHelper;
@@ -1251,24 +1255,42 @@ class AdminController extends Controller
     }
 
     /**
-     * Enlever l'accès à un cours (supprimer l'inscription)
+     * Enlever complètement l'accès à un cours pour un utilisateur.
+     *
+     * Cette méthode supprime toutes les données de liaison entre l'utilisateur
+     * et le contenu afin de repartir à zéro :
+     * - inscriptions
+     * - progression des leçons
+     * - notes
+     * - discussions et likes associés
+     * - certificats
+     * - avis
+     *
+     * Fonctionne aussi pour les contenus achetés (avec ou sans enrollment).
      */
     public function revokeCourseAccess(User $user, Course $course)
     {
-        $enrollment = Enrollment::where('user_id', $user->id)
+        // Vérifier qu'il existe au moins une inscription OU une commande payée pour ce contenu
+        $hasEnrollment = Enrollment::where('user_id', $user->id)
             ->where('content_id', $course->id)
-            ->first();
+            ->exists();
 
-        if (!$enrollment) {
+        $hasPaidOrder = Order::where('user_id', $user->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function($query) use ($course) {
+                $query->where('content_id', $course->id);
+            })
+            ->exists();
+
+        if (! $hasEnrollment && ! $hasPaidOrder) {
             return redirect()->route('admin.users.show', $user)
                 ->with('error', 'L\'utilisateur n\'a pas accès à ce cours.');
         }
 
         $courseTitle = $course->title;
-        
-        // Envoyer une notification et un email à l'utilisateur avant de supprimer l'inscription
+
+        // Envoyer une notification et un email à l'utilisateur avant de supprimer les données
         try {
-            // Envoyer l'email directement de manière synchrone
             try {
                 $mailable = new \App\Mail\CourseAccessRevokedMail($course);
                 $communicationService = app(\App\Services\CommunicationService::class);
@@ -1276,29 +1298,70 @@ class AdminController extends Controller
                 \Log::info("Email CourseAccessRevokedMail envoyé directement à {$user->email} pour le contenu {$course->id}");
             } catch (\Exception $emailException) {
                 \Log::error("Erreur lors de l'envoi de l'email CourseAccessRevokedMail", [
-                    'user_id' => $user->id,
-                    'content_id' => $course->id,
-                    'error' => $emailException->getMessage(),
+                    'user_id'   => $user->id,
+                    'content_id'=> $course->id,
+                    'error'     => $emailException->getMessage(),
                 ]);
             }
-            
+
             // Envoyer la notification en base de données (sans email car déjà envoyé)
-            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
             Notification::sendNow($user, new \App\Notifications\CourseAccessRevoked($course));
         } catch (\Exception $e) {
-            \Log::error("Erreur lors de l'envoi de l'email de retrait d'accès: " . $e->getMessage());
+            \Log::error("Erreur lors de l'envoi de la notification de retrait d'accès: " . $e->getMessage());
         }
-        
-        // Marquer l'inscription comme annulée (révoquée) au lieu de la supprimer,
-        // pour garder une trace sans qu'elle donne accès au cours côté client.
-        $enrollment->update([
-            'status' => 'cancelled',
-            'progress' => 0,
-            'completed_at' => null,
-        ]);
+
+        // Supprimer toutes les données de liaison utilisateur <-> contenu
+        DB::transaction(function () use ($user, $course) {
+            // Toutes les inscriptions à ce contenu
+            Enrollment::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->delete();
+
+            // Progression des leçons
+            LessonProgress::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->delete();
+
+            // Notes de cours
+            LessonNote::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->delete();
+
+            // Discussions créées par l'utilisateur pour ce contenu
+            $userDiscussionIds = LessonDiscussion::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->pluck('id');
+
+            if ($userDiscussionIds->isNotEmpty()) {
+                // Likes associés à ces discussions
+                DiscussionLike::whereIn('discussion_id', $userDiscussionIds)->delete();
+                LessonDiscussion::whereIn('id', $userDiscussionIds)->delete();
+            }
+
+            // Likes laissés par l'utilisateur sur des discussions de ce contenu
+            $likedDiscussionIds = DiscussionLike::where('user_id', $user->id)
+                ->whereHas('discussion', function ($query) use ($course) {
+                    $query->where('content_id', $course->id);
+                })
+                ->pluck('id');
+
+            if ($likedDiscussionIds->isNotEmpty()) {
+                DiscussionLike::whereIn('id', $likedDiscussionIds)->delete();
+            }
+
+            // Certificats associés à ce contenu
+            Certificate::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->delete();
+
+            // Avis laissés sur ce contenu
+            Review::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->delete();
+        });
 
         return redirect()->route('admin.users.show', $user)
-            ->with('success', "Accès au cours \"{$courseTitle}\" retiré avec succès. L'utilisateur a été notifié.");
+            ->with('success', "Tous les liens entre l'utilisateur et le contenu \"{$courseTitle}\" ont été supprimés. L'utilisateur repart à zéro sur ce contenu.");
     }
 
     /**
