@@ -13,6 +13,17 @@
 @section('admin-content')
 <div class="admin-panel">
     <div class="admin-panel__body">
+        @if(isset($isTestMode) && $isTestMode)
+        <div class="alert alert-warning mb-4">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>⚠️ Mode de test activé:</strong> Le mailer est configuré en mode <code>{{ $mailerTransport ?? 'log' }}</code>.
+            <br>
+            <small>Les emails seront enregistrés dans les logs mais <strong>ne seront PAS envoyés réellement</strong> aux destinataires.</small>
+            <br>
+            <small>Pour activer l'envoi réel, configurez SMTP dans votre fichier <code>.env</code> avec <code>MAIL_MAILER=smtp</code>.</small>
+        </div>
+        @endif
+        
         <form id="sendEmailForm" method="POST" action="{{ route('admin.announcements.send-email') }}" enctype="multipart/form-data">
             @csrf
 

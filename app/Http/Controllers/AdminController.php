@@ -2490,7 +2490,17 @@ class AdminController extends Controller
      */
     public function showSendEmail()
     {
-        return view('admin.announcements.send-email');
+        // Vérifier la configuration du mailer
+        $mailer = config('mail.default');
+        $mailerConfig = config("mail.mailers.{$mailer}");
+        $mailerTransport = $mailerConfig['transport'] ?? 'unknown';
+        $isTestMode = in_array($mailerTransport, ['log', 'array']);
+        
+        return view('admin.announcements.send-email', [
+            'mailerTransport' => $mailerTransport,
+            'isTestMode' => $isTestMode,
+            'mailerConfig' => $mailerConfig
+        ]);
     }
 
     /**

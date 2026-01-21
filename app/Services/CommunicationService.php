@@ -41,22 +41,84 @@ class CommunicationService
         // Envoyer l'email
         try {
             if ($user->email) {
-                Mail::to($user->email)->send($mailable);
-                $results['email'] = ['success' => true, 'error' => null];
-                Log::info("Email envoyé avec succès à {$user->email}", [
+                // Vérifier la configuration du mailer
+                $mailer = config('mail.default');
+                $mailerConfig = config("mail.mailers.{$mailer}");
+                
+                Log::info("Tentative d'envoi d'email", [
                     'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'mailer' => $mailer,
+                    'mailer_transport' => $mailerConfig['transport'] ?? 'unknown',
                     'mailable' => get_class($mailable)
                 ]);
+                
+                // Tenter d'envoyer l'email
+                Mail::to($user->email)->send($mailable);
+                
+                // Vérifier si le mailer est en mode "log" ou "array" (pas d'envoi réel)
+                if (in_array($mailerConfig['transport'] ?? '', ['log', 'array'])) {
+                    $warning = "Email enregistré en mode {$mailerConfig['transport']} mais non envoyé réellement";
+                    $results['email'] = ['success' => false, 'error' => $warning];
+                    Log::warning($warning, [
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                        'mailer' => $mailer
+                    ]);
+                } else {
+                    $results['email'] = ['success' => true, 'error' => null];
+                    Log::info("Email envoyé avec succès à {$user->email}", [
+                        'user_id' => $user->id,
+                        'mailable' => get_class($mailable)
+                    ]);
+                }
             } else {
                 $results['email'] = ['success' => false, 'error' => 'Aucun email pour cet utilisateur'];
                 Log::warning("Tentative d'envoi d'email à un utilisateur sans email", ['user_id' => $user->id]);
             }
-        } catch (\Exception $e) {
-            $results['email'] = ['success' => false, 'error' => $e->getMessage()];
-            Log::error("Erreur lors de l'envoi d'email", [
+        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+            // Erreur spécifique de transport SMTP (Symfony Mailer)
+            $errorMessage = "Erreur SMTP: " . $e->getMessage();
+            $results['email'] = ['success' => false, 'error' => $errorMessage];
+            Log::error("Erreur SMTP lors de l'envoi d'email", [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'error' => $e->getMessage(),
+                'error_code' => method_exists($e, 'getCode') ? $e->getCode() : null,
+                'trace' => $e->getTraceAsString(),
+                'mailable' => get_class($mailable)
+            ]);
+        } catch (\Illuminate\Mail\Mailables\AttachmentException $e) {
+            // Erreur avec les pièces jointes
+            $errorMessage = "Erreur pièce jointe: " . $e->getMessage();
+            $results['email'] = ['success' => false, 'error' => $errorMessage];
+            Log::error("Erreur pièce jointe lors de l'envoi d'email", [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'error' => $e->getMessage(),
+                'mailable' => get_class($mailable)
+            ]);
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage();
+            $results['email'] = ['success' => false, 'error' => $errorMessage];
+            Log::error("Erreur lors de l'envoi d'email", [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'error' => $errorMessage,
+                'error_class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+                'mailable' => get_class($mailable)
+            ]);
+        } catch (\Throwable $e) {
+            // Capturer toutes les erreurs fatales
+            $errorMessage = "Erreur fatale: " . $e->getMessage();
+            $results['email'] = ['success' => false, 'error' => $errorMessage];
+            Log::error("Erreur fatale lors de l'envoi d'email", [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'error' => $errorMessage,
+                'error_class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
                 'mailable' => get_class($mailable)
             ]);
         }

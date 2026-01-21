@@ -49,9 +49,34 @@ class SendEmailJob implements ShouldQueue
                 $this->attachmentPaths
             );
             $communicationService = app(\App\Services\CommunicationService::class);
-            $communicationService->sendEmailAndWhatsApp($this->user, $mailable);
+            $results = $communicationService->sendEmailAndWhatsApp($this->user, $mailable, null, false);
             
-            // Enregistrer l'email envoyé
+            // Vérifier si l'envoi d'email a réussi
+            if (!$results['email']['success']) {
+                $errorMessage = $results['email']['error'] ?? 'Erreur inconnue lors de l\'envoi de l\'email';
+                Log::error("Échec de l'envoi d'email à {$this->user->email}: {$errorMessage}");
+                
+                // Enregistrer l'échec
+                SentEmail::create([
+                    'user_id' => $this->user->id,
+                    'recipient_email' => $this->user->email,
+                    'recipient_name' => $this->user->name,
+                    'subject' => $this->subject,
+                    'content' => $this->content,
+                    'attachments' => $this->attachmentPaths ?: null,
+                    'type' => $this->recipientType,
+                    'status' => 'failed',
+                    'error_message' => $errorMessage,
+                    'metadata' => [
+                        'recipient_type' => $this->recipientType,
+                    ],
+                ]);
+                
+                // Lancer une exception pour que le job soit marqué comme échoué
+                throw new \Exception($errorMessage);
+            }
+            
+            // Enregistrer l'email envoyé avec succès
             SentEmail::create([
                 'user_id' => $this->user->id,
                 'recipient_email' => $this->user->email,
@@ -75,26 +100,36 @@ class SendEmailJob implements ShouldQueue
                 Log::warning("Impossible d'envoyer la notification email à {$this->user->email}: " . $e->getMessage());
             }
         } catch (\Exception $e) {
-            Log::error("Erreur lors de l'envoi d'email à {$this->user->email}: " . $e->getMessage());
-            
-            // Enregistrer l'échec
-            SentEmail::create([
-                'user_id' => $this->user->id,
-                'recipient_email' => $this->user->email,
-                'recipient_name' => $this->user->name,
-                'subject' => $this->subject,
-                'content' => $this->content,
-                'attachments' => $this->attachmentPaths ?: null,
-                'type' => $this->recipientType,
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-                'metadata' => [
-                    'recipient_type' => $this->recipientType,
-                ],
+            Log::error("Erreur lors de l'envoi d'email à {$this->user->email}: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
             ]);
             
-            // Ne pas relancer le job en cas d'erreur - l'erreur est déjà enregistrée
-            // throw $e; // Commenté pour éviter de bloquer la queue
+            // Enregistrer l'échec si ce n'est pas déjà fait
+            $existingEmail = SentEmail::where('user_id', $this->user->id)
+                ->where('subject', $this->subject)
+                ->where('recipient_email', $this->user->email)
+                ->where('created_at', '>=', now()->subMinute())
+                ->first();
+            
+            if (!$existingEmail) {
+                SentEmail::create([
+                    'user_id' => $this->user->id,
+                    'recipient_email' => $this->user->email,
+                    'recipient_name' => $this->user->name,
+                    'subject' => $this->subject,
+                    'content' => $this->content,
+                    'attachments' => $this->attachmentPaths ?: null,
+                    'type' => $this->recipientType,
+                    'status' => 'failed',
+                    'error_message' => $e->getMessage(),
+                    'metadata' => [
+                        'recipient_type' => $this->recipientType,
+                    ],
+                ]);
+            }
+            
+            // Relancer l'exception pour que le job soit marqué comme échoué dans la queue
+            throw $e;
         }
     }
 }
