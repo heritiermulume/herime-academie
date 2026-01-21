@@ -130,7 +130,7 @@
         --instructor-muted: #64748b;
     }
 
-    .provider-admin-shell {
+    .instructor-admin-shell {
         display: grid;
         grid-template-columns: 280px 1fr;
         column-gap: 2.75rem;
@@ -144,6 +144,7 @@
         position: relative;
         width: 280px;
         min-height: calc(100vh - var(--site-navbar-height, 64px));
+        flex-shrink: 0;
     }
 
     .admin-sidebar {
@@ -268,6 +269,8 @@
         display: flex;
         flex-direction: column;
         gap: 2rem;
+        min-width: 0;
+        overflow-x: hidden;
     }
 
     .admin-header {
@@ -302,6 +305,8 @@
         display: flex;
         flex-direction: column;
         gap: 2rem;
+        min-width: 0;
+        overflow-x: hidden;
     }
 
     .admin-alert {
@@ -405,7 +410,7 @@
     }
 
     @media (max-width: 1024px) {
-        .provider-admin-shell {
+        .instructor-admin-shell {
             grid-template-columns: 1fr;
             padding: 0 1.25rem 2rem;
             padding-top: calc(var(--site-navbar-height, 64px) + 2.6rem);

@@ -259,29 +259,65 @@ class ProviderController extends Controller
     {
         $provider = auth()->user();
 
+        $search = $request->get('search');
         $status = $request->get('status');
+        $category = $request->get('category');
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
 
         $coursesQuery = $provider->contents()
             ->with(['category'])
             ->withCount(['enrollments', 'reviews'])
             ->withAvg('reviews', 'rating');
 
+        if ($search) {
+            $coursesQuery->where(function($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                      ->orWhere('subtitle', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
         if ($status === 'published') {
             $coursesQuery->where('is_published', true);
         } elseif ($status === 'draft') {
             $coursesQuery->where('is_published', false);
+        } elseif ($status === 'free') {
+            $coursesQuery->where('is_free', true);
+        } elseif ($status === 'paid') {
+            $coursesQuery->where('is_free', false);
         }
 
-        $courses = $coursesQuery
-            ->orderByDesc('created_at')
-            ->paginate(10)
-            ->withQueryString();
+        if ($category) {
+            $coursesQuery->where('category_id', $category);
+        }
+
+        if (in_array($sortBy, ['title', 'price', 'created_at', 'updated_at'])) {
+            $coursesQuery->orderBy($sortBy, $sortDirection);
+        } else {
+            $coursesQuery->latest();
+        }
+
+        $courses = $coursesQuery->paginate(15)->withQueryString();
+
+        // Données pour les filtres
+        $categories = \App\Models\Category::active()->ordered()->get();
+
+        // Statistiques pour ce prestataire
+        $stats = [
+            'total' => $provider->contents()->count(),
+            'published' => $provider->contents()->where('is_published', true)->count(),
+            'draft' => $provider->contents()->where('is_published', false)->count(),
+            'free' => $provider->contents()->where('is_free', true)->count(),
+            'paid' => $provider->contents()->where('is_free', false)->count(),
+        ];
 
         $baseCurrency = \App\Models\Setting::getBaseCurrency();
 
         return view('providers.admin.contents', [
             'courses' => $courses,
-            'status' => $status,
+            'categories' => $categories,
+            'stats' => $stats,
             'baseCurrency' => $baseCurrency,
         ]);
     }

@@ -2,7 +2,6 @@
 
 @section('admin-title', 'Gestion des contenus')
 @section('admin-subtitle', 'Visualisez, filtrez et optimisez l’ensemble de vos formations en un seul endroit.')
-
 @section('admin-actions')
     @if(Route::has('provider.contents.create'))
         <a href="{{ route('provider.contents.create') }}" class="admin-btn primary">
@@ -11,412 +10,677 @@
     @endif
 @endsection
 
-@section('admin-content')
-    <section class="admin-panel">
-        <div class="admin-panel__header">
-            <h3>
-                <i class="fas fa-chalkboard-teacher me-2"></i>Mes contenus
-            </h3>
+@push('modals')
+    <div class="modal fade" id="deleteCourseModal" tabindex="-1" aria-labelledby="deleteCourseModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteCourseModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Supprimer le contenu
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Êtes-vous sûr de vouloir supprimer le contenu <span id="courseDeleteName" class="fw-semibold"></span> ?</p>
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Cette action est irréversible et supprimera toutes les informations associées.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" id="confirmCourseDelete">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </div>
+            </div>
         </div>
-        <div class="admin-panel__body">
-            <form method="GET" class="courses-filter">
-                <div class="courses-filter__group">
-                    <label class="courses-filter__label" for="status">Statut du contenu</label>
-                    <select name="status" id="status" class="form-select" onchange="this.form.submit()">
-                        <option value="" {{ $status === null ? 'selected' : '' }}>Tous les contenus</option>
-                        <option value="published" {{ $status === 'published' ? 'selected' : '' }}>Publiés</option>
-                        <option value="draft" {{ $status === 'draft' ? 'selected' : '' }}>Brouillons</option>
-                    </select>
-                </div>
-                <div class="courses-filter__group">
-                    <span class="courses-filter__label">Total</span>
-                    <strong class="courses-filter__value">{{ $courses->total() }} contenus</strong>
-                </div>
-            </form>
+    </div>
+@endpush
 
-            <div class="courses-list">
-            @forelse($courses as $course)
-                <div class="courses-list__item">
-                    <div class="courses-list__thumbnail">
-                        @if($course->thumbnail_url)
-                            <img src="{{ $course->thumbnail_url }}" alt="{{ $course->title }}">
-                        @else
-                            <div class="courses-list__thumbnail-placeholder">
-                                <i class="fas fa-book"></i>
-                            </div>
-                        @endif
-                        <span class="courses-list__status {{ $course->is_published ? 'is-published' : 'is-draft' }}">
-                            {{ $course->is_published ? 'Publié' : 'Brouillon' }}
-                        </span>
-                    </div>
-                    <div class="courses-list__content">
-                        <div class="courses-list__header">
-                            <h4 class="courses-list__title">{{ $course->title }}</h4>
-                            <div class="courses-list__meta">
-                                <span class="courses-list__category">
-                                    <i class="fas fa-folder me-1"></i>{{ $course->category?->name ?? 'Sans catégorie' }}
-                                </span>
-                                <span class="courses-list__date">
-                                    <i class="fas fa-calendar me-1"></i>{{ $course->created_at->format('d/m/Y') }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="courses-list__stats">
-                            <div class="courses-list__stat">
-                                <i class="fas fa-users"></i>
-                                <span class="courses-list__stat-value">{{ number_format($course->enrollments_count ?? 0) }}</span>
-                                <span class="courses-list__stat-label">Clients</span>
-                            </div>
-                            <div class="courses-list__stat">
-                                <i class="fas fa-star"></i>
-                                <span class="courses-list__stat-value">{{ number_format((float)($course->reviews_avg_rating ?? 0), 1) }}</span>
-                                <span class="courses-list__stat-label">Note ({{ number_format($course->reviews_count ?? 0) }})</span>
-                            </div>
-                            @if($course->is_free)
-                                <div class="courses-list__stat">
-                                    <i class="fas fa-gift"></i>
-                                    <span class="courses-list__stat-value">Gratuit</span>
-                                    <span class="courses-list__stat-label">Prix</span>
-                                </div>
-                            @elseif($course->effective_price && $course->effective_price > 0)
-                                <div class="courses-list__stat">
-                                    <i class="fas fa-tag"></i>
-                                    <span class="courses-list__stat-value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->effective_price, $baseCurrency ?? null) }}</span>
-                                    <span class="courses-list__stat-label">Prix</span>
-                                </div>
-                            @else
-                                <div class="courses-list__stat">
-                                    <i class="fas fa-tag"></i>
-                                    <span class="courses-list__stat-value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price ?? 0, $baseCurrency ?? null) }}</span>
-                                    <span class="courses-list__stat-label">Prix</span>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="courses-list__actions">
-                        <a href="{{ route('contents.show', $course->slug) }}" class="admin-btn outline sm" target="_blank" title="Voir">
-                            <i class="fas fa-eye"></i>
-                            <span class="courses-list__action-label">Voir</span>
-                        </a>
-                        <a href="{{ route('provider.contents.edit', $course) }}" class="admin-btn primary sm" title="Modifier">
-                            <i class="fas fa-pen"></i>
-                            <span class="courses-list__action-label">Modifier</span>
-                        </a>
-                        <a href="{{ route('provider.contents.lessons', $course) }}" class="admin-btn soft sm" title="Leçons">
-                            <i class="fas fa-list"></i>
-                            <span class="courses-list__action-label">Leçons</span>
-                        </a>
-                    </div>
-                </div>
-            @empty
-                <div class="courses-list__empty">
-                    <i class="fas fa-chalkboard fa-3x"></i>
-                    <h3>Aucun contenu créé</h3>
-                    <p>Aucun contenu créé pour le moment. Commencez par publier votre première formation.</p>
-                    @if(Route::has('provider.contents.create'))
-                        <a href="{{ route('provider.contents.create') }}" class="admin-btn primary">
-                            <i class="fas fa-plus me-2"></i>Créer un contenu
-                        </a>
-                    @endif
-                </div>
-            @endforelse
-            </div>
-            <div class="mt-3">
-                {{ $courses->links() }}
-            </div>
-        </div>
-    </section>
-@endsection
+@push('scripts')
+<script>
+    let courseDeleteModal = null;
+    let courseFormToSubmit = null;
+    let courseTitleToDelete = '';
+
+    function openCourseDeleteModal(button) {
+        const courseId = button.getAttribute('data-course-id');
+        const courseTitle = button.getAttribute('data-course-title');
+        const nameSpan = document.getElementById('courseDeleteName');
+        const form = document.getElementById(`course-delete-form-${courseId}`);
+
+        if (!courseId || !form) return;
+
+        courseFormToSubmit = form;
+        courseTitleToDelete = courseTitle ?? '';
+
+        if (nameSpan) {
+            nameSpan.textContent = courseTitleToDelete;
+        }
+
+        const modalElement = document.getElementById('deleteCourseModal');
+
+        if (!modalElement) {
+            console.error('Modal de suppression introuvable dans le DOM.');
+            return;
+        }
+
+        if (!window.bootstrap || !window.bootstrap.Modal) {
+            console.error('Bootstrap Modal n\'est pas chargé. Veuillez vérifier l\'inclusion de bootstrap.bundle.min.js.');
+            return;
+        }
+
+        if (!courseDeleteModal) {
+            courseDeleteModal = new window.bootstrap.Modal(modalElement);
+
+            const confirmBtn = document.getElementById('confirmCourseDelete');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function () {
+                    if (courseFormToSubmit) {
+                        courseDeleteModal.hide();
+                        courseFormToSubmit.submit();
+                    }
+                });
+            }
+        }
+
+        courseDeleteModal.show();
+    }
+</script>
+@endpush
 
 @push('styles')
 <style>
-    .courses-filter {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
+    .admin-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1.25rem;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid rgba(226, 232, 240, 0.7);
-    }
-    .courses-filter__group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-    .courses-filter__label {
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #64748b;
-        font-weight: 700;
-    }
-    .courses-filter__value {
-        font-size: 1.1rem;
-        color: #0f172a;
-    }
-    .courses-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
     }
 
-    .courses-list__item {
-        display: flex;
-        gap: 1.25rem;
-        background: #ffffff;
-        border: 1px solid rgba(226, 232, 240, 0.7);
-        border-radius: 1rem;
-        padding: 1.25rem;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-        transition: all 0.2s ease;
+    .course-actions-btn--mobile {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.75rem !important;
+        line-height: 1.2;
     }
 
-    .courses-list__item:hover {
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-        transform: translateY(-2px);
+    .course-actions-btn--mobile i {
+        font-size: 0.7rem !important;
     }
 
-    .courses-list__thumbnail {
+    /* Styles de base pour tous les dropdowns */
+    .dropdown,
+    .dropup {
         position: relative;
-        width: 180px;
-        height: 120px;
-        border-radius: 12px;
-        overflow: hidden;
-        flex-shrink: 0;
-        background: rgba(15, 23, 42, 0.05);
     }
 
-    .courses-list__thumbnail img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+    /* Menu desktop - dropdown pour première ligne (vers le bas) */
+    .dropdown.d-none.d-md-block .dropdown-menu {
+        margin-top: 0.25rem;
+        top: 100%;
+        z-index: 1050 !important;
     }
 
-    .courses-list__thumbnail-placeholder {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, rgba(0, 51, 102, 0.1), rgba(0, 51, 102, 0.05));
-        color: var(--instructor-primary);
-        font-size: 2rem;
-    }
-
-    .courses-list__status {
+    /* Flèche pour dropdown desktop première ligne (menu vers le bas) */
+    .dropdown.d-none.d-md-block .dropdown-menu::before {
+        content: '';
         position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        padding: 0.25rem 0.6rem;
-        border-radius: 999px;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        font-weight: 700;
-        letter-spacing: 0.05em;
+        top: -5px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 5px solid #fff;
+        z-index: 1001;
     }
 
-    .courses-list__status.is-published {
-        background: rgba(34, 197, 94, 0.95);
-        color: #ffffff;
+    .dropdown.d-none.d-md-block .dropdown-menu::after {
+        content: '';
+        position: absolute;
+        top: -6px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 6px solid rgba(0, 0, 0, 0.175);
+        z-index: 1000;
     }
 
-    .courses-list__status.is-draft {
-        background: rgba(234, 179, 8, 0.95);
-        color: #ffffff;
+    /* Menu desktop - dropup pour autres lignes (vers le haut) */
+    .dropup.d-none.d-md-block .dropdown-menu {
+        margin-bottom: 0.25rem;
+        bottom: 100%;
+        top: auto;
+        z-index: 1050 !important;
     }
 
-    .courses-list__content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        min-width: 0;
+    /* Flèche pour dropup desktop (menu vers le haut) */
+    .dropup.d-none.d-md-block .dropdown-menu::before {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid #fff;
+        z-index: 1001;
     }
 
-    .courses-list__header {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
+    .dropup.d-none.d-md-block .dropdown-menu::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        right: 12px;
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid rgba(0, 0, 0, 0.175);
+        z-index: 1000;
     }
 
-    .courses-list__title {
-        margin: 0;
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #0f172a;
-        line-height: 1.4;
-    }
-
-    .courses-list__meta {
-        display: flex;
-        gap: 1.25rem;
-        flex-wrap: wrap;
-        font-size: 0.875rem;
-        color: var(--instructor-muted);
-    }
-
-    .courses-list__category,
-    .courses-list__date {
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-    }
-
-    .courses-list__stats {
-        display: flex;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-    }
-
-    .courses-list__stat {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .courses-list__stat i {
-        color: var(--instructor-secondary);
-        font-size: 0.95rem;
-    }
-
-    .courses-list__stat-value {
-        font-weight: 700;
-        color: #0f172a;
-        font-size: 0.95rem;
-    }
-
-    .courses-list__stat-label {
-        font-size: 0.8rem;
-        color: var(--instructor-muted);
-    }
-
-    .courses-list__actions {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: flex-end;
-        justify-content: flex-start;
-        flex-shrink: 0;
-    }
-
-    .courses-list__actions .admin-btn {
-        min-width: 120px;
-    }
-
-    .courses-list__action-label {
-        margin-left: 0.5rem;
-    }
-
-    .courses-list__empty {
-        text-align: center;
-        padding: 3rem 1.5rem;
-        border-radius: 1.25rem;
-        background: rgba(226, 232, 240, 0.5);
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        align-items: center;
-        color: var(--instructor-muted);
-    }
-
-    .courses-list__empty i {
-        color: var(--instructor-secondary);
-        margin-bottom: 0.5rem;
-    }
-
-    .courses-list__empty h3 {
-        margin: 0;
-        font-size: 1.25rem;
-        color: #0f172a;
-    }
-
-    .courses-list__empty p {
-        margin: 0;
-        font-size: 0.95rem;
-    }
-
-    @media (max-width: 1024px) {
-        .courses-list__item {
-            gap: 1rem;
-            padding: 1rem;
-        }
-
-        .courses-list__thumbnail {
-            width: 150px;
-            height: 100px;
-        }
-
-        .courses-list__stats {
-            gap: 1rem;
-        }
-    }
-
+    /* Styles pour mobile */
     @media (max-width: 768px) {
-        .courses-filter {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 1rem;
-            padding-bottom: 1rem;
+        /* Réduire la taille du bouton sur mobile */
+        .course-actions-btn--mobile {
+            padding: 0.25rem 0.5rem !important;
+            font-size: 0.75rem !important;
+            line-height: 1.2;
+            min-width: 32px !important;
+            width: auto !important;
         }
 
-        .courses-list__item {
-            flex-direction: column;
-            gap: 1rem;
+        .course-actions-btn--mobile i {
+            font-size: 0.7rem !important;
         }
 
-        .courses-list__thumbnail {
-            width: 100%;
-            height: 180px;
+        .admin-table .d-flex.gap-2 {
+            gap: 0.25rem !important;
         }
 
-        .courses-list__actions {
-            flex-direction: row;
-            width: 100%;
-            justify-content: stretch;
+        /* Menu avec z-index élevé pour s'afficher au-dessus */
+        .dropdown-menu,
+        .dropup .dropdown-menu {
+            z-index: 1050 !important;
         }
 
-        .courses-list__actions .admin-btn {
-            flex: 1;
-            min-width: 0;
+        /* Menu vers le haut pour dropup */
+        .dropup .dropdown-menu {
+            bottom: 100%;
+            top: auto;
+            margin-bottom: 0.25rem;
         }
 
-        .courses-list__action-label {
-            display: none;
+        /* Flèche pour dropup (mobile - menu vers le haut) */
+        .dropup .dropdown-menu::before {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #fff;
+            z-index: 1001;
+        }
+
+        .dropup .dropdown-menu::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid rgba(0, 0, 0, 0.175);
+            z-index: 1000;
+        }
+
+        /* Menu vers le bas pour dropdown (premier élément) */
+        .dropdown.d-md-none .dropdown-menu {
+            top: 100%;
+            bottom: auto;
+            margin-top: 0.25rem;
+        }
+
+        /* Flèche pour dropdown mobile (premier élément) */
+        .dropdown.d-md-none .dropdown-menu::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 5px solid #fff;
+            z-index: 1001;
+        }
+
+        .dropdown.d-md-none .dropdown-menu::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            right: 12px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 6px solid rgba(0, 0, 0, 0.175);
+            z-index: 1000;
+        }
+
+        /* Réduire la taille des textes et icônes sur mobile */
+        .dropdown.d-md-none .dropdown-item,
+        .dropup .dropdown-item {
+            font-size: 0.8rem !important;
+            padding: 0.4rem 0.75rem !important;
+        }
+
+        .dropdown.d-md-none .dropdown-item i,
+        .dropup .dropdown-item i {
+            font-size: 0.75rem !important;
+        }
+
+        .dropdown.d-md-none .dropdown-divider,
+        .dropup .dropdown-divider {
+            margin: 0.3rem 0 !important;
         }
     }
 
-    @media (max-width: 640px) {
-        .courses-list__item {
-            padding: 0.875rem;
-        }
 
-        .courses-list__title {
+    /* Styles responsives pour les paddings et margins */
+    @media (max-width: 991.98px) {
+        /* Réduire les paddings et margins sur tablette */
+        .admin-panel {
+            margin-bottom: 1rem;
+        }
+        
+        /* Padding uniquement pour la première section principale */
+        .admin-panel--main .admin-panel__body {
+            padding: 1rem !important;
+        }
+        
+        /* Pas de padding pour les autres sections */
+        .admin-panel:not(.admin-panel--main) .admin-panel__body {
+            padding: 0 !important;
+        }
+        
+        .admin-panel__header {
+            padding: 0.5rem 0.75rem;
+        }
+        
+        .admin-panel__header h3 {
             font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .admin-stats-grid {
+            gap: 0.5rem !important;
+        }
+        
+        .admin-stat-card {
+            padding: 0.75rem 0.875rem !important;
+        }
+        
+        .admin-panel__body .row.g-4 {
+            --bs-gutter-x: 0.5rem;
+            --bs-gutter-y: 0.5rem;
+        }
+        
+        .admin-panel__body .row.g-3 {
+            --bs-gutter-x: 0.375rem;
+            --bs-gutter-y: 0.375rem;
+        }
+        
+        .admin-panel__body .row.mb-4 {
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .admin-panel__body .row.mt-2 {
+            margin-top: 0.375rem !important;
         }
 
-        .courses-list__meta {
-            flex-direction: column;
+        .admin-form-grid.admin-form-grid--two {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.75rem 1rem;
+        }
+
+        .admin-table .table thead th,
+        .admin-table .table tbody td {
+            white-space: nowrap;
+        }
+
+        .admin-table img {
+            width: 56px;
+            height: 42px;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        /* Réduire encore plus les paddings et margins sur mobile */
+        .admin-panel {
+            margin-bottom: 0.75rem;
+        }
+        
+        /* Padding uniquement pour la première section principale */
+        .admin-panel--main .admin-panel__body {
+            padding: 0.75rem !important;
+        }
+        
+        /* Pas de padding pour les autres sections */
+        .admin-panel:not(.admin-panel--main) .admin-panel__body {
+            padding: 0 !important;
+        }
+        
+        .admin-panel__header {
+            padding: 0.375rem 0.5rem;
+        }
+        
+        .admin-panel__header h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.125rem;
+        }
+        
+        .admin-stats-grid {
+            gap: 0.375rem !important;
+        }
+        
+        .admin-stat-card {
+            padding: 0.5rem 0.625rem !important;
+        }
+        
+        .admin-panel__body .row.g-4 {
+            --bs-gutter-x: 0.375rem;
+            --bs-gutter-y: 0.375rem;
+        }
+        
+        .admin-panel__body .row.g-3 {
+            --bs-gutter-x: 0.25rem;
+            --bs-gutter-y: 0.25rem;
+        }
+        
+        .admin-panel__body .row.mb-4 {
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .admin-panel__body .row.mt-2 {
+            margin-top: 0.375rem !important;
+        }
+
+        .admin-stats-grid .admin-stat-card__value {
+            font-size: 1.35rem;
+        }
+
+        .admin-stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        .admin-form-grid.admin-form-grid--two {
+            grid-template-columns: 1fr;
             gap: 0.5rem;
         }
 
-        .courses-list__stats {
-            flex-direction: column;
-            gap: 0.75rem;
+        .admin-form-grid.admin-form-grid--two .form-label {
+            font-size: 0.85rem;
         }
 
-        .courses-list__actions {
-            flex-direction: column;
+        .admin-form-grid.admin-form-grid--two .form-select,
+        .admin-form-grid.admin-form-grid--two .form-control {
+            font-size: 0.85rem;
+            padding: 0.45rem 0.65rem;
         }
 
-        .courses-list__actions .admin-btn {
-            width: 100%;
+        .admin-table .table {
+            font-size: 0.85rem;
         }
 
-        .courses-list__empty {
-            padding: 2rem 1rem;
+        .admin-table img {
+            width: 44px;
+            height: 32px;
+        }
+
+        .admin-chip {
+            font-size: 0.7rem;
+        }
+
+        .admin-table .table-responsive {
+            margin: 0;
+        }
+
+        .course-actions-btn--mobile {
+            padding: 0.25rem 0.5rem !important;
+            font-size: 0.75rem !important;
+            line-height: 1.2;
+            min-width: 32px !important;
+            width: auto !important;
+        }
+
+        .course-actions-btn--mobile i {
+            font-size: 0.7rem !important;
+        }
+
+        .admin-table .d-flex.gap-2 {
+            gap: 0.25rem !important;
         }
     }
 </style>
 @endpush
+
+@section('admin-content')
+    <section class="admin-panel admin-panel--main">
+        <div class="admin-panel__body">
+            <div class="admin-stats-grid mb-4">
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Total</p>
+                    <p class="admin-stat-card__value">{{ $stats['total'] }}</p>
+                    <p class="admin-stat-card__muted">Contenus enregistrés</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Publiés</p>
+                    <p class="admin-stat-card__value">{{ $stats['published'] }}</p>
+                    <p class="admin-stat-card__muted">Visibles côté client</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Brouillons</p>
+                    <p class="admin-stat-card__value">{{ $stats['draft'] }}</p>
+                    <p class="admin-stat-card__muted">À finaliser</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Gratuits</p>
+                    <p class="admin-stat-card__value">{{ $stats['free'] }}</p>
+                    <p class="admin-stat-card__muted">Accès libre</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Payants</p>
+                    <p class="admin-stat-card__value">{{ $stats['paid'] }}</p>
+                    <p class="admin-stat-card__muted">Contenus premium</p>
+                </div>
+                <div class="admin-stat-card">
+                    <p class="admin-stat-card__label">Résultats</p>
+                    <p class="admin-stat-card__value">{{ $courses->total() }}</p>
+                    <p class="admin-stat-card__muted">Correspondant à vos filtres</p>
+                </div>
+            </div>
+
+            <x-admin.search-panel
+                :action="route('provider.contents.index')"
+                formId="coursesFilterForm"
+                filtersId="coursesFilters"
+                :hasFilters="true"
+                searchName="search"
+                :searchValue="request('search')"
+                placeholder="Rechercher un contenu..."
+            >
+                <x-slot:filters>
+                    <div class="admin-form-grid admin-form-grid--two mb-3">
+                        <div>
+                            <label class="form-label fw-semibold">Catégorie</label>
+                            <select class="form-select" name="category">
+                                <option value="">Toutes les catégories</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}" {{ request('category') == $category->id ? 'selected' : '' }}>
+                                        {{ $category->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label fw-semibold">Statut</label>
+                            <select class="form-select" name="status">
+                                <option value="">Tous les statuts</option>
+                                <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>Publié</option>
+                                <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Brouillon</option>
+                                <option value="free" {{ request('status') == 'free' ? 'selected' : '' }}>Gratuit</option>
+                                <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Payant</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="text-muted small">Ajustez les filtres puis appliquez-les.</span>
+                        <a href="{{ route('provider.contents.index') }}" class="btn btn-outline-secondary reset-filters-btn">
+                            <i class="fas fa-undo me-2"></i>Réinitialiser
+                        </a>
+                    </div>
+                </x-slot:filters>
+            </x-admin.search-panel>
+
+            @if(request()->hasAny(['search', 'category', 'status']))
+                <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <i class="fas fa-filter me-2"></i>
+                        <strong>Filtres actifs</strong>
+                        @if(request('search'))
+                            | Recherche : <span class="fw-semibold">{{ request('search') }}</span>
+                        @endif
+                        @if(request('category'))
+                            | Catégorie : <span class="fw-semibold">{{ $categories->firstWhere('id', request('category'))->name ?? 'Inconnue' }}</span>
+                        @endif
+                        @if(request('status'))
+                            | Statut : <span class="fw-semibold">{{ ucfirst(request('status')) }}</span>
+                        @endif
+                    </div>
+                    <a href="{{ route('provider.contents.index') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-times me-1"></i>Effacer tous les filtres
+                    </a>
+                </div>
+            @endif
+        </div>
+    </section>
+
+    <section class="admin-panel">
+        <div class="admin-panel__body">
+            <div class="admin-table">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 280px;">
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'title', 'direction' => request('sort') == 'title' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
+                                        Contenu
+                                        @if(request('sort') == 'title')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>Catégorie</th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'price', 'direction' => request('sort') == 'price' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
+                                        Prix
+                                        @if(request('sort') == 'price')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>Statut</th>
+                                <th>Vente</th>
+                                <th class="text-center d-none d-md-table-cell" style="width: 120px;">Actions</th>
+                                <th class="text-center d-md-none" style="width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($courses as $course)
+                                <tr>
+                                    <td style="min-width: 280px;">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">
+                                            <div>
+                                                <a href="{{ route('contents.show', $course->slug) }}" class="fw-semibold text-decoration-none text-dark">
+                                                    {{ $course->title }}
+                                                </a>
+                                                <div class="text-muted small">{{ Str::limit($course->subtitle ?? '', 60) }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="admin-chip admin-chip--info">
+                                            {{ $course->category->name ?? 'Aucune' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if($course->is_free)
+                                            <span class="admin-chip admin-chip--success">Gratuit</span>
+                                        @else
+                                            {{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price ?? 0, $baseCurrency['code'] ?? 'USD') }}
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($course->is_published)
+                                            <span class="admin-chip admin-chip--success">Publié</span>
+                                        @else
+                                            <span class="admin-chip admin-chip--warning">Brouillon</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($course->is_sale_enabled ?? true)
+                                            <span class="admin-chip admin-chip--success" title="La vente et l'inscription sont activées">
+                                                <i class="fas fa-check-circle me-1"></i>Activée
+                                            </span>
+                                        @else
+                                            <span class="admin-chip admin-chip--secondary" title="La vente et l'inscription sont désactivées">
+                                                <i class="fas fa-ban me-1"></i>Désactivée
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-light btn-sm course-actions-btn--mobile" title="Voir le contenu" target="_blank">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('provider.contents.edit', $course) }}" class="btn btn-primary btn-sm course-actions-btn--mobile" title="Modifier le contenu">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ route('provider.contents.lessons', $course) }}" class="btn btn-info btn-sm course-actions-btn--mobile" title="Gérer les leçons">
+                                                <i class="fas fa-list"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="admin-table__empty">
+                                        <i class="fas fa-inbox mb-2 d-block"></i>
+                                        Aucun contenu trouvé avec ces critères.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <x-admin.pagination :paginator="$courses" />
+        </div>
+    </section>
+@endsection
