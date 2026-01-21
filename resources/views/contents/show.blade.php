@@ -3309,37 +3309,81 @@ button.mobile-price-slider__btn--download i,
                 @endif
                 @if($course->show_customers_count)
                 @php
-                    // Toujours afficher les achats sur la page de détail
-                    $totalPurchases = 0;
-                    try {
-                        // Essayer d'obtenir le nombre d'achats via l'accesseur
-                        if (method_exists($course, 'getPurchasesCountAttribute') || property_exists($course, 'purchases_count')) {
-                            $totalPurchases = $course->purchases_count ?? 0;
+                    $count = 0;
+                    $label = '';
+                    $icon = '';
+                    
+                    if ($course->is_downloadable) {
+                        // Contenu téléchargeable
+                        if ($course->is_free) {
+                            // Téléchargeable gratuit : bénéficiaires uniques
+                            $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
+                            $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
+                            $icon = 'fa-download';
                         } else {
-                            // Fallback: compter directement depuis la base de données
-                            $totalPurchases = \App\Models\OrderItem::where('content_id', $course->id)
-                                ->whereHas('order', function($query) {
-                                    $query->whereIn('status', ['paid', 'completed']);
-                                })
-                                ->count();
+                            // Téléchargeable payant : nombre d'achats
+                            $totalPurchases = 0;
+                            try {
+                                if (method_exists($course, 'getPurchasesCountAttribute') || property_exists($course, 'purchases_count')) {
+                                    $totalPurchases = $course->purchases_count ?? 0;
+                                } else {
+                                    $totalPurchases = \App\Models\OrderItem::where('content_id', $course->id)
+                                        ->whereHas('order', function($query) {
+                                            $query->whereIn('status', ['paid', 'completed']);
+                                        })
+                                        ->count();
+                                }
+                            } catch (\Throwable $e) {
+                                $totalPurchases = 0;
+                                if (config('app.debug')) {
+                                    \Log::warning('Erreur lors du calcul de purchases_count', [
+                                        'content_id' => $course->id,
+                                        'error' => $e->getMessage()
+                                    ]);
+                                }
+                            }
+                            $count = max(0, (int) ($totalPurchases ?? 0));
+                            $label = $count > 1 ? 'achats' : 'achat';
+                            $icon = 'fa-shopping-cart';
                         }
-                    } catch (\Throwable $e) {
-                        // En cas d'erreur, utiliser 0
-                        $totalPurchases = 0;
-                        // Log l'erreur en développement seulement
-                        if (config('app.debug')) {
-                            \Log::warning('Erreur lors du calcul de purchases_count', [
-                                'content_id' => $course->id,
-                                'error' => $e->getMessage()
-                            ]);
+                    } else {
+                        // Contenu non téléchargeable
+                        if ($course->is_free) {
+                            // Non téléchargeable gratuit : inscriptions
+                            $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
+                            $label = $count > 1 ? 'inscriptions' : 'inscription';
+                            $icon = 'fa-user-plus';
+                        } else {
+                            // Non téléchargeable payant : nombre d'achats
+                            $totalPurchases = 0;
+                            try {
+                                if (method_exists($course, 'getPurchasesCountAttribute') || property_exists($course, 'purchases_count')) {
+                                    $totalPurchases = $course->purchases_count ?? 0;
+                                } else {
+                                    $totalPurchases = \App\Models\OrderItem::where('content_id', $course->id)
+                                        ->whereHas('order', function($query) {
+                                            $query->whereIn('status', ['paid', 'completed']);
+                                        })
+                                        ->count();
+                                }
+                            } catch (\Throwable $e) {
+                                $totalPurchases = 0;
+                                if (config('app.debug')) {
+                                    \Log::warning('Erreur lors du calcul de purchases_count', [
+                                        'content_id' => $course->id,
+                                        'error' => $e->getMessage()
+                                    ]);
+                                }
+                            }
+                            $count = max(0, (int) ($totalPurchases ?? 0));
+                            $label = $count > 1 ? 'achats' : 'achat';
+                            $icon = 'fa-shopping-cart';
                         }
                     }
-                    // S'assurer que $totalPurchases est un entier valide
-                    $totalPurchases = max(0, (int) ($totalPurchases ?? 0));
                 @endphp
                 <div class="course-stat-item">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>{{ number_format($totalPurchases, 0, ',', ' ') }} {{ $totalPurchases > 1 ? 'achats' : 'achat' }}</span>
+                    <i class="fas {{ $icon }}"></i>
+                    <span>{{ number_format($count, 0, ',', ' ') }} {{ $label }}</span>
                 </div>
                 @endif
                 @if(!$course->is_downloadable)
@@ -3807,16 +3851,10 @@ button.mobile-price-slider__btn--download i,
                         @endphp
                         <div class="col-12 col-sm-6 col-md-6 col-lg-4">
                             <div class="course-card" data-course-url="{{ route('contents.show', $relatedCourse->slug) }}" style="cursor: pointer;">
-                                <div class="card" style="position: relative;">
+                                <div class="card course-card-inner" style="position: relative;">
                                     <div class="position-relative">
-                                        @if($relatedCourse->thumbnail)
-                                            <img src="{{ $relatedCourse->thumbnail }}" 
+                                        <img src="{{ $relatedCourse->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
                                              class="card-img-top" alt="{{ $relatedCourse->title }}">
-                                        @else
-                                            <div class="card-img-top d-flex align-items-center justify-content-center bg-primary text-white" style="height: 180px; font-size: 2rem; font-weight: bold;">
-                                                {{ strtoupper(substr($relatedCourse->title, 0, 2)) }}
-                                            </div>
-                                        @endif
                                         <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
                                             @if($relatedCourse->is_featured)
                                             <span class="badge bg-warning">En vedette</span>
@@ -3850,37 +3888,43 @@ button.mobile-price-slider__btn--download i,
                                         
                                         @if($relatedCourse->show_customers_count)
                                         @php
-                                            $relatedPurchasesCount = 0;
-                                            try {
-                                                // Essayer d'obtenir le nombre d'achats via les stats ou l'accesseur
-                                                if (isset($relatedCourseStats['purchases_count'])) {
-                                                    $relatedPurchasesCount = $relatedCourseStats['purchases_count'];
-                                                } elseif (method_exists($relatedCourse, 'getPurchasesCountAttribute') || property_exists($relatedCourse, 'purchases_count')) {
-                                                    $relatedPurchasesCount = $relatedCourse->purchases_count ?? 0;
+                                            $relatedCount = 0;
+                                            $relatedLabel = '';
+                                            $relatedIcon = '';
+                                            
+                                            if ($relatedCourse->is_downloadable) {
+                                                // Cours téléchargeable
+                                                if ($relatedCourse->is_free) {
+                                                    // Téléchargeable gratuit : bénéficiaires uniques
+                                                    $relatedCount = (int) ($relatedCourseStats['unique_downloads'] ?? $relatedCourse->unique_downloads_count ?? 0);
+                                                    $relatedLabel = $relatedCount > 1 ? 'bénéficiaires' : 'bénéficiaire';
+                                                    $relatedIcon = 'fa-download';
                                                 } else {
-                                                    // Fallback: compter directement depuis la base de données
-                                                    $relatedPurchasesCount = \App\Models\OrderItem::where('content_id', $relatedCourse->id)
-                                                        ->whereHas('order', function($query) {
-                                                            $query->whereIn('status', ['paid', 'completed']);
-                                                        })
-                                                        ->count();
+                                                    // Téléchargeable payant : nombre d'achats
+                                                    $relatedCount = (int) ($relatedCourseStats['purchases_count'] ?? $relatedCourse->purchases_count ?? 0);
+                                                    $relatedLabel = $relatedCount > 1 ? 'achats' : 'achat';
+                                                    $relatedIcon = 'fa-shopping-cart';
                                                 }
-                                            } catch (\Throwable $e) {
-                                                $relatedPurchasesCount = 0;
-                                                if (config('app.debug')) {
-                                                    \Log::warning('Erreur lors du calcul de purchases_count pour le cours recommandé', [
-                                                        'content_id' => $relatedCourse->id ?? null,
-                                                        'error' => $e->getMessage()
-                                                    ]);
+                                            } else {
+                                                // Cours non téléchargeable
+                                                if ($relatedCourse->is_free) {
+                                                    // Non téléchargeable gratuit : inscriptions
+                                                    $relatedCount = (int) ($relatedCourseStats['total_customers'] ?? $relatedCourse->total_customers ?? 0);
+                                                    $relatedLabel = $relatedCount > 1 ? 'inscriptions' : 'inscription';
+                                                    $relatedIcon = 'fa-user-plus';
+                                                } else {
+                                                    // Non téléchargeable payant : nombre d'achats
+                                                    $relatedCount = (int) ($relatedCourseStats['purchases_count'] ?? $relatedCourse->purchases_count ?? 0);
+                                                    $relatedLabel = $relatedCount > 1 ? 'achats' : 'achat';
+                                                    $relatedIcon = 'fa-shopping-cart';
                                                 }
                                             }
-                                            $relatedPurchasesCount = max(0, (int) ($relatedPurchasesCount ?? 0));
                                         @endphp
                                         <div class="customers-count mb-2">
                                             <small class="text-muted">
-                                                <i class="fas fa-shopping-cart me-1"></i>
-                                                {{ number_format($relatedPurchasesCount, 0, ',', ' ') }} 
-                                                {{ $relatedPurchasesCount > 1 ? 'achats' : 'achat' }}
+                                                <i class="fas {{ $relatedIcon }} me-1"></i>
+                                                {{ number_format($relatedCount, 0, ',', ' ') }} 
+                                                {{ $relatedLabel }}
                                             </small>
                                         </div>
                                         @endif
@@ -3898,27 +3942,29 @@ button.mobile-price-slider__btn--download i,
                                                             <div class="course-price-row">
                                                                 <small class="text-muted text-decoration-line-through">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->price) }}</small>
                                                             </div>
+                                                            @if($relatedCourse->is_sale_active && $relatedCourse->sale_end_at)
+                                                            <div class="course-price-row">
+                                                                <div class="promotion-countdown" data-sale-end="{{ $relatedCourse->sale_end_at->toIso8601String() }}">
+                                                                    <i class="fas fa-fire me-1 text-danger"></i>
+                                                                    <span class="countdown-text">
+                                                                        <span class="countdown-years">0</span><span>a</span> 
+                                                                        <span class="countdown-months">0</span><span>m</span> 
+                                                                        <span class="countdown-days">0</span>j 
+                                                                        <span class="countdown-hours">0</span>h 
+                                                                        <span class="countdown-minutes">0</span>min
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            @endif
                                                         </div>
                                                     @else
                                                         <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($relatedCourse->price) }}</span>
                                                     @endif
                                                 @endif
                                             </div>
-                                            @if($relatedCourse->is_sale_active && $relatedCourse->sale_end_at)
-                                                <div class="promotion-countdown" data-sale-end="{{ $relatedCourse->sale_end_at->toIso8601String() }}">
-                                                    <i class="fas fa-fire me-1 text-danger"></i>
-                                                    <span class="countdown-text">
-                                                        <span class="countdown-years">0</span><span>a</span> 
-                                                        <span class="countdown-months">0</span><span>m</span> 
-                                                        <span class="countdown-days">0</span>j 
-                                                        <span class="countdown-hours">0</span>h 
-                                                        <span class="countdown-minutes">0</span>min
-                                                    </span>
-                                                </div>
-                                            @endif
                                         </div>
                                         
-                                        <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
+                                        <div class="card-actions mt-2" onclick="event.stopPropagation(); event.preventDefault();">
                                             <x-contenu-button :course="$relatedCourse" size="small" :show-cart="false" />
                                         </div>
                                     </div>

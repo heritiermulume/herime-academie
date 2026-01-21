@@ -370,8 +370,8 @@
 
         <div class="message">
             <p>
-                <strong>Bienvenue dans ce cours !</strong><br>
-                Votre inscription a été confirmée avec succès. Vous pouvez maintenant accéder à tous les contenus du cours et commencer votre apprentissage immédiatement.
+                <strong>{{ $messageTitle ?? 'Bienvenue dans ce cours !' }}</strong><br>
+                {{ $messageText ?? 'Votre inscription a été confirmée avec succès. Vous pouvez maintenant accéder à tous les contenus du cours et commencer votre apprentissage immédiatement.' }}
             </p>
         </div>
 
@@ -379,16 +379,16 @@
             <a href="{{ $courseUrl }}" class="button">{{ $buttonText ?? 'Commencer le cours maintenant' }}</a>
         </div>
 
+        @if(isset($features) && count($features) > 0)
         <div class="features">
             <h3>Ce que vous pouvez faire maintenant :</h3>
             <ul>
-                <li>Accéder à tous les modules et leçons du cours</li>
-                <li>Suivre votre progression en temps réel</li>
-                <li>Télécharger les ressources et supports de cours</li>
-                <li>Interagir avec le formateur et les autres étudiants</li>
-                <li>Obtenir un certificat à la fin du cours</li>
+                @foreach($features as $feature)
+                <li>{{ $feature }}</li>
+                @endforeach
             </ul>
         </div>
+        @endif
 
         <div class="footer">
             <p><strong>Herime Académie</strong></p>

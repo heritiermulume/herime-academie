@@ -51,6 +51,30 @@ class PaymentReceived extends Notification
         
         $orderUrl = route('orders.show', $order);
 
+        // Déterminer le type de contenus achetés
+        $order->load(['orderItems.course']);
+        $orderItems = $order->orderItems;
+        $hasDownloadable = $orderItems->contains(function ($item) {
+            return $item->course && $item->course->is_downloadable;
+        });
+        $hasNonDownloadable = $orderItems->contains(function ($item) {
+            return $item->course && !$item->course->is_downloadable;
+        });
+        
+        if ($hasDownloadable && !$hasNonDownloadable) {
+            // Uniquement des produits digitaux / téléchargeables
+            $accessMessage = 'Vous avez maintenant accès à tous les produits digitaux que vous avez achetés. Téléchargez-les depuis votre espace personnel.';
+        } elseif (!$hasDownloadable && $hasNonDownloadable) {
+            // Uniquement des cours classiques
+            $accessMessage = 'Vous avez maintenant accès à tous les cours que vous avez achetés. Commencez votre apprentissage dès maintenant.';
+        } elseif ($hasDownloadable && $hasNonDownloadable) {
+            // Panier mixte
+            $accessMessage = 'Vous avez maintenant accès à tous les cours et produits digitaux que vous avez achetés.';
+        } else {
+            // Fallback générique
+            $accessMessage = 'Vous avez maintenant accès à tous les contenus que vous avez achetés.';
+        }
+        
         $mail = (new MailMessage)
             ->subject('Paiement confirmé - ' . config('app.name'))
             ->greeting('Bonjour ' . $notifiable->name . ' !')
@@ -58,7 +82,7 @@ class PaymentReceived extends Notification
             ->line('**Numéro de commande :** ' . $order->order_number)
             ->line('**Montant :** ' . number_format($order->total, 2) . ' ' . $order->currency)
             ->action('Voir la commande', $orderUrl)
-            ->line('Vous avez maintenant accès à tous les cours que vous avez achetés.')
+            ->line($accessMessage)
             ->line('Merci de votre confiance !');
 
         if ($paidAtText) {
@@ -75,13 +99,33 @@ class PaymentReceived extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        // Déterminer le type de contenus achetés
+        $this->order->load(['orderItems.course']);
+        $orderItems = $this->order->orderItems;
+        $hasDownloadable = $orderItems->contains(function ($item) {
+            return $item->course && $item->course->is_downloadable;
+        });
+        $hasNonDownloadable = $orderItems->contains(function ($item) {
+            return $item->course && !$item->course->is_downloadable;
+        });
+        
+        if ($hasDownloadable && !$hasNonDownloadable) {
+            $actionText = 'Téléchargez vos produits digitaux maintenant.';
+        } elseif (!$hasDownloadable && $hasNonDownloadable) {
+            $actionText = 'Commencez votre apprentissage maintenant.';
+        } else {
+            $actionText = 'Accédez à vos contenus maintenant.';
+        }
+        
         return [
             'type' => 'payment_received',
             'order_id' => $this->order->id,
             'order_number' => $this->order->order_number,
             'amount' => $this->order->total,
             'currency' => $this->order->currency,
-            'message' => 'Votre paiement de ' . number_format($this->order->total, 2) . ' ' . $this->order->currency . ' a été confirmé.',
+            'message' => 'Votre paiement de ' . number_format($this->order->total, 2) . ' ' . $this->order->currency . ' a été confirmé. ' . $actionText,
+            'button_text' => 'Voir ma commande',
+            'button_url' => route('orders.show', $this->order),
             'url' => route('orders.show', $this->order),
         ];
     }

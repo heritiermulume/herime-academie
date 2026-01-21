@@ -3585,7 +3585,7 @@
         </a>
         <a href="{{ route('contents.index') }}" class="mobile-bottom-nav-item" data-page="courses">
             <i class="fas fa-book"></i>
-            <span>Cours</span>
+            <span>Contenus</span>
         </a>
         <a href="{{ route('categories.index') }}" class="mobile-bottom-nav-item" data-page="categories">
             <i class="fas fa-th-large"></i>
@@ -3613,7 +3613,7 @@
                         <div class="list-group-item">
                             <a href="{{ route('providers.index') }}">
                                 <i class="fas fa-chalkboard-teacher"></i>
-                                Formateurs
+                                Prestataires
                             </a>
                         </div>
                         <div class="list-group-item">

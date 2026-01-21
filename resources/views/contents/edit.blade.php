@@ -6,9 +6,11 @@
     <a href="{{ route('provider.contents.index') }}" class="admin-btn outline" data-temp-upload-cancel>
         <i class="fas fa-arrow-left me-2"></i>Retour à mes contenus
     </a>
-    <a href="{{ route('provider.contents.show', $course->slug) }}" class="admin-btn primary" target="_blank">
+    @if(isset($course))
+    <a href="{{ route('provider.contents.show', $course) }}" class="admin-btn primary" target="_blank">
         <i class="fas fa-eye me-2"></i>Voir la page publique
     </a>
+    @endif
 @endsection
 
 @include('partials.upload-progress-modal')

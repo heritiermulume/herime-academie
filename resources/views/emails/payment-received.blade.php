@@ -153,6 +153,26 @@
             </div>
 
             <p>Vous avez maintenant accès à tous les {{ $accessLabel ?? 'contenus' }} que vous avez achetés.</p>
+            
+            @php
+                $order->load(['orderItems.course']);
+                $hasDownloadable = $order->orderItems->contains(function ($item) {
+                    return $item->course && $item->course->is_downloadable;
+                });
+                $hasNonDownloadable = $order->orderItems->contains(function ($item) {
+                    return $item->course && !$item->course->is_downloadable;
+                });
+                
+                if ($hasDownloadable && !$hasNonDownloadable) {
+                    $actionText = "Téléchargez-les maintenant depuis votre espace personnel.";
+                } elseif (!$hasDownloadable && $hasNonDownloadable) {
+                    $actionText = "Commencez votre apprentissage dès maintenant.";
+                } else {
+                    $actionText = "Accédez à vos contenus depuis votre espace personnel.";
+                }
+            @endphp
+            
+            <p><strong>{{ $actionText }}</strong></p>
 
             <div class="button-container">
                 <a href="{{ $orderUrl }}" class="button">Voir ma commande</a>

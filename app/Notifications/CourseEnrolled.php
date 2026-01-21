@@ -84,12 +84,43 @@ class CourseEnrolled extends Notification
             $this->course->load('provider');
         }
 
+        // Personnaliser le message selon le type de contenu
+        if ($this->course->is_downloadable) {
+            // Contenu téléchargeable
+            if ($this->course->is_free) {
+                // Téléchargeable gratuit
+                $message = 'Contenu gratuit disponible ! Vous pouvez maintenant télécharger : ' . $this->course->title;
+                $buttonText = 'Télécharger';
+                $buttonUrl = route('contents.show', $this->course->slug);
+            } else {
+                // Téléchargeable payant
+                $message = 'Achat confirmé ! Vous pouvez maintenant télécharger : ' . $this->course->title;
+                $buttonText = 'Télécharger';
+                $buttonUrl = route('contents.show', $this->course->slug);
+            }
+        } else {
+            // Contenu non téléchargeable
+            if ($this->course->is_free) {
+                // Non téléchargeable gratuit
+                $message = 'Inscription confirmée ! Vous êtes maintenant inscrit au cours : ' . $this->course->title;
+                $buttonText = 'Commencer le cours';
+                $buttonUrl = route('learning.course', $this->course->slug);
+            } else {
+                // Non téléchargeable payant
+                $message = 'Achat confirmé ! Vous pouvez maintenant accéder au cours : ' . $this->course->title;
+                $buttonText = 'Commencer le cours';
+                $buttonUrl = route('learning.course', $this->course->slug);
+            }
+        }
+
         return [
             'course_id' => $this->course->id,
             'course_title' => $this->course->title,
             'course_slug' => $this->course->slug,
             'provider_name' => $this->course->provider?->name ?? 'Prestataire inconnu',
-            'message' => 'Vous êtes maintenant inscrit au cours : ' . $this->course->title,
+            'message' => $message,
+            'button_text' => $buttonText,
+            'button_url' => $buttonUrl,
             'type' => 'course_enrolled',
         ];
     }

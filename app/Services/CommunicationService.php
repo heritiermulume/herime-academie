@@ -174,16 +174,55 @@ class CommunicationService
         switch ($mailableClass) {
             case \App\Mail\CourseEnrolledMail::class:
                 $course = $mailable->course;
-                $courseUrl = $course->is_downloadable 
-                    ? route('contents.show', $course->slug)
-                    : route('learning.course', $course->slug);
-                $message = "🎓 *Inscription confirmée*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Félicitations ! Vous êtes maintenant inscrit au cours :\n" .
-                          "*{$course->title}*\n\n" .
-                          "Vous pouvez commencer votre apprentissage dès maintenant.\n\n" .
-                          "👉 {$courseUrl}\n\n" .
-                          "Bonne continuation !";
+                
+                // Personnaliser selon le type de contenu
+                if ($course->is_downloadable) {
+                    // Contenu téléchargeable
+                    if ($course->is_free) {
+                        // Téléchargeable gratuit
+                        $courseUrl = route('contents.show', $course->slug);
+                        $message = "🎁 *Contenu gratuit disponible !*\n\n" .
+                                  "Bonjour *{$userName}*,\n\n" .
+                                  "Félicitations ! Vous avez maintenant accès à ce contenu gratuit :\n" .
+                                  "*{$course->title}*\n\n" .
+                                  "Vous pouvez le télécharger dès maintenant et en profiter à tout moment.\n\n" .
+                                  "👉 {$courseUrl}\n\n" .
+                                  "Bonne découverte !";
+                    } else {
+                        // Téléchargeable payant
+                        $courseUrl = route('contents.show', $course->slug);
+                        $message = "✅ *Achat confirmé !*\n\n" .
+                                  "Bonjour *{$userName}*,\n\n" .
+                                  "Votre achat a été confirmé avec succès. Vous avez maintenant accès à :\n" .
+                                  "*{$course->title}*\n\n" .
+                                  "Vous pouvez télécharger ce produit immédiatement.\n\n" .
+                                  "👉 {$courseUrl}\n\n" .
+                                  "Merci pour votre confiance !";
+                    }
+                } else {
+                    // Contenu non téléchargeable
+                    if ($course->is_free) {
+                        // Non téléchargeable gratuit
+                        $courseUrl = route('learning.course', $course->slug);
+                        $message = "🎓 *Inscription confirmée !*\n\n" .
+                                  "Bonjour *{$userName}*,\n\n" .
+                                  "Félicitations ! Vous êtes maintenant inscrit au cours :\n" .
+                                  "*{$course->title}*\n\n" .
+                                  "Vous pouvez commencer votre apprentissage dès maintenant.\n\n" .
+                                  "👉 {$courseUrl}\n\n" .
+                                  "Bon apprentissage !";
+                    } else {
+                        // Non téléchargeable payant
+                        $courseUrl = route('learning.course', $course->slug);
+                        $message = "✅ *Achat confirmé !*\n\n" .
+                                  "Bonjour *{$userName}*,\n\n" .
+                                  "Votre achat a été confirmé avec succès. Vous avez maintenant accès au cours :\n" .
+                                  "*{$course->title}*\n\n" .
+                                  "Vous pouvez commencer votre apprentissage dès maintenant.\n\n" .
+                                  "👉 {$courseUrl}\n\n" .
+                                  "Merci pour votre confiance !";
+                    }
+                }
                 return $this->formatWhatsAppMessage($message, $user);
             
             case \App\Mail\PaymentReceivedMail::class:
@@ -191,10 +230,41 @@ class CommunicationService
                 if (!$order) {
                     return null;
                 }
+                
+                // Déterminer le type de contenus achetés
+                $order->load(['orderItems.course']);
+                $orderItems = $order->orderItems;
+                $hasDownloadable = $orderItems->contains(function ($item) {
+                    return $item->course && $item->course->is_downloadable;
+                });
+                $hasNonDownloadable = $orderItems->contains(function ($item) {
+                    return $item->course && !$item->course->is_downloadable;
+                });
+                
+                if ($hasDownloadable && !$hasNonDownloadable) {
+                    // Uniquement des produits digitaux / téléchargeables
+                    $contentType = "produits digitaux";
+                    $actionText = "Téléchargez-les maintenant depuis votre espace personnel.";
+                } elseif (!$hasDownloadable && $hasNonDownloadable) {
+                    // Uniquement des cours classiques
+                    $contentType = "cours";
+                    $actionText = "Commencez votre apprentissage dès maintenant.";
+                } elseif ($hasDownloadable && $hasNonDownloadable) {
+                    // Panier mixte
+                    $contentType = "cours et produits digitaux";
+                    $actionText = "Accédez à vos contenus depuis votre espace personnel.";
+                } else {
+                    // Fallback générique
+                    $contentType = "contenus";
+                    $actionText = "Accédez à vos contenus depuis votre espace personnel.";
+                }
+                
                 $message = "✅ *Paiement reçu*\n\n" .
                           "Bonjour *{$userName}*,\n\n" .
                           "Votre paiement pour la commande *{$order->order_number}* a été confirmé.\n\n" .
                           "Montant : *" . number_format($order->total, 0, ',', ' ') . " FCFA*\n\n" .
+                          "Vous avez maintenant accès à tous vos {$contentType}.\n\n" .
+                          "{$actionText}\n\n" .
                           "Merci pour votre confiance !";
                 return $this->formatWhatsAppMessage($message, $user);
             

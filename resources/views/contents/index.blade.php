@@ -195,9 +195,9 @@
                                                 if ($course->is_downloadable) {
                                                     // Cours téléchargeable
                                                     if ($course->is_free) {
-                                                        // Téléchargeable gratuit : téléchargements uniques
+                                                        // Téléchargeable gratuit : bénéficiaires uniques
                                                         $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
-                                                        $label = $count > 1 ? 'téléchargements' : 'téléchargement';
+                                                        $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
                                                         $icon = 'fa-download';
                                                     } else {
                                                         // Téléchargeable payant : nombre d'achats
