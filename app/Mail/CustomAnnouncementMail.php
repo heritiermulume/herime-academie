@@ -69,25 +69,45 @@ class CustomAnnouncementMail extends Mailable
         $content = preg_replace('/\s+/', ' ', $content);
         
         // Convertir les URLs en liens cliquables si elles ne le sont pas déjà
-        // D'abord, marquer toutes les URLs déjà dans des liens
+        // Stratégie : remplacer temporairement les liens existants, convertir les URLs, puis restaurer les liens
+        
+        // Étape 1 : Remplacer temporairement tous les liens existants par des placeholders
+        $linkPlaceholders = [];
+        $placeholderIndex = 0;
         $content = preg_replace_callback(
             '/<a[^>]*href=["\']([^"\']+)["\'][^>]*>([^<]*)<\/a>/i',
-            function($matches) {
-                // Garder les liens existants tels quels mais s'assurer qu'ils sont cliquables
-                $href = htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8');
-                $text = $matches[2];
-                return '<a href="' . $href . '" style="color: #003366; text-decoration: underline; word-break: break-all;">' . $text . '</a>';
+            function($matches) use (&$linkPlaceholders, &$placeholderIndex) {
+                $placeholder = "___LINK_PLACEHOLDER_{$placeholderIndex}___";
+                $linkPlaceholders[$placeholder] = [
+                    'href' => htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8'),
+                    'text' => $matches[2]
+                ];
+                $placeholderIndex++;
+                return $placeholder;
             },
             $content
         );
         
-        // Ensuite, convertir les URLs qui ne sont pas dans des liens
-        // Pattern pour détecter les URLs qui ne sont pas déjà dans des balises <a>
-        $pattern = '/(?<!href=["\']|>)(?<!<a[^>]*>)(?<!["\'])(https?:\/\/[^\s<>"\'{}|\\^`\[\]]+)(?!["\'])/i';
-        $content = preg_replace_callback($pattern, function($matches) {
-            $url = htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8');
-            return '<a href="' . $url . '" style="color: #003366; text-decoration: underline; word-break: break-all;">' . $url . '</a>';
-        }, $content);
+        // Étape 2 : Convertir les URLs restantes en liens (celles qui ne sont pas dans des balises <a>)
+        // Pattern simplifié sans lookbehind complexe
+        $content = preg_replace_callback(
+            '/(https?:\/\/[^\s<>"\'{}|\\^`\[\]]+)/i',
+            function($matches) {
+                $url = htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8');
+                // Vérifier que ce n'est pas déjà un placeholder de lien
+                if (strpos($matches[1], '___LINK_PLACEHOLDER_') === false) {
+                    return '<a href="' . $url . '" style="color: #003366; text-decoration: underline; word-break: break-all;">' . $url . '</a>';
+                }
+                return $matches[0];
+            },
+            $content
+        );
+        
+        // Étape 3 : Restaurer les liens originaux avec le bon style
+        foreach ($linkPlaceholders as $placeholder => $linkData) {
+            $styledLink = '<a href="' . $linkData['href'] . '" style="color: #003366; text-decoration: underline; word-break: break-all;">' . $linkData['text'] . '</a>';
+            $content = str_replace($placeholder, $styledLink, $content);
+        }
         
         // Réduire les espaces interlignes multiples dans les paragraphes
         // Remplacer plusieurs <br> consécutifs par un seul
