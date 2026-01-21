@@ -3316,8 +3316,8 @@ button.mobile-price-slider__btn--download i,
                     if ($course->is_downloadable) {
                         // Contenu téléchargeable
                         if ($course->is_free) {
-                            // Téléchargeable gratuit : bénéficiaires uniques
-                            $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
+                            // Téléchargeable gratuit : total des inscrits (car l'utilisateur s'inscrit d'abord avec "Intéresser")
+                            $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
                             $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
                             $icon = 'fa-users';
                         } else {
@@ -3895,8 +3895,8 @@ button.mobile-price-slider__btn--download i,
                                             if ($relatedCourse->is_downloadable) {
                                                 // Cours téléchargeable
                                                 if ($relatedCourse->is_free) {
-                                                    // Téléchargeable gratuit : bénéficiaires uniques
-                                                    $relatedCount = (int) ($relatedCourseStats['unique_downloads'] ?? $relatedCourse->unique_downloads_count ?? 0);
+                                                    // Téléchargeable gratuit : total des inscrits (car l'utilisateur s'inscrit d'abord avec "Intéresser")
+                                                    $relatedCount = (int) ($relatedCourseStats['total_customers'] ?? $relatedCourse->total_customers ?? 0);
                                                     $relatedLabel = $relatedCount > 1 ? 'bénéficiaires' : 'bénéficiaire';
                                                     $relatedIcon = 'fa-users';
                                                 } else {

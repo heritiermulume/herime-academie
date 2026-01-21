@@ -668,8 +668,8 @@ body {
                                     if ($course->is_downloadable) {
                                         // Cours téléchargeable
                                         if ($course->is_free) {
-                                            // Téléchargeable gratuit : bénéficiaires uniques
-                                            $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
+                                            // Téléchargeable gratuit : total des inscrits (car l'utilisateur s'inscrit d'abord avec "Intéresser")
+                                            $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
                                             $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
                                             $icon = 'fa-users';
                                         } else {
@@ -823,8 +823,8 @@ body {
                                     if ($course->is_downloadable) {
                                         // Cours téléchargeable
                                         if ($course->is_free) {
-                                            // Téléchargeable gratuit : bénéficiaires uniques
-                                            $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
+                                            // Téléchargeable gratuit : total des inscrits (car l'utilisateur s'inscrit d'abord avec "Intéresser")
+                                            $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
                                             $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
                                             $icon = 'fa-users';
                                         } else {
@@ -1058,8 +1058,8 @@ body {
                                     if ($course->is_downloadable) {
                                         // Cours téléchargeable
                                         if ($course->is_free) {
-                                            // Téléchargeable gratuit : bénéficiaires uniques
-                                            $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
+                                            // Téléchargeable gratuit : total des inscrits (car l'utilisateur s'inscrit d'abord avec "Intéresser")
+                                            $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
                                             $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
                                             $icon = 'fa-users';
                                         } else {
