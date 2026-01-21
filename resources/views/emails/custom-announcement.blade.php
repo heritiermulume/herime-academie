@@ -38,7 +38,7 @@
         .content {
             margin-bottom: 30px;
             font-size: 15px;
-            line-height: 1.8;
+            line-height: 1.6;
             color: #2c3e50;
         }
         .content h1, .content h2, .content h3 {
@@ -46,12 +46,66 @@
             margin-top: 20px;
             margin-bottom: 10px;
         }
+        .content h1 {
+            margin-top: 0;
+        }
         .content p {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
+            margin-top: 0;
+        }
+        .content p:last-child {
+            margin-bottom: 0;
         }
         .content a {
             color: #003366;
             text-decoration: underline;
+            word-break: break-all;
+        }
+        .content a:hover {
+            color: #004080;
+        }
+        .content .action-button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 15px 10px 15px 0;
+            background-color: #003366;
+            color: #ffffff !important;
+            text-decoration: none !important;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.3s ease;
+        }
+        .content .action-button:hover {
+            background-color: #004080;
+            color: #ffffff !important;
+        }
+        .content .action-button.secondary {
+            background-color: #6c757d;
+        }
+        .content .action-button.secondary:hover {
+            background-color: #5a6268;
+        }
+        .content .action-button.success {
+            background-color: #28a745;
+        }
+        .content .action-button.success:hover {
+            background-color: #218838;
+        }
+        .content .action-button.danger {
+            background-color: #dc3545;
+        }
+        .content .action-button.danger:hover {
+            background-color: #c82333;
+        }
+        .content br {
+            line-height: 1.4;
+        }
+        .content div {
+            margin-bottom: 10px;
+        }
+        .content div:last-child {
+            margin-bottom: 0;
         }
         .content img {
             max-width: 100%;
@@ -96,7 +150,7 @@
         </div>
 
         <div class="content">
-            {!! $content !!}
+            {!! $processedContent !!}
         </div>
 
         <div class="footer">

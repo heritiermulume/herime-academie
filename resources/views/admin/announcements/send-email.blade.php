@@ -212,7 +212,7 @@
                 <div class="mb-3">
                     <label class="form-label">Contenu *</label>
                     <div id="email_content_editor" style="height: 400px;"></div>
-                    <textarea class="form-control d-none" id="email_content" name="content" required></textarea>
+                    <textarea class="form-control d-none" id="email_content" name="email_content" required></textarea>
                 </div>
 
                 <div class="mb-3">
@@ -308,11 +308,116 @@
     </div>
 </div>
 
+<!-- Modal pour ajouter un bouton d'action -->
+<div class="modal fade" id="actionButtonModal" tabindex="-1" aria-labelledby="actionButtonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="actionButtonModalLabel">
+                    <i class="fas fa-mouse-pointer me-2"></i>Ajouter un bouton d'action
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="actionButtonForm">
+                    <div class="mb-3">
+                        <label for="button_url" class="form-label">
+                            <i class="fas fa-link me-2"></i>URL du bouton <span class="text-danger">*</span>
+                        </label>
+                        <input type="url" class="form-control" id="button_url" placeholder="https://exemple.com" required>
+                        <small class="form-text text-muted">L'URL vers laquelle le bouton redirigera</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="button_text" class="form-label">
+                            <i class="fas fa-font me-2"></i>Texte du bouton <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="button_text" placeholder="Cliquez ici" required>
+                        <small class="form-text text-muted">Le texte affiché sur le bouton</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="button_type" class="form-label">
+                            <i class="fas fa-palette me-2"></i>Type de bouton
+                        </label>
+                        <select class="form-select" id="button_type">
+                            <option value="primary" selected>Primary (Bleu foncé)</option>
+                            <option value="secondary">Secondary (Gris)</option>
+                            <option value="success">Success (Vert)</option>
+                            <option value="danger">Danger (Rouge)</option>
+                        </select>
+                        <small class="form-text text-muted">Choisissez le style du bouton</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Aperçu</label>
+                        <div id="button_preview" class="p-3 border rounded bg-light text-center">
+                            <a href="#" id="preview_button" class="action-button primary" style="display: inline-block; padding: 12px 24px; margin: 0; background-color: #003366; color: #ffffff !important; text-decoration: none !important; border-radius: 6px; font-weight: 600; text-align: center; pointer-events: none;">Cliquez ici</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-primary" id="insert_action_button">
+                    <i class="fas fa-plus me-2"></i>Insérer le bouton
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('styles')
 <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
 <style>
+/* Style pour le bouton d'action dans la toolbar Quill */
+.ql-action-button {
+    width: 28px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+.ql-action-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+}
+.ql-action-button svg {
+    width: 18px;
+    height: 18px;
+}
+.ql-action-button svg .ql-stroke {
+    stroke: currentColor;
+    stroke-width: 1;
+}
+
+/* Styles pour le modal de bouton d'action */
+#actionButtonModal .modal-header {
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+#actionButtonModal .modal-footer {
+    border-top: 1px solid #dee2e6;
+}
+#button_preview {
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#preview_button {
+    cursor: default;
+}
+#preview_button:hover {
+    opacity: 0.9;
+}
 #selected_users {
     display: flex;
     flex-wrap: wrap;
@@ -381,9 +486,9 @@ document.addEventListener('DOMContentLoaded', function() {
         placeholder: 'Rédigez votre email ici...',
         bounds: '#email_content_editor'
     });
-
+    
     // Upload d'images
-    var toolbar = quill.getModule('toolbar');
+    const toolbar = quill.getModule('toolbar');
     toolbar.addHandler('image', function() {
         var input = document.createElement('input');
         input.setAttribute('type', 'file');
@@ -402,21 +507,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 xhr.onload = function() {
                     if (xhr.status === 200) {
-                        var json = JSON.parse(xhr.responseText);
-                        if (json.location) {
-                            var range = quill.getSelection(true);
-                            quill.insertEmbed(range.index, 'image', json.location);
-                            quill.setSelection(range.index + 1);
+                        try {
+                            var json = JSON.parse(xhr.responseText);
+                            if (json.location) {
+                                var range = quill.getSelection(true);
+                                quill.insertEmbed(range.index, 'image', json.location);
+                                quill.setSelection(range.index + 1);
+                            } else if (json.error) {
+                                alert('Erreur: ' + json.error);
+                            } else {
+                                alert('Réponse inattendue du serveur');
+                            }
+                        } catch (e) {
+                            console.error('Erreur de parsing JSON:', e);
+                            alert('Erreur lors du traitement de la réponse du serveur');
                         }
                     } else {
-                        alert('Erreur lors du téléchargement de l\'image');
+                        try {
+                            var errorJson = JSON.parse(xhr.responseText);
+                            alert('Erreur: ' + (errorJson.error || 'Erreur lors du téléchargement de l\'image'));
+                        } catch (e) {
+                            alert('Erreur lors du téléchargement de l\'image (Code: ' + xhr.status + ')');
+                        }
                     }
+                };
+                
+                xhr.onerror = function() {
+                    alert('Erreur réseau lors du téléchargement de l\'image');
                 };
                 
                 xhr.send(formData);
             }
         };
     });
+    
+    // Ajouter un bouton personnalisé pour les boutons d'action après que Quill soit complètement initialisé
+    setTimeout(function() {
+        const toolbarContainer = document.querySelector('.ql-toolbar');
+        if (toolbarContainer) {
+            // Créer un bouton personnalisé
+            const actionButtonContainer = document.createElement('span');
+            actionButtonContainer.className = 'ql-formats';
+            actionButtonContainer.innerHTML = `
+                <button type="button" class="ql-action-button" title="Insérer un bouton d'action">
+                    <svg viewBox="0 0 18 18">
+                        <rect class="ql-stroke" x="3" y="4" width="12" height="10" rx="2"></rect>
+                        <text x="9" y="11" text-anchor="middle" font-size="8" fill="currentColor">BTN</text>
+                    </svg>
+                </button>
+            `;
+            toolbarContainer.appendChild(actionButtonContainer);
+            
+            // Ajouter l'événement click
+            const actionButton = actionButtonContainer.querySelector('.ql-action-button');
+            if (actionButton) {
+                actionButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Ouvrir le modal moderne
+                    const modal = new bootstrap.Modal(document.getElementById('actionButtonModal'));
+                    modal.show();
+                });
+            }
+        }
+    }, 100);
 
     // Synchroniser le contenu avec le textarea pour le formulaire
     quill.on('text-change', function() {
@@ -1340,6 +1494,90 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialiser l'affichage des utilisateurs sélectionnés après que toutes les fonctions sont définies
     if (window.updateSelectedUsersDisplay) {
         window.updateSelectedUsersDisplay();
+    }
+    
+    // Gestion du modal de bouton d'action
+    const actionButtonModal = document.getElementById('actionButtonModal');
+    const buttonUrlInput = document.getElementById('button_url');
+    const buttonTextInput = document.getElementById('button_text');
+    const buttonTypeSelect = document.getElementById('button_type');
+    const previewButton = document.getElementById('preview_button');
+    const insertButton = document.getElementById('insert_action_button');
+    const actionButtonForm = document.getElementById('actionButtonForm');
+    
+    // Fonction pour mettre à jour l'aperçu du bouton
+    function updateButtonPreview() {
+        const url = buttonUrlInput.value || '#';
+        const text = buttonTextInput.value || 'Cliquez ici';
+        const type = buttonTypeSelect.value || 'primary';
+        
+        const backgroundColor = type === 'secondary' ? '#6c757d' : 
+                              type === 'success' ? '#28a745' : 
+                              type === 'danger' ? '#dc3545' : '#003366';
+        
+        previewButton.href = url;
+        previewButton.textContent = text;
+        previewButton.className = `action-button ${type}`;
+        previewButton.style.backgroundColor = backgroundColor;
+    }
+    
+    // Écouter les changements pour mettre à jour l'aperçu
+    if (buttonUrlInput && buttonTextInput && buttonTypeSelect && previewButton) {
+        buttonUrlInput.addEventListener('input', updateButtonPreview);
+        buttonTextInput.addEventListener('input', updateButtonPreview);
+        buttonTypeSelect.addEventListener('change', updateButtonPreview);
+    }
+    
+    // Réinitialiser le formulaire quand le modal est fermé
+    if (actionButtonModal) {
+        actionButtonModal.addEventListener('hidden.bs.modal', function() {
+            if (actionButtonForm) {
+                actionButtonForm.reset();
+            }
+            if (previewButton) {
+                previewButton.href = '#';
+                previewButton.textContent = 'Cliquez ici';
+                previewButton.className = 'action-button primary';
+                previewButton.style.backgroundColor = '#003366';
+            }
+        });
+    }
+    
+    // Insérer le bouton dans l'éditeur
+    if (insertButton) {
+        insertButton.addEventListener('click', function() {
+            const url = buttonUrlInput.value?.trim();
+            const text = buttonTextInput.value?.trim();
+            const type = buttonTypeSelect.value || 'primary';
+            
+            if (!url || !text) {
+                alert('Veuillez remplir tous les champs obligatoires.');
+                return;
+            }
+            
+            const backgroundColor = type === 'secondary' ? '#6c757d' : 
+                                  type === 'success' ? '#28a745' : 
+                                  type === 'danger' ? '#dc3545' : '#003366';
+            
+            const buttonClass = `action-button ${type}`;
+            const buttonHtml = `<a href="${url}" class="${buttonClass}" style="display: inline-block; padding: 12px 24px; margin: 15px 10px 15px 0; background-color: ${backgroundColor}; color: #ffffff !important; text-decoration: none !important; border-radius: 6px; font-weight: 600; text-align: center;">${text}</a>`;
+            
+            const range = quill.getSelection(true);
+            if (range) {
+                quill.clipboard.dangerouslyPasteHTML(range.index, buttonHtml);
+                quill.setSelection(range.index + buttonHtml.length);
+            } else {
+                // Si pas de sélection, insérer à la fin
+                const length = quill.getLength();
+                quill.clipboard.dangerouslyPasteHTML(length - 1, buttonHtml);
+            }
+            
+            // Fermer le modal
+            const modal = bootstrap.Modal.getInstance(actionButtonModal);
+            if (modal) {
+                modal.hide();
+            }
+        });
     }
 });
 </script>

@@ -98,6 +98,9 @@ class FileController extends Controller
             case 'banners':
                 $basePath = 'banners';
                 break;
+            case 'email-images':
+                $basePath = 'email-images';
+                break;
             case 'media':
                 $basePath = 'media';
                 break;
@@ -120,8 +123,8 @@ class FileController extends Controller
      */
     protected function hasAccess(string $type, string $path): bool
     {
-        // Les avatars et banners sont publics (mais protégés par l'URL)
-        if (in_array($type, ['avatars', 'banners', 'media'])) {
+        // Les avatars, banners, email-images et media sont publics (mais protégés par l'URL)
+        if (in_array($type, ['avatars', 'banners', 'email-images', 'media'])) {
             return true;
         }
 

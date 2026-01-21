@@ -2636,17 +2636,41 @@ class AdminController extends Controller
      */
     public function uploadImage(Request $request)
     {
-        $request->validate([
-            'file' => 'required|image|max:2048', // 2MB max
-        ]);
+        try {
+            $request->validate([
+                'file' => 'required|image|max:2048', // 2MB max
+            ]);
 
-        $file = $request->file('file');
-        $service = app(FileUploadService::class);
-        $path = $service->upload($file, 'email-images');
+            $file = $request->file('file');
+            $service = app(FileUploadService::class);
+            $uploadResult = $service->upload($file, 'email-images');
+            
+            // FileUploadService retourne un tableau avec 'path' et 'url'
+            $url = is_array($uploadResult) ? ($uploadResult['url'] ?? null) : $uploadResult;
+            
+            if (!$url) {
+                // Si pas d'URL dans le résultat, générer l'URL à partir du path
+                $path = is_array($uploadResult) ? ($uploadResult['path'] ?? null) : $uploadResult;
+                if ($path) {
+                    $url = $service->getUrl($path, 'email-images');
+                } else {
+                    throw new \Exception('Impossible de déterminer l\'URL de l\'image uploadée');
+                }
+            }
 
-        return response()->json([
-            'location' => $service->getUrl($path, 'email-images')
-        ]);
+            return response()->json([
+                'location' => $url
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'error' => 'Erreur de validation: ' . implode(', ', $e->validator->errors()->all())
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de l'upload d'image: " . $e->getMessage());
+            return response()->json([
+                'error' => 'Erreur lors de l\'upload de l\'image: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -2686,8 +2710,14 @@ class AdminController extends Controller
         if ($request->hasFile('attachments')) {
             $service = app(FileUploadService::class);
             foreach ($request->file('attachments') as $file) {
-                $path = $service->upload($file, 'email-attachments');
-                $attachmentPaths[] = $path;
+                try {
+                    $uploadResult = $service->upload($file, 'email-attachments');
+                    // FileUploadService retourne un tableau avec 'path' et 'url', on a besoin du 'path'
+                    $attachmentPaths[] = is_array($uploadResult) ? $uploadResult['path'] : $uploadResult;
+                } catch (\Exception $e) {
+                    Log::error("Erreur lors de l'upload de la pièce jointe: " . $e->getMessage());
+                    // Continuer avec les autres fichiers même si un échoue
+                }
             }
         }
 
@@ -5053,8 +5083,14 @@ class AdminController extends Controller
         if ($request->hasFile('attachments')) {
             $service = app(FileUploadService::class);
             foreach ($request->file('attachments') as $file) {
-                $path = $service->upload($file, 'email-attachments');
-                $attachmentPaths[] = $path;
+                try {
+                    $uploadResult = $service->upload($file, 'email-attachments');
+                    // FileUploadService retourne un tableau avec 'path' et 'url', on a besoin du 'path'
+                    $attachmentPaths[] = is_array($uploadResult) ? $uploadResult['path'] : $uploadResult;
+                } catch (\Exception $e) {
+                    Log::error("Erreur lors de l'upload de la pièce jointe: " . $e->getMessage());
+                    // Continuer avec les autres fichiers même si un échoue
+                }
             }
         }
 

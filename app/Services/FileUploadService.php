@@ -406,6 +406,8 @@ class FileUploadService
                 $type = 'avatars';
             } elseif (strpos($cleanPath, 'banners') === 0) {
                 $type = 'banners';
+            } elseif (strpos($cleanPath, 'email-images') === 0 || strpos($cleanPath, 'email_images') === 0) {
+                $type = 'email-images';
             } elseif (strpos($cleanPath, 'media/') === 0) {
                 $type = 'media';
             } else {
@@ -445,6 +447,8 @@ class FileUploadService
             return 'avatars';
         } elseif (strpos($folder, 'banners') !== false) {
             return 'banners';
+        } elseif (strpos($folder, 'email-images') !== false || strpos($folder, 'email_images') !== false) {
+            return 'email-images';
         } elseif (strpos($folder, 'media/') !== false) {
             return 'media';
         } elseif (strpos($folder, self::TEMPORARY_BASE_PATH) !== false) {
@@ -463,6 +467,7 @@ class FileUploadService
             'downloads' => 'courses/downloads',
             'avatars' => 'avatars',
             'banners' => 'banners',
+            'email-images' => 'email-images',
             'media' => 'media',
             'temporary' => self::TEMPORARY_BASE_PATH,
             default => null,
