@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
 
 class CustomAnnouncementMail extends Mailable
 {
@@ -16,6 +17,7 @@ class CustomAnnouncementMail extends Mailable
     public $subject;
     public $content;
     public $attachments;
+    private $inlineImages = [];
 
     /**
      * Create a new message instance.
@@ -43,7 +45,7 @@ class CustomAnnouncementMail extends Mailable
      */
     public function content(): Content
     {
-        // Traiter le contenu pour améliorer l'affichage
+        // Traiter le contenu pour améliorer l'affichage et convertir les images
         $processedContent = $this->processContent($this->content);
         
         return new Content(
@@ -58,12 +60,16 @@ class CustomAnnouncementMail extends Mailable
     
     /**
      * Traite le contenu pour améliorer l'affichage :
+     * - Convertit les images en pièces jointes inline (CID)
      * - Convertit les URLs en liens cliquables
      * - Réduit les espaces interlignes excessifs
      * - Améliore le formatage des boutons d'action
      */
     private function processContent(string $content): string
     {
+        // Étape 0 : Convertir les images en pièces jointes inline
+        $content = $this->convertImagesToInline($content);
+        
         // Nettoyer d'abord le contenu HTML
         // Réduire les espaces multiples
         $content = preg_replace('/\s+/', ' ', $content);
@@ -170,6 +176,132 @@ class CustomAnnouncementMail extends Mailable
     }
 
     /**
+     * Convertit les images du contenu en pièces jointes inline (CID)
+     * 
+     * @param string $content
+     * @return string
+     */
+    private function convertImagesToInline(string $content): string
+    {
+        $this->inlineImages = [];
+        $imageIndex = 0;
+        
+        // Extraire toutes les images du contenu
+        $content = preg_replace_callback(
+            '/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i',
+            function($matches) use (&$imageIndex) {
+                $imageUrl = $matches[1];
+                
+                // Ignorer les images déjà en CID ou les images externes non gérées
+                if (strpos($imageUrl, 'cid:') === 0 || strpos($imageUrl, 'data:') === 0) {
+                    return $matches[0];
+                }
+                
+                // Extraire le chemin du fichier depuis l'URL
+                $filePath = $this->extractFilePathFromUrl($imageUrl);
+                
+                if (!$filePath) {
+                    // Si on ne peut pas extraire le chemin, garder l'image telle quelle
+                    return $matches[0];
+                }
+                
+                // Vérifier que le fichier existe
+                $disk = Storage::disk('local');
+                if (!$disk->exists($filePath)) {
+                    \Log::warning("Image introuvable pour email inline: {$filePath}");
+                    return $matches[0];
+                }
+                
+                // Générer un CID unique avec extension
+                $imageIndex++;
+                $extension = pathinfo(basename($filePath), PATHINFO_EXTENSION) ?: 'jpg';
+                $cid = 'image' . $imageIndex;
+                $cidFilename = $cid . '.' . $extension;
+                
+                // Stocker l'image pour l'attacher plus tard
+                $this->inlineImages[$cidFilename] = [
+                    'path' => $filePath,
+                    'name' => basename($filePath)
+                ];
+                
+                // Remplacer l'URL par le CID dans la balise img
+                // Laravel génère le CID à partir du nom du fichier
+                $imgTag = $matches[0];
+                $imgTag = preg_replace('/src=["\'][^"\']+["\']/', 'src="cid:' . $cidFilename . '"', $imgTag);
+                
+                return $imgTag;
+            },
+            $content
+        );
+        
+        return $content;
+    }
+    
+    /**
+     * Extrait le chemin du fichier depuis une URL sécurisée
+     * 
+     * @param string $url
+     * @return string|null
+     */
+    private function extractFilePathFromUrl(string $url): ?string
+    {
+        // Parser l'URL pour extraire le type et le chemin
+        // Format attendu: /files/{type}/{path}
+        if (preg_match('#/files/([^/]+)/(.+)$#', parse_url($url, PHP_URL_PATH) ?? '', $matches)) {
+            $type = $matches[1];
+            $relativePath = urldecode($matches[2]);
+            
+            // Déterminer le chemin complet selon le type
+            $basePath = '';
+            switch ($type) {
+                case 'email-images':
+                    $basePath = 'email-images';
+                    break;
+                case 'thumbnails':
+                    $basePath = 'courses/thumbnails';
+                    break;
+                case 'previews':
+                    $basePath = 'courses/previews';
+                    break;
+                case 'lessons':
+                    $basePath = 'courses/lessons';
+                    break;
+                case 'downloads':
+                    $basePath = 'courses/downloads';
+                    break;
+                case 'avatars':
+                    $basePath = 'avatars';
+                    break;
+                case 'banners':
+                    $basePath = 'banners';
+                    break;
+                case 'media':
+                    $basePath = 'media';
+                    break;
+                default:
+                    return null;
+            }
+            
+            // Sécuriser le chemin pour éviter les traversées de répertoire
+            $relativePath = str_replace('..', '', $relativePath);
+            $relativePath = ltrim($relativePath, '/');
+            
+            return $basePath . '/' . $relativePath;
+        }
+        
+        // Si l'URL est déjà un chemin relatif (cas où l'image est déjà dans storage)
+        if (strpos($url, 'email-images/') !== false || strpos($url, 'courses/') !== false) {
+            $cleanPath = ltrim($url, '/');
+            // Vérifier que c'est un chemin valide
+            if (preg_match('#^(email-images|courses|avatars|banners|media)/#', $cleanPath)) {
+                return $cleanPath;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * Get the attachments for the message.
      *
      * @return array<int, \Illuminate\Mail\Mailables\Attachment>
@@ -178,6 +310,7 @@ class CustomAnnouncementMail extends Mailable
     {
         $attachments = [];
 
+        // Ajouter les pièces jointes normales
         foreach ($this->attachments as $attachmentData) {
             try {
                 // Gérer le cas où $attachmentData est un tableau (retour de FileUploadService)
@@ -199,6 +332,35 @@ class CustomAnnouncementMail extends Mailable
             } catch (\Exception $e) {
                 // Logger l'erreur mais continuer avec les autres fichiers
                 \Log::error("Erreur lors de l'ajout de la pièce jointe: " . $e->getMessage());
+            }
+        }
+        
+        // Ajouter les images inline (CID)
+        foreach ($this->inlineImages as $cid => $imageData) {
+            try {
+                $disk = Storage::disk('local');
+                
+                if ($disk->exists($imageData['path'])) {
+                    // Lire les données binaires de l'image
+                    $imageDataContent = $disk->get($imageData['path']);
+                    $mimeType = $disk->mimeType($imageData['path']) ?: 'image/jpeg';
+                    
+                    // Obtenir l'extension du fichier pour le nom
+                    $extension = pathinfo($imageData['name'], PATHINFO_EXTENSION) ?: 'jpg';
+                    $cidFilename = $cid . '.' . $extension;
+                    
+                    // Créer une pièce jointe inline avec CID
+                    // Le CID sera généré automatiquement à partir du nom du fichier
+                    $attachments[] = Attachment::fromData(
+                        fn () => $imageDataContent,
+                        $cidFilename
+                    )
+                    ->withMime($mimeType);
+                } else {
+                    \Log::warning("Image inline introuvable: {$imageData['path']}");
+                }
+            } catch (\Exception $e) {
+                \Log::error("Erreur lors de l'ajout de l'image inline {$cid}: " . $e->getMessage());
             }
         }
 
