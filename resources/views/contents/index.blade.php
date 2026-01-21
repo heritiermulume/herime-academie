@@ -198,7 +198,7 @@
                                                         // Téléchargeable gratuit : bénéficiaires uniques
                                                         $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
                                                         $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
-                                                        $icon = 'fa-download';
+                                                        $icon = 'fa-users';
                                                     } else {
                                                         // Téléchargeable payant : nombre d'achats
                                                         $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);

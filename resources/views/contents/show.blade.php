@@ -3319,7 +3319,7 @@ button.mobile-price-slider__btn--download i,
                             // Téléchargeable gratuit : bénéficiaires uniques
                             $count = (int) ($course->stats['unique_downloads'] ?? $course->unique_downloads_count ?? 0);
                             $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
-                            $icon = 'fa-download';
+                            $icon = 'fa-users';
                         } else {
                             // Téléchargeable payant : nombre d'achats
                             $totalPurchases = 0;
@@ -3898,7 +3898,7 @@ button.mobile-price-slider__btn--download i,
                                                     // Téléchargeable gratuit : bénéficiaires uniques
                                                     $relatedCount = (int) ($relatedCourseStats['unique_downloads'] ?? $relatedCourse->unique_downloads_count ?? 0);
                                                     $relatedLabel = $relatedCount > 1 ? 'bénéficiaires' : 'bénéficiaire';
-                                                    $relatedIcon = 'fa-download';
+                                                    $relatedIcon = 'fa-users';
                                                 } else {
                                                     // Téléchargeable payant : nombre d'achats
                                                     $relatedCount = (int) ($relatedCourseStats['purchases_count'] ?? $relatedCourse->purchases_count ?? 0);
