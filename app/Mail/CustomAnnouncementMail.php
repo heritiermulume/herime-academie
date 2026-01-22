@@ -18,6 +18,7 @@ class CustomAnnouncementMail extends Mailable
     public $content;
     public $attachments;
     private $inlineImages = [];
+    private $disableImageEmbedding = false;
 
     /**
      * Create a new message instance.
@@ -27,6 +28,10 @@ class CustomAnnouncementMail extends Mailable
         $this->subject = $subject;
         $this->content = $content;
         $this->attachments = $attachments;
+        
+        // Option pour désactiver l'embedding d'images si configuré
+        // Utile si l'embedding cause des problèmes d'envoi
+        $this->disableImageEmbedding = config('mail.disable_image_embedding', false);
     }
 
     /**
@@ -46,7 +51,17 @@ class CustomAnnouncementMail extends Mailable
     public function content(): Content
     {
         // Traiter le contenu pour améliorer l'affichage et convertir les images
-        $processedContent = $this->processContent($this->content);
+        // Protéger contre les erreurs pour ne pas faire échouer l'envoi de l'email
+        try {
+            $processedContent = $this->processContent($this->content);
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors du traitement du contenu de l'email: " . $e->getMessage(), [
+                'error_class' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // En cas d'erreur, utiliser le contenu original sans traitement
+            $processedContent = $this->content;
+        }
         
         return new Content(
             view: 'emails.custom-announcement',
@@ -60,15 +75,37 @@ class CustomAnnouncementMail extends Mailable
     
     /**
      * Traite le contenu pour améliorer l'affichage :
-     * - Convertit les images en pièces jointes inline (CID)
+     * - Convertit les images en pièces jointes inline (CID) si possible
      * - Convertit les URLs en liens cliquables
      * - Réduit les espaces interlignes excessifs
      * - Améliore le formatage des boutons d'action
      */
     private function processContent(string $content): string
     {
-        // Étape 0 : Convertir les images en pièces jointes inline
-        $content = $this->convertImagesToInline($content);
+        // Si l'embedding d'images est désactivé, ne pas convertir les images
+        if ($this->disableImageEmbedding) {
+            \Log::debug("Conversion d'images en CID désactivée, conservation des URLs originales");
+        } else {
+            try {
+                // Étape 0 : Convertir les images en pièces jointes inline
+                $content = $this->convertImagesToInline($content);
+            } catch (\Exception $e) {
+                \Log::error("Erreur lors de la conversion des images inline, désactivation de l'embedding: " . $e->getMessage(), [
+                    'error_class' => get_class($e),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                // En cas d'erreur, désactiver l'embedding et continuer avec les URLs originales
+                $this->disableImageEmbedding = true;
+                $this->inlineImages = [];
+            } catch (\Throwable $e) {
+                \Log::error("Erreur fatale lors de la conversion des images inline, désactivation de l'embedding: " . $e->getMessage(), [
+                    'error_class' => get_class($e),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                $this->disableImageEmbedding = true;
+                $this->inlineImages = [];
+            }
+        }
         
         // Nettoyer d'abord le contenu HTML
         // Réduire les espaces multiples
@@ -190,46 +227,73 @@ class CustomAnnouncementMail extends Mailable
         $content = preg_replace_callback(
             '/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i',
             function($matches) use (&$imageIndex) {
-                $imageUrl = $matches[1];
-                
-                // Ignorer les images déjà en CID ou les images externes non gérées
-                if (strpos($imageUrl, 'cid:') === 0 || strpos($imageUrl, 'data:') === 0) {
+                try {
+                    $imageUrl = $matches[1];
+                    
+                    // Ignorer les images déjà en CID ou les images externes non gérées
+                    if (strpos($imageUrl, 'cid:') === 0 || strpos($imageUrl, 'data:') === 0) {
+                        return $matches[0];
+                    }
+                    
+                    // Extraire le chemin du fichier depuis l'URL
+                    $filePath = $this->extractFilePathFromUrl($imageUrl);
+                    
+                    if (!$filePath) {
+                        // Si on ne peut pas extraire le chemin, garder l'image telle quelle
+                        \Log::debug("Impossible d'extraire le chemin pour l'image: {$imageUrl}");
+                        return $matches[0];
+                    }
+                    
+                    // Vérifier que le fichier existe et est accessible
+                    $disk = Storage::disk('local');
+                    if (!$disk->exists($filePath)) {
+                        \Log::warning("Image introuvable pour email inline: {$filePath} (URL: {$imageUrl})");
+                        // Retirer l'image du contenu plutôt que de laisser une image cassée
+                        return '';
+                    }
+                    
+                    // Vérifier que le fichier n'est pas trop volumineux (limite de 10MB pour les emails)
+                    try {
+                        $fileSize = $disk->size($filePath);
+                        if ($fileSize > 10 * 1024 * 1024) { // 10MB
+                            \Log::warning("Image trop volumineuse pour email inline: {$filePath} ({$fileSize} bytes)");
+                            // Retirer l'image du contenu
+                            return '';
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning("Impossible de vérifier la taille de l'image: {$filePath} - " . $e->getMessage());
+                        return '';
+                    }
+                    
+                    // Générer un CID unique avec extension
+                    $imageIndex++;
+                    $extension = pathinfo(basename($filePath), PATHINFO_EXTENSION) ?: 'jpg';
+                    $cid = 'image' . $imageIndex;
+                    $cidFilename = $cid . '.' . $extension;
+                    
+                    // Stocker l'image pour l'attacher plus tard
+                    $this->inlineImages[$cidFilename] = [
+                        'path' => $filePath,
+                        'name' => basename($filePath)
+                    ];
+                    
+                    // Remplacer l'URL par le CID dans la balise img
+                    // Laravel génère le CID à partir du nom du fichier
+                    $imgTag = $matches[0];
+                    $imgTag = preg_replace('/src=["\'][^"\']+["\']/', 'src="cid:' . $cidFilename . '"', $imgTag);
+                    
+                    \Log::debug("Image convertie en CID: {$imageUrl} -> cid:{$cidFilename}");
+                    
+                    return $imgTag;
+                } catch (\Exception $e) {
+                    // En cas d'erreur lors du traitement d'une image, logger et garder l'image originale
+                    \Log::error("Erreur lors de la conversion d'une image en CID: " . $e->getMessage(), [
+                        'image_url' => $matches[1] ?? 'unknown',
+                        'error_class' => get_class($e)
+                    ]);
+                    // Retourner l'image originale pour ne pas perdre le contenu
                     return $matches[0];
                 }
-                
-                // Extraire le chemin du fichier depuis l'URL
-                $filePath = $this->extractFilePathFromUrl($imageUrl);
-                
-                if (!$filePath) {
-                    // Si on ne peut pas extraire le chemin, garder l'image telle quelle
-                    return $matches[0];
-                }
-                
-                // Vérifier que le fichier existe
-                $disk = Storage::disk('local');
-                if (!$disk->exists($filePath)) {
-                    \Log::warning("Image introuvable pour email inline: {$filePath}");
-                    return $matches[0];
-                }
-                
-                // Générer un CID unique avec extension
-                $imageIndex++;
-                $extension = pathinfo(basename($filePath), PATHINFO_EXTENSION) ?: 'jpg';
-                $cid = 'image' . $imageIndex;
-                $cidFilename = $cid . '.' . $extension;
-                
-                // Stocker l'image pour l'attacher plus tard
-                $this->inlineImages[$cidFilename] = [
-                    'path' => $filePath,
-                    'name' => basename($filePath)
-                ];
-                
-                // Remplacer l'URL par le CID dans la balise img
-                // Laravel génère le CID à partir du nom du fichier
-                $imgTag = $matches[0];
-                $imgTag = preg_replace('/src=["\'][^"\']+["\']/', 'src="cid:' . $cidFilename . '"', $imgTag);
-                
-                return $imgTag;
             },
             $content
         );
@@ -245,60 +309,96 @@ class CustomAnnouncementMail extends Mailable
      */
     private function extractFilePathFromUrl(string $url): ?string
     {
-        // Parser l'URL pour extraire le type et le chemin
-        // Format attendu: /files/{type}/{path}
-        if (preg_match('#/files/([^/]+)/(.+)$#', parse_url($url, PHP_URL_PATH) ?? '', $matches)) {
-            $type = $matches[1];
-            $relativePath = urldecode($matches[2]);
+        try {
+            // Nettoyer l'URL (enlever les paramètres de requête, fragments, etc.)
+            $parsedUrl = parse_url($url);
+            $path = $parsedUrl['path'] ?? $url;
             
-            // Déterminer le chemin complet selon le type
-            $basePath = '';
-            switch ($type) {
-                case 'email-images':
-                    $basePath = 'email-images';
-                    break;
-                case 'thumbnails':
-                    $basePath = 'courses/thumbnails';
-                    break;
-                case 'previews':
-                    $basePath = 'courses/previews';
-                    break;
-                case 'lessons':
-                    $basePath = 'courses/lessons';
-                    break;
-                case 'downloads':
-                    $basePath = 'courses/downloads';
-                    break;
-                case 'avatars':
-                    $basePath = 'avatars';
-                    break;
-                case 'banners':
-                    $basePath = 'banners';
-                    break;
-                case 'media':
-                    $basePath = 'media';
-                    break;
-                default:
+            // Parser l'URL pour extraire le type et le chemin
+            // Format attendu: /files/{type}/{path}
+            if (preg_match('#/files/([^/]+)/(.+)$#', $path, $matches)) {
+                $type = $matches[1];
+                $relativePath = urldecode($matches[2]);
+                
+                // Déterminer le chemin complet selon le type
+                $basePath = '';
+                switch ($type) {
+                    case 'email-images':
+                    case 'email_images':
+                        $basePath = 'email-images';
+                        break;
+                    case 'thumbnails':
+                        $basePath = 'courses/thumbnails';
+                        break;
+                    case 'previews':
+                        $basePath = 'courses/previews';
+                        break;
+                    case 'lessons':
+                        $basePath = 'courses/lessons';
+                        break;
+                    case 'downloads':
+                        $basePath = 'courses/downloads';
+                        break;
+                    case 'avatars':
+                        $basePath = 'avatars';
+                        break;
+                    case 'banners':
+                        $basePath = 'banners';
+                        break;
+                    case 'media':
+                        $basePath = 'media';
+                        break;
+                    case 'temporary':
+                        $basePath = 'tmp/uploads';
+                        break;
+                    default:
+                        \Log::debug("Type de fichier non reconnu dans l'URL: {$type} (URL: {$url})");
+                        return null;
+                }
+                
+                // Sécuriser le chemin pour éviter les traversées de répertoire
+                $relativePath = str_replace('..', '', $relativePath);
+                $relativePath = ltrim($relativePath, '/');
+                
+                // Nettoyer les caractères dangereux
+                $relativePath = preg_replace('#[^a-zA-Z0-9._/-]#', '', $relativePath);
+                
+                if (empty($relativePath)) {
+                    \Log::warning("Chemin relatif vide après nettoyage (URL: {$url})");
                     return null;
+                }
+                
+                $fullPath = $basePath . '/' . $relativePath;
+                \Log::debug("Chemin extrait de l'URL: {$url} -> {$fullPath}");
+                
+                return $fullPath;
             }
             
-            // Sécuriser le chemin pour éviter les traversées de répertoire
-            $relativePath = str_replace('..', '', $relativePath);
-            $relativePath = ltrim($relativePath, '/');
-            
-            return $basePath . '/' . $relativePath;
-        }
-        
-        // Si l'URL est déjà un chemin relatif (cas où l'image est déjà dans storage)
-        if (strpos($url, 'email-images/') !== false || strpos($url, 'courses/') !== false) {
-            $cleanPath = ltrim($url, '/');
+            // Si l'URL est déjà un chemin relatif (cas où l'image est déjà dans storage)
+            $cleanPath = ltrim($path, '/');
             // Vérifier que c'est un chemin valide
-            if (preg_match('#^(email-images|courses|avatars|banners|media)/#', $cleanPath)) {
+            if (preg_match('#^(email-images|email_images|courses|avatars|banners|media|tmp/uploads)/#', $cleanPath)) {
+                // Normaliser email_images en email-images
+                $cleanPath = str_replace('email_images/', 'email-images/', $cleanPath);
+                \Log::debug("Chemin direct détecté: {$url} -> {$cleanPath}");
                 return $cleanPath;
             }
+            
+            // Si l'URL contient le domaine de l'application, essayer d'extraire le chemin
+            $appUrl = config('app.url');
+            if ($appUrl && strpos($url, $appUrl) === 0) {
+                $relativePath = substr($url, strlen($appUrl));
+                return $this->extractFilePathFromUrl($relativePath);
+            }
+            
+            \Log::warning("Impossible d'extraire le chemin du fichier depuis l'URL: {$url}");
+            return null;
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de l'extraction du chemin depuis l'URL: {$url} - " . $e->getMessage(), [
+                'error_class' => get_class($e)
+            ]);
+            return null;
         }
-        
-        return null;
     }
 
     /**
@@ -307,17 +407,45 @@ class CustomAnnouncementMail extends Mailable
      */
     public function build()
     {
-        // Les images inline sont déjà dans $this->inlineImages avec leurs CID
-        // On les embed maintenant avec embedData() pour garantir que le CID correspond exactement
-        return $this->withSymfonyMessage(function ($message) {
-            foreach ($this->inlineImages as $cidFilename => $imageData) {
-                try {
-                    $disk = Storage::disk('local');
-                    
-                    if ($disk->exists($imageData['path'])) {
+        // Si l'embedding est désactivé ou s'il n'y a pas d'images, ne rien faire
+        if ($this->disableImageEmbedding || empty($this->inlineImages)) {
+            return $this;
+        }
+        
+        // Protéger complètement cette méthode pour qu'elle ne puisse jamais faire échouer l'envoi
+        try {
+            
+            // Les images inline sont déjà dans $this->inlineImages avec leurs CID
+            // On les embed maintenant avec embedData() pour garantir que le CID correspond exactement
+            return $this->withSymfonyMessage(function ($message) {
+                $embeddedCount = 0;
+                $failedCount = 0;
+                
+                foreach ($this->inlineImages as $cidFilename => $imageData) {
+                    try {
+                        $disk = Storage::disk('local');
+                        
+                        if (!$disk->exists($imageData['path'])) {
+                            \Log::warning("Image introuvable lors de l'embed: {$imageData['path']} (CID: {$cidFilename})");
+                            $failedCount++;
+                            continue;
+                        }
+                        
                         // Lire les données binaires de l'image
                         $imageDataContent = $disk->get($imageData['path']);
-                        $mimeType = $disk->mimeType($imageData['path']) ?: 'image/jpeg';
+                        
+                        if (empty($imageDataContent)) {
+                            \Log::warning("Image vide lors de l'embed: {$imageData['path']} (CID: {$cidFilename})");
+                            $failedCount++;
+                            continue;
+                        }
+                        
+                        // Vérifier le type MIME
+                        $mimeType = $disk->mimeType($imageData['path']);
+                        if (!$mimeType || !str_starts_with($mimeType, 'image/')) {
+                            $mimeType = 'image/jpeg'; // Fallback
+                            \Log::debug("Type MIME non détecté ou invalide pour {$imageData['path']}, utilisation de image/jpeg");
+                        }
                         
                         // Embed l'image avec embedData() - le CID sera exactement le nom du fichier
                         // Cela garantit que cid:image1.jpg dans le HTML correspond à embedData(..., 'image1.jpg')
@@ -326,12 +454,71 @@ class CustomAnnouncementMail extends Mailable
                             $cidFilename,
                             ['mime' => $mimeType]
                         );
+                        
+                        $embeddedCount++;
+                        \Log::debug("Image embedée avec succès: {$cidFilename} ({$imageData['path']})");
+                        
+                    } catch (\Symfony\Component\Mime\Exception\InvalidArgumentException $e) {
+                        \Log::error("Erreur d'argument lors de l'embed de l'image inline {$cidFilename}: " . $e->getMessage(), [
+                            'path' => $imageData['path'],
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                        $failedCount++;
+                    } catch (\Exception $e) {
+                        \Log::error("Erreur lors de l'embed de l'image inline {$cidFilename}: " . $e->getMessage(), [
+                            'path' => $imageData['path'],
+                            'error_class' => get_class($e),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                        $failedCount++;
+                    } catch (\Throwable $e) {
+                        // Capturer même les erreurs fatales
+                        \Log::error("Erreur fatale lors de l'embed de l'image inline {$cidFilename}: " . $e->getMessage(), [
+                            'path' => $imageData['path'],
+                            'error_class' => get_class($e),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                        $failedCount++;
                     }
-                } catch (\Exception $e) {
-                    \Log::error("Erreur lors de l'embed de l'image inline {$cidFilename}: " . $e->getMessage());
                 }
-            }
-        });
+                
+                if ($embeddedCount > 0 || $failedCount > 0) {
+                    \Log::info("Images embedées dans l'email: {$embeddedCount} réussie(s), {$failedCount} échouée(s)");
+                }
+                
+                // Ne pas lancer d'exception même si certaines images ont échoué
+                // L'email doit être envoyé même sans les images
+            });
+        } catch (\Exception $e) {
+            // Si build() échoue complètement, logger l'erreur mais ne pas faire échouer l'envoi
+            \Log::error("Erreur dans build() lors de l'envoi d'email avec images: " . $e->getMessage(), [
+                'error_class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+                'inline_images_count' => count($this->inlineImages)
+            ]);
+            
+            // Désactiver l'embedding pour éviter les problèmes futurs
+            $this->disableImageEmbedding = true;
+            $this->inlineImages = [];
+            
+            // Retourner $this pour permettre à l'email de continuer sans les images embedées
+            // Note: Le contenu HTML contient déjà les références CID, mais elles ne seront pas embedées
+            // Les clients email ne pourront pas afficher ces images, mais l'email sera envoyé
+            return $this;
+        } catch (\Throwable $e) {
+            // Capturer même les erreurs fatales
+            \Log::error("Erreur fatale dans build() lors de l'envoi d'email avec images: " . $e->getMessage(), [
+                'error_class' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+                'inline_images_count' => count($this->inlineImages)
+            ]);
+            
+            // Désactiver l'embedding pour éviter les problèmes futurs
+            $this->disableImageEmbedding = true;
+            $this->inlineImages = [];
+            
+            return $this;
+        }
     }
 
     /**

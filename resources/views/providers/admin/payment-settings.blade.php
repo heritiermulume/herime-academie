@@ -1,7 +1,7 @@
 @extends('providers.admin.layout')
 
 @section('admin-title', 'Configuration de paiement')
-@section('admin-subtitle', 'Configurez votre moyen de règlement pour recevoir vos paiements automatiquement via Moneroo.')
+@section('admin-subtitle', 'Configurez votre moyen de règlement pour recevoir vos paiements automatiquement.')
 
 @section('admin-content')
     <form action="{{ route('provider.payment-settings.update') }}" method="POST" enctype="multipart/form-data">
@@ -9,8 +9,8 @@
         @method('POST')
 
         <div class="admin-form-card">
-            <div class="admin-form-grid">
-                <div class="mt-4 pt-3 border-top">
+            <div class="admin-form-wrapper">
+                <div class="mt-4 pt-3 border-top payment-settings-content">
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" id="is_external_provider" name="is_external_provider" value="1" 
                                {{ old('is_external_provider', $provider->is_external_provider) ? 'checked' : '' }}
@@ -25,62 +25,131 @@
                     
                     <div id="moneroo-fields" style="display: {{ old('is_external_provider', $provider->is_external_provider) ? 'block' : 'none' }};">
                         @php
-                            $countries = $monerooData['countries'] ?? ($pawapayData['countries'] ?? []);
-                            $providers = $monerooData['providers'] ?? ($pawapayData['providers'] ?? []);
-                            $selectedCountry = old('pawapay_country', $provider->pawapay_country);
-                            $selectedProvider = old('pawapay_provider', $provider->pawapay_provider);
-                            $selectedCurrency = old('pawapay_currency', $provider->pawapay_currency ?? '');
+                            $countries = $monerooData['countries'] ?? [];
+                            $providers = $monerooData['providers'] ?? [];
+                            $methods = $monerooData['methods'] ?? [];
+                            $selectedCountry = old('moneroo_country', $provider->moneroo_country);
+                            $selectedProvider = old('moneroo_provider', $provider->moneroo_provider);
+                            $selectedCurrency = old('moneroo_currency', $provider->moneroo_currency ?? '');
+                            $selectedPhone = old('moneroo_phone', $provider->moneroo_phone);
+                            
+                            // Déterminer les devises disponibles selon la méthode sélectionnée
                             $availableCurrencies = [];
+                            $selectedMethod = null;
                             if ($selectedProvider) {
-                                foreach ($providers as $provider) {
-                                    if ($provider['code'] == $selectedProvider && (empty($selectedCountry) || $provider['country'] == $selectedCountry)) {
-                                        $availableCurrencies = !empty($provider['currencies']) && is_array($provider['currencies']) 
-                                            ? $provider['currencies'] 
-                                            : (!empty($provider['currency']) ? [$provider['currency']] : []);
+                                foreach ($providers as $p) {
+                                    if ($p['code'] == $selectedProvider && (empty($selectedCountry) || $p['country'] == $selectedCountry)) {
+                                        $availableCurrencies = !empty($p['currencies']) && is_array($p['currencies']) 
+                                            ? $p['currencies'] 
+                                            : (!empty($p['currency']) ? [$p['currency']] : []);
                                         if (empty($selectedCurrency) && !empty($availableCurrencies)) {
                                             $selectedCurrency = $availableCurrencies[0];
                                         }
+                                        $selectedMethod = $p;
                                         break;
                                     }
                                 }
+                                // Récupérer aussi depuis methods si disponible
+                                if (isset($methods[$selectedProvider])) {
+                                    $selectedMethod = $methods[$selectedProvider];
+                                    if (empty($availableCurrencies) && !empty($selectedMethod['currency'])) {
+                                        $availableCurrencies = [$selectedMethod['currency']];
+                                        if (empty($selectedCurrency)) {
+                                            $selectedCurrency = $selectedMethod['currency'];
+                                        }
+                                    }
+                                }
                             }
+                            
+                            // Déterminer les champs requis pour la méthode sélectionnée
+                            // Selon la documentation: https://docs.moneroo.io/payouts/available-methods#required-fields
+                            $requiredFields = $selectedMethod['required_fields'] ?? ['msisdn'];
+                            $needsMsisdn = in_array('msisdn', $requiredFields);
+                            $needsAccountNumber = in_array('account_number', $requiredFields);
+                            
+                            // Vérifier si on est en mode sandbox
+                            $isSandbox = config('services.moneroo.environment', 'production') === 'sandbox';
                         @endphp
                         
                         @if(empty($countries) && empty($providers))
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                Impossible de charger les données Moneroo. Veuillez vérifier la configuration de l'API.
+                            <div class="alert alert-danger">
+                                <h6 class="alert-heading mb-2">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Impossible de charger les méthodes de paiement
+                                </h6>
+                                <p class="mb-0">
+                                    Les méthodes de paiement ne peuvent pas être chargées actuellement. 
+                                    Veuillez contacter l'administrateur pour résoudre ce problème.
+                                </p>
                             </div>
+                        @else
+                            <div class="alert alert-info mb-4">
+                                <h6 class="alert-heading mb-2">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Informations importantes
+                                </h6>
+                                <ul class="mb-0 small">
+                                    <li>Les paiements sont traités automatiquement après chaque vente de contenu.</li>
+                                    <li>Le numéro de téléphone doit être en <strong>format international complet</strong> (avec indicatif pays).</li>
+                                    <li>Exemple pour le Bénin: <strong>22951345020</strong> (229 = indicatif, 51345020 = numéro).</li>
+                                    <li>Les paiements peuvent prendre quelques minutes à quelques heures selon la méthode choisie.</li>
+                                    <li>Vous recevrez une notification par email lorsque le paiement sera traité.</li>
+                                </ul>
+                            </div>
+                            
+                            @if($isSandbox)
+                                <div class="alert alert-warning mb-4">
+                                    <h6 class="alert-heading mb-2">
+                                        <i class="fas fa-flask me-2"></i>
+                                        Mode Sandbox - Numéros de test disponibles
+                                    </h6>
+                                    <p class="mb-2 small">
+                                        Pour tester les payouts en mode sandbox, utilisez ces numéros de test (Moneroo Test Payout Gateway):
+                                    </p>
+                                    <ul class="mb-0 small">
+                                        <li><strong>4149518161</strong> - ✅ Transaction réussie</li>
+                                        <li><strong>4149518162</strong> - ❌ Transaction échouée</li>
+                                        <li><strong>4149518163</strong> - ⏳ Transaction en attente</li>
+                                    </ul>
+                                    <p class="mb-0 mt-2 small text-muted">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        Ces numéros fonctionnent uniquement avec la méthode de test en mode sandbox.
+                                    </p>
+                                </div>
+                            @endif
                         @endif
                         
                         <div class="admin-form-grid">
                             <div>
-                                <label for="pawapay_country" class="form-label fw-bold">Pays</label>
-                                <select class="form-select @error('pawapay_country') is-invalid @enderror" 
-                                        id="pawapay_country" 
-                                        name="pawapay_country"
+                                <label for="moneroo_country" class="form-label fw-bold">Pays</label>
+                                <select class="form-select @error('moneroo_country') is-invalid @enderror" 
+                                        id="moneroo_country" 
+                                        name="moneroo_country"
                                         onchange="updateProviders()">
                                     <option value="">Sélectionner un pays</option>
                                     @foreach($countries as $country)
-                                        <option value="{{ $country['code'] }}" 
-                                                {{ $selectedCountry == $country['code'] ? 'selected' : '' }}>
-                                            {{ $country['name'] }} ({{ $country['code'] }})
-                                        </option>
+                                    <option value="{{ $country['code'] }}" 
+                                            {{ $selectedCountry == $country['code'] ? 'selected' : '' }}>
+                                        {{ $country['name'] }}
+                                    </option>
                                     @endforeach
                                 </select>
-                                @error('pawapay_country')
+                                @error('moneroo_country')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                <small class="text-muted">Sélectionnez votre pays</small>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Sélectionnez votre pays pour filtrer les méthodes de payout disponibles
+                                </small>
                             </div>
                             <div>
-                                <label for="pawapay_provider" class="form-label fw-bold">Fournisseur</label>
-                                <select class="form-select @error('pawapay_provider') is-invalid @enderror" 
-                                        id="pawapay_provider" 
-                                        name="pawapay_provider"
+                                <label for="moneroo_provider" class="form-label fw-bold">Méthode de payout</label>
+                                <select class="form-select @error('moneroo_provider') is-invalid @enderror" 
+                                        id="moneroo_provider" 
+                                        name="moneroo_provider"
                                         onchange="updatePhoneField(); updateCurrencyField();"
                                         disabled>
-                                    <option value="">Sélectionner un fournisseur</option>
+                                    <option value="">Sélectionner une méthode</option>
                                     @foreach($providers as $provider)
                                         @php
                                             $providerCurrencies = !empty($provider['currencies']) && is_array($provider['currencies']) 
@@ -92,21 +161,24 @@
                                                 data-currencies="{{ json_encode($providerCurrencies) }}"
                                                 style="display: {{ empty($selectedCountry) || $provider['country'] == $selectedCountry ? 'block' : 'none' }};"
                                                 {{ $selectedProvider == $provider['code'] && (empty($selectedCountry) || $provider['country'] == $selectedCountry) ? 'selected' : '' }}>
-                                            {{ $provider['name'] }} ({{ $provider['code'] }})
+                                            {{ $provider['name'] }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('pawapay_provider')
+                                @error('moneroo_provider')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                <small class="text-muted">Sélectionnez votre fournisseur mobile money</small>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Sélectionnez votre méthode de payout (ex: M-Pesa, Orange Money, etc.)
+                                </small>
                             </div>
 
                             <div>
-                                <label for="pawapay_currency" class="form-label fw-bold">Devise</label>
-                                <select class="form-select @error('pawapay_currency') is-invalid @enderror" 
-                                        id="pawapay_currency" 
-                                        name="pawapay_currency"
+                                <label for="moneroo_currency" class="form-label fw-bold">Devise</label>
+                                <select class="form-select @error('moneroo_currency') is-invalid @enderror" 
+                                        id="moneroo_currency" 
+                                        name="moneroo_currency"
                                         data-selected-currency="{{ $selectedCurrency }}"
                                         onchange="updateFieldsState()"
                                         {{ empty($availableCurrencies) ? 'disabled' : '' }}>
@@ -118,31 +190,100 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('pawapay_currency')
+                                @error('moneroo_currency')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                <small class="text-muted">Sélectionnez la devise de l'opérateur</small>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Devise supportée par la méthode sélectionnée (ex: USD, CDF)
+                                </small>
                             </div>
 
                             <div>
-                                <label for="pawapay_phone" class="form-label fw-bold">Numéro de téléphone mobile money</label>
-                                <input type="text" 
-                                       class="form-control @error('pawapay_phone') is-invalid @enderror" 
-                                       id="pawapay_phone" 
-                                       name="pawapay_phone" 
-                                       value="{{ old('pawapay_phone', $provider->pawapay_phone) }}"
-                                       placeholder="820000000"
+                                <label for="moneroo_phone" class="form-label fw-bold">
+                                    @if($needsAccountNumber)
+                                        Numéro de compte
+                                    @else
+                                        Numéro de téléphone mobile money
+                                    @endif
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <input type="tel" 
+                                       class="form-control @error('moneroo_phone') is-invalid @enderror" 
+                                       id="moneroo_phone" 
+                                       name="moneroo_phone" 
+                                       value="{{ $selectedPhone }}"
+                                       placeholder="{{ $needsAccountNumber ? '1XXXXXXXXX' : '243824449218' }}"
+                                       pattern="[0-9]+"
+                                       inputmode="numeric"
+                                       maxlength="20"
                                        disabled>
-                                @error('pawapay_phone')
+                                @error('moneroo_phone')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                <small class="text-muted">Numéro sans indicatif pays (ex: 820000000 pour la RDC)</small>
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    @if($needsAccountNumber)
+                                        Entrez votre numéro de compte en format international (ex: 14149518161 pour le test).
+                                    @else
+                                        Entrez votre numéro de téléphone en format international complet avec l'indicatif pays.
+                                        <br>
+                                        Exemple pour la RDC: <strong>243824449218</strong> (243 = indicatif, 824449218 = numéro).
+                                    @endif
+                                    @if($isSandbox && $selectedProvider === 'moneroo_payout_demo')
+                                        <br>
+                                        <span class="text-warning">
+                                            <i class="fas fa-flask me-1"></i>
+                                            Mode test: Utilisez 4149518161 (succès), 4149518162 (échec), ou 4149518163 (en attente)
+                                        </span>
+                                    @endif
+                                </small>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        @if($selectedProvider && $selectedPhone && $selectedCurrency)
+            <div class="admin-form-card mt-4">
+                <h6 class="fw-bold mb-3">
+                    <i class="fas fa-check-circle text-success me-2"></i>
+                    Configuration actuelle
+                </h6>
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <div class="mb-2">
+                            <strong class="d-block mb-1">Méthode:</strong> 
+                            <span class="text-muted">{{ $selectedMethod['name'] ?? $selectedProvider }}</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="mb-2">
+                            <strong class="d-block mb-1">Pays:</strong> 
+                            <span class="text-muted">
+                                @foreach($countries as $c)
+                                    @if($c['code'] == $selectedCountry){{ $c['name'] }}@endif
+                                @endforeach
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="mb-2">
+                            <strong class="d-block mb-1">Devise:</strong> 
+                            <span class="text-muted">{{ $selectedCurrency }}</span>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="mb-2">
+                            <strong class="d-block mb-1">{{ $needsAccountNumber ? 'Numéro de compte' : 'Numéro de téléphone' }}:</strong> 
+                            <span class="text-muted">{{ $selectedPhone }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        @endif
 
         <div class="admin-form-actions">
             <button type="submit" class="admin-btn primary">
@@ -177,8 +318,8 @@ let allProviderOptions = [];
 
 // Mettre à jour les providers disponibles selon le pays sélectionné
 function updateProviders() {
-    const countrySelect = document.getElementById('pawapay_country');
-    const providerSelect = document.getElementById('pawapay_provider');
+    const countrySelect = document.getElementById('moneroo_country');
+    const providerSelect = document.getElementById('moneroo_provider');
     
     if (!countrySelect || !providerSelect) return;
     
@@ -241,7 +382,7 @@ function updateProviders() {
     }
     
     // Effacer la devise sélectionnée quand le pays change
-    const currencySelect = document.getElementById('pawapay_currency');
+    const currencySelect = document.getElementById('moneroo_currency');
     if (currencySelect) {
         currencySelect.value = '';
         currencySelect.innerHTML = '<option value="">Sélectionner une devise</option>';
@@ -261,26 +402,39 @@ function updateProviders() {
 // Mettre à jour l'état du champ numéro selon le provider sélectionné
 function updatePhoneField() {
     updateCurrencyField();
-    // updateFieldsState() est déjà appelée dans updateCurrencyField() pour gérer le phone
-    // On appelle juste updateFieldsState() pour mettre à jour le phone si nécessaire
-    const phoneInput = document.getElementById('pawapay_phone');
+    const phoneInput = document.getElementById('moneroo_phone');
     if (phoneInput) {
-        const countrySelect = document.getElementById('pawapay_country');
-        const providerSelect = document.getElementById('pawapay_provider');
-        const currencySelect = document.getElementById('pawapay_currency');
+        const countrySelect = document.getElementById('moneroo_country');
+        const providerSelect = document.getElementById('moneroo_provider');
+        const currencySelect = document.getElementById('moneroo_currency');
         const hasCountry = countrySelect?.value !== '';
         const hasProvider = providerSelect?.value !== '';
         const hasCurrency = currencySelect?.value !== '';
-        phoneInput.disabled = !hasCountry || !hasProvider || !hasCurrency;
-        phoneInput.classList.toggle('bg-light', phoneInput.disabled);
-        phoneInput.style.cursor = phoneInput.disabled ? 'not-allowed' : 'text';
+        const isEnabled = hasCountry && hasProvider && hasCurrency;
+        
+        phoneInput.disabled = !isEnabled;
+        phoneInput.classList.toggle('bg-light', !isEnabled);
+        phoneInput.style.cursor = isEnabled ? 'text' : 'not-allowed';
+        
+        // Mettre à jour le placeholder selon le pays sélectionné
+        if (isEnabled && hasCountry) {
+            const countryPrefixes = {
+                'BJ': '229', 'CI': '225', 'SN': '221', 'TG': '228', 'CM': '237',
+                'KE': '254', 'GH': '233', 'NG': '234', 'UG': '256', 'RW': '250',
+                'TZ': '255', 'ZM': '260', 'MW': '265', 'ML': '223', 'CD': '243', 'US': '1'
+            };
+            const prefix = countryPrefixes[countrySelect.value] || '';
+            phoneInput.placeholder = prefix ? prefix + 'XXXXXXXXX' : 'Format international requis';
+        } else {
+            phoneInput.placeholder = '22951345020';
+        }
     }
 }
 
 // Mettre à jour le champ devise selon le provider sélectionné
 function updateCurrencyField() {
-    const providerSelect = document.getElementById('pawapay_provider');
-    const currencySelect = document.getElementById('pawapay_currency');
+    const providerSelect = document.getElementById('moneroo_provider');
+    const currencySelect = document.getElementById('moneroo_currency');
     
     if (!providerSelect || !currencySelect) return;
     
@@ -361,9 +515,9 @@ function updateCurrencyField() {
     
     // Ne pas appeler updateFieldsState() ici car elle pourrait désactiver le champ devise
     // On met à jour seulement le champ phone si nécessaire
-    const phoneInput = document.getElementById('pawapay_phone');
+    const phoneInput = document.getElementById('moneroo_phone');
     if (phoneInput) {
-        const hasCountry = document.getElementById('pawapay_country')?.value !== '';
+        const hasCountry = document.getElementById('moneroo_country')?.value !== '';
         const hasProvider = providerSelect.value !== '';
         const hasCurrency = currencySelect.value !== '';
         phoneInput.disabled = !hasCountry || !hasProvider || !hasCurrency;
@@ -374,10 +528,10 @@ function updateCurrencyField() {
 
 // Mettre à jour l'état de tous les champs selon les sélections
 function updateFieldsState() {
-    const countrySelect = document.getElementById('pawapay_country');
-    const providerSelect = document.getElementById('pawapay_provider');
-    const currencySelect = document.getElementById('pawapay_currency');
-    const phoneInput = document.getElementById('pawapay_phone');
+    const countrySelect = document.getElementById('moneroo_country');
+    const providerSelect = document.getElementById('moneroo_provider');
+    const currencySelect = document.getElementById('moneroo_currency');
+    const phoneInput = document.getElementById('moneroo_phone');
     
     if (!countrySelect || !providerSelect || !currencySelect || !phoneInput) return;
     
@@ -417,7 +571,7 @@ function updateFieldsState() {
 // Initialiser au chargement
 document.addEventListener('DOMContentLoaded', function() {
     // Stocker toutes les options de providers au chargement initial
-    const providerSelect = document.getElementById('pawapay_provider');
+    const providerSelect = document.getElementById('moneroo_provider');
     if (providerSelect) {
         allProviderOptions = Array.from(providerSelect.querySelectorAll('option[data-country]')).map(option => {
             let currencies = [];
@@ -445,10 +599,10 @@ document.addEventListener('DOMContentLoaded', function() {
     updateProviders();
     
     // Initialiser le champ devise (après updateProviders pour que le provider soit chargé)
-    // Attendre un peu pour s'assurer que tout est initialisé, surtout si un provider est déjà sélectionné
-    setTimeout(function() {
-        const providerSelect = document.getElementById('pawapay_provider');
-        const currencySelect = document.getElementById('pawapay_currency');
+        // Attendre un peu pour s'assurer que tout est initialisé, surtout si un provider est déjà sélectionné
+        setTimeout(function() {
+            const providerSelect = document.getElementById('moneroo_provider');
+            const currencySelect = document.getElementById('moneroo_currency');
         
         // Si un provider est déjà sélectionné, charger les devises
         if (providerSelect && providerSelect.value && currencySelect) {
@@ -457,26 +611,161 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Initialiser l'état des champs APRÈS updateCurrencyField pour ne pas désactiver le champ devise
         updateFieldsState();
+        
+        // Ajouter la validation du numéro de téléphone en format international
+        const phoneInput = document.getElementById('moneroo_phone');
+        if (phoneInput) {
+            phoneInput.addEventListener('blur', function() {
+                validatePhoneNumber(this);
+            });
+            
+            phoneInput.addEventListener('input', function() {
+                // Retirer les caractères non numériques
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+        }
     }, 150);
+    
+    // Valider le format du numéro de téléphone
+    function validatePhoneNumber(input) {
+        const value = input.value.trim();
+        const countrySelect = document.getElementById('moneroo_country');
+        const country = countrySelect?.value;
+        
+        if (!value || !country) {
+            return;
+        }
+        
+        // Vérifier que le numéro commence par l'indicatif pays
+        const countryPrefixes = {
+            'BJ': '229', 'CI': '225', 'SN': '221', 'TG': '228', 'CM': '237',
+            'KE': '254', 'GH': '233', 'NG': '234', 'UG': '256', 'RW': '250',
+            'TZ': '255', 'ZM': '260', 'MW': '265', 'ML': '223', 'CD': '243', 'US': '1'
+        };
+        
+        const prefix = countryPrefixes[country];
+        if (prefix && !value.startsWith(prefix)) {
+            // Afficher un avertissement mais ne pas bloquer
+            const helpText = input.parentElement.querySelector('small');
+            if (helpText && !helpText.textContent.includes('⚠')) {
+                const originalText = helpText.textContent;
+                helpText.innerHTML = '<i class="fas fa-exclamation-triangle text-warning me-1"></i>' +
+                    'Le numéro devrait commencer par ' + prefix + ' pour le format international.';
+                helpText.classList.add('text-warning');
+                
+                setTimeout(() => {
+                    helpText.textContent = originalText;
+                    helpText.classList.remove('text-warning');
+                }, 5000);
+            }
+        }
+    }
 });
 </script>
 @endpush
 
 @push('styles')
 <style>
-/* Réduire l'espacement en haut sur mobile/tablette */
-@media (max-width: 1024px) {
+/* ============================================
+   RESPONSIVE DESIGN - PAYMENT SETTINGS
+   ============================================ */
+
+/* Desktop (≥1024px) - Layout par défaut */
+.admin-form-card {
+    padding: 2rem;
+}
+
+.admin-form-wrapper {
+    width: 100%;
+}
+
+.payment-settings-content {
+    width: 100%;
+}
+
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+/* Tablette (768px - 1023px) */
+@media (max-width: 1023.98px) {
+    .provider-admin-shell {
+        padding-top: calc(var(--site-navbar-height, 64px) + 0.5rem) !important;
+    }
+    
+    .admin-main {
+        padding-top: 0.5rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+    
+    .admin-header {
+        margin-bottom: 1rem !important;
+    }
+    
+    .admin-content {
+        gap: 1.25rem !important;
+        margin-top: 0 !important;
+    }
+    
+    .admin-form-card {
+        margin-top: 0 !important;
+        padding: 1.5rem !important;
+    }
+    
+    .admin-form-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+    
+    /* Alertes sur tablette */
+    .alert {
+        padding: 1rem !important;
+        margin-bottom: 1.25rem !important;
+    }
+    
+    .alert-heading {
+        font-size: 1rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .alert ul {
+        padding-left: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .alert ul li {
+        margin-bottom: 0.375rem;
+        line-height: 1.5;
+    }
+}
+
+/* Mobile (≤767px) */
+@media (max-width: 767.98px) {
     .provider-admin-shell {
         padding-top: calc(var(--site-navbar-height, 64px) + 0.25rem) !important;
     }
     
     .admin-main {
         padding-top: 0.25rem !important;
-        padding-bottom: 1.5rem !important;
+        padding-bottom: 1rem !important;
     }
     
     .admin-header {
-        margin-bottom: 0.5rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .admin-header__title {
+        font-size: 1.5rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    
+    .admin-header__subtitle {
+        font-size: 0.9rem !important;
+        margin-top: 0.25rem !important;
+        margin-bottom: 0 !important;
+        line-height: 1.4;
     }
     
     .admin-content {
@@ -486,57 +775,132 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .admin-form-card {
         margin-top: 0 !important;
-    }
-}
-
-@media (max-width: 640px) {
-    .provider-admin-shell {
-        padding-top: calc(var(--site-navbar-height, 64px) + 0.1rem) !important;
-    }
-    
-    .admin-main {
-        padding-top: 0.1rem !important;
-        padding-bottom: 1rem !important;
-    }
-    
-    .admin-header {
-        margin-bottom: 0.25rem !important;
-    }
-    
-    .admin-header__title {
-        font-size: 1.5rem !important;
-        margin-bottom: 0.25rem !important;
-    }
-    
-    .admin-header__subtitle {
-        margin-top: 0.25rem !important;
-        margin-bottom: 0 !important;
-    }
-    
-    .admin-content {
-        gap: 0.75rem !important;
-        margin-top: 0 !important;
-    }
-    
-    .admin-form-card {
-        margin-top: 0 !important;
         padding: 1.25rem !important;
+        border-radius: 0.75rem !important;
     }
-}
-
-/* Styles pour les boutons d'action sur mobile */
-@media (max-width: 767.98px) {
+    
+    /* Grille de formulaire - 1 colonne sur mobile */
+    .admin-form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+    
+    /* Labels et champs de formulaire */
+    .form-label {
+        font-size: 0.95rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .form-select,
+    .form-control {
+        font-size: 1rem !important;
+        padding: 0.625rem 0.75rem !important;
+        min-height: 44px; /* Taille tactile optimale */
+    }
+    
+    /* Alertes sur mobile */
+    .alert {
+        padding: 0.875rem !important;
+        margin-bottom: 1rem !important;
+        border-radius: 0.5rem !important;
+    }
+    
+    .alert-heading {
+        font-size: 0.95rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .alert ul {
+        padding-left: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .alert ul li {
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+        line-height: 1.5;
+    }
+    
+    .alert small {
+        font-size: 0.8rem !important;
+        line-height: 1.4;
+    }
+    
+    /* Messages d'aide */
+    .form-text,
+    small.text-muted {
+        font-size: 0.8rem !important;
+        line-height: 1.5 !important;
+        margin-top: 0.375rem !important;
+        display: block;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Sauts de ligne dans les messages d'aide */
+    small.text-muted br {
+        display: block;
+        content: "";
+        margin-top: 0.25rem;
+    }
+    
+    /* Switch checkbox */
+    .form-check {
+        padding-left: 2.5rem;
+    }
+    
+    .form-check-input {
+        width: 2.5rem;
+        height: 1.5rem;
+        margin-left: -2.5rem;
+    }
+    
+    .form-check-label {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+    
+    /* Section configuration actuelle */
+    .admin-form-card .row.g-3 {
+        --bs-gutter-x: 0.75rem;
+        --bs-gutter-y: 0.75rem;
+    }
+    
+    .admin-form-card .row.g-3 > div {
+        margin-bottom: 0.5rem;
+    }
+    
+    .admin-form-card .row.g-3 > div > div {
+        padding: 0.5rem 0;
+    }
+    
+    .admin-form-card strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
+        color: var(--bs-dark, #212529);
+    }
+    
+    .admin-form-card .text-muted {
+        word-break: break-word;
+    }
+    
+    /* Boutons d'action */
     .admin-form-actions {
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
         width: 100%;
+        margin-top: 1.5rem;
     }
     
     .admin-form-actions .admin-btn {
         width: 100%;
         margin: 0;
         justify-content: center;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        min-height: 44px; /* Taille tactile optimale */
     }
     
     .admin-form-actions .admin-btn i {
@@ -544,16 +908,176 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
-/* Styles pour les boutons d'action sur desktop */
+/* Petits mobiles (≤575px) */
+@media (max-width: 575.98px) {
+    .admin-form-card {
+        padding: 1rem !important;
+        border-radius: 0.5rem !important;
+    }
+    
+    .admin-header__title {
+        font-size: 1.35rem !important;
+    }
+    
+    .admin-header__subtitle {
+        font-size: 0.85rem !important;
+    }
+    
+    .form-label {
+        font-size: 0.9rem !important;
+    }
+    
+    .form-select,
+    .form-control {
+        font-size: 0.95rem !important;
+        padding: 0.5rem 0.625rem !important;
+    }
+    
+    .alert {
+        padding: 0.75rem !important;
+        border-radius: 0.5rem !important;
+    }
+    
+    .alert-heading {
+        font-size: 0.9rem !important;
+    }
+    
+    .alert ul {
+        padding-left: 1rem;
+    }
+    
+    .alert ul li {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .admin-form-actions .admin-btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.95rem;
+    }
+    
+    /* Messages d'aide encore plus compacts */
+    small.text-muted {
+        font-size: 0.75rem !important;
+    }
+    
+    /* Section configuration actuelle */
+    .admin-form-card .row.g-3 > div {
+        margin-bottom: 0.75rem;
+    }
+    
+    .admin-form-card strong {
+        font-size: 0.85rem;
+    }
+}
+
+/* Desktop (≥768px) - Boutons d'action */
 @media (min-width: 768px) {
     .admin-form-actions {
         display: flex;
         gap: 1rem;
         align-items: center;
+        flex-wrap: wrap;
     }
     
     .admin-form-actions .admin-btn {
         flex: 0 0 auto;
+    }
+}
+
+/* Amélioration de l'espacement pour les sections */
+@media (min-width: 1024px) {
+    .admin-form-card {
+        padding: 2.5rem;
+    }
+    
+    .admin-form-grid {
+        gap: 2rem;
+    }
+    
+    /* Section configuration actuelle sur desktop */
+    .admin-form-card .row.g-3 > div > div {
+        padding: 0.75rem 0;
+    }
+}
+
+/* Tablette - Amélioration de la grille */
+@media (min-width: 768px) and (max-width: 1023.98px) {
+    .admin-form-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    
+    /* Section configuration actuelle sur tablette */
+    .admin-form-card .row.g-3 > div {
+        margin-bottom: 0.75rem;
+    }
+}
+
+/* Amélioration de la lisibilité sur tous les écrans */
+.form-select:focus,
+.form-control:focus {
+    border-color: var(--bs-primary, #0d6efd);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    outline: none;
+}
+
+/* Amélioration de l'affichage des erreurs */
+.invalid-feedback {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+@media (max-width: 767.98px) {
+    .invalid-feedback {
+        font-size: 0.8rem;
+    }
+}
+
+/* Amélioration du switch sur mobile */
+@media (max-width: 767.98px) {
+    .form-check-input {
+        cursor: pointer;
+    }
+    
+    .form-check-label {
+        cursor: pointer;
+        user-select: none;
+    }
+}
+
+/* Amélioration de l'espacement vertical sur mobile */
+@media (max-width: 767.98px) {
+    .payment-settings-content {
+        margin-top: 0.75rem;
+    }
+    
+    .payment-settings-content .border-top {
+        padding-top: 1rem !important;
+        margin-top: 1rem !important;
+        border-top-width: 1px !important;
+    }
+    
+    .payment-settings-content .form-check {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .payment-settings-content small.text-muted.d-block {
+        font-size: 0.85rem !important;
+        line-height: 1.5 !important;
+    }
+}
+
+/* Amélioration de la section de configuration actuelle */
+@media (max-width: 767.98px) {
+    .admin-form-card.mt-4 {
+        margin-top: 1.5rem !important;
+    }
+    
+    .admin-form-card h6 {
+        font-size: 1rem !important;
+        margin-bottom: 1rem !important;
     }
 }
 </style>

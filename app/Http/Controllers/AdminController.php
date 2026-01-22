@@ -837,9 +837,8 @@ class AdminController extends Controller
     {
         // Récupérer les données Moneroo (pays et providers)
         $monerooData = $this->getMonerooConfiguration();
-        $pawapayData = $monerooData; // Compatibilité avec les vues existantes
         
-        return view('admin.users.edit', compact('user', 'pawapayData'));
+        return view('admin.users.edit', compact('user', 'monerooData'));
     }
 
     /**
@@ -985,9 +984,10 @@ class AdminController extends Controller
             'role' => 'required|in:customer,provider,admin,affiliate,super_user',
             'is_active' => 'boolean',
             'is_external_provider' => 'boolean',
-            'pawapay_phone' => 'nullable|string|max:20',
-            'pawapay_provider' => 'nullable|string|max:50',
-            'pawapay_country' => 'nullable|string|size:3',
+            'moneroo_phone' => 'nullable|string|max:20',
+            'moneroo_provider' => 'nullable|string|max:50',
+            'moneroo_country' => 'nullable|string|size:2',
+            'moneroo_currency' => 'nullable|string|size:3',
             // Note: Les autres champs (name, email, avatar) sont gérés par le SSO
         ]);
 
@@ -996,9 +996,10 @@ class AdminController extends Controller
             'role' => $request->role,
             'is_active' => $request->has('is_active'),
             'is_external_provider' => $request->has('is_external_provider'),
-            'pawapay_phone' => $request->pawapay_phone,
-            'pawapay_provider' => $request->pawapay_provider,
-            'pawapay_country' => $request->pawapay_country,
+            'moneroo_phone' => $request->moneroo_phone,
+            'moneroo_provider' => $request->moneroo_provider,
+            'moneroo_country' => $request->moneroo_country,
+            'moneroo_currency' => $request->moneroo_currency,
         ]);
 
             return redirect()->route('admin.users')

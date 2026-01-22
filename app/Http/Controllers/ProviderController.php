@@ -417,7 +417,6 @@ class ProviderController extends Controller
         return view('providers.admin.payment-settings', [
             'provider' => $provider,
             'monerooData' => $monerooData,
-            'pawapayData' => $monerooData, // Compatibilité avec les vues existantes
         ]);
     }
 
@@ -430,19 +429,35 @@ class ProviderController extends Controller
         
         $request->validate([
             'is_external_provider' => 'boolean',
-            'pawapay_phone' => 'nullable|string|max:20',
-            'pawapay_provider' => 'nullable|string|max:50',
-            'pawapay_country' => 'nullable|string|size:3',
-            'pawapay_currency' => 'nullable|string|size:3',
+            // Selon la documentation Moneroo: msisdn et account_number sont des integers
+            // On accepte string pour la saisie, mais on le convertira en integer
+            'moneroo_phone' => 'nullable|string|regex:/^[0-9]+$/|max:20',
+            'moneroo_provider' => 'nullable|string|max:50',
+            'moneroo_country' => 'nullable|string|size:2', // ISO 3166-1 alpha-2
+            'moneroo_currency' => 'nullable|string|size:3', // ISO 4217
         ]);
 
-        // Mettre à jour les champs de paiement (compatibilité avec anciens champs PawaPay)
+        // Normaliser le numéro de téléphone en format international si nécessaire
+        // Selon la documentation: https://docs.moneroo.io/payouts/available-methods#required-fields
+        // Les champs recipient (msisdn ou account_number) doivent être des integers
+        $phoneNumber = $request->moneroo_phone;
+        if ($phoneNumber && $request->moneroo_country) {
+            // S'assurer que le numéro est en format international
+            $phoneNumber = $this->normalizePhoneNumber($phoneNumber, $request->moneroo_country);
+        }
+        
+        // S'assurer que le numéro ne contient que des chiffres (pour conversion en integer)
+        if ($phoneNumber) {
+            $phoneNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
+        }
+
+        // Mettre à jour les champs de payout Moneroo
         $provider->update([
             'is_external_provider' => $request->has('is_external_provider'),
-            'pawapay_phone' => $request->pawapay_phone,
-            'pawapay_provider' => $request->pawapay_provider,
-            'pawapay_country' => $request->pawapay_country,
-            'pawapay_currency' => $request->pawapay_currency,
+            'moneroo_phone' => $phoneNumber,
+            'moneroo_provider' => $request->moneroo_provider,
+            'moneroo_country' => $request->moneroo_country,
+            'moneroo_currency' => $request->moneroo_currency,
         ]);
 
         return redirect()->route('provider.payment-settings')
@@ -451,6 +466,9 @@ class ProviderController extends Controller
 
     /**
      * Récupérer la configuration Moneroo (pays et providers)
+     * Documentation: https://docs.moneroo.io/payouts/available-methods
+     * 
+     * Utilise uniquement l'API Moneroo pour récupérer les méthodes disponibles
      */
     private function getMonerooConfiguration(): array
     {
@@ -459,101 +477,100 @@ class ProviderController extends Controller
         $apiKey = config('services.moneroo.api_key');
         
         if (!$apiKey) {
-            Log::error('MONEROO_API_KEY non configurée.');
-            return ['countries' => [], 'providers' => []];
+            Log::error('MONEROO_API_KEY non configurée dans le fichier .env');
+            return ['countries' => [], 'providers' => [], 'methods' => []];
         }
 
         try {
-            // Utiliser l'endpoint /payouts/methods selon la documentation Moneroo
-            // https://docs.moneroo.io/fr/payouts/methodes-disponibles
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->get("{$baseUrl}/payouts/methods");
+            // Utiliser l'endpoint /utils/payout/methods selon la documentation Moneroo
+            // https://docs.moneroo.io/payouts/available-methods
+            $url = "{$baseUrl}/utils/payout/methods";
+            
+            Log::info('Tentative de récupération des méthodes Moneroo depuis l\'API', [
+                'url' => $url,
+                'api_key_present' => !empty($apiKey),
+                'api_key_prefix' => substr($apiKey, 0, 10) . '...',
+            ]);
+            
+            $response = Http::timeout(15)
+                ->retry(2, 100) // 2 tentatives avec 100ms de délai
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])
+                ->get($url);
 
             if ($response->successful()) {
                 $responseData = $response->json();
-                // Format Moneroo: { "success": true, "data": {...} }
+                // Format Moneroo: { "success": true, "data": {...} } ou directement un tableau
                 $data = $responseData['data'] ?? $responseData;
                 
-                Log::info('Moneroo configuration retrieved', [
+                Log::info('Moneroo configuration retrieved from API', [
                     'has_data' => !empty($data),
+                    'response_structure' => array_keys($data ?? []),
+                    'status_code' => $response->status(),
                 ]);
                 
                 // Extraire les pays et providers selon la structure de la réponse Moneroo
                 $countries = [];
                 $providers = [];
+                $methods = [];
                 
-                // Moneroo peut retourner les méthodes différemment
-                // Adapter selon le format réel de la réponse
-                if (isset($data['methods']) && is_array($data['methods'])) {
-                    // Si la réponse contient un tableau de méthodes
-                    foreach ($data['methods'] as $method) {
-                        $countryCode = $method['country'] ?? '';
-                        $providerCode = $method['payment_method'] ?? $method['provider'] ?? '';
-                        $providerName = $method['name'] ?? $providerCode;
-                        $currencies = $method['currencies'] ?? ($method['currency'] ? [$method['currency']] : []);
+                // La réponse peut être un tableau direct de méthodes ou contenir une clé 'methods'
+                $methodsList = is_array($data) && isset($data[0]) ? $data : ($data['methods'] ?? []);
+                
+                if (is_array($methodsList) && !empty($methodsList)) {
+                    // Parcourir toutes les méthodes de payout
+                    foreach ($methodsList as $method) {
+                        // Structure selon la documentation Moneroo
+                        $methodCode = $method['code'] ?? $method['short_code'] ?? '';
+                        $methodName = $method['name'] ?? $methodCode;
+                        $countryCode = $method['country'] ?? $method['countries'][0] ?? '';
+                        $currency = $method['currency'] ?? '';
                         
-                        // Ajouter le pays s'il n'existe pas
-                        if ($countryCode && !isset($countries[$countryCode])) {
-                            $countries[$countryCode] = [
-                                'code' => $countryCode,
-                                'name' => $countryCode, // Peut être amélioré avec un mapping
-                                'prefix' => '',
-                                'flag' => '',
-                            ];
+                        // Déterminer les champs requis selon la méthode
+                        $requiredFields = ['msisdn'];
+                        if ($methodCode === 'moneroo_payout_demo') {
+                            $requiredFields = ['account_number'];
                         }
                         
-                        // Ajouter le provider
-                        if ($providerCode) {
-                            $providers[] = [
-                                'code' => $providerCode,
-                                'name' => $providerName,
-                                'country' => $countryCode,
-                                'currencies' => $currencies,
-                                'logo' => $method['logo'] ?? '',
-                            ];
-                        }
-                    }
-                } elseif (isset($data['countries']) && is_array($data['countries'])) {
-                    // Format similaire à PawaPay (pour compatibilité)
-                    foreach ($data['countries'] as $country) {
-                        $countryCode = $country['country'] ?? $country['code'] ?? '';
-                        $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $country['name'] ?? $countryCode;
-                        
-                        $countries[] = [
-                            'code' => $countryCode,
-                            'name' => $countryName,
-                            'prefix' => $country['prefix'] ?? '',
-                            'flag' => $country['flag'] ?? '',
+                        // Stocker la méthode complète avec ses champs requis
+                        $methods[$methodCode] = [
+                            'code' => $methodCode,
+                            'name' => $methodName,
+                            'country' => $countryCode,
+                            'currency' => $currency,
+                            'required_fields' => $method['required_fields'] ?? $requiredFields,
+                            'icon_url' => $method['icon_url'] ?? '',
                         ];
                         
-                        // Extraire les providers pour ce pays
-                        if (isset($country['providers']) && is_array($country['providers'])) {
-                            foreach ($country['providers'] as $provider) {
-                                $providerCode = $provider['provider'] ?? $provider['payment_method'] ?? '';
-                                $providerName = $provider['displayName'] ?? $provider['name'] ?? $providerCode;
-                                $currencies = $provider['currencies'] ?? ($provider['currency'] ? [$provider['currency']] : []);
-                                
-                                $providers[] = [
-                                    'code' => $providerCode,
-                                    'name' => $providerName,
-                                    'country' => $countryCode,
-                                    'currencies' => $currencies,
-                                    'logo' => $provider['logo'] ?? '',
-                                ];
-                            }
+                        // Ajouter le pays s'il n'existe pas
+                        // Utiliser le nom du pays depuis l'API si disponible
+                        if ($countryCode && !isset($countries[$countryCode])) {
+                            $countryName = $method['country_name'] ?? $method['country_display_name'] ?? $countryCode;
+                            $countries[$countryCode] = [
+                                'code' => $countryCode,
+                                'name' => $countryName,
+                            ];
+                        }
+                        
+                        // Ajouter le provider (méthode de payout)
+                        if ($methodCode) {
+                            $providers[] = [
+                                'code' => $methodCode,
+                                'name' => $methodName,
+                                'country' => $countryCode,
+                                'currencies' => $currency ? [$currency] : [],
+                                'required_fields' => $method['required_fields'] ?? $requiredFields,
+                                'logo' => $method['icon_url'] ?? '',
+                            ];
                         }
                     }
                 }
                 
-                // Convertir le tableau associatif de pays en tableau indexé si nécessaire
-                if (!empty($countries) && isset($countries[0]) && is_array($countries[0])) {
-                    $countries = array_values($countries);
-                } else {
-                    $countries = array_values($countries);
-                }
+                // Convertir le tableau associatif de pays en tableau indexé
+                $countries = array_values($countries);
                 
                 // Trier les pays par nom
                 usort($countries, function($a, $b) {
@@ -565,28 +582,62 @@ class ProviderController extends Controller
                     return strcmp($a['name'], $b['name']);
                 });
                 
-                Log::info('Moneroo configuration processed', [
+                Log::info('Moneroo configuration processed successfully', [
                     'countries_count' => count($countries),
                     'providers_count' => count($providers),
+                    'methods_count' => count($methods),
                 ]);
                 
                 return [
                     'countries' => $countries,
                     'providers' => $providers,
+                    'methods' => $methods,
                 ];
             } else {
-                Log::warning('Échec de la récupération de la configuration Moneroo', [
+                $errorBody = $response->body();
+                $errorJson = $response->json();
+                
+                Log::error('Échec de la récupération de la configuration Moneroo depuis l\'API', [
                     'status' => $response->status(),
-                    'response' => $response->body(),
+                    'url' => $url,
+                    'response_body' => $errorBody,
+                    'response_json' => $errorJson,
+                    'headers' => $response->headers(),
                 ]);
             }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('Erreur de connexion à l\'API Moneroo', [
+                'error' => $e->getMessage(),
+                'url' => $url ?? 'N/A',
+            ]);
         } catch (\Exception $e) {
             Log::error('Erreur lors de la récupération de la configuration Moneroo', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'url' => $url ?? 'N/A',
             ]);
         }
         
-        return ['countries' => [], 'providers' => []];
+        // Retourner des tableaux vides si l'API ne répond pas
+        return ['countries' => [], 'providers' => [], 'methods' => []];
+    }
+    
+    /**
+     * Normaliser un numéro de téléphone en format international
+     * Selon la documentation Moneroo, les numéros doivent être en format international
+     * 
+     * Note: Cette fonction ne contient pas de mapping statique. Elle normalise uniquement
+     * le format du numéro en retirant les caractères non numériques.
+     * L'utilisateur doit fournir le numéro en format international complet.
+     */
+    private function normalizePhoneNumber(string $phone, string $countryCode): string
+    {
+        // Retirer tous les espaces, tirets, points et autres caractères non numériques
+        // Selon la documentation Moneroo, msisdn doit être un integer
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        
+        // Retourner le numéro nettoyé
+        // L'utilisateur doit fournir le numéro en format international complet
+        return $phone;
     }
 }

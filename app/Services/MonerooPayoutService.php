@@ -75,14 +75,27 @@ class MonerooPayoutService
 
     /**
      * Obtenir les champs recipient selon la méthode de payout
-     * Selon la documentation Moneroo, chaque méthode a ses propres champs requis
+     * Selon la documentation Moneroo: https://docs.moneroo.io/payouts/available-methods#required-fields
+     * 
+     * La plupart des méthodes nécessitent 'msisdn' (integer)
+     * La méthode 'moneroo_payout_demo' nécessite 'account_number' (integer)
      */
     private function getRecipientFields(string $method, string $phoneNumber, string $country): array
     {
-        // Pour les méthodes mobile money, utiliser msisdn (numéro de téléphone)
+        // Convertir le numéro en entier selon la documentation (msisdn et account_number sont des integers)
+        $phoneInteger = (int) preg_replace('/[^0-9]/', '', $phoneNumber);
+        
+        // La méthode moneroo_payout_demo nécessite account_number au lieu de msisdn
+        if ($method === 'moneroo_payout_demo') {
+            return [
+                'account_number' => $phoneInteger,
+            ];
+        }
+        
+        // Pour toutes les autres méthodes mobile money, utiliser msisdn
         // Format selon la documentation: recipient.msisdn pour mobile money
         return [
-            'msisdn' => $phoneNumber,
+            'msisdn' => $phoneInteger,
         ];
     }
 
@@ -116,18 +129,18 @@ class MonerooPayoutService
             // Préparer le payload selon la documentation Moneroo
             // Documentation: https://docs.moneroo.io/payouts/initialize-payout
             $payload = [
-                'amount' => $amountInteger,
-                'currency' => strtoupper($currency),
+                'amount' => $amountInteger, // integer requis
+                'currency' => strtoupper($currency), // ISO 4217 format
                 'description' => config('services.moneroo.company_name', 'Herime Académie') . ' - Paiement commission prestataire',
-                'method' => $provider, // Code de la méthode (ex: mtn_bj, orange_sn, etc.)
+                'method' => $provider, // Code de la méthode (ex: mtn_bj, orange_sn, moneroo_payout_demo, etc.)
                 'customer' => [
-                    'email' => $providerUser->email,
-                    'first_name' => $names['first_name'],
-                    'last_name' => $names['last_name'],
-                    'phone' => $phoneNumber,
-                    'country' => $country,
+                    'email' => $providerUser->email, // requis
+                    'first_name' => $names['first_name'], // requis
+                    'last_name' => $names['last_name'], // requis
+                    'phone' => (int) preg_replace('/[^0-9]/', '', $phoneNumber), // integer optionnel selon la doc
+                    'country' => $country, // ISO 3166-1 alpha-2, optionnel
                 ],
-                'recipient' => $recipientFields,
+                'recipient' => $recipientFields, // msisdn (integer) ou account_number (integer) selon la méthode
                 'metadata' => [
                     'provider_id' => $providerId,
                     'order_id' => $orderId,
@@ -484,19 +497,20 @@ class MonerooPayoutService
             $recipientFields = $this->getRecipientFields($method, $phoneNumber, $country);
             
             // Préparer le payload selon la documentation Moneroo
+            // Documentation: https://docs.moneroo.io/payouts/initialize-payout
             $payload = [
-                'amount' => $amountInteger,
-                'currency' => strtoupper($currency),
+                'amount' => $amountInteger, // integer requis
+                'currency' => strtoupper($currency), // ISO 4217 format
                 'description' => $description ?? (config('services.moneroo.company_name', 'Herime Académie') . ' - Retrait wallet'),
-                'method' => $method, // Code de la méthode (ex: mtn_cd, airtel_cd, etc.)
+                'method' => $method, // Code de la méthode (ex: mtn_cd, airtel_cd, moneroo_payout_demo, etc.)
                 'customer' => [
-                    'email' => $user->email,
-                    'first_name' => $names['first_name'],
-                    'last_name' => $names['last_name'],
-                    'phone' => $phoneNumber,
-                    'country' => $country,
+                    'email' => $user->email, // requis
+                    'first_name' => $names['first_name'], // requis
+                    'last_name' => $names['last_name'], // requis
+                    'phone' => (int) preg_replace('/[^0-9]/', '', $phoneNumber), // integer optionnel selon la doc
+                    'country' => $country, // ISO 3166-1 alpha-2, optionnel
                 ],
-                'recipient' => $recipientFields,
+                'recipient' => $recipientFields, // msisdn (integer) ou account_number (integer) selon la méthode
                 'metadata' => [
                     'user_id' => $user->id,
                     'wallet_id' => $wallet->id,

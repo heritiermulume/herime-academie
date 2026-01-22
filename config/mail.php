@@ -121,4 +121,17 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Herime Académie'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Disable Image Embedding
+    |--------------------------------------------------------------------------
+    |
+    | Si cette option est activée, les images dans les emails ne seront pas
+    | converties en pièces jointes inline (CID). Elles resteront avec leurs
+    | URLs originales. Utile si l'embedding cause des problèmes d'envoi.
+    |
+    */
+
+    'disable_image_embedding' => env('MAIL_DISABLE_IMAGE_EMBEDDING', false),
+
 ];

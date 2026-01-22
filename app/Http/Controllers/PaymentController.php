@@ -820,9 +820,9 @@ class PaymentController extends Controller
                 }
 
                 // Vérifier que toutes les informations de paiement sont configurées
-                $phone = $provider->moneroo_phone ?? $provider->pawapay_phone;
-                $provider = $provider->moneroo_provider ?? $provider->pawapay_provider;
-                $country = $provider->moneroo_country ?? $provider->pawapay_country;
+                $phone = $provider->moneroo_phone;
+                $provider = $provider->moneroo_provider;
+                $country = $provider->moneroo_country;
                 
                 if (!$phone || !$provider || !$country) {
                     Log::warning("Prestataire avec paiements automatiques activés mais informations Moneroo incomplètes", [
@@ -870,9 +870,9 @@ class PaymentController extends Controller
                     $course->id,
                     $payoutAmount,
                     $currency,
-                    $provider->moneroo_phone ?? $provider->pawapay_phone,
-                    $provider->moneroo_provider ?? $provider->pawapay_provider,
-                    $provider->moneroo_country ?? $provider->pawapay_country
+                    $provider->moneroo_phone,
+                    $provider->moneroo_provider,
+                    $provider->moneroo_country
                 );
 
                 if ($result['success']) {
