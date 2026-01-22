@@ -9,12 +9,15 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Notification;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
 class Course extends Model
 {
+    use SoftDeletes;
+    
     protected $table = 'contents';
     /**
      * Résoudre le binding de route pour les routes publiques

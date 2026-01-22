@@ -75,7 +75,7 @@ class AdminController extends Controller
         // qui ne sont PAS uniquement prestataires (admins, super_users, etc.)
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         // Les commandes avec contenus supprimés sont comptées comme revenus internes
-        $internalRevenue = Order::whereIn('status', ['paid', 'completed'])
+        $internalRevenue = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->whereDoesntHave('orderItems', function($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
                 // Un prestataire externe = utilisateur avec UNIQUEMENT le rôle "provider"
@@ -89,7 +89,7 @@ class AdminController extends Controller
             ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
         
         // Calculer les revenus externes (contenus créés par des utilisateurs avec uniquement le rôle provider)
-        $externalRevenue = Order::whereIn('status', ['paid', 'completed'])
+        $externalRevenue = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
@@ -101,7 +101,7 @@ class AdminController extends Controller
             ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
 
         // Calculer les commissions retenues sur les prestataires externes
-        $commissionsRevenue = ProviderPayout::where('status', 'completed')
+        $commissionsRevenue = ProviderPayout::withTrashed()->where('status', 'completed')
             ->sum('commission_amount');
 
         // Calculer le revenu total : Revenus internes + Commissions retenues sur les revenus externes
@@ -110,7 +110,7 @@ class AdminController extends Controller
         $totalRevenue = $internalRevenue + $commissionsRevenue;
 
         // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
-        $externalProviderPayouts = ProviderPayout::where('status', 'completed')
+        $externalProviderPayouts = ProviderPayout::withTrashed()->where('status', 'completed')
             ->sum('amount');
 
         // Statistiques générales
@@ -133,7 +133,9 @@ class AdminController extends Controller
 
         // Revenus internes par mois (6 derniers mois)
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
-        $internalRevenueByMonth = Order::whereIn('status', ['paid', 'completed'])
+        // IMPORTANT: Utiliser withTrashed() pour inclure les enregistrements soft-deleted
+        $internalRevenueByMonth = Order::withTrashed()
+            ->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subMonths(6))
             ->whereDoesntHave('orderItems', function($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
@@ -153,7 +155,9 @@ class AdminController extends Controller
             });
 
         // Commissions par mois (6 derniers mois)
-        $commissionsByMonth = ProviderPayout::where('status', 'completed')
+        // IMPORTANT: Utiliser withTrashed() pour inclure les enregistrements soft-deleted
+        $commissionsByMonth = ProviderPayout::withTrashed()
+            ->where('status', 'completed')
             ->where('created_at', '>=', now()->subMonths(6))
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
             ->groupBy('month')
@@ -234,7 +238,7 @@ class AdminController extends Controller
         // qui ne sont PAS uniquement prestataires (admins, super_users, etc.)
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         // Les commandes avec contenus supprimés sont comptées comme revenus internes
-        $internalRevenue = Order::whereIn('status', ['paid', 'completed'])
+        $internalRevenue = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->whereDoesntHave('orderItems', function($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
                 // Un prestataire externe = utilisateur avec UNIQUEMENT le rôle "provider"
@@ -248,7 +252,7 @@ class AdminController extends Controller
             ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
         
         // Calculer les revenus externes (contenus créés par des utilisateurs avec uniquement le rôle provider)
-        $externalRevenue = Order::whereIn('status', ['paid', 'completed'])
+        $externalRevenue = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
@@ -260,7 +264,7 @@ class AdminController extends Controller
             ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
 
         // Calculer les commissions retenues sur les prestataires externes
-        $commissionsRevenue = ProviderPayout::where('status', 'completed')
+        $commissionsRevenue = ProviderPayout::withTrashed()->where('status', 'completed')
             ->sum('commission_amount');
 
         // Calculer le revenu total : Revenus internes + Commissions retenues sur les revenus externes
@@ -269,7 +273,7 @@ class AdminController extends Controller
         $totalRevenue = $internalRevenue + $commissionsRevenue;
 
         // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
-        $externalProviderPayouts = ProviderPayout::where('status', 'completed')
+        $externalProviderPayouts = ProviderPayout::withTrashed()->where('status', 'completed')
             ->sum('amount');
 
         // Statistiques générales
@@ -294,7 +298,7 @@ class AdminController extends Controller
 
         // Revenus internes par mois (6 derniers mois) - Utilise le même calcul que /admin/orders
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
-        $internalRevenueByMonth = Order::whereIn('status', ['paid', 'completed'])
+        $internalRevenueByMonth = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subMonths(6))
             ->whereDoesntHave('orderItems', function($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
@@ -314,7 +318,7 @@ class AdminController extends Controller
             });
 
         // Commissions par mois (6 derniers mois)
-        $commissionsByMonth = ProviderPayout::where('status', 'completed')
+        $commissionsByMonth = ProviderPayout::withTrashed()->where('status', 'completed')
             ->where('created_at', '>=', now()->subMonths(6))
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
             ->groupBy('month')
@@ -332,7 +336,7 @@ class AdminController extends Controller
 
         // Revenus internes par jour (30 derniers jours) - Utilise le même calcul que /admin/orders
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
-        $internalRevenueByDay = Order::whereIn('status', ['paid', 'completed'])
+        $internalRevenueByDay = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subDays(30))
             ->whereDoesntHave('orderItems', function($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
@@ -352,7 +356,7 @@ class AdminController extends Controller
             });
 
         // Commissions par jour (30 derniers jours)
-        $commissionsByDay = ProviderPayout::where('status', 'completed')
+        $commissionsByDay = ProviderPayout::withTrashed()->where('status', 'completed')
             ->where('created_at', '>=', now()->subDays(30))
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(commission_amount) as revenue')
             ->groupBy('date')
@@ -373,7 +377,7 @@ class AdminController extends Controller
         // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         if ($driver === 'pgsql') {
-            $internalRevenueByWeek = Order::whereIn('status', ['paid', 'completed'])
+            $internalRevenueByWeek = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->whereDoesntHave('orderItems', function($query) {
                     // Exclure uniquement les commandes avec des contenus existants de providers externes
@@ -392,7 +396,7 @@ class AdminController extends Controller
                     return $item;
                 });
         } else {
-            $internalRevenueByWeek = Order::whereIn('status', ['paid', 'completed'])
+            $internalRevenueByWeek = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->whereDoesntHave('orderItems', function($query) {
                     // Exclure uniquement les commandes avec des contenus existants de providers externes
@@ -414,7 +418,7 @@ class AdminController extends Controller
 
         // Commissions par semaine (12 dernières semaines)
         if ($driver === 'pgsql') {
-            $commissionsByWeek = ProviderPayout::where('status', 'completed')
+            $commissionsByWeek = ProviderPayout::withTrashed()->where('status', 'completed')
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(commission_amount) as revenue")
                 ->groupBy('week')
@@ -425,7 +429,7 @@ class AdminController extends Controller
                     return $item;
                 });
         } else {
-            $commissionsByWeek = ProviderPayout::where('status', 'completed')
+            $commissionsByWeek = ProviderPayout::withTrashed()->where('status', 'completed')
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(commission_amount) as revenue')
                 ->groupBy('week')
@@ -478,7 +482,7 @@ class AdminController extends Controller
 
         // Revenus internes par année - Utilise le même calcul que /admin/orders
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
-        $internalRevenueByYear = Order::whereIn('status', ['paid', 'completed'])
+        $internalRevenueByYear = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->whereDoesntHave('orderItems', function($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
                 $query->whereHas('content', function($q) {
@@ -497,7 +501,7 @@ class AdminController extends Controller
             });
 
         // Commissions par année
-        $commissionsByYear = ProviderPayout::where('status', 'completed')
+        $commissionsByYear = ProviderPayout::withTrashed()->where('status', 'completed')
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(commission_amount) as revenue')
             ->groupBy('year')
             ->orderBy('year')
