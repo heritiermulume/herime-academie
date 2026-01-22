@@ -73,22 +73,15 @@ class AdminController extends Controller
         // à un utilisateur qui a UNIQUEMENT le rôle de "provider"
         // Les revenus internes sont les revenus des contenus créés par des utilisateurs 
         // qui ne sont PAS uniquement prestataires (admins, super_users, etc.)
+        // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
+        // Les commandes avec contenus supprimés sont comptées comme revenus internes
         $internalRevenue = Order::whereIn('status', ['paid', 'completed'])
             ->whereDoesntHave('orderItems', function($query) {
-                // Exclure les commandes qui ont au moins un item d'un prestataire externe
+                // Exclure uniquement les commandes avec des contenus existants de providers externes
                 // Un prestataire externe = utilisateur avec UNIQUEMENT le rôle "provider"
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
                         $providerQuery->where('role', 'provider');
-                    });
-                });
-            })
-            ->whereHas('orderItems', function($query) {
-                // Inclure uniquement les commandes qui ont au moins un item d'un prestataire interne
-                // Prestataire interne = utilisateur qui n'est PAS uniquement provider
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('role', '!=', 'provider');
                     });
                 });
             })
@@ -139,19 +132,14 @@ class AdminController extends Controller
         ];
 
         // Revenus internes par mois (6 derniers mois)
+        // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         $internalRevenueByMonth = Order::whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subMonths(6))
             ->whereDoesntHave('orderItems', function($query) {
+                // Exclure uniquement les commandes avec des contenus existants de providers externes
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
                         $providerQuery->where('role', 'provider');
-                    });
-                });
-            })
-            ->whereHas('orderItems', function($query) {
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('role', '!=', 'provider');
                     });
                 });
             })
@@ -244,22 +232,15 @@ class AdminController extends Controller
         // à un utilisateur qui a UNIQUEMENT le rôle de "provider"
         // Les revenus internes sont les revenus des contenus créés par des utilisateurs 
         // qui ne sont PAS uniquement prestataires (admins, super_users, etc.)
+        // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
+        // Les commandes avec contenus supprimés sont comptées comme revenus internes
         $internalRevenue = Order::whereIn('status', ['paid', 'completed'])
             ->whereDoesntHave('orderItems', function($query) {
-                // Exclure les commandes qui ont au moins un item d'un prestataire externe
+                // Exclure uniquement les commandes avec des contenus existants de providers externes
                 // Un prestataire externe = utilisateur avec UNIQUEMENT le rôle "provider"
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
                         $providerQuery->where('role', 'provider');
-                    });
-                });
-            })
-            ->whereHas('orderItems', function($query) {
-                // Inclure uniquement les commandes qui ont au moins un item d'un prestataire interne
-                // Prestataire interne = utilisateur qui n'est PAS uniquement provider
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('role', '!=', 'provider');
                     });
                 });
             })
@@ -312,62 +293,14 @@ class AdminController extends Controller
         ];
 
         // Revenus internes par mois (6 derniers mois) - Utilise le même calcul que /admin/orders
-        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
+        // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         $internalRevenueByMonth = Order::whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subMonths(6))
             ->whereDoesntHave('orderItems', function($query) {
+                // Exclure uniquement les commandes avec des contenus existants de providers externes
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
                         $providerQuery->where('role', 'provider');
-                    });
-                });
-            })
-            ->whereHas('orderItems', function($query) {
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('role', '!=', 'provider');
-                    });
-                });
-            })
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get()
-            ->map(function ($item) {
-                $item->month = $item->month ?? '';
-                return $item;
-            });
-
-        // Commissions par mois (6 derniers mois)
-        $commissionsByMonth = ProviderPayout::where('status', 'completed')
-            ->where('created_at', '>=', now()->subMonths(6))
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get()
-            ->map(function ($item) {
-                $item->month = $item->month ?? '';
-                return $item;
-            });
-
-        // Revenus totaux par mois : Revenus internes + Commissions
-        $revenueByMonth = $this->combineRevenueByPeriod($internalRevenueByMonth, $commissionsByMonth, 'month');
-
-        // Revenus internes par mois (6 derniers mois) - Utilise le même calcul que /admin/orders
-        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
-        $internalRevenueByMonth = Order::whereIn('status', ['paid', 'completed'])
-            ->where('created_at', '>=', now()->subMonths(6))
-            ->whereDoesntHave('orderItems', function($query) {
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('role', 'provider');
-                    });
-                });
-            })
-            ->whereHas('orderItems', function($query) {
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('role', '!=', 'provider');
                     });
                 });
             })
@@ -398,22 +331,14 @@ class AdminController extends Controller
         // Revenus par jour (30 derniers jours) - Sera calculé en combinant revenus internes + commissions
 
         // Revenus internes par jour (30 derniers jours) - Utilise le même calcul que /admin/orders
-        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
+        // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         $internalRevenueByDay = Order::whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subDays(30))
             ->whereDoesntHave('orderItems', function($query) {
+                // Exclure uniquement les commandes avec des contenus existants de providers externes
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
                         $providerQuery->where('role', 'provider');
-                    });
-                });
-            })
-            ->whereHas('orderItems', function($query) {
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where(function($pq) {
-                            $pq->where('role', '!=', 'provider');
-                        });
                     });
                 });
             })
@@ -446,22 +371,15 @@ class AdminController extends Controller
 
         // Revenus internes par semaine (12 dernières semaines) - Utilise le même calcul que /admin/orders
         // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
+        // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         if ($driver === 'pgsql') {
             $internalRevenueByWeek = Order::whereIn('status', ['paid', 'completed'])
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->whereDoesntHave('orderItems', function($query) {
+                    // Exclure uniquement les commandes avec des contenus existants de providers externes
                     $query->whereHas('content', function($q) {
                         $q->whereHas('provider', function($providerQuery) {
                             $providerQuery->where('role', 'provider');
-                        });
-                    });
-                })
-                ->whereHas('orderItems', function($query) {
-                    $query->whereHas('content', function($q) {
-                        $q->whereHas('provider', function($providerQuery) {
-                            $providerQuery->where(function($pq) {
-                                $pq->where('role', '!=', 'provider');
-                            });
                         });
                     });
                 })
@@ -477,18 +395,10 @@ class AdminController extends Controller
             $internalRevenueByWeek = Order::whereIn('status', ['paid', 'completed'])
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->whereDoesntHave('orderItems', function($query) {
+                    // Exclure uniquement les commandes avec des contenus existants de providers externes
                     $query->whereHas('content', function($q) {
                         $q->whereHas('provider', function($providerQuery) {
                             $providerQuery->where('role', 'provider');
-                        });
-                    });
-                })
-                ->whereHas('orderItems', function($query) {
-                    $query->whereHas('content', function($q) {
-                        $q->whereHas('provider', function($providerQuery) {
-                            $providerQuery->where(function($pq) {
-                                $pq->where('role', '!=', 'provider');
-                            });
                         });
                     });
                 })
@@ -567,21 +477,13 @@ class AdminController extends Controller
         // Revenus par année (pour le filtre) - Sera calculé en combinant revenus internes + commissions
 
         // Revenus internes par année - Utilise le même calcul que /admin/orders
-        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
+        // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         $internalRevenueByYear = Order::whereIn('status', ['paid', 'completed'])
             ->whereDoesntHave('orderItems', function($query) {
+                // Exclure uniquement les commandes avec des contenus existants de providers externes
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
                         $providerQuery->where('role', 'provider');
-                    });
-                });
-            })
-            ->whereHas('orderItems', function($query) {
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where(function($pq) {
-                            $pq->where('role', '!=', 'provider');
-                        });
                     });
                 });
             })
