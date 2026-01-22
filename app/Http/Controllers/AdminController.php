@@ -76,12 +76,13 @@ class AdminController extends Controller
 
         // Calculer les revenus des contenus internes (prestataires internes)
         // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
-        // Ce sont uniquement les commandes payées pour les contenus dont le prestataire n'est PAS externe
+        // Ce sont uniquement les commandes payées/completed pour les contenus dont le prestataire n'est PAS externe
         // Un prestataire externe est identifié par: is_external_provider = true
+        // Utilise le même calcul que dans /admin/orders pour uniformiser
         $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->where(function($query) {
                 // Exclure explicitement les prestataires externes (is_external_provider = true)
                 // Inclure uniquement les prestataires internes:
@@ -199,10 +200,11 @@ class AdminController extends Controller
 
         // Calculer les revenus des contenus internes (prestataires internes)
         // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
+        // Utilise le même calcul que dans /admin/orders pour uniformiser
         $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->where(function($query) {
                 // Exclure explicitement les prestataires externes (is_external_provider = true)
                 $query->where(function($q) {
@@ -251,11 +253,11 @@ class AdminController extends Controller
                 return $item;
             });
 
-        // Revenus internes par mois (6 derniers mois)
+        // Revenus internes par mois (6 derniers mois) - Utilise le même calcul que /admin/orders
         $internalRevenueByMonth = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->where(function($query) {
                 $query->where(function($q) {
                     $q->where('users.is_external_provider', false)
@@ -296,11 +298,11 @@ class AdminController extends Controller
                 return $item;
             });
 
-        // Revenus internes par jour (30 derniers jours)
+        // Revenus internes par jour (30 derniers jours) - Utilise le même calcul que /admin/orders
         $internalRevenueByDay = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->where(function($query) {
                 $query->where(function($q) {
                     $q->where('users.is_external_provider', false)
@@ -355,12 +357,12 @@ class AdminController extends Controller
                 });
         }
 
-        // Revenus internes par semaine (12 dernières semaines)
+        // Revenus internes par semaine (12 dernières semaines) - Utilise le même calcul que /admin/orders
         if ($driver === 'pgsql') {
             $internalRevenueByWeek = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
                 ->join('contents', 'order_items.content_id', '=', 'contents.id')
                 ->join('users', 'contents.provider_id', '=', 'users.id')
-                ->where('orders.status', 'paid')
+                ->whereIn('orders.status', ['paid', 'completed'])
                 ->where(function($query) {
                     $query->where(function($q) {
                         $q->where('users.is_external_provider', false)
@@ -380,7 +382,7 @@ class AdminController extends Controller
             $internalRevenueByWeek = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
                 ->join('contents', 'order_items.content_id', '=', 'contents.id')
                 ->join('users', 'contents.provider_id', '=', 'users.id')
-                ->where('orders.status', 'paid')
+                ->whereIn('orders.status', ['paid', 'completed'])
                 ->where(function($query) {
                     $query->where(function($q) {
                         $q->where('users.is_external_provider', false)
@@ -468,11 +470,11 @@ class AdminController extends Controller
                 return $item;
             });
 
-        // Revenus internes par année
+        // Revenus internes par année - Utilise le même calcul que /admin/orders
         $internalRevenueByYear = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->where(function($query) {
                 $query->where(function($q) {
                     $q->where('users.is_external_provider', false)
@@ -767,10 +769,11 @@ class AdminController extends Controller
     {
         $days = $request->input('days', 'all');
         
+        // Utilise le même calcul que /admin/orders pour uniformiser
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->where('orders.status', 'paid');
+            ->whereIn('orders.status', ['paid', 'completed']);
 
         if ($days !== 'all') {
             $query->where('orders.created_at', '>=', now()->subDays((int)$days));

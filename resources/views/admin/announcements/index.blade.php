@@ -154,10 +154,10 @@
 
     <!-- Section de gestion des emails -->
     <section class="admin-panel mt-4">
-        <div class="admin-panel__header d-flex justify-content-between align-items-center">
-            <h3 class="mb-0 flex-grow-1"><i class="fas fa-envelope me-2"></i>Gestion des emails</h3>
+        <div class="admin-panel__header">
+            <h3 class="mb-3"><i class="fas fa-envelope me-2"></i>Gestion des emails</h3>
             <!-- Bouton pour envoyer un email -->
-            <a href="{{ route('admin.announcements.send-email') }}" class="btn btn-primary" title="Envoyer un email">
+            <a href="{{ route('admin.announcements.send-email') }}" class="btn btn-primary w-100" title="Envoyer un email">
                 <i class="fas fa-plus me-2"></i>Envoyer un email
             </a>
         </div>
@@ -335,16 +335,6 @@
 
                 <!-- Onglet emails programmés -->
                 <div class="tab-pane fade" id="scheduled-emails" role="tabpanel">
-                    <x-admin.search-panel
-                        :action="route('admin.announcements')"
-                        formId="scheduledEmailsFilterForm"
-                        filtersId="scheduledEmailsFilters"
-                        :hasFilters="true"
-                        :searchValue="request('scheduled_search')"
-                        placeholder="Rechercher par sujet..."
-                    >
-                    </x-admin.search-panel>
-
                     <div id="bulkActionsContainer-scheduledEmailsTable"></div>
 
                     <div class="table-responsive mt-4">
@@ -853,6 +843,7 @@
 
 @push('scripts')
 <script src="{{ asset('js/bulk-actions.js') }}"></script>
+<script src="{{ asset('js/modern-confirm-modal.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les bulk actions pour la liste principale des annonces
@@ -1045,7 +1036,7 @@ function editAnnouncement(id) {
         });
 }
 
-function openDeleteAnnouncementModal(button) {
+async function openDeleteAnnouncementModal(button) {
     const action = button?.dataset?.action;
     if (!action) {
         console.error('Aucune action de suppression fournie.');
@@ -1053,28 +1044,45 @@ function openDeleteAnnouncementModal(button) {
     }
 
     const title = button.dataset.title || '';
-    const messageElement = document.getElementById('deleteAnnouncementMessage');
-    if (messageElement) {
-        messageElement.textContent = title
-            ? `Êtes-vous sûr de vouloir supprimer l'annonce « ${title} » ? Cette action est irréversible.`
-            : `Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.`;
-    }
-
-    const form = document.getElementById('deleteAnnouncementForm');
-    if (form) {
+    const message = title
+        ? `Êtes-vous sûr de vouloir supprimer l'annonce « ${title} » ? Cette action est irréversible.`
+        : `Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.`;
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer l\'annonce',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+    
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
         form.action = action;
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        // Ajouter la méthode DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
     }
-
-    const modalElement = document.getElementById('deleteAnnouncementModal');
-    if (!modalElement) {
-        return;
-    }
-
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
 }
 
-function openDeleteEmailModal(button) {
+async function openDeleteEmailModal(button) {
     const action = button?.dataset?.action;
     if (!action) {
         console.error('Aucune action de suppression fournie.');
@@ -1082,28 +1090,45 @@ function openDeleteEmailModal(button) {
     }
 
     const subject = button.dataset.subject || '';
-    const messageElement = document.getElementById('deleteEmailMessage');
-    if (messageElement) {
-        messageElement.textContent = subject
-            ? `Êtes-vous sûr de vouloir supprimer l'email « ${subject} » ? Cette action est irréversible.`
-            : `Êtes-vous sûr de vouloir supprimer cet email ? Cette action est irréversible.`;
-    }
-
-    const form = document.getElementById('deleteEmailForm');
-    if (form) {
+    const message = subject
+        ? `Êtes-vous sûr de vouloir supprimer l'email « ${subject} » ? Cette action est irréversible.`
+        : `Êtes-vous sûr de vouloir supprimer cet email ? Cette action est irréversible.`;
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer l\'email',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+    
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
         form.action = action;
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        // Ajouter la méthode DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
     }
-
-    const modalElement = document.getElementById('deleteEmailModal');
-    if (!modalElement) {
-        return;
-    }
-
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
 }
 
-function openCancelScheduledEmailModal(button) {
+async function openCancelScheduledEmailModal(button) {
     const action = button?.dataset?.action;
     if (!action) {
         console.error('Aucune action d\'annulation fournie.');
@@ -1111,58 +1136,85 @@ function openCancelScheduledEmailModal(button) {
     }
 
     const subject = button.dataset.subject || '';
-    const messageElement = document.getElementById('cancelScheduledEmailMessage');
-    if (messageElement) {
-        messageElement.textContent = subject
-            ? `Êtes-vous sûr de vouloir annuler l'email programmé « ${subject} » ?`
-            : `Êtes-vous sûr de vouloir annuler cet email programmé ?`;
-    }
-
-    const form = document.getElementById('cancelScheduledEmailForm');
-    if (form) {
+    const message = subject
+        ? `Êtes-vous sûr de vouloir annuler l'email programmé « ${subject} » ?`
+        : `Êtes-vous sûr de vouloir annuler cet email programmé ?`;
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Annuler l\'email programmé',
+        confirmButtonText: 'Annuler',
+        confirmButtonClass: 'btn-warning',
+        icon: 'fa-exclamation-triangle'
+    });
+    
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
         form.action = action;
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
     }
-
-    const modalElement = document.getElementById('cancelScheduledEmailModal');
-    if (!modalElement) {
-        return;
-    }
-
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
 }
 
 function viewWhatsAppMessage(id) {
     window.location.href = '{{ route("admin.whatsapp-messages.show", ":id") }}'.replace(':id', id);
 }
 
-function openDeleteWhatsAppModal(button) {
+async function openDeleteWhatsAppModal(button) {
     const action = button?.dataset?.action;
     if (!action) {
         console.error('Aucune action de suppression fournie.');
         return;
     }
 
-    const message = button.dataset.message || '';
-    const messageElement = document.getElementById('deleteWhatsAppMessage');
-    if (messageElement) {
-        messageElement.textContent = message
-            ? `Êtes-vous sûr de vouloir supprimer le message WhatsApp « ${message} » ? Cette action est irréversible.`
-            : `Êtes-vous sûr de vouloir supprimer ce message WhatsApp ? Cette action est irréversible.`;
-    }
-
-    const form = document.getElementById('deleteWhatsAppForm');
-    if (form) {
+    const messageText = button.dataset.message || '';
+    const message = messageText
+        ? `Êtes-vous sûr de vouloir supprimer le message WhatsApp « ${messageText} » ? Cette action est irréversible.`
+        : `Êtes-vous sûr de vouloir supprimer ce message WhatsApp ? Cette action est irréversible.`;
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer le message WhatsApp',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+    
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
         form.action = action;
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        // Ajouter la méthode DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
     }
-
-    const modalElement = document.getElementById('deleteWhatsAppModal');
-    if (!modalElement) {
-        return;
-    }
-
-    const modal = new bootstrap.Modal(modalElement);
-    modal.show();
 }
 </script>
 @endpush
@@ -1252,6 +1304,29 @@ function openDeleteWhatsAppModal(button) {
         font-size: 1rem;
     }
     
+    /* Adaptation du header de la section Gestion des emails */
+    .admin-panel__header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 1rem;
+        width: 100%;
+    }
+    
+    .admin-panel__header .btn-primary {
+        width: 100%;
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .admin-panel__header .btn-primary.btn-sm {
+        width: 100% !important;
+        flex-shrink: 1 !important;
+    }
+    
     .card-header .btn-outline-light.btn-sm {
         width: 32px;
         height: 32px;
@@ -1309,14 +1384,18 @@ function openDeleteWhatsAppModal(button) {
 
 @media (max-width: 991.98px) {
     /* Réduire la taille des boutons dans les en-têtes sur tablette */
-    .admin-panel__header .btn {
+    .admin-panel__header .btn-primary {
         font-size: 0.8rem;
-        padding: 0.4rem 0.8rem;
+        padding: 0.5rem 1rem;
     }
     
     .admin-panel__header .btn i {
         font-size: 0.75rem;
         margin-right: 0.3rem !important;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 1.1rem;
     }
     
     /* Forcer les onglets à rester sur une ligne en 2 colonnes sur tablette */
@@ -2034,101 +2113,3 @@ function openDeleteWhatsAppModal(button) {
 </style>
 @endpush
 
-<!-- Modal de suppression -->
-<div class="modal fade" id="deleteAnnouncementModal" tabindex="-1" aria-labelledby="deleteAnnouncementModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteAnnouncementModalLabel">Confirmer la suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body">
-                <p id="deleteAnnouncementMessage">Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="deleteAnnouncementForm" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-2"></i>Supprimer
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de suppression d'email -->
-<div class="modal fade" id="deleteEmailModal" tabindex="-1" aria-labelledby="deleteEmailModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteEmailModalLabel">Confirmer la suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body">
-                <p id="deleteEmailMessage">Êtes-vous sûr de vouloir supprimer cet email ? Cette action est irréversible.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="deleteEmailForm" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-2"></i>Supprimer
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal d'annulation d'email programmé -->
-<div class="modal fade" id="cancelScheduledEmailModal" tabindex="-1" aria-labelledby="cancelScheduledEmailModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="cancelScheduledEmailModalLabel">Confirmer l'annulation</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body">
-                <p id="cancelScheduledEmailMessage">Êtes-vous sûr de vouloir annuler cet email programmé ?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="cancelScheduledEmailForm" method="POST">
-                    @csrf
-                    <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-times me-2"></i>Annuler l'email
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal de suppression de message WhatsApp -->
-<div class="modal fade" id="deleteWhatsAppModal" tabindex="-1" aria-labelledby="deleteWhatsAppModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteWhatsAppModalLabel">Confirmer la suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body">
-                <p id="deleteWhatsAppMessage">Êtes-vous sûr de vouloir supprimer ce message WhatsApp ? Cette action est irréversible.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form id="deleteWhatsAppForm" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash me-2"></i>Supprimer
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
