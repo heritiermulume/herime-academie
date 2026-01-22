@@ -310,12 +310,17 @@
                     </div>
                     @endif
 
+                    <div id="bulkActionsContainer-payoutsTable"></div>
+
                     <!-- Table des payouts -->
                     <div class="admin-table mt-4">
                         <div class="table-responsive">
-                            <table class="table align-middle">
+                            <table class="table align-middle" id="payoutsTable" data-bulk-select="true">
                                 <thead>
                                     <tr>
+                                        <th style="width: 50px;">
+                                            <input type="checkbox" data-select-all data-table-id="payoutsTable" title="Sélectionner tout">
+                                        </th>
                                         <th>ID Payout</th>
                                         <th>Prestataire</th>
                                         <th>Cours</th>
@@ -330,6 +335,9 @@
                                 <tbody>
                                     @forelse($payouts ?? [] as $payout)
                                     <tr>
+                                        <td>
+                                            <input type="checkbox" data-item-id="{{ $payout->id }}" class="form-check-input">
+                                        </td>
                                         <td>
                                             <code class="small">{{ str()->limit($payout->payout_id, 20) }}</code>
                                         </td>
@@ -428,7 +436,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="9" class="text-center py-5">
+                                        <td colspan="10" class="text-center py-5">
                                             <div class="text-muted">
                                                 <i class="fas fa-inbox fa-3x mb-3"></i>
                                                 <p>Aucun payout trouvé</p>
@@ -507,11 +515,16 @@
                         </x-slot:filters>
                     </x-admin.search-panel>
 
+                    <div id="bulkActionsContainer-providerApplicationsTable"></div>
+
                     <div class="admin-table mt-4">
                         <div class="table-responsive">
-                            <table class="table align-middle">
+                            <table class="table align-middle" id="providerApplicationsTable" data-bulk-select="true">
                                 <thead>
                                     <tr>
+                                        <th style="width: 50px;">
+                                            <input type="checkbox" data-select-all data-table-id="providerApplicationsTable" title="Sélectionner tout">
+                                        </th>
                                         <th>Utilisateur</th>
                                         <th>Date de soumission</th>
                                         <th>Statut</th>
@@ -522,6 +535,9 @@
                                 <tbody>
                                     @forelse($applications ?? [] as $application)
                                         <tr>
+                                            <td>
+                                                <input type="checkbox" data-item-id="{{ $application->id }}" class="form-check-input">
+                                            </td>
                                             <td>
                                                 <div class="d-flex align-items-center gap-3">
                                                     <img src="{{ $application->user->avatar_url }}"
@@ -573,7 +589,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="admin-table__empty">
+                                            <td colspan="6" class="admin-table__empty">
                                                 <i class="fas fa-inbox mb-2 d-block"></i>
                                                 Aucune candidature trouvée
                                             </td>
@@ -791,6 +807,7 @@
 @endpush
 
 @push('scripts')
+<script src="{{ asset('js/bulk-actions.js') }}"></script>
 <script>
 function showFailureReason(reason) {
     document.getElementById('failureReasonText').textContent = reason;
@@ -817,6 +834,79 @@ function showFailureReason(reason) {
                     }
                 });
             }
+        });
+
+        // Initialiser les bulk actions pour l'onglet Payouts
+        const payoutsContainer = document.getElementById('bulkActionsContainer-payoutsTable');
+        if (payoutsContainer) {
+            const bar = document.createElement('div');
+            bar.id = 'bulkActionsBar-payoutsTable';
+            bar.className = 'bulk-actions-bar';
+            bar.style.display = 'none';
+            bar.innerHTML = `
+                <div class="bulk-actions-bar__content">
+                    <div class="bulk-actions-bar__info">
+                        <span class="bulk-actions-bar__count" id="selectedCount-payoutsTable">0</span>
+                        <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                    </div>
+                    <div class="bulk-actions-bar__actions">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-payoutsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-download me-1"></i>Exporter
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="exportDropdown-payoutsTable">
+                                <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="payoutsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                                <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="payoutsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('payoutsTable')">
+                            <i class="fas fa-times me-1"></i>Annuler
+                        </button>
+                    </div>
+                </div>
+            `;
+            payoutsContainer.appendChild(bar);
+        }
+        bulkActions.init('payoutsTable', {
+            exportRoute: '{{ route('admin.provider-applications') }}'
+        });
+
+        // Initialiser les bulk actions pour l'onglet Applications
+        const applicationsContainer = document.getElementById('bulkActionsContainer-providerApplicationsTable');
+        if (applicationsContainer) {
+            const bar = document.createElement('div');
+            bar.id = 'bulkActionsBar-providerApplicationsTable';
+            bar.className = 'bulk-actions-bar';
+            bar.style.display = 'none';
+            bar.innerHTML = `
+                <div class="bulk-actions-bar__content">
+                    <div class="bulk-actions-bar__info">
+                        <span class="bulk-actions-bar__count" id="selectedCount-providerApplicationsTable">0</span>
+                        <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                    </div>
+                    <div class="bulk-actions-bar__actions">
+                        <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="providerApplicationsTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les candidatures sélectionnées ?" data-route="{{ route('admin.provider-applications.bulk-action') }}" data-method="POST">
+                            <i class="fas fa-trash me-1"></i>Supprimer
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-providerApplicationsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-download me-1"></i>Exporter
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="exportDropdown-providerApplicationsTable">
+                                <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="providerApplicationsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                                <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="providerApplicationsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('providerApplicationsTable')">
+                            <i class="fas fa-times me-1"></i>Annuler
+                        </button>
+                    </div>
+                </div>
+            `;
+            applicationsContainer.appendChild(bar);
+        }
+        bulkActions.init('providerApplicationsTable', {
+            exportRoute: '{{ route('admin.provider-applications') }}'
         });
     });
 </script>

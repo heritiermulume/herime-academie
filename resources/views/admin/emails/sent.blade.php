@@ -88,24 +88,32 @@
                 </x-slot:filters>
             </x-admin.search-panel>
 
+            <div id="bulkActionsContainer-sentEmailsTable"></div>
+
             <!-- Table des emails envoyés -->
-            <div class="admin-table">
+            <div class="admin-table mt-4">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="sentEmailsTable" data-bulk-select="true">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 50px; min-width: 50px;"></th>
-                                <th>Destinataire</th>
-                                <th>Sujet</th>
-                                <th>Type</th>
-                                <th>Statut</th>
-                                <th>Date d'envoi</th>
-                                <th>Actions</th>
+                                <th style="width: 50px; min-width: 50px; max-width: 50px;">
+                                    <input type="checkbox" data-select-all data-table-id="sentEmailsTable" title="Sélectionner tout">
+                                </th>
+                                <th style="width: 50px; min-width: 50px; max-width: 50px;"></th>
+                                <th style="min-width: 150px; max-width: 200px;">Destinataire</th>
+                                <th style="min-width: 200px; max-width: 300px;">Sujet</th>
+                                <th style="width: 100px; min-width: 100px; max-width: 120px;">Type</th>
+                                <th style="width: 120px; min-width: 120px; max-width: 120px;">Statut</th>
+                                <th style="min-width: 140px; max-width: 150px;">Date d'envoi</th>
+                                <th style="width: 120px; min-width: 120px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($emails as $email)
                             <tr>
+                                <td>
+                                    <input type="checkbox" data-item-id="{{ $email->id }}" class="form-check-input">
+                                </td>
                                 <td class="align-middle" style="width: 50px; min-width: 50px; padding: 0.5rem; vertical-align: middle;">
                                     @php
                                         $recipientUser = $email->recipient_user ?? null;
@@ -121,17 +129,17 @@
                                              onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode($email->recipient_name ?? 'N/A') }}&background=003366&color=fff&size=128'">
                                     </div>
                                 </td>
-                                <td>
-                                    <strong>{{ $email->recipient_name ?? 'N/A' }}</strong><br>
-                                    <small class="text-muted">{{ $email->recipient_email }}</small>
+                                <td style="max-width: 200px;">
+                                    <strong class="d-block text-truncate" title="{{ $email->recipient_name ?? 'N/A' }}">{{ $email->recipient_name ?? 'N/A' }}</strong>
+                                    <small class="text-muted d-block text-truncate" title="{{ $email->recipient_email }}">{{ $email->recipient_email }}</small>
                                 </td>
-                                <td>
-                                    <strong>{{ Str::limit($email->subject, 60) }}</strong>
+                                <td style="max-width: 300px;">
+                                    <strong class="d-block text-truncate" title="{{ $email->subject }}">{{ $email->subject }}</strong>
                                 </td>
-                                <td>
+                                <td style="max-width: 120px;">
                                     <span class="badge bg-info">{{ ucfirst($email->type) }}</span>
                                 </td>
-                                <td>
+                                <td style="max-width: 120px;">
                                     @if($email->status === 'sent')
                                         <span class="badge bg-success">Envoyé</span>
                                     @elseif($email->status === 'failed')
@@ -142,8 +150,8 @@
                                         <span class="badge bg-warning">En attente</span>
                                     @endif
                                 </td>
-                                <td>
-                                    <small>
+                                <td style="max-width: 150px;">
+                                    <small class="d-block text-truncate" title="{{ $email->sent_at ? $email->sent_at->format('d/m/Y à H:i') : ($email->created_at->format('d/m/Y à H:i')) }}">
                                         {{ $email->sent_at ? $email->sent_at->format('d/m/Y à H:i') : ($email->created_at->format('d/m/Y à H:i')) }}
                                     </small>
                                 </td>
@@ -155,7 +163,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" class="text-center py-4">
+                                <td colspan="8" class="text-center py-4">
                                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                                     <p class="text-muted">Aucun email envoyé trouvé</p>
                                 </td>
@@ -174,6 +182,72 @@
 
 @push('styles')
 <style>
+/* Gestion du débordement de texte dans les colonnes - masquer avec ellipses */
+.admin-table table tbody td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Colonne Destinataire (3ème colonne après checkbox et avatar) - permet 2 lignes */
+.admin-table table tbody td:nth-child(3) {
+    white-space: normal;
+    line-height: 1.4;
+}
+
+.admin-table table tbody td:nth-child(3) strong,
+.admin-table table tbody td:nth-child(3) small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* Colonne Sujet (4ème colonne) */
+.admin-table table tbody td:nth-child(4) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Colonnes Type et Statut (5ème et 6ème colonnes) */
+.admin-table table tbody td:nth-child(5),
+.admin-table table tbody td:nth-child(6) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Colonne Date d'envoi (7ème colonne) */
+.admin-table table tbody td:nth-child(7) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Colonne Actions (8ème colonne) - ne pas limiter */
+.admin-table table tbody td:nth-child(8) {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* Colonnes checkbox et avatar (1ère et 2ème) - ne pas limiter */
+.admin-table table tbody td:nth-child(1),
+.admin-table table tbody td:nth-child(2) {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* Utiliser text-truncate de Bootstrap pour les éléments avec cette classe */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 @media (max-width: 991.98px) {
     /* Réduire les paddings et margins sur tablette */
     .admin-panel {
@@ -319,4 +393,120 @@
 }
 </style>
 @endpush
+
+@push('scripts')
+<script src="{{ asset('js/bulk-actions.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser les bulk actions pour la liste des emails envoyés
+    const sentEmailsContainer = document.getElementById('bulkActionsContainer-sentEmailsTable');
+    if (sentEmailsContainer) {
+        const bar = document.createElement('div');
+        bar.id = 'bulkActionsBar-sentEmailsTable';
+        bar.className = 'bulk-actions-bar';
+        bar.style.display = 'none';
+        bar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-sentEmailsTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="sentEmailsTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les emails sélectionnés ?" data-route="{{ route('admin.emails.sent.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-sentEmailsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-sentEmailsTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="sentEmailsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="sentEmailsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('sentEmailsTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        sentEmailsContainer.appendChild(bar);
+    }
+    bulkActions.init('sentEmailsTable', {
+        exportRoute: '{{ route('admin.emails.sent.export') }}'
+    });
+});
+
+async function openDeleteEmailModal(button) {
+    const action = button?.dataset?.action;
+    if (!action) {
+        console.error('Aucune action de suppression fournie.');
+        return;
+    }
+
+    const subject = button.dataset.subject || '';
+    const message = subject
+        ? `Êtes-vous sûr de vouloir supprimer l'email « ${subject} » ? Cette action est irréversible.`
+        : `Êtes-vous sûr de vouloir supprimer cet email ? Cette action est irréversible.`;
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer l\'email',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+    
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = action;
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        // Ajouter la méthode DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+@endpush
+
+<!-- Modal de suppression d'email -->
+<div class="modal fade" id="deleteEmailModal" tabindex="-1" aria-labelledby="deleteEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteEmailModalLabel">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteEmailMessage">Êtes-vous sûr de vouloir supprimer cet email ? Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deleteEmailForm" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 

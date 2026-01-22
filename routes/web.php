@@ -514,6 +514,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/announcements/{announcement}', [AdminController::class, 'destroyAnnouncement'])
             ->middleware('sso.validate')
             ->name('announcements.destroy');
+        Route::post('/announcements/bulk-action', [AdminController::class, 'bulkActionAnnouncements'])
+            ->middleware('sso.validate')
+            ->name('announcements.bulk-action');
+        Route::get('/announcements/export', [AdminController::class, 'exportAnnouncements'])->name('announcements.export');
         
         // Email sending from announcements
         Route::get('/announcements/send-email', [AdminController::class, 'showSendEmail'])
@@ -551,6 +555,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/whatsapp-messages/{sentWhatsAppMessage}', [AdminController::class, 'destroyWhatsAppMessage'])
             ->middleware('sso.validate')
             ->name('whatsapp-messages.destroy');
+        Route::post('/whatsapp-messages/bulk-action', [AdminController::class, 'bulkActionWhatsAppMessages'])
+            ->middleware('sso.validate')
+            ->name('whatsapp-messages.bulk-action');
+        Route::get('/whatsapp-messages/export', [AdminController::class, 'exportWhatsAppMessages'])->name('whatsapp-messages.export');
         
         // Email management
         Route::get('/emails/sent', [AdminController::class, 'sentEmails'])->name('emails.sent');
@@ -558,6 +566,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/emails/sent/{sentEmail}', [AdminController::class, 'destroySentEmail'])
             ->middleware('sso.validate')
             ->name('emails.sent.destroy');
+        Route::post('/emails/sent/bulk-action', [AdminController::class, 'bulkActionSentEmails'])
+            ->middleware('sso.validate')
+            ->name('emails.sent.bulk-action');
+        Route::get('/emails/sent/export', [AdminController::class, 'exportSentEmails'])->name('emails.sent.export');
         Route::get('/emails/scheduled', [AdminController::class, 'scheduledEmails'])->name('emails.scheduled');
         Route::get('/emails/scheduled/{scheduledEmail}', [AdminController::class, 'showScheduledEmail'])->name('emails.scheduled.show');
         Route::post('/emails/scheduled/{scheduledEmail}/cancel', [AdminController::class, 'cancelScheduledEmail'])
@@ -566,6 +578,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/emails/scheduled/{scheduledEmail}', [AdminController::class, 'destroyScheduledEmail'])
             ->middleware('sso.validate')
             ->name('emails.scheduled.destroy');
+        Route::post('/emails/scheduled/bulk-action', [AdminController::class, 'bulkActionScheduledEmails'])
+            ->middleware('sso.validate')
+            ->name('emails.scheduled.bulk-action');
+        Route::get('/emails/scheduled/export', [AdminController::class, 'exportScheduledEmails'])->name('emails.scheduled.export');
         
         // Partners management
         Route::get('/partners', [AdminController::class, 'partners'])->name('partners');

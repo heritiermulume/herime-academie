@@ -17,11 +17,48 @@
 @section('admin-content')
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
-                    <div class="admin-table">
+                    <x-admin.search-panel
+                        :action="route('admin.announcements')"
+                        formId="announcementsFilterForm"
+                        filtersId="announcementsFilters"
+                        :hasFilters="true"
+                        :searchValue="request('announcement_search')"
+                        placeholder="Rechercher par titre ou contenu..."
+                    >
+                        <x-slot:filters>
+                            <div class="admin-form-grid admin-form-grid--two mb-3">
+                                <div>
+                                    <label class="form-label fw-semibold">Type</label>
+                                    <select class="form-select" name="announcement_type">
+                                        <option value="">Tous les types</option>
+                                        <option value="info" {{ request('announcement_type') === 'info' ? 'selected' : '' }}>Information</option>
+                                        <option value="success" {{ request('announcement_type') === 'success' ? 'selected' : '' }}>Succès</option>
+                                        <option value="warning" {{ request('announcement_type') === 'warning' ? 'selected' : '' }}>Attention</option>
+                                        <option value="error" {{ request('announcement_type') === 'error' ? 'selected' : '' }}>Erreur</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label fw-semibold">Statut</label>
+                                    <select class="form-select" name="announcement_status">
+                                        <option value="">Tous les statuts</option>
+                                        <option value="active" {{ request('announcement_status') === 'active' ? 'selected' : '' }}>Active</option>
+                                        <option value="inactive" {{ request('announcement_status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </x-slot:filters>
+                    </x-admin.search-panel>
+
+                    <div id="bulkActionsContainer-announcementsTable"></div>
+
+                    <div class="admin-table mt-4">
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover" id="announcementsTable" data-bulk-select="true">
                                 <thead class="table-light">
                                     <tr>
+                                        <th style="width: 50px;">
+                                            <input type="checkbox" data-select-all data-table-id="announcementsTable" title="Sélectionner tout">
+                                        </th>
                                         <th style="min-width: 250px; max-width: 400px;">Titre</th>
                                         <th style="width: 100px; white-space: nowrap;">Type</th>
                                         <th style="width: 100px; white-space: nowrap;">Statut</th>
@@ -34,6 +71,9 @@
                                 <tbody>
                                     @forelse($announcements as $announcement)
                                     <tr>
+                                        <td>
+                                            <input type="checkbox" data-item-id="{{ $announcement->id }}" class="form-check-input">
+                                        </td>
                                         <td style="max-width: 400px;">
                                             <h6 class="mb-0 text-truncate d-block" style="max-width: 100%;" title="{{ $announcement->title }}">{{ $announcement->title }}</h6>
                                             <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $announcement->content }}">{{ $announcement->content }}</small>
@@ -95,7 +135,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="7" class="text-center py-4">
+                                        <td colspan="8" class="text-center py-4">
                                             <i class="fas fa-bullhorn fa-3x text-muted mb-3"></i>
                                             <p class="text-muted">Aucune annonce trouvée</p>
                                         </td>
@@ -279,7 +319,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-3 text-muted">
+                                    <td colspan="9" class="text-center py-3 text-muted">
                                         <i class="fas fa-inbox fa-2x mb-2"></i>
                                         <p class="mb-0">Aucun email envoyé récemment</p>
                                     </td>
@@ -294,10 +334,25 @@
 
                 <!-- Onglet emails programmés -->
                 <div class="tab-pane fade" id="scheduled-emails" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm">
+                    <x-admin.search-panel
+                        :action="route('admin.announcements')"
+                        formId="scheduledEmailsFilterForm"
+                        filtersId="scheduledEmailsFilters"
+                        :hasFilters="true"
+                        :searchValue="request('scheduled_search')"
+                        placeholder="Rechercher par sujet..."
+                    >
+                    </x-admin.search-panel>
+
+                    <div id="bulkActionsContainer-scheduledEmailsTable"></div>
+
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover table-sm" id="scheduledEmailsTable" data-bulk-select="true">
                             <thead class="table-light">
                                 <tr>
+                                    <th style="width: 50px;">
+                                        <input type="checkbox" data-select-all data-table-id="scheduledEmailsTable" title="Sélectionner tout">
+                                    </th>
                                     <th style="width: 50px; min-width: 50px; max-width: 50px;"></th>
                                     <th style="min-width: 200px; max-width: 300px;">Sujet</th>
                                     <th style="min-width: 150px; max-width: 250px;">Destinataires</th>
@@ -310,6 +365,9 @@
                             <tbody>
                                 @forelse($pendingScheduledEmails ?? [] as $scheduled)
                                 <tr>
+                                    <td>
+                                        <input type="checkbox" data-item-id="{{ $scheduled->id }}" class="form-check-input">
+                                    </td>
                                     <td class="align-middle" style="width: 50px; min-width: 50px; max-width: 50px; padding: 0.5rem; vertical-align: middle;">
                                         @php
                                             $creator = $scheduled->created_by_user ?? null;
@@ -416,7 +474,7 @@
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-3 text-muted">
+                                    <td colspan="8" class="text-center py-3 text-muted">
                                         <i class="fas fa-clock fa-2x mb-2"></i>
                                         <p class="mb-0">Aucun email programmé</p>
                                     </td>
@@ -490,11 +548,49 @@
                 </div>
             </div>
 
+            <x-admin.search-panel
+                :action="route('admin.announcements')"
+                formId="whatsappFilterForm"
+                filtersId="whatsappFilters"
+                :hasFilters="true"
+                :searchValue="request('whatsapp_search')"
+                placeholder="Rechercher par message, téléphone ou nom..."
+            >
+                <x-slot:filters>
+                    <div class="admin-form-grid admin-form-grid--two mb-3">
+                        <div>
+                            <label class="form-label fw-semibold">Statut</label>
+                            <select class="form-select" name="whatsapp_status">
+                                <option value="">Tous les statuts</option>
+                                <option value="sent" {{ request('whatsapp_status') === 'sent' ? 'selected' : '' }}>Envoyé</option>
+                                <option value="delivered" {{ request('whatsapp_status') === 'delivered' ? 'selected' : '' }}>Livré</option>
+                                <option value="read" {{ request('whatsapp_status') === 'read' ? 'selected' : '' }}>Lu</option>
+                                <option value="failed" {{ request('whatsapp_status') === 'failed' ? 'selected' : '' }}>Échoué</option>
+                                <option value="pending" {{ request('whatsapp_status') === 'pending' ? 'selected' : '' }}>En attente</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label fw-semibold">Type</label>
+                            <select class="form-select" name="whatsapp_type">
+                                <option value="">Tous les types</option>
+                                <option value="announcement" {{ request('whatsapp_type') === 'announcement' ? 'selected' : '' }}>Annonce</option>
+                                <option value="notification" {{ request('whatsapp_type') === 'notification' ? 'selected' : '' }}>Notification</option>
+                            </select>
+                        </div>
+                    </div>
+                </x-slot:filters>
+            </x-admin.search-panel>
+
+            <div id="bulkActionsContainer-whatsappTable"></div>
+
             <!-- Tableau des messages WhatsApp récents -->
-            <div class="table-responsive whatsapp-messages-table">
-                <table class="table table-hover table-sm">
+            <div class="table-responsive whatsapp-messages-table mt-4">
+                <table class="table table-hover table-sm" id="whatsappTable" data-bulk-select="true">
                     <thead class="table-light">
                         <tr>
+                            <th style="width: 50px;">
+                                <input type="checkbox" data-select-all data-table-id="whatsappTable" title="Sélectionner tout">
+                            </th>
                             <th style="width: 50px; min-width: 50px; max-width: 50px;"></th>
                             <th style="min-width: 180px; max-width: 250px;">Destinataire</th>
                             <th style="min-width: 200px; max-width: 350px;">Message</th>
@@ -508,6 +604,9 @@
                     <tbody>
                         @forelse($recentSentWhatsApp ?? [] as $whatsapp)
                         <tr>
+                            <td>
+                                <input type="checkbox" data-item-id="{{ $whatsapp->id }}" class="form-check-input">
+                            </td>
                             <td class="align-middle" style="width: 50px; min-width: 50px; max-width: 50px; padding: 0.5rem; vertical-align: middle;">
                                 @php
                                     $recipientUser = $whatsapp->recipient_user ?? null;
@@ -580,7 +679,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="text-center py-3 text-muted">
+                            <td colspan="9" class="text-center py-3 text-muted">
                                 <i class="fab fa-whatsapp fa-2x mb-2"></i>
                                 <p class="mb-0">Aucun message WhatsApp envoyé récemment</p>
                             </td>
@@ -752,7 +851,171 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/bulk-actions.js') }}"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser les bulk actions pour la liste principale des annonces
+    const announcementsContainer = document.getElementById('bulkActionsContainer-announcementsTable');
+    if (announcementsContainer) {
+        const bar = document.createElement('div');
+        bar.id = 'bulkActionsBar-announcementsTable';
+        bar.className = 'bulk-actions-bar';
+        bar.style.display = 'none';
+        bar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-announcementsTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="announcementsTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les annonces sélectionnées ?" data-route="{{ route('admin.announcements.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success bulk-action-btn" data-action="activate" data-table-id="announcementsTable" data-confirm="false" data-route="{{ route('admin.announcements.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-check me-1"></i>Activer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning bulk-action-btn" data-action="deactivate" data-table-id="announcementsTable" data-confirm="false" data-route="{{ route('admin.announcements.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-ban me-1"></i>Désactiver
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-announcementsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-announcementsTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="announcementsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="announcementsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('announcementsTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        announcementsContainer.appendChild(bar);
+    }
+    bulkActions.init('announcementsTable', {
+        exportRoute: '{{ route('admin.announcements') }}'
+    });
+
+    // Initialiser les bulk actions pour la liste des emails envoyés
+    const sentEmailsContainer = document.getElementById('bulkActionsContainer-sentEmailsTable');
+    if (sentEmailsContainer) {
+        const bar = document.createElement('div');
+        bar.id = 'bulkActionsBar-sentEmailsTable';
+        bar.className = 'bulk-actions-bar';
+        bar.style.display = 'none';
+        bar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-sentEmailsTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="sentEmailsTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les emails sélectionnés ?" data-route="{{ route('admin.emails.sent.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-sentEmailsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-sentEmailsTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="sentEmailsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="sentEmailsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('sentEmailsTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        sentEmailsContainer.appendChild(bar);
+    }
+    bulkActions.init('sentEmailsTable', {
+        exportRoute: '{{ route('admin.announcements') }}'
+    });
+
+    // Initialiser les bulk actions pour la liste des emails programmés
+    const scheduledEmailsContainer = document.getElementById('bulkActionsContainer-scheduledEmailsTable');
+    if (scheduledEmailsContainer) {
+        const bar = document.createElement('div');
+        bar.id = 'bulkActionsBar-scheduledEmailsTable';
+        bar.className = 'bulk-actions-bar';
+        bar.style.display = 'none';
+        bar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-scheduledEmailsTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-warning bulk-action-btn" data-action="cancel" data-table-id="scheduledEmailsTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir annuler les emails programmés sélectionnés ?" data-route="{{ route('admin.emails.scheduled.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="scheduledEmailsTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les emails programmés sélectionnés ?" data-route="{{ route('admin.emails.scheduled.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-scheduledEmailsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-scheduledEmailsTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="scheduledEmailsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="scheduledEmailsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('scheduledEmailsTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        scheduledEmailsContainer.appendChild(bar);
+    }
+    bulkActions.init('scheduledEmailsTable', {
+        exportRoute: '{{ route('admin.announcements') }}'
+    });
+
+    // Initialiser les bulk actions pour la liste des messages WhatsApp
+    const whatsappContainer = document.getElementById('bulkActionsContainer-whatsappTable');
+    if (whatsappContainer) {
+        const bar = document.createElement('div');
+        bar.id = 'bulkActionsBar-whatsappTable';
+        bar.className = 'bulk-actions-bar';
+        bar.style.display = 'none';
+        bar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-whatsappTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="whatsappTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les messages WhatsApp sélectionnés ?" data-route="{{ route('admin.whatsapp-messages.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-whatsappTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-whatsappTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="whatsappTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="whatsappTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('whatsappTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        whatsappContainer.appendChild(bar);
+    }
+    bulkActions.init('whatsappTable', {
+        exportRoute: '{{ route('admin.announcements') }}'
+    });
+});
+
 function editAnnouncement(id) {
     // Récupérer les données de l'annonce via AJAX
     fetch(`/admin/announcements/${id}/edit`)

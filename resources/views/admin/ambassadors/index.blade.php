@@ -258,6 +258,8 @@
                         </x-slot:filters>
                     </x-admin.search-panel>
 
+                    <div id="bulkActionsContainer-applicationsTable"></div>
+
                     <div class="admin-table mt-4">
                         <div class="table-responsive">
                             <table class="table align-middle" id="applicationsTable" data-bulk-select="true" data-export-route="{{ route('admin.ambassadors.applications.export') }}">

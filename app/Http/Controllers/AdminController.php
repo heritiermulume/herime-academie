@@ -118,7 +118,7 @@ class AdminController extends Controller
 
         // Revenus par mois (6 derniers mois)
         $revenueByMonth = Order::where('status', 'paid')
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(total) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->where('created_at', '>=', now()->subMonths(6))
             ->groupBy('month')
             ->orderBy('month')
@@ -235,7 +235,7 @@ class AdminController extends Controller
 
         // Revenus par mois (6 derniers mois) - TOTAL
         $revenueByMonth = Order::where('status', 'paid')
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(total) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->where('created_at', '>=', now()->subMonths(6))
             ->groupBy('month')
             ->orderBy('month')
@@ -280,7 +280,7 @@ class AdminController extends Controller
 
         // Revenus par jour (30 derniers jours) - TOTAL
         $revenueByDay = Order::where('status', 'paid')
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(total) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->where('created_at', '>=', now()->subDays(30))
             ->groupBy('date')
             ->orderBy('date')
@@ -327,7 +327,7 @@ class AdminController extends Controller
         $driver = DB::getDriverName();
         if ($driver === 'pgsql') {
             $revenueByWeek = Order::where('status', 'paid')
-                ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(total) as revenue")
+                ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(COALESCE(total_amount, total, 0)) as revenue")
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->groupBy('week')
                 ->orderBy('week')
@@ -338,7 +338,7 @@ class AdminController extends Controller
                 });
         } else {
             $revenueByWeek = Order::where('status', 'paid')
-                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(total) as revenue')
+                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->groupBy('week')
                 ->orderBy('week')
@@ -453,7 +453,7 @@ class AdminController extends Controller
 
         // Revenus par année (pour le filtre) - TOTAL
         $revenueByYear = Order::where('status', 'paid')
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(total) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('year')
             ->orderBy('year')
             ->get()
@@ -655,7 +655,7 @@ class AdminController extends Controller
 
         switch($period) {
             case 'day':
-                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(total) as revenue')
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
                     ->groupBy('date')
                     ->orderBy('date')
                     ->get()
@@ -668,12 +668,12 @@ class AdminController extends Controller
             case 'week':
                 $driver = DB::getDriverName();
                 if ($driver === 'pgsql') {
-                    $results = $query->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(total) as revenue")
+                    $results = $query->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(COALESCE(total_amount, total, 0)) as revenue")
                         ->groupBy('week')
                         ->orderBy('week')
                         ->get();
                 } else {
-                    $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(total) as revenue')
+                    $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
                         ->groupBy('week')
                         ->orderBy('week')
                         ->get();
@@ -684,7 +684,7 @@ class AdminController extends Controller
                 })->toArray();
                 break;
             case 'month':
-                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(total) as revenue')
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
                     ->groupBy('month')
                     ->orderBy('month')
                     ->get()
@@ -695,7 +695,7 @@ class AdminController extends Controller
                 $data = $results->toArray();
                 break;
             case 'year':
-                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(total) as revenue')
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
                     ->groupBy('year')
                     ->orderBy('year')
                     ->get()
@@ -2333,11 +2333,52 @@ class AdminController extends Controller
     // Gestion des annonces
     public function announcements(Request $request)
     {
-        $announcements = Announcement::latest()->paginate(15)->withQueryString();
+        // Filtres pour les annonces
+        $announcementsQuery = Announcement::query();
         
-        // Récupérer les emails avec pagination
-        $recentSentEmails = SentEmail::with('user')
-            ->latest()
+        if ($request->filled('announcement_search')) {
+            $search = $request->announcement_search;
+            $announcementsQuery->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('content', 'like', "%{$search}%");
+            });
+        }
+        
+        if ($request->filled('announcement_type')) {
+            $announcementsQuery->where('type', $request->announcement_type);
+        }
+        
+        if ($request->filled('announcement_status')) {
+            if ($request->announcement_status === 'active') {
+                $announcementsQuery->where('is_active', true);
+            } elseif ($request->announcement_status === 'inactive') {
+                $announcementsQuery->where('is_active', false);
+            }
+        }
+        
+        $announcements = $announcementsQuery->latest()->paginate(15)->withQueryString();
+        
+        // Filtres pour les emails envoyés
+        $sentEmailsQuery = SentEmail::with('user');
+        
+        if ($request->filled('email_search')) {
+            $search = $request->email_search;
+            $sentEmailsQuery->where(function($q) use ($search) {
+                $q->where('subject', 'like', "%{$search}%")
+                  ->orWhere('recipient_email', 'like', "%{$search}%")
+                  ->orWhere('recipient_name', 'like', "%{$search}%");
+            });
+        }
+        
+        if ($request->filled('email_status')) {
+            $sentEmailsQuery->where('status', $request->email_status);
+        }
+        
+        if ($request->filled('email_type')) {
+            $sentEmailsQuery->where('type', $request->email_type);
+        }
+        
+        $recentSentEmails = $sentEmailsQuery->latest()
             ->paginate(15, ['*'], 'emails_page')
             ->withQueryString();
         
@@ -2353,11 +2394,19 @@ class AdminController extends Controller
             return $email;
         });
         
-        // Récupérer les emails programmés avec pagination
-        $pendingScheduledEmails = ScheduledEmail::with('creator')
+        // Filtres pour les emails programmés
+        $scheduledEmailsQuery = ScheduledEmail::with('creator')
             ->where('status', 'pending')
-            ->where('scheduled_at', '>=', now())
-            ->orderBy('scheduled_at')
+            ->where('scheduled_at', '>=', now());
+        
+        if ($request->filled('scheduled_search')) {
+            $search = $request->scheduled_search;
+            $scheduledEmailsQuery->where(function($q) use ($search) {
+                $q->where('subject', 'like', "%{$search}%");
+            });
+        }
+        
+        $pendingScheduledEmails = $scheduledEmailsQuery->orderBy('scheduled_at')
             ->paginate(15, ['*'], 'scheduled_page')
             ->withQueryString();
         
@@ -2369,9 +2418,27 @@ class AdminController extends Controller
             'pending_scheduled' => ScheduledEmail::where('status', 'pending')->count(),
         ];
         
-        // Récupérer les messages WhatsApp avec pagination et les utilisateurs destinataires
-        $recentSentWhatsApp = SentWhatsAppMessage::with('user')
-            ->latest()
+        // Filtres pour les messages WhatsApp
+        $whatsappQuery = SentWhatsAppMessage::with('user');
+        
+        if ($request->filled('whatsapp_search')) {
+            $search = $request->whatsapp_search;
+            $whatsappQuery->where(function($q) use ($search) {
+                $q->where('message', 'like', "%{$search}%")
+                  ->orWhere('recipient_phone', 'like', "%{$search}%")
+                  ->orWhere('recipient_name', 'like', "%{$search}%");
+            });
+        }
+        
+        if ($request->filled('whatsapp_status')) {
+            $whatsappQuery->where('status', $request->whatsapp_status);
+        }
+        
+        if ($request->filled('whatsapp_type')) {
+            $whatsappQuery->where('type', $request->whatsapp_type);
+        }
+        
+        $recentSentWhatsApp = $whatsappQuery->latest()
             ->paginate(15, ['*'], 'whatsapp_page')
             ->withQueryString();
         
@@ -2441,6 +2508,161 @@ class AdminController extends Controller
         $announcement->delete();
         return redirect()->route('admin.announcements')
             ->with('success', 'Annonce supprimée avec succès.');
+    }
+
+    /**
+     * Actions en masse pour les annonces
+     */
+    public function bulkActionAnnouncements(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                return $this->bulkDelete($ids, Announcement::class);
+            },
+            'activate' => function($ids) {
+                return $this->bulkUpdate($ids, Announcement::class, ['is_active' => true]);
+            },
+            'deactivate' => function($ids) {
+                return $this->bulkUpdate($ids, Announcement::class, ['is_active' => false]);
+            }
+        ];
+
+        return $this->handleBulkAction($request, Announcement::class, $actions);
+    }
+
+    /**
+     * Exporter les annonces
+     */
+    public function exportAnnouncements(Request $request)
+    {
+        $columns = [
+            'id' => 'ID',
+            'title' => 'Titre',
+            'content' => 'Contenu',
+            'type' => 'Type',
+            'is_active' => 'Statut',
+            'starts_at' => 'Date de début',
+            'expires_at' => 'Date de fin',
+            'created_at' => 'Date de création'
+        ];
+
+        $query = Announcement::query();
+
+        return $this->exportData($request, $query, $columns, 'annonces');
+    }
+
+    /**
+     * Actions en masse pour les emails envoyés
+     */
+    public function bulkActionSentEmails(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                return $this->bulkDelete($ids, SentEmail::class);
+            }
+        ];
+
+        return $this->handleBulkAction($request, SentEmail::class, $actions);
+    }
+
+    /**
+     * Exporter les emails envoyés
+     */
+    public function exportSentEmails(Request $request)
+    {
+        $columns = [
+            'id' => 'ID',
+            'recipient_name' => 'Destinataire',
+            'recipient_email' => 'Email',
+            'subject' => 'Sujet',
+            'type' => 'Type',
+            'status' => 'Statut',
+            'sent_at' => 'Date d\'envoi',
+            'created_at' => 'Date de création'
+        ];
+
+        $query = SentEmail::query();
+
+        return $this->exportData($request, $query, $columns, 'emails_envoyes');
+    }
+
+    /**
+     * Actions en masse pour les emails programmés
+     */
+    public function bulkActionScheduledEmails(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                return $this->bulkDelete($ids, ScheduledEmail::class);
+            },
+            'cancel' => function($ids) {
+                $count = ScheduledEmail::whereIn('id', $ids)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'cancelled']);
+                
+                return [
+                    'message' => "{$count} email(s) programmé(s) annulé(s) avec succès.",
+                    'count' => $count
+                ];
+            }
+        ];
+
+        return $this->handleBulkAction($request, ScheduledEmail::class, $actions);
+    }
+
+    /**
+     * Exporter les emails programmés
+     */
+    public function exportScheduledEmails(Request $request)
+    {
+        $columns = [
+            'id' => 'ID',
+            'subject' => 'Sujet',
+            'recipient_type' => 'Type de destinataire',
+            'total_recipients' => 'Nombre de destinataires',
+            'status' => 'Statut',
+            'scheduled_at' => 'Programmé pour',
+            'created_at' => 'Date de création'
+        ];
+
+        $query = ScheduledEmail::query();
+
+        return $this->exportData($request, $query, $columns, 'emails_programmes');
+    }
+
+    /**
+     * Actions en masse pour les messages WhatsApp
+     */
+    public function bulkActionWhatsAppMessages(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                return $this->bulkDelete($ids, SentWhatsAppMessage::class);
+            }
+        ];
+
+        return $this->handleBulkAction($request, SentWhatsAppMessage::class, $actions);
+    }
+
+    /**
+     * Exporter les messages WhatsApp
+     */
+    public function exportWhatsAppMessages(Request $request)
+    {
+        $columns = [
+            'id' => 'ID',
+            'recipient_name' => 'Destinataire',
+            'recipient_phone' => 'Téléphone',
+            'message' => 'Message',
+            'type' => 'Type',
+            'status' => 'Statut',
+            'sent_at' => 'Date d\'envoi',
+            'created_at' => 'Date de création'
+        ];
+
+        $query = SentWhatsAppMessage::query();
+
+        return $this->exportData($request, $query, $columns, 'messages_whatsapp');
     }
 
     protected function validatedAnnouncementData(Request $request): array
