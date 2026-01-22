@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Services\SSOService;
+use App\Models\Ambassador;
 
 class RoleMiddleware
 {
@@ -37,7 +38,9 @@ class RoleMiddleware
         $user = auth()->user();
         $userRole = $user->role ?? 'customer';
 
-        // Les administrateurs et super-utilisateurs ont accès à toutes les sections protégées
+        // Les administrateurs (admin) et super-utilisateurs (super_user) ont accès à toutes les sections protégées
+        // (y compris les routes ambassador, provider, affiliate, etc.)
+        // La méthode isAdmin() vérifie à la fois 'admin' et 'super_user'
         if ($user->isAdmin()) {
             return $next($request);
         }
@@ -51,6 +54,18 @@ class RoleMiddleware
         } elseif ($role === 'admin') {
             // Admin access already handled above; reaching ici signifie utilisateur non-admin
             abort(403, 'Accès non autorisé. Seuls les administrateurs et super utilisateurs peuvent accéder à cette section.');
+        } elseif ($role === 'ambassador') {
+            // Pour les ambassadeurs, vérifier qu'ils ont un enregistrement Ambassador actif
+            // Les ambassadeurs ne sont pas identifiés par un rôle dans la table users,
+            // mais par la présence d'un enregistrement dans la table ambassadors
+            // Note: Les administrateurs ont déjà accès (vérifié ci-dessus)
+            $ambassador = Ambassador::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->first();
+            
+            if (!$ambassador) {
+                abort(403, 'Accès non autorisé. Seuls les ambassadeurs actifs peuvent accéder à cette section.');
+            }
         } else {
             // Pour les autres rôles (provider, affiliate), vérifier strictement
             if ($userRole !== $role) {

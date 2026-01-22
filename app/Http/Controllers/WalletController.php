@@ -35,10 +35,25 @@ class WalletController extends Controller
     {
         $user = Auth::user();
         
-        // Vérifier que l'utilisateur est un ambassadeur actif
-        $ambassador = Ambassador::where('user_id', $user->id)
-            ->where('is_active', true)
-            ->firstOrFail();
+        // Les administrateurs (admin) et super-utilisateurs (super_user) ont accès à toutes les sections
+        // La méthode isAdmin() vérifie à la fois 'admin' et 'super_user'
+        $isAdmin = $user->isAdmin();
+        
+        // Vérifier que l'utilisateur est un ambassadeur actif, un provider, ou un administrateur/super admin
+        $ambassador = null;
+        if ($isAdmin) {
+            // Les admins et super admins peuvent accéder, pas besoin de vérifier le rôle ambassador
+            // Mais on peut essayer de récupérer l'ambassadeur s'il existe
+            $ambassador = Ambassador::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->first();
+        } elseif ($user->hasRole('ambassador')) {
+            $ambassador = Ambassador::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->firstOrFail();
+        } elseif (!$user->hasRole('provider')) {
+            abort(403, 'Accès réservé aux ambassadeurs, providers, administrateurs et super administrateurs');
+        }
 
         // Créer un wallet si l'utilisateur n'en a pas
         $wallet = Wallet::firstOrCreate(

@@ -9,8 +9,8 @@
         @method('POST')
 
         <div class="admin-form-card">
-            <div class="admin-form-wrapper">
-                <div class="mt-4 pt-3 border-top payment-settings-content">
+            <div class="admin-form-grid">
+                <div class="mt-4 pt-3 border-top">
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" id="is_external_provider" name="is_external_provider" value="1" 
                                {{ old('is_external_provider', $provider->is_external_provider) ? 'checked' : '' }}
@@ -119,7 +119,7 @@
                             @endif
                         @endif
                         
-                        <div class="admin-form-grid">
+                        <div class="admin-form-grid admin-form-grid--responsive">
                             <div>
                                 <label for="moneroo_country" class="form-label fw-bold">Pays</label>
                                 <select class="form-select @error('moneroo_country') is-invalid @enderror" 
@@ -227,7 +227,7 @@
                                         Entrez votre numéro de compte en format international (ex: 14149518161 pour le test).
                                     @else
                                         Entrez votre numéro de téléphone en format international complet avec l'indicatif pays.
-                                        <br>
+                                        <br class="d-none d-md-inline">
                                         Exemple pour la RDC: <strong>243824449218</strong> (243 = indicatif, 824449218 = numéro).
                                     @endif
                                     @if($isSandbox && $selectedProvider === 'moneroo_payout_demo')
@@ -252,33 +252,25 @@
                     Configuration actuelle
                 </h6>
                 <div class="row g-3">
-                    <div class="col-12 col-md-6">
-                        <div class="mb-2">
-                            <strong class="d-block mb-1">Méthode:</strong> 
-                            <span class="text-muted">{{ $selectedMethod['name'] ?? $selectedProvider }}</span>
-                        </div>
+                    <div class="col-md-6">
+                        <strong>Méthode:</strong> 
+                        <span class="text-muted">{{ $selectedMethod['name'] ?? $selectedProvider }}</span>
                     </div>
-                    <div class="col-12 col-md-6">
-                        <div class="mb-2">
-                            <strong class="d-block mb-1">Pays:</strong> 
-                            <span class="text-muted">
-                                @foreach($countries as $c)
-                                    @if($c['code'] == $selectedCountry){{ $c['name'] }}@endif
-                                @endforeach
-                            </span>
-                        </div>
+                    <div class="col-md-6">
+                        <strong>Pays:</strong> 
+                        <span class="text-muted">
+                            @foreach($countries as $c)
+                                @if($c['code'] == $selectedCountry){{ $c['name'] }}@endif
+                            @endforeach
+                        </span>
                     </div>
-                    <div class="col-12 col-md-6">
-                        <div class="mb-2">
-                            <strong class="d-block mb-1">Devise:</strong> 
-                            <span class="text-muted">{{ $selectedCurrency }}</span>
-                        </div>
+                    <div class="col-md-6">
+                        <strong>Devise:</strong> 
+                        <span class="text-muted">{{ $selectedCurrency }}</span>
                     </div>
-                    <div class="col-12 col-md-6">
-                        <div class="mb-2">
-                            <strong class="d-block mb-1">{{ $needsAccountNumber ? 'Numéro de compte' : 'Numéro de téléphone' }}:</strong> 
-                            <span class="text-muted">{{ $selectedPhone }}</span>
-                        </div>
+                    <div class="col-md-6">
+                        <strong>{{ $needsAccountNumber ? 'Numéro de compte' : 'Numéro de téléphone' }}:</strong> 
+                        <span class="text-muted">{{ $selectedPhone }}</span>
                     </div>
                 </div>
             </div>
@@ -666,46 +658,45 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @push('styles')
 <style>
-/* ============================================
-   RESPONSIVE DESIGN - PAYMENT SETTINGS
-   ============================================ */
-
-/* Desktop (≥1024px) - Layout par défaut */
-.admin-form-card {
-    padding: 2rem;
+/* Grille responsive pour les champs de formulaire */
+.admin-form-grid--responsive {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
 }
 
-.admin-form-wrapper {
-    width: 100%;
+/* Tablette: 2 colonnes */
+@media (min-width: 768px) {
+    .admin-form-grid--responsive {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
 }
 
-.payment-settings-content {
-    width: 100%;
+/* Desktop: 4 colonnes pour les champs Moneroo */
+@media (min-width: 1024px) {
+    .admin-form-grid--responsive {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
 }
 
-.admin-form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-}
-
-/* Tablette (768px - 1023px) */
-@media (max-width: 1023.98px) {
+/* Réduire l'espacement en haut sur mobile/tablette */
+@media (max-width: 1024px) {
     .provider-admin-shell {
-        padding-top: calc(var(--site-navbar-height, 64px) + 0.5rem) !important;
+        padding-top: calc(var(--site-navbar-height, 64px) + 0.25rem) !important;
     }
     
     .admin-main {
-        padding-top: 0.5rem !important;
+        padding-top: 0.25rem !important;
         padding-bottom: 1.5rem !important;
     }
     
     .admin-header {
-        margin-bottom: 1rem !important;
+        margin-bottom: 0.5rem !important;
     }
     
     .admin-content {
-        gap: 1.25rem !important;
+        gap: 1rem !important;
         margin-top: 0 !important;
     }
     
@@ -714,46 +705,33 @@ document.addEventListener('DOMContentLoaded', function() {
         padding: 1.5rem !important;
     }
     
-    .admin-form-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.25rem;
-    }
-    
-    /* Alertes sur tablette */
+    /* Alertes responsive */
     .alert {
         padding: 1rem !important;
-        margin-bottom: 1.25rem !important;
     }
     
     .alert-heading {
         font-size: 1rem !important;
-        margin-bottom: 0.75rem !important;
     }
     
     .alert ul {
-        padding-left: 1.25rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .alert ul li {
-        margin-bottom: 0.375rem;
-        line-height: 1.5;
+        padding-left: 1.25rem !important;
+        font-size: 0.875rem !important;
     }
 }
 
-/* Mobile (≤767px) */
-@media (max-width: 767.98px) {
+@media (max-width: 640px) {
     .provider-admin-shell {
-        padding-top: calc(var(--site-navbar-height, 64px) + 0.25rem) !important;
+        padding-top: calc(var(--site-navbar-height, 64px) + 0.1rem) !important;
     }
     
     .admin-main {
-        padding-top: 0.25rem !important;
+        padding-top: 0.1rem !important;
         padding-bottom: 1rem !important;
     }
     
     .admin-header {
-        margin-bottom: 0.75rem !important;
+        margin-bottom: 0.25rem !important;
     }
     
     .admin-header__title {
@@ -762,30 +740,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     .admin-header__subtitle {
-        font-size: 0.9rem !important;
         margin-top: 0.25rem !important;
         margin-bottom: 0 !important;
-        line-height: 1.4;
+        font-size: 0.9rem !important;
     }
     
     .admin-content {
-        gap: 1rem !important;
+        gap: 0.75rem !important;
         margin-top: 0 !important;
     }
     
     .admin-form-card {
         margin-top: 0 !important;
         padding: 1.25rem !important;
-        border-radius: 0.75rem !important;
+        border-radius: 1rem !important;
     }
     
-    /* Grille de formulaire - 1 colonne sur mobile */
-    .admin-form-grid {
-        grid-template-columns: 1fr !important;
-        gap: 1rem !important;
-    }
-    
-    /* Labels et champs de formulaire */
+    /* Form labels et inputs sur mobile */
     .form-label {
         font-size: 0.95rem !important;
         margin-bottom: 0.5rem !important;
@@ -793,16 +764,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .form-select,
     .form-control {
-        font-size: 1rem !important;
+        font-size: 0.95rem !important;
         padding: 0.625rem 0.75rem !important;
-        min-height: 44px; /* Taille tactile optimale */
+    }
+    
+    .form-check-label {
+        font-size: 0.95rem !important;
     }
     
     /* Alertes sur mobile */
     .alert {
         padding: 0.875rem !important;
-        margin-bottom: 1rem !important;
-        border-radius: 0.5rem !important;
+        border-radius: 0.75rem !important;
     }
     
     .alert-heading {
@@ -810,97 +783,79 @@ document.addEventListener('DOMContentLoaded', function() {
         margin-bottom: 0.5rem !important;
     }
     
-    .alert ul {
-        padding-left: 1.25rem;
-        margin-bottom: 0.5rem;
+    .alert-heading i {
+        font-size: 1.1rem !important;
     }
     
-    .alert ul li {
-        font-size: 0.875rem;
-        margin-bottom: 0.25rem;
-        line-height: 1.5;
+    .alert ul {
+        padding-left: 1.15rem !important;
+        font-size: 0.85rem !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .alert p {
+        font-size: 0.85rem !important;
+        margin-bottom: 0.5rem !important;
     }
     
     .alert small {
         font-size: 0.8rem !important;
-        line-height: 1.4;
     }
     
-    /* Messages d'aide */
-    .form-text,
+    /* Textes d'aide sur mobile */
     small.text-muted {
         font-size: 0.8rem !important;
-        line-height: 1.5 !important;
-        margin-top: 0.375rem !important;
-        display: block;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
+        line-height: 1.4 !important;
     }
     
-    /* Sauts de ligne dans les messages d'aide */
-    small.text-muted br {
-        display: block;
-        content: "";
-        margin-top: 0.25rem;
+    /* Configuration actuelle sur mobile */
+    .admin-form-card h6 {
+        font-size: 1rem !important;
+        margin-bottom: 1rem !important;
     }
     
-    /* Switch checkbox */
-    .form-check {
-        padding-left: 2.5rem;
+    .admin-form-card .row {
+        margin: 0 !important;
     }
     
-    .form-check-input {
-        width: 2.5rem;
-        height: 1.5rem;
-        margin-left: -2.5rem;
-    }
-    
-    .form-check-label {
-        font-size: 1rem;
-        line-height: 1.5;
-    }
-    
-    /* Section configuration actuelle */
-    .admin-form-card .row.g-3 {
-        --bs-gutter-x: 0.75rem;
-        --bs-gutter-y: 0.75rem;
-    }
-    
-    .admin-form-card .row.g-3 > div {
-        margin-bottom: 0.5rem;
-    }
-    
-    .admin-form-card .row.g-3 > div > div {
-        padding: 0.5rem 0;
+    .admin-form-card .col-12 {
+        padding: 0.5rem 0 !important;
+        margin-bottom: 0.5rem !important;
     }
     
     .admin-form-card strong {
         display: block;
         margin-bottom: 0.25rem;
         font-size: 0.9rem;
-        color: var(--bs-dark, #212529);
     }
     
     .admin-form-card .text-muted {
-        word-break: break-word;
+        font-size: 0.85rem !important;
     }
-    
-    /* Boutons d'action */
+}
+
+/* Styles pour les boutons d'action */
+.admin-form-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1.5rem;
+}
+
+/* Mobile: boutons en colonne */
+@media (max-width: 767.98px) {
     .admin-form-actions {
-        display: flex;
         flex-direction: column;
         gap: 0.75rem;
         width: 100%;
-        margin-top: 1.5rem;
+        margin-top: 1.25rem;
     }
     
     .admin-form-actions .admin-btn {
         width: 100%;
         margin: 0;
         justify-content: center;
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-        min-height: 44px; /* Taille tactile optimale */
+        padding: 0.75rem 1rem !important;
     }
     
     .admin-form-actions .admin-btn i {
@@ -908,76 +863,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
-/* Petits mobiles (≤575px) */
-@media (max-width: 575.98px) {
-    .admin-form-card {
-        padding: 1rem !important;
-        border-radius: 0.5rem !important;
-    }
-    
-    .admin-header__title {
-        font-size: 1.35rem !important;
-    }
-    
-    .admin-header__subtitle {
-        font-size: 0.85rem !important;
-    }
-    
-    .form-label {
-        font-size: 0.9rem !important;
-    }
-    
-    .form-select,
-    .form-control {
-        font-size: 0.95rem !important;
-        padding: 0.5rem 0.625rem !important;
-    }
-    
-    .alert {
-        padding: 0.75rem !important;
-        border-radius: 0.5rem !important;
-    }
-    
-    .alert-heading {
-        font-size: 0.9rem !important;
-    }
-    
-    .alert ul {
-        padding-left: 1rem;
-    }
-    
-    .alert ul li {
-        font-size: 0.8rem;
-        margin-bottom: 0.25rem;
-    }
-    
-    .admin-form-actions .admin-btn {
-        padding: 0.625rem 1.25rem;
-        font-size: 0.95rem;
-    }
-    
-    /* Messages d'aide encore plus compacts */
-    small.text-muted {
-        font-size: 0.75rem !important;
-    }
-    
-    /* Section configuration actuelle */
-    .admin-form-card .row.g-3 > div {
-        margin-bottom: 0.75rem;
-    }
-    
-    .admin-form-card strong {
-        font-size: 0.85rem;
-    }
-}
-
-/* Desktop (≥768px) - Boutons d'action */
+/* Tablette et desktop: boutons en ligne */
 @media (min-width: 768px) {
     .admin-form-actions {
-        display: flex;
+        flex-direction: row;
         gap: 1rem;
-        align-items: center;
-        flex-wrap: wrap;
     }
     
     .admin-form-actions .admin-btn {
@@ -985,99 +875,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 
-/* Amélioration de l'espacement pour les sections */
-@media (min-width: 1024px) {
-    .admin-form-card {
-        padding: 2.5rem;
+/* Amélioration des switch sur mobile */
+@media (max-width: 640px) {
+    .form-check {
+        padding-left: 2.25rem !important;
     }
     
-    .admin-form-grid {
-        gap: 2rem;
-    }
-    
-    /* Section configuration actuelle sur desktop */
-    .admin-form-card .row.g-3 > div > div {
-        padding: 0.75rem 0;
-    }
-}
-
-/* Tablette - Amélioration de la grille */
-@media (min-width: 768px) and (max-width: 1023.98px) {
-    .admin-form-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.5rem;
-    }
-    
-    /* Section configuration actuelle sur tablette */
-    .admin-form-card .row.g-3 > div {
-        margin-bottom: 0.75rem;
-    }
-}
-
-/* Amélioration de la lisibilité sur tous les écrans */
-.form-select:focus,
-.form-control:focus {
-    border-color: var(--bs-primary, #0d6efd);
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-    outline: none;
-}
-
-/* Amélioration de l'affichage des erreurs */
-.invalid-feedback {
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-    display: block;
-}
-
-@media (max-width: 767.98px) {
-    .invalid-feedback {
-        font-size: 0.8rem;
-    }
-}
-
-/* Amélioration du switch sur mobile */
-@media (max-width: 767.98px) {
     .form-check-input {
-        cursor: pointer;
+        width: 2.25rem !important;
+        height: 1.25rem !important;
+        margin-left: -2.25rem !important;
     }
     
     .form-check-label {
-        cursor: pointer;
-        user-select: none;
+        padding-top: 0.125rem !important;
     }
 }
 
-/* Amélioration de l'espacement vertical sur mobile */
-@media (max-width: 767.98px) {
-    .payment-settings-content {
-        margin-top: 0.75rem;
+/* Amélioration de l'espacement des sections */
+@media (max-width: 1024px) {
+    .admin-form-card + .admin-form-card {
+        margin-top: 1rem !important;
     }
     
-    .payment-settings-content .border-top {
+    .border-top {
         padding-top: 1rem !important;
         margin-top: 1rem !important;
-        border-top-width: 1px !important;
-    }
-    
-    .payment-settings-content .form-check {
-        margin-bottom: 0.75rem !important;
-    }
-    
-    .payment-settings-content small.text-muted.d-block {
-        font-size: 0.85rem !important;
-        line-height: 1.5 !important;
     }
 }
 
-/* Amélioration de la section de configuration actuelle */
-@media (max-width: 767.98px) {
-    .admin-form-card.mt-4 {
-        margin-top: 1.5rem !important;
+/* Amélioration de la lisibilité sur tablette */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .admin-form-grid--responsive > div {
+        min-width: 0;
     }
     
-    .admin-form-card h6 {
-        font-size: 1rem !important;
-        margin-bottom: 1rem !important;
+    .admin-form-card {
+        padding: 1.5rem !important;
     }
 }
 </style>
