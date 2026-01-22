@@ -14,41 +14,90 @@ Analyses & Statistiques
 @section('admin-content')
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
-            <div class="admin-stats-grid">
-                <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Utilisateurs</p>
-                    <p class="admin-stat-card__value">{{ number_format($stats['total_users'] ?? 0) }}</p>
-                    <p class="admin-stat-card__muted">Total inscrits</p>
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-primary-subtle text-primary">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Utilisateurs</p>
+                            <h3 class="insight-card__value">{{ number_format($stats['total_users'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">Total inscrits</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Contenus</p>
-                    <p class="admin-stat-card__value">{{ number_format($stats['total_courses'] ?? 0) }}</p>
-                    <p class="admin-stat-card__muted">Catalogue disponible</p>
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-success-subtle text-success">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Contenus</p>
+                            <h3 class="insight-card__value">{{ number_format($stats['total_courses'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">Catalogue disponible</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Commandes</p>
-                    <p class="admin-stat-card__value">{{ number_format($stats['total_orders'] ?? 0) }}</p>
-                    <p class="admin-stat-card__muted">Transactions enregistrées</p>
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-warning-subtle text-warning">
+                            <i class="fas fa-shopping-basket"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Commandes</p>
+                            <h3 class="insight-card__value">{{ number_format($stats['total_orders'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">Transactions enregistrées</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Revenus totaux</p>
-                    <p class="admin-stat-card__value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}</p>
-                    <p class="admin-stat-card__muted">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['internal_revenue'] ?? 0) }} internes + {{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['commissions_revenue'] ?? 0) }} commissions</p>
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-info-subtle text-info">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Revenus totaux</p>
+                            <h3 class="insight-card__value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_revenue'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['internal_revenue'] ?? 0) }} internes + {{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['commissions_revenue'] ?? 0) }} commissions</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Visiteurs uniques</p>
-                    <p class="admin-stat-card__value">{{ number_format($stats['unique_visitors'] ?? 0) }}</p>
-                    <p class="admin-stat-card__muted">Visiteurs distincts</p>
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-secondary-subtle text-secondary">
+                            <i class="fas fa-user-friends"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Visiteurs uniques</p>
+                            <h3 class="insight-card__value">{{ number_format($stats['unique_visitors'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">Visiteurs distincts</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Visites</p>
-                    <p class="admin-stat-card__value">{{ number_format($stats['total_visits'] ?? $stats['total_visitors'] ?? 0) }}</p>
-                    <p class="admin-stat-card__muted">Total des visites</p>
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-dark-subtle text-dark">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Visites</p>
+                            <h3 class="insight-card__value">{{ number_format($stats['total_visits'] ?? $stats['total_visitors'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">Total des visites</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Visites aujourd'hui</p>
-                    <p class="admin-stat-card__value">{{ number_format($stats['visitors_today'] ?? 0) }}</p>
-                    <p class="admin-stat-card__muted">{{ number_format($stats['unique_visitors_today'] ?? 0) }} visiteurs uniques</p>
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-danger-subtle text-danger">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Visites aujourd'hui</p>
+                            <h3 class="insight-card__value">{{ number_format($stats['visitors_today'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">{{ number_format($stats['unique_visitors_today'] ?? 0) }} visiteurs uniques</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1798,6 +1847,62 @@ function refreshAnalytics() {
 
 @push('styles')
 <style>
+/* Styles pour les cartes insight-card avec bords arrondis */
+.insight-card {
+    background: #ffffff;
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s ease;
+}
+
+.insight-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.insight-card__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.insight-card__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.insight-card__label {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.insight-card__value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: #0b1f3a;
+    line-height: 1.2;
+}
+
+.insight-card__supplement {
+    margin-bottom: 0;
+    color: #334155;
+    font-size: 0.875rem;
+}
+
 .admin-card {
     background: #ffffff;
     border-radius: 16px;
