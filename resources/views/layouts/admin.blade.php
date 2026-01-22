@@ -9,7 +9,7 @@
             'active' => ['admin.dashboard']
         ],
         [
-            'label' => 'Analytics',
+            'label' => 'Analytiques',
             'icon' => 'fas fa-chart-line',
             'route' => 'admin.analytics',
             'active' => ['admin.analytics']

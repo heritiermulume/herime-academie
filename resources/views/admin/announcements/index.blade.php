@@ -211,25 +211,26 @@
             </div>
 
             <!-- Onglets pour les emails -->
-            <ul class="nav nav-tabs mb-3" id="emailsTab" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="sent-emails-tab" data-bs-toggle="tab" data-bs-target="#sent-emails" type="button" role="tab">
-                        <i class="fas fa-paper-plane me-2"></i>Emails envoyés
-                        <span class="badge bg-primary ms-2">{{ $recentSentEmails->total() ?? 0 }}</span>
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="scheduled-emails-tab" data-bs-toggle="tab" data-bs-target="#scheduled-emails" type="button" role="tab">
-                        <i class="fas fa-clock me-2"></i>Emails programmés
-                        <span class="badge bg-warning ms-2">{{ $pendingScheduledEmails->total() ?? 0 }}</span>
-                    </button>
-                </li>
-                <li class="nav-item ms-auto d-none d-md-block" role="presentation">
-                    <a href="{{ route('admin.emails.sent') }}" class="btn btn-sm btn-outline-primary mt-2">
-                        <i class="fas fa-list me-2"></i>Voir tout
-                    </a>
-                </li>
-            </ul>
+            <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2 mb-3">
+                <ul class="nav nav-tabs flex-grow-1" id="emailsTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="sent-emails-tab" data-bs-toggle="tab" data-bs-target="#sent-emails" type="button" role="tab">
+                            <i class="fas fa-paper-plane me-2"></i>Emails envoyés
+                            <span class="badge bg-primary ms-2">{{ $recentSentEmails->total() ?? 0 }}</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="scheduled-emails-tab" data-bs-toggle="tab" data-bs-target="#scheduled-emails" type="button" role="tab">
+                            <i class="fas fa-clock me-2"></i>Emails programmés
+                            <span class="badge bg-warning ms-2">{{ $pendingScheduledEmails->total() ?? 0 }}</span>
+                        </button>
+                    </li>
+                </ul>
+                <!-- Bouton "Voir tout" visible sur tous les écrans -->
+                <a href="{{ route('admin.emails.sent') }}" class="btn btn-sm btn-outline-primary align-self-start align-self-md-center">
+                    <i class="fas fa-list me-2"></i>Voir tout
+                </a>
+            </div>
 
             <div class="tab-content" id="emailsTabContent">
                 <!-- Onglet emails envoyés -->
@@ -1290,6 +1291,20 @@ function openDeleteWhatsAppModal(button) {
     .card-header .btn-light:not(.btn-sm), .card-header button.btn-light {
         width: 100%;
     }
+    
+    /* Bouton "Voir tout" sur très petits écrans - toujours visible */
+    .btn-outline-primary.btn-sm {
+        font-size: 0.7rem;
+        padding: 0.35rem 0.6rem;
+        white-space: nowrap;
+        width: auto;
+        min-width: auto;
+    }
+    
+    .btn-outline-primary.btn-sm i {
+        font-size: 0.65rem;
+        margin-right: 0.15rem;
+    }
 }
 
 @media (max-width: 991.98px) {
@@ -1339,6 +1354,15 @@ function openDeleteWhatsAppModal(button) {
         padding: 0.15em 0.35em;
         margin-left: 0.2rem !important;
         flex-shrink: 0;
+    }
+    
+    /* Bouton "Voir tout" sur tablette - visible et accessible */
+    .btn-outline-primary.btn-sm {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.75rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+        min-width: auto;
     }
     
     /* Réduire les paddings et margins sur tablette */
@@ -1744,14 +1768,16 @@ function openDeleteWhatsAppModal(button) {
         flex-shrink: 0;
     }
     
-    .nav-tabs .btn-sm {
-        font-size: 0.7rem;
-        padding: 0.25rem 0.5rem;
-        margin-top: 0.25rem !important;
+    /* Bouton "Voir tout" - visible sur tous les écrans */
+    .btn-outline-primary.btn-sm {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
     
-    .nav-tabs .btn-sm i {
-        font-size: 0.65rem;
+    .btn-outline-primary.btn-sm i {
+        font-size: 0.7rem;
         margin-right: 0.25rem;
     }
     

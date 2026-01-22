@@ -68,6 +68,12 @@ class AdminController extends Controller
 
     public function dashboard()
     {
+        // Calculer le revenu total : somme de toutes les commandes payées/completed
+        // Utilise le même calcul que dans /admin/orders pour uniformiser
+        $totalRevenue = Order::whereIn('status', ['paid', 'completed'])
+            ->get()
+            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
+
         // Calculer les revenus des contenus internes (prestataires internes)
         // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
         // Ce sont uniquement les commandes payées pour les contenus dont le prestataire n'est PAS externe
@@ -92,9 +98,6 @@ class AdminController extends Controller
         $commissionsRevenue = ProviderPayout::where('status', 'completed')
             ->sum('commission_amount');
 
-        // Revenu total = revenus internes + commissions
-        $totalRevenue = $internalRevenue + $commissionsRevenue;
-
         // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
         $externalProviderPayouts = ProviderPayout::where('status', 'completed')
             ->sum('amount');
@@ -116,8 +119,8 @@ class AdminController extends Controller
             'total_enrollments' => Enrollment::count(),
         ];
 
-        // Revenus par mois (6 derniers mois)
-        $revenueByMonth = Order::where('status', 'paid')
+        // Revenus par mois (6 derniers mois) - Utilise le même calcul que /admin/orders
+        $revenueByMonth = Order::whereIn('status', ['paid', 'completed'])
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->where('created_at', '>=', now()->subMonths(6))
             ->groupBy('month')
@@ -132,11 +135,11 @@ class AdminController extends Controller
         $revenueLabels = $revenueByMonth->pluck('month')->toArray();
         $revenueValues = $revenueByMonth->pluck('revenue')->toArray();
 
-        // Revenus par catégorie
+        // Revenus par catégorie - Utilise le même calcul que /admin/orders
         $revenueByCategory = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('categories', 'contents.category_id', '=', 'categories.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->select('categories.id', 'categories.name')
             ->selectRaw('SUM(order_items.total) as revenue')
             ->groupBy('categories.id', 'categories.name')
@@ -188,6 +191,12 @@ class AdminController extends Controller
 
     public function analytics()
     {
+        // Calculer le revenu total : somme de toutes les commandes payées/completed
+        // Utilise le même calcul que dans /admin/orders pour uniformiser
+        $totalRevenue = Order::whereIn('status', ['paid', 'completed'])
+            ->get()
+            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
+
         // Calculer les revenus des contenus internes (prestataires internes)
         // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
         $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
@@ -206,9 +215,6 @@ class AdminController extends Controller
         // Calculer les commissions retenues sur les prestataires externes
         $commissionsRevenue = ProviderPayout::where('status', 'completed')
             ->sum('commission_amount');
-
-        // Revenu total = revenus internes + commissions
-        $totalRevenue = $internalRevenue + $commissionsRevenue;
 
         // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
         $externalProviderPayouts = ProviderPayout::where('status', 'completed')
@@ -233,8 +239,8 @@ class AdminController extends Controller
             'visitors_this_month' => Visitor::thisMonth()->count(),
         ];
 
-        // Revenus par mois (6 derniers mois) - TOTAL
-        $revenueByMonth = Order::where('status', 'paid')
+        // Revenus par mois (6 derniers mois) - TOTAL - Utilise le même calcul que /admin/orders
+        $revenueByMonth = Order::whereIn('status', ['paid', 'completed'])
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->where('created_at', '>=', now()->subMonths(6))
             ->groupBy('month')
@@ -278,8 +284,8 @@ class AdminController extends Controller
                 return $item;
             });
 
-        // Revenus par jour (30 derniers jours) - TOTAL
-        $revenueByDay = Order::where('status', 'paid')
+        // Revenus par jour (30 derniers jours) - TOTAL - Utilise le même calcul que /admin/orders
+        $revenueByDay = Order::whereIn('status', ['paid', 'completed'])
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->where('created_at', '>=', now()->subDays(30))
             ->groupBy('date')
@@ -323,10 +329,10 @@ class AdminController extends Controller
                 return $item;
             });
 
-        // Revenus par semaine (12 dernières semaines) - TOTAL
+        // Revenus par semaine (12 dernières semaines) - TOTAL - Utilise le même calcul que /admin/orders
         $driver = DB::getDriverName();
         if ($driver === 'pgsql') {
-            $revenueByWeek = Order::where('status', 'paid')
+            $revenueByWeek = Order::whereIn('status', ['paid', 'completed'])
                 ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(COALESCE(total_amount, total, 0)) as revenue")
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->groupBy('week')
@@ -337,7 +343,7 @@ class AdminController extends Controller
                     return $item;
                 });
         } else {
-            $revenueByWeek = Order::where('status', 'paid')
+            $revenueByWeek = Order::whereIn('status', ['paid', 'completed'])
                 ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
                 ->where('created_at', '>=', now()->subWeeks(12))
                 ->groupBy('week')
@@ -417,21 +423,21 @@ class AdminController extends Controller
                 });
         }
 
-        // Revenus par catégorie
+        // Revenus par catégorie - Utilise le même calcul que /admin/orders
         $revenueByCategory = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('categories', 'contents.category_id', '=', 'categories.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->select('categories.id', 'categories.name')
             ->selectRaw('SUM(order_items.total) as revenue')
             ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('revenue')
             ->get();
 
-        // Revenus par cours (top 10)
+        // Revenus par cours (top 10) - Utilise le même calcul que /admin/orders
         $revenueByCourse = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->select('contents.id', 'contents.title')
             ->selectRaw('SUM(order_items.total) as revenue')
             ->groupBy('contents.id', 'contents.title')
@@ -439,11 +445,11 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
 
-        // Revenus par prestataire (top 10)
+        // Revenus par prestataire (top 10) - Utilise le même calcul que /admin/orders
         $revenueByProvider = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->where('orders.status', 'paid')
+            ->whereIn('orders.status', ['paid', 'completed'])
             ->select('users.id', 'users.name')
             ->selectRaw('SUM(order_items.total) as revenue')
             ->groupBy('users.id', 'users.name')
@@ -451,8 +457,8 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
 
-        // Revenus par année (pour le filtre) - TOTAL
-        $revenueByYear = Order::where('status', 'paid')
+        // Revenus par année (pour le filtre) - TOTAL - Utilise le même calcul que /admin/orders
+        $revenueByYear = Order::whereIn('status', ['paid', 'completed'])
             ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('year')
             ->orderBy('year')
@@ -641,7 +647,8 @@ class AdminController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        $query = Order::where('status', 'paid');
+        // Utilise le même calcul que /admin/orders pour uniformiser
+        $query = Order::whereIn('status', ['paid', 'completed']);
 
         if ($startDate) {
             $query->where('created_at', '>=', $startDate);
@@ -714,10 +721,11 @@ class AdminController extends Controller
     {
         $days = $request->input('days', 'all');
         
+        // Utilise le même calcul que /admin/orders pour uniformiser
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->join('categories', 'contents.category_id', '=', 'categories.id')
-            ->where('orders.status', 'paid');
+            ->whereIn('orders.status', ['paid', 'completed']);
 
         if ($days !== 'all') {
             $query->where('orders.created_at', '>=', now()->subDays((int)$days));
@@ -736,9 +744,10 @@ class AdminController extends Controller
     {
         $days = $request->input('days', 'all');
         
+        // Utilise le même calcul que /admin/orders pour uniformiser
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
-            ->where('orders.status', 'paid');
+            ->whereIn('orders.status', ['paid', 'completed']);
 
         if ($days !== 'all') {
             $query->where('orders.created_at', '>=', now()->subDays((int)$days));
