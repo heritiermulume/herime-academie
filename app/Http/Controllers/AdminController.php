@@ -68,36 +68,41 @@ class AdminController extends Controller
 
     public function dashboard()
     {
-        // Calculer le revenu total : somme de toutes les commandes payées/completed
-        // Utilise le même calcul que dans /admin/orders pour uniformiser
-        $totalRevenue = Order::whereIn('status', ['paid', 'completed'])
-            ->get()
-            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
-
         // Calculer les revenus des contenus internes (prestataires internes)
         // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
-        // Ce sont uniquement les commandes payées/completed pour les contenus dont le prestataire n'est PAS externe
+        // Ce sont uniquement les commandes payées/completed qui contiennent UNIQUEMENT des items de prestataires internes
         // Un prestataire externe est identifié par: is_external_provider = true
-        // Utilise le même calcul que dans /admin/orders pour uniformiser
-        $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('contents', 'order_items.content_id', '=', 'contents.id')
-            ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->whereIn('orders.status', ['paid', 'completed'])
-            ->where(function($query) {
-                // Exclure explicitement les prestataires externes (is_external_provider = true)
-                // Inclure uniquement les prestataires internes:
-                //   - is_external_provider = false (prestataire interne explicite)
-                //   - is_external_provider = null (prestataire non configuré comme externe = interne par défaut)
-                $query->where(function($q) {
-                    $q->where('users.is_external_provider', false)
-                      ->orWhereNull('users.is_external_provider');
+        // Utilise le même calcul que dans /admin/orders pour uniformiser (montant total des commandes)
+        $internalRevenue = Order::whereIn('status', ['paid', 'completed'])
+            ->whereDoesntHave('orderItems', function($query) {
+                // Exclure les commandes qui ont au moins un item d'un prestataire externe
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('is_external_provider', true);
+                    });
                 });
             })
-            ->sum('order_items.total');
+            ->whereHas('orderItems', function($query) {
+                // Inclure uniquement les commandes qui ont au moins un item d'un prestataire interne
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where(function($pq) {
+                            $pq->where('is_external_provider', false)
+                              ->orWhereNull('is_external_provider');
+                        });
+                    });
+                });
+            })
+            ->get()
+            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
 
         // Calculer les commissions retenues sur les prestataires externes
         $commissionsRevenue = ProviderPayout::where('status', 'completed')
             ->sum('commission_amount');
+
+        // Calculer le revenu total : Revenus internes + Commissions uniquement
+        // Ne pas inclure le montant total des commandes externes, seulement les commissions retenues
+        $totalRevenue = $internalRevenue + $commissionsRevenue;
 
         // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
         $externalProviderPayouts = ProviderPayout::where('status', 'completed')
@@ -120,10 +125,27 @@ class AdminController extends Controller
             'total_enrollments' => Enrollment::count(),
         ];
 
-        // Revenus par mois (6 derniers mois) - Utilise le même calcul que /admin/orders
-        $revenueByMonth = Order::whereIn('status', ['paid', 'completed'])
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+        // Revenus internes par mois (6 derniers mois)
+        $internalRevenueByMonth = Order::whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subMonths(6))
+            ->whereDoesntHave('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('is_external_provider', true);
+                    });
+                });
+            })
+            ->whereHas('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where(function($pq) {
+                            $pq->where('is_external_provider', false)
+                              ->orWhereNull('is_external_provider');
+                        });
+                    });
+                });
+            })
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('month')
             ->orderBy('month')
             ->get()
@@ -131,6 +153,21 @@ class AdminController extends Controller
                 $item->month = $item->month ?? '';
                 return $item;
             });
+
+        // Commissions par mois (6 derniers mois)
+        $commissionsByMonth = ProviderPayout::where('status', 'completed')
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(function ($item) {
+                $item->month = $item->month ?? '';
+                return $item;
+            });
+
+        // Revenus totaux par mois : Revenus internes + Commissions
+        $revenueByMonth = $this->combineRevenueByPeriod($internalRevenueByMonth, $commissionsByMonth, 'month');
 
         // Préparer les labels et valeurs pour le graphique de revenus
         $revenueLabels = $revenueByMonth->pluck('month')->toArray();
@@ -192,31 +229,40 @@ class AdminController extends Controller
 
     public function analytics()
     {
-        // Calculer le revenu total : somme de toutes les commandes payées/completed
-        // Utilise le même calcul que dans /admin/orders pour uniformiser
-        $totalRevenue = Order::whereIn('status', ['paid', 'completed'])
-            ->get()
-            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
-
         // Calculer les revenus des contenus internes (prestataires internes)
         // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
-        // Utilise le même calcul que dans /admin/orders pour uniformiser
-        $internalRevenue = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('contents', 'order_items.content_id', '=', 'contents.id')
-            ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->whereIn('orders.status', ['paid', 'completed'])
-            ->where(function($query) {
-                // Exclure explicitement les prestataires externes (is_external_provider = true)
-                $query->where(function($q) {
-                    $q->where('users.is_external_provider', false)
-                      ->orWhereNull('users.is_external_provider');
+        // Ce sont uniquement les commandes payées/completed qui contiennent UNIQUEMENT des items de prestataires internes
+        // Utilise le même calcul que dans /admin/orders pour uniformiser (montant total des commandes)
+        $internalRevenue = Order::whereIn('status', ['paid', 'completed'])
+            ->whereDoesntHave('orderItems', function($query) {
+                // Exclure les commandes qui ont au moins un item d'un prestataire externe
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('is_external_provider', true);
+                    });
                 });
             })
-            ->sum('order_items.total');
+            ->whereHas('orderItems', function($query) {
+                // Inclure uniquement les commandes qui ont au moins un item d'un prestataire interne
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where(function($pq) {
+                            $pq->where('is_external_provider', false)
+                              ->orWhereNull('is_external_provider');
+                        });
+                    });
+                });
+            })
+            ->get()
+            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
 
         // Calculer les commissions retenues sur les prestataires externes
         $commissionsRevenue = ProviderPayout::where('status', 'completed')
             ->sum('commission_amount');
+
+        // Calculer le revenu total : Revenus internes + Commissions uniquement
+        // Ne pas inclure le montant total des commandes externes, seulement les commissions retenues
+        $totalRevenue = $internalRevenue + $commissionsRevenue;
 
         // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
         $externalProviderPayouts = ProviderPayout::where('status', 'completed')
@@ -241,31 +287,28 @@ class AdminController extends Controller
             'visitors_this_month' => Visitor::thisMonth()->count(),
         ];
 
-        // Revenus par mois (6 derniers mois) - TOTAL - Utilise le même calcul que /admin/orders
-        $revenueByMonth = Order::whereIn('status', ['paid', 'completed'])
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
-            ->where('created_at', '>=', now()->subMonths(6))
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get()
-            ->map(function ($item) {
-                $item->month = $item->month ?? '';
-                return $item;
-            });
-
         // Revenus internes par mois (6 derniers mois) - Utilise le même calcul que /admin/orders
-        $internalRevenueByMonth = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('contents', 'order_items.content_id', '=', 'contents.id')
-            ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->whereIn('orders.status', ['paid', 'completed'])
-            ->where(function($query) {
-                $query->where(function($q) {
-                    $q->where('users.is_external_provider', false)
-                      ->orWhereNull('users.is_external_provider');
+        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
+        $internalRevenueByMonth = Order::whereIn('status', ['paid', 'completed'])
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->whereDoesntHave('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('is_external_provider', true);
+                    });
                 });
             })
-            ->where('orders.created_at', '>=', now()->subMonths(6))
-            ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y-%m', 'month') . ', SUM(order_items.total) as revenue')
+            ->whereHas('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where(function($pq) {
+                            $pq->where('is_external_provider', false)
+                              ->orWhereNull('is_external_provider');
+                        });
+                    });
+                });
+            })
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('month')
             ->orderBy('month')
             ->get()
@@ -286,31 +329,78 @@ class AdminController extends Controller
                 return $item;
             });
 
-        // Revenus par jour (30 derniers jours) - TOTAL - Utilise le même calcul que /admin/orders
-        $revenueByDay = Order::whereIn('status', ['paid', 'completed'])
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
-            ->where('created_at', '>=', now()->subDays(30))
-            ->groupBy('date')
-            ->orderBy('date')
+        // Revenus totaux par mois : Revenus internes + Commissions
+        $revenueByMonth = $this->combineRevenueByPeriod($internalRevenueByMonth, $commissionsByMonth, 'month');
+
+        // Revenus internes par mois (6 derniers mois) - Utilise le même calcul que /admin/orders
+        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
+        $internalRevenueByMonth = Order::whereIn('status', ['paid', 'completed'])
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->whereDoesntHave('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('is_external_provider', true);
+                    });
+                });
+            })
+            ->whereHas('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where(function($pq) {
+                            $pq->where('is_external_provider', false)
+                              ->orWhereNull('is_external_provider');
+                        });
+                    });
+                });
+            })
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+            ->groupBy('month')
+            ->orderBy('month')
             ->get()
             ->map(function ($item) {
-                $item->date = $item->date ?? '';
+                $item->month = $item->month ?? '';
                 return $item;
             });
 
+        // Commissions par mois (6 derniers mois)
+        $commissionsByMonth = ProviderPayout::where('status', 'completed')
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(function ($item) {
+                $item->month = $item->month ?? '';
+                return $item;
+            });
+
+        // Revenus totaux par mois : Revenus internes + Commissions
+        $revenueByMonth = $this->combineRevenueByPeriod($internalRevenueByMonth, $commissionsByMonth, 'month');
+
+        // Revenus par jour (30 derniers jours) - Sera calculé en combinant revenus internes + commissions
+
         // Revenus internes par jour (30 derniers jours) - Utilise le même calcul que /admin/orders
-        $internalRevenueByDay = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('contents', 'order_items.content_id', '=', 'contents.id')
-            ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->whereIn('orders.status', ['paid', 'completed'])
-            ->where(function($query) {
-                $query->where(function($q) {
-                    $q->where('users.is_external_provider', false)
-                      ->orWhereNull('users.is_external_provider');
+        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
+        $internalRevenueByDay = Order::whereIn('status', ['paid', 'completed'])
+            ->where('created_at', '>=', now()->subDays(30))
+            ->whereDoesntHave('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('is_external_provider', true);
+                    });
                 });
             })
-            ->where('orders.created_at', '>=', now()->subDays(30))
-            ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y-%m-%d', 'date') . ', SUM(order_items.total) as revenue')
+            ->whereHas('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where(function($pq) {
+                            $pq->where('is_external_provider', false)
+                              ->orWhereNull('is_external_provider');
+                        });
+                    });
+                });
+            })
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('date')
             ->orderBy('date')
             ->get()
@@ -331,46 +421,35 @@ class AdminController extends Controller
                 return $item;
             });
 
-        // Revenus par semaine (12 dernières semaines) - TOTAL - Utilise le même calcul que /admin/orders
+        // Revenus totaux par jour : Revenus internes + Commissions
+        $revenueByDay = $this->combineRevenueByPeriod($internalRevenueByDay, $commissionsByDay, 'date');
+
+        // Revenus par semaine (12 dernières semaines) - Sera calculé en combinant revenus internes + commissions
         $driver = DB::getDriverName();
-        if ($driver === 'pgsql') {
-            $revenueByWeek = Order::whereIn('status', ['paid', 'completed'])
-                ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(COALESCE(total_amount, total, 0)) as revenue")
-                ->where('created_at', '>=', now()->subWeeks(12))
-                ->groupBy('week')
-                ->orderBy('week')
-                ->get()
-                ->map(function ($item) {
-                    $item->week = $item->week ?? '';
-                    return $item;
-                });
-        } else {
-            $revenueByWeek = Order::whereIn('status', ['paid', 'completed'])
-                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
-                ->where('created_at', '>=', now()->subWeeks(12))
-                ->groupBy('week')
-                ->orderBy('week')
-                ->get()
-                ->map(function ($item) {
-                    $item->week = $item->week ?? '';
-                    return $item;
-                });
-        }
 
         // Revenus internes par semaine (12 dernières semaines) - Utilise le même calcul que /admin/orders
+        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
         if ($driver === 'pgsql') {
-            $internalRevenueByWeek = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-                ->join('contents', 'order_items.content_id', '=', 'contents.id')
-                ->join('users', 'contents.provider_id', '=', 'users.id')
-                ->whereIn('orders.status', ['paid', 'completed'])
-                ->where(function($query) {
-                    $query->where(function($q) {
-                        $q->where('users.is_external_provider', false)
-                          ->orWhereNull('users.is_external_provider');
+            $internalRevenueByWeek = Order::whereIn('status', ['paid', 'completed'])
+                ->where('created_at', '>=', now()->subWeeks(12))
+                ->whereDoesntHave('orderItems', function($query) {
+                    $query->whereHas('content', function($q) {
+                        $q->whereHas('provider', function($providerQuery) {
+                            $providerQuery->where('is_external_provider', true);
+                        });
                     });
                 })
-                ->where('orders.created_at', '>=', now()->subWeeks(12))
-                ->selectRaw("to_char(orders.created_at, 'IYYY-IW') as week, SUM(order_items.total) as revenue")
+                ->whereHas('orderItems', function($query) {
+                    $query->whereHas('content', function($q) {
+                        $q->whereHas('provider', function($providerQuery) {
+                            $providerQuery->where(function($pq) {
+                                $pq->where('is_external_provider', false)
+                                  ->orWhereNull('is_external_provider');
+                            });
+                        });
+                    });
+                })
+                ->selectRaw("to_char(created_at, 'IYYY-IW') as week, SUM(COALESCE(total_amount, total, 0)) as revenue")
                 ->groupBy('week')
                 ->orderBy('week')
                 ->get()
@@ -379,18 +458,26 @@ class AdminController extends Controller
                     return $item;
                 });
         } else {
-            $internalRevenueByWeek = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-                ->join('contents', 'order_items.content_id', '=', 'contents.id')
-                ->join('users', 'contents.provider_id', '=', 'users.id')
-                ->whereIn('orders.status', ['paid', 'completed'])
-                ->where(function($query) {
-                    $query->where(function($q) {
-                        $q->where('users.is_external_provider', false)
-                          ->orWhereNull('users.is_external_provider');
+            $internalRevenueByWeek = Order::whereIn('status', ['paid', 'completed'])
+                ->where('created_at', '>=', now()->subWeeks(12))
+                ->whereDoesntHave('orderItems', function($query) {
+                    $query->whereHas('content', function($q) {
+                        $q->whereHas('provider', function($providerQuery) {
+                            $providerQuery->where('is_external_provider', true);
+                        });
                     });
                 })
-                ->where('orders.created_at', '>=', now()->subWeeks(12))
-                ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y-%u', 'week') . ', SUM(order_items.total) as revenue')
+                ->whereHas('orderItems', function($query) {
+                    $query->whereHas('content', function($q) {
+                        $q->whereHas('provider', function($providerQuery) {
+                            $providerQuery->where(function($pq) {
+                                $pq->where('is_external_provider', false)
+                                  ->orWhereNull('is_external_provider');
+                            });
+                        });
+                    });
+                })
+                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
                 ->groupBy('week')
                 ->orderBy('week')
                 ->get()
@@ -424,6 +511,9 @@ class AdminController extends Controller
                     return $item;
                 });
         }
+
+        // Revenus totaux par semaine : Revenus internes + Commissions
+        $revenueByWeek = $this->combineRevenueByPeriod($internalRevenueByWeek, $commissionsByWeek, 'week');
 
         // Revenus par catégorie - Utilise le même calcul que /admin/orders
         $revenueByCategory = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
@@ -459,29 +549,29 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
 
-        // Revenus par année (pour le filtre) - TOTAL - Utilise le même calcul que /admin/orders
-        $revenueByYear = Order::whereIn('status', ['paid', 'completed'])
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
-            ->groupBy('year')
-            ->orderBy('year')
-            ->get()
-            ->map(function ($item) {
-                $item->year = $item->year ?? '';
-                return $item;
-            });
+        // Revenus par année (pour le filtre) - Sera calculé en combinant revenus internes + commissions
 
         // Revenus internes par année - Utilise le même calcul que /admin/orders
-        $internalRevenueByYear = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
-            ->join('contents', 'order_items.content_id', '=', 'contents.id')
-            ->join('users', 'contents.provider_id', '=', 'users.id')
-            ->whereIn('orders.status', ['paid', 'completed'])
-            ->where(function($query) {
-                $query->where(function($q) {
-                    $q->where('users.is_external_provider', false)
-                      ->orWhereNull('users.is_external_provider');
+        // Calcul basé sur le montant total des commandes qui contiennent uniquement des items internes
+        $internalRevenueByYear = Order::whereIn('status', ['paid', 'completed'])
+            ->whereDoesntHave('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('is_external_provider', true);
+                    });
                 });
             })
-            ->selectRaw($this->buildDateFormatSelect('orders.created_at', '%Y', 'year') . ', SUM(order_items.total) as revenue')
+            ->whereHas('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where(function($pq) {
+                            $pq->where('is_external_provider', false)
+                              ->orWhereNull('is_external_provider');
+                        });
+                    });
+                });
+            })
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('year')
             ->orderBy('year')
             ->get()
@@ -500,6 +590,9 @@ class AdminController extends Controller
                 $item->year = $item->year ?? '';
                 return $item;
             });
+
+        // Revenus totaux par année : Revenus internes + Commissions
+        $revenueByYear = $this->combineRevenueByPeriod($internalRevenueByYear, $commissionsByYear, 'year');
 
         // Analytics détaillées
         $courseStats = Course::selectRaw('
@@ -1225,6 +1318,76 @@ class AdminController extends Controller
             ->get();
         
         return view('admin.users.show', compact('user', 'enrollments', 'allAccess', 'allCourses'));
+    }
+
+    /**
+     * Exporter les données d'un seul utilisateur
+     */
+    public function showUserExport(Request $request, User $user)
+    {
+        $format = $request->get('format', 'csv');
+        
+        // Préparer les données de l'utilisateur
+        $user->loadCount(['courses', 'enrollments']);
+        
+        // Formater les valeurs pour l'export
+        $roleLabels = [
+            'admin' => 'Administrateur',
+            'provider' => 'Prestataire',
+            'customer' => 'Client',
+            'affiliate' => 'Affilié',
+            'super_user' => 'Super Administrateur'
+        ];
+        
+        $genderLabels = [
+            'male' => 'Homme',
+            'female' => 'Femme',
+            'other' => 'Autre'
+        ];
+        
+        // Créer un objet formaté pour l'export
+        $formattedUser = (object)[
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $roleLabels[$user->role] ?? ucfirst($user->role ?? 'utilisateur'),
+            'phone' => $user->phone ?? 'Non renseigné',
+            'is_active' => $user->is_active ? 'Oui' : 'Non',
+            'is_verified' => $user->is_verified ? 'Oui' : 'Non',
+            'date_of_birth' => $user->date_of_birth ? $user->date_of_birth->format('d/m/Y') : 'Non renseignée',
+            'gender' => $user->gender ? ($genderLabels[$user->gender] ?? ucfirst($user->gender)) : 'Non renseigné',
+            'courses_count' => $user->courses_count ?? 0,
+            'enrollments_count' => $user->enrollments_count ?? 0,
+            'created_at' => $user->created_at->format('d/m/Y à H:i'),
+            'last_login_at' => $user->last_login_at ? $user->last_login_at->format('d/m/Y à H:i') : 'Jamais'
+        ];
+        
+        $columns = [
+            'id' => 'ID',
+            'name' => 'Nom',
+            'email' => 'Email',
+            'role' => 'Rôle',
+            'phone' => 'Téléphone',
+            'is_active' => 'Actif',
+            'is_verified' => 'Vérifié',
+            'date_of_birth' => 'Date de naissance',
+            'gender' => 'Genre',
+            'courses_count' => 'Nombre de cours',
+            'enrollments_count' => 'Nombre d\'inscriptions',
+            'created_at' => 'Date d\'inscription',
+            'last_login_at' => 'Dernière connexion'
+        ];
+        
+        // Créer une collection avec un seul élément formaté
+        $data = collect([$formattedUser]);
+        
+        if ($format === 'excel') {
+            return $this->exportToExcel($data, $columns, 'utilisateur-' . $user->id);
+        } elseif ($format === 'pdf') {
+            return $this->exportToPdf($data, $columns, 'utilisateur-' . $user->id);
+        } else {
+            return $this->exportToCsv($data, $columns, 'utilisateur-' . $user->id);
+        }
     }
 
     public function destroyUser(User $user)
@@ -5641,7 +5804,8 @@ class AdminController extends Controller
      */
     public function exportContents(Request $request)
     {
-        $query = Course::with(['category', 'provider'])
+        try {
+            $query = Course::with(['category', 'provider'])
             ->withCount(['enrollments', 'reviews'])
             ->withAvg('reviews', 'rating');
 
@@ -5684,5 +5848,60 @@ class AdminController extends Controller
         ];
 
         return $this->exportData($request, $query, $columns, 'contenus');
+        } catch (\Exception $e) {
+            Log::error('Erreur exportContents', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Erreur lors de l\'export: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Combine internal revenue and commissions by period
+     * 
+     * @param \Illuminate\Support\Collection $internalRevenue Collection with period key and revenue value
+     * @param \Illuminate\Support\Collection $commissions Collection with period key and revenue value
+     * @param string $periodKey The key name for the period (month, date, week, year)
+     * @return \Illuminate\Support\Collection Combined revenue by period
+     */
+    private function combineRevenueByPeriod($internalRevenue, $commissions, $periodKey)
+    {
+        // Create a map of all periods from both collections
+        $allPeriods = collect();
+        
+        // Add all periods from internal revenue
+        $internalRevenue->each(function ($item) use ($allPeriods, $periodKey) {
+            $period = $item->{$periodKey} ?? '';
+            if ($period && !$allPeriods->contains($period)) {
+                $allPeriods->push($period);
+            }
+        });
+        
+        // Add all periods from commissions
+        $commissions->each(function ($item) use ($allPeriods, $periodKey) {
+            $period = $item->{$periodKey} ?? '';
+            if ($period && !$allPeriods->contains($period)) {
+                $allPeriods->push($period);
+            }
+        });
+        
+        // Create a map for quick lookup
+        $internalMap = $internalRevenue->keyBy($periodKey);
+        $commissionsMap = $commissions->keyBy($periodKey);
+        
+        // Combine revenues for each period
+        return $allPeriods->map(function ($period) use ($internalMap, $commissionsMap, $periodKey) {
+            $internal = $internalMap->get($period);
+            $commission = $commissionsMap->get($period);
+            
+            $internalRevenue = $internal ? (float)($internal->revenue ?? 0) : 0;
+            $commissionRevenue = $commission ? (float)($commission->revenue ?? 0) : 0;
+            
+            return (object) [
+                $periodKey => $period,
+                'revenue' => $internalRevenue + $commissionRevenue
+            ];
+        })->sortBy($periodKey)->values();
     }
 }

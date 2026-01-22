@@ -121,23 +121,39 @@ trait HandlesBulkActions
      */
     protected function exportData(Request $request, $query, $columns, $filename = 'export')
     {
-        $format = $request->get('format', 'csv');
-        $ids = $request->get('ids');
-        
-        // Filtrer par IDs si fournis
-        if ($ids) {
-            $idsArray = explode(',', $ids);
-            $query->whereIn('id', $idsArray);
-        }
-        
-        $data = $query->get();
-        
-        if ($format === 'excel') {
-            return $this->exportToExcel($data, $columns, $filename);
-        } elseif ($format === 'pdf') {
-            return $this->exportToPdf($data, $columns, $filename);
-        } else {
-            return $this->exportToCsv($data, $columns, $filename);
+        try {
+            $format = $request->get('format', 'csv');
+            $ids = $request->get('ids');
+            
+            // Filtrer par IDs si fournis
+            if ($ids) {
+                $idsArray = is_array($ids) ? $ids : explode(',', $ids);
+                $idsArray = array_filter(array_map('trim', $idsArray));
+                if (!empty($idsArray)) {
+                    $query->whereIn('id', $idsArray);
+                }
+            }
+            
+            $data = $query->get();
+            
+            if ($format === 'excel') {
+                return $this->exportToExcel($data, $columns, $filename);
+            } elseif ($format === 'pdf') {
+                return $this->exportToPdf($data, $columns, $filename);
+            } else {
+                return $this->exportToCsv($data, $columns, $filename);
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'export', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+            
+            // Retourner une réponse d'erreur au lieu de laisser Laravel retourner 404
+            return response()->json([
+                'error' => 'Erreur lors de l\'export: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -164,7 +180,7 @@ trait HandlesBulkActions
             foreach ($data as $row) {
                 $csvRow = [];
                 foreach (array_keys($columns) as $key) {
-                    $value = is_array($row) ? ($row[$key] ?? '') : $row->$key ?? '';
+                    $value = $this->getNestedValue($row, $key);
                     $csvRow[] = $this->formatCsvValue($value);
                 }
                 fputcsv($file, $csvRow);
@@ -201,7 +217,7 @@ trait HandlesBulkActions
             foreach ($data as $row) {
                 $excelRow = [];
                 foreach (array_keys($columns) as $key) {
-                    $value = is_array($row) ? ($row[$key] ?? '') : $row->$key ?? '';
+                    $value = $this->getNestedValue($row, $key);
                     $excelRow[] = $this->formatCsvValue($value);
                 }
                 fputcsv($file, $excelRow, "\t");
@@ -214,15 +230,169 @@ trait HandlesBulkActions
     }
 
     /**
-     * Exporter en PDF (basique - pour une vraie exportation PDF, utiliser dompdf ou similar)
+     * Exporter en PDF avec dompdf
      */
     protected function exportToPdf($data, $columns, $filename)
     {
-        // Pour l'instant, on retourne un CSV
-        // TODO: Implémenter une vraie exportation PDF si nécessaire
-        return $this->exportToCsv($data, $columns, $filename);
+        try {
+            $dompdf = new Dompdf();
+            $options = new Options();
+            $options->set('isHtml5ParserEnabled', true);
+            $options->set('isRemoteEnabled', true);
+            $options->set('defaultFont', 'DejaVu Sans');
+            $dompdf->setOptions($options);
+            
+            // Générer le HTML
+            $html = $this->generatePdfHtml($data, $columns, $filename);
+            
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'landscape');
+            $dompdf->render();
+            
+            return response($dompdf->output(), 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', "attachment; filename=\"{$filename}.pdf\"");
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de l\'export PDF', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Fallback vers CSV en cas d'erreur
+            return $this->exportToCsv($data, $columns, $filename);
+        }
+    }
+    
+    /**
+     * Générer le HTML pour le PDF
+     */
+    protected function generatePdfHtml($data, $columns, $filename)
+    {
+        $html = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 10px;
+            margin: 0;
+            padding: 10px;
+        }
+        h1 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        td {
+            border: 1px solid #dee2e6;
+            padding: 6px;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .header {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #333;
+        }
+        .footer {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            font-size: 8px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Export: ' . htmlspecialchars($filename, ENT_QUOTES, 'UTF-8') . '</h1>
+        <p>Date d\'export: ' . now()->format('d/m/Y à H:i') . '</p>
+    </div>
+    <table>
+        <thead>
+            <tr>';
+        
+        foreach ($columns as $label) {
+            $html .= '<th>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</th>';
+        }
+        
+        $html .= '</tr>
+        </thead>
+        <tbody>';
+        
+        foreach ($data as $row) {
+            $html .= '<tr>';
+            foreach (array_keys($columns) as $key) {
+                $value = $this->getNestedValue($row, $key);
+                $formattedValue = $this->formatPdfValue($value);
+                $html .= '<td>' . htmlspecialchars($formattedValue, ENT_QUOTES, 'UTF-8') . '</td>';
+            }
+            $html .= '</tr>';
+        }
+        
+        $html .= '</tbody>
+    </table>
+    <div class="footer">
+        <p>Généré le ' . now()->format('d/m/Y à H:i') . ' - Total: ' . $data->count() . ' élément(s)</p>
+    </div>
+</body>
+</html>';
+        
+        return $html;
+    }
+    
+    /**
+     * Formater une valeur pour PDF
+     */
+    protected function formatPdfValue($value)
+    {
+        if (is_null($value)) {
+            return '—';
+        }
+        
+        if (is_bool($value)) {
+            return $value ? 'Oui' : 'Non';
+        }
+        
+        if ($value instanceof \DateTime || $value instanceof \Carbon\Carbon) {
+            return $value->format('d/m/Y H:i');
+        }
+        
+        return (string) $value;
     }
 
+    /**
+     * Obtenir une valeur imbriquée (support des relations comme category.name)
+     */
+    protected function getNestedValue($row, $key)
+    {
+        if (is_array($row)) {
+            return data_get($row, $key, '');
+        }
+        
+        // Support des clés imbriquées comme "category.name"
+        if (strpos($key, '.') !== false) {
+            return data_get($row, $key, '');
+        }
+        
+        return $row->$key ?? '';
+    }
+    
     /**
      * Formater une valeur pour CSV
      */

@@ -15,6 +15,28 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
     <a href="{{ route('admin.users') }}" class="btn btn-light">
         <i class="fas fa-arrow-left me-2"></i>Retour à la liste
     </a>
+    <div class="dropdown">
+        <button class="btn btn-success dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-download me-2"></i>Exporter
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+            <li>
+                <a class="dropdown-item" href="{{ route('admin.users.show.export', $user) }}?format=csv">
+                    <i class="fas fa-file-csv me-2"></i>CSV
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="{{ route('admin.users.show.export', $user) }}?format=excel">
+                    <i class="fas fa-file-excel me-2"></i>Excel
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="{{ route('admin.users.show.export', $user) }}?format=pdf">
+                    <i class="fas fa-file-pdf me-2"></i>PDF
+                </a>
+            </li>
+        </ul>
+    </div>
     <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary">
         <i class="fas fa-edit me-2"></i>Modifier
     </a>
@@ -413,30 +435,6 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
         </div>
     </div>
 
-    <!-- Modal de confirmation de suppression -->
-    <div class="modal fade" id="deleteUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirmer la suppression</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.</p>
-                </div>
-                <div class="modal-footer delete-user-modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <form id="deleteUserForm" method="POST" action="{{ route('admin.users.destroy', $user) }}">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-trash me-2"></i>Supprimer
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Modal pour donner accès gratuit à un cours -->
     <div class="modal fade" id="grantAccessModal" tabindex="-1">
@@ -543,34 +541,6 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
         </div>
     </div>
 
-    <!-- Modal de confirmation pour enlever l'accès -->
-    <div class="modal fade" id="revokeAccessModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirmer la suppression d'accès</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Êtes-vous sûr de vouloir enlever l'accès au cours <strong id="revokeCourseTitle"></strong> ?</p>
-                    <p class="text-danger mb-0">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Cette action est irréversible. L'utilisateur perdra immédiatement l'accès à ce cours.
-                    </p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <form id="revokeAccessForm" method="POST">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger">
-                            <i class="fas fa-ban me-2"></i>Enlever l'accès
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @push('styles')
@@ -595,45 +565,6 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
     font-size: 0.7rem !important;
 }
 
-/* Forcer les boutons du modal à rester sur la même ligne */
-#revokeAccessModal .modal-footer {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    justify-content: flex-end !important;
-    gap: 0.5rem !important;
-}
-
-#revokeAccessModal .modal-footer .btn,
-#revokeAccessModal .modal-footer form {
-    flex: 0 0 auto !important;
-    margin: 0 !important;
-}
-
-#revokeAccessModal .modal-footer form {
-    display: inline-block !important;
-}
-
-/* Réduire la taille des boutons du modal */
-#revokeAccessModal .modal-footer .btn {
-    font-size: 0.8rem !important;
-    padding: 0.35rem 0.6rem !important;
-    line-height: 1.2 !important;
-    white-space: nowrap !important;
-}
-
-/* Réduire spécifiquement la largeur du bouton Annuler */
-#revokeAccessModal .modal-footer .btn-secondary {
-    min-width: auto !important;
-    max-width: fit-content !important;
-    width: auto !important;
-    flex: 0 0 auto !important;
-    padding: 0.35rem 0.8rem !important;
-}
-
-#revokeAccessModal .modal-footer .btn i {
-    font-size: 0.75rem !important;
-    margin-right: 0.4rem !important;
-}
 
 /* Ajouter une bordure visible sur le bouton "Retour à la liste" */
 .admin-content__actions .btn-outline-secondary {
@@ -852,37 +783,6 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
         font-size: 0.75rem !important;
     }
     
-    /* Styles pour le modal de suppression d'utilisateur */
-    #deleteUserModal .modal-footer {
-        display: flex !important;
-        flex-wrap: nowrap !important;
-        justify-content: space-between !important;
-        gap: 0.5rem !important;
-        width: 100% !important;
-    }
-    
-    #deleteUserModal .modal-footer .btn,
-    #deleteUserModal .modal-footer form {
-        flex: 1 1 50% !important;
-        margin: 0 !important;
-        width: calc(50% - 0.25rem) !important;
-        max-width: calc(50% - 0.25rem) !important;
-    }
-    
-    #deleteUserModal .modal-footer form {
-        display: flex !important;
-    }
-    
-    #deleteUserModal .modal-footer form .btn {
-        width: 100% !important;
-        flex: 1 1 100% !important;
-    }
-    
-    #deleteUserModal .modal-footer .btn {
-        font-size: 0.9rem !important;
-        padding: 0.5rem 1rem !important;
-        white-space: nowrap !important;
-    }
     
     /* Forcer la réduction de la taille du bouton d'action sur mobile */
     .admin-panel__body .btn-action-small,
@@ -920,17 +820,80 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
 @endpush
 
 @push('scripts')
+<script src="{{ asset('js/modern-confirm-modal.js') }}"></script>
 <script>
-function openDeleteModal(userId) {
-    const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
-    modal.show();
+async function openDeleteModal(userId) {
+    const message = 'Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible et supprimera toutes les données associées.';
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer l\'utilisateur',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+    
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ route('admin.users.destroy', $user) }}';
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        // Ajouter la méthode DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 
-function confirmRevokeAccess(userId, courseId, courseTitle) {
-    document.getElementById('revokeCourseTitle').textContent = courseTitle;
-    document.getElementById('revokeAccessForm').action = `/admin/users/${userId}/contents/${courseId}/revoke-access`;
-    const modal = new bootstrap.Modal(document.getElementById('revokeAccessModal'));
-    modal.show();
+async function confirmRevokeAccess(userId, courseId, courseTitle) {
+    const message = `Êtes-vous sûr de vouloir enlever l'accès au cours « ${courseTitle} » ? Cette action est irréversible. L'utilisateur perdra immédiatement l'accès à ce cours.`;
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Enlever l\'accès au cours',
+        confirmButtonText: 'Enlever l\'accès',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+    
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/users/${userId}/contents/${courseId}/revoke-access`;
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        // Ajouter la méthode DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 </script>
 @endpush

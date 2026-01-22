@@ -60,13 +60,19 @@ const bulkActions = {
             });
         });
         
-        // Gérer les liens d'export
-        document.querySelectorAll(`.export-link[data-table-id="${tableId}"]`).forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.handleExport(tableId, link.dataset.format);
+        // Gérer les liens d'export (avec délai pour s'assurer qu'ils sont dans le DOM)
+        setTimeout(() => {
+            document.querySelectorAll(`.export-link[data-table-id="${tableId}"]`).forEach(link => {
+                // Retirer l'ancien listener s'il existe
+                const newLink = link.cloneNode(true);
+                link.parentNode.replaceChild(newLink, link);
+                
+                newLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.handleExport(tableId, newLink.dataset.format);
+                });
             });
-        });
+        }, 50);
     },
     
     /**

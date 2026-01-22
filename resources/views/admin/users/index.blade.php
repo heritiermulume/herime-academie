@@ -296,6 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <ul class="dropdown-menu" aria-labelledby="exportDropdown-usersTable">
                             <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="usersTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
                             <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="usersTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="pdf" data-table-id="usersTable"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
                         </ul>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('usersTable')">
@@ -305,6 +306,38 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         container.appendChild(bulkActionsBar);
+        
+        // Attacher les événements aux liens d'export après création de la barre
+        setTimeout(() => {
+            document.querySelectorAll('.export-link[data-table-id="usersTable"]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const format = link.dataset.format;
+                    const exportRoute = '{{ route('admin.users.export') }}';
+                    const url = new URL(exportRoute, window.location.origin);
+                    url.searchParams.set('format', format);
+                    
+                    // Ajouter les filtres actuels
+                    const currentParams = new URLSearchParams(window.location.search);
+                    currentParams.forEach((value, key) => {
+                        if (key !== 'page' && key !== 'format') {
+                            url.searchParams.set(key, value);
+                        }
+                    });
+                    
+                    // Télécharger
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = url.toString();
+                    downloadLink.style.display = 'none';
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    
+                    // Effacer la sélection
+                    bulkActions.clearSelection('usersTable');
+                });
+            });
+        }, 50);
     }
     
     bulkActions.init('usersTable', {

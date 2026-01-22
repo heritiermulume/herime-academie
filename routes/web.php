@@ -393,6 +393,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('users.store');
         Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');
+        Route::get('/users/{user}/export', [AdminController::class, 'showUserExport'])->name('users.show.export');
         Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('users.edit');
         Route::put('/users/{user}', [AdminController::class, 'updateUser'])
             ->middleware('sso.validate')
