@@ -68,28 +68,39 @@ class AdminController extends Controller
 
     public function dashboard()
     {
-        // Calculer les revenus des contenus internes (prestataires internes)
-        // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
-        // Ce sont uniquement les commandes payées/completed qui contiennent UNIQUEMENT des items de prestataires internes
-        // Un prestataire externe est identifié par: is_external_provider = true
-        // Utilise le même calcul que dans /admin/orders pour uniformiser (montant total des commandes)
+        // Calculer les revenus des contenus internes
+        // IMPORTANT: Les revenus externes sont les revenus provenant des contenus qui appartiennent 
+        // à un utilisateur qui a UNIQUEMENT le rôle de "provider"
+        // Les revenus internes sont les revenus des contenus créés par des utilisateurs 
+        // qui ne sont PAS uniquement prestataires (admins, super_users, etc.)
         $internalRevenue = Order::whereIn('status', ['paid', 'completed'])
             ->whereDoesntHave('orderItems', function($query) {
                 // Exclure les commandes qui ont au moins un item d'un prestataire externe
+                // Un prestataire externe = utilisateur avec UNIQUEMENT le rôle "provider"
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('is_external_provider', true);
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->whereHas('orderItems', function($query) {
                 // Inclure uniquement les commandes qui ont au moins un item d'un prestataire interne
+                // Prestataire interne = utilisateur qui n'est PAS uniquement provider
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where(function($pq) {
-                            $pq->where('is_external_provider', false)
-                              ->orWhereNull('is_external_provider');
-                        });
+                        $providerQuery->where('role', '!=', 'provider');
+                    });
+                });
+            })
+            ->get()
+            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
+        
+        // Calculer les revenus externes (contenus créés par des utilisateurs avec uniquement le rôle provider)
+        $externalRevenue = Order::whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
@@ -100,8 +111,9 @@ class AdminController extends Controller
         $commissionsRevenue = ProviderPayout::where('status', 'completed')
             ->sum('commission_amount');
 
-        // Calculer le revenu total : Revenus internes + Commissions uniquement
-        // Ne pas inclure le montant total des commandes externes, seulement les commissions retenues
+        // Calculer le revenu total : Revenus internes + Commissions retenues sur les revenus externes
+        // Les revenus externes sont les revenus des contenus créés par des providers
+        // On ne compte que les commissions retenues, pas le montant total
         $totalRevenue = $internalRevenue + $commissionsRevenue;
 
         // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
@@ -119,8 +131,9 @@ class AdminController extends Controller
             'pending_orders' => Order::where('status', 'pending')->count(),
             'paid_orders' => Order::where('status', 'paid')->count(),
             'total_revenue' => $totalRevenue, // Revenu total (internes + commissions)
-            'internal_revenue' => $internalRevenue, // Revenus des contenus internes
-            'commissions_revenue' => $commissionsRevenue, // Commissions retenues
+            'internal_revenue' => $internalRevenue, // Revenus des contenus internes (non-providers)
+            'external_revenue' => $externalRevenue, // Revenus des contenus créés par des providers
+            'commissions_revenue' => $commissionsRevenue, // Commissions retenues sur les revenus externes
             'external_payouts' => $externalProviderPayouts, // Montants payés aux prestataires externes
             'total_enrollments' => Enrollment::count(),
         ];
@@ -131,17 +144,14 @@ class AdminController extends Controller
             ->whereDoesntHave('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('is_external_provider', true);
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->whereHas('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where(function($pq) {
-                            $pq->where('is_external_provider', false)
-                              ->orWhereNull('is_external_provider');
-                        });
+                        $providerQuery->where('role', '!=', 'provider');
                     });
                 });
             })
@@ -229,27 +239,39 @@ class AdminController extends Controller
 
     public function analytics()
     {
-        // Calculer les revenus des contenus internes (prestataires internes)
-        // IMPORTANT: Exclure explicitement tous les revenus des prestataires externes
-        // Ce sont uniquement les commandes payées/completed qui contiennent UNIQUEMENT des items de prestataires internes
-        // Utilise le même calcul que dans /admin/orders pour uniformiser (montant total des commandes)
+        // Calculer les revenus des contenus internes
+        // IMPORTANT: Les revenus externes sont les revenus provenant des contenus qui appartiennent 
+        // à un utilisateur qui a UNIQUEMENT le rôle de "provider"
+        // Les revenus internes sont les revenus des contenus créés par des utilisateurs 
+        // qui ne sont PAS uniquement prestataires (admins, super_users, etc.)
         $internalRevenue = Order::whereIn('status', ['paid', 'completed'])
             ->whereDoesntHave('orderItems', function($query) {
                 // Exclure les commandes qui ont au moins un item d'un prestataire externe
+                // Un prestataire externe = utilisateur avec UNIQUEMENT le rôle "provider"
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('is_external_provider', true);
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->whereHas('orderItems', function($query) {
                 // Inclure uniquement les commandes qui ont au moins un item d'un prestataire interne
+                // Prestataire interne = utilisateur qui n'est PAS uniquement provider
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where(function($pq) {
-                            $pq->where('is_external_provider', false)
-                              ->orWhereNull('is_external_provider');
-                        });
+                        $providerQuery->where('role', '!=', 'provider');
+                    });
+                });
+            })
+            ->get()
+            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
+        
+        // Calculer les revenus externes (contenus créés par des utilisateurs avec uniquement le rôle provider)
+        $externalRevenue = Order::whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function($query) {
+                $query->whereHas('content', function($q) {
+                    $q->whereHas('provider', function($providerQuery) {
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
@@ -260,8 +282,9 @@ class AdminController extends Controller
         $commissionsRevenue = ProviderPayout::where('status', 'completed')
             ->sum('commission_amount');
 
-        // Calculer le revenu total : Revenus internes + Commissions uniquement
-        // Ne pas inclure le montant total des commandes externes, seulement les commissions retenues
+        // Calculer le revenu total : Revenus internes + Commissions retenues sur les revenus externes
+        // Les revenus externes sont les revenus des contenus créés par des providers
+        // On ne compte que les commissions retenues, pas le montant total
         $totalRevenue = $internalRevenue + $commissionsRevenue;
 
         // Revenus des prestataires externes (montants payés aux prestataires, avant commission)
@@ -274,8 +297,9 @@ class AdminController extends Controller
             'total_courses' => Course::count(),
             'total_orders' => Order::count(),
             'total_revenue' => $totalRevenue, // Revenu total (internes + commissions)
-            'internal_revenue' => $internalRevenue, // Revenus des contenus internes
-            'commissions_revenue' => $commissionsRevenue, // Commissions retenues
+            'internal_revenue' => $internalRevenue, // Revenus des contenus internes (non-providers)
+            'external_revenue' => $externalRevenue, // Revenus des contenus créés par des providers
+            'commissions_revenue' => $commissionsRevenue, // Commissions retenues sur les revenus externes
             'external_payouts' => $externalProviderPayouts, // Montants payés aux prestataires externes
             'total_enrollments' => Enrollment::count(),
             'total_visits' => Visitor::count(), // Total de toutes les visites
@@ -294,17 +318,14 @@ class AdminController extends Controller
             ->whereDoesntHave('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('is_external_provider', true);
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->whereHas('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where(function($pq) {
-                            $pq->where('is_external_provider', false)
-                              ->orWhereNull('is_external_provider');
-                        });
+                        $providerQuery->where('role', '!=', 'provider');
                     });
                 });
             })
@@ -339,17 +360,14 @@ class AdminController extends Controller
             ->whereDoesntHave('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('is_external_provider', true);
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->whereHas('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where(function($pq) {
-                            $pq->where('is_external_provider', false)
-                              ->orWhereNull('is_external_provider');
-                        });
+                        $providerQuery->where('role', '!=', 'provider');
                     });
                 });
             })
@@ -386,7 +404,7 @@ class AdminController extends Controller
             ->whereDoesntHave('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('is_external_provider', true);
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
@@ -394,8 +412,7 @@ class AdminController extends Controller
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
                         $providerQuery->where(function($pq) {
-                            $pq->where('is_external_provider', false)
-                              ->orWhereNull('is_external_provider');
+                            $pq->where('role', '!=', 'provider');
                         });
                     });
                 });
@@ -435,7 +452,7 @@ class AdminController extends Controller
                 ->whereDoesntHave('orderItems', function($query) {
                     $query->whereHas('content', function($q) {
                         $q->whereHas('provider', function($providerQuery) {
-                            $providerQuery->where('is_external_provider', true);
+                            $providerQuery->where('role', 'provider');
                         });
                     });
                 })
@@ -443,8 +460,7 @@ class AdminController extends Controller
                     $query->whereHas('content', function($q) {
                         $q->whereHas('provider', function($providerQuery) {
                             $providerQuery->where(function($pq) {
-                                $pq->where('is_external_provider', false)
-                                  ->orWhereNull('is_external_provider');
+                                $pq->where('role', '!=', 'provider');
                             });
                         });
                     });
@@ -463,7 +479,7 @@ class AdminController extends Controller
                 ->whereDoesntHave('orderItems', function($query) {
                     $query->whereHas('content', function($q) {
                         $q->whereHas('provider', function($providerQuery) {
-                            $providerQuery->where('is_external_provider', true);
+                            $providerQuery->where('role', 'provider');
                         });
                     });
                 })
@@ -471,8 +487,7 @@ class AdminController extends Controller
                     $query->whereHas('content', function($q) {
                         $q->whereHas('provider', function($providerQuery) {
                             $providerQuery->where(function($pq) {
-                                $pq->where('is_external_provider', false)
-                                  ->orWhereNull('is_external_provider');
+                                $pq->where('role', '!=', 'provider');
                             });
                         });
                     });
@@ -557,7 +572,7 @@ class AdminController extends Controller
             ->whereDoesntHave('orderItems', function($query) {
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
-                        $providerQuery->where('is_external_provider', true);
+                        $providerQuery->where('role', 'provider');
                     });
                 });
             })
@@ -565,8 +580,7 @@ class AdminController extends Controller
                 $query->whereHas('content', function($q) {
                     $q->whereHas('provider', function($providerQuery) {
                         $providerQuery->where(function($pq) {
-                            $pq->where('is_external_provider', false)
-                              ->orWhereNull('is_external_provider');
+                            $pq->where('role', '!=', 'provider');
                         });
                     });
                 });
