@@ -9,6 +9,7 @@
     </button>
 @endsection
 
+
 @section('admin-content')
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
@@ -102,11 +103,16 @@
                 </x-slot:filters>
             </x-admin.search-panel>
 
+            <div id="bulkActionsContainer-ordersTable"></div>
+
             <div class="admin-table">
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" id="ordersTable" data-bulk-select="true" data-export-route="{{ route('admin.orders.export') }}">
                         <thead>
                             <tr>
+                                <th style="width: 50px;">
+                                    <input type="checkbox" data-select-all data-table-id="ordersTable" title="Sélectionner tout">
+                                </th>
                                 <th>Commande</th>
                                 <th>Client</th>
                                 <th>Montant</th>
@@ -120,6 +126,9 @@
                         <tbody>
                             @forelse($orders as $order)
                             <tr>
+                                <td>
+                                    <input type="checkbox" data-item-id="{{ $order->id }}" class="form-check-input">
+                                </td>
                                 <td>
                                     <div class="fw-semibold">#{{ $order->order_number ?? $order->id }}</div>
                                     <div class="text-muted small">{{ strtoupper($order->payment_method ?? '—') }}</div>
@@ -184,7 +193,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="admin-table__empty">
+                                <td colspan="10" class="admin-table__empty">
                                     <i class="fas fa-receipt mb-2 d-block"></i>
                                     Aucune commande ne correspond aux filtres sélectionnés.
                                 </td>
@@ -307,7 +316,59 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/bulk-actions.js') }}"></script>
 <script>
+// Initialiser la sélection multiple
+document.addEventListener('DOMContentLoaded', function() {
+    // Créer et insérer la barre d'actions
+    const container = document.getElementById('bulkActionsContainer-ordersTable');
+    if (container) {
+        const bulkActionsBar = document.createElement('div');
+        bulkActionsBar.id = 'bulkActionsBar-ordersTable';
+        bulkActionsBar.className = 'bulk-actions-bar';
+        bulkActionsBar.style.display = 'none';
+        bulkActionsBar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-ordersTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="ordersTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les commandes sélectionnées ?" data-route="{{ route('admin.orders.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success bulk-action-btn" data-action="mark-paid" data-table-id="ordersTable" data-confirm="true" data-confirm-message="Marquer les commandes sélectionnées comme payées ?" data-route="{{ route('admin.orders.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-check-circle me-1"></i>Marquer comme payées
+                    </button>
+                    <button type="button" class="btn btn-sm btn-info bulk-action-btn" data-action="mark-completed" data-table-id="ordersTable" data-confirm="true" data-confirm-message="Marquer les commandes sélectionnées comme terminées ?" data-route="{{ route('admin.orders.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-check-double me-1"></i>Marquer comme terminées
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning bulk-action-btn" data-action="cancel" data-table-id="ordersTable" data-confirm="true" data-confirm-message="Annuler les commandes sélectionnées ?" data-route="{{ route('admin.orders.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-times-circle me-1"></i>Annuler
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-ordersTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-ordersTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="ordersTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="ordersTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('ordersTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(bulkActionsBar);
+    }
+    
+    bulkActions.init('ordersTable', {
+        exportRoute: '{{ route('admin.orders.export') }}'
+    });
+});
+
 const ordersFilterForm = document.getElementById('ordersFilterForm');
 const ordersFiltersOffcanvas = document.getElementById('ordersFilters');
 

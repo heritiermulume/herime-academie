@@ -57,13 +57,13 @@
                                 <i class="fas fa-eye me-1"></i>Voir le statut
                             </a>
                             @if($application->canBeEdited())
-                                <form method="POST" action="{{ route('ambassador-application.abandon', $application) }}" onsubmit="return confirm('Êtes-vous sûr de vouloir abandonner votre candidature et recommencer ?');">
+                                <form method="POST" action="{{ route('ambassador-application.abandon', $application) }}" id="abandonAmbassadorApplicationForm-{{ $application->id }}" style="display: none;">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-danger">
-                                        <i class="fas fa-undo me-1"></i>Abandonner et recommencer
-                                    </button>
                                 </form>
+                                <button type="button" class="btn btn-danger" onclick="abandonAmbassadorApplication({{ $application->id }})">
+                                    <i class="fas fa-undo me-1"></i>Abandonner et recommencer
+                                </button>
                             @endif
                         </div>
                     </div>
@@ -312,5 +312,27 @@
         }
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+async function abandonAmbassadorApplication(applicationId) {
+    const message = 'Êtes-vous sûr de vouloir abandonner votre candidature et recommencer ? Cette action supprimera votre candidature actuelle et vous permettra de recommencer depuis le début.';
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Abandonner la candidature',
+        confirmButtonText: 'Abandonner',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+
+    if (confirmed) {
+        const form = document.getElementById(`abandonAmbassadorApplicationForm-${applicationId}`);
+        if (form) {
+            form.submit();
+        }
+    }
+}
+</script>
 @endpush
 

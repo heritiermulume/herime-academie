@@ -348,6 +348,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('contents.lessons.store');
         Route::get('/customers', [ProviderController::class, 'customers'])->name('customers');
+        Route::post('/contents/bulk-action', [ProviderController::class, 'bulkActionContents'])->middleware('sso.validate')->name('contents.bulk-action');
+        Route::get('/contents/export', [ProviderController::class, 'exportContents'])->name('contents.export');
+        Route::get('/customers/export', [ProviderController::class, 'exportCustomers'])->name('customers.export');
         Route::get('/analytics', [ProviderController::class, 'analytics'])->name('analytics');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
         Route::get('/payment-settings', [ProviderController::class, 'paymentSettings'])->name('payment-settings');
@@ -400,6 +403,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/users/{user}', [AdminController::class, 'destroyUser'])
             ->middleware('sso.validate')
             ->name('users.destroy');
+        Route::post('/users/bulk-action', [AdminController::class, 'bulkActionUsers'])->middleware('sso.validate')->name('users.bulk-action');
+        Route::get('/users/export', [AdminController::class, 'exportUsers'])->name('users.export');
         
         // Gestion des accès aux cours
         Route::post('/users/{user}/grant-course-access', [AdminController::class, 'grantCourseAccess'])
@@ -457,6 +462,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/ambassadors/commissions/{commission}/mark-paid', [App\Http\Controllers\Admin\AmbassadorController::class, 'markCommissionAsPaid'])
             ->middleware('sso.validate')
             ->name('ambassadors.commissions.mark-paid');
+        Route::post('/ambassadors/bulk-action', [App\Http\Controllers\Admin\AmbassadorController::class, 'bulkAction'])->middleware('sso.validate')->name('ambassadors.bulk-action');
+        Route::get('/ambassadors/export', [App\Http\Controllers\Admin\AmbassadorController::class, 'export'])->name('ambassadors.export');
+        Route::post('/ambassadors/applications/bulk-action', [App\Http\Controllers\Admin\AmbassadorController::class, 'bulkActionApplications'])->middleware('sso.validate')->name('ambassadors.applications.bulk-action');
+        Route::get('/ambassadors/applications/export', [App\Http\Controllers\Admin\AmbassadorController::class, 'exportApplications'])->name('ambassadors.applications.export');
+        Route::post('/ambassadors/commissions/bulk-action', [App\Http\Controllers\Admin\AmbassadorController::class, 'bulkActionCommissions'])->middleware('sso.validate')->name('ambassadors.commissions.bulk-action');
+        Route::get('/ambassadors/commissions/export', [App\Http\Controllers\Admin\AmbassadorController::class, 'exportCommissions'])->name('ambassadors.commissions.export');
         
         // Categories management
         Route::get('/categories', [AdminController::class, 'categories'])->name('categories');
@@ -485,6 +496,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/contents/{course}', [AdminController::class, 'destroyCourse'])
             ->middleware('sso.validate')
             ->name('contents.destroy');
+        Route::post('/contents/bulk-action', [AdminController::class, 'bulkActionContents'])->middleware('sso.validate')->name('contents.bulk-action');
+        Route::get('/contents/export', [AdminController::class, 'exportContents'])->name('contents.export');
         
         // Course lessons management (disabled - legacy routes removed)
         
@@ -612,6 +625,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Orders management
         Route::get('/orders', [App\Http\Controllers\OrderController::class, 'adminIndex'])->name('orders.index');
         Route::get('/orders/{order}', [App\Http\Controllers\OrderController::class, 'adminShow'])->name('orders.show');
+        Route::post('/orders/bulk-action', [App\Http\Controllers\OrderController::class, 'bulkAction'])->middleware('sso.validate')->name('orders.bulk-action');
+        Route::get('/orders/export', [App\Http\Controllers\OrderController::class, 'export'])->name('orders.export');
         Route::post('/orders/{order}/confirm', [App\Http\Controllers\OrderController::class, 'confirm'])
             ->middleware('sso.validate')
             ->name('orders.confirm');

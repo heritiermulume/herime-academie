@@ -146,6 +146,7 @@
                 @endforeach
             </nav>
             <div class="admin-shell__mobile-nav-spacer d-lg-none" aria-hidden="true"></div>
+            @stack('before-content')
             @if($pageTitle !== '' || $pageActions !== '')
                 <header class="admin-content__header mb-4">
                     <div>
@@ -170,6 +171,37 @@
         </main>
     </div>
 </div>
+
+<!-- Modal moderne de confirmation pour les actions en lot -->
+<div class="modal fade" id="bulkActionConfirmModal" tabindex="-1" aria-labelledby="bulkActionConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg modern-confirm-modal" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header border-0 pb-0 modern-confirm-modal__header" style="background: linear-gradient(135deg, #003366 0%, #004080 100%);">
+                <h5 class="modal-title text-white fw-bold modern-confirm-modal__title" id="bulkActionConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmation
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body py-4 modern-confirm-modal__body">
+                <p class="mb-0 modern-confirm-modal__message" id="bulkActionConfirmModalMessage"></p>
+            </div>
+            <div class="modal-footer border-0 pt-0 modern-confirm-modal__footer">
+                <button type="button" class="btn btn-outline-secondary modern-confirm-modal__btn modern-confirm-modal__btn--cancel" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-danger modern-confirm-modal__btn modern-confirm-modal__btn--confirm" id="bulkActionConfirmModalConfirmBtn">
+                    <i class="fas fa-check me-2"></i>Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@stack('modals')
+
+@push('scripts')
+<script src="{{ asset('js/modern-confirm-modal.js') }}"></script>
+@endpush
 
 @endsection
 
@@ -1222,4 +1254,7 @@
         }
     }
 </style>
+@endpush
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/bulk-actions.css') }}">
 @endpush

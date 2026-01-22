@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\AmbassadorCommission;
 use App\Models\AmbassadorPromoCode;
 use App\Models\Setting;
+use App\Traits\HandlesBulkActions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,7 @@ use App\Notifications\AmbassadorApplicationStatusUpdated;
 
 class AmbassadorController extends Controller
 {
+    use HandlesBulkActions;
     /**
      * Afficher la liste des candidatures d'ambassadeur
      */
@@ -673,5 +675,203 @@ class AmbassadorController extends Controller
             return redirect()->route('admin.ambassadors.index', ['tab' => 'ambassadors'])
                 ->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Actions en lot sur les ambassadeurs
+     */
+    public function bulkAction(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                $count = 0;
+                foreach ($ids as $id) {
+                    $ambassador = Ambassador::find($id);
+                    if ($ambassador) {
+                        $this->destroy(new Request(), $ambassador);
+                        $count++;
+                    }
+                }
+                return [
+                    'message' => "{$count} ambassadeur(s) supprimé(s) avec succès.",
+                    'count' => $count
+                ];
+            },
+            'activate' => function($ids) {
+                $count = Ambassador::whereIn('id', $ids)
+                    ->where('is_active', false)
+                    ->update(['is_active' => true]);
+                return [
+                    'message' => "{$count} ambassadeur(s) activé(s) avec succès.",
+                    'count' => $count
+                ];
+            },
+            'deactivate' => function($ids) {
+                $count = Ambassador::whereIn('id', $ids)
+                    ->where('is_active', true)
+                    ->update(['is_active' => false]);
+                return [
+                    'message' => "{$count} ambassadeur(s) désactivé(s) avec succès.",
+                    'count' => $count
+                ];
+            }
+        ];
+
+        return $this->handleBulkAction($request, Ambassador::class, $actions);
+    }
+
+    /**
+     * Exporter les ambassadeurs
+     */
+    public function export(Request $request)
+    {
+        $query = Ambassador::with(['user', 'application'])
+            ->latest();
+
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $columns = [
+            'user.name' => 'Nom',
+            'user.email' => 'Email',
+            'is_active' => 'Actif',
+            'total_earnings' => 'Gains totaux',
+            'created_at' => 'Date de création'
+        ];
+
+        return $this->exportData($request, $query, $columns, 'ambassadeurs');
+    }
+
+    /**
+     * Actions en lot sur les candidatures
+     */
+    public function bulkActionApplications(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                $count = 0;
+                foreach ($ids as $id) {
+                    $application = AmbassadorApplication::find($id);
+                    if ($application) {
+                        $this->destroyApplication(new Request(), $application);
+                        $count++;
+                    }
+                }
+                return [
+                    'message' => "{$count} candidature(s) supprimée(s) avec succès.",
+                    'count' => $count
+                ];
+            }
+        ];
+
+        return $this->handleBulkAction($request, AmbassadorApplication::class, $actions);
+    }
+
+    /**
+     * Exporter les candidatures
+     */
+    public function exportApplications(Request $request)
+    {
+        $query = AmbassadorApplication::with(['user', 'reviewer'])
+            ->latest();
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $columns = [
+            'user.name' => 'Nom',
+            'user.email' => 'Email',
+            'status' => 'Statut',
+            'created_at' => 'Date de candidature'
+        ];
+
+        return $this->exportData($request, $query, $columns, 'candidatures-ambassadeurs');
+    }
+
+    /**
+     * Actions en lot sur les commissions
+     */
+    public function bulkActionCommissions(Request $request)
+    {
+        $actions = [
+            'approve' => function($ids) {
+                $count = AmbassadorCommission::whereIn('id', $ids)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'approved']);
+                return [
+                    'message' => "{$count} commission(s) approuvée(s) avec succès.",
+                    'count' => $count
+                ];
+            },
+            'mark-paid' => function($ids) {
+                $count = 0;
+                foreach ($ids as $id) {
+                    $commission = AmbassadorCommission::find($id);
+                    if ($commission && $commission->status === 'approved') {
+                        $commission->markAsPaid();
+                        $count++;
+                    }
+                }
+                return [
+                    'message' => "{$count} commission(s) marquée(s) comme payée(s).",
+                    'count' => $count
+                ];
+            }
+        ];
+
+        return $this->handleBulkAction($request, AmbassadorCommission::class, $actions);
+    }
+
+    /**
+     * Exporter les commissions
+     */
+    public function exportCommissions(Request $request)
+    {
+        $query = AmbassadorCommission::with(['ambassador.user', 'order', 'promoCode'])
+            ->latest();
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('order', function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%");
+            });
+        }
+
+        $columns = [
+            'ambassador.user.name' => 'Ambassadeur',
+            'order.order_number' => 'Commande',
+            'order_total' => 'Montant commande',
+            'commission_amount' => 'Commission',
+            'status' => 'Statut',
+            'created_at' => 'Date'
+        ];
+
+        return $this->exportData($request, $query, $columns, 'commissions-ambassadeurs');
     }
 }

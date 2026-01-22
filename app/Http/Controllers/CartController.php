@@ -71,7 +71,7 @@ public function add(Request $request)
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cours introuvable.'
+                    'message' => 'Contenu introuvable.'
                 ], 404);
             }
 
@@ -79,7 +79,7 @@ public function add(Request $request)
             if (!$course->is_published) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ce cours n\'est pas disponible.'
+                    'message' => 'Ce contenu n\'est pas disponible.'
                 ], 404);
             }
 
@@ -87,7 +87,7 @@ public function add(Request $request)
             if (!$course->is_sale_enabled) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ce cours n\'est pas actuellement disponible à l\'achat.'
+                    'message' => 'Ce contenu n\'est pas actuellement disponible à l\'achat.'
                 ], 403);
             }
 
@@ -95,7 +95,7 @@ public function add(Request $request)
             if ($course->is_free) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Les cours gratuits ne peuvent pas être ajoutés au panier. Inscrivez-vous directement.'
+                    'message' => 'Les contenus gratuits ne peuvent pas être ajoutés au panier. Inscrivez-vous directement.'
                 ]);
             }
 
@@ -103,7 +103,7 @@ public function add(Request $request)
             if (auth()->check() && $course->isEnrolledBy(auth()->id())) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Vous êtes déjà inscrit à ce cours.'
+                    'message' => 'Vous êtes déjà inscrit à ce contenu.'
                 ]);
             }
 
@@ -112,7 +112,7 @@ public function add(Request $request)
                 if (auth()->user()->cartItems()->where('content_id', $contentId)->exists()) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Ce cours est déjà dans votre panier.'
+                        'message' => 'Ce contenu est déjà dans votre panier.'
                     ]);
                 }
 
@@ -125,7 +125,7 @@ public function add(Request $request)
                 if (isset($cart[$contentId])) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Ce cours est déjà dans votre panier.'
+                        'message' => 'Ce contenu est déjà dans votre panier.'
                     ]);
                 }
 
@@ -136,7 +136,7 @@ public function add(Request $request)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Cours ajouté au panier avec succès.',
+                'message' => 'Contenu ajouté au panier avec succès.',
                 'cart_count' => $cartCount
             ]);
         } catch (\Exception $e) {
@@ -185,7 +185,7 @@ public function add(Request $request)
 
         return response()->json([
             'success' => true,
-            'message' => 'Cours supprimé du panier.',
+            'message' => 'Contenu supprimé du panier.',
             'cart_count' => $cartCount
         ]);
     }
@@ -284,7 +284,7 @@ public function add(Request $request)
         $cartItems = array_values($cartItems);
 
         if (!empty($unavailableCourses)) {
-            $message = 'Certains cours de votre panier ne sont plus disponibles : ' . implode(', ', $unavailableCourses) . '. Veuillez les retirer du panier.';
+            $message = 'Certains contenus de votre panier ne sont plus disponibles : ' . implode(', ', $unavailableCourses) . '. Veuillez les retirer du panier.';
             return redirect()->route('cart.index')->with('warning', $message);
         }
 

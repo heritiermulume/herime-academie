@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\Enrollment;
 use App\Traits\DatabaseCompatibility;
 use App\Traits\CourseStatistics;
+use App\Traits\HandlesBulkActions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class ProviderController extends Controller
 {
-    use DatabaseCompatibility, CourseStatistics;
+    use DatabaseCompatibility, CourseStatistics, HandlesBulkActions;
     public function index()
     {
         // Rediriger vers la page de candidature pour devenir prestataire
@@ -169,6 +170,115 @@ class ProviderController extends Controller
             'averageProgress' => $averageProgress,
             'activeCustomers' => $activeCustomers,
         ]);
+    }
+
+    /**
+     * Actions en lot sur les contenus (prestataire)
+     */
+    public function bulkActionContents(Request $request)
+    {
+        $provider = auth()->user();
+        
+        $actions = [
+            'publish' => function($ids) use ($provider) {
+                $count = $provider->contents()
+                    ->whereIn('id', $ids)
+                    ->update(['is_published' => true]);
+                return [
+                    'message' => "{$count} contenu(s) publié(s) avec succès.",
+                    'count' => $count
+                ];
+            },
+            'unpublish' => function($ids) use ($provider) {
+                $count = $provider->contents()
+                    ->whereIn('id', $ids)
+                    ->update(['is_published' => false]);
+                return [
+                    'message' => "{$count} contenu(s) dépublié(s) avec succès.",
+                    'count' => $count
+                ];
+            }
+        ];
+
+        return $this->handleBulkAction($request, Course::class, $actions);
+    }
+
+    /**
+     * Exporter les contenus (prestataire)
+     */
+    public function exportContents(Request $request)
+    {
+        $provider = auth()->user();
+        
+        $query = $provider->contents()
+            ->with(['category'])
+            ->withCount(['enrollments', 'reviews'])
+            ->withAvg('reviews', 'rating');
+
+        // Appliquer les filtres
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('subtitle', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->category);
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'published') {
+                $query->where('is_published', true);
+            } elseif ($request->status === 'draft') {
+                $query->where('is_published', false);
+            }
+        }
+
+        $columns = [
+            'id' => 'ID',
+            'title' => 'Titre',
+            'subtitle' => 'Sous-titre',
+            'category.name' => 'Catégorie',
+            'price' => 'Prix',
+            'is_free' => 'Gratuit',
+            'is_published' => 'Publié',
+            'enrollments_count' => 'Inscriptions',
+            'reviews_avg_rating' => 'Note moyenne',
+            'created_at' => 'Date de création'
+        ];
+
+        return $this->exportData($request, $query, $columns, 'mes-contenus');
+    }
+
+    /**
+     * Exporter les clients (prestataire)
+     */
+    public function exportCustomers(Request $request)
+    {
+        $provider = auth()->user();
+        
+        $query = Enrollment::whereHas('content', function($q) use ($provider) {
+            $q->where('provider_id', $provider->id);
+        })
+        ->with(['user', 'content']);
+
+        // Filtrer par IDs si fournis
+        if ($request->filled('ids')) {
+            $ids = explode(',', $request->ids);
+            $query->whereIn('id', $ids);
+        }
+
+        $columns = [
+            'user.name' => 'Nom',
+            'user.email' => 'Email',
+            'content.title' => 'Contenu',
+            'progress' => 'Progression (%)',
+            'created_at' => 'Date d\'inscription'
+        ];
+
+        return $this->exportData($request, $query, $columns, 'mes-clients');
     }
 
     public function analytics()

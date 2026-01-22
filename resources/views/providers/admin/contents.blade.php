@@ -39,7 +39,53 @@
 @endpush
 
 @push('scripts')
+<script src="{{ asset('js/bulk-actions.js') }}"></script>
 <script>
+// Initialiser la sélection multiple
+document.addEventListener('DOMContentLoaded', function() {
+    // Créer et insérer la barre d'actions
+    const container = document.getElementById('bulkActionsContainer-providerContentsTable');
+    if (container) {
+        const bulkActionsBar = document.createElement('div');
+        bulkActionsBar.id = 'bulkActionsBar-providerContentsTable';
+        bulkActionsBar.className = 'bulk-actions-bar';
+        bulkActionsBar.style.display = 'none';
+        bulkActionsBar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-providerContentsTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-success bulk-action-btn" data-action="publish" data-table-id="providerContentsTable" data-confirm="false" data-route="{{ route('provider.contents.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-check-circle me-1"></i>Publier
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning bulk-action-btn" data-action="unpublish" data-table-id="providerContentsTable" data-confirm="false" data-route="{{ route('provider.contents.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-eye-slash me-1"></i>Dépublier
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-providerContentsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-providerContentsTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="providerContentsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="providerContentsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('providerContentsTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(bulkActionsBar);
+    }
+    
+    bulkActions.init('providerContentsTable', {
+        exportRoute: '{{ route('provider.contents.export') }}'
+    });
+});
+
     let courseDeleteModal = null;
     let courseFormToSubmit = null;
     let courseTitleToDelete = '';
@@ -474,6 +520,7 @@
 </style>
 @endpush
 
+
 @section('admin-content')
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
@@ -579,9 +626,12 @@
         <div class="admin-panel__body">
             <div class="admin-table">
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" id="providerContentsTable" data-bulk-select="true" data-export-route="{{ route('provider.contents.export') }}">
                         <thead>
                             <tr>
+                                <th style="width: 50px;">
+                                    <input type="checkbox" data-select-all data-table-id="providerContentsTable" title="Sélectionner tout">
+                                </th>
                                 <th style="min-width: 280px;">
                                     <a href="{{ request()->fullUrlWithQuery(['sort' => 'title', 'direction' => request('sort') == 'title' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
                                         Contenu
@@ -612,6 +662,9 @@
                         <tbody>
                             @forelse($courses as $course)
                                 <tr>
+                                    <td>
+                                        <input type="checkbox" data-item-id="{{ $course->id }}" class="form-check-input">
+                                    </td>
                                     <td style="min-width: 280px;">
                                         <div class="d-flex align-items-center gap-3">
                                             <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">

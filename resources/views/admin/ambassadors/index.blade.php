@@ -131,11 +131,16 @@
                         </x-slot:filters>
                     </x-admin.search-panel>
 
+                    <div id="bulkActionsContainer-ambassadorsTable"></div>
+
             <div class="admin-table mt-4">
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" id="ambassadorsTable" data-bulk-select="true" data-export-route="{{ route('admin.ambassadors.export') }}">
                         <thead>
                             <tr>
+                                <th style="width: 50px;">
+                                    <input type="checkbox" data-select-all data-table-id="ambassadorsTable" title="Sélectionner tout">
+                                </th>
                                 <th>Ambassadeur</th>
                                         <th style="min-width: 180px;">Code Promo</th>
                                         <th style="min-width: 150px;">Gains totaux</th>
@@ -146,8 +151,11 @@
                         <tbody>
                             @forelse($ambassadors as $ambassador)
                                 <tr>
-                                            <td style="max-width: 250px;">
-                                                <div class="d-flex align-items-center gap-3">
+                                    <td>
+                                        <input type="checkbox" data-item-id="{{ $ambassador->id }}" class="form-check-input">
+                                    </td>
+                                    <td style="max-width: 250px;">
+                                        <div class="d-flex align-items-center gap-3">
                                                     <img src="{{ $ambassador->user->avatar_url }}" alt="{{ $ambassador->user->name }}" class="admin-user-avatar">
                                                     <div style="min-width: 0; flex: 1;">
                                                         <a href="{{ route('admin.ambassadors.show', $ambassador) }}" class="fw-semibold text-decoration-none text-dark text-truncate d-block" title="{{ $ambassador->user->name }}">{{ $ambassador->user->name }}</a>
@@ -181,7 +189,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center py-4">Aucun ambassadeur</td>
+                                    <td colspan="6" class="text-center py-4">Aucun ambassadeur</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -252,9 +260,12 @@
 
                     <div class="admin-table mt-4">
                         <div class="table-responsive">
-                            <table class="table align-middle">
+                            <table class="table align-middle" id="applicationsTable" data-bulk-select="true" data-export-route="{{ route('admin.ambassadors.applications.export') }}">
                                 <thead>
                                     <tr>
+                                        <th style="width: 50px;">
+                                            <input type="checkbox" data-select-all data-table-id="applicationsTable" title="Sélectionner tout">
+                                        </th>
                                         <th>Utilisateur</th>
                                         <th>Date</th>
                                         <th>Statut</th>
@@ -264,6 +275,9 @@
                                 <tbody>
                                     @forelse($applications as $application)
                                         <tr>
+                                            <td>
+                                                <input type="checkbox" data-item-id="{{ $application->id }}" class="form-check-input">
+                                            </td>
                                             <td style="max-width: 250px;">
                                                 <div class="d-flex align-items-center gap-3">
                                                     <img src="{{ $application->user->avatar_url }}" alt="{{ $application->user->name }}" class="admin-user-avatar">
@@ -292,7 +306,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="text-center py-4">Aucune candidature</td>
+                                            <td colspan="5" class="text-center py-4">Aucune candidature</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -370,11 +384,16 @@
                         </x-slot:filters>
                     </x-admin.search-panel>
 
+                    <div id="bulkActionsContainer-commissionsTable"></div>
+
                     <div class="admin-table mt-4">
                         <div class="table-responsive">
-                            <table class="table align-middle">
+                            <table class="table align-middle" id="commissionsTable" data-bulk-select="true" data-export-route="{{ route('admin.ambassadors.commissions.export') }}">
                                 <thead>
                                     <tr>
+                                        <th style="width: 50px;">
+                                            <input type="checkbox" data-select-all data-table-id="commissionsTable" title="Sélectionner tout">
+                                        </th>
                                         <th>Ambassadeur</th>
                                         <th>Commande</th>
                                         <th>Montant</th>
@@ -386,6 +405,9 @@
                                 <tbody>
                                     @forelse($commissions as $commission)
                                         <tr>
+                                            <td>
+                                                <input type="checkbox" data-item-id="{{ $commission->id }}" class="form-check-input">
+                                            </td>
                                             <td style="max-width: 250px;">
                                                 <div class="d-flex align-items-center gap-3">
                                                     <img src="{{ $commission->ambassador->user->avatar_url }}" alt="{{ $commission->ambassador->user->name }}" class="admin-user-avatar">
@@ -428,7 +450,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="text-center py-4">Aucune commission</td>
+                                            <td colspan="7" class="text-center py-4">Aucune commission</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -441,172 +463,190 @@
         </div>
     </section>
 
-    <!-- Modal de confirmation de suppression de candidature -->
-    <div class="modal fade" id="deleteApplicationModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="deleteApplicationForm" method="POST" action="">
-                    @csrf
-                    @method('DELETE')
-                    <div class="modal-header">
-                        <h5 class="modal-title">Confirmer la suppression</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Êtes-vous sûr de vouloir supprimer cette candidature ? Cette action est irréversible.</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-danger">Supprimer</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- Formulaires de suppression (cachés) -->
+    <form id="deleteApplicationForm" method="POST" action="" style="display: none;">
+        @csrf
+        @method('DELETE')
+    </form>
 
-    <!-- Modal de confirmation de suppression d'ambassadeur -->
-    <div class="modal fade" id="deleteAmbassadorModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="deleteAmbassadorForm" method="POST" action="">
-                    @csrf
-                    @method('DELETE')
-                    <div class="modal-header">
-                        <h5 class="modal-title">Confirmer la suppression</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Êtes-vous sûr de vouloir supprimer cet ambassadeur ?</p>
-                        <p class="text-muted small mb-0">La candidature associée sera automatiquement mise à jour au statut "rejeté". Cette action est irréversible.</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-danger">Supprimer</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- Formulaire de suppression d'ambassadeur (caché) -->
+    <form id="deleteAmbassadorForm" method="POST" action="" style="display: none;">
+        @csrf
+        @method('DELETE')
+    </form>
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/bulk-actions.js') }}"></script>
 <script>
-function deleteApplication(applicationId) {
-    console.log('deleteApplication appelé avec ID:', applicationId);
-    const form = document.getElementById('deleteApplicationForm');
-    if (form) {
-        const actionUrl = `{{ url('/admin/ambassadors/applications') }}/${applicationId}`;
-        form.action = actionUrl;
-        console.log('Formulaire action mise à jour:', actionUrl);
-        
-        const modalElement = document.getElementById('deleteApplicationModal');
-        if (modalElement) {
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
-            console.log('Modal ouvert');
-        } else {
-            console.error('Modal non trouvé');
-            alert('Erreur: Modal de confirmation non trouvé');
+// Initialiser la sélection multiple pour chaque onglet
+document.addEventListener('DOMContentLoaded', function() {
+    // Onglet Ambassadeurs
+    const ambassadorsContainer = document.getElementById('bulkActionsContainer-ambassadorsTable');
+    if (ambassadorsContainer) {
+        const bar = document.createElement('div');
+        bar.id = 'bulkActionsBar-ambassadorsTable';
+        bar.className = 'bulk-actions-bar';
+        bar.style.display = 'none';
+        bar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-ambassadorsTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="ambassadorsTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les ambassadeurs sélectionnés ?" data-route="{{ route('admin.ambassadors.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success bulk-action-btn" data-action="activate" data-table-id="ambassadorsTable" data-confirm="false" data-route="{{ route('admin.ambassadors.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-check me-1"></i>Activer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning bulk-action-btn" data-action="deactivate" data-table-id="ambassadorsTable" data-confirm="false" data-route="{{ route('admin.ambassadors.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-ban me-1"></i>Désactiver
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-ambassadorsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-ambassadorsTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="ambassadorsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="ambassadorsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('ambassadorsTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        ambassadorsContainer.appendChild(bar);
+    }
+    bulkActions.init('ambassadorsTable', {
+        exportRoute: '{{ route('admin.ambassadors.export') }}'
+    });
+    
+    // Onglet Candidatures
+    const applicationsContainer = document.getElementById('bulkActionsContainer-applicationsTable');
+    if (applicationsContainer) {
+        const bar = document.createElement('div');
+        bar.id = 'bulkActionsBar-applicationsTable';
+        bar.className = 'bulk-actions-bar';
+        bar.style.display = 'none';
+        bar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-applicationsTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="applicationsTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les candidatures sélectionnées ?" data-route="{{ route('admin.ambassadors.applications.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-applicationsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-applicationsTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="applicationsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="applicationsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('applicationsTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        applicationsContainer.appendChild(bar);
+    }
+    bulkActions.init('applicationsTable', {
+        exportRoute: '{{ route('admin.ambassadors.applications.export') }}'
+    });
+    
+    // Onglet Commissions
+    const commissionsContainer = document.getElementById('bulkActionsContainer-commissionsTable');
+    if (commissionsContainer) {
+        const bar = document.createElement('div');
+        bar.id = 'bulkActionsBar-commissionsTable';
+        bar.className = 'bulk-actions-bar';
+        bar.style.display = 'none';
+        bar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-commissionsTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-success bulk-action-btn" data-action="approve" data-table-id="commissionsTable" data-confirm="false" data-route="{{ route('admin.ambassadors.commissions.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-check me-1"></i>Approuver
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary bulk-action-btn" data-action="mark-paid" data-table-id="commissionsTable" data-confirm="false" data-route="{{ route('admin.ambassadors.commissions.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-money-bill-wave me-1"></i>Marquer comme payées
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-commissionsTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-commissionsTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="commissionsTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="commissionsTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('commissionsTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        commissionsContainer.appendChild(bar);
+    }
+    bulkActions.init('commissionsTable', {
+        exportRoute: '{{ route('admin.ambassadors.commissions.export') }}'
+    });
+});
+
+async function deleteApplication(applicationId) {
+    const message = 'Êtes-vous sûr de vouloir supprimer cette candidature ? Cette action est irréversible.';
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer la candidature',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+
+    if (confirmed) {
+        const form = document.getElementById('deleteApplicationForm');
+        if (form) {
+            const actionUrl = `{{ url('/admin/ambassadors/applications') }}/${applicationId}`;
+            form.action = actionUrl;
+            form.submit();
         }
-    } else {
-        console.error('Formulaire non trouvé');
-        alert('Erreur: Formulaire de suppression non trouvé');
     }
 }
 
-// Ajouter un listener sur le formulaire pour logger la soumission
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('deleteApplicationForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            console.log('=== SOUMISSION DU FORMULAIRE ===');
-            console.log('Action:', form.action);
-            console.log('Méthode:', form.method);
-            console.log('Token CSRF:', form.querySelector('input[name="_token"]')?.value);
-            console.log('Méthode DELETE:', form.querySelector('input[name="_method"]')?.value);
-            
-            // Vérifier que tous les champs sont présents
-            const token = form.querySelector('input[name="_token"]');
-            const method = form.querySelector('input[name="_method"]');
-            
-            if (!token || !token.value) {
-                console.error('Token CSRF manquant!');
-                e.preventDefault();
-                alert('Erreur: Token de sécurité manquant. Veuillez recharger la page.');
-                return false;
-            }
-            
-            if (!method || method.value !== 'DELETE') {
-                console.error('Méthode DELETE incorrecte!');
-                e.preventDefault();
-                alert('Erreur: Méthode de requête incorrecte.');
-                return false;
-            }
-            
-            console.log('Formulaire valide, soumission en cours...');
-        });
-    } else {
-        console.warn('Formulaire deleteApplicationForm non trouvé au chargement de la page');
-    }
-});
 
 // Fonction pour supprimer un ambassadeur
-function deleteAmbassador(ambassadorId) {
-    console.log('deleteAmbassador appelé avec ID:', ambassadorId);
-    const form = document.getElementById('deleteAmbassadorForm');
-    if (form) {
-        const actionUrl = `{{ url('/admin/ambassadors') }}/${ambassadorId}`;
-        form.action = actionUrl;
-        console.log('Formulaire action mise à jour:', actionUrl);
-        
-        const modalElement = document.getElementById('deleteAmbassadorModal');
-        if (modalElement) {
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
-            console.log('Modal ouvert');
-        } else {
-            console.error('Modal element not found');
-            alert('Erreur: Modal de confirmation non trouvé');
+async function deleteAmbassador(ambassadorId) {
+    const message = 'Êtes-vous sûr de vouloir supprimer cet ambassadeur ? La candidature associée sera automatiquement mise à jour au statut "rejeté". Cette action est irréversible.';
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer l\'ambassadeur',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+
+    if (confirmed) {
+        const form = document.getElementById('deleteAmbassadorForm');
+        if (form) {
+            const actionUrl = `{{ url('/admin/ambassadors') }}/${ambassadorId}`;
+            form.action = actionUrl;
+            form.submit();
         }
-    } else {
-        console.error('Form element not found');
-        alert('Erreur: Formulaire de suppression non trouvé');
     }
 }
 
-// Ajouter un listener sur le formulaire de suppression d'ambassadeur
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('deleteAmbassadorForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            console.log('=== SOUMISSION DU FORMULAIRE DE SUPPRESSION D\'AMBASSADEUR ===');
-            console.log('Action:', form.action);
-            console.log('Méthode:', form.method);
-            
-            // Vérifier que tous les champs sont présents
-            const token = form.querySelector('input[name="_token"]');
-            const method = form.querySelector('input[name="_method"]');
-            
-            if (!token || !token.value) {
-                console.error('Token CSRF manquant!');
-                e.preventDefault();
-                alert('Erreur: Token de sécurité manquant. Veuillez recharger la page.');
-                return false;
-            }
-            
-            if (!method || method.value !== 'DELETE') {
-                console.error('Méthode DELETE incorrecte!');
-                e.preventDefault();
-                alert('Erreur: Méthode de requête incorrecte.');
-                return false;
-            }
-            
-            console.log('Formulaire valide, soumission en cours...');
-        });
-    } else {
-        console.warn('Formulaire deleteAmbassadorForm non trouvé au chargement de la page');
-    }
-});
 </script>
 @endpush
 

@@ -9,6 +9,7 @@
     </a>
 @endsection
 
+
 @section('admin-content')
     <section class="admin-panel">
         <div class="admin-panel__header">
@@ -32,8 +33,11 @@
                 </div>
             </div>
 
-        <div class="students-table">
+        <div class="students-table" id="providerCustomersTable" data-bulk-select="true" data-export-route="{{ route('provider.customers.export') }}">
             <div class="students-table__head">
+                <span style="width: 50px;">
+                    <input type="checkbox" data-select-all data-table-id="providerCustomersTable" title="Sélectionner tout" style="margin: 0;">
+                </span>
                 <span>Client</span>
                 <span>Email</span>
                 <span>Contenu</span>
@@ -43,6 +47,9 @@
             </div>
             @forelse($enrollments as $enrollment)
                 <div class="students-table__row">
+                    <div style="width: 50px; display: flex; align-items: center; justify-content: center;">
+                        <input type="checkbox" data-item-id="{{ $enrollment->id }}" class="form-check-input">
+                    </div>
                     <div class="students-table__profile">
                         <div class="students-table__avatar">
                             <img src="{{ $enrollment->user?->avatar_url ?? asset('images/default-avatar.png') }}" alt="{{ $enrollment->user?->name }}">
@@ -85,6 +92,52 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+<script src="{{ asset('js/bulk-actions.js') }}"></script>
+<script>
+// Initialiser la sélection multiple
+document.addEventListener('DOMContentLoaded', function() {
+    // Créer et insérer la barre d'actions
+    const container = document.getElementById('bulkActionsContainer-providerCustomersTable');
+    if (container) {
+        const bulkActionsBar = document.createElement('div');
+        bulkActionsBar.id = 'bulkActionsBar-providerCustomersTable';
+        bulkActionsBar.className = 'bulk-actions-bar';
+        bulkActionsBar.style.display = 'none';
+        bulkActionsBar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-providerCustomersTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-providerCustomersTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-providerCustomersTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="providerCustomersTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="providerCustomersTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('providerCustomersTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(bulkActionsBar);
+    }
+    
+    bulkActions.init('providerCustomersTable', {
+        exportRoute: '{{ route('provider.customers.export') }}',
+        checkboxSelector: 'input[type="checkbox"][data-item-id]',
+        selectAllSelector: 'input[type="checkbox"][data-select-all]'
+    });
+});
+</script>
+@endpush
 
 @push('styles')
 <style>
@@ -188,9 +241,9 @@
     @media (max-width: 1024px) {
         .students-table__head,
         .students-table__row {
-            grid-template-columns: minmax(0, 220px) repeat(3, minmax(0, 140px)) minmax(0, 100px);
+            grid-template-columns: minmax(0, 50px) minmax(0, 220px) repeat(3, minmax(0, 140px)) minmax(0, 100px);
         }
-        .students-table__row > div:nth-child(2) {
+        .students-table__row > div:nth-child(3) {
             display: none;
         }
     }
@@ -215,7 +268,10 @@
         .students-table__row > div:first-child {
             justify-content: flex-start;
         }
-        .students-table__row > div:not(:first-child):not(:last-child)::before {
+        .students-table__row > div:nth-child(2) {
+            justify-content: flex-start;
+        }
+        .students-table__row > div:not(:first-child):not(:nth-child(2)):not(:last-child)::before {
             content: attr(data-label);
             font-size: 0.7rem;
             text-transform: uppercase;

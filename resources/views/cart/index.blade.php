@@ -9,7 +9,7 @@
         <div class="cart-header">
             <div class="cart-title-section">
                 <h1 class="cart-title">Votre panier</h1>
-                <p class="cart-subtitle">Découvrez des cours qui vous intéressent</p>
+                <p class="cart-subtitle">Découvrez des contenus qui vous intéressent</p>
                     </div>
             <div class="cart-actions">
                 <a href="{{ route('contents.index') }}" class="continue-shopping-btn">
@@ -27,7 +27,7 @@
                 <div class="cart-items-header">
                     <h2 class="cart-items-title">
                         <i class="fas fa-shopping-cart"></i>
-                        {{ count($cartItems) }} cours dans votre panier
+                        {{ count($cartItems) }} {{ count($cartItems) > 1 ? 'contenus' : 'contenu' }} dans votre panier
                     </h2>
                 </div>
                 <div class="cart-items-list recommended-courses" id="cart-items-container">
@@ -101,9 +101,9 @@
                                 </button>
                                 <a href="{{ route('contents.show', $item['course']->slug) }}" 
                                    class="btn btn-sm btn-outline-primary view-btn"
-                                   title="Voir le cours">
+                                   title="Voir le contenu">
                                     <i class="fas fa-eye"></i>
-                                    <span class="btn-text">Voir le cours</span>
+                                    <span class="btn-text">Voir le contenu</span>
                                 </a>
                             </div>
                         </div>
@@ -143,7 +143,7 @@
                         <!-- Order Details -->
                         <div class="summary-details">
                             <div class="summary-row">
-                                <span class="summary-label">Sous-total (<span id="cart-items-count">{{ count($cartItems) }}</span> cours)</span>
+                                <span class="summary-label">Sous-total (<span id="cart-items-count">{{ count($cartItems) }}</span> {{ count($cartItems) > 1 ? 'contenus' : 'contenu' }})</span>
                                 <span class="summary-value" id="cart-subtotal">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($subtotal) }}</span>
                             </div>
                             
@@ -249,7 +249,7 @@
                         <i class="fas fa-lightbulb me-2 text-warning"></i>
                         Recommandations pour vous
                     </h3>
-                    <p class="text-muted">Découvrez d'autres cours qui pourraient vous intéresser</p>
+                    <p class="text-muted">Découvrez d'autres contenus qui pourraient vous intéresser</p>
                 </div>
             </div>
             
@@ -270,9 +270,9 @@
                 <i class="fas fa-shopping-cart fa-4x text-muted"></i>
             </div>
             <h3 class="fw-bold mb-3 text-dark">Votre panier est vide</h3>
-            <p class="text-muted mb-4 fs-5">Découvrez nos cours et ajoutez-les à votre panier pour commencer votre apprentissage.</p>
+            <p class="text-muted mb-4 fs-5">Découvrez nos contenus et ajoutez-les à votre panier.</p>
             <a href="{{ route('contents.index') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-search me-2"></i>Explorer les cours
+                <i class="fas fa-search me-2"></i>Explorer les contenus
             </a>
         </div>
         
@@ -282,9 +282,9 @@
                 <div class="col-12">
                     <h3 class="fw-bold text-dark mb-3">
                         <i class="fas fa-fire me-2 text-danger"></i>
-                        Cours populaires
+                        Contenus populaires
                     </h3>
-                    <p class="text-muted">Commencez votre parcours d'apprentissage avec nos cours les plus appréciés</p>
+                    <p class="text-muted">Découvrez nos contenus les plus appréciés.</p>
                 </div>
             </div>
             
@@ -300,7 +300,7 @@
     </div>
 </div>
 
-<!-- Modal pour supprimer un cours -->
+<!-- Modal pour supprimer un contenu -->
 <div class="modal fade" id="removeItemModal" tabindex="-1" aria-labelledby="removeItemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modern-modal">
@@ -308,7 +308,7 @@
                 <div class="modal-icon-wrapper">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
-                <h5 class="modal-title" id="removeItemModalLabel">Supprimer le cours</h5>
+                <h5 class="modal-title" id="removeItemModalLabel">Supprimer le contenu</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body modern-modal-body">
@@ -338,7 +338,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body modern-modal-body">
-                <p>Êtes-vous sûr de vouloir vider votre panier ? Cette action est irréversible et tous les cours seront supprimés.</p>
+                <p>Êtes-vous sûr de vouloir vider votre panier ? Cette action est irréversible et tous les contenus seront supprimés.</p>
             </div>
             <div class="modal-footer modern-modal-footer">
                 <button type="button" class="btn btn-secondary cancel-clear-btn" data-bs-dismiss="modal">
@@ -346,6 +346,29 @@
                 </button>
                 <button type="button" class="btn btn-danger" id="confirmClearCartBtn" onclick="confirmClearCart(event)">
                     <i class="fas fa-trash me-2"></i>Vider le panier
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal moderne pour les messages (remplace les alert par défaut) -->
+<div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modern-modal">
+            <div class="modal-header modern-modal-header message-modal-header">
+                <div class="modal-icon-wrapper">
+                    <i class="fas fa-exclamation-triangle" id="messageModalIcon"></i>
+                </div>
+                <h5 class="modal-title" id="messageModalLabel">Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body modern-modal-body">
+                <div id="messageModalBody" class="message-modal-body"></div>
+            </div>
+            <div class="modal-footer modern-modal-footer">
+                <button type="button" class="btn btn-primary" id="messageModalOkBtn" data-bs-dismiss="modal">
+                    <i class="fas fa-check me-2"></i>OK
                 </button>
             </div>
         </div>
@@ -1420,8 +1443,14 @@
     transform: rotate(90deg);
 }
 
-.modern-modal-header.remove-item-header {
+.modern-modal-header.remove-item-header,
+.modern-modal-header.message-modal-header {
     background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.message-modal-body {
+    white-space: pre-line;
+    word-break: break-word;
 }
 
 .modern-modal-body {
@@ -1471,10 +1500,49 @@
     box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
+.modern-modal-footer .btn-primary {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border: none;
+    color: white;
+}
+
+.modern-modal-footer .btn-primary:hover {
+    background: linear-gradient(135deg, #0a58ca 0%, #084298 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+
 /* Styles harmonisés - utilisent les styles globaux de app.blade.php */
 </style>
 
 <script>
+// Modal moderne pour les messages (remplace les alert par défaut) — même logique, UI moderne uniquement
+function showMessageModal(title, message) {
+    return new Promise(function(resolve) {
+        const modalEl = document.getElementById('messageModal');
+        const labelEl = document.getElementById('messageModalLabel');
+        const bodyEl = document.getElementById('messageModalBody');
+        if (!modalEl || !labelEl || !bodyEl) {
+            resolve();
+            return;
+        }
+        labelEl.textContent = title || 'Message';
+        bodyEl.textContent = message || '';
+        function onHidden() {
+            modalEl.removeEventListener('hidden.bs.modal', onHidden);
+            resolve();
+        }
+        modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+        if (typeof bootstrap !== 'undefined') {
+            let m = bootstrap.Modal.getInstance(modalEl);
+            if (!m) m = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true });
+            m.show();
+        } else {
+            resolve();
+        }
+    });
+}
+
 // Fonction pour procéder au paiement Moneroo directement depuis le panier
 // Cette fonction surcharge celle définie dans app.blade.php pour la page cart
 // Elle doit être définie après le chargement du DOM pour prendre le dessus sur app.blade.php
@@ -1596,7 +1664,7 @@
                 isProcessingPayment = false;
                 sessionStorage.removeItem('moneroo_payment_in_progress');
                 
-                alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
+                await showMessageModal('Erreur', 'Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
                 throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
             }
         
@@ -1620,13 +1688,13 @@
             // Vérifier si c'est une erreur de configuration Moneroo
             let userFriendlyMessage = errorMessage;
             if (errorMessage.includes('No payment methods enabled for this currency')) {
-                userFriendlyMessage = 'La devise sélectionnée n\'a pas de méthodes de paiement activées dans votre compte Moneroo.\n\n' +
-                    'Veuillez activer les méthodes de paiement pour cette devise dans votre dashboard Moneroo, ou contactez le support technique.';
+                userFriendlyMessage = 'La devise sélectionnée n\'a pas de méthodes de paiement activées.\n\n' +
+                    'Veuillez activer les méthodes de paiement pour cette devise, ou contactez le support technique.';
             } else if (errorMessage.includes('payment methods')) {
                 userFriendlyMessage = 'Problème de configuration des méthodes de paiement.\n\n' + errorMessage;
             }
             
-            alert('Erreur lors du paiement:\n\n' + userFriendlyMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
+            await showMessageModal('Erreur lors du paiement', userFriendlyMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
             
             // Réactiver le bouton
             if (checkoutBtn) {
@@ -1645,9 +1713,14 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Vérifier si on est sur la page cart
         if (window.location.pathname.includes('/cart') && !window.location.pathname.includes('/checkout')) {
-            // Surcharger la fonction proceedToCheckout pour utiliser Moneroo
-            window.proceedToCheckout = async function(event) {
-                return proceedToCheckoutMoneroo(event);
+            const originalProceedToCheckout = window.proceedToCheckout;
+            // Si appelé avec un courseId (depuis une carte "Procéder au paiement"), garder le comportement d'origine (add to cart → redirect).
+            // Sinon (bouton principal) : Moneroo est géré par l'écouteur dédié sur proceedToCheckoutBtn.
+            window.proceedToCheckout = async function(courseIdOrEvent) {
+                if (typeof courseIdOrEvent === 'number') {
+                    return originalProceedToCheckout(courseIdOrEvent);
+                }
+                return proceedToCheckoutMoneroo(courseIdOrEvent);
             };
         }
     });
@@ -1667,7 +1740,7 @@ function confirmRemoveItem() {
     // Récupérer l'ID du cours depuis le dataset ou l'attribut
     let courseId = confirmBtn.dataset.courseId || confirmBtn.getAttribute('data-course-id');
     if (!courseId) {
-        showNotification('Erreur: ID du cours introuvable', 'error');
+        showNotification('Erreur: ID du contenu introuvable', 'error');
         return;
     }
     
@@ -1706,7 +1779,7 @@ function removeItem(courseId) {
     // S'assurer que courseId est un nombre
     courseId = parseInt(courseId);
     if (isNaN(courseId)) {
-        showNotification('Erreur: ID du cours invalide', 'error');
+        showNotification('Erreur: ID du contenu invalide', 'error');
         return;
     }
     
@@ -1761,14 +1834,14 @@ function removeItem(courseId) {
                 const remainingItems = document.querySelectorAll('.recommended-item.cart-item-wrapper');
                 if (remainingItems.length === 0) {
                     // Le panier est vide, recharger la page pour afficher l'état vide
-                    showNotification('Cours supprimé du panier', 'success');
+                    showNotification('Contenu supprimé du panier', 'success');
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
                 } else {
                     // Le panier n'est pas vide, mettre à jour le résumé via AJAX
                     updateCartSummary();
-                    showNotification('Cours supprimé du panier', 'success');
+                    showNotification('Contenu supprimé du panier', 'success');
                 }
             } else {
                 showNotification(data.message || 'Erreur lors de la suppression', 'error');
@@ -1959,14 +2032,14 @@ async function proceedToCheckout(event) {
             window.location.replace(redirectUrl);
             return; // S'assurer que la fonction s'arrête ici
         } else {
-            alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
+            await showMessageModal('Erreur', 'Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
             throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
         }
         
     } catch (error) {
         // Afficher un message d'erreur plus convivial
         const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
-        alert('Erreur: ' + errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
+        await showMessageModal('Erreur', errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
         
         // Réactiver le bouton
         if (checkoutBtn) {
@@ -2082,14 +2155,14 @@ const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) 
             window.location.replace(redirectUrl);
             return; // S'assurer que la fonction s'arrête ici
         } else {
-            alert('Erreur: Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
+            await showMessageModal('Erreur', 'Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
             throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
         }
         
     } catch (error) {
         // Afficher un message d'erreur plus convivial
         const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
-        alert('Erreur: ' + errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
+        await showMessageModal('Erreur', errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
         
         // Réactiver le bouton
         if (checkoutBtn) {
@@ -2160,7 +2233,7 @@ function updateCartSummary() {
                 // Mettre à jour aussi le texte parent
                 const parentLabel = itemCountElement.parentElement;
                 if (parentLabel) {
-                    parentLabel.innerHTML = `<span class="text-muted">Sous-total (<span id="cart-items-count">${data.item_count}</span> article${data.item_count > 1 ? 's' : '' })</span>`;
+                    parentLabel.innerHTML = `<span class="text-muted">Sous-total (<span id="cart-items-count">${data.item_count}</span> contenu${data.item_count > 1 ? 's' : '' })</span>`;
                 }
             }
         }
@@ -2232,7 +2305,7 @@ function addToCartFromCartPage(courseId) {
             updateCartCount();
             
             // Succès - recharger immédiatement la page pour afficher le nouveau cours
-            showNotification('Cours ajouté au panier', 'success');
+            showNotification('Contenu ajouté au panier', 'success');
             setTimeout(() => {
                 window.location.reload();
             }, 500);
@@ -2717,7 +2790,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Mettre à jour le contenu du modal
             const modalTitle = removeItemModal.querySelector('#removeItemCourseTitle');
             if (modalTitle) {
-                modalTitle.textContent = courseTitle || 'ce cours';
+                modalTitle.textContent = courseTitle || 'ce contenu';
             }
             
             // Stocker l'ID du cours dans le bouton de confirmation

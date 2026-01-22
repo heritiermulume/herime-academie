@@ -116,7 +116,7 @@
                     </h3>
                 </div>
                 <div class="admin-panel__body">
-                    <form method="POST" action="{{ route('admin.provider-applications.update-status', $application) }}">
+                    <form method="POST" action="{{ route('admin.provider-applications.update-status', $application) }}" id="updateProviderApplicationStatusForm" onsubmit="return handleUpdateStatusSubmit(event)">
                         @csrf
                         @method('PUT')
 
@@ -436,6 +436,50 @@ document.addEventListener('DOMContentLoaded', function() {
         @endforeach
     @endif
 });
+
+async function handleUpdateStatusSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const statusSelect = form.querySelector('#status');
+    const currentStatus = '{{ $application->status }}';
+    const newStatus = statusSelect.value;
+    
+    // Si le statut change vers "rejected", demander confirmation
+    if (newStatus === 'rejected' && currentStatus !== 'rejected') {
+        const message = 'Êtes-vous sûr de vouloir rejeter cette candidature ? Cette action enverra une notification au candidat.';
+        
+        const confirmed = await showModernConfirmModal(message, {
+            title: 'Rejeter la candidature',
+            confirmButtonText: 'Rejeter',
+            confirmButtonClass: 'btn-danger',
+            icon: 'fa-exclamation-triangle'
+        });
+
+        if (!confirmed) {
+            return false;
+        }
+    }
+    
+    // Si le statut change vers "approved", demander confirmation
+    if (newStatus === 'approved' && currentStatus !== 'approved') {
+        const message = 'Êtes-vous sûr de vouloir approuver cette candidature ? L\'utilisateur recevra le rôle de prestataire.';
+        
+        const confirmed = await showModernConfirmModal(message, {
+            title: 'Approuver la candidature',
+            confirmButtonText: 'Approuver',
+            confirmButtonClass: 'btn-success',
+            icon: 'fa-check-circle'
+        });
+
+        if (!confirmed) {
+            return false;
+        }
+    }
+    
+    // Soumettre le formulaire
+    form.submit();
+    return false;
+}
 </script>
 
 <style>

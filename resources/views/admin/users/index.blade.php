@@ -15,6 +15,7 @@
     </div>
 @endsection
 
+
 @section('admin-content')
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
@@ -121,11 +122,16 @@
             </div>
             @endif
 
+            <div id="bulkActionsContainer-usersTable"></div>
+
             <div class="admin-table">
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" id="usersTable" data-bulk-select="true" data-export-route="{{ route('admin.users.export') }}">
                         <thead>
                             <tr>
+                                <th style="width: 50px;">
+                                    <input type="checkbox" data-select-all data-table-id="usersTable" title="Sélectionner tout">
+                                </th>
                                 <th>
                                     <a href="{{ request()->fullUrlWithQuery(['sort' => 'name', 'direction' => request('sort') == 'name' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
                                         Utilisateur
@@ -164,6 +170,9 @@
                         <tbody>
                             @forelse($users as $user)
                             <tr>
+                                <td>
+                                    <input type="checkbox" data-item-id="{{ $user->id }}" class="form-check-input">
+                                </td>
                                 <td>
                                     <div class="d-flex align-items-center gap-3">
                                         <img src="{{ $user->avatar_url }}" alt="{{ $user->name }}" class="admin-user-avatar">
@@ -250,40 +259,74 @@
     </section>
 
 <!-- Modal de confirmation de suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmer la suppression</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-danger" id="confirmDelete">Supprimer</button>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/bulk-actions.js') }}"></script>
 <script>
-let userIdToDelete = null;
+// Initialiser la sélection multiple
+document.addEventListener('DOMContentLoaded', function() {
+    // Créer et insérer la barre d'actions
+    const container = document.getElementById('bulkActionsContainer-usersTable');
+    if (container) {
+        const bulkActionsBar = document.createElement('div');
+        bulkActionsBar.id = 'bulkActionsBar-usersTable';
+        bulkActionsBar.className = 'bulk-actions-bar';
+        bulkActionsBar.style.display = 'none';
+        bulkActionsBar.innerHTML = `
+            <div class="bulk-actions-bar__content">
+                <div class="bulk-actions-bar__info">
+                    <span class="bulk-actions-bar__count" id="selectedCount-usersTable">0</span>
+                    <span class="bulk-actions-bar__text">élément(s) sélectionné(s)</span>
+                </div>
+                <div class="bulk-actions-bar__actions">
+                    <button type="button" class="btn btn-sm btn-danger bulk-action-btn" data-action="delete" data-table-id="usersTable" data-confirm="true" data-confirm-message="Êtes-vous sûr de vouloir supprimer les utilisateurs sélectionnés ?" data-route="{{ route('admin.users.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-trash me-1"></i>Supprimer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success bulk-action-btn" data-action="activate" data-table-id="usersTable" data-confirm="false" data-route="{{ route('admin.users.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-check me-1"></i>Activer
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning bulk-action-btn" data-action="deactivate" data-table-id="usersTable" data-confirm="false" data-route="{{ route('admin.users.bulk-action') }}" data-method="POST">
+                        <i class="fas fa-ban me-1"></i>Désactiver
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="exportDropdown-usersTable" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-1"></i>Exporter
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="exportDropdown-usersTable">
+                            <li><a class="dropdown-item export-link" href="#" data-format="csv" data-table-id="usersTable"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                            <li><a class="dropdown-item export-link" href="#" data-format="excel" data-table-id="usersTable"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="bulkActions.clearSelection('usersTable')">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(bulkActionsBar);
+    }
+    
+    bulkActions.init('usersTable', {
+        exportRoute: '{{ route('admin.users.export') }}'
+    });
+});
 
-function deleteUser(userId) {
-    userIdToDelete = userId;
-    new bootstrap.Modal(document.getElementById('deleteModal')).show();
-}
+async function deleteUser(userId) {
+    const message = 'Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.';
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer l\'utilisateur',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
 
-document.getElementById('confirmDelete').addEventListener('click', function() {
-    if (userIdToDelete) {
+    if (confirmed) {
         // Créer un formulaire pour la suppression
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = `/admin/users/${userIdToDelete}`;
+        form.action = `/admin/users/${userId}`;
         
         const csrfToken = document.createElement('input');
         csrfToken.type = 'hidden';
@@ -300,7 +343,7 @@ document.getElementById('confirmDelete').addEventListener('click', function() {
         document.body.appendChild(form);
         form.submit();
     }
-});
+}
 
 const usersFilterForm = document.getElementById('usersFilterForm');
 const usersFiltersOffcanvas = document.getElementById('usersFilters');

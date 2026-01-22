@@ -8,13 +8,16 @@ use App\Mail\InvoiceMail;
 use App\Mail\CourseAccessRevokedMail;
 use App\Notifications\PaymentReceived;
 use App\Notifications\CourseAccessRevoked;
+use App\Traits\HandlesBulkActions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 
 class OrderController extends Controller
 {
+    use HandlesBulkActions;
     /**
      * Afficher les commandes de l'utilisateur connecté (étudiant)
      */
@@ -580,6 +583,12 @@ class OrderController extends Controller
                 });
             }
 
+            // Filtrer par IDs si fournis (pour export sélectif)
+            if ($request->filled('ids')) {
+                $ids = explode(',', $request->ids);
+                $query->whereIn('id', $ids);
+            }
+
             $orders = $query->orderBy('created_at', 'desc')->get();
 
             // Générer le CSV
@@ -670,5 +679,68 @@ class OrderController extends Controller
             'bank' => 'Virement bancaire',
             default => ucfirst($method ?? 'Non défini')
         };
+    }
+
+    /**
+     * Actions en lot sur les commandes
+     */
+    public function bulkAction(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                $count = 0;
+                foreach ($ids as $id) {
+                    $order = Order::find($id);
+                    if ($order) {
+                        $this->destroy(new Request(), $order);
+                        $count++;
+                    }
+                }
+                return [
+                    'message' => "{$count} commande(s) supprimée(s) avec succès.",
+                    'count' => $count
+                ];
+            },
+            'mark-paid' => function($ids) {
+                $count = Order::whereIn('id', $ids)
+                    ->where('status', '!=', 'paid')
+                    ->update([
+                        'status' => 'paid',
+                        'paid_at' => now()
+                    ]);
+                return [
+                    'message' => "{$count} commande(s) marquée(s) comme payée(s).",
+                    'count' => $count
+                ];
+            },
+            'mark-completed' => function($ids) {
+                $count = Order::whereIn('id', $ids)
+                    ->where('status', '!=', 'completed')
+                    ->update([
+                        'status' => 'completed',
+                        'completed_at' => now()
+                    ]);
+                return [
+                    'message' => "{$count} commande(s) marquée(s) comme terminée(s).",
+                    'count' => $count
+                ];
+            },
+            'cancel' => function($ids) {
+                $count = 0;
+                foreach ($ids as $id) {
+                    $order = Order::find($id);
+                    if ($order && $order->status !== 'cancelled') {
+                        $this->cancel(new Request(['reason' => 'Annulation en lot']), $order);
+                        $count++;
+                    }
+                }
+                return [
+                    'message' => "{$count} commande(s) annulée(s) avec succès.",
+                    'count' => $count
+                ];
+            }
+        ];
+
+        return $this->handleBulkAction($request, Order::class, $actions);
     }
 }

@@ -24,6 +24,7 @@ use App\Models\LessonNote;
 use App\Models\LessonDiscussion;
 use App\Models\DiscussionLike;
 use App\Traits\DatabaseCompatibility;
+use App\Traits\HandlesBulkActions;
 use App\Services\FileUploadService;
 use App\Helpers\FileHelper;
 use App\Notifications\AnnouncementPublished;
@@ -56,7 +57,7 @@ use App\Jobs\SendWhatsAppJob;
 
 class AdminController extends Controller
 {
-    use DatabaseCompatibility;
+    use DatabaseCompatibility, HandlesBulkActions;
 
     protected $fileUploadService;
 
@@ -5292,5 +5293,162 @@ class AdminController extends Controller
             return redirect()->route('admin.announcements')
                 ->with('error', 'Erreur lors de la suppression du message WhatsApp.');
         }
+    }
+
+    /**
+     * Actions en lot sur les utilisateurs
+     */
+    public function bulkActionUsers(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                $count = 0;
+                foreach ($ids as $id) {
+                    $user = User::find($id);
+                    if ($user && !$user->isAdmin()) {
+                        $user->delete();
+                        $count++;
+                    }
+                }
+                return [
+                    'message' => "{$count} utilisateur(s) supprimé(s) avec succès.",
+                    'count' => $count
+                ];
+            },
+            'activate' => function($ids) {
+                $count = User::whereIn('id', $ids)
+                    ->where('is_active', false)
+                    ->update(['is_active' => true]);
+                return [
+                    'message' => "{$count} utilisateur(s) activé(s) avec succès.",
+                    'count' => $count
+                ];
+            },
+            'deactivate' => function($ids) {
+                $count = User::whereIn('id', $ids)
+                    ->where('is_active', true)
+                    ->whereNotIn('role', ['admin', 'super_user'])
+                    ->update(['is_active' => false]);
+                return [
+                    'message' => "{$count} utilisateur(s) désactivé(s) avec succès.",
+                    'count' => $count
+                ];
+            }
+        ];
+
+        return $this->handleBulkAction($request, User::class, $actions);
+    }
+
+    /**
+     * Exporter les utilisateurs
+     */
+    public function exportUsers(Request $request)
+    {
+        $query = User::withCount(['courses', 'enrollments']);
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->get('role'));
+        }
+
+        if ($request->filled('status')) {
+            if ($request->get('status') === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->get('status') === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        $columns = [
+            'id' => 'ID',
+            'name' => 'Nom',
+            'email' => 'Email',
+            'role' => 'Rôle',
+            'is_active' => 'Actif',
+            'is_verified' => 'Vérifié',
+            'courses_count' => 'Nombre de cours',
+            'enrollments_count' => 'Nombre d\'inscriptions',
+            'created_at' => 'Date d\'inscription',
+            'last_login_at' => 'Dernière connexion'
+        ];
+
+        return $this->exportData($request, $query, $columns, 'utilisateurs');
+    }
+
+    /**
+     * Actions en lot sur les contenus
+     */
+    public function bulkActionContents(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                return $this->bulkDelete($ids, Course::class);
+            },
+            'publish' => function($ids) {
+                return $this->bulkUpdate($ids, Course::class, ['is_published' => true]);
+            },
+            'unpublish' => function($ids) {
+                return $this->bulkUpdate($ids, Course::class, ['is_published' => false]);
+            }
+        ];
+
+        return $this->handleBulkAction($request, Course::class, $actions);
+    }
+
+    /**
+     * Exporter les contenus
+     */
+    public function exportContents(Request $request)
+    {
+        $query = Course::with(['category', 'provider'])
+            ->withCount(['enrollments', 'reviews'])
+            ->withAvg('reviews', 'rating');
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('subtitle', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->category);
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'published') {
+                $query->where('is_published', true);
+            } elseif ($request->status === 'draft') {
+                $query->where('is_published', false);
+            }
+        }
+
+        if ($request->filled('provider')) {
+            $query->where('provider_id', $request->provider);
+        }
+
+        $columns = [
+            'id' => 'ID',
+            'title' => 'Titre',
+            'subtitle' => 'Sous-titre',
+            'category.name' => 'Catégorie',
+            'provider.name' => 'Prestataire',
+            'price' => 'Prix',
+            'is_free' => 'Gratuit',
+            'is_published' => 'Publié',
+            'enrollments_count' => 'Inscriptions',
+            'reviews_avg_rating' => 'Note moyenne',
+            'created_at' => 'Date de création'
+        ];
+
+        return $this->exportData($request, $query, $columns, 'contenus');
     }
 }
