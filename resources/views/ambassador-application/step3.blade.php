@@ -72,7 +72,7 @@
                     <div class="card-body p-3 p-md-5">
                         <div class="alert alert-info mb-4">
                             <i class="fas fa-lightbulb me-2"></i>
-                            <strong>Dernière étape !</strong> Partagez vos idées pour promouvoir nos contenus et maximiser vos commissions.
+                            <strong>Dernière étape !</strong> Partagez vos idées pour promouvoir nos contenus (formations, ressources professionnelles) et maximiser vos commissions.
                         </div>
 
                         <form method="POST" action="{{ route('ambassador-application.store-step3', $application) }}" enctype="multipart/form-data">
@@ -87,7 +87,7 @@
                                           id="marketing_ideas" 
                                           name="marketing_ideas" 
                                           rows="6" 
-                                          placeholder="Avez-vous des idées spécifiques pour promouvoir nos contenus ? Comment comptez-vous utiliser votre code promo ? Quelles stratégies marketing envisagez-vous ? Partagez vos meilleures idées pour toucher votre audience.">{{ old('marketing_ideas', $application->marketing_ideas ?? '') }}</textarea>
+                                          placeholder="Avez-vous des idées spécifiques pour promouvoir nos contenus (formations, ressources professionnelles) ? Comment comptez-vous utiliser votre code promo ? Quelles stratégies marketing envisagez-vous ? Partagez vos meilleures idées pour toucher votre audience.">{{ old('marketing_ideas', $application->marketing_ideas ?? '') }}</textarea>
                                 <small class="form-text text-muted">Optionnel mais fortement recommandé - Maximum 1000 caractères</small>
                                 @error('marketing_ideas')
                                     <div class="invalid-feedback">{{ $message }}</div>

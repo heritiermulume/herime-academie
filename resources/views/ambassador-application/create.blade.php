@@ -107,7 +107,7 @@
                                           id="motivation" 
                                           name="motivation" 
                                           rows="8" 
-                                          placeholder="Pourquoi souhaitez-vous devenir ambassadeur ? Qu'est-ce qui vous motive à promouvoir nos contenus ? Partagez votre vision et vos objectifs." 
+                                          placeholder="Pourquoi souhaitez-vous devenir ambassadeur ? Qu'est-ce qui vous motive à promouvoir nos contenus (formations, ressources professionnelles) ? Partagez votre vision et vos objectifs." 
                                           required>{{ old('motivation', $application->motivation ?? '') }}</textarea>
                                 <small class="form-text text-muted">Minimum 100 caractères</small>
                                 @error('motivation')

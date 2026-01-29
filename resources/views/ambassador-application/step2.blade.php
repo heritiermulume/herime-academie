@@ -113,7 +113,7 @@
                                           id="target_audience" 
                                           name="target_audience" 
                                           rows="4" 
-                                          placeholder="Décrivez votre audience cible. Qui sont les personnes que vous pouvez toucher avec nos contenus ? Quel est leur profil ?">{{ old('target_audience', $application->target_audience ?? '') }}</textarea>
+                                          placeholder="Décrivez votre audience cible. Qui sont les personnes que vous pouvez toucher avec nos contenus (formations, ressources professionnelles) ? Quel est leur profil ?">{{ old('target_audience', $application->target_audience ?? '') }}</textarea>
                                 <small class="form-text text-muted">Optionnel mais recommandé</small>
                                 @error('target_audience')
                                     <div class="invalid-feedback">{{ $message }}</div>

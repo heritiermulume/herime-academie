@@ -9,7 +9,7 @@
         <div class="row">
             <div class="col-lg-8 mx-auto text-center text-white">
                 <h1 class="h3 h2-md fw-bold mb-2">Candidature Prestataire</h1>
-                <p class="mb-0 small small-md">Étape 2 sur 3 - Spécialisations et formation</p>
+                <p class="mb-0 small small-md">Étape 2 sur 3 - Spécialisations et parcours</p>
             </div>
         </div>
     </div>
@@ -80,9 +80,9 @@
                                           id="specializations" 
                                           name="specializations" 
                                           rows="6" 
-                                          placeholder="Listez vos domaines d'expertise et de spécialisation. Quels sujets maîtrisez-vous le mieux ? Dans quels domaines pouvez-vous créer des cours ?" 
+                                          placeholder="Listez vos domaines d'expertise et de spécialisation. Quels sujets maîtrisez-vous le mieux ? Dans quels domaines pouvez-vous créer des contenus (formations, ressources professionnelles, outils) ?" 
                                           required>{{ old('specializations', $application->specializations ?? '') }}</textarea>
-                                <small class="form-text text-muted">Minimum 20 caractères</small>
+                                <small class="form-text text-muted">Minimum 20 caractères. Précisez les types de contenus que vous souhaitez proposer.</small>
                                 @error('specializations')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -97,9 +97,9 @@
                                           id="education_background" 
                                           name="education_background" 
                                           rows="6" 
-                                          placeholder="Décrivez votre parcours académique : diplômes obtenus, certifications, formations spécialisées, etc." 
+                                          placeholder="Décrivez votre parcours académique et professionnel : diplômes, certifications, formations, expériences clés qui justifient votre capacité à créer des contenus de qualité." 
                                           required>{{ old('education_background', $application->education_background ?? '') }}</textarea>
-                                <small class="form-text text-muted">Minimum 20 caractères</small>
+                                <small class="form-text text-muted">Minimum 20 caractères.</small>
                                 @error('education_background')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

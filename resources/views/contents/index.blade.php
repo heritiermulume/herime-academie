@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Tous les contenus - Herime Academie')
-@section('description', 'Découvrez notre collection complète de contenus en ligne. Formations professionnelles dans tous les domaines.')
+@section('description', 'Découvrez notre collection complète de contenus en ligne. Contenus professionnels dans tous les domaines.')
 
 @section('content')
 <!-- Page Content Section -->
@@ -19,7 +19,7 @@
             <div class="col-12">
                 <h1 class="courses-page-title">Trouver le contenu idéal pour progresser</h1>
                 <p class="courses-page-description">
-                    Parcourez toutes nos formations en ligne, filtrez par catégorie, niveau et prix pour dénicher le programme qui correspond à vos objectifs.
+                    Parcourez tous nos contenus en ligne, filtrez par catégorie, niveau et prix pour dénicher le programme qui correspond à vos objectifs.
                 </p>
             </div>
         </div>

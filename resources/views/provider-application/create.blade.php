@@ -110,18 +110,18 @@
                                 @enderror
                             </div>
 
-                            <!-- Teaching Experience -->
+                            <!-- Teaching / Content Creation Experience -->
                             <div class="mb-4">
                                 <label for="teaching_experience" class="form-label fw-bold">
-                                    Expérience d'Enseignement <span class="text-danger">*</span>
+                                    Expérience en création de contenus <span class="text-danger">*</span>
                                 </label>
                                 <textarea class="form-control @error('teaching_experience') is-invalid @enderror" 
                                           id="teaching_experience" 
                                           name="teaching_experience" 
                                           rows="6" 
-                                          placeholder="Décrivez votre expérience en matière d'enseignement ou de formation. Avez-vous déjà enseigné ? Dans quel contexte ? Quelles méthodes pédagogiques utilisez-vous ?" 
+                                          placeholder="Décrivez votre expérience en création de contenus : formations, enseignement, ressources professionnelles, accompagnement… Dans quel contexte avez-vous déjà créé ou diffusé du contenu ? Quelles méthodes utilisez-vous ?" 
                                           required>{{ old('teaching_experience', $application->teaching_experience ?? '') }}</textarea>
-                                <small class="form-text text-muted">Minimum 50 caractères</small>
+                                <small class="form-text text-muted">Minimum 50 caractères. Indiquez tout type de contenu (formations, ressources, outils, etc.).</small>
                                 @error('teaching_experience')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

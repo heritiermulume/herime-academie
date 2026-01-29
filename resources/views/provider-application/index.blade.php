@@ -27,7 +27,7 @@
         <div class="row">
             <div class="col-lg-8 mx-auto text-center text-white">
                 <h1 class="h2 h1-md fw-bold mb-3">Devenir Prestataire</h1>
-                <p class="lead mb-4">Partagez votre expertise et transformez des vies grâce à l'éducation en ligne</p>
+                <p class="lead mb-4">Partagez votre expertise et transformez des vies grâce à des contenus éducatifs et professionnels en ligne</p>
                 @auth
                     @if(auth()->user()->role !== 'provider' && (!isset($application) || !$application))
                         <a href="{{ route('provider-application.create') }}" class="btn btn-light btn-lg px-3 px-md-5">
@@ -58,7 +58,7 @@
                             <h5 class="fw-bold mb-1"><i class="fas fa-hourglass-half me-2"></i>Candidature en cours</h5>
                             <p class="mb-0">
                                 @if($application->canBeEdited())
-                                    Vous avez déjà une candidature au profil formateur. Vous pouvez suivre son statut ou la recommencer depuis le début.
+                                    Vous avez déjà une candidature au profil prestataire (créateur de contenus). Vous pouvez suivre son statut ou la recommencer depuis le début.
                                 @else
                                     Votre candidature a été soumise et est en cours de traitement. Vous pouvez suivre son statut ci-dessous.
                                 @endif
@@ -111,8 +111,8 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <h5 class="fw-bold mb-2">Créer des Cours de Qualité</h5>
-                                        <p class="text-muted mb-0">Développez et structurez des contenus pédagogiques engageants qui aideront les clients à atteindre leurs objectifs d'apprentissage.</p>
+                                        <h5 class="fw-bold mb-2">Créer des Contenus de Qualité</h5>
+                                        <p class="text-muted mb-0">Développez et structurez des contenus éducatifs et professionnels engageants qui aideront les clients à atteindre leurs objectifs d'apprentissage et à développer leurs compétences professionnelles.</p>
                                     </div>
                                 </div>
                             </div>
@@ -157,7 +157,7 @@
                                     </div>
                                     <div>
                                         <h5 class="fw-bold mb-2">Générer des Revenus</h5>
-                                        <p class="text-muted mb-0">Monétisez vos connaissances en créant des cours payants et bénéficiez d'une commission sur chaque vente.</p>
+                                        <p class="text-muted mb-0">Monétisez vos connaissances en créant des contenus payants (formations, ressources professionnelles) et bénéficiez d'une commission sur chaque vente.</p>
                                     </div>
                                 </div>
                             </div>
@@ -173,21 +173,6 @@
                                     <div>
                                         <h5 class="fw-bold mb-2">Créer des Ressources Professionnelles</h5>
                                         <p class="text-muted mb-0">Développez des templates, modèles de documents, guides pratiques et outils professionnels pour aider les clients dans leur travail quotidien.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-12 col-md-6">
-                                <div class="d-flex gap-3">
-                                    <div class="flex-shrink-0">
-                                        <div class="rounded-circle d-flex align-items-center justify-content-center" 
-                                             style="width: 50px; height: 50px; background: linear-gradient(135deg, #003366 0%, #004080 100%);">
-                                            <i class="fas fa-laptop-code text-white"></i>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 class="fw-bold mb-2">Développer des Produits Digitaux</h5>
-                                        <p class="text-muted mb-0">Créez des produits digitaux innovants : applications, outils en ligne, frameworks, bibliothèques de ressources et solutions numériques.</p>
                                     </div>
                                 </div>
                             </div>
@@ -238,7 +223,7 @@
                                 <div class="text-center p-4 h-100" style="background: #f8f9fa; border-radius: 12px;">
                                     <i class="fas fa-tools fa-3x mb-3" style="color: #003366;"></i>
                                     <h5 class="fw-bold mb-3">Outils Professionnels</h5>
-                                    <p class="text-muted mb-0">Accédez à une plateforme complète avec tous les outils nécessaires pour créer et gérer vos cours efficacement.</p>
+                                    <p class="text-muted mb-0">Accédez à une plateforme complète avec tous les outils nécessaires pour créer et gérer vos contenus (formations, ressources professionnelles) efficacement.</p>
                                 </div>
                             </div>
                             
@@ -246,7 +231,7 @@
                                 <div class="text-center p-4 h-100" style="background: #f8f9fa; border-radius: 12px;">
                                     <i class="fas fa-headset fa-3x mb-3" style="color: #003366;"></i>
                                     <h5 class="fw-bold mb-3">Support Dédié</h5>
-                                    <p class="text-muted mb-0">Bénéficiez d'un accompagnement personnalisé pour vous aider à réussir en tant que formateur.</p>
+                                    <p class="text-muted mb-0">Bénéficiez d'un accompagnement personnalisé pour vous aider à réussir en tant que créateur de contenus éducatifs et professionnels.</p>
                                 </div>
                             </div>
                             
@@ -254,7 +239,7 @@
                                 <div class="text-center p-4 h-100" style="background: #f8f9fa; border-radius: 12px;">
                                     <i class="fas fa-globe fa-3x mb-3" style="color: #003366;"></i>
                                     <h5 class="fw-bold mb-3">Audience Mondiale</h5>
-                                    <p class="text-muted mb-0">Touchez des milliers de clients à travers le monde et partagez votre expertise à grande échelle.</p>
+                                    <p class="text-muted mb-0">Touchez des milliers de clients à travers le monde et partagez votre expertise (formations, ressources professionnelles, outils) à grande échelle.</p>
                                 </div>
                             </div>
                         </div>
@@ -279,7 +264,7 @@
                                         </div>
                                     </div>
                                     <h5 class="fw-bold text-center mb-3">Remplissez le Formulaire</h5>
-                                    <p class="text-muted text-center mb-0">Partagez vos informations personnelles, votre expérience professionnelle et votre parcours académique.</p>
+                                    <p class="text-muted text-center mb-0">Partagez vos informations personnelles, votre expérience professionnelle et votre parcours académique pour créer des contenus de qualité.</p>
                                 </div>
                             </div>
                             
