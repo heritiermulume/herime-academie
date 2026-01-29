@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\ContactMessage;
+use App\Models\User;
+use App\Notifications\ContactMessageReceived;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Validator;
 use App\Mail\ContactMessageMail;
 use Illuminate\Support\Facades\Log;
 
@@ -46,6 +49,16 @@ class ContactController extends Controller
             } catch (\Exception $e) {
                 // Log l'erreur mais ne pas faire échouer la sauvegarde
                 Log::error('Erreur envoi email contact: ' . $e->getMessage());
+            }
+
+            // Notifier les administrateurs et super_user (notification en base pour la navbar)
+            try {
+                $admins = User::admins()->get();
+                if ($admins->isNotEmpty()) {
+                    Notification::sendNow($admins, new ContactMessageReceived($contactMessage));
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur envoi notification contact aux admins: ' . $e->getMessage());
             }
 
             return response()->json([

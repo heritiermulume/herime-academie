@@ -744,5 +744,26 @@
         overflow-wrap: break-word !important;
         word-break: break-word !important;
     }
+
+    /* Dropdown notifications desktop : liste scrollable, ne dépasse jamais l'écran */
+    @media (min-width: 992px) {
+        .navbar .notification-dropdown--desktop {
+            max-height: min(260px, 50vh);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .navbar .notification-dropdown--desktop .dropdown-header,
+        .navbar .notification-dropdown--desktop .dropdown-divider {
+            flex-shrink: 0;
+        }
+        .navbar .notification-dropdown--desktop #notifications-list {
+            max-height: min(200px, calc(50vh - 56px));
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+    }
 </style>
 @endpush

@@ -39,7 +39,7 @@ class ReviewController extends Controller
                 if ($hasDownloaded) {
                     $canReview = true;
                 } else {
-                    $errorMessage = 'Vous devez avoir téléchargé ce produit digital au moins une fois pour pouvoir le noter.';
+                    $errorMessage = 'Vous devez avoir téléchargé ce contenu au moins une fois pour pouvoir le noter.';
                 }
             } else {
                 // Téléchargeable payant : avoir payé
@@ -53,7 +53,7 @@ class ReviewController extends Controller
                 if ($hasPurchased) {
                     $canReview = true;
                 } else {
-                    $errorMessage = 'Vous devez avoir acheté ce produit digital pour pouvoir le noter.';
+                    $errorMessage = 'Vous devez avoir acheté ce contenu pour pouvoir le noter.';
                 }
             }
         } else {

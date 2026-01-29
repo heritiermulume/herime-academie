@@ -31,7 +31,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
     // Fonction helper pour obtenir le terme approprié selon le type de contenu
     $getContentLabel = function($course) {
         if (!$course) return 'cours';
-        return $course->is_downloadable ? 'produit digital' : 'cours';
+        return $course->is_downloadable ? 'contenu' : 'cours';
     };
     
     // Vérifier si la commande contient des produits téléchargeables

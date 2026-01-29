@@ -3706,7 +3706,7 @@ button.mobile-price-slider__btn--download i,
                 <div class="content-card">
                     <h2 class="section-title-modern">
                         <i class="fas fa-star"></i>
-                        {{ $hasUserReview ? 'Modifier votre avis' : ($course->is_downloadable ? 'Noter ce produit digital' : 'Noter ce contenu') }}
+                        {{ $hasUserReview ? 'Modifier votre avis' : ($course->is_downloadable ? 'Noter ce contenu' : 'Noter ce contenu') }}
                     </h2>
                     <form id="courseReviewForm" action="{{ route('contents.review.store', $course->slug) }}" method="POST">
                         @csrf
@@ -3735,7 +3735,7 @@ button.mobile-price-slider__btn--download i,
                                       name="comment" 
                                       rows="3" 
                                       style="font-size: 0.9375rem;"
-                                      placeholder="Partagez votre expérience avec ce {{ $course->is_downloadable ? 'produit digital' : 'contenu' }}...">{{ $hasUserReview ? $userReview->comment : '' }}</textarea>
+                                      placeholder="Partagez votre expérience avec ce {{ $course->is_downloadable ? 'contenu' : 'contenu' }}...">{{ $hasUserReview ? $userReview->comment : '' }}</textarea>
                             <div class="form-text" style="font-size: 0.8125rem;">Votre avis aidera d'autres étudiants à prendre une décision.</div>
                         </div>
 
@@ -3757,7 +3757,7 @@ button.mobile-price-slider__btn--download i,
                 <div class="content-card">
                     <div class="alert alert-info mb-0">
                         <i class="fas fa-info-circle me-2"></i>
-                        <strong>Connectez-vous</strong> pour noter ce {{ $course->is_downloadable ? 'produit digital' : 'contenu' }} et donner votre avis.
+                        <strong>Connectez-vous</strong> pour noter ce {{ $course->is_downloadable ? 'contenu' : 'contenu' }} et donner votre avis.
                         <a href="{{ route('login') }}" class="alert-link ms-2">Se connecter</a>
                     </div>
                 </div>
@@ -3767,9 +3767,9 @@ button.mobile-price-slider__btn--download i,
                         <i class="fas fa-exclamation-circle me-2"></i>
                         @if($course->is_downloadable)
                             @if($course->is_free)
-                                Vous devez avoir <strong>téléchargé ce produit digital au moins une fois</strong> pour pouvoir le noter et donner votre avis.
+                                Vous devez avoir <strong>téléchargé ce contenu au moins une fois</strong> pour pouvoir le noter et donner votre avis.
                             @else
-                                Vous devez avoir <strong>acheté ce produit digital</strong> pour pouvoir le noter et donner votre avis.
+                                Vous devez avoir <strong>acheté ce contenu</strong> pour pouvoir le noter et donner votre avis.
                             @endif
                         @else
                             @if($course->is_free)
@@ -4148,7 +4148,7 @@ button.mobile-price-slider__btn--download i,
 
                         <hr class="my-3">
 
-                        <h6 class="fw-bold mb-2" style="font-size: 0.9375rem;">Ce {{ $course->is_downloadable ? 'produit digital' : 'contenu' }} comprend :</h6>
+                        <h6 class="fw-bold mb-2" style="font-size: 0.9375rem;">Ce {{ $course->is_downloadable ? 'contenu' : 'contenu' }} comprend :</h6>
                         <ul class="course-features-list">
                             @php
                                 $courseFeatures = [];
@@ -4175,7 +4175,7 @@ button.mobile-price-slider__btn--download i,
 
                     <!-- Share Card -->
                     <div class="sidebar-card">
-                        <h6 class="fw-bold mb-2" style="font-size: 0.9375rem;">Partager ce {{ $course->is_downloadable ? 'produit digital' : 'contenu' }}</h6>
+                        <h6 class="fw-bold mb-2" style="font-size: 0.9375rem;">Partager ce {{ $course->is_downloadable ? 'contenu' : 'contenu' }}</h6>
                         <div class="share-buttons">
                             <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode(request()->url()) }}" 
                                target="_blank" 
