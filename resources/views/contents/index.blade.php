@@ -317,7 +317,20 @@
     margin-top: 0.06rem;
     margin-bottom: 0;
     color: #475569;
-    max-width: 640px;
+}
+
+/* Sur desktop, le texte prend toute la largeur */
+@media (min-width: 992px) {
+    .courses-page-description {
+        max-width: 100%;
+    }
+}
+
+/* Sur tablette et mobile, limitation pour la lisibilité */
+@media (max-width: 991.98px) {
+    .courses-page-description {
+        max-width: 640px;
+    }
 }
 
 .courses-page-layout {
