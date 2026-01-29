@@ -36,6 +36,7 @@ use App\Mail\CustomAnnouncementMail;
 use App\Models\SentEmail;
 use App\Models\ScheduledEmail;
 use App\Models\SentWhatsAppMessage;
+use App\Models\ContactMessage;
 use App\Notifications\EmailSentNotification;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
@@ -2556,7 +2557,36 @@ class AdminController extends Controller
             'failed_today' => SentWhatsAppMessage::whereDate('created_at', today())->where('status', 'failed')->count(),
         ];
         
-        return view('admin.announcements.index', compact('announcements', 'recentSentEmails', 'pendingScheduledEmails', 'emailStats', 'recentSentWhatsApp', 'whatsappStats'));
+        // Filtres pour les messages de contact
+        $contactMessagesQuery = ContactMessage::query();
+        
+        if ($request->filled('contact_search')) {
+            $search = $request->contact_search;
+            $contactMessagesQuery->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('subject', 'like', "%{$search}%")
+                  ->orWhere('message', 'like', "%{$search}%");
+            });
+        }
+        
+        if ($request->filled('contact_status')) {
+            $contactMessagesQuery->where('status', $request->contact_status);
+        }
+        
+        $contactMessages = $contactMessagesQuery->latest()
+            ->paginate(15, ['*'], 'contact_page')
+            ->withQueryString();
+        
+        // Statistiques des messages de contact
+        $contactStats = [
+            'total' => ContactMessage::count(),
+            'unread' => ContactMessage::where('status', 'unread')->count(),
+            'read' => ContactMessage::where('status', 'read')->count(),
+            'today' => ContactMessage::whereDate('created_at', today())->count(),
+        ];
+        
+        return view('admin.announcements.index', compact('announcements', 'recentSentEmails', 'pendingScheduledEmails', 'emailStats', 'recentSentWhatsApp', 'whatsappStats', 'contactMessages', 'contactStats'));
     }
 
     public function createAnnouncement()
@@ -4477,6 +4507,36 @@ class AdminController extends Controller
             ->with('success', 'Statut de la candidature mis à jour avec succès.');
     }
 
+    /**
+     * Actions en lot sur les candidatures de prestataires
+     */
+    public function bulkActionProviderApplications(Request $request)
+    {
+        $actions = [
+            'delete' => function($ids) {
+                $count = 0;
+                foreach ($ids as $id) {
+                    // Ignorer les candidatures virtuelles (prestataires nommés directement)
+                    if (str_starts_with($id, 'virtual_')) {
+                        continue;
+                    }
+                    
+                    $application = ProviderApplication::find($id);
+                    if ($application) {
+                        $application->delete();
+                        $count++;
+                    }
+                }
+                return [
+                    'message' => "{$count} candidature(s) supprimée(s) avec succès.",
+                    'count' => $count
+                ];
+            }
+        ];
+
+        return $this->handleBulkAction($request, ProviderApplication::class, $actions);
+    }
+
     private function normalizeStringArray($values): array
     {
         if (!is_array($values)) {
@@ -5823,5 +5883,46 @@ class AdminController extends Controller
                 'revenue' => $internalRevenue + $commissionRevenue
             ];
         })->sortBy($periodKey)->values();
+    }
+
+    /**
+     * Afficher les détails d'un message de contact
+     */
+    public function showContactMessage(ContactMessage $contactMessage)
+    {
+        $subjectLabels = [
+            'inscription' => 'Inscription à un contenu',
+            'paiement' => 'Paiement',
+            'technique' => 'Problème technique',
+            'support' => 'Support pédagogique',
+            'partenariat' => 'Partenariat',
+            'autre' => 'Autre',
+        ];
+        
+        $contactMessage->subject_label = $subjectLabels[$contactMessage->subject] ?? ucfirst($contactMessage->subject);
+        
+        return view('admin.contact.show', compact('contactMessage'));
+    }
+
+    /**
+     * Marquer un message de contact comme lu
+     */
+    public function markContactMessageAsRead(ContactMessage $contactMessage)
+    {
+        $contactMessage->markAsRead();
+        
+        return redirect()->route('admin.announcements')
+            ->with('success', 'Message marqué comme lu.');
+    }
+
+    /**
+     * Supprimer un message de contact
+     */
+    public function destroyContactMessage(ContactMessage $contactMessage)
+    {
+        $contactMessage->delete();
+        
+        return redirect()->route('admin.announcements')
+            ->with('success', 'Message supprimé avec succès.');
     }
 }

@@ -28,14 +28,14 @@
                             <i class="fas fa-building me-2"></i>
                             Qui sommes-nous ?
                         </h2>
-                        <p class="mb-3"><strong>Herime Académie</strong> appartient à l'entreprise <strong>Herime</strong> (<a href="https://www.herime.com" target="_blank">www.herime.com</a>), un groupe pionnier dans l'éducation numérique en République Démocratique du Congo et en Afrique centrale.</p>
+                        <p class="mb-3"><strong>Herime Académie</strong> est une entité de l’entreprise <strong>Herime</strong> (<a href="https://www.herime.com" target="_blank" class="herime-link">www.herime.com</a>), un groupe pionnier du numérique en République Démocratique du Congo et en Afrique centrale.</p>
                         <p class="mb-3"><strong>Herime Académie est une plateforme d'apprentissage en ligne et un espace de ressources professionnelles</strong> qui révolutionne la façon dont les professionnels développent leurs compétences et accèdent aux outils nécessaires à leur réussite.</p>
                         <p class="mb-3">Notre plateforme intègre deux dimensions essentielles :</p>
                         <div class="row g-3 mb-3">
                             <div class="col-md-12">
                                 <div class="p-3 bg-light rounded border-start border-4 border-primary">
                                     <h5 class="mb-2"><i class="fas fa-graduation-cap text-primary me-2"></i><strong>Plateforme d'apprentissage en ligne</strong></h5>
-                                    <p class="mb-0 small">Des formations structurées, certifiantes et créées par des experts reconnus. Développez vos compétences à votre rythme, où que vous soyez, avec des contenus pédagogiques de qualité professionnelle.</p>
+                                    <p class="mb-0 small">Des contenus structurés, certifiants et créés par des experts reconnus. Développez vos compétences à votre rythme, où que vous soyez, avec des contenus pédagogiques de qualité professionnelle.</p>
                                 </div>
                             </div>
                             <div class="col-md-12">
@@ -63,7 +63,7 @@
                         <p class="mb-3">Notre mission est de rendre l'éducation de qualité et les ressources professionnelles premium accessibles à tous, partout et à tout moment. Nous croyons fermement que l'apprentissage et le développement professionnel ne devraient pas être limités par des contraintes géographiques, financières ou temporelles.</p>
                         <p class="mb-2"><strong>Chez Herime Académie, nous nous engageons à :</strong></p>
                         <ul class="list-unstyled">
-                            <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Offrir des formations en ligne de haute qualité dispensées par des experts reconnus</li>
+                            <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Offrir des contenus en ligne de haute qualité dispensés par des experts reconnus</li>
                             <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Fournir un accès à des ressources professionnelles premium (modèles, templates, outils, frameworks)</li>
                             <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Favoriser l'autonomie et la flexibilité dans l'apprentissage et le développement professionnel</li>
                             <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Construire une communauté active d'apprenants et de professionnels passionnés</li>
@@ -84,7 +84,7 @@
                         <ul class="list-unstyled">
                             <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Être la plateforme de choix pour les professionnels en quête de développement de compétences et d'accès à des ressources premium</li>
                             <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Transformer la façon dont les Congolais et les Africains abordent l'éducation et le développement professionnel</li>
-                            <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Contribuer au développement économique local et régional par la formation et l'accès aux ressources professionnelles</li>
+                            <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Contribuer au développement économique local et régional par le contenu et l'accès aux ressources professionnelles</li>
                             <li class="mb-0"><i class="fas fa-check-circle text-primary me-2"></i>Établir un réseau dynamique d'experts, de professionnels et d'apprenants à travers toute l'Afrique</li>
                         </ul>
                     </div>
@@ -109,7 +109,7 @@
                             <i class="fas fa-graduation-cap"></i>
                         </div>
                         <h5 class="card-title">Excellence</h5>
-                        <p class="card-text small text-muted">Nous nous efforçons de maintenir les plus hauts standards de qualité dans tous nos cours et dans chaque interaction avec nos étudiants.</p>
+                        <p class="card-text small text-muted">Nous nous efforçons de maintenir les plus hauts standards de qualité dans tous nos contenus, ressources professionnelles et dans chaque interaction avec nos utilisateurs.</p>
                     </div>
                 </div>
             </div>
@@ -120,7 +120,7 @@
                             <i class="fas fa-unlock-alt"></i>
                         </div>
                         <h5 class="card-title">Accessibilité</h5>
-                        <p class="card-text small text-muted">L'éducation doit être accessible à tous, indépendamment de leur localisation, de leur situation financière ou de leur emploi du temps.</p>
+                        <p class="card-text small text-muted">L'éducation et les ressources professionnelles doivent être accessibles à tous, indépendamment de leur localisation, de leur situation financière ou de leur emploi du temps.</p>
                     </div>
                 </div>
             </div>
@@ -131,7 +131,7 @@
                             <i class="fas fa-lightbulb"></i>
                         </div>
                         <h5 class="card-title">Innovation</h5>
-                        <p class="card-text small text-muted">Nous adoptons les dernières technologies et méthodes pédagogiques pour offrir une expérience d'apprentissage exceptionnelle.</p>
+                        <p class="card-text small text-muted">Nous adoptons les dernières technologies et méthodes pédagogiques pour offrir une expérience d'apprentissage exceptionnelle et développer des ressources professionnelles innovantes.</p>
                     </div>
                 </div>
             </div>
@@ -142,7 +142,7 @@
                             <i class="fas fa-users"></i>
                         </div>
                         <h5 class="card-title">Communauté</h5>
-                        <p class="card-text small text-muted">Nous construisons une communauté solidaire et engagée d'apprenants qui s'entraident et progressent ensemble.</p>
+                        <p class="card-text small text-muted">Nous construisons une communauté solidaire et engagée d'apprenants et de professionnels qui s'entraident et progressent ensemble.</p>
                     </div>
                 </div>
             </div>
@@ -153,7 +153,7 @@
                             <i class="fas fa-handshake"></i>
                         </div>
                         <h5 class="card-title">Intégrité</h5>
-                        <p class="card-text small text-muted">Nous agissons toujours avec honnêteté, transparence et respect dans nos relations avec nos étudiants et partenaires.</p>
+                        <p class="card-text small text-muted">Nous agissons toujours avec honnêteté, transparence et respect dans nos relations avec nos utilisateurs, étudiants, clients et partenaires.</p>
                     </div>
                 </div>
             </div>
@@ -186,7 +186,7 @@
                                 <ul class="list-unstyled">
                                     <li class="mb-3"><i class="fas fa-check-circle text-primary me-2"></i><strong>Contenus de qualité :</strong> Nos cours sont conçus et dispensés par des experts reconnus dans leurs domaines respectifs</li>
                                     <li class="mb-3"><i class="fas fa-check-circle text-primary me-2"></i><strong>Flexibilité totale :</strong> Apprenez à votre rythme, quand et où vous voulez</li>
-                                    <li class="mb-3"><i class="fas fa-check-circle text-primary me-2"></i><strong>Accès illimité :</strong> Une fois acquis, votre formation reste accessible à vie</li>
+                                    <li class="mb-3"><i class="fas fa-check-circle text-primary me-2"></i><strong>Accès illimité :</strong> Une fois acquis, votre contenu reste accessible à vie</li>
                                     <li class="mb-3"><i class="fas fa-check-circle text-primary me-2"></i><strong>Certificats reconnus :</strong> Obtenez des certifications valorisées sur le marché du travail</li>
                                     <li class="mb-0"><i class="fas fa-check-circle text-primary me-2"></i><strong>Parcours structurés :</strong> Suivez des parcours pédagogiques progressifs et complets</li>
                                 </ul>
@@ -205,7 +205,7 @@
                                 <div class="row">
                                     <div class="col-md-6">
                                         <ul class="list-unstyled">
-                                            <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i><strong>Prix compétitifs :</strong> Des formations et ressources de qualité à des prix abordables</li>
+                                            <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i><strong>Prix compétitifs :</strong> Des contenus et ressources de qualité à des prix abordables</li>
                                             <li class="mb-0"><i class="fas fa-check-circle text-primary me-2"></i><strong>Méthodes de paiement flexibles :</strong> Paiement en ligne sécurisé ou via Mobile Money</li>
                                         </ul>
                                     </div>
@@ -234,10 +234,10 @@
                     <div class="row g-2">
                         <div class="col-12">
                             <p class="mb-1"><strong>Herime Académie</strong></p>
-                            <p class="small text-muted mb-2">Propriété de l'entreprise Herime (<a href="https://www.herime.com" target="_blank" class="text-decoration-none">www.herime.com</a>)</p>
+                            <p class="small text-muted mb-2">Propriété de l'entreprise Herime (<a href="https://www.herime.com" target="_blank" class="herime-link">www.herime.com</a>)</p>
                         </div>
                         <div class="col-md-6">
-                            <p class="mb-1"><i class="fas fa-envelope me-2"></i>contact@herime.com</p>
+                            <p class="mb-1"><i class="fas fa-envelope me-2"></i>academie@herime.com</p>
                         </div>
                         <div class="col-md-6">
                             <p class="mb-0"><i class="fas fa-phone me-2"></i>+243 824 449 218</p>
@@ -277,6 +277,19 @@
 
 .list-unstyled li {
     line-height: 1.8;
+}
+
+/* Style pour les liens Herime */
+a.herime-link {
+    color: #0066cc !important;
+    text-decoration: underline !important;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+a.herime-link:hover {
+    color: #0052a3 !important;
+    text-decoration: underline !important;
 }
 
 /* Responsive */

@@ -1,6 +1,6 @@
 @extends('providers.admin.layout')
 
-@section('admin-title', 'Analytics & indicateurs clés')
+@section('admin-title', 'Analytiques & indicateurs clés')
 @section('admin-subtitle', 'Mesurez l’impact de vos contenus, le volume d’inscriptions et la satisfaction de vos clients.')
 
 @section('admin-actions')

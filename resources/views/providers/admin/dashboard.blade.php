@@ -8,7 +8,7 @@
         <i class="fas fa-plus me-2"></i>Créer un contenu
     </a>
     <a href="{{ route('provider.analytics') }}" class="admin-btn outline">
-        <i class="fas fa-chart-line me-2"></i>Voir les analytics
+        <i class="fas fa-chart-line me-2"></i>Voir les analytiques
     </a>
 @endsection
 

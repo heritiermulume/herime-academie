@@ -685,6 +685,205 @@
         </div>
     </section>
 
+    <!-- Section de gestion des messages de contact -->
+    <section class="admin-panel mt-4">
+        <div class="admin-panel__header">
+            <h3 class="mb-0"><i class="fas fa-envelope-open-text me-2"></i>Messages de contact</h3>
+        </div>
+        <div class="admin-panel__body">
+            <!-- Statistiques des messages de contact -->
+            <div class="row g-3 mb-3 contact-stats-row">
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #e3f2fd;">
+                            <i class="fas fa-envelope text-primary"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($contactStats['total'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Total</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #fff3e0;">
+                            <i class="fas fa-envelope-open text-warning"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($contactStats['unread'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Non lus</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #e8f5e9;">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($contactStats['read'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Lus</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-card__icon" style="background-color: #e8f5e9;">
+                            <i class="fas fa-calendar-day text-success"></i>
+                        </div>
+                        <div class="admin-stat-card__content">
+                            <div class="admin-stat-card__value">{{ number_format($contactStats['today'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">Aujourd'hui</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <x-admin.search-panel
+                :action="route('admin.announcements')"
+                formId="contactFilterForm"
+                filtersId="contactFilters"
+                :hasFilters="true"
+                searchName="contact_search"
+                :searchValue="request('contact_search')"
+                placeholder="Rechercher par nom, email, sujet ou message..."
+            >
+                <x-slot:filters>
+                    <div class="admin-form-grid admin-form-grid--two mb-3">
+                        <div>
+                            <label class="form-label fw-semibold">Statut</label>
+                            <select class="form-select" name="contact_status">
+                                <option value="">Tous les statuts</option>
+                                <option value="unread" {{ request('contact_status') === 'unread' ? 'selected' : '' }}>Non lu</option>
+                                <option value="read" {{ request('contact_status') === 'read' ? 'selected' : '' }}>Lu</option>
+                                <option value="replied" {{ request('contact_status') === 'replied' ? 'selected' : '' }}>Répondu</option>
+                            </select>
+                        </div>
+                    </div>
+                </x-slot:filters>
+            </x-admin.search-panel>
+
+            <!-- Tableau des messages de contact -->
+            <div class="table-responsive contact-messages-table mt-4">
+                <table class="table table-hover table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="min-width: 180px; max-width: 250px;">Expéditeur</th>
+                            <th style="min-width: 200px; max-width: 300px;">Sujet</th>
+                            <th style="min-width: 200px; max-width: 350px;">Message</th>
+                            <th style="width: 120px; white-space: nowrap;">Statut</th>
+                            <th style="min-width: 140px; max-width: 160px; white-space: nowrap;">Date</th>
+                            <th class="text-center d-none d-md-table-cell" style="width: 120px; white-space: nowrap;">Actions</th>
+                            <th class="text-center d-md-none" style="width: 120px; white-space: nowrap;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($contactMessages ?? [] as $contact)
+                        <tr class="{{ $contact->status === 'unread' ? 'table-warning' : '' }}">
+                            <td style="max-width: 250px;">
+                                <div style="min-width: 0; overflow: hidden;">
+                                    <small class="text-truncate d-block fw-bold" style="max-width: 100%;" title="{{ $contact->name }}">{{ $contact->name }}</small>
+                                    <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $contact->email }}">{{ $contact->email }}</small>
+                                    @if($contact->phone)
+                                    <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $contact->phone }}">{{ $contact->phone }}</small>
+                                    @endif
+                                </div>
+                            </td>
+                            <td style="max-width: 300px;">
+                                @php
+                                    $subjectLabels = [
+                                        'inscription' => 'Inscription à un contenu',
+                                        'paiement' => 'Paiement',
+                                        'technique' => 'Problème technique',
+                                        'support' => 'Support pédagogique',
+                                        'partenariat' => 'Partenariat',
+                                        'autre' => 'Autre',
+                                    ];
+                                    $subjectLabel = $subjectLabels[$contact->subject] ?? ucfirst($contact->subject);
+                                @endphp
+                                <small class="text-truncate d-block" style="max-width: 100%;" title="{{ $subjectLabel }}">{{ $subjectLabel }}</small>
+                            </td>
+                            <td style="max-width: 350px;">
+                                <small class="text-truncate d-block" style="max-width: 100%;" title="{{ $contact->message }}">{{ Str::limit($contact->message, 100) }}</small>
+                            </td>
+                            <td style="white-space: nowrap;">
+                                @if($contact->status === 'unread')
+                                    <span class="badge bg-warning">Non lu</span>
+                                @elseif($contact->status === 'read')
+                                    <span class="badge bg-success">Lu</span>
+                                @elseif($contact->status === 'replied')
+                                    <span class="badge bg-info">Répondu</span>
+                                @else
+                                    <span class="badge bg-secondary">{{ ucfirst($contact->status) }}</span>
+                                @endif
+                            </td>
+                            <td style="max-width: 160px; white-space: nowrap;">
+                                <small>{{ $contact->created_at->format('d/m/Y H:i') }}</small>
+                            </td>
+                            <td class="text-center d-none d-md-table-cell">
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button type="button" class="btn btn-light btn-sm" onclick="viewContactMessage({{ $contact->id }})" title="Voir">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    @if($contact->status === 'unread')
+                                    <form action="{{ route('admin.contact-messages.mark-read', $contact) }}" method="POST" style="display: inline;">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn-success btn-sm" title="Marquer comme lu">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                    <button type="button" class="btn btn-danger btn-sm" 
+                                            data-action="{{ route('admin.contact-messages.destroy', $contact) }}"
+                                            data-name="{{ $contact->name }}"
+                                            onclick="openDeleteContactModal(this)" 
+                                            title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="text-center d-md-none">
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button type="button" class="btn btn-light btn-sm" onclick="viewContactMessage({{ $contact->id }})" title="Voir">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    @if($contact->status === 'unread')
+                                    <form action="{{ route('admin.contact-messages.mark-read', $contact) }}" method="POST" style="display: inline;">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn-success btn-sm" title="Marquer comme lu">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                    <button type="button" class="btn btn-danger btn-sm" 
+                                            data-action="{{ route('admin.contact-messages.destroy', $contact) }}"
+                                            data-name="{{ $contact->name }}"
+                                            onclick="openDeleteContactModal(this)" 
+                                            title="Supprimer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="7" class="text-center py-3 text-muted">
+                                <i class="fas fa-inbox fa-2x mb-2"></i>
+                                <p class="mb-0">Aucun message de contact</p>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination des messages de contact -->
+            <x-admin.pagination :paginator="$contactMessages" :pageName="'contact_page'" />
+        </div>
+    </section>
+
 <!-- Modal de création d'annonce -->
 <div class="modal fade" id="createAnnouncementModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -1169,6 +1368,56 @@ async function openCancelScheduledEmailModal(button) {
 
 function viewWhatsAppMessage(id) {
     window.location.href = '{{ route("admin.whatsapp-messages.show", ":id") }}'.replace(':id', id);
+}
+
+function viewContactMessage(id) {
+    window.location.href = '{{ route("admin.contact-messages.show", ":id") }}'.replace(':id', id);
+}
+
+async function openDeleteContactModal(button) {
+    const action = button?.dataset?.action;
+    if (!action) {
+        console.error('Aucune action de suppression fournie.');
+        return;
+    }
+
+    const name = button.dataset.name || '';
+    const message = name
+        ? `Êtes-vous sûr de vouloir supprimer le message de contact de « ${name} » ? Cette action est irréversible.`
+        : `Êtes-vous sûr de vouloir supprimer ce message de contact ? Cette action est irréversible.`;
+    
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Supprimer le message de contact',
+        confirmButtonText: 'Supprimer',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+    
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = action;
+        
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+        
+        // Ajouter la méthode DELETE
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 
 async function openDeleteWhatsAppModal(button) {
@@ -1887,12 +2136,13 @@ async function openDeleteWhatsAppModal(button) {
     }
     
     .table .btn-sm {
-        padding: 0.2rem 0.4rem;
-        font-size: 0.7rem;
+        /* Taille par défaut (desktop) */
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
     }
     
     .table .btn-sm i {
-        font-size: 0.7rem;
+        font-size: 0.875rem;
     }
     
     /* Adaptation des boutons d'action pour mobile */
@@ -1911,15 +2161,65 @@ async function openDeleteWhatsAppModal(button) {
         margin-bottom: 0.25rem;
     }
     
-    /* Adaptation des boutons "Voir tout" pour mobile */
+    /* Adaptation des boutons \"Voir tout\" pour mobile */
     .text-center .btn-sm {
-        font-size: 0.7rem;
-        padding: 0.3rem 0.5rem;
+        font-size: 0.875rem;
+        padding: 0.25rem 0.5rem;
     }
     
     .text-center .btn-sm i {
-        font-size: 0.65rem;
+        font-size: 0.875rem;
         margin-right: 0.25rem;
+    }
+
+    /* Réduction spécifique mobile / tablette pour les boutons d'actions de ligne
+       (annonces, emails, WhatsApp, messages de contact) afin qu'ils prennent
+       moins de place que sur desktop. */
+    @media (max-width: 991.98px) {
+        .table .btn-sm {
+            /* Boutons carrés sur mobile/tablette */
+            padding: 0 !important;
+            width: 1.8rem !important;
+            height: 1.8rem !important;
+            min-width: 1.8rem !important;
+            max-width: 1.8rem !important;
+            min-height: 1.8rem !important;
+            max-height: 1.8rem !important;
+            font-size: 0.85rem !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .table .btn-sm i {
+            font-size: 0.75rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+        }
+
+        /* Boutons d'actions alignés au centre (colonnes Actions) */
+        .table td.text-center .btn-sm {
+            padding: 0 !important;
+            width: 1.8rem !important;
+            height: 1.8rem !important;
+            min-width: 1.8rem !important;
+            max-width: 1.8rem !important;
+            min-height: 1.8rem !important;
+            max-height: 1.8rem !important;
+            font-size: 0.85rem !important;
+            line-height: 1 !important;
+        }
+
+        .table td.text-center .btn-sm i {
+            font-size: 0.75rem !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+        }
     }
     
     /* Marges et hauteur pour les tab-pane */

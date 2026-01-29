@@ -575,10 +575,10 @@
                     </div>
                 </div>
 
-                <!-- Contenu de la formation (Sections et leçons) -->
+                <!-- Contenus (Sections et leçons) -->
                 <div class="card shadow-sm mb-4 course-content-card">
                     <div class="card-header bg-gradient-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contenu de la formation</h5>
+                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contenus</h5>
                     </div>
                     <div class="card-body course-content-card__body p-0">
                         <div id="sections-container">

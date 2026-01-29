@@ -1,6 +1,6 @@
 @extends('ambassadors.admin.layout')
 
-@section('admin-title', 'Analytics & indicateurs clés')
+@section('admin-title', 'Analytiques & indicateurs clés')
 @section('admin-subtitle', 'Suivez vos commissions, vos références et vos gains en temps réel.')
 
 @section('admin-content')

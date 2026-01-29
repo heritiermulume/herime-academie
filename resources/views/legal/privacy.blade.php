@@ -75,7 +75,7 @@
                                 <div class="bg-light p-3 rounded">
                                     <h5 class="mb-2"><i class="fas fa-chart-line me-2 text-primary"></i>2.4. Données d'utilisation</h5>
                                     <ul class="small mb-0">
-                                        <li>Progress dans les formations</li>
+                                        <li>Progress dans les contenus</li>
                                         <li>Certificats obtenus</li>
                                         <li>Interactions avec les cours</li>
                                     </ul>
@@ -97,7 +97,7 @@
                                 <ul class="list-unstyled">
                                     <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Vous fournir nos services et gérer votre compte</li>
                                     <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Traiter vos commandes et paiements</li>
-                                    <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Vous permettre d'accéder à vos formations</li>
+                                    <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i>Vous permettre d'accéder à vos contenus</li>
                                     <li class="mb-0"><i class="fas fa-check-circle text-primary me-2"></i>Vous envoyer des informations sur nos services (avec votre consentement)</li>
                                 </ul>
                             </div>

@@ -27,7 +27,7 @@
             'active' => ['provider.customers'],
         ],
         [
-            'label' => 'Analytics',
+            'label' => 'Analytiques',
             'icon' => 'fas fa-chart-line',
             'route' => 'provider.analytics',
             'url' => url('/provider/analytics'),
@@ -1081,6 +1081,99 @@
 
         .admin-header .admin-btn i {
             font-size: 0.75rem;
+        }
+    }
+
+    /* Styles globaux pour les boutons d'actions dans les tableaux admin */
+    .admin-table table td.text-center .btn-sm,
+    .admin-table table td .btn-sm {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .admin-table table td.text-center .btn-sm i,
+    .admin-table table td .btn-sm i {
+        margin: 0;
+        padding: 0;
+        line-height: 1;
+    }
+
+    /* Réduire la taille des boutons d'actions sur desktop */
+    @media (min-width: 992px) {
+        .admin-table table td.text-center .btn-sm,
+        .admin-table table td .btn-sm {
+            padding: 0.35rem 0.65rem !important;
+            font-size: 0.85rem !important;
+            line-height: 1.2 !important;
+            min-height: 36px !important;
+            height: 36px !important;
+            width: 36px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .admin-table table td.text-center .btn-sm i,
+        .admin-table table td .btn-sm i {
+            font-size: 0.85rem !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+        }
+    }
+
+    /* Réduire la taille des boutons d'actions sur tablette */
+    @media (max-width: 991.98px) {
+        .admin-table table td.text-center .btn-sm,
+        .admin-table table td .btn-sm {
+            padding: 0.3rem 0.6rem !important;
+            font-size: 0.8rem !important;
+            line-height: 1.2 !important;
+            min-height: 32px !important;
+            height: 32px !important;
+            width: 32px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .admin-table table td.text-center .btn-sm i,
+        .admin-table table td .btn-sm i {
+            font-size: 0.8rem !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+        }
+    }
+
+    /* Réduire encore plus la taille des boutons d'actions sur mobile */
+    @media (max-width: 767.98px) {
+        .admin-table table td.text-center .btn-sm,
+        .admin-table table td .btn-sm {
+            padding: 0.25rem 0.5rem !important;
+            font-size: 0.75rem !important;
+            line-height: 1 !important;
+            min-width: 28px !important;
+            min-height: 28px !important;
+            height: 28px !important;
+            width: 28px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .admin-table table td.text-center .btn-sm i,
+        .admin-table table td .btn-sm i {
+            font-size: 0.75rem !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+        }
+
+        /* Réduire l'espacement entre les boutons */
+        .admin-table table td .d-flex.gap-2 {
+            gap: 0.25rem !important;
         }
     }
 </style>

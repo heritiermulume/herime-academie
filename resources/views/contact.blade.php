@@ -21,7 +21,7 @@
     <div class="container">
         <div class="row">
             <div class="col-12">
-                <p class="text-center mb-5">L'équipe de <strong>Herime Académie</strong> est à votre disposition pour répondre à toutes vos questions concernant nos formations, le processus d'inscription, le paiement ou toute autre demande.</p>
+                <p class="text-center mb-5">L'équipe de <strong>Herime Académie</strong> est à votre disposition pour répondre à toutes vos questions concernant nos contenus, le processus d'inscription, le paiement ou toute autre demande.</p>
             </div>
         </div>
 
@@ -35,8 +35,8 @@
                             <i class="fas fa-envelope"></i>
                         </div>
                         <h5 class="card-title mb-2">Email</h5>
-                        <p class="card-text text-muted small mb-3">contact@herime.com</p>
-                        <a href="mailto:contact@herime.com" class="btn btn-primary btn-sm">
+                        <p class="card-text text-muted small mb-3">academie@herime.com</p>
+                        <a href="mailto:academie@herime.com" class="btn btn-primary btn-sm">
                             <i class="fas fa-paper-plane me-2"></i>Envoyer
                         </a>
                         <p class="small text-muted mt-3 mb-0">Réponse sous 24h ouvrées</p>
@@ -106,8 +106,9 @@
                         </h2>
                         <p class="text-center text-muted mb-4">Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais</p>
                         
-                        <form class="contact-form">
+                        <form class="contact-form" id="contactForm" action="{{ route('contact.store') }}" method="POST">
                             @csrf
+                            <div id="contactFormAlert" class="alert d-none mb-3"></div>
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     <label for="name" class="form-label">
@@ -149,8 +150,9 @@
                                 <textarea class="form-control" id="message" name="message" rows="6" required placeholder="Décrivez votre demande en détail..."></textarea>
                             </div>
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <i class="fas fa-paper-plane me-2"></i>Envoyer le message
+                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                    <i class="fas fa-paper-plane me-2"></i><span class="btn-text">Envoyer le message</span>
+                                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                                 </button>
                             </div>
                         </form>
@@ -234,5 +236,133 @@
     }
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+(function() {
+    'use strict';
+    
+    function initContactForm() {
+        const form = document.getElementById('contactForm');
+        if (!form) {
+            console.error('Formulaire de contact non trouvé');
+            return;
+        }
+
+        const alertDiv = document.getElementById('contactFormAlert');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = submitBtn ? submitBtn.querySelector('.btn-text') : null;
+        const spinner = submitBtn ? submitBtn.querySelector('.spinner-border') : null;
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Réinitialiser l'alerte
+            if (alertDiv) {
+                alertDiv.classList.add('d-none');
+                alertDiv.classList.remove('alert-success', 'alert-danger');
+            }
+
+            // Désactiver le bouton et afficher le spinner
+            if (submitBtn) {
+                submitBtn.disabled = true;
+            }
+            if (btnText) {
+                btnText.textContent = 'Envoi en cours...';
+            }
+            if (spinner) {
+                spinner.classList.remove('d-none');
+            }
+
+            // Récupérer les données du formulaire
+            const formData = new FormData(form);
+
+            // Envoyer la requête AJAX
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => {
+                // Vérifier si la réponse est bien du JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Réponse non-JSON reçue');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Afficher le message de succès
+                    if (alertDiv) {
+                        alertDiv.classList.remove('d-none');
+                        alertDiv.classList.add('alert-success');
+                        alertDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + data.message;
+                    }
+
+                    // Réinitialiser le formulaire
+                    form.reset();
+
+                    // Scroll vers l'alerte
+                    if (alertDiv) {
+                        alertDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                } else {
+                    // Afficher les erreurs
+                    if (alertDiv) {
+                        alertDiv.classList.remove('d-none');
+                        alertDiv.classList.add('alert-danger');
+                        
+                        let errorMessage = data.message || 'Une erreur est survenue. Veuillez réessayer.';
+                        
+                        if (data.errors) {
+                            const errorList = Object.values(data.errors).flat().join('<br>');
+                            errorMessage += '<br>' + errorList;
+                        }
+                        
+                        alertDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + errorMessage;
+                        alertDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                if (alertDiv) {
+                    alertDiv.classList.remove('d-none');
+                    alertDiv.classList.add('alert-danger');
+                    alertDiv.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Une erreur est survenue lors de l\'envoi. Veuillez réessayer plus tard.';
+                    alertDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            })
+            .finally(() => {
+                // Réactiver le bouton et masquer le spinner
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                }
+                if (btnText) {
+                    btnText.textContent = 'Envoyer le message';
+                }
+                if (spinner) {
+                    spinner.classList.add('d-none');
+                }
+            });
+        }
+
+        form.addEventListener('submit', handleSubmit);
+    }
+
+    // Initialiser quand le DOM est prêt
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initContactForm);
+    } else {
+        initContactForm();
+    }
+})();
+</script>
 @endpush
 @endsection

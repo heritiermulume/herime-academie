@@ -16,7 +16,7 @@
             'active' => ['ambassador.dashboard'],
         ],
         [
-            'label' => 'Analytics',
+            'label' => 'Analytiques',
             'icon' => 'fas fa-chart-line',
             'route' => 'ambassador.analytics',
             'url' => route('ambassador.analytics'),

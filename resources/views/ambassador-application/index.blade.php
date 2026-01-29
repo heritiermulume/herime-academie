@@ -9,7 +9,7 @@
         <div class="row">
             <div class="col-lg-8 mx-auto text-center text-white">
                 <h1 class="h2 h1-md fw-bold mb-3">Devenir Ambassadeur</h1>
-                <p class="lead mb-4">Rejoignez notre programme d'ambassadeur et gagnez des commissions en partageant nos formations</p>
+                <p class="lead mb-4">Rejoignez notre programme d'ambassadeur et gagnez des commissions en partageant nos contenus</p>
                 @auth
                     @if($isAmbassador)
                         <button class="btn btn-light btn-lg px-3 px-md-5" disabled>

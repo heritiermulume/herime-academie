@@ -1,7 +1,7 @@
 @extends('providers.admin.layout')
 
 @section('admin-title', 'Clients & progrès')
-@section('admin-subtitle', 'Analysez l’engagement de vos clients, contactez-les et suivez leur progression globale.')
+@section('admin-subtitle', 'Analysez l'engagement de vos clients, contactez-les et suivez leur progression globale.')
 
 @section('admin-actions')
     <a href="{{ route('provider.contents.index') }}" class="admin-btn outline">
@@ -11,83 +11,185 @@
 
 
 @section('admin-content')
-    <section class="admin-panel">
-        <div class="admin-panel__header">
-            <h3>
-                <i class="fas fa-users me-2"></i>Clients & progrès
-            </h3>
-        </div>
+    <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
-            <div class="admin-stats-grid">
+            <div class="admin-stats-grid mb-4">
                 <div class="admin-stat-card">
                     <p class="admin-stat-card__label">Total d'inscriptions</p>
                     <p class="admin-stat-card__value">{{ number_format($enrollments->total()) }}</p>
+                    <p class="admin-stat-card__muted">Inscriptions totales</p>
                 </div>
                 <div class="admin-stat-card">
                     <p class="admin-stat-card__label">Progression moyenne</p>
                     <p class="admin-stat-card__value">{{ number_format($averageProgress, 1) }}%</p>
+                    <p class="admin-stat-card__muted">Taux de complétion</p>
                 </div>
                 <div class="admin-stat-card">
-                    <p class="admin-stat-card__label">Clients actifs (30 j)</p>
+                    <p class="admin-stat-card__label">Clients actifs</p>
                     <p class="admin-stat-card__value">{{ number_format($activeCustomers) }}</p>
+                    <p class="admin-stat-card__muted">Actifs (30 derniers jours)</p>
                 </div>
             </div>
 
-        <div class="students-table" id="providerCustomersTable" data-bulk-select="true" data-export-route="{{ route('provider.customers.export') }}">
-            <div class="students-table__head">
-                <span style="width: 50px;">
-                    <input type="checkbox" data-select-all data-table-id="providerCustomersTable" title="Sélectionner tout" style="margin: 0;">
-                </span>
-                <span>Client</span>
-                <span>Email</span>
-                <span>Contenu</span>
-                <span>Progression</span>
-                <span>Inscription</span>
-                <span class="text-end">Actions</span>
-            </div>
-            @forelse($enrollments as $enrollment)
-                <div class="students-table__row">
-                    <div style="width: 50px; display: flex; align-items: center; justify-content: center;">
-                        <input type="checkbox" data-item-id="{{ $enrollment->id }}" class="form-check-input">
-                    </div>
-                    <div class="students-table__profile">
-                        <div class="students-table__avatar">
-                            <img src="{{ $enrollment->user?->avatar_url ?? asset('images/default-avatar.png') }}" alt="{{ $enrollment->user?->name }}">
+            <x-admin.search-panel
+                :action="route('provider.customers')"
+                formId="customersFilterForm"
+                filtersId="customersFilters"
+                :hasFilters="true"
+                :searchValue="request('search')"
+                placeholder="Rechercher par nom, email ou contenu..."
+            >
+                <x-slot:filters>
+                    <div class="admin-form-grid admin-form-grid--two mb-3">
+                        <div>
+                            <label class="form-label fw-semibold">Tri</label>
+                            <select class="form-select" name="sort">
+                                <option value="created_at" {{ request('sort') == 'created_at' ? 'selected' : '' }}>Date d'inscription</option>
+                                <option value="progress" {{ request('sort') == 'progress' ? 'selected' : '' }}>Progression</option>
+                                <option value="name" {{ request('sort') == 'name' ? 'selected' : '' }}>Nom du client</option>
+                            </select>
                         </div>
                         <div>
-                            <strong>{{ $enrollment->user?->name ?? 'Utilisateur inconnu' }}</strong>
-                            <small>ID #{{ $enrollment->user?->id ?? '—' }}</small>
+                            <label class="form-label fw-semibold">Direction</label>
+                            <select class="form-select" name="direction">
+                                <option value="desc" {{ request('direction') == 'desc' ? 'selected' : '' }}>Décroissant</option>
+                                <option value="asc" {{ request('direction') == 'asc' ? 'selected' : '' }}>Croissant</option>
+                            </select>
                         </div>
                     </div>
-                    <div data-label="Email">
-                        <a href="mailto:{{ $enrollment->user?->email }}" class="students-table__link">{{ $enrollment->user?->email }}</a>
-                    </div>
-                    <div data-label="Contenu">{{ $enrollment->course?->title }}</div>
-                    <div data-label="Progression">
-                        <div class="students-progress">
-                            <div class="students-progress__bar">
-                                <span style="width: {{ $enrollment->progress }}%"></span>
-                            </div>
-                            <span class="students-progress__value">{{ $enrollment->progress }}%</span>
-                        </div>
-                    </div>
-                    <div data-label="Inscription">{{ $enrollment->created_at->format('d/m/Y H:i') }}</div>
-                    <div class="text-end">
-                        <a href="{{ route('contents.show', $enrollment->content?->slug) }}" class="admin-btn outline sm" target="_blank">
-                            <i class="fas fa-eye"></i>
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="text-muted small">Ajustez les filtres puis appliquez-les.</span>
+                        <a href="{{ route('provider.customers') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-undo me-2"></i>Réinitialiser
                         </a>
                     </div>
-                </div>
-            @empty
-                <div class="students-table__empty">
-                    <i class="fas fa-users fa-2x"></i>
-                    <p>Aucun client inscrit pour le moment. Dès qu’un client rejoindra vos contenus, il apparaîtra ici.</p>
-                </div>
-            @endforelse
-        </div>
+                </x-slot:filters>
+            </x-admin.search-panel>
 
-            <div class="mt-3">
-                {{ $enrollments->links() }}
+            <!-- Filtres actifs -->
+            @if(request('search') || request('sort'))
+            <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <i class="fas fa-filter me-2"></i><strong>Filtres actifs :</strong>
+                    @if(request('search'))
+                        <span class="badge bg-primary ms-2">Recherche: "{{ request('search') }}"</span>
+                    @endif
+                    @if(request('sort'))
+                        <span class="badge bg-info ms-2">Tri: {{ ucfirst(request('sort')) }}</span>
+                    @endif
+                </div>
+                <a href="{{ route('provider.customers') }}" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-times me-1"></i>Effacer les filtres
+                </a>
+            </div>
+            @endif
+
+            <div id="bulkActionsContainer-providerCustomersTable"></div>
+
+            <div class="admin-table">
+                <div class="table-responsive">
+                    <table class="table align-middle" id="providerCustomersTable" data-bulk-select="true" data-export-route="{{ route('provider.customers.export') }}">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">
+                                    <input type="checkbox" data-select-all data-table-id="providerCustomersTable" title="Sélectionner tout">
+                                </th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'name', 'direction' => request('sort') == 'name' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
+                                        Client
+                                        @if(request('sort') == 'name')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>Email</th>
+                                <th>Contenu</th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'progress', 'direction' => request('sort') == 'progress' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
+                                        Progression
+                                        @if(request('sort') == 'progress')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ request()->fullUrlWithQuery(['sort' => 'created_at', 'direction' => request('sort') == 'created_at' && request('direction') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-dark">
+                                        Inscription
+                                        @if(request('sort') == 'created_at')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                        @else
+                                            <i class="fas fa-sort ms-1 text-muted"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th style="width: 130px;" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($enrollments as $enrollment)
+                            <tr>
+                                <td>
+                                    <input type="checkbox" data-item-id="{{ $enrollment->id }}" class="form-check-input">
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img src="{{ $enrollment->user?->avatar_url ?? asset('images/default-avatar.png') }}" alt="{{ $enrollment->user?->name }}" class="admin-user-avatar">
+                                        <div class="flex-grow-1 min-w-0">
+                                            <a href="mailto:{{ $enrollment->user?->email }}" class="fw-semibold text-decoration-none text-dark text-truncate d-block">{{ $enrollment->user?->name ?? 'Utilisateur inconnu' }}</a>
+                                            <div class="text-muted small text-truncate d-block">ID #{{ $enrollment->user?->id ?? '—' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="mailto:{{ $enrollment->user?->email }}" class="text-decoration-none text-truncate d-block">{{ $enrollment->user?->email }}</a>
+                                </td>
+                                <td>
+                                    <span class="admin-chip admin-chip--info text-truncate d-inline-block" style="max-width: 100%;">
+                                        {{ $enrollment->course?->title ?? '—' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="flex-grow-1" style="min-width: 80px;">
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar" role="progressbar" style="width: {{ $enrollment->progress }}%" aria-valuenow="{{ $enrollment->progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                        </div>
+                                        <span class="admin-chip admin-chip--{{ $enrollment->progress >= 100 ? 'success' : ($enrollment->progress >= 50 ? 'info' : 'neutral') }}">
+                                            {{ $enrollment->progress }}%
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="admin-chip admin-chip--neutral">{{ $enrollment->created_at ? $enrollment->created_at->format('d/m/Y') : '—' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <a href="{{ route('contents.show', $enrollment->content?->slug ?? '#') }}" class="btn btn-light btn-sm" title="Voir le contenu" target="_blank">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">Aucun client inscrit pour le moment. Dès qu'un client rejoindra vos contenus, il apparaîtra ici.</p>
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <x-admin.pagination :paginator="$enrollments" :showInfo="true" itemName="inscriptions" />
+
             </div>
         </div>
     </section>
@@ -128,171 +230,336 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
         container.appendChild(bulkActionsBar);
+        
+        // Attacher les événements aux liens d'export après création de la barre
+        setTimeout(() => {
+            document.querySelectorAll('.export-link[data-table-id="providerCustomersTable"]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const format = link.dataset.format;
+                    const exportRoute = '{{ route('provider.customers.export') }}';
+                    const url = new URL(exportRoute, window.location.origin);
+                    url.searchParams.set('format', format);
+                    
+                    // Ajouter les filtres actuels
+                    const currentParams = new URLSearchParams(window.location.search);
+                    currentParams.forEach((value, key) => {
+                        if (key !== 'page' && key !== 'format') {
+                            url.searchParams.set(key, value);
+                        }
+                    });
+                    
+                    // Télécharger
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = url.toString();
+                    downloadLink.style.display = 'none';
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    
+                    // Effacer la sélection
+                    bulkActions.clearSelection('providerCustomersTable');
+                });
+            });
+        }, 50);
     }
     
     bulkActions.init('providerCustomersTable', {
-        exportRoute: '{{ route('provider.customers.export') }}',
-        checkboxSelector: 'input[type="checkbox"][data-item-id]',
-        selectAllSelector: 'input[type="checkbox"][data-select-all]'
+        exportRoute: '{{ route('provider.customers.export') }}'
     });
 });
+
+const customersFilterForm = document.getElementById('customersFilterForm');
+const customersFiltersOffcanvas = document.getElementById('customersFilters');
+
+if (customersFilterForm) {
+    customersFilterForm.addEventListener('submit', () => {
+        if (customersFiltersOffcanvas) {
+            const instance = bootstrap.Offcanvas.getInstance(customersFiltersOffcanvas);
+            if (instance) {
+                instance.hide();
+            }
+        }
+    });
+}
+
 </script>
 @endpush
 
 @push('styles')
 <style>
+@media (max-width: 991.98px) {
+    /* Réduire les paddings et margins sur tablette */
+    .admin-panel {
+        margin-bottom: 1rem;
+    }
+    
+    /* Padding uniquement pour la première section principale */
+    .admin-panel--main .admin-panel__body {
+        padding: 1rem !important;
+    }
+    
+    /* Pas de padding pour les autres sections */
+    .admin-panel:not(.admin-panel--main) .admin-panel__body {
+        padding: 0 !important;
+    }
+    
+    .admin-panel__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-panel__header h3 {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    
     .admin-stats-grid {
-        margin-bottom: 1.5rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+        gap: 0.5rem !important;
     }
+    
+    .admin-stat-card {
+        padding: 0.75rem 0.875rem !important;
+    }
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.5rem;
+        --bs-gutter-y: 0.5rem;
+    }
+    
+    .admin-panel__body .row.g-3 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
+    }
+    
+    .admin-panel__body .row.mb-4 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-panel__body .row.mt-2 {
+        margin-top: 0.375rem !important;
+    }
+    
+    .admin-card__header {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .admin-card__body {
+        padding: 0.5rem;
+    }
+    
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
+    }
+    
+    .admin-panel__body {
+        overflow: visible !important;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
 
-    .students-table {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
+@media (max-width: 767.98px) {
+    /* Réduire encore plus les paddings et margins sur mobile */
+    .admin-panel {
+        margin-bottom: 0.75rem;
     }
-    .students-table__head,
-    .students-table__row {
-        display: grid;
-        grid-template-columns: minmax(0, 220px) repeat(4, minmax(0, 150px)) minmax(0, 120px);
-        gap: 1rem;
-        align-items: center;
-        padding: 0.85rem 1rem;
-        border-radius: 1rem;
+    
+    /* Padding uniquement pour la première section principale */
+    .admin-panel--main .admin-panel__body {
+        padding: 0.75rem !important;
     }
-    .students-table__head {
-        background: rgba(226, 232, 240, 0.55);
-        font-size: 0.84rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #475569;
+    
+    /* Pas de padding pour les autres sections */
+    .admin-panel:not(.admin-panel--main) .admin-panel__body {
+        padding: 0 !important;
     }
-    .students-table__row {
-        background: #ffffff;
-        border: 1px solid rgba(226, 232, 240, 0.6);
-        box-shadow: 0 18px 35px -28px rgba(15, 23, 42, 0.18);
+    
+    .admin-panel__header {
+        padding: 0.375rem 0.5rem;
     }
-    .students-table__profile {
-        display: flex;
-        align-items: center;
-        gap: 0.85rem;
+    
+    .admin-panel__header h3 {
+        font-size: 0.95rem;
+        margin-bottom: 0.125rem;
     }
-    .students-table__avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
-        overflow: hidden;
-        border: 2px solid rgba(14, 165, 233, 0.35);
+    
+    .admin-stats-grid {
+        gap: 0.375rem !important;
     }
-    .students-table__avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+    
+    .admin-stat-card {
+        padding: 0.5rem 0.625rem !important;
     }
-    .students-table__profile strong {
-        display: block;
-        color: #0f172a;
+    
+    .admin-panel__body .row.g-4 {
+        --bs-gutter-x: 0.375rem;
+        --bs-gutter-y: 0.375rem;
     }
-    .students-table__profile small {
-        color: #94a3b8;
-        font-size: 0.78rem;
+    
+    .admin-panel__body .row.g-3 {
+        --bs-gutter-x: 0.25rem;
+        --bs-gutter-y: 0.25rem;
     }
-    .students-table__link {
-        color: var(--instructor-primary);
-        text-decoration: none;
-        font-weight: 600;
+    
+    .admin-panel__body .row.mb-4 {
+        margin-bottom: 0.5rem !important;
     }
-    .students-progress {
-        display: flex;
-        align-items: center;
-        gap: 0.65rem;
+    
+    .admin-panel__body .row.mt-2 {
+        margin-top: 0.375rem !important;
     }
-    .students-progress__bar {
-        flex: 1;
-        height: 8px;
-        border-radius: 999px;
-        background: rgba(14, 165, 233, 0.18);
-        overflow: hidden;
+    
+    .admin-card__header {
+        padding: 0.5rem 0.625rem;
     }
-    .students-progress__bar span {
-        display: block;
-        height: 100%;
-        background: linear-gradient(90deg, #0284c7, #0ea5e9);
+    
+    .admin-card__body {
+        padding: 0.375rem;
     }
-    .students-progress__value {
-        font-weight: 700;
-        color: #0369a1;
-        font-size: 0.85rem;
+    
+    /* Supprimer les scrollbars des conteneurs, garder seulement celle de table-responsive */
+    .admin-table {
+        overflow: visible !important;
     }
-    .students-table__empty {
-        grid-column: 1/-1;
-        text-align: center;
-        padding: 2.5rem;
-        border-radius: 1.25rem;
-        background: rgba(226, 232, 240, 0.55);
-        color: #64748b;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
+    
+    .admin-panel__body {
+        overflow: visible !important;
     }
+    
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+.admin-user-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 6px 12px -6px rgba(15, 23, 42, 0.35);
+}
 
-    @media (max-width: 1024px) {
-        .students-table__head,
-        .students-table__row {
-            grid-template-columns: minmax(0, 50px) minmax(0, 220px) repeat(3, minmax(0, 140px)) minmax(0, 100px);
-        }
-        .students-table__row > div:nth-child(3) {
-            display: none;
-        }
-    }
-    @media (max-width: 768px) {
-        .admin-stats-grid {
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-        }
+/* Gestion des contenus qui dépassent dans les colonnes */
+.admin-table table td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 0;
+}
 
-        .students-table__head {
-            display: none;
-        }
-        .students-table__row {
-            grid-template-columns: 1fr;
-        }
-        .students-table__row > div {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            align-items: center;
-        }
-        .students-table__row > div:first-child {
-            justify-content: flex-start;
-        }
-        .students-table__row > div:nth-child(2) {
-            justify-content: flex-start;
-        }
-        .students-table__row > div:not(:first-child):not(:nth-child(2)):not(:last-child)::before {
-            content: attr(data-label);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #94a3b8;
-        }
-        .students-progress {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-    }
+/* Colonne Checkbox (1ère colonne) - ne pas limiter */
+.admin-table table td:first-child {
+    max-width: 50px;
+    white-space: normal;
+    overflow: visible;
+}
 
-    @media (max-width: 767.98px) {
-        .students-table__head,
-        .students-table__row {
-            padding: 0.5rem;
-        }
+/* Colonne Client (2ème colonne) */
+.admin-table table td:nth-child(2) {
+    max-width: 250px;
+}
 
-        .students-table__empty {
-            padding: 1.5rem 0.75rem;
-        }
+.admin-table table td:nth-child(2) > div {
+    min-width: 0;
+    flex: 1;
+}
+
+.admin-table table td:nth-child(2) > div > div {
+    min-width: 0;
+}
+
+.admin-table table td:nth-child(2) a {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.admin-table table td:nth-child(2) .text-muted {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* Colonne Email (3ème colonne) */
+.admin-table table td:nth-child(3) {
+    max-width: 200px;
+}
+
+.admin-table table td:nth-child(3) a {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* Colonne Contenu (4ème colonne) */
+.admin-table table td:nth-child(4) {
+    max-width: 300px;
+}
+
+.admin-table table td:nth-child(4) .admin-chip {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Colonne Progression (5ème colonne) - ne pas limiter */
+.admin-table table td:nth-child(5) {
+    max-width: 180px;
+    white-space: normal;
+}
+
+/* Colonne Inscription (6ème colonne) */
+.admin-table table td:nth-child(6) {
+    max-width: 120px;
+    white-space: nowrap;
+}
+
+/* Colonne Actions (7ème colonne) - ne pas limiter */
+.admin-table table td:nth-child(7) {
+    max-width: 130px;
+    white-space: normal;
+    overflow: visible;
+}
+
+/* Utiliser text-truncate de Bootstrap pour les éléments avec cette classe */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 991.98px) {
+    /* Sur tablette, permettre plus de flexibilité */
+    .admin-table table td:nth-child(2) {
+        max-width: 200px;
     }
+    
+    .admin-table table td:nth-child(3) {
+        max-width: 150px;
+    }
+    
+    .admin-table table td:nth-child(4) {
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* Sur mobile, les colonnes sont empilées donc pas besoin de max-width */
+    .admin-table table td {
+        max-width: none;
+    }
+}
 </style>
 @endpush

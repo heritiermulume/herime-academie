@@ -11,7 +11,6 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\BannerController;
 // use App\Http\Controllers\PaymentController; // désactivé
 use App\Http\Controllers\AffiliateController;
-use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\NewsletterController;
@@ -43,6 +42,8 @@ Route::get('/about', function() {
 Route::get('/contact', function() {
     return view('contact');
 })->name('contact');
+
+Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
 
 // Legal pages
 Route::get('/conditions-generales-de-vente', function() {
@@ -424,6 +425,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/provider-applications/{application}/status', [AdminController::class, 'updateProviderApplicationStatus'])
             ->middleware('sso.validate')
             ->name('provider-applications.update-status');
+        Route::post('/provider-applications/bulk-action', [AdminController::class, 'bulkActionProviderApplications'])
+            ->middleware('sso.validate')
+            ->name('provider-applications.bulk-action');
         
         // Ambassador Applications management
         Route::get('/ambassadors/applications', [App\Http\Controllers\Admin\AmbassadorController::class, 'applications'])->name('ambassadors.applications');
@@ -560,6 +564,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('whatsapp-messages.bulk-action');
         Route::get('/whatsapp-messages/export', [AdminController::class, 'exportWhatsAppMessages'])->name('whatsapp-messages.export');
+        
+        // Contact messages management
+        Route::get('/contact-messages/{contactMessage}', [AdminController::class, 'showContactMessage'])
+            ->name('contact-messages.show');
+        Route::patch('/contact-messages/{contactMessage}/mark-read', [AdminController::class, 'markContactMessageAsRead'])
+            ->middleware('sso.validate')
+            ->name('contact-messages.mark-read');
+        Route::delete('/contact-messages/{contactMessage}', [AdminController::class, 'destroyContactMessage'])
+            ->middleware('sso.validate')
+            ->name('contact-messages.destroy');
         
         // Email management
         Route::get('/emails/sent', [AdminController::class, 'sentEmails'])->name('emails.sent');
@@ -797,25 +811,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/contents/{course:slug}/download', [DownloadController::class, 'course'])->name('contents.download');
     Route::get('/courses/{course:slug}/lesson/{lesson}/download', [DownloadController::class, 'lesson'])->name('lessons.download');
 
-
-    // Messaging routes - avec validation SSO pour les actions de modification
-    Route::prefix('messages')->name('messages.')->group(function () {
-        Route::get('/', [MessageController::class, 'index'])->name('index');
-        Route::get('/create', [MessageController::class, 'create'])->name('create');
-        Route::post('/', [MessageController::class, 'store'])
-            ->middleware('sso.validate')
-            ->name('store');
-        Route::get('/{message}', [MessageController::class, 'show'])->name('show');
-        Route::post('/{message}/reply', [MessageController::class, 'reply'])
-            ->middleware('sso.validate')
-            ->name('reply');
-        Route::post('/{message}/mark-read', [MessageController::class, 'markAsRead'])
-            ->middleware('sso.validate')
-            ->name('mark-read');
-        Route::delete('/{message}', [MessageController::class, 'delete'])
-            ->middleware('sso.validate')
-            ->name('delete');
-    });
 
     // Notification routes - avec validation SSO pour les actions de modification
     Route::prefix('notifications')->name('notifications.')->group(function () {

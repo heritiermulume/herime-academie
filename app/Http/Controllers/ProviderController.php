@@ -147,20 +147,55 @@ class ProviderController extends Controller
         ]);
     }
 
-    public function customers()
+    public function customers(Request $request)
     {
         $provider = auth()->user();
         
         $enrollmentsQuery = Enrollment::whereHas('content', function($query) use ($provider) {
             $query->where('provider_id', $provider->id);
         })
-        ->with(['user', 'content'])
-        ->latest();
+        ->with(['user', 'content']);
 
-        $enrollments = $enrollmentsQuery->paginate(20);
+        // Recherche par nom, email ou titre du contenu
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $enrollmentsQuery->where(function($q) use ($search) {
+                $q->whereHas('user', function($userQuery) use ($search) {
+                    $userQuery->where('name', 'like', "%{$search}%")
+                              ->orWhere('email', 'like', "%{$search}%");
+                })
+                ->orWhereHas('content', function($contentQuery) use ($search) {
+                    $contentQuery->where('title', 'like', "%{$search}%");
+                });
+            });
+        }
 
-        $averageProgress = (float) (clone $enrollmentsQuery)->avg('progress');
-        $activeCustomers = (clone $enrollmentsQuery)
+        // Tri
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        
+        if ($sortBy === 'name') {
+            $enrollmentsQuery->join('users', 'enrollments.user_id', '=', 'users.id')
+                           ->orderBy('users.name', $sortDirection)
+                           ->select('enrollments.*')
+                           ->groupBy('enrollments.id');
+        } elseif ($sortBy === 'progress') {
+            $enrollmentsQuery->orderBy('enrollments.progress', $sortDirection);
+        } elseif (in_array($sortBy, ['created_at', 'updated_at'])) {
+            $enrollmentsQuery->orderBy('enrollments.' . $sortBy, $sortDirection);
+        } else {
+            $enrollmentsQuery->latest('enrollments.created_at');
+        }
+
+        $enrollments = $enrollmentsQuery->paginate(20)->withQueryString();
+
+        // Calculer les statistiques sur la requête de base (sans filtres)
+        $baseQuery = Enrollment::whereHas('content', function($query) use ($provider) {
+            $query->where('provider_id', $provider->id);
+        });
+        
+        $averageProgress = (float) (clone $baseQuery)->avg('progress');
+        $activeCustomers = (clone $baseQuery)
             ->where('created_at', '>=', Carbon::now()->subDays(30))
             ->distinct('user_id')
             ->count('user_id');

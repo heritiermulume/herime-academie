@@ -216,7 +216,7 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-3">
-                                <label for="price" class="form-label fw-bold">Prix (FCFA) <span class="text-danger">*</span></label>
+                                <label for="price" class="form-label fw-bold">Prix ({{ $baseCurrency ?? 'USD' }}) <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control @error('price') is-invalid @enderror" 
                                        id="price" name="price" value="{{ old('price') }}" min="0" required>
                                 @error('price')
@@ -225,7 +225,7 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label for="sale_price" class="form-label fw-bold">Prix de vente (FCFA)</label>
+                                <label for="sale_price" class="form-label fw-bold">Prix de vente ({{ $baseCurrency ?? 'USD' }})</label>
                                 <input type="number" class="form-control @error('sale_price') is-invalid @enderror" 
                                        id="sale_price" name="sale_price" value="{{ old('sale_price') }}" min="0">
                                 @error('sale_price')
@@ -436,7 +436,7 @@
                 <!-- Contenu du cours (Sections et leçons) -->
                 <div class="card shadow-sm mb-4 course-content-card">
                     <div class="card-header bg-gradient-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contenu de la formation</h5>
+                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contenus</h5>
                     </div>
                     <div class="card-body course-content-card__body p-0">
                         <div id="sections-container">

@@ -5,7 +5,7 @@
 @section('admin-subtitle', 'Suivi global de la plateforme Herime Académie')
 @section('admin-actions')
     <a href="{{ route('admin.analytics') }}" class="btn btn-outline-primary">
-        <i class="fas fa-chart-line me-2"></i>Console analytics
+        <i class="fas fa-chart-line me-2"></i>Console analytiques
     </a>
 @endsection
 

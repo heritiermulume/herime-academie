@@ -106,11 +106,6 @@
                                 </li>
                             @endforeach
                             <li style="padding: 0;">
-                                <a class="dropdown-item" href="{{ route('messages.index') }}" style="padding: 0.75rem 1.25rem;">
-                                    <i class="fas fa-envelope me-2"></i>Messages
-                                </a>
-                            </li>
-                            <li style="padding: 0;">
                                 <a class="dropdown-item" href="{{ route('notifications.index') }}" style="padding: 0.75rem 1.25rem;">
                                     <i class="fas fa-bell me-2"></i>Notifications
                                 </a>
@@ -246,14 +241,6 @@
                         </div>
                     </div>
 
-                    <!-- Messages -->
-                    <a class="nav-link position-relative me-3" href="{{ route('messages.index') }}" title="Messages">
-                        <i class="fas fa-envelope fa-lg"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="message-count" style="display: none; background-color: var(--primary-color); color: white;">
-                            0
-                        </span>
-                    </a>
-
                     <!-- User Menu -->
                     <div class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
@@ -352,11 +339,6 @@
                                    @if(session('sso_token'))target="_blank" rel="noopener noreferrer"@endif 
                                    style="padding: 0.75rem 1.25rem;">
                                     <i class="fas fa-user me-2"></i>Profil
-                                </a>
-                            </li>
-                            <li style="padding: 0;">
-                                <a class="dropdown-item" href="{{ route('messages.index') }}" style="padding: 0.75rem 1.25rem;">
-                                    <i class="fas fa-envelope me-2"></i>Messages
                                 </a>
                             </li>
                             <li style="padding: 0;">
@@ -532,14 +514,6 @@
                     @endforeach
 
                     <li class="nav-item">
-                        <a class="nav-link position-relative" href="{{ route('messages.index') }}">
-                            <i class="fas fa-envelope me-2"></i>Messages
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" id="message-count-mobile" style="display: none; background-color: var(--primary-color); color: white;">
-                                0
-                            </span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="{{ route('dashboard') }}">
                             <i class="fas fa-tachometer-alt me-2"></i>Tableau de bord
                         </a>
@@ -691,31 +665,55 @@
         display: block !important;
     }
     
-    /* Sur mobile/tablette, l'en-tête doit occuper toute la largeur */
+    /* Sur mobile/tablette ET desktop, l'en-tête doit occuper toute la largeur */
+    .navbar .dropdown-menu.user-profile-dropdown {
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+    
+    /* L'en-tête doit occuper toute la largeur sans marges horizontales */
+    .navbar .dropdown-menu.user-profile-dropdown > li:first-child {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding-top: 1.25rem !important;
+        padding-bottom: 1.25rem !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        border-radius: 0.375rem 0.375rem 0 0 !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Le contenu interne de l'en-tête garde son padding horizontal */
+    .navbar .dropdown-menu.user-profile-dropdown > li:first-child > div {
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Sur mobile/tablette, ajuster la largeur du dropdown pour correspondre au container */
     @media (max-width: 991.98px) {
         .navbar .dropdown-menu.user-profile-dropdown {
-            width: calc(100vw - 1rem) !important;
-            max-width: 320px !important;
-            padding: 0 !important;
+            /* Largeur = viewport - padding gauche container (0.75rem) - padding droit container (0.75rem) */
+            width: calc(100vw - 1.5rem) !important;
+            max-width: calc(100vw - 1.5rem) !important;
             border-radius: 0.375rem !important;
-            overflow: hidden !important;
-        }
-        
-        /* L'en-tête doit occuper toute la largeur sans marges horizontales */
-        .navbar .dropdown-menu.user-profile-dropdown > li:first-child {
-            padding-top: 1.25rem !important;
-            padding-bottom: 1.25rem !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
             margin-left: 0 !important;
             margin-right: 0 !important;
-            border-radius: 0.375rem 0.375rem 0 0 !important;
+            padding: 0 !important;
+            left: 0.75rem !important;
+            right: auto !important;
         }
-        
-        /* Le contenu interne de l'en-tête garde son padding horizontal */
-        .navbar .dropdown-menu.user-profile-dropdown > li:first-child > div {
-            padding-left: 1.25rem !important;
-            padding-right: 1.25rem !important;
+    }
+    
+    /* Sur très petits écrans, ajuster encore plus */
+    @media (max-width: 575.98px) {
+        .navbar .dropdown-menu.user-profile-dropdown {
+            width: calc(100vw - 1.5rem) !important;
+            max-width: calc(100vw - 1.5rem) !important;
+            padding: 0 !important;
         }
     }
     
