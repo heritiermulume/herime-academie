@@ -52,14 +52,14 @@ class PaymentReceivedMail extends Mailable
         });
 
         if ($hasDownloadable && !$hasNonDownloadable) {
-            // Uniquement des produits digitaux / téléchargeables
-            $accessLabel = 'produits digitaux';
+            // Uniquement des contenus téléchargeables
+            $accessLabel = 'contenus';
         } elseif (!$hasDownloadable && $hasNonDownloadable) {
             // Uniquement des cours classiques
             $accessLabel = 'cours';
         } elseif ($hasDownloadable && $hasNonDownloadable) {
             // Panier mixte
-            $accessLabel = 'cours et produits digitaux';
+            $accessLabel = 'cours et contenus';
         } else {
             // Fallback générique
             $accessLabel = 'contenus';

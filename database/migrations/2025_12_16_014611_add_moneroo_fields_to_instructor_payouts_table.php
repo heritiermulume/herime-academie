@@ -11,12 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('instructor_payouts', function (Blueprint $table) {
+        $tableName = Schema::hasTable('provider_payouts') ? 'provider_payouts' : (Schema::hasTable('instructor_payouts') ? 'instructor_payouts' : null);
+        if (!$tableName) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) use ($tableName) {
             // Ajouter les champs Moneroo si ils n'existent pas déjà
-            if (!Schema::hasColumn('instructor_payouts', 'moneroo_status')) {
+            if (!Schema::hasColumn($tableName, 'moneroo_status')) {
                 $table->string('moneroo_status')->nullable()->after('pawapay_status');
             }
-            if (!Schema::hasColumn('instructor_payouts', 'moneroo_response')) {
+            if (!Schema::hasColumn($tableName, 'moneroo_response')) {
                 $table->json('moneroo_response')->nullable()->after('pawapay_response');
             }
         });
@@ -27,8 +32,21 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('instructor_payouts', function (Blueprint $table) {
-            $table->dropColumn(['moneroo_status', 'moneroo_response']);
+        $tableName = Schema::hasTable('provider_payouts') ? 'provider_payouts' : (Schema::hasTable('instructor_payouts') ? 'instructor_payouts' : null);
+        if (!$tableName) {
+            return;
+        }
+        if (!Schema::hasColumn($tableName, 'moneroo_status') && !Schema::hasColumn($tableName, 'moneroo_response')) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) use ($tableName) {
+            $cols = [];
+            if (Schema::hasColumn($tableName, 'moneroo_status')) $cols[] = 'moneroo_status';
+            if (Schema::hasColumn($tableName, 'moneroo_response')) $cols[] = 'moneroo_response';
+            if ($cols) {
+                $table->dropColumn($cols);
+            }
         });
     }
 };

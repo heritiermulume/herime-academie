@@ -11,8 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Cette migration sera exécutée avant le renommage, donc on utilise 'courses'
-        // Le renommage en 'show_customers_count' sera fait dans la migration de renommage
+        // Compatible rename: si la table a déjà été renommée, on ajoute directement show_customers_count.
+        $tableName = Schema::hasTable('contents') ? 'contents' : (Schema::hasTable('courses') ? 'courses' : null);
+        if (!$tableName) {
+            return;
+        }
+
+        if ($tableName === 'contents') {
+            if (Schema::hasColumn('contents', 'show_customers_count')) {
+                return;
+            }
+            Schema::table('contents', function (Blueprint $table) {
+                $table->boolean('show_customers_count')->default(false)->after('is_featured');
+            });
+            return;
+        }
+
+        if (Schema::hasColumn('courses', 'show_students_count')) {
+            return;
+        }
         Schema::table('courses', function (Blueprint $table) {
             $table->boolean('show_students_count')->default(false)->after('is_featured');
         });

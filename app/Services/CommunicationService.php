@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SentEmail;
 use App\Models\User;
 use App\Jobs\SendWhatsAppFromEmailJob;
 use Illuminate\Support\Facades\Mail;
@@ -65,12 +66,18 @@ class CommunicationService
                         'user_email' => $user->email,
                         'mailer' => $mailer
                     ]);
+
+                    // Enregistrer quand même la tentative (utile pour audit)
+                    $this->recordSentEmail($user, $user->email, $mailable, 'pending', $warning);
                 } else {
                     $results['email'] = ['success' => true, 'error' => null];
                     Log::info("Email envoyé avec succès à {$user->email}", [
                         'user_id' => $user->id,
                         'mailable' => get_class($mailable)
                     ]);
+
+                    // Enregistrer l'envoi (permet de vérifier + dédupliquer)
+                    $this->recordSentEmail($user, $user->email, $mailable, 'sent', null);
                 }
             } else {
                 $results['email'] = ['success' => false, 'error' => 'Aucun email pour cet utilisateur'];
@@ -88,6 +95,8 @@ class CommunicationService
                 'trace' => $e->getTraceAsString(),
                 'mailable' => get_class($mailable)
             ]);
+
+            $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
         } catch (\Illuminate\Mail\Mailables\AttachmentException $e) {
             // Erreur avec les pièces jointes
             $errorMessage = "Erreur pièce jointe: " . $e->getMessage();
@@ -98,6 +107,8 @@ class CommunicationService
                 'error' => $e->getMessage(),
                 'mailable' => get_class($mailable)
             ]);
+
+            $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
         } catch (\Exception $e) {
             $errorMessage = $e->getMessage();
             $results['email'] = ['success' => false, 'error' => $errorMessage];
@@ -109,6 +120,8 @@ class CommunicationService
                 'trace' => $e->getTraceAsString(),
                 'mailable' => get_class($mailable)
             ]);
+
+            $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
         } catch (\Throwable $e) {
             // Capturer toutes les erreurs fatales
             $errorMessage = "Erreur fatale: " . $e->getMessage();
@@ -121,6 +134,8 @@ class CommunicationService
                 'trace' => $e->getTraceAsString(),
                 'mailable' => get_class($mailable)
             ]);
+
+            $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
         }
 
         // Envoyer WhatsApp en parallèle (si activé et si l'utilisateur a un numéro)
@@ -193,6 +208,113 @@ class CommunicationService
         }
 
         return $results;
+    }
+
+    /**
+     * Enregistrer l'envoi d'un email dans sent_emails (audit + déduplication).
+     * Ne doit JAMAIS faire échouer le flux principal.
+     */
+    protected function recordSentEmail(User $user, ?string $email, Mailable $mailable, string $status, ?string $errorMessage): void
+    {
+        try {
+            if (empty($email)) {
+                return;
+            }
+
+            // Sujet
+            $subject = 'Sans objet';
+            try {
+                $envelope = $mailable->envelope();
+                $subject = $envelope->subject ?? $subject;
+            } catch (\Throwable $e) {
+                // ignore
+            }
+
+            // Type + metadata utiles
+            $type = 'custom';
+            $metadata = [
+                'mail_class' => get_class($mailable),
+            ];
+
+            if ($mailable instanceof \App\Mail\InvoiceMail) {
+                $type = 'invoice';
+                $order = $mailable->order ?? null;
+                if ($order) {
+                    $metadata['order_id'] = $order->id;
+                    $metadata['order_number'] = $order->order_number;
+                }
+            } elseif ($mailable instanceof \App\Mail\PaymentReceivedMail) {
+                $type = 'payment';
+                $metadata['kind'] = 'payment_received';
+                $order = $mailable->order ?? null;
+                if ($order) {
+                    $metadata['order_id'] = $order->id;
+                    $metadata['order_number'] = $order->order_number;
+                }
+            } elseif ($mailable instanceof \App\Mail\PaymentFailedMail) {
+                $type = 'payment';
+                $metadata['kind'] = 'payment_failed';
+                $order = $mailable->order ?? null;
+                if ($order) {
+                    $metadata['order_id'] = $order->id;
+                    $metadata['order_number'] = $order->order_number;
+                }
+            } elseif ($mailable instanceof \App\Mail\CourseEnrolledMail) {
+                $type = 'enrollment';
+                $course = $mailable->course ?? null;
+                if ($course) {
+                    $metadata['content_id'] = $course->id;
+                    $metadata['course_title'] = $course->title;
+                    $metadata['is_downloadable'] = (bool) $course->is_downloadable;
+                }
+            } elseif ($mailable instanceof \App\Mail\AdminPaymentReceivedMail) {
+                $type = 'payment';
+                $metadata['kind'] = 'admin_payment_received';
+                $order = $mailable->order ?? null;
+                if ($order) {
+                    $metadata['order_id'] = $order->id;
+                    $metadata['order_number'] = $order->order_number;
+                }
+            }
+
+            // En cas de déduplication: si déjà un "sent" pour le même mail_class + order_id/content_id, ne pas recréer.
+            $dedupeQuery = SentEmail::query()
+                ->where('recipient_email', $email)
+                ->where('metadata->mail_class', get_class($mailable));
+
+            if (!empty($metadata['order_id'])) {
+                $dedupeQuery->where('metadata->order_id', $metadata['order_id']);
+            }
+            if (!empty($metadata['content_id'])) {
+                $dedupeQuery->where('metadata->content_id', $metadata['content_id']);
+            }
+
+            $alreadySent = (clone $dedupeQuery)->where('status', 'sent')->exists();
+            if ($alreadySent) {
+                return;
+            }
+
+            SentEmail::create([
+                'user_id' => $user->id,
+                'recipient_email' => $email,
+                'recipient_name' => $user->name,
+                'subject' => $subject,
+                'content' => class_basename(get_class($mailable)),
+                'attachments' => null,
+                'type' => $type,
+                'status' => in_array($status, ['sent', 'failed', 'pending']) ? $status : 'sent',
+                'error_message' => $errorMessage,
+                'sent_at' => $status === 'sent' ? now() : null,
+                'metadata' => $metadata,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("Erreur lors de l'enregistrement sent_emails", [
+                'user_id' => $user->id ?? null,
+                'email' => $email,
+                'mailable' => is_object($mailable) ? get_class($mailable) : null,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -304,8 +426,8 @@ class CommunicationService
                 });
                 
                 if ($hasDownloadable && !$hasNonDownloadable) {
-                    // Uniquement des produits digitaux / téléchargeables
-                    $contentType = "produits digitaux";
+                    // Uniquement des contenus téléchargeables
+                    $contentType = "contenus";
                     $actionText = "Téléchargez-les maintenant depuis votre espace personnel.";
                 } elseif (!$hasDownloadable && $hasNonDownloadable) {
                     // Uniquement des cours classiques
@@ -313,7 +435,7 @@ class CommunicationService
                     $actionText = "Commencez votre apprentissage dès maintenant.";
                 } elseif ($hasDownloadable && $hasNonDownloadable) {
                     // Panier mixte
-                    $contentType = "cours et produits digitaux";
+                    $contentType = "cours et contenus";
                     $actionText = "Accédez à vos contenus depuis votre espace personnel.";
                 } else {
                     // Fallback générique

@@ -88,6 +88,8 @@ class Course extends Model
         'show_customers_count',
         'is_downloadable',
         'download_file_path',
+        'is_in_person_program',
+        'whatsapp_number',
         'level',
         'language',
         'tags',
@@ -118,11 +120,32 @@ class Course extends Model
             'is_featured' => 'boolean',
             'show_customers_count' => 'boolean',
             'is_downloadable' => 'boolean',
+            'is_in_person_program' => 'boolean',
             'video_preview_is_unlisted' => 'boolean',
             'tags' => 'array',
             'requirements' => 'array',
             'what_you_will_learn' => 'array',
         ];
+    }
+
+    public function getWhatsappChatUrlAttribute(): ?string
+    {
+        try {
+            if (!($this->is_in_person_program ?? false)) {
+                return null;
+            }
+
+            $raw = (string) ($this->whatsapp_number ?? '');
+            $digits = preg_replace('/\D+/', '', $raw) ?? '';
+
+            if ($digits === '') {
+                return null;
+            }
+
+            return 'https://wa.me/' . $digits;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     public function provider(): BelongsTo
@@ -952,7 +975,8 @@ class Course extends Model
                         'url' => route('contents.download', $this->slug),
                         'class' => 'btn btn-primary',
                         'text' => 'Télécharger',
-                        'icon' => 'fas fa-download'
+                        'icon' => 'fas fa-download',
+                        'meta_trigger' => 'download',
                     ];
                 }
                 
@@ -966,7 +990,8 @@ class Course extends Model
                     'url' => route('learning.course', $this->slug),
                     'class' => 'btn btn-success',
                     'text' => $buttonText,
-                    'icon' => 'fas fa-play'
+                    'icon' => 'fas fa-play',
+                    'meta_trigger' => 'learn',
                 ];
                 
             case 'purchased':
@@ -977,7 +1002,8 @@ class Course extends Model
                         'url' => route('contents.download', $this->slug),
                         'class' => 'btn btn-primary',
                         'text' => 'Télécharger',
-                        'icon' => 'fas fa-download'
+                        'icon' => 'fas fa-download',
+                        'meta_trigger' => 'download',
                     ];
                 }
                 
@@ -987,7 +1013,8 @@ class Course extends Model
                     'action' => route('customer.contents.enroll', $this->slug),
                     'class' => 'btn btn-primary',
                     'text' => 'S\'inscrire',
-                    'icon' => 'fas fa-user-plus'
+                    'icon' => 'fas fa-user-plus',
+                    'meta_trigger' => 'enroll',
                 ];
                 
             case 'free':
@@ -999,7 +1026,8 @@ class Course extends Model
                     'action' => route('customer.contents.enroll', $this->slug),
                     'class' => 'btn btn-primary',
                     'text' => $buttonText,
-                    'icon' => 'fas fa-user-plus'
+                    'icon' => 'fas fa-user-plus',
+                    'meta_trigger' => 'enroll',
                 ];
                 
             case 'purchase':
@@ -1012,14 +1040,16 @@ class Course extends Model
                             'class' => 'btn btn-outline-primary',
                             'text' => 'Ajouter au panier',
                             'icon' => 'fas fa-shopping-cart',
-                            'onclick' => "addToCart({$this->id})"
+                            'onclick' => "addToCart({$this->id})",
+                            'meta_trigger' => 'add_to_cart',
                         ],
                         [
                             'type' => 'button',
-                            'class' => 'btn btn-primary',
+                            'class' => 'btn btn-success',
                             'text' => 'Procéder au paiement',
                             'icon' => 'fas fa-credit-card',
-                            'onclick' => 'proceedToCheckout(' . $this->id . ')'
+                            'onclick' => 'proceedToCheckout(' . $this->id . ')',
+                            'meta_trigger' => 'checkout',
                         ]
                     ]
                 ];

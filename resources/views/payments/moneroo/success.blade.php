@@ -247,7 +247,7 @@
 
             <div class="info-alert">
                 <i class="fas fa-info-circle"></i>
-                <strong>Accès immédiat :</strong> Vous avez maintenant accès à tous les produits digitaux et cours que vous avez achetés. Pour les produits téléchargeables, vous pouvez les télécharger directement. Pour les cours, vous pouvez y accéder depuis votre tableau de bord étudiant.
+                <strong>Accès immédiat :</strong> Vous avez maintenant accès à tous les contenus et cours que vous avez achetés. Pour les contenus téléchargeables, vous pouvez les télécharger directement. Pour les cours, vous pouvez y accéder depuis votre Espace Client.
             </div>
             @elseif(isset($processing_warning) && $processing_warning)
             <div class="order-details-card">

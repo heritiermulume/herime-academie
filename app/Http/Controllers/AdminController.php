@@ -1563,6 +1563,8 @@ class AdminController extends Controller
             'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
             'is_free' => 'boolean',
             'is_downloadable' => 'boolean',
+            'is_in_person_program' => 'boolean',
+            'whatsapp_number' => 'nullable|string|max:30|required_if:is_in_person_program,1',
             'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:10485760', // 10GB max (kilobytes)
             'download_file_url' => 'nullable|url|max:1000',
             'is_published' => 'boolean',
@@ -1627,7 +1629,8 @@ class AdminController extends Controller
                 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
                 'video_preview_youtube_id', 'video_preview_is_unlisted', 'use_external_payment',
-                'external_payment_url', 'external_payment_text'
+                'external_payment_url', 'external_payment_text',
+                'whatsapp_number',
             ]);
 
             $courseData['short_description'] = $this->normalizeNullableString($courseData['short_description'] ?? null);
@@ -1636,6 +1639,7 @@ class AdminController extends Controller
             $courseData['meta_keywords'] = $this->normalizeCommaSeparatedString($courseData['meta_keywords'] ?? null);
             $courseData['external_payment_url'] = $this->normalizeNullableString($courseData['external_payment_url'] ?? null);
             $courseData['external_payment_text'] = $this->normalizeNullableString($courseData['external_payment_text'] ?? null);
+            $courseData['whatsapp_number'] = $this->normalizeNullableString($courseData['whatsapp_number'] ?? null);
             $courseData['tags'] = $this->normalizeTags($courseData['tags'] ?? null);
             $courseData['requirements'] = $this->normalizeStringArray($request->input('requirements', []));
             $courseData['what_you_will_learn'] = $this->normalizeStringArray($request->input('what_you_will_learn', []));
@@ -1730,6 +1734,7 @@ class AdminController extends Controller
 
             $courseData['is_free'] = $request->boolean('is_free', false);
             $courseData['is_downloadable'] = $request->boolean('is_downloadable', false);
+            $courseData['is_in_person_program'] = $request->boolean('is_in_person_program', false);
             $courseData['use_external_payment'] = $request->boolean('use_external_payment', false);
             $courseData['is_published'] = $request->boolean('is_published', false);
             // Pour la création : si la checkbox est cochée → true, sinon → true par défaut (comme dans la migration)
@@ -1737,6 +1742,10 @@ class AdminController extends Controller
             $courseData['is_featured'] = $request->boolean('is_featured', false);
             $courseData['show_customers_count'] = $request->boolean('show_customers_count', false);
             $courseData['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
+
+            if (!$courseData['is_in_person_program']) {
+                $courseData['whatsapp_number'] = null;
+            }
 
             if ($courseData['is_free']) {
                 $courseData['price'] = 0;
@@ -1867,6 +1876,8 @@ class AdminController extends Controller
             'sale_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
             'is_downloadable' => 'boolean',
+            'is_in_person_program' => 'boolean',
+            'whatsapp_number' => 'nullable|string|max:30|required_if:is_in_person_program,1',
             'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:10485760', // 10GB max (kilobytes)
             'download_file_url' => 'nullable|url|max:1000',
             'use_external_payment' => 'boolean',
@@ -1924,7 +1935,8 @@ class AdminController extends Controller
                 'use_external_payment', 'external_payment_url', 'external_payment_text',
                 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
-                'video_preview_youtube_id', 'video_preview_is_unlisted'
+                'video_preview_youtube_id', 'video_preview_is_unlisted',
+                'whatsapp_number',
             ]);
 
             $data['short_description'] = $this->normalizeNullableString($data['short_description'] ?? null);
@@ -1933,6 +1945,7 @@ class AdminController extends Controller
             $data['meta_keywords'] = $this->normalizeCommaSeparatedString($data['meta_keywords'] ?? null);
             $data['external_payment_url'] = $this->normalizeNullableString($data['external_payment_url'] ?? null);
             $data['external_payment_text'] = $this->normalizeNullableString($data['external_payment_text'] ?? null);
+            $data['whatsapp_number'] = $this->normalizeNullableString($data['whatsapp_number'] ?? null);
             $data['tags'] = $this->normalizeTags($data['tags'] ?? null);
             $data['requirements'] = $this->normalizeStringArray($request->input('requirements', []));
             $data['what_you_will_learn'] = $this->normalizeStringArray($request->input('what_you_will_learn', []));
@@ -2049,6 +2062,7 @@ class AdminController extends Controller
 
             $data['is_free'] = $request->boolean('is_free', false);
             $data['is_downloadable'] = $request->boolean('is_downloadable', false);
+            $data['is_in_person_program'] = $request->boolean('is_in_person_program', false);
             $data['use_external_payment'] = $request->boolean('use_external_payment', false);
             $data['is_published'] = $request->boolean('is_published', false);
             // Pour l'édition : si la checkbox est cochée → true, sinon → false (car l'utilisateur a décidé de la décocher)
@@ -2056,6 +2070,10 @@ class AdminController extends Controller
             $data['is_featured'] = $request->boolean('is_featured', false);
             $data['show_customers_count'] = $request->boolean('show_customers_count', false);
             $data['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
+
+            if (!$data['is_in_person_program']) {
+                $data['whatsapp_number'] = null;
+            }
 
             if ($data['is_free']) {
                 $data['price'] = 0;
@@ -4074,6 +4092,13 @@ class AdminController extends Controller
         $settings = Setting::all()->keyBy('key');
         $baseCurrency = Setting::getBaseCurrency();
         $commissionPercentage = Setting::get('external_provider_commission_percentage', 20);
+        $metaTrackingEnabled = Setting::get('meta_tracking_enabled', false);
+        $metaGeoipFallbackEnabled = Setting::get('meta_geoip_fallback_enabled', false);
+        $metaConsentRequired = Setting::get('meta_consent_required', false);
+        $metaConsentCookieName = Setting::get('meta_consent_cookie_name', 'meta_consent');
+        $metaCapiEnabled = Setting::get('meta_capi_enabled', false);
+        $metaCapiAccessToken = Setting::get('meta_capi_access_token', '');
+        $metaCapiTestEventCode = Setting::get('meta_capi_test_event_code', '');
         
         // Paramètres Wallet
         $walletSettings = [
@@ -4098,7 +4123,165 @@ class AdminController extends Controller
             'ZAR' => 'ZAR - Rand sud-africain',
         ];
         
-        return view('admin.settings.index', compact('baseCurrency', 'currencies', 'settings', 'commissionPercentage', 'walletSettings'));
+        $metaPixels = \App\Models\MetaPixel::query()
+            ->orderByDesc('priority')
+            ->orderByDesc('id')
+            ->get();
+        $metaEvents = \App\Models\MetaEvent::query()->orderBy('event_name')->get();
+        $metaTriggers = \App\Models\MetaEventTrigger::query()
+            ->with(['event:id,event_name'])
+            ->orderByDesc('priority')
+            ->orderByDesc('id')
+            ->get();
+
+        // Options UI (combobox/select) pour réduire les erreurs de saisie
+        $routeNameOptions = collect(\Illuminate\Support\Facades\Route::getRoutes())
+            ->map(fn ($r) => $r->getName())
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $pixelIdOptions = $metaPixels->pluck('pixel_id')->filter()->unique()->values()->all();
+
+        $metaCountryOptions = [
+            'CD','CM','CI','SN','BJ','TG','BF','ML','NE','GN','RW','UG','KE','TZ','GH','NG','ZA',
+            'FR','BE','CH','CA','US','GB',
+        ];
+
+        $knownFunnels = collect()
+            ->merge($metaPixels->pluck('funnel_keys')->filter()->flatten())
+            ->merge($metaTriggers->pluck('funnel_keys')->filter()->flatten())
+            ->filter(fn ($v) => is_string($v) && trim($v) !== '')
+            ->map(fn ($v) => trim($v))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $pathPatternOptions = collect()
+            ->merge($metaPixels->pluck('match_path_pattern'))
+            ->merge($metaPixels->pluck('excluded_path_patterns')->filter()->flatten())
+            ->merge($metaTriggers->pluck('match_path_pattern'))
+            ->filter(fn ($v) => is_string($v) && trim($v) !== '')
+            ->map(fn ($v) => trim($v))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        // Pages (routes GET sans paramètres) pour faciliter le choix d'une page dans l'UI des triggers
+        $metaPageOptions = collect(\Illuminate\Support\Facades\Route::getRoutes())
+            ->filter(function ($r) {
+                try {
+                    $methods = $r->methods();
+                    $uri = ltrim((string) $r->uri(), '/');
+
+                    // GET pages only
+                    if (!in_array('GET', $methods, true)) {
+                        return false;
+                    }
+
+                    // Exclure admin / api / routes avec paramètres (ex: {id})
+                    if ($uri !== '' && (str_starts_with($uri, 'admin') || str_starts_with($uri, 'api'))) {
+                        return false;
+                    }
+                    if (str_contains($uri, '{')) {
+                        return false;
+                    }
+
+                    return true;
+                } catch (\Throwable $e) {
+                    return false;
+                }
+            })
+            ->map(function ($r) {
+                $name = $r->getName();
+                $rawUri = (string) $r->uri();
+                $path = ltrim($rawUri, '/');
+                $path = $path === '' ? '/' : $path;
+
+                $label = $name ? ($name . ' — /' . ltrim($path, '/')) : ('/' . ltrim($path, '/'));
+                if ($path === '/') {
+                    $label = $name ? ($name . ' — /') : '/';
+                }
+
+                return [
+                    'path' => $path, // compatible MetaTrackingService::pathMatches (sans slash, sauf '/')
+                    'route_name' => $name,
+                    'label' => $label,
+                ];
+            })
+            ->unique('path')
+            ->sortBy('label')
+            ->values()
+            ->all();
+
+        $metaEventNameOptions = collect([
+            'PageView',
+            'ViewContent',
+            'Search',
+            'AddToCart',
+            'InitiateCheckout',
+            'AddPaymentInfo',
+            'Purchase',
+            'Lead',
+            'CompleteRegistration',
+            'Contact',
+            'Subscribe',
+            'StartTrial',
+            'Schedule',
+            'Donate',
+        ])->merge($metaEvents->pluck('event_name'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $metaStandardEventNameOptions = [
+            'PageView',
+            'ViewContent',
+            'Search',
+            'AddToCart',
+            'InitiateCheckout',
+            'AddPaymentInfo',
+            'Purchase',
+            'Lead',
+            'CompleteRegistration',
+            'Contact',
+            'Subscribe',
+            'StartTrial',
+            'Schedule',
+            'Donate',
+        ];
+
+        return view('admin.settings.index', compact(
+            'baseCurrency',
+            'currencies',
+            'settings',
+            'commissionPercentage',
+            'walletSettings',
+            'metaTrackingEnabled',
+            'metaGeoipFallbackEnabled',
+            'metaConsentRequired',
+            'metaConsentCookieName',
+            'metaCapiEnabled',
+            'metaCapiAccessToken',
+            'metaCapiTestEventCode',
+            'metaPixels',
+            'metaEvents',
+            'metaTriggers',
+            'routeNameOptions',
+            'pixelIdOptions',
+            'metaCountryOptions',
+            'knownFunnels',
+            'pathPatternOptions',
+            'metaPageOptions',
+            'metaEventNameOptions',
+            'metaStandardEventNameOptions',
+        ));
     }
 
     /**
@@ -4106,6 +4289,384 @@ class AdminController extends Controller
      */
     public function updateSettings(Request $request)
     {
+        // Gestion Meta (Pixel + Events) via /admin/settings (sans dépendre des autres settings)
+        if ($request->filled('meta_action')) {
+            $action = $request->string('meta_action')->toString();
+
+            $metaStandardEventNames = [
+                'PageView',
+                'ViewContent',
+                'Search',
+                'AddToCart',
+                'InitiateCheckout',
+                'AddPaymentInfo',
+                'Purchase',
+                'Lead',
+                'CompleteRegistration',
+                'Contact',
+                'Subscribe',
+                'StartTrial',
+                'Schedule',
+                'Donate',
+            ];
+            $metaStandardEventNamesLowerMap = collect($metaStandardEventNames)
+                ->mapWithKeys(fn (string $n) => [strtolower($n) => $n])
+                ->all();
+
+            $normalizeEventName = function (?string $raw) use ($metaStandardEventNamesLowerMap): string {
+                $raw = trim((string) $raw);
+                if ($raw === '') {
+                    return '';
+                }
+                $lower = strtolower($raw);
+                return $metaStandardEventNamesLowerMap[$lower] ?? $raw;
+            };
+
+            $isValidCustomEventName = function (string $name): bool {
+                if ($name === '') return false;
+                if (strlen($name) > 64) return false;
+                // Pas d'espaces ni virgules: c'est une valeur unique, pas une liste.
+                if (preg_match('/[,\s]/', $name)) return false;
+                // Autoriser lettres, chiffres, ".", "_", "-"
+                return (bool) preg_match('/^[A-Za-z0-9._-]+$/', $name);
+            };
+
+            $parseCsv = function ($raw): array {
+                if (!is_string($raw)) {
+                    return [];
+                }
+                $parts = preg_split('/[,\n\r]+/', $raw) ?: [];
+                $out = [];
+                foreach ($parts as $p) {
+                    $p = trim($p);
+                    if ($p === '') continue;
+                    $out[] = $p;
+                }
+                return array_values(array_unique($out));
+            };
+
+            $parseJson = function ($raw): ?array {
+                if (!is_string($raw)) {
+                    return null;
+                }
+                $raw = trim($raw);
+                if ($raw === '') {
+                    return null;
+                }
+                $decoded = json_decode($raw, true);
+                return is_array($decoded) ? $decoded : null;
+            };
+
+            if ($action === 'meta_update_global') {
+                Setting::set(
+                    'meta_tracking_enabled',
+                    $request->input('meta_tracking_enabled') === 'on' ? 1 : 0,
+                    'boolean',
+                    'Activer le tracking Meta (Facebook Pixel) globalement'
+                );
+
+                Setting::set(
+                    'meta_geoip_fallback_enabled',
+                    $request->input('meta_geoip_fallback_enabled') === 'on' ? 1 : 0,
+                    'boolean',
+                    'Activer le fallback GeoIP (service externe) pour détecter le pays'
+                );
+
+                Setting::set(
+                    'meta_consent_required',
+                    $request->input('meta_consent_required') === 'on' ? 1 : 0,
+                    'boolean',
+                    'Exiger un consentement avant de charger Meta Pixel'
+                );
+                $cookieName = trim((string) $request->input('meta_consent_cookie_name', 'meta_consent'));
+                if ($cookieName === '') {
+                    $cookieName = 'meta_consent';
+                }
+                Setting::set(
+                    'meta_consent_cookie_name',
+                    $cookieName,
+                    'string',
+                    'Nom du cookie (valeur "1") qui indique le consentement Meta'
+                );
+
+                Setting::set(
+                    'meta_capi_enabled',
+                    $request->input('meta_capi_enabled') === 'on' ? 1 : 0,
+                    'boolean',
+                    'Activer Meta Conversions API (CAPI) pour déduplication et fiabilité'
+                );
+                $accessToken = trim((string) $request->input('meta_capi_access_token', ''));
+                Setting::set(
+                    'meta_capi_access_token',
+                    $accessToken,
+                    'string',
+                    'CAPI Access Token (Graph API) — à garder privé'
+                );
+                $testCode = trim((string) $request->input('meta_capi_test_event_code', ''));
+                Setting::set(
+                    'meta_capi_test_event_code',
+                    $testCode,
+                    'string',
+                    'CAPI Test Event Code (optionnel, Events Manager)'
+                );
+
+                return redirect()->route('admin.settings')->with('success', 'Paramètres Meta mis à jour.');
+            }
+
+            if ($action === 'meta_pixel_create') {
+                $request->validate([
+                    'pixel_id' => 'required|string|max:64',
+                    'pixel_name' => 'nullable|string|max:255',
+                    'pixel_priority' => 'nullable|integer|min:-1000|max:1000',
+                    'match_route_name' => 'nullable|string|max:255',
+                    'match_path_pattern' => 'nullable|string|max:255',
+                ]);
+
+                \App\Models\MetaPixel::create([
+                    'pixel_id' => trim($request->input('pixel_id')),
+                    'name' => $request->input('pixel_name'),
+                    'is_active' => $request->input('pixel_is_active') === 'on',
+                    'priority' => (int) $request->input('pixel_priority', 0),
+                    'allowed_country_codes' => $parseCsv((string) $request->input('allowed_country_codes')),
+                    'excluded_country_codes' => $parseCsv((string) $request->input('excluded_country_codes')),
+                    'funnel_keys' => $parseCsv((string) $request->input('funnel_keys')),
+                    'match_route_name' => $request->input('match_route_name'),
+                    'match_path_pattern' => $request->input('match_path_pattern'),
+                    'excluded_route_names' => $parseCsv((string) $request->input('excluded_route_names')),
+                    'excluded_path_patterns' => $parseCsv((string) $request->input('excluded_path_patterns')),
+                    'notes' => $request->input('pixel_notes'),
+                ]);
+
+                return redirect()
+                    ->route('admin.settings', ['open' => 'triggers'])
+                    ->with('success', 'Pixel Meta ajouté.');
+            }
+
+            if ($action === 'meta_pixel_update') {
+                $request->validate([
+                    'meta_pixel_id' => 'required|integer|exists:meta_pixels,id',
+                    'pixel_id' => 'required|string|max:64',
+                    'pixel_name' => 'nullable|string|max:255',
+                    'pixel_priority' => 'nullable|integer|min:-1000|max:1000',
+                    'match_route_name' => 'nullable|string|max:255',
+                    'match_path_pattern' => 'nullable|string|max:255',
+                ]);
+
+                $pixel = \App\Models\MetaPixel::query()->findOrFail((int) $request->input('meta_pixel_id'));
+                $pixel->fill([
+                    'pixel_id' => trim($request->input('pixel_id')),
+                    'name' => $request->input('pixel_name'),
+                    'is_active' => $request->input('pixel_is_active') === 'on',
+                    'priority' => (int) $request->input('pixel_priority', 0),
+                    'allowed_country_codes' => $parseCsv((string) $request->input('allowed_country_codes')),
+                    'excluded_country_codes' => $parseCsv((string) $request->input('excluded_country_codes')),
+                    'funnel_keys' => $parseCsv((string) $request->input('funnel_keys')),
+                    'match_route_name' => $request->input('match_route_name'),
+                    'match_path_pattern' => $request->input('match_path_pattern'),
+                    'excluded_route_names' => $parseCsv((string) $request->input('excluded_route_names')),
+                    'excluded_path_patterns' => $parseCsv((string) $request->input('excluded_path_patterns')),
+                    'notes' => $request->input('pixel_notes'),
+                ]);
+                $pixel->save();
+
+                return redirect()->route('admin.settings')->with('success', 'Pixel Meta mis à jour.');
+            }
+
+            if ($action === 'meta_pixel_delete') {
+                $request->validate(['meta_pixel_id' => 'required|integer']);
+                \App\Models\MetaPixel::query()->whereKey((int) $request->input('meta_pixel_id'))->delete();
+                return redirect()->route('admin.settings')->with('success', 'Pixel Meta supprimé.');
+            }
+
+            if ($action === 'meta_event_create') {
+                $request->validate([
+                    'event_name' => 'required|string|max:64',
+                    'event_description' => 'nullable|string|max:1000',
+                ]);
+
+                $eventName = $normalizeEventName($request->input('event_name'));
+                $isStandard = $request->input('event_is_standard') === 'on';
+
+                // Validation stricte: standard => whitelist, custom => format strict
+                if ($isStandard) {
+                    if (!in_array($eventName, $metaStandardEventNames, true)) {
+                        return redirect()->route('admin.settings')->with('error', "Nom d'événement standard invalide. Utilisez un événement Meta officiel (ex: Purchase, Lead...).");
+                    }
+                } else {
+                    if (!$isValidCustomEventName($eventName)) {
+                        return redirect()->route('admin.settings')->with('error', "Nom d'événement custom invalide. Caractères autorisés: lettres/chiffres/._- (sans espaces).");
+                    }
+                    // Éviter de créer un "custom" avec un nom de standard (typo/erreur d'intention)
+                    if (in_array($eventName, $metaStandardEventNames, true)) {
+                        return redirect()->route('admin.settings')->with('error', "Cet événement est un événement Meta standard. Cochez 'Standard' pour l'utiliser.");
+                    }
+                }
+
+                \App\Models\MetaEvent::create([
+                    'event_name' => $eventName,
+                    'is_standard' => $isStandard,
+                    'is_active' => $request->input('event_is_active') === 'on',
+                    'default_payload' => $parseJson((string) $request->input('event_default_payload')) ?? [],
+                    'description' => $request->input('event_description'),
+                ]);
+
+                return redirect()
+                    ->route('admin.settings', ['open' => 'triggers'])
+                    ->with('success', 'Événement Meta ajouté.');
+            }
+
+            if ($action === 'meta_event_update') {
+                $request->validate([
+                    'meta_event_id' => 'required|integer|exists:meta_events,id',
+                    'event_name' => 'required|string|max:64',
+                    'event_description' => 'nullable|string|max:1000',
+                ]);
+
+                $eventName = $normalizeEventName($request->input('event_name'));
+                $isStandard = $request->input('event_is_standard') === 'on';
+
+                if ($isStandard) {
+                    if (!in_array($eventName, $metaStandardEventNames, true)) {
+                        return redirect()->route('admin.settings')->with('error', "Nom d'événement standard invalide. Utilisez un événement Meta officiel (ex: Purchase, Lead...).");
+                    }
+                } else {
+                    if (!$isValidCustomEventName($eventName)) {
+                        return redirect()->route('admin.settings')->with('error', "Nom d'événement custom invalide. Caractères autorisés: lettres/chiffres/._- (sans espaces).");
+                    }
+                    if (in_array($eventName, $metaStandardEventNames, true)) {
+                        return redirect()->route('admin.settings')->with('error', "Cet événement est un événement Meta standard. Cochez 'Standard' pour l'utiliser.");
+                    }
+                }
+
+                $event = \App\Models\MetaEvent::query()->findOrFail((int) $request->input('meta_event_id'));
+                $event->fill([
+                    'event_name' => $eventName,
+                    'is_standard' => $isStandard,
+                    'is_active' => $request->input('event_is_active') === 'on',
+                    'default_payload' => $parseJson((string) $request->input('event_default_payload')) ?? [],
+                    'description' => $request->input('event_description'),
+                ]);
+                $event->save();
+
+                return redirect()->route('admin.settings')->with('success', 'Événement Meta mis à jour.');
+            }
+
+            if ($action === 'meta_event_delete') {
+                $request->validate(['meta_event_id' => 'required|integer']);
+                \App\Models\MetaEvent::query()->whereKey((int) $request->input('meta_event_id'))->delete();
+                return redirect()->route('admin.settings')->with('success', 'Événement Meta supprimé.');
+            }
+
+            if ($action === 'meta_trigger_create') {
+                $request->validate([
+                    'meta_event_id' => 'nullable|integer|exists:meta_events,id',
+                    'event_name' => 'required_without:meta_event_id|string|max:64',
+                    'trigger_type' => 'required|string|in:page_load,click,form_submit',
+                    'trigger_priority' => 'nullable|integer|min:-1000|max:1000',
+                    'css_selector' => 'nullable|string|max:255',
+                    'match_route_name' => 'nullable|string|max:255',
+                    'match_path_pattern' => 'nullable|string|max:255',
+                ]);
+
+                $triggerType = $request->input('trigger_type');
+                if (in_array($triggerType, ['click', 'form_submit'], true) && !$request->filled('css_selector')) {
+                    return redirect()->route('admin.settings')->with('error', 'Le sélecteur CSS est obligatoire pour click/form_submit.');
+                }
+
+                $metaEventId = $request->input('meta_event_id');
+                if (!$metaEventId) {
+                    $eventName = $normalizeEventName($request->input('event_name'));
+                    if ($eventName === '') {
+                        return redirect()->route('admin.settings')->with('error', 'Veuillez sélectionner un événement.');
+                    }
+
+                    // Triggers: uniquement des événements existants en BDD (créés via section "Événements")
+                    $existing = \App\Models\MetaEvent::query()->where('event_name', $eventName)->first();
+                    if (!$existing) {
+                        return redirect()->route('admin.settings')->with('error', "Événement inconnu. Créez d'abord l'événement dans la section “Événements”, puis sélectionnez-le.");
+                    }
+                    $metaEventId = $existing->id;
+                }
+
+                \App\Models\MetaEventTrigger::create([
+                    'meta_event_id' => (int) $metaEventId,
+                    'trigger_type' => $triggerType,
+                    'priority' => (int) $request->input('trigger_priority', 0),
+                    'match_route_name' => $request->input('match_route_name'),
+                    'match_path_pattern' => $request->input('match_path_pattern'),
+                    'css_selector' => $request->input('css_selector'),
+                    'country_codes' => $parseCsv((string) $request->input('trigger_country_codes')),
+                    'funnel_keys' => $parseCsv((string) $request->input('trigger_funnel_keys')),
+                    'pixel_ids' => $parseCsv((string) $request->input('trigger_pixel_ids')),
+                    'payload' => $parseJson((string) $request->input('trigger_payload')) ?? [],
+                    'is_active' => $request->input('trigger_is_active') === 'on',
+                    'once_per_page' => $request->input('once_per_page') === 'on',
+                ]);
+
+                return redirect()->route('admin.settings')->with('success', 'Trigger Meta ajouté.');
+            }
+
+            if ($action === 'meta_trigger_update') {
+                $request->validate([
+                    'meta_trigger_id' => 'required|integer|exists:meta_event_triggers,id',
+                    'meta_event_id' => 'nullable|integer|exists:meta_events,id',
+                    'event_name' => 'required_without:meta_event_id|string|max:64',
+                    'trigger_type' => 'required|string|in:page_load,click,form_submit',
+                    'trigger_priority' => 'nullable|integer|min:-1000|max:1000',
+                    'css_selector' => 'nullable|string|max:255',
+                    'match_route_name' => 'nullable|string|max:255',
+                    'match_path_pattern' => 'nullable|string|max:255',
+                ]);
+
+                $triggerType = $request->input('trigger_type');
+                if (in_array($triggerType, ['click', 'form_submit'], true) && !$request->filled('css_selector')) {
+                    return redirect()->route('admin.settings')->with('error', 'Le sélecteur CSS est obligatoire pour click/form_submit.');
+                }
+
+                $trigger = \App\Models\MetaEventTrigger::query()->findOrFail((int) $request->input('meta_trigger_id'));
+
+                $metaEventId = $request->input('meta_event_id');
+                if (!$metaEventId) {
+                    $eventName = $normalizeEventName($request->input('event_name'));
+                    if ($eventName === '') {
+                        return redirect()->route('admin.settings')->with('error', 'Veuillez sélectionner un événement.');
+                    }
+
+                    $existing = \App\Models\MetaEvent::query()->where('event_name', $eventName)->first();
+                    if (!$existing) {
+                        return redirect()->route('admin.settings')->with('error', "Événement inconnu. Créez d'abord l'événement dans la section “Événements”, puis sélectionnez-le.");
+                    }
+                    $metaEventId = $existing->id;
+                }
+
+                $trigger->fill([
+                    'meta_event_id' => (int) $metaEventId,
+                    'trigger_type' => $triggerType,
+                    'priority' => (int) $request->input('trigger_priority', 0),
+                    'match_route_name' => $request->input('match_route_name'),
+                    'match_path_pattern' => $request->input('match_path_pattern'),
+                    'css_selector' => $request->input('css_selector'),
+                    'country_codes' => $parseCsv((string) $request->input('trigger_country_codes')),
+                    'funnel_keys' => $parseCsv((string) $request->input('trigger_funnel_keys')),
+                    'pixel_ids' => $parseCsv((string) $request->input('trigger_pixel_ids')),
+                    'payload' => $parseJson((string) $request->input('trigger_payload')) ?? [],
+                    'is_active' => $request->input('trigger_is_active') === 'on',
+                    'once_per_page' => $request->input('once_per_page') === 'on',
+                ]);
+                $trigger->save();
+
+                return redirect()->route('admin.settings')->with('success', 'Trigger Meta mis à jour.');
+            }
+
+            if ($action === 'meta_trigger_delete') {
+                $request->validate(['meta_trigger_id' => 'required|integer']);
+                \App\Models\MetaEventTrigger::query()->whereKey((int) $request->input('meta_trigger_id'))->delete();
+                return redirect()->route('admin.settings')->with('success', 'Trigger Meta supprimé.');
+            }
+
+            return redirect()->route('admin.settings')->with('error', 'Action Meta inconnue.');
+        }
+
         $request->validate([
             'base_currency' => 'required|string|size:3|uppercase',
             'external_provider_commission_percentage' => 'nullable|numeric|min:0|max:100',

@@ -31,6 +31,29 @@
     
     <!-- Custom CSS -->
     <style>
+        :root {
+            --herime-blue: #003366;
+            --herime-blue-hover: #002147;
+        }
+
+        .btn-whatsapp-herime {
+            background: var(--herime-blue) !important;
+            border-color: var(--herime-blue) !important;
+            color: #ffffff !important;
+        }
+
+        .btn-whatsapp-herime:hover,
+        .btn-whatsapp-herime:focus {
+            background: var(--herime-blue-hover) !important;
+            border-color: var(--herime-blue-hover) !important;
+            color: #ffffff !important;
+        }
+
+        .btn-whatsapp-herime:active {
+            background: var(--herime-blue-hover) !important;
+            border-color: var(--herime-blue-hover) !important;
+        }
+
         /* Prévenir le débordement horizontal global */
         html {
             overflow-x: hidden;
@@ -3507,6 +3530,9 @@
     
     <!-- Vite Assets -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- Meta (Facebook) Pixel + Events (dynamique via BDD) --}}
+    @include('partials.meta-tracking')
     </head>
 <body>
     @php

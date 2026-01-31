@@ -10,6 +10,7 @@ use App\Models\CartItem;
 use App\Models\AmbassadorPromoCode;
 use App\Models\Ambassador;
 use App\Models\AmbassadorCommission;
+use App\Models\SentEmail;
 use App\Models\Setting;
 use App\Mail\InvoiceMail;
 use App\Mail\PaymentFailedMail;
@@ -1971,16 +1972,33 @@ class MonerooController extends Controller
                 return;
             }
 
+            // Déduplication fiable (évite double envoi webhook + redirection):
+            // si le mail PaymentReceivedMail a déjà été envoyé et enregistré pour cette commande, on ne le renvoie pas.
+            $paymentAlreadySent = SentEmail::query()
+                ->where('recipient_email', $user->email)
+                ->where('metadata->mail_class', \App\Mail\PaymentReceivedMail::class)
+                ->where('metadata->order_id', $order->id)
+                ->where('status', 'sent')
+                ->exists();
+
             // Envoyer l'email et WhatsApp en parallèle
             try {
-                $mailable = new \App\Mail\PaymentReceivedMail($order);
-                $communicationService = app(\App\Services\CommunicationService::class);
-                $communicationService->sendEmailAndWhatsApp($user, $mailable);
-                \Log::info("Email et WhatsApp PaymentReceivedMail envoyés pour la commande {$order->order_number}", [
-                    'order_id' => $order->id,
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                ]);
+                if (!$paymentAlreadySent) {
+                    $mailable = new \App\Mail\PaymentReceivedMail($order);
+                    $communicationService = app(\App\Services\CommunicationService::class);
+                    $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                    \Log::info("Email et WhatsApp PaymentReceivedMail envoyés pour la commande {$order->order_number}", [
+                        'order_id' => $order->id,
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                    ]);
+                } else {
+                    \Log::info("PaymentReceivedMail déjà envoyé (déduplication) pour la commande {$order->order_number}", [
+                        'order_id' => $order->id,
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                    ]);
+                }
             } catch (\Exception $emailException) {
                 \Log::error("Erreur lors de l'envoi de l'email PaymentReceivedMail", [
                     'order_id' => $order->id,
@@ -2012,16 +2030,41 @@ class MonerooController extends Controller
                 // Ne pas relancer l'exception pour ne pas bloquer le processus
             }
 
+            // Notifier les admins / super_user (email + notification in-app)
+            try {
+                app(\App\Services\AdminPaymentNotifier::class)->notify($order);
+            } catch (\Throwable $e) {
+                \Log::error("Erreur lors de la notification admin (paiement confirmé)", [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             // Envoyer la facture par email et WhatsApp
             try {
-                $mailable = new InvoiceMail($order);
-                $communicationService = app(\App\Services\CommunicationService::class);
-                $communicationService->sendEmailAndWhatsApp($user, $mailable);
-                \Log::info("Email et WhatsApp InvoiceMail envoyés pour la commande {$order->order_number}", [
-                    'order_id' => $order->id,
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                ]);
+                $invoiceAlreadySent = SentEmail::query()
+                    ->where('recipient_email', $user->email)
+                    ->where('metadata->mail_class', \App\Mail\InvoiceMail::class)
+                    ->where('metadata->order_id', $order->id)
+                    ->where('status', 'sent')
+                    ->exists();
+
+                if (!$invoiceAlreadySent) {
+                    $mailable = new InvoiceMail($order);
+                    $communicationService = app(\App\Services\CommunicationService::class);
+                    $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                    \Log::info("Email et WhatsApp InvoiceMail envoyés pour la commande {$order->order_number}", [
+                        'order_id' => $order->id,
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                    ]);
+                } else {
+                    \Log::info("InvoiceMail déjà envoyé (déduplication) pour la commande {$order->order_number}", [
+                        'order_id' => $order->id,
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                    ]);
+                }
             } catch (\Exception $invoiceException) {
                 \Log::error("Erreur lors de l'envoi de l'email InvoiceMail", [
                     'order_id' => $order->id,

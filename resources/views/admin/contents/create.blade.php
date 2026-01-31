@@ -338,6 +338,27 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="is_in_person_program" name="is_in_person_program" value="1"
+                                           {{ old('is_in_person_program') ? 'checked' : '' }}
+                                           onchange="toggleInPersonFields()">
+                                    <label class="form-check-label" for="is_in_person_program">
+                                        <strong>Programme en présentiel</strong>
+                                    </label>
+                                </div>
+                                <div class="mt-2" id="in-person-fields" style="display: {{ old('is_in_person_program') ? 'block' : 'none' }};">
+                                    <label for="whatsapp_number" class="form-label fw-bold mb-1">Numéro WhatsApp <span class="text-danger">*</span></label>
+                                    <input type="text"
+                                           class="form-control @error('whatsapp_number') is-invalid @enderror"
+                                           id="whatsapp_number"
+                                           name="whatsapp_number"
+                                           value="{{ old('whatsapp_number') }}"
+                                           placeholder="+243 000 000 000">
+                                    <small class="text-muted d-block mt-1">Ce numéro sera utilisé pour le bouton "Contacter sur WhatsApp" sur la page de détails.</small>
+                                    @error('whatsapp_number')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="is_featured" name="is_featured" value="1" 
                                            {{ old('is_featured') ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_featured">
@@ -1346,6 +1367,31 @@ function toggleDownloadFileFields() {
         }
     }
 }
+
+// Gestion des champs "Programme en présentiel"
+function toggleInPersonFields() {
+    const checkbox = document.getElementById('is_in_person_program');
+    const fields = document.getElementById('in-person-fields');
+    const whatsappField = document.getElementById('whatsapp_number');
+
+    if (!checkbox || !fields) return;
+
+    if (checkbox.checked) {
+        fields.style.display = 'block';
+        if (whatsappField) {
+            whatsappField.setAttribute('required', 'required');
+        }
+    } else {
+        fields.style.display = 'none';
+        if (whatsappField) {
+            whatsappField.removeAttribute('required');
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    toggleInPersonFields();
+});
 
 // Gestion des champs de paiement externe
 function toggleExternalPaymentFields() {

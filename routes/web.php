@@ -9,7 +9,6 @@ use App\Http\Controllers\ProviderApplicationController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\BannerController;
-// use App\Http\Controllers\PaymentController; // désactivé
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\BlogController;
@@ -26,6 +25,7 @@ use App\Http\Controllers\TemporaryUploadController;
 use App\Http\Controllers\Auth\SSOController;
 use App\Http\Controllers\SSOCallbackController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\MetaCapiController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -44,6 +44,9 @@ Route::get('/contact', function() {
 })->name('contact');
 
 Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
+
+// Meta Conversions API (CAPI) endpoint (same-origin, CSRF protected)
+Route::post('/meta/capi', [MetaCapiController::class, 'handle'])->name('meta.capi');
 
 // Legal pages
 Route::get('/conditions-generales-de-vente', function() {
@@ -721,13 +724,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/earnings', [AffiliateController::class, 'earnings'])->name('earnings');
     });
 
-    // Payment routes (désactivées - nous utilisons uniquement Moneroo)
-    // Route::prefix('payments')->name('payments.')->group(function () {
-    //     Route::post('/process', [PaymentController::class, 'process'])->name('process');
-    //     Route::get('/success', [PaymentController::class, 'success'])->name('success');
-    //     Route::get('/cancel', [PaymentController::class, 'cancel'])->name('cancel');
-    //     Route::post('/webhook/stripe', [PaymentController::class, 'webhook'])->name('webhook.stripe');
-    // });
+    // Paiements: routes Stripe/PayPal/etc supprimées. Nous utilisons uniquement Moneroo.
 
     // YouTube video access routes - avec validation SSO
     Route::prefix('video')->name('video.')->group(function () {

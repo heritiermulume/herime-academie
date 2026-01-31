@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Notifications\CourseEnrolled;
+use App\Models\SentEmail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 
@@ -155,10 +156,30 @@ class Enrollment extends Model
                     return;
                 }
 
-                // Envoyer l'email et WhatsApp en parallèle
-                $mailable = new \App\Mail\CourseEnrolledMail($course);
-                $communicationService = app(\App\Services\CommunicationService::class);
-                $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                // Déduplication fiable: ne pas renvoyer si déjà envoyé et enregistré pour ce contenu
+                $alreadySent = false;
+                if (!empty($user->email)) {
+                    $alreadySent = SentEmail::query()
+                        ->where('recipient_email', $user->email)
+                        ->where('metadata->mail_class', \App\Mail\CourseEnrolledMail::class)
+                        ->where('metadata->content_id', $course->id)
+                        ->where('status', 'sent')
+                        ->exists();
+                }
+
+                if (!$alreadySent) {
+                    // Envoyer l'email et WhatsApp en parallèle
+                    $mailable = new \App\Mail\CourseEnrolledMail($course);
+                    $communicationService = app(\App\Services\CommunicationService::class);
+                    $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                } else {
+                    \Log::info("CourseEnrolledMail déjà envoyé (déduplication)", [
+                        'enrollment_id' => $this->id,
+                        'content_id' => $course->id,
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                    ]);
+                }
                 
                 \Log::info("Email CourseEnrolledMail envoyé avec succès à {$user->email} pour le cours {$course->id}", [
                     'enrollment_id' => $this->id,

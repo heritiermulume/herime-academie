@@ -30,36 +30,15 @@ return [
     */
 
     'methods' => [
-        'stripe' => [
-            'enabled' => env('STRIPE_ENABLED', true),
-            'name' => 'Stripe',
-            'description' => 'Paiement par carte bancaire',
-            'icon' => 'fab fa-cc-stripe',
+        // Nous utilisons uniquement Moneroo
+        'moneroo' => [
+            'enabled' => true,
+            'name' => 'Moneroo',
+            'description' => 'Paiement via Moneroo',
+            'icon' => 'fas fa-credit-card',
             'fees' => [
-                'percentage' => 2.9,
-                'fixed' => 0.30,
-            ],
-        ],
-        
-        'paypal' => [
-            'enabled' => env('PAYPAL_ENABLED', true),
-            'name' => 'PayPal',
-            'description' => 'Paiement via PayPal',
-            'icon' => 'fab fa-paypal',
-            'fees' => [
-                'percentage' => 3.4,
-                'fixed' => 0.35,
-            ],
-        ],
-        
-        'mobile_money' => [
-            'enabled' => env('MOBILE_MONEY_ENABLED', true),
-            'name' => 'Mobile Money',
-            'description' => 'Paiement via Mobile Money',
-            'icon' => 'fas fa-mobile-alt',
-            'fees' => [
-                'percentage' => 2.5,
-                'fixed' => 0.25,
+                'percentage' => 0.0,
+                'fixed' => 0.0,
             ],
         ],
     ],
@@ -111,23 +90,7 @@ return [
     */
 
     'webhooks' => [
-        'stripe' => [
-            'endpoint' => '/payments/webhook/stripe',
-            'events' => [
-                'payment_intent.succeeded',
-                'payment_intent.payment_failed',
-                'payment_intent.canceled',
-            ],
-        ],
-        
-        'paypal' => [
-            'endpoint' => '/payments/webhook/paypal',
-            'events' => [
-                'PAYMENT.SALE.COMPLETED',
-                'PAYMENT.SALE.DENIED',
-                'PAYMENT.SALE.REFUNDED',
-            ],
-        ],
+        // Le webhook Moneroo est géré via /moneroo/webhook (voir routes/web.php et MonerooController)
     ],
 
     /*

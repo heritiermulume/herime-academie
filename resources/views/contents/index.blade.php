@@ -988,6 +988,13 @@ let filterPanel;
 function createCourseElement(course) {
     const div = document.createElement('div');
     div.className = 'col-lg-4 col-md-6 course-item';
+
+    const whatsappUrl = (() => {
+        if (!course || !course.is_in_person_program) return null;
+        const raw = String(course.whatsapp_number || '');
+        const digits = raw.replace(/\D+/g, '');
+        return digits ? `https://wa.me/${digits}` : null;
+    })();
     
     const hasActiveSale = Boolean(course.is_sale_active) && course.active_sale_price !== null;
     const hasCountdown = hasActiveSale && course.sale_end_at;
@@ -1069,11 +1076,18 @@ function createCourseElement(course) {
                     
                     <div class="card-actions">
                         <div class="course-button-container" data-course-id="${course.id}" data-course-free="${course.is_free}">
+                            ${whatsappUrl ? `
+                                <a href="${whatsappUrl}" target="_blank" rel="noopener noreferrer" data-meta-trigger="whatsapp" class="btn btn-whatsapp-herime btn-sm w-100 mb-2" onclick="event.stopPropagation();">
+                                    <i class="fab fa-whatsapp me-1"></i>Contacter sur WhatsApp
+                                </a>
+                            ` : ''}
                             ${!course.is_free ? `
-                                <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" onclick="addToCart(${course.id})">
-                                    <i class="fas fa-shopping-cart me-1"></i>Ajouter au panier
-                                </button>
-                                <button type="button" class="btn btn-success btn-sm w-100" onclick="proceedToCheckout(${course.id})">
+                                ${!whatsappUrl ? `
+                                    <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-meta-trigger="add_to_cart" onclick="addToCart(${course.id})">
+                                        <i class="fas fa-shopping-cart me-1"></i>Ajouter au panier
+                                    </button>
+                                ` : ''}
+                                <button type="button" class="btn btn-success btn-sm w-100" data-meta-trigger="checkout" onclick="proceedToCheckout(${course.id})">
                                     <i class="fas fa-credit-card me-1"></i>Procéder au paiement
                                 </button>
                             ` : ''}

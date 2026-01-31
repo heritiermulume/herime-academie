@@ -11,6 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Idempotent guard: some environments may already have this table
+        // (e.g. created manually or via an older migration history).
+        if (Schema::hasTable('course_downloads')) {
+            return;
+        }
+
         Schema::create('course_downloads', function (Blueprint $table) {
             $table->id();
             $table->foreignId('content_id')->constrained()->onDelete('cascade');

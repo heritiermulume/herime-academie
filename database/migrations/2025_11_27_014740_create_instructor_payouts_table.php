@@ -11,11 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('instructor_payouts', function (Blueprint $table) {
+        // After the "instructor -> provider" rename, the canonical table is provider_payouts.
+        // Make this migration compatible with environments where rename already ran.
+        if (Schema::hasTable('provider_payouts') || Schema::hasTable('instructor_payouts')) {
+            return;
+        }
+
+        Schema::create('provider_payouts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('instructor_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('provider_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
-            $table->foreignId('content_id')->constrained('courses')->onDelete('cascade');
+            $table->foreignId('content_id')->constrained('contents')->onDelete('cascade');
             $table->string('payout_id')->unique(); // ID unique pour Moneroo
             $table->decimal('amount', 10, 2); // Montant à payer au formateur
             $table->decimal('commission_percentage', 5, 2); // Pourcentage de commission retenu
@@ -31,7 +37,7 @@ return new class extends Migration
             $table->timestamp('processed_at')->nullable();
             $table->timestamps();
             
-            $table->index(['instructor_id', 'status']);
+            $table->index(['provider_id', 'status']);
             $table->index(['order_id']);
             $table->index(['payout_id']);
         });
@@ -42,6 +48,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('provider_payouts');
         Schema::dropIfExists('instructor_payouts');
     }
 };

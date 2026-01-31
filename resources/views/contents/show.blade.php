@@ -6,6 +6,43 @@
 @push('styles')
 <style>
 :root {
+    --herime-blue: #003366;
+    --herime-blue-hover: #002147;
+}
+
+.btn-whatsapp-herime {
+    background: var(--herime-blue) !important;
+    border-color: var(--herime-blue) !important;
+    color: #ffffff !important;
+}
+
+.btn-whatsapp-herime:hover,
+.btn-whatsapp-herime:focus {
+    background: var(--herime-blue-hover) !important;
+    border-color: var(--herime-blue-hover) !important;
+    color: #ffffff !important;
+}
+
+.btn-whatsapp-herime:active {
+    background: var(--herime-blue-hover) !important;
+    border-color: var(--herime-blue-hover) !important;
+}
+
+/* Mobile price slider WhatsApp button */
+.mobile-price-slider__btn--whatsapp {
+    background: var(--herime-blue) !important;
+    border-color: var(--herime-blue) !important;
+    color: #ffffff !important;
+}
+
+.mobile-price-slider__btn--whatsapp:hover,
+.mobile-price-slider__btn--whatsapp:focus {
+    background: var(--herime-blue-hover) !important;
+    border-color: var(--herime-blue-hover) !important;
+    color: #ffffff !important;
+}
+
+:root {
     --primary-color: #003366;
     --accent-color: #ffcc33;
     --secondary-color: #f8f9fa;
@@ -3702,7 +3739,7 @@ button.mobile-price-slider__btn--download i,
                     }
                     $hasUserReview = $userReview !== null;
                 @endphp
-                @if($user && ($canReview ?? false))
+                @if($user && (($canReview ?? false) || ($course->is_in_person_program ?? false)))
                 <div class="content-card">
                     <h2 class="section-title-modern">
                         <i class="fas fa-star"></i>
@@ -4017,6 +4054,12 @@ button.mobile-price-slider__btn--download i,
 
                         @if(!$user)
                             <div class="d-grid gap-2">
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                       class="btn btn-whatsapp-herime btn-lg w-100">
+                                        <i class="fab fa-whatsapp me-2"></i>Contacter sur WhatsApp
+                                    </a>
+                                @endif
                                 @php
                                     $finalLoginCourse = url()->full();
                                     $callbackLoginCourse = route('sso.callback', ['redirect' => $finalLoginCourse]);
@@ -4036,6 +4079,12 @@ button.mobile-price-slider__btn--download i,
                             </div>
                         @else
                             <div class="d-grid gap-2">
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                       class="btn btn-whatsapp-herime btn-lg w-100">
+                                        <i class="fab fa-whatsapp me-2"></i>Contacter sur WhatsApp
+                                    </a>
+                                @endif
                                 @if($course->is_free)
                                     {{-- Contenu gratuit --}}
                                     @if($isEnrolled)
@@ -4130,9 +4179,11 @@ button.mobile-price-slider__btn--download i,
                                     @else
                                         {{-- Utilisateur n'a pas encore acheté --}}
                                         @if($course->is_sale_enabled ?? true)
-                                            <button type="button" class="btn btn-outline-primary btn-lg w-100" onclick="addToCart({{ $course->id }})">
-                                                <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
-                                            </button>
+                                            @if(!($course->is_in_person_program ?? false))
+                                                <button type="button" class="btn btn-outline-primary btn-lg w-100" onclick="addToCart({{ $course->id }})">
+                                                    <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
+                                                </button>
+                                            @endif
                                             <button type="button" class="btn btn-success btn-lg w-100" onclick="proceedToCheckout({{ $course->id }})">
                                                 <i class="fas fa-credit-card me-2"></i>Procéder au paiement
                                             </button>
@@ -4253,59 +4304,139 @@ button.mobile-price-slider__btn--download i,
                     $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
                     $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
                 @endphp
-                <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
-                    <i class="fas fa-sign-in-alt"></i>
-                    <span>Se connecter</span>
-                </a>
+                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                       class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
+                    </a>
+                @else
+                    <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Se connecter</span>
+                    </a>
+                @endif
             @else
                 @if($course->is_free)
                     {{-- Contenu gratuit --}}
                     @if($isEnrolled)
                         {{-- Utilisateur inscrit au cours gratuit --}}
                         @if($course->is_downloadable && $canDownloadCourse)
-                            <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
-                                <i class="fas fa-download"></i>
-                                <span>Télécharger</span>
-                            </a>
+                            @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                <div class="mobile-price-slider__btn-group">
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                       class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                        <i class="fab fa-whatsapp"></i>
+                                        <span>WhatsApp</span>
+                                    </a>
+                                    <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
+                                        <i class="fas fa-download"></i>
+                                        <span>Télécharger</span>
+                                    </a>
+                                </div>
+                            @else
+                                <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
+                                    <i class="fas fa-download"></i>
+                                    <span>Télécharger</span>
+                                </a>
+                            @endif
                         @else
                             @php
                                 $progress = $enrollment->progress ?? 0;
                             @endphp
-                            <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success mobile-price-slider__btn--medium">
-                                <i class="fas fa-play"></i>
-                                <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
-                            </a>
+                            @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                <div class="mobile-price-slider__btn-group">
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                       class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                        <i class="fab fa-whatsapp"></i>
+                                        <span>WhatsApp</span>
+                                    </a>
+                                    <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success mobile-price-slider__btn--medium">
+                                        <i class="fas fa-play"></i>
+                                        <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
+                                    </a>
+                                </div>
+                            @else
+                                <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success mobile-price-slider__btn--medium">
+                                    <i class="fas fa-play"></i>
+                                    <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
+                                </a>
+                            @endif
                         @endif
                     @else
                         {{-- Utilisateur pas encore inscrit au cours gratuit --}}
                         @if($course->is_downloadable)
                             {{-- Pour les contenus téléchargeables gratuits : d'abord \"Intéresser\" (inscription), puis \"Télécharger\" une fois inscrit --}}
                             @if($course->is_sale_enabled ?? true)
-                                <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
-                                    @csrf
-                                    <input type="hidden" name="redirect_to" value="course">
-                                    <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
-                                        <i class="fas fa-user-plus"></i>
-                                        <span>Intéresser</span>
-                                    </button>
-                                </form>
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <div class="mobile-price-slider__btn-group">
+                                        <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                           class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                            <i class="fab fa-whatsapp"></i>
+                                            <span>WhatsApp</span>
+                                        </a>
+                                        <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                            @csrf
+                                            <input type="hidden" name="redirect_to" value="course">
+                                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                                <i class="fas fa-user-plus"></i>
+                                                <span>Intéresser</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @else
+                                    <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                        @csrf
+                                        <input type="hidden" name="redirect_to" value="course">
+                                        <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                            <i class="fas fa-user-plus"></i>
+                                            <span>Intéresser</span>
+                                        </button>
+                                    </form>
+                                @endif
                             @endif
                         @else
                             {{-- Pour les cours non téléchargeables, inscription normale --}}
                             @if($course->is_sale_enabled ?? true)
-                                <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
-                                    @csrf
-                                    <input type="hidden" name="redirect_to" value="learn">
-                                    <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
-                                        <i class="fas fa-user-plus"></i>
-                                        <span>S'inscrire</span>
-                                    </button>
-                                </form>
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <div class="mobile-price-slider__btn-group">
+                                        <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                           class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                            <i class="fab fa-whatsapp"></i>
+                                            <span>WhatsApp</span>
+                                        </a>
+                                        <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                            @csrf
+                                            <input type="hidden" name="redirect_to" value="learn">
+                                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                                <i class="fas fa-user-plus"></i>
+                                                <span>S'inscrire</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @else
+                                    <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                        @csrf
+                                        <input type="hidden" name="redirect_to" value="learn">
+                                        <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                            <i class="fas fa-user-plus"></i>
+                                            <span>S'inscrire</span>
+                                        </button>
+                                    </form>
+                                @endif
                             @else
-                                <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
-                                    <i class="fas fa-ban"></i>
-                                    <span>Indisponible</span>
-                                </button>
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                       class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                        <i class="fab fa-whatsapp"></i>
+                                        <span>WhatsApp</span>
+                                    </a>
+                                @else
+                                    <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
+                                        <i class="fas fa-ban"></i>
+                                        <span>Indisponible</span>
+                                    </button>
+                                @endif
                             @endif
                         @endif
                     @endif
@@ -4314,45 +4445,119 @@ button.mobile-price-slider__btn--download i,
                     @if($isEnrolled)
                         {{-- Utilisateur inscrit au cours payant --}}
                         @if($course->is_downloadable && $canDownloadCourse)
-                            <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
-                                <i class="fas fa-download"></i>
-                                <span>Télécharger</span>
-                            </a>
+                            @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                <div class="mobile-price-slider__btn-group">
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                       class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                        <i class="fab fa-whatsapp"></i>
+                                        <span>WhatsApp</span>
+                                    </a>
+                                    <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
+                                        <i class="fas fa-download"></i>
+                                        <span>Télécharger</span>
+                                    </a>
+                                </div>
+                            @else
+                                <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
+                                    <i class="fas fa-download"></i>
+                                    <span>Télécharger</span>
+                                </a>
+                            @endif
                         @else
                             @php
                                 $progress = $enrollment->progress ?? 0;
                             @endphp
-                            <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success mobile-price-slider__btn--medium">
-                                <i class="fas fa-play"></i>
-                                <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
-                            </a>
+                            @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                <div class="mobile-price-slider__btn-group">
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                       class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                        <i class="fab fa-whatsapp"></i>
+                                        <span>WhatsApp</span>
+                                    </a>
+                                    <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success mobile-price-slider__btn--medium">
+                                        <i class="fas fa-play"></i>
+                                        <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
+                                    </a>
+                                </div>
+                            @else
+                                <a href="{{ route('learning.course', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--success mobile-price-slider__btn--medium">
+                                    <i class="fas fa-play"></i>
+                                    <span>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}</span>
+                                </a>
+                            @endif
                         @endif
                     @elseif($hasPurchased)
                         {{-- Utilisateur a acheté --}}
                         @if($course->is_downloadable)
                             {{-- Pour les produits téléchargeables, accès direct au téléchargement après paiement --}}
                             @if($canDownloadCourse)
-                                <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
-                                    <i class="fas fa-download"></i>
-                                    <span>Télécharger</span>
-                                </a>
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <div class="mobile-price-slider__btn-group">
+                                        <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                           class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                            <i class="fab fa-whatsapp"></i>
+                                            <span>WhatsApp</span>
+                                        </a>
+                                        <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
+                                            <i class="fas fa-download"></i>
+                                            <span>Télécharger</span>
+                                        </a>
+                                    </div>
+                                @else
+                                    <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
+                                        <i class="fas fa-download"></i>
+                                        <span>Télécharger</span>
+                                    </a>
+                                @endif
                             @else
-                                <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
-                                    <i class="fas fa-ban"></i>
-                                    <span>Indisponible</span>
-                                </button>
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <div class="mobile-price-slider__btn-group">
+                                        <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                           class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                            <i class="fab fa-whatsapp"></i>
+                                            <span>WhatsApp</span>
+                                        </a>
+                                        <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
+                                            <i class="fas fa-ban"></i>
+                                            <span>Indisponible</span>
+                                        </button>
+                                    </div>
+                                @else
+                                    <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
+                                        <i class="fas fa-ban"></i>
+                                        <span>Indisponible</span>
+                                    </button>
+                                @endif
                             @endif
                         @else
                             {{-- Pour les cours non téléchargeables, proposer l'inscription --}}
                             @if($course->is_sale_enabled ?? true)
-                                <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
-                                    @csrf
-                                    <input type="hidden" name="redirect_to" value="learn">
-                                    <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
-                                        <i class="fas fa-user-plus"></i>
-                                        <span>S'inscrire</span>
-                                    </button>
-                                </form>
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <div class="mobile-price-slider__btn-group">
+                                        <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                           class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                            <i class="fab fa-whatsapp"></i>
+                                            <span>WhatsApp</span>
+                                        </a>
+                                        <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                            @csrf
+                                            <input type="hidden" name="redirect_to" value="learn">
+                                            <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                                <i class="fas fa-user-plus"></i>
+                                                <span>S'inscrire</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @else
+                                    <form action="{{ route('customer.contents.enroll', $course->slug) }}" method="POST" class="mobile-price-slider__form">
+                                        @csrf
+                                        <input type="hidden" name="redirect_to" value="learn">
+                                        <button type="submit" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--medium">
+                                            <i class="fas fa-user-plus"></i>
+                                            <span>S'inscrire</span>
+                                        </button>
+                                    </form>
+                                @endif
                             @else
                                 <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
                                     <i class="fas fa-ban"></i>
@@ -4364,20 +4569,36 @@ button.mobile-price-slider__btn--download i,
                         {{-- Utilisateur n'a pas encore acheté --}}
                         @if($course->is_sale_enabled ?? true)
                             <div class="mobile-price-slider__btn-group">
-                                <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--outline" onclick="addToCart({{ $course->id }})">
-                                    <i class="fas fa-shopping-cart"></i>
-                                    <span>Panier</span>
-                                </button>
+                                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                       class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                        <i class="fab fa-whatsapp"></i>
+                                        <span>WhatsApp</span>
+                                    </a>
+                                @else
+                                    <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--outline" onclick="addToCart({{ $course->id }})">
+                                        <i class="fas fa-shopping-cart"></i>
+                                        <span>Panier</span>
+                                    </button>
+                                @endif
                                 <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--success" onclick="proceedToCheckout({{ $course->id }})">
                                     <i class="fas fa-credit-card"></i>
                                     <span>Payer</span>
                                 </button>
                             </div>
                         @else
-                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
-                                <i class="fas fa-ban"></i>
-                                <span>Indisponible</span>
-                            </button>
+                            @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                                <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                                   class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
+                                    <i class="fab fa-whatsapp"></i>
+                                    <span>WhatsApp</span>
+                                </a>
+                            @else
+                                <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--secondary" disabled>
+                                    <i class="fas fa-ban"></i>
+                                    <span>Indisponible</span>
+                                </button>
+                            @endif
                         @endif
                     @endif
                 @endif

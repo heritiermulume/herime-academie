@@ -11,7 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('courses', function (Blueprint $table) {
+        $tableName = Schema::hasTable('contents') ? 'contents' : (Schema::hasTable('courses') ? 'courses' : null);
+        if (!$tableName) {
+            return;
+        }
+        if (Schema::hasColumn($tableName, 'sale_start_at')) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) {
             $table->timestamp('sale_start_at')->nullable()->after('sale_price');
         });
     }
@@ -21,7 +29,15 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('courses', function (Blueprint $table) {
+        $tableName = Schema::hasTable('contents') ? 'contents' : (Schema::hasTable('courses') ? 'courses' : null);
+        if (!$tableName) {
+            return;
+        }
+        if (!Schema::hasColumn($tableName, 'sale_start_at')) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) {
             $table->dropColumn('sale_start_at');
         });
     }

@@ -28,7 +28,10 @@ class ReviewController extends Controller
         $canReview = false;
         $errorMessage = '';
 
-        if ($course->is_downloadable) {
+        // Programme en présentiel : pas de restriction (pas besoin d'achat/inscription)
+        if ($course->is_in_person_program ?? false) {
+            $canReview = true;
+        } elseif ($course->is_downloadable) {
             // Contenu téléchargeable
             if ($course->is_free) {
                 // Téléchargeable gratuit : avoir téléchargé au moins une fois

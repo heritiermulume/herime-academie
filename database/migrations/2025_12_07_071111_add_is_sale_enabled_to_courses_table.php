@@ -11,7 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('courses', function (Blueprint $table) {
+        $tableName = Schema::hasTable('contents') ? 'contents' : (Schema::hasTable('courses') ? 'courses' : null);
+        if (!$tableName) {
+            return;
+        }
+        if (Schema::hasColumn($tableName, 'is_sale_enabled')) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) {
             $table->boolean('is_sale_enabled')->default(true)->after('is_published');
         });
     }
@@ -21,7 +29,15 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('courses', function (Blueprint $table) {
+        $tableName = Schema::hasTable('contents') ? 'contents' : (Schema::hasTable('courses') ? 'courses' : null);
+        if (!$tableName) {
+            return;
+        }
+        if (!Schema::hasColumn($tableName, 'is_sale_enabled')) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) {
             $table->dropColumn('is_sale_enabled');
         });
     }

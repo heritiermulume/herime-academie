@@ -119,6 +119,11 @@
                             @if($course->is_downloadable)
                                 <span class="badge bg-info ms-2">Téléchargeable</span>
                             @endif
+                            @if($course->is_in_person_program ?? false)
+                                <span class="badge bg-success ms-2">
+                                    <i class="fab fa-whatsapp me-1"></i>Présentiel
+                                </span>
+                            @endif
                         </dd>
 
                         <dt class="col-sm-4">Prix</dt>
@@ -514,6 +519,28 @@
 
                         <dt class="col-sm-6">Téléchargeable</dt>
                         <dd class="col-sm-6">{{ $course->is_downloadable ? 'Oui' : 'Non' }}</dd>
+
+                        <dt class="col-sm-6">Programme en présentiel</dt>
+                        <dd class="col-sm-6">
+                            @if($course->is_in_person_program ?? false)
+                                <span class="badge bg-success">Oui</span>
+                            @else
+                                <span class="badge bg-secondary">Non</span>
+                            @endif
+                        </dd>
+
+                        @if($course->is_in_person_program ?? false)
+                            <dt class="col-sm-6">Numéro WhatsApp</dt>
+                            <dd class="col-sm-6">
+                                @if($course->whatsapp_chat_url)
+                                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-success">
+                                        <i class="fab fa-whatsapp me-1"></i>{{ $course->whatsapp_number }}
+                                    </a>
+                                @else
+                                    <span class="text-muted">Non défini</span>
+                                @endif
+                            </dd>
+                        @endif
 
                         <dt class="col-sm-6">Paiement externe</dt>
                         <dd class="col-sm-6">{{ $course->use_external_payment ? 'Activé' : 'Désactivé' }}</dd>

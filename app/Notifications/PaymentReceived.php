@@ -27,7 +27,7 @@ class PaymentReceived extends Notification
      */
     public function via(object $notifiable): array
     {
-        // Ne pas utiliser 'mail' ici car l'email est envoyé directement dans PaymentController::sendPaymentConfirmation()
+        // Ne pas utiliser 'mail' ici car l'email est envoyé directement lors de la confirmation de paiement (MonerooController / autres)
         // Cela évite d'envoyer l'email deux fois
         return ['database'];
     }
@@ -62,14 +62,14 @@ class PaymentReceived extends Notification
         });
         
         if ($hasDownloadable && !$hasNonDownloadable) {
-            // Uniquement des produits digitaux / téléchargeables
-            $accessMessage = 'Vous avez maintenant accès à tous les produits digitaux que vous avez achetés. Téléchargez-les depuis votre espace personnel.';
+            // Uniquement des contenus téléchargeables
+            $accessMessage = 'Vous avez maintenant accès à tous les contenus que vous avez achetés. Téléchargez-les depuis votre espace personnel.';
         } elseif (!$hasDownloadable && $hasNonDownloadable) {
             // Uniquement des cours classiques
             $accessMessage = 'Vous avez maintenant accès à tous les cours que vous avez achetés. Commencez votre apprentissage dès maintenant.';
         } elseif ($hasDownloadable && $hasNonDownloadable) {
             // Panier mixte
-            $accessMessage = 'Vous avez maintenant accès à tous les cours et produits digitaux que vous avez achetés.';
+            $accessMessage = 'Vous avez maintenant accès à tous les cours et contenus que vous avez achetés.';
         } else {
             // Fallback générique
             $accessMessage = 'Vous avez maintenant accès à tous les contenus que vous avez achetés.';
@@ -110,7 +110,7 @@ class PaymentReceived extends Notification
         });
         
         if ($hasDownloadable && !$hasNonDownloadable) {
-            $actionText = 'Téléchargez vos produits digitaux maintenant.';
+            $actionText = 'Téléchargez vos contenus maintenant.';
         } elseif (!$hasDownloadable && $hasNonDownloadable) {
             $actionText = 'Commencez votre apprentissage maintenant.';
         } else {

@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('lesson_resources', function (Blueprint $table) {
+        if (Schema::hasTable('lesson_resources')) {
+            return;
+        }
+
+        $lessonTable = Schema::hasTable('content_lessons') ? 'content_lessons' : (Schema::hasTable('course_lessons') ? 'course_lessons' : 'content_lessons');
+
+        Schema::create('lesson_resources', function (Blueprint $table) use ($lessonTable) {
             $table->id();
-            $table->foreignId('lesson_id')->constrained('course_lessons')->onDelete('cascade');
+            $table->foreignId('lesson_id')->constrained($lessonTable)->onDelete('cascade');
             $table->string('title');
             $table->text('description')->nullable();
             $table->string('file_path')->nullable();
@@ -25,7 +31,7 @@ return new class extends Migration
             $table->boolean('is_downloadable')->default(true);
             $table->integer('sort_order')->default(0);
             $table->timestamps();
-            
+
             $table->index('lesson_id');
         });
     }

@@ -67,7 +67,7 @@ class CourseEnrolledMail extends Mailable
                     'Télécharger le produit immédiatement',
                     'Accéder à tous les fichiers du produit',
                     'Conserver le produit pour toujours',
-                    'Accéder à votre bibliothèque de produits digitaux',
+                    'Accéder à votre bibliothèque de contenus',
                 ];
             }
         } else {

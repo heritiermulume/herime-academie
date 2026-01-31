@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Appliquer les middlewares globalement sur les routes web
         $middleware->web(append: [
             \App\Http\Middleware\HandleUploadErrors::class,
+            // Capturer le contexte marketing (utm/funnel) et le persister
+            \App\Http\Middleware\CaptureMarketingContext::class,
             // Valider le token SSO à chaque chargement de page pour les utilisateurs authentifiés
             // DÉSACTIVÉ TEMPORAIREMENT pour éviter les boucles de redirection
             // \App\Http\Middleware\ValidateSSOOnPageLoad::class,
