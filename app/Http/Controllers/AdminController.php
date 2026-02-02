@@ -4454,6 +4454,29 @@ class AdminController extends Controller
                 return redirect()->route('admin.settings')->with('success', 'Événement Meta supprimé.');
             }
 
+            $normalizeMatchPathPattern = function (string $raw): string {
+                $v = trim($raw);
+                if ($v === '' || $v === '__all__') {
+                    return '';
+                }
+
+                // Allow pasting a full URL; store only the path part so front-end pathname matching works
+                if (preg_match('~^https?://~i', $v)) {
+                    $parts = @parse_url($v);
+                    if (is_array($parts)) {
+                        $path = isset($parts['path']) ? (string) $parts['path'] : '';
+                        $v = $path !== '' ? $path : '/';
+                    }
+                }
+
+                // Normalize to a path-like pattern (leading "/")
+                if ($v !== '' && $v !== '/' && !str_starts_with($v, '/')) {
+                    $v = '/' . $v;
+                }
+
+                return $v;
+            };
+
             if ($action === 'meta_trigger_create') {
                 $request->validate([
                     'meta_event_id' => 'nullable|integer|exists:meta_events,id',
@@ -4475,6 +4498,7 @@ class AdminController extends Controller
                 if ($matchPathPattern === '__all__') {
                     $matchPathPattern = '';
                 }
+                $matchPathPattern = $normalizeMatchPathPattern($matchPathPattern);
 
                 $metaEventId = $request->input('meta_event_id');
                 if (!$metaEventId) {
@@ -4529,6 +4553,7 @@ class AdminController extends Controller
                 if ($matchPathPattern === '__all__') {
                     $matchPathPattern = '';
                 }
+                $matchPathPattern = $normalizeMatchPathPattern($matchPathPattern);
 
                 $metaEventId = $request->input('meta_event_id');
                 if (!$metaEventId) {

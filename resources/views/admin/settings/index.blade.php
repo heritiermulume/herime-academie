@@ -391,6 +391,12 @@
                             <option value="{{ $en }}"></option>
                         @endforeach
                     </datalist>
+                    <datalist id="meta_page_path_patterns">
+                        <option value="__all__" label="— Toutes les pages —"></option>
+                        @foreach(($metaPageOptions ?? []) as $p)
+                            <option value="{{ $p['path'] }}" label="{{ $p['label'] }}"></option>
+                        @endforeach
+                    </datalist>
 
                     {{-- Global toggle --}}
                     <form method="POST" action="{{ route('admin.settings.update') }}" class="mb-4">
@@ -835,17 +841,16 @@
                                                                 <div class="row g-2 mt-2">
                                                                     <div class="col-12">
                                                                         <label class="form-label fw-semibold mb-1">Page (path pattern)</label>
-                                                                        <select name="match_path_pattern" class="form-select form-select-sm meta-page-select">
-                                                                            <option value="__all__" {{ empty($t->match_path_pattern) ? 'selected' : '' }}>— Toutes les pages —</option>
-                                                                            @foreach(($metaPageOptions ?? []) as $p)
-                                                                                <option value="{{ $p['path'] }}"
-                                                                                    {{ (trim((string)($t->match_path_pattern ?? '')) === trim((string)$p['path']) || ltrim((string)($t->match_path_pattern ?? ''), '/') === ltrim((string)$p['path'], '/')) ? 'selected' : '' }}>
-                                                                                    {{ $p['label'] }}
-                                                                                </option>
-                                                                            @endforeach
-                                                                        </select>
+                                                                        <input
+                                                                            type="text"
+                                                                            name="match_path_pattern"
+                                                                            class="form-control form-control-sm meta-page-combobox"
+                                                                            list="meta_page_path_patterns"
+                                                                            value="{{ $t->match_path_pattern ?? '' }}"
+                                                                            placeholder="Ex: /checkout/success ou https://votre-site/page"
+                                                                        >
                                                                         <div class="form-text">
-                                                                            Optionnel. Vide = toutes les pages. Pour éviter les erreurs de saisie, choisissez une page dans la liste.
+                                                                            Optionnel. Laisser vide = toutes les pages. Vous pouvez choisir une valeur de la liste ou saisir un chemin (ex: <code>/checkout/success</code>) / une URL complète.
                                                                         </div>
                                                                     </div>
                                                                     <div class="col-12 meta-trigger-type-fields meta-css-selector-field" data-show-when="click,form_submit">
@@ -976,14 +981,16 @@
                                 <div class="row g-3 mt-2">
                                     <div class="col-12">
                                         <label class="form-label fw-semibold">Page (path pattern)</label>
-                                        <select name="match_path_pattern" class="form-select meta-page-select">
-                                            <option value="__all__" selected>— Toutes les pages —</option>
-                                            @foreach(($metaPageOptions ?? []) as $p)
-                                                <option value="{{ $p['path'] }}">{{ $p['label'] }}</option>
-                                            @endforeach
-                                        </select>
+                                        <input
+                                            type="text"
+                                            name="match_path_pattern"
+                                            class="form-control meta-page-combobox"
+                                            list="meta_page_path_patterns"
+                                            value=""
+                                            placeholder="Ex: /checkout/success ou https://votre-site/page"
+                                        >
                                         <div class="form-text">
-                                            Optionnel. Vide = toutes les pages. Pour éviter les erreurs de saisie, choisissez une page dans la liste.
+                                            Optionnel. Laisser vide = toutes les pages. Vous pouvez choisir une valeur de la liste ou saisir un chemin (ex: <code>/checkout/success</code>) / une URL complète.
                                         </div>
                                     </div>
                                     <div class="col-12 meta-trigger-type-fields meta-css-selector-field" data-show-when="click,form_submit">
@@ -1412,12 +1419,6 @@
             return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
         }
 
-        function normalizePathToUrl(path) {
-            const p = String(path || '').trim();
-            if (!p || p === '/') return '/';
-            return '/' + p.replace(/^\/+/, '');
-        }
-
         function truncateText(s, maxLen) {
             const v = String(s || '').replace(/\s+/g, ' ').trim();
             if (!v) return '';
@@ -1570,13 +1571,12 @@
                 const type = typeSelect.value;
 
                 // For page_load, page selection must be explicit (including "Toutes les pages")
-                const pageSelect = form.querySelector('select.meta-page-select[name="match_path_pattern"]');
-                if (pageSelect) {
-                    pageSelect.required = (type === 'page_load');
-                    if (pageSelect.required && !String(pageSelect.value || '').trim()) {
-                        // default to explicit "all pages" option if present
-                        const hasAll = Array.from(pageSelect.options || []).some(o => o.value === '__all__');
-                        if (hasAll) pageSelect.value = '__all__';
+                const pageField = form.querySelector('[name="match_path_pattern"].meta-page-combobox');
+                if (pageField) {
+                    pageField.required = (type === 'page_load');
+                    if (pageField.required && !String(pageField.value || '').trim()) {
+                        // default to explicit "all pages"
+                        pageField.value = '__all__';
                     }
                 }
 
@@ -1666,7 +1666,7 @@
             const typeSel = form.querySelector('select.meta-trigger-type');
             const submitBtn = form.querySelector('button[type="submit"]');
 
-            const pageSel = form.querySelector('select.meta-page-select[name="match_path_pattern"]');
+            const pageSel = form.querySelector('[name="match_path_pattern"].meta-page-combobox');
             const elementSel = form.querySelector('select.meta-element-select[name="css_selector"]');
             const payloadEl = form.querySelector('textarea[name="trigger_payload"]');
             const pixelsSel = form.querySelector('select[data-csv-name="trigger_pixel_ids"]');
@@ -1737,7 +1737,7 @@
             if (!el) return;
             const form = el.closest && el.closest('form');
             if (!form) return;
-            if (el.matches('select[name="event_name"], select.meta-trigger-preset, select.meta-trigger-type, select[name="match_path_pattern"], select[name="css_selector"]')) {
+            if (el.matches('select[name="event_name"], select.meta-trigger-preset, select.meta-trigger-type, input[name="match_path_pattern"], select[name="css_selector"]')) {
                 updateSelectorVisibility(form);
                 updateMetaTriggerFormState(form);
             }
@@ -1755,7 +1755,11 @@
 
         function normalizePathToUrl(path) {
             const p = String(path || '').trim();
-            if (!p) return null;
+            if (!p || p === '__all__') return null;
+            // Accept full URL input
+            if (/^https?:\/\//i.test(p)) return p;
+            // For patterns like "/checkout/*" we can't reliably fetch
+            if (p.includes('*')) return null;
             return p.startsWith('/') ? p : '/' + p;
         }
 
@@ -1829,12 +1833,12 @@
             const type = typeSelect ? String(typeSelect.value || '') : '';
             if (type !== 'click' && type !== 'form_submit') return;
 
-            const pageSelect = form.querySelector('select[name="match_path_pattern"]');
+            const pageSelect = form.querySelector('[name="match_path_pattern"]');
             const elementSelect = form.querySelector('select.meta-element-select[name="css_selector"]');
             if (!pageSelect || !elementSelect) return;
 
             const page = String(pageSelect.value || '').trim();
-            if (!page) {
+            if (!page || page === '__all__') {
                 // Can’t scan "all pages" — keep only current value
                 const current = String(elementSelect.value || '').trim();
                 elementSelect.innerHTML = '';
@@ -1915,13 +1919,20 @@
             }
         }
 
+        function onPageFieldChanged(target) {
+            if (!target || !target.matches) return false;
+            if (!target.matches('[name="match_path_pattern"]')) return false;
+            const form = target.closest && target.closest('form');
+            if (form) scanElementsForForm(form);
+            return true;
+        }
+
+        document.addEventListener('input', function (e) {
+            if (onPageFieldChanged(e.target)) return;
+        });
+
         document.addEventListener('change', function (e) {
-            const pageSel = e.target && e.target.matches ? (e.target.matches('select[name="match_path_pattern"]') ? e.target : null) : null;
-            if (pageSel) {
-                const form = pageSel.closest('form');
-                if (form) scanElementsForForm(form);
-                return;
-            }
+            if (onPageFieldChanged(e.target)) return;
             const typeSel = e.target && e.target.matches ? (e.target.matches('select.meta-trigger-type') ? e.target : null) : null;
             if (typeSel) {
                 const form = typeSel.closest('form');
@@ -1933,7 +1944,7 @@
         try {
             document.querySelectorAll('form').forEach(form => {
                 const hasElementSelect = !!form.querySelector('select.meta-element-select[name="css_selector"]');
-                const hasPageSelect = !!form.querySelector('select[name="match_path_pattern"]');
+                const hasPageSelect = !!form.querySelector('[name="match_path_pattern"]');
                 if (hasElementSelect && hasPageSelect) {
                     scanElementsForForm(form);
                 }
