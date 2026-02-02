@@ -22,6 +22,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // SQLite (tests) ne supporte pas les statements MySQL "ALTER TABLE ... CHANGE" ni information_schema.
+        // On exécute une version compatible SQLite (rename uniquement) et on ignore la gestion avancée des FK.
+        if (DB::getDriverName() === 'sqlite') {
+            $this->sqliteUp();
+            return;
+        }
+
         // Étape 1: Supprimer toutes les contraintes de clés étrangères qui référencent les tables à renommer
         $this->dropForeignKeys();
 
@@ -111,6 +118,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            $this->sqliteDown();
+            return;
+        }
+
         // Supprimer les contraintes de clés étrangères
         $this->dropForeignKeys();
 
@@ -470,5 +482,162 @@ return new class extends Migration
     {
         // Laravel génère généralement les noms de contraintes comme : {table}_{column}_foreign
         return "{$table}_{$column}_foreign";
+    }
+
+    /**
+     * SQLite-friendly migration path (used in tests).
+     */
+    private function sqliteUp(): void
+    {
+        // users: is_external_instructor -> is_external_provider
+        if (Schema::hasTable('users') && Schema::hasColumn('users', 'is_external_instructor')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->renameColumn('is_external_instructor', 'is_external_provider');
+            });
+        }
+
+        // courses column renames before table rename
+        if (Schema::hasTable('courses')) {
+            Schema::table('courses', function (Blueprint $table) {
+                if (Schema::hasColumn('courses', 'instructor_id')) {
+                    $table->renameColumn('instructor_id', 'provider_id');
+                }
+                if (Schema::hasColumn('courses', 'students_count')) {
+                    $table->renameColumn('students_count', 'customers_count');
+                }
+                if (Schema::hasColumn('courses', 'show_students_count')) {
+                    $table->renameColumn('show_students_count', 'show_customers_count');
+                }
+            });
+        }
+
+        // course_sections / course_lessons course_id -> content_id
+        if (Schema::hasTable('course_sections') && Schema::hasColumn('course_sections', 'course_id')) {
+            Schema::table('course_sections', function (Blueprint $table) {
+                $table->renameColumn('course_id', 'content_id');
+            });
+        }
+        if (Schema::hasTable('course_lessons') && Schema::hasColumn('course_lessons', 'course_id')) {
+            Schema::table('course_lessons', function (Blueprint $table) {
+                $table->renameColumn('course_id', 'content_id');
+            });
+        }
+
+        // rename tables
+        if (Schema::hasTable('courses')) {
+            Schema::rename('courses', 'contents');
+        }
+        if (Schema::hasTable('course_sections')) {
+            Schema::rename('course_sections', 'content_sections');
+        }
+        if (Schema::hasTable('course_lessons')) {
+            Schema::rename('course_lessons', 'content_lessons');
+        }
+
+        // other tables: course_id -> content_id
+        $tablesWithCourseId = [
+            'enrollments',
+            'order_items',
+            'reviews',
+            'certificates',
+            'cart_items',
+            'lesson_progress',
+            'lesson_notes',
+            'lesson_resources',
+            'lesson_discussions',
+            'course_downloads',
+            'messages',
+            'video_access_tokens',
+        ];
+        foreach ($tablesWithCourseId as $tableName) {
+            if (Schema::hasTable($tableName) && Schema::hasColumn($tableName, 'course_id')) {
+                Schema::table($tableName, function (Blueprint $table) {
+                    $table->renameColumn('course_id', 'content_id');
+                });
+            }
+        }
+
+        // instructor_payouts -> provider_payouts (+ column renames)
+        if (Schema::hasTable('instructor_payouts')) {
+            Schema::table('instructor_payouts', function (Blueprint $table) {
+                if (Schema::hasColumn('instructor_payouts', 'instructor_id')) {
+                    $table->renameColumn('instructor_id', 'provider_id');
+                }
+                if (Schema::hasColumn('instructor_payouts', 'course_id')) {
+                    $table->renameColumn('course_id', 'content_id');
+                }
+            });
+            Schema::rename('instructor_payouts', 'provider_payouts');
+        }
+    }
+
+    private function sqliteDown(): void
+    {
+        // provider_payouts -> instructor_payouts (+ column renames)
+        if (Schema::hasTable('provider_payouts')) {
+            Schema::table('provider_payouts', function (Blueprint $table) {
+                if (Schema::hasColumn('provider_payouts', 'provider_id')) {
+                    $table->renameColumn('provider_id', 'instructor_id');
+                }
+                if (Schema::hasColumn('provider_payouts', 'content_id')) {
+                    $table->renameColumn('content_id', 'course_id');
+                }
+            });
+            Schema::rename('provider_payouts', 'instructor_payouts');
+        }
+
+        // content_id -> course_id in other tables
+        $tablesWithContentId = [
+            'enrollments',
+            'content_sections',
+            'content_lessons',
+            'order_items',
+            'reviews',
+            'certificates',
+            'cart_items',
+            'lesson_progress',
+            'lesson_notes',
+            'lesson_resources',
+            'lesson_discussions',
+            'course_downloads',
+            'messages',
+            'video_access_tokens',
+        ];
+        foreach ($tablesWithContentId as $tableName) {
+            if (Schema::hasTable($tableName) && Schema::hasColumn($tableName, 'content_id')) {
+                Schema::table($tableName, function (Blueprint $table) {
+                    $table->renameColumn('content_id', 'course_id');
+                });
+            }
+        }
+
+        // tables back
+        if (Schema::hasTable('content_lessons')) {
+            Schema::rename('content_lessons', 'course_lessons');
+        }
+        if (Schema::hasTable('content_sections')) {
+            Schema::rename('content_sections', 'course_sections');
+        }
+        if (Schema::hasTable('contents')) {
+            Schema::table('contents', function (Blueprint $table) {
+                if (Schema::hasColumn('contents', 'provider_id')) {
+                    $table->renameColumn('provider_id', 'instructor_id');
+                }
+                if (Schema::hasColumn('contents', 'customers_count')) {
+                    $table->renameColumn('customers_count', 'students_count');
+                }
+                if (Schema::hasColumn('contents', 'show_customers_count')) {
+                    $table->renameColumn('show_customers_count', 'show_students_count');
+                }
+            });
+            Schema::rename('contents', 'courses');
+        }
+
+        // users column back
+        if (Schema::hasTable('users') && Schema::hasColumn('users', 'is_external_provider')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->renameColumn('is_external_provider', 'is_external_instructor');
+            });
+        }
     }
 };

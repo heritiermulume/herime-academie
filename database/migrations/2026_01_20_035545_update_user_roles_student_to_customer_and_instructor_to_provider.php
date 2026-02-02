@@ -14,6 +14,21 @@ return new class extends Migration
     public function up(): void
     {
         $driver = Schema::getConnection()->getDriverName();
+
+        // SQLite (tests): l'ancienne colonne role est un ENUM (CHECK constraint).
+        // On la convertit en string pour accepter les nouveaux rôles (customer/provider).
+        if ($driver === 'sqlite') {
+            try {
+                Schema::table('users', function (Blueprint $table) {
+                    $table->string('role')->default('customer')->change();
+                });
+            } catch (\Throwable $e) {
+                // Ne pas bloquer la migration si l'altération n'est pas supportée sur l'environnement.
+                Log::warning('Migration roles (sqlite): could not change role column to string', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
         
         // Pour MySQL, modifier d'abord l'enum pour inclure les nouveaux rôles
         // Cela permet d'éviter les erreurs lors de la mise à jour des données

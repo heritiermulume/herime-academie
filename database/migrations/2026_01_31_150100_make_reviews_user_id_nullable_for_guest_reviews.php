@@ -27,6 +27,9 @@ return new class extends Migration
         } elseif ($driver === 'sqlite') {
             Schema::disableForeignKeyConstraints();
 
+            // SQLite: les index gardent leur nom lors d'un rename de table → éviter le conflit
+            DB::statement('DROP INDEX IF EXISTS reviews_user_id_content_id_unique');
+
             Schema::rename('reviews', 'reviews__old');
 
             Schema::create('reviews', function (Blueprint $table) {
@@ -38,7 +41,8 @@ return new class extends Migration
                 $table->boolean('is_approved')->default(false);
                 $table->timestamps();
 
-                $table->unique(['user_id', 'content_id']);
+                // Nom explicite pour éviter les conflits d'index lors des renames SQLite
+                $table->unique(['user_id', 'content_id'], 'reviews_user_id_content_id_unique__sqlite');
             });
 
             DB::statement('INSERT INTO reviews (id, user_id, content_id, rating, comment, is_approved, created_at, updated_at) SELECT id, user_id, content_id, rating, comment, is_approved, created_at, updated_at FROM reviews__old');
@@ -72,6 +76,8 @@ return new class extends Migration
         } elseif ($driver === 'sqlite') {
             Schema::disableForeignKeyConstraints();
 
+            DB::statement('DROP INDEX IF EXISTS reviews_user_id_content_id_unique');
+
             Schema::rename('reviews', 'reviews__old');
 
             Schema::create('reviews', function (Blueprint $table) {
@@ -83,7 +89,7 @@ return new class extends Migration
                 $table->boolean('is_approved')->default(false);
                 $table->timestamps();
 
-                $table->unique(['user_id', 'content_id']);
+                $table->unique(['user_id', 'content_id'], 'reviews_user_id_content_id_unique__sqlite');
             });
 
             // Only restore rows that still have a user_id

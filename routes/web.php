@@ -25,7 +25,6 @@ use App\Http\Controllers\TemporaryUploadController;
 use App\Http\Controllers\Auth\SSOController;
 use App\Http\Controllers\SSOCallbackController;
 use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\MetaCapiController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -44,9 +43,6 @@ Route::get('/contact', function() {
 })->name('contact');
 
 Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
-
-// Meta Conversions API (CAPI) endpoint (same-origin, CSRF protected)
-Route::post('/meta/capi', [MetaCapiController::class, 'handle'])->name('meta.capi');
 
 // Legal pages
 Route::get('/conditions-generales-de-vente', function() {

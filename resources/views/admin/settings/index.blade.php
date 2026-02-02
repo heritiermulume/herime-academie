@@ -376,49 +376,10 @@
                     </h5>
 
                     <div class="alert alert-info">
-                        <strong>Objectif :</strong> configurer le Pixel + les événements sans code. Les <strong>Triggers</strong> déclenchent des événements (<code>Purchase</code>, <code>Lead</code>…) au chargement, au clic ou au submit.
-                        Les champs “Options avancées” servent au ciblage (page/pays/funnel) et peuvent rester vides.
+                        <strong>Objectif :</strong> configuration minimale du Pixel Meta.
+                        Le <code>PageView</code> est envoyé automatiquement (snippet officiel), et les <strong>Triggers</strong> servent aux autres événements (<code>Purchase</code>, <code>Lead</code>…) au chargement, au clic ou au submit.
                     </div>
 
-                    <details class="mb-3">
-                        <summary class="fw-semibold">Options avancées (validation & saisie)</summary>
-                        <div class="mt-2">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       role="switch"
-                                       id="meta_tag_validation_strict"
-                                       checked>
-                                <label class="form-check-label fw-semibold" for="meta_tag_validation_strict">
-                                    Validation stricte (anti-fautes de frappe)
-                                </label>
-                                <div class="form-text">
-                                    Recommandé : empêche les typos sur <code>event_name</code> et sur les tags (funnels/patterns).
-                                    Désactivez uniquement si vous avez un cas spécial.
-                                </div>
-                            </div>
-                        </div>
-                    </details>
-
-                    {{-- Combobox helpers --}}
-                    <datalist id="meta_route_names">
-                        @foreach(($routeNameOptions ?? []) as $rn)
-                            <option value="{{ $rn }}"></option>
-                        @endforeach
-                    </datalist>
-                    <datalist id="meta_path_patterns">
-                        @foreach(($pathPatternOptions ?? []) as $pp)
-                            <option value="{{ $pp }}"></option>
-                        @endforeach
-                        <option value="cart/*"></option>
-                        <option value="moneroo/*"></option>
-                        <option value="/"></option>
-                    </datalist>
-                    <datalist id="meta_funnels">
-                        @foreach(($knownFunnels ?? []) as $f)
-                            <option value="{{ $f }}"></option>
-                        @endforeach
-                    </datalist>
                     <datalist id="meta_event_names">
                         {{-- Triggers: uniquement les événements créés en BDD (section "Événements") --}}
                         @foreach(($metaEvents ?? collect()) as $ev)
@@ -452,99 +413,6 @@
                             </div>
                         </div>
 
-                        <details class="mt-3">
-                            <summary class="fw-semibold">Options prod (consent, GeoIP, CAPI)</summary>
-                            <div class="mt-2">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           role="switch"
-                                           name="meta_consent_required"
-                                           id="meta_consent_required"
-                                           value="on"
-                                        {{ !empty($metaConsentRequired) ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-semibold" for="meta_consent_required">
-                                        Exiger le consentement avant tracking (recommandé RGPD)
-                                    </label>
-                                    <div class="form-text">
-                                        Si activé, Meta Pixel ne se charge pas tant que le cookie de consentement n’est pas présent.
-                                    </div>
-                                </div>
-
-                                <div class="mt-2">
-                                    <label class="form-label fw-semibold">Cookie de consentement</label>
-                                    <input type="text"
-                                           name="meta_consent_cookie_name"
-                                           class="form-control"
-                                           value="{{ $metaConsentCookieName ?? 'meta_consent' }}"
-                                           placeholder="meta_consent">
-                                    <div class="form-text">
-                                        Nom du cookie dont la valeur <code>1</code> signifie “consentement donné”.
-                                    </div>
-                                </div>
-
-                                <hr class="my-3">
-
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           role="switch"
-                                           name="meta_geoip_fallback_enabled"
-                                           id="meta_geoip_fallback_enabled"
-                                           value="on"
-                                        {{ !empty($metaGeoipFallbackEnabled) ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-semibold" for="meta_geoip_fallback_enabled">
-                                        Activer fallback GeoIP (service externe)
-                                    </label>
-                                    <div class="form-text">
-                                        Si Cloudflare <code>CF-IPCountry</code> est disponible, ce fallback n’est généralement pas nécessaire.
-                                    </div>
-                                </div>
-
-                                <hr class="my-3">
-
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           role="switch"
-                                           name="meta_capi_enabled"
-                                           id="meta_capi_enabled"
-                                           value="on"
-                                        {{ !empty($metaCapiEnabled) ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-semibold" for="meta_capi_enabled">
-                                        Activer Meta Conversions API (CAPI)
-                                    </label>
-                                    <div class="form-text">
-                                        Envoie un événement côté serveur avec <code>event_id</code> pour déduplication (Browser + Server).
-                                    </div>
-                                </div>
-
-                                <div class="mt-2">
-                                    <label class="form-label fw-semibold">CAPI Access Token</label>
-                                    <input type="password"
-                                           name="meta_capi_access_token"
-                                           class="form-control"
-                                           value="{{ $metaCapiAccessToken ?? '' }}"
-                                           placeholder="EAAB...">
-                                    <div class="form-text">
-                                        Token privé Meta (Events Manager → Settings → Conversions API).
-                                    </div>
-                                </div>
-
-                                <div class="mt-2">
-                                    <label class="form-label fw-semibold">CAPI Test Event Code (optionnel)</label>
-                                    <input type="text"
-                                           name="meta_capi_test_event_code"
-                                           class="form-control"
-                                           value="{{ $metaCapiTestEventCode ?? '' }}"
-                                           placeholder="TEST123">
-                                    <div class="form-text">
-                                        À renseigner uniquement pour tester dans Events Manager (Test Events).
-                                    </div>
-                                </div>
-                            </div>
-                        </details>
-
                         <div class="mt-3">
                             <button type="submit" class="btn btn-success">
                                 <i class="fas fa-save me-2"></i>Enregistrer Meta
@@ -573,9 +441,7 @@
                                                 <tr>
                                                     <th>Nom</th>
                                                     <th>Pixel ID</th>
-                                                    <th class="d-none d-lg-table-cell">Priority</th>
                                                     <th>Actif</th>
-                                                    <th class="d-none d-xl-table-cell">Ciblage</th>
                                                     <th class="text-end">Actions</th>
                                                 </tr>
                                                 </thead>
@@ -584,25 +450,10 @@
                                                     <tr>
                                                         <td class="fw-semibold">{{ $p->name ?: '—' }}</td>
                                                         <td><code>{{ $p->pixel_id }}</code></td>
-                                                        <td class="d-none d-lg-table-cell"><code>{{ (int)($p->priority ?? 0) }}</code></td>
                                                         <td>
                                                             <span class="badge {{ $p->is_active ? 'bg-success' : 'bg-secondary' }}">
                                                                 {{ $p->is_active ? 'ON' : 'OFF' }}
                                                             </span>
-                                                        </td>
-                                                        <td class="small text-muted d-none d-xl-table-cell">
-                                                            @if($p->match_route_name)
-                                                                route: <code>{{ $p->match_route_name }}</code><br>
-                                                            @endif
-                                                            @if($p->match_path_pattern)
-                                                                path: <code>{{ $p->match_path_pattern }}</code><br>
-                                                            @endif
-                                                            @if(!empty($p->allowed_country_codes))
-                                                                pays: <code>{{ implode(', ', $p->allowed_country_codes) }}</code><br>
-                                                            @endif
-                                                            @if(!empty($p->funnel_keys))
-                                                                funnel: <code>{{ implode(', ', $p->funnel_keys) }}</code>
-                                                            @endif
                                                         </td>
                                                         <td class="text-end">
                                                             <details class="d-inline-block me-2 text-start meta-flyout">
@@ -627,102 +478,12 @@
                                                                             <div class="form-text">Pour vous repérer (n’impacte pas le tracking).</div>
                                                                         </div>
                                                                         <div class="col-6">
-                                                                            <label class="form-label fw-semibold mb-1">Priority</label>
-                                                                            <input type="number" name="pixel_priority" class="form-control form-control-sm" value="{{ (int)($p->priority ?? 0) }}" min="-1000" max="1000">
-                                                                            <div class="form-text">Plus grand = plus prioritaire.</div>
-                                                                        </div>
-                                                                        <div class="col-6">
                                                                             <label class="form-label fw-semibold mb-1">Actif</label>
                                                                             <div class="form-check form-switch">
                                                                                 <input class="form-check-input" type="checkbox" role="switch" name="pixel_is_active" value="on" {{ $p->is_active ? 'checked' : '' }}>
                                                                                 <label class="form-check-label small">ON</label>
                                                                             </div>
                                                                             <div class="form-text">Si OFF, le pixel ne se charge pas.</div>
-                                                                        </div>
-                                                                        <div class="col-12">
-                                                                            <details class="mt-1">
-                                                                                <summary class="fw-semibold">Options avancées (ciblage)</summary>
-                                                                                <div class="form-text mt-1">
-                                                                                    Ces options contrôlent <strong>le chargement du pixel</strong> (script Meta) sur la page courante,
-                                                                                    pas les événements (qui sont gérés par les triggers).
-                                                                                </div>
-                                                                                <div class="row g-2 mt-2">
-                                                                                    <div class="col-12">
-                                                                                        <label class="form-label fw-semibold mb-1">Funnels</label>
-                                                                                        <div class="meta-tag-input" data-tag-csv-name="funnel_keys" data-tag-datalist="meta_funnels" data-tag-validate="funnel">
-                                                                                            <div class="input-group input-group-sm">
-                                                                                                <input type="text" class="form-control meta-tag-input__text" list="meta_funnels" placeholder="Ajouter un funnel…">
-                                                                                                <button type="button" class="btn btn-outline-secondary meta-tag-input__add" title="Ajouter"><i class="fas fa-plus"></i></button>
-                                                                                            </div>
-                                                                                            <div class="meta-tag-input__error invalid-feedback d-block" style="display:none;"></div>
-                                                                                            <div class="meta-tag-input__tags d-flex flex-wrap gap-2 mt-2"></div>
-                                                                                            <input type="hidden" name="funnel_keys" value="{{ is_array($p->funnel_keys) ? implode(', ', $p->funnel_keys) : '' }}">
-                                                                                            <div class="form-text">Optionnel. Si vide: toutes les sources/funnels.</div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    <div class="col-12 col-md-6">
-                                                                                        <label class="form-label fw-semibold mb-1">Pays autorisés</label>
-                                                                                        <select class="form-select form-select-sm" multiple data-csv-name="allowed_country_codes">
-                                                                                            @foreach(($metaCountryOptions ?? []) as $cc)
-                                                                                                <option value="{{ $cc }}" {{ is_array($p->allowed_country_codes) && in_array($cc, $p->allowed_country_codes, true) ? 'selected' : '' }}>{{ $cc }}</option>
-                                                                                            @endforeach
-                                                                                        </select>
-                                                                                        <input type="hidden" name="allowed_country_codes" value="{{ is_array($p->allowed_country_codes) ? implode(', ', $p->allowed_country_codes) : '' }}">
-                                                                                    </div>
-                                                                                    <div class="col-12 col-md-6">
-                                                                                        <label class="form-label fw-semibold mb-1">Pays exclus</label>
-                                                                                        <select class="form-select form-select-sm" multiple data-csv-name="excluded_country_codes">
-                                                                                            @foreach(($metaCountryOptions ?? []) as $cc)
-                                                                                                <option value="{{ $cc }}" {{ is_array($p->excluded_country_codes) && in_array($cc, $p->excluded_country_codes, true) ? 'selected' : '' }}>{{ $cc }}</option>
-                                                                                            @endforeach
-                                                                                        </select>
-                                                                                        <input type="hidden" name="excluded_country_codes" value="{{ is_array($p->excluded_country_codes) ? implode(', ', $p->excluded_country_codes) : '' }}">
-                                                                                    </div>
-                                                                                    <div class="col-12">
-                                                                                        <label class="form-label fw-semibold mb-1">Page (sélection rapide)</label>
-                                                                                        <select class="form-select form-select-sm meta-page-select">
-                                                                                            <option value="">— Toutes les pages —</option>
-                                                                                            @foreach(($metaPageOptions ?? []) as $pg)
-                                                                                                <option value="{{ $pg['path'] }}"
-                                                                                                        data-route-name="{{ $pg['route_name'] }}"
-                                                                                                    {{ ($p->match_path_pattern && ltrim($p->match_path_pattern, '/') === ltrim($pg['path'], '/')) ? 'selected' : '' }}>
-                                                                                                    {{ $pg['label'] }}
-                                                                                                </option>
-                                                                                            @endforeach
-                                                                                        </select>
-                                                                                        <input type="hidden" name="match_route_name" value="{{ $p->match_route_name }}">
-                                                                                        <input type="hidden" name="match_path_pattern" value="{{ $p->match_path_pattern }}">
-                                                                                        <div class="form-text">Optionnel. Si vous choisissez une page, le pixel sera chargé uniquement sur cette page.</div>
-                                                                                    </div>
-                                                                                    <div class="col-12 col-md-6">
-                                                                                        <label class="form-label fw-semibold mb-1">Routes exclues</label>
-                                                                                        <select class="form-select form-select-sm" multiple data-csv-name="excluded_route_names">
-                                                                                            @foreach(($routeNameOptions ?? []) as $rn)
-                                                                                                <option value="{{ $rn }}" {{ is_array($p->excluded_route_names) && in_array($rn, $p->excluded_route_names, true) ? 'selected' : '' }}>{{ $rn }}</option>
-                                                                                            @endforeach
-                                                                                        </select>
-                                                                                        <input type="hidden" name="excluded_route_names" value="{{ is_array($p->excluded_route_names) ? implode(', ', $p->excluded_route_names) : '' }}">
-                                                                                        <div class="form-text">Les exclusions ont priorité (le pixel ne se charge pas sur ces routes).</div>
-                                                                                    </div>
-                                                                                    <div class="col-12 col-md-6">
-                                                                                        <label class="form-label fw-semibold mb-1">Paths exclus</label>
-                                                                                        <div class="meta-tag-input" data-tag-csv-name="excluded_path_patterns" data-tag-datalist="meta_path_patterns" data-tag-validate="path_pattern">
-                                                                                            <div class="input-group input-group-sm">
-                                                                                                <input type="text" class="form-control meta-tag-input__text" list="meta_path_patterns" placeholder="Ex: admin/*">
-                                                                                                <button type="button" class="btn btn-outline-secondary meta-tag-input__add" title="Ajouter"><i class="fas fa-plus"></i></button>
-                                                                                            </div>
-                                                                                            <div class="meta-tag-input__error invalid-feedback d-block" style="display:none;"></div>
-                                                                                            <div class="meta-tag-input__tags d-flex flex-wrap gap-2 mt-2"></div>
-                                                                                            <input type="hidden" name="excluded_path_patterns" value="{{ is_array($p->excluded_path_patterns) ? implode(', ', $p->excluded_path_patterns) : '' }}">
-                                                                                        </div>
-                                                                                        <div class="form-text">Idéal pour exclure <code>admin/*</code>, <code>dashboard/*</code>, etc.</div>
-                                                                                    </div>
-                                                                                    <div class="col-12">
-                                                                                        <label class="form-label fw-semibold mb-1">Notes (optionnel)</label>
-                                                                                        <textarea name="pixel_notes" class="form-control form-control-sm" rows="2">{{ $p->notes }}</textarea>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </details>
                                                                         </div>
                                                                         <div class="col-12 d-flex gap-2">
                                                                             <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
@@ -753,7 +514,7 @@
                                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                                             <div>
                                                 <div class="fw-semibold">Ajouter un pixel</div>
-                                                <div class="text-muted small">Champs essentiels seulement. Le ciblage est optionnel.</div>
+                                                <div class="text-muted small">Champs essentiels seulement (Pixel ID, nom optionnel, actif).</div>
                                             </div>
                                         </div>
                                         <form method="POST" action="{{ route('admin.settings.update') }}" class="row g-3">
@@ -777,103 +538,6 @@
                                 <input class="form-check-input" type="checkbox" role="switch" name="pixel_is_active" value="on" checked>
                                 <label class="form-check-label">ON</label>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Priority</label>
-                            <input type="number" name="pixel_priority" class="form-control" value="0" min="-1000" max="1000">
-                            <div class="form-text">Plus grand = plus prioritaire.</div>
-                        </div>
-
-                        <div class="col-12">
-                            <details>
-                                <summary class="fw-semibold">Options avancées (ciblage)</summary>
-                                <div class="form-text mt-1">
-                                    Ces options contrôlent <strong>le chargement du pixel</strong> (script Meta) sur la page courante,
-                                    pas les événements (qui sont gérés par les triggers).
-                                </div>
-                                <div class="row g-3 mt-2">
-                                    <div class="col-12 col-lg-6">
-                                        <label class="form-label fw-semibold">Funnels</label>
-                                        <div class="meta-tag-input" data-tag-csv-name="funnel_keys" data-tag-datalist="meta_funnels" data-tag-validate="funnel">
-                                            <div class="input-group">
-                                                <input type="text" class="form-control meta-tag-input__text" list="meta_funnels" placeholder="Ajouter un funnel…">
-                                                <button type="button" class="btn btn-outline-secondary meta-tag-input__add" title="Ajouter">
-                                                    <i class="fas fa-plus"></i>
-                                                </button>
-                                            </div>
-                                            <div class="meta-tag-input__error invalid-feedback d-block" style="display:none;"></div>
-                                            <div class="meta-tag-input__tags d-flex flex-wrap gap-2 mt-2"></div>
-                                            <input type="hidden" name="funnel_keys" value="">
-                                            <div class="form-text">Optionnel. Si vide, le pixel est chargé pour tous les funnels.</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12 col-lg-6">
-                                        <label class="form-label fw-semibold">Notes (optionnel)</label>
-                                        <textarea name="pixel_notes" class="form-control" rows="2" placeholder="Optionnel"></textarea>
-                                    </div>
-
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label fw-semibold">Pays autorisés</label>
-                                        <select class="form-select" multiple data-csv-name="allowed_country_codes">
-                                            @foreach(($metaCountryOptions ?? []) as $cc)
-                                                <option value="{{ $cc }}">{{ $cc }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input type="hidden" name="allowed_country_codes" value="">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label fw-semibold">Pays exclus</label>
-                                        <select class="form-select" multiple data-csv-name="excluded_country_codes">
-                                            @foreach(($metaCountryOptions ?? []) as $cc)
-                                                <option value="{{ $cc }}">{{ $cc }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input type="hidden" name="excluded_country_codes" value="">
-                                    </div>
-
-                                    <div class="col-12">
-                                        <label class="form-label fw-semibold">Page (sélection rapide)</label>
-                                        <select class="form-select meta-page-select">
-                                            <option value="">— Toutes les pages —</option>
-                                            @foreach(($metaPageOptions ?? []) as $pg)
-                                                <option value="{{ $pg['path'] }}" data-route-name="{{ $pg['route_name'] }}">
-                                                    {{ $pg['label'] }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <input type="hidden" name="match_route_name" value="">
-                                        <input type="hidden" name="match_path_pattern" value="">
-                                        <div class="form-text">Optionnel. Si vous choisissez une page, le pixel sera chargé uniquement sur cette page.</div>
-                                    </div>
-
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label fw-semibold">Routes exclues</label>
-                                        <select class="form-select" multiple data-csv-name="excluded_route_names">
-                                            @foreach(($routeNameOptions ?? []) as $rn)
-                                                <option value="{{ $rn }}">{{ $rn }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input type="hidden" name="excluded_route_names" value="">
-                                        <div class="form-text">Les exclusions ont priorité (le pixel ne se charge pas sur ces routes).</div>
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label fw-semibold">Paths exclus</label>
-                                        <div class="meta-tag-input" data-tag-csv-name="excluded_path_patterns" data-tag-datalist="meta_path_patterns" data-tag-validate="path_pattern">
-                                            <div class="input-group">
-                                                <input type="text" class="form-control meta-tag-input__text" list="meta_path_patterns" placeholder="Ex: admin/*">
-                                                <button type="button" class="btn btn-outline-secondary meta-tag-input__add" title="Ajouter">
-                                                    <i class="fas fa-plus"></i>
-                                                </button>
-                                            </div>
-                                            <div class="meta-tag-input__error invalid-feedback d-block" style="display:none;"></div>
-                                            <div class="meta-tag-input__tags d-flex flex-wrap gap-2 mt-2"></div>
-                                            <input type="hidden" name="excluded_path_patterns" value="">
-                                        </div>
-                                        <div class="form-text">Idéal pour exclure <code>admin/*</code>, <code>dashboard/*</code>, etc.</div>
-                                    </div>
-                                </div>
-                            </details>
                         </div>
 
                         <div class="col-12">
@@ -1075,9 +739,7 @@
                                 <tr>
                                     <th>Event</th>
                                     <th>Type</th>
-                                    <th class="d-none d-lg-table-cell">Priority</th>
                                     <th class="d-none d-xl-table-cell">Selector</th>
-                                    <th class="d-none d-xl-table-cell">Ciblage</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
                                 </thead>
@@ -1086,22 +748,7 @@
                                     <tr>
                                         <td><code>{{ $t->event?->event_name }}</code></td>
                                         <td><span class="badge bg-dark">{{ $t->trigger_type }}</span></td>
-                                        <td class="d-none d-lg-table-cell"><code>{{ (int)($t->priority ?? 0) }}</code></td>
                                         <td class="small text-muted d-none d-xl-table-cell">{{ $t->css_selector ?: '—' }}</td>
-                                        <td class="small text-muted d-none d-xl-table-cell">
-                                            @if($t->match_route_name)
-                                                route: <code>{{ $t->match_route_name }}</code><br>
-                                            @endif
-                                            @if($t->match_path_pattern)
-                                                path: <code>{{ $t->match_path_pattern }}</code><br>
-                                            @endif
-                                            @if(!empty($t->country_codes))
-                                                pays: <code>{{ implode(', ', $t->country_codes) }}</code><br>
-                                            @endif
-                                            @if(!empty($t->funnel_keys))
-                                                funnel: <code>{{ implode(', ', $t->funnel_keys) }}</code>
-                                            @endif
-                                        </td>
                                         <td class="text-end">
                                             <details class="d-inline-block me-2 text-start meta-flyout">
                                                 <summary class="btn btn-sm btn-outline-primary" title="Éditer">
@@ -1131,95 +778,42 @@
                                                             <option value="click" {{ $t->trigger_type === 'click' ? 'selected' : '' }}>click</option>
                                                             <option value="form_submit" {{ $t->trigger_type === 'form_submit' ? 'selected' : '' }}>form_submit</option>
                                                         </select>
-                                                        <div class="col-6">
-                                                            <label class="form-label fw-semibold mb-1">Priority</label>
-                                                            <input type="number" name="trigger_priority" class="form-control form-control-sm" value="{{ (int)($t->priority ?? 0) }}" min="-1000" max="1000">
-                                                        </div>
                                                         <div class="col-12">
                                                             <details>
-                                                                <summary class="fw-semibold">Options avancées (ciblage & payload)</summary>
+                                                                <summary class="fw-semibold">Options avancées (page & payload)</summary>
                                                                 <div class="row g-2 mt-2">
-                                                                    <div class="col-12 meta-trigger-type-fields" data-show-when="page_load">
-                                                                        <label class="form-label fw-semibold mb-1">Page (sélection rapide)</label>
-                                                                        <select class="form-select form-select-sm meta-page-select">
-                                                                            <option value="">— Choisir une page —</option>
+                                                                    <div class="col-12">
+                                                                        <label class="form-label fw-semibold mb-1">Page (path pattern)</label>
+                                                                        <select name="match_path_pattern" class="form-select form-select-sm meta-page-select">
+                                                                            <option value="__all__" {{ empty($t->match_path_pattern) ? 'selected' : '' }}>— Toutes les pages —</option>
                                                                             @foreach(($metaPageOptions ?? []) as $p)
                                                                                 <option value="{{ $p['path'] }}"
-                                                                                        data-route-name="{{ $p['route_name'] }}"
-                                                                                    {{ ($t->match_path_pattern && ltrim($t->match_path_pattern, '/') === ltrim($p['path'], '/')) ? 'selected' : '' }}>
+                                                                                    {{ (trim((string)($t->match_path_pattern ?? '')) === trim((string)$p['path']) || ltrim((string)($t->match_path_pattern ?? ''), '/') === ltrim((string)$p['path'], '/')) ? 'selected' : '' }}>
                                                                                     {{ $p['label'] }}
                                                                                 </option>
                                                                             @endforeach
                                                                         </select>
-                                                                        <div class="form-text">Optionnel. Remplit automatiquement “Path pattern” (et si dispo le route name).</div>
+                                                                        <div class="form-text">
+                                                                            Optionnel. Vide = toutes les pages. Pour éviter les erreurs de saisie, choisissez une page dans la liste.
+                                                                        </div>
                                                                     </div>
-
-                                                                    <div class="col-12 meta-trigger-type-fields" data-show-when="page_load">
-                                                                        <input type="hidden" name="match_route_name" value="{{ $t->match_route_name }}">
-                                                                        <input type="hidden" name="match_path_pattern" value="{{ $t->match_path_pattern }}">
-                                                                    </div>
-
                                                                     <div class="col-12 meta-trigger-type-fields meta-css-selector-field" data-show-when="click,form_submit">
-                                                                        <input type="hidden" name="css_selector" value="{{ $t->css_selector }}">
-                                                                        <div class="mt-2 meta-scan-ui">
-                                                                            <div class="row g-2 align-items-end">
-                                                                                <div class="col-12">
-                                                                                    <label class="form-label fw-semibold small mb-1">Page à scanner (optionnel)</label>
-                                                                                    <select class="form-select form-select-sm meta-scan-page-select">
-                                                                                        <option value="">— Choisir une page —</option>
-                                                                                        @foreach(($metaPageOptions ?? []) as $p)
-                                                                                            <option value="{{ $p['path'] }}"
-                                                                                                {{ ($t->match_path_pattern && ltrim($t->match_path_pattern, '/') === ltrim($p['path'], '/')) ? 'selected' : '' }}>
-                                                                                                {{ $p['label'] }}
-                                                                                            </option>
-                                                                                        @endforeach
-                                                                                    </select>
-                                                                                </div>
-                                                                                <div class="col-12 d-flex gap-2">
-                                                                                    <button type="button" class="btn btn-sm btn-outline-secondary meta-scan-page-btn">
-                                                                                        <i class="fas fa-wand-magic-sparkles me-1"></i>Scanner
-                                                                                    </button>
-                                                                                    <span class="small text-muted align-self-center meta-scan-status" style="display:none;"></span>
-                                                                                </div>
-                                                                                <div class="col-12">
-                                                                                    <label class="form-label fw-semibold small mb-1">Éléments trouvés</label>
-                                                                                    <select class="form-select form-select-sm meta-scan-results">
-                                                                                        <option value="">—</option>
-                                                                                    </select>
-                                                                                    <div class="form-text small">Choisissez un élément pour remplir automatiquement le champ ci-dessus.</div>
-                                                                                </div>
-                                                                                <div class="col-12">
-                                                                                    <div class="small text-muted meta-selected-element" style="display:none;"></div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="col-12 col-md-6">
-                                                                        <label class="form-label fw-semibold mb-1">Pays</label>
-                                                                        <select class="form-select form-select-sm" multiple data-csv-name="trigger_country_codes">
-                                                                            @foreach(($metaCountryOptions ?? []) as $cc)
-                                                                                <option value="{{ $cc }}" {{ is_array($t->country_codes) && in_array($cc, $t->country_codes, true) ? 'selected' : '' }}>{{ $cc }}</option>
-                                                                            @endforeach
+                                                                        <label class="form-label fw-semibold mb-1">Sélecteur CSS</label>
+                                                                        <select name="css_selector" class="form-select form-select-sm meta-element-select">
+                                                                            @if(!empty($t->css_selector))
+                                                                                <option value="{{ $t->css_selector }}" selected>Actuel: {{ $t->css_selector }}</option>
+                                                                            @endif
+                                                                            <option value="" {{ empty($t->css_selector) ? 'selected' : '' }}>— Choisir un élément (sélectionnez d’abord une page) —</option>
                                                                         </select>
-                                                                        <input type="hidden" name="trigger_country_codes" value="{{ is_array($t->country_codes) ? implode(', ', $t->country_codes) : '' }}">
-                                                                    </div>
-                                                                    <div class="col-12 col-md-6">
-                                                                        <label class="form-label fw-semibold mb-1">Funnels</label>
-                                                                        <div class="meta-tag-input" data-tag-csv-name="trigger_funnel_keys" data-tag-datalist="meta_funnels" data-tag-validate="funnel">
-                                                                            <div class="input-group input-group-sm">
-                                                                                <input type="text" class="form-control meta-tag-input__text" list="meta_funnels" placeholder="Ajouter…">
-                                                                                <button type="button" class="btn btn-outline-secondary meta-tag-input__add" title="Ajouter"><i class="fas fa-plus"></i></button>
-                                                                            </div>
-                                                                            <div class="meta-tag-input__error invalid-feedback d-block" style="display:none;"></div>
-                                                                            <div class="meta-tag-input__tags d-flex flex-wrap gap-2 mt-2"></div>
-                                                                            <input type="hidden" name="trigger_funnel_keys" value="{{ is_array($t->funnel_keys) ? implode(', ', $t->funnel_keys) : '' }}">
-                                                                        </div>
+                                                                        <div class="form-text">Obligatoire pour <code>click</code> et <code>form_submit</code>. La liste est générée à partir de la page choisie.</div>
                                                                     </div>
                                                                     <div class="col-12">
                                                                         <label class="form-label fw-semibold mb-1">Pixels ciblés</label>
                                                                         <select class="form-select form-select-sm" multiple data-csv-name="trigger_pixel_ids">
-                                                                            @foreach(($pixelIdOptions ?? []) as $pid)
-                                                                                <option value="{{ $pid }}" {{ is_array($t->pixel_ids) && in_array($pid, $t->pixel_ids, true) ? 'selected' : '' }}>{{ $pid }}</option>
+                                                                            @foreach(($metaPixels ?? collect()) as $mp)
+                                                                                @if(!empty($mp->pixel_id))
+                                                                                    <option value="{{ $mp->pixel_id }}" {{ is_array($t->pixel_ids) && in_array($mp->pixel_id, $t->pixel_ids, true) ? 'selected' : '' }}>{{ $mp->pixel_id }}</option>
+                                                                                @endif
                                                                             @endforeach
                                                                         </select>
                                                                         <input type="hidden" name="trigger_pixel_ids" value="{{ is_array($t->pixel_ids) ? implode(', ', $t->pixel_ids) : '' }}">
@@ -1305,14 +899,11 @@
                             <div class="form-text">Pré-remplit le type + les placeholders (sans imposer un événement).</div>
                         </div>
                         <select name="trigger_type" class="form-select meta-trigger-type d-none" required aria-hidden="true" tabindex="-1">
-                            <option value="page_load" selected>page_load</option>
+                            <option value="" selected>—</option>
+                            <option value="page_load">page_load</option>
                             <option value="click">click</option>
                             <option value="form_submit">form_submit</option>
                         </select>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Priority</label>
-                            <input type="number" name="trigger_priority" class="form-control" value="0" min="-1000" max="1000">
-                        </div>
 
                         <div class="col-12">
                             <label class="form-label fw-semibold">Options</label>
@@ -1330,88 +921,34 @@
 
                         <div class="col-12">
                             <details>
-                                <summary class="fw-semibold">Options avancées (ciblage & payload)</summary>
+                                <summary class="fw-semibold">Options avancées (page & payload)</summary>
                                 <div class="row g-3 mt-2">
-                                    <div class="col-12 meta-trigger-type-fields" data-show-when="page_load">
-                                        <label class="form-label fw-semibold">Page (sélection rapide)</label>
-                                        <select class="form-select meta-page-select">
-                                            <option value="">— Choisir une page —</option>
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold">Page (path pattern)</label>
+                                        <select name="match_path_pattern" class="form-select meta-page-select">
+                                            <option value="__all__" selected>— Toutes les pages —</option>
                                             @foreach(($metaPageOptions ?? []) as $p)
-                                                <option value="{{ $p['path'] }}" data-route-name="{{ $p['route_name'] }}">{{ $p['label'] }}</option>
+                                                <option value="{{ $p['path'] }}">{{ $p['label'] }}</option>
                                             @endforeach
                                         </select>
-                                        <div class="form-text">Optionnel. Remplit automatiquement “Path pattern” (et, si disponible, le route name).</div>
-                                    </div>
-
-                                    {{-- Champs spécifiques au type --}}
-                                    <div class="col-12 meta-trigger-type-fields" data-show-when="page_load">
-                                        {{-- Données internes (non affichées) --}}
-                                        <input type="hidden" name="match_route_name" value="">
-                                        <input type="hidden" name="match_path_pattern" value="">
                                         <div class="form-text">
-                                            Pour <code>page_load</code>, la page sélectionnée ci-dessus est utilisée en interne pour cibler la route/le path.
+                                            Optionnel. Vide = toutes les pages. Pour éviter les erreurs de saisie, choisissez une page dans la liste.
                                         </div>
                                     </div>
-
                                     <div class="col-12 meta-trigger-type-fields meta-css-selector-field" data-show-when="click,form_submit">
-                                        <input type="hidden" name="css_selector" value="">
-                                        <div class="mt-2 meta-scan-ui">
-                                            <div class="row g-2 align-items-end">
-                                                <div class="col-12 col-md-7">
-                                                    <label class="form-label fw-semibold small mb-1">Page à scanner (optionnel)</label>
-                                                    <select class="form-select form-select-sm meta-scan-page-select">
-                                                        <option value="">— Choisir une page —</option>
-                                                        @foreach(($metaPageOptions ?? []) as $p)
-                                                            <option value="{{ $p['path'] }}">{{ $p['label'] }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                    <div class="form-text small">Liste automatiquement les boutons/liens (click) ou formulaires (submit) de la page.</div>
-                                                </div>
-                                                <div class="col-12 col-md-5 d-flex gap-2">
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary meta-scan-page-btn">
-                                                        <i class="fas fa-wand-magic-sparkles me-1"></i>Scanner
-                                                    </button>
-                                                    <span class="small text-muted align-self-center meta-scan-status" style="display:none;"></span>
-                                                </div>
-                                                <div class="col-12">
-                                                    <label class="form-label fw-semibold small mb-1">Éléments trouvés</label>
-                                                    <select class="form-select form-select-sm meta-scan-results">
-                                                        <option value="">—</option>
-                                                    </select>
-                                                    <div class="form-text small">Choisissez un élément pour remplir automatiquement le champ ci-dessus.</div>
-                                                </div>
-                                                <div class="col-12">
-                                                    <div class="small text-muted meta-selected-element" style="display:none;"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label fw-semibold">Pays</label>
-                                        <select class="form-select" multiple data-csv-name="trigger_country_codes">
-                                            @foreach(($metaCountryOptions ?? []) as $cc)
-                                                <option value="{{ $cc }}">{{ $cc }}</option>
-                                            @endforeach
+                                        <label class="form-label fw-semibold">Sélecteur CSS</label>
+                                        <select name="css_selector" class="form-select meta-element-select">
+                                            <option value="" selected>— Choisir un élément (sélectionnez d’abord une page) —</option>
                                         </select>
-                                        <input type="hidden" name="trigger_country_codes" value="">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label fw-semibold">Funnels</label>
-                                        <div class="meta-tag-input" data-tag-csv-name="trigger_funnel_keys" data-tag-datalist="meta_funnels" data-tag-validate="funnel">
-                                            <div class="input-group">
-                                                <input type="text" class="form-control meta-tag-input__text" list="meta_funnels" placeholder="Ajouter…">
-                                                <button type="button" class="btn btn-outline-secondary meta-tag-input__add" title="Ajouter"><i class="fas fa-plus"></i></button>
-                                            </div>
-                                            <div class="meta-tag-input__error invalid-feedback d-block" style="display:none;"></div>
-                                            <div class="meta-tag-input__tags d-flex flex-wrap gap-2 mt-2"></div>
-                                            <input type="hidden" name="trigger_funnel_keys" value="">
-                                        </div>
+                                        <div class="form-text">Obligatoire pour <code>click</code> et <code>form_submit</code>. La liste est générée à partir de la page choisie.</div>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label fw-semibold">Pixels ciblés</label>
                                         <select class="form-select" multiple data-csv-name="trigger_pixel_ids">
-                                            @foreach(($pixelIdOptions ?? []) as $pid)
-                                                <option value="{{ $pid }}">{{ $pid }}</option>
+                                            @foreach(($metaPixels ?? collect()) as $mp)
+                                                @if(!empty($mp->pixel_id))
+                                                    <option value="{{ $mp->pixel_id }}">{{ $mp->pixel_id }}</option>
+                                                @endif
                                             @endforeach
                                         </select>
                                         <input type="hidden" name="trigger_pixel_ids" value="">
@@ -1981,6 +1518,17 @@
 
                 const type = typeSelect.value;
 
+                // For page_load, page selection must be explicit (including "Toutes les pages")
+                const pageSelect = form.querySelector('select.meta-page-select[name="match_path_pattern"]');
+                if (pageSelect) {
+                    pageSelect.required = (type === 'page_load');
+                    if (pageSelect.required && !String(pageSelect.value || '').trim()) {
+                        // default to explicit "all pages" option if present
+                        const hasAll = Array.from(pageSelect.options || []).some(o => o.value === '__all__');
+                        if (hasAll) pageSelect.value = '__all__';
+                    }
+                }
+
                 // Toggle blocks inside "Options avancées" depending on trigger_type
                 form.querySelectorAll('.meta-trigger-type-fields[data-show-when]').forEach(block => {
                     const allowed = String(block.getAttribute('data-show-when') || '')
@@ -1990,22 +1538,7 @@
                     const show = allowed.includes(type);
                     block.style.display = show ? '' : 'none';
                 });
-
-                // No visible selector input: selection is done via "Éléments trouvés"
             });
-        }
-
-        function setCssSelectorValue(field, selector, displayText) {
-            if (!field) return;
-            const v = String(selector || '').trim();
-            const label = String(displayText || '').trim();
-            const hidden = field.querySelector('input[name="css_selector"]');
-            const display = field.querySelector('.meta-selected-element');
-            if (hidden) hidden.value = v;
-            if (display) {
-                display.textContent = label || v;
-                display.style.display = '';
-            }
         }
 
         // Note: trigger_type is driven by "Type de trigger" (meta-trigger-preset) -> hidden select.meta-trigger-type
@@ -2014,163 +1547,10 @@
             if (e.target && e.target.matches && e.target.matches('select.meta-trigger-type')) {
                 const form = e.target.closest('form') || document;
                 updateSelectorVisibility(form);
-
-                // If user switched to click/form_submit, prefill "page to scan" from the chosen page/path (if any)
-                try {
-                    const typeSelect = e.target;
-                    const needs = typeSelect.value === 'click' || typeSelect.value === 'form_submit';
-                    if (needs && form && form.querySelectorAll) {
-                        const scanSel = form.querySelector('select.meta-scan-page-select');
-                        if (scanSel) {
-                            // Prefer: selected page picker, else whatever is in match_path_pattern
-                            const pageSel = form.querySelector('select.meta-page-select');
-                            const pathInput = form.querySelector('input[name="match_path_pattern"]');
-                            const preferred = (pageSel && pageSel.value) ? pageSel.value : (pathInput ? pathInput.value : '');
-
-                            // If not set yet, fill it; otherwise keep current value
-                            if (!scanSel.value && preferred) {
-                                scanSel.value = preferred;
-                            }
-
-                            // Always attempt a scan when switching to click/form_submit (even if already filled earlier)
-                            if (scanSel.value) {
-                                scanSel.dispatchEvent(new Event('change', { bubbles: true }));
-                            }
-                        }
-                    }
-                } catch (err) {}
             }
         });
 
         updateSelectorVisibility(document);
-
-        // Show a friendly label for already-saved selectors (edit forms)
-        document.querySelectorAll('form').forEach(form => {
-            const field = form.querySelector('.meta-css-selector-field');
-            const hiddenSelector = field ? field.querySelector('input[name="css_selector"]') : null;
-            const display = field ? field.querySelector('.meta-selected-element') : null;
-            if (field && hiddenSelector && display && hiddenSelector.value && !display.textContent) {
-                display.textContent = hiddenSelector.value;
-                display.style.display = '';
-            }
-        });
-
-        // Page picker (in advanced options): auto-fill match_route_name / match_path_pattern
-        document.addEventListener('change', function (e) {
-            const sel = e.target && e.target.matches ? (e.target.matches('select.meta-page-select') ? e.target : null) : null;
-            if (!sel) return;
-            const form = sel.closest('form');
-            if (!form) return;
-
-            const opt = sel.selectedOptions && sel.selectedOptions[0] ? sel.selectedOptions[0] : null;
-            const path = opt ? (opt.value || '') : '';
-            const routeName = opt ? (opt.getAttribute('data-route-name') || '') : '';
-
-            const routeInput = form.querySelector('input[name="match_route_name"]');
-            const pathInput = form.querySelector('input[name="match_path_pattern"]');
-            if (pathInput) pathInput.value = path;
-            if (routeInput && routeName) routeInput.value = routeName;
-
-            // prefill scan page selector too (if present)
-            const scanSel = form.querySelector('select.meta-scan-page-select');
-            if (scanSel && path) {
-                scanSel.value = path;
-                // trigger auto-scan when user picked a page
-                scanSel.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        });
-
-        // Scan selected page and suggest selectors (buttons/links/forms)
-        document.addEventListener('click', async function (e) {
-            const btn = e.target && e.target.closest ? e.target.closest('button.meta-scan-page-btn') : null;
-            if (!btn) return;
-            e.preventDefault();
-
-            const form = btn.closest('form');
-            if (!form) return;
-            const typeSelect = form.querySelector('select.meta-trigger-type');
-            const mode = typeSelect ? typeSelect.value : '';
-            if (mode !== 'click' && mode !== 'form_submit') return;
-
-            const field = btn.closest('.meta-css-selector-field');
-            if (!field) return;
-
-            const pageSel = field.querySelector('select.meta-scan-page-select');
-            const status = field.querySelector('.meta-scan-status');
-            const results = field.querySelector('select.meta-scan-results');
-            if (!pageSel || !results) return;
-
-            const path = String(pageSel.value || '').trim();
-            if (!path) {
-                if (status) {
-                    status.style.display = '';
-                    status.textContent = 'Choisissez une page.';
-                }
-                return;
-            }
-
-            results.innerHTML = '<option value="">—</option>';
-            if (status) {
-                status.style.display = '';
-                status.textContent = 'Scan…';
-            }
-            btn.disabled = true;
-
-            try {
-                const url = normalizePathToUrl(path);
-                const resp = await fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
-                const html = await resp.text();
-                const doc = new DOMParser().parseFromString(html, 'text/html');
-
-                const items = extractCandidates(doc, mode);
-                if (!items.length) {
-                    if (status) status.textContent = 'Aucun élément détecté.';
-                    return;
-                }
-
-                for (const it of items) {
-                    const opt = document.createElement('option');
-                    opt.value = it.selector;
-                    opt.textContent = it.label + ' (' + it.selector + ')';
-                    results.appendChild(opt);
-                }
-
-                if (status) status.textContent = 'OK.';
-                const hidden = field.querySelector('input[name="css_selector"]');
-                if (hidden && !hidden.value) {
-                    setCssSelectorValue(field, items[0].selector, items[0].label + ' (' + items[0].selector + ')');
-                }
-            } catch (err) {
-                if (status) status.textContent = 'Erreur: page inaccessible.';
-            } finally {
-                btn.disabled = false;
-                setTimeout(() => {
-                    if (status) status.style.display = 'none';
-                }, 2000);
-            }
-        });
-
-        // Auto-scan when a page is selected (so user immediately gets a list of buttons/forms)
-        document.addEventListener('change', function (e) {
-            const sel = e.target && e.target.matches ? (e.target.matches('select.meta-scan-page-select') ? e.target : null) : null;
-            if (!sel) return;
-            const field = sel.closest('.meta-css-selector-field');
-            const btn = field ? field.querySelector('button.meta-scan-page-btn') : null;
-            if (btn && sel.value) {
-                btn.click();
-            }
-        });
-
-        // Pick suggestion => fill css_selector
-        document.addEventListener('change', function (e) {
-            const sel = e.target && e.target.matches ? (e.target.matches('select.meta-scan-results') ? e.target : null) : null;
-            if (!sel) return;
-            const field = sel.closest('.meta-css-selector-field');
-            if (field && sel.value) {
-                const text = sel.selectedOptions && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : '';
-                setCssSelectorValue(field, sel.value, text);
-            }
-        });
 
         // Presets rapides pour création de trigger (sans hardcoder d'event)
         document.addEventListener('change', function (e) {
@@ -2180,29 +1560,334 @@
             if (!form) return;
 
             const typeSelect = form.querySelector('select.meta-trigger-type');
-            const pathInput = form.querySelector('input[name="match_path_pattern"]');
+            const cssSelect = form.querySelector('[name="css_selector"]');
 
             const v = preset.value;
-            if (!v) return;
+            if (!v) {
+                if (typeSelect) typeSelect.value = '';
+                updateSelectorVisibility(form);
+                updateMetaTriggerFormState(form);
+                return;
+            }
 
             if (typeSelect) typeSelect.value = v;
 
-            if (v === 'page_load') {
-                if (pathInput && !pathInput.value) pathInput.value = '*/success*';
-            }
             if (v === 'click') {
-                const field = form.querySelector('.meta-css-selector-field');
-                const hidden = field ? field.querySelector('input[name="css_selector"]') : null;
-                if (field && hidden && !hidden.value) setCssSelectorValue(field, '.btn-buy');
+                if (cssSelect && !String(cssSelect.value || '').trim()) {
+                    // ensure option exists (non-editable combobox)
+                    const opt = document.createElement('option');
+                    opt.value = '.btn-buy';
+                    opt.textContent = '.btn-buy';
+                    cssSelect.appendChild(opt);
+                    cssSelect.value = '.btn-buy';
+                }
             }
             if (v === 'form_submit') {
-                const field = form.querySelector('.meta-css-selector-field');
-                const hidden = field ? field.querySelector('input[name="css_selector"]') : null;
-                if (field && hidden && !hidden.value) setCssSelectorValue(field, 'form');
+                if (cssSelect && !String(cssSelect.value || '').trim()) {
+                    const opt = document.createElement('option');
+                    opt.value = 'form';
+                    opt.textContent = 'form';
+                    cssSelect.appendChild(opt);
+                    cssSelect.value = 'form';
+                }
             }
 
             updateSelectorVisibility(form);
+            updateMetaTriggerFormState(form);
         });
+
+        // --- UX: disable dependent fields until prerequisites are chosen ---
+        function setDisabled(el, disabled) {
+            if (!el) return;
+            el.disabled = !!disabled;
+            if (disabled) {
+                el.setAttribute('aria-disabled', 'true');
+            } else {
+                el.removeAttribute('aria-disabled');
+            }
+        }
+
+        function updateMetaTriggerFormState(form) {
+            if (!form) return;
+
+            const eventSel = form.querySelector('select[name="event_name"]');
+            const presetSel = form.querySelector('select.meta-trigger-preset');
+            const typeSel = form.querySelector('select.meta-trigger-type');
+            const submitBtn = form.querySelector('button[type="submit"]');
+
+            const pageSel = form.querySelector('select.meta-page-select[name="match_path_pattern"]');
+            const elementSel = form.querySelector('select.meta-element-select[name="css_selector"]');
+            const payloadEl = form.querySelector('textarea[name="trigger_payload"]');
+            const pixelsSel = form.querySelector('select[data-csv-name="trigger_pixel_ids"]');
+            const activeCb = form.querySelector('input[name="trigger_is_active"]');
+            const onceCb = form.querySelector('input[name="once_per_page"]');
+
+            const eventChosen = !!(eventSel && String(eventSel.value || '').trim());
+
+            // Step 1: event required before choosing a trigger preset
+            if (presetSel) {
+                setDisabled(presetSel, !eventChosen);
+                if (!eventChosen) {
+                    presetSel.value = '';
+                }
+            }
+
+            // Step 2: trigger preset required (create form). Edit forms have no preset.
+            const triggerChosen = presetSel ? !!String(presetSel.value || '').trim() : true;
+
+            // Keep hidden trigger_type aligned for create form
+            if (typeSel && presetSel) {
+                if (!triggerChosen) typeSel.value = '';
+            }
+
+            const triggerType = typeSel ? String(typeSel.value || '').trim() : '';
+
+            // Disable dependent fields until trigger chosen
+            const depsDisabled = !(eventChosen && triggerChosen);
+
+            setDisabled(pageSel, depsDisabled);
+            setDisabled(payloadEl, depsDisabled);
+            setDisabled(pixelsSel, depsDisabled);
+            setDisabled(activeCb, depsDisabled);
+            setDisabled(onceCb, depsDisabled);
+
+            // Element select only relevant for click/form_submit
+            const needsElement = (triggerType === 'click' || triggerType === 'form_submit');
+            if (elementSel) {
+                setDisabled(elementSel, depsDisabled || !needsElement);
+            }
+
+            // Also: if click/form_submit and no element selected, prevent submit
+            let canSubmit = eventChosen;
+            if (presetSel) canSubmit = canSubmit && triggerChosen;
+            if (needsElement) {
+                canSubmit = canSubmit && !!(elementSel && String(elementSel.value || '').trim());
+            }
+            if (triggerType === 'page_load') {
+                // page_load: must explicitly select a page (including "__all__")
+                canSubmit = canSubmit && !!(pageSel && String(pageSel.value || '').trim());
+            }
+
+            if (submitBtn) setDisabled(submitBtn, !canSubmit);
+        }
+
+        // Initial state
+        try {
+            document.querySelectorAll('form').forEach(form => {
+                if (form.querySelector('select.meta-trigger-type') && form.querySelector('select[name="event_name"]')) {
+                    updateMetaTriggerFormState(form);
+                }
+            });
+        } catch (e) {}
+
+        // Update on changes
+        document.addEventListener('change', function (e) {
+            const el = e.target;
+            if (!el) return;
+            const form = el.closest && el.closest('form');
+            if (!form) return;
+            if (el.matches('select[name="event_name"], select.meta-trigger-preset, select.meta-trigger-type, select[name="match_path_pattern"], select[name="css_selector"]')) {
+                updateSelectorVisibility(form);
+                updateMetaTriggerFormState(form);
+            }
+        });
+
+        // ---- Non-editable combobox helpers: pages + elements ----
+        function cssEscape(value) {
+            try {
+                if (window.CSS && typeof window.CSS.escape === 'function') {
+                    return window.CSS.escape(String(value));
+                }
+            } catch (e) {}
+            return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+        }
+
+        function normalizePathToUrl(path) {
+            const p = String(path || '').trim();
+            if (!p) return null;
+            return p.startsWith('/') ? p : '/' + p;
+        }
+
+        function isVisibleCandidate(el) {
+            if (!el || !el.tagName) return false;
+            // In static HTML we can't compute styles reliably; keep basic filters
+            if (el.hasAttribute('disabled')) return false;
+            return true;
+        }
+
+        function labelFor(el) {
+            const tag = (el.tagName || '').toLowerCase();
+            const txt = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+            const id = el.getAttribute && el.getAttribute('id');
+            if (txt) return `${tag}: "${txt}"`;
+            if (id) return `${tag}#${id}`;
+            const name = el.getAttribute && el.getAttribute('name');
+            if (name) return `${tag}[name="${name}"]`;
+            return tag;
+        }
+
+        function uniqueSelector(doc, selector) {
+            try {
+                const n = doc.querySelectorAll(selector).length;
+                return n === 1;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function buildSelector(el, doc) {
+            const tag = (el.tagName || '').toLowerCase();
+            const id = el.getAttribute && el.getAttribute('id');
+            if (id) return '#' + cssEscape(id);
+
+            // Prefer stable attributes when present
+            const stableAttrs = ['data-testid', 'data-test', 'data-track', 'data-qa', 'name'];
+            for (const a of stableAttrs) {
+                const v = el.getAttribute && el.getAttribute(a);
+                if (v) {
+                    const sel = `${tag}[${a}="${String(v).replace(/"/g, '\\"')}"]`;
+                    if (uniqueSelector(doc, sel)) return sel;
+                    return sel;
+                }
+            }
+
+            // Links: use href if present
+            if (tag === 'a') {
+                const href = el.getAttribute && el.getAttribute('href');
+                if (href) {
+                    const sel = `a[href="${String(href).replace(/"/g, '\\"')}"]`;
+                    if (uniqueSelector(doc, sel)) return sel;
+                    return sel;
+                }
+            }
+
+            // Fallback: tag + up to 2 classes
+            const cls = (el.getAttribute && el.getAttribute('class')) ? String(el.getAttribute('class')) : '';
+            const classes = cls.split(/\s+/).filter(Boolean).slice(0, 2);
+            if (classes.length) {
+                const sel = tag + classes.map(c => '.' + cssEscape(c)).join('');
+                if (uniqueSelector(doc, sel)) return sel;
+                return sel;
+            }
+
+            return tag;
+        }
+
+        async function scanElementsForForm(form) {
+            const typeSelect = form.querySelector('select.meta-trigger-type');
+            const type = typeSelect ? String(typeSelect.value || '') : '';
+            if (type !== 'click' && type !== 'form_submit') return;
+
+            const pageSelect = form.querySelector('select[name="match_path_pattern"]');
+            const elementSelect = form.querySelector('select.meta-element-select[name="css_selector"]');
+            if (!pageSelect || !elementSelect) return;
+
+            const page = String(pageSelect.value || '').trim();
+            if (!page) {
+                // Can’t scan "all pages" — keep only current value
+                const current = String(elementSelect.value || '').trim();
+                elementSelect.innerHTML = '';
+                if (current) {
+                    const curOpt = document.createElement('option');
+                    curOpt.value = current;
+                    curOpt.textContent = 'Actuel: ' + current;
+                    elementSelect.appendChild(curOpt);
+                    elementSelect.value = current;
+                }
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '— Choisir un élément (sélectionnez une page) —';
+                elementSelect.appendChild(opt);
+                if (!current) elementSelect.value = '';
+                return;
+            }
+
+            const url = normalizePathToUrl(page);
+            if (!url) return;
+
+            try {
+                const resp = await fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
+                const html = await resp.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                let candidates = [];
+                if (type === 'click') {
+                    candidates = Array.from(doc.querySelectorAll('button, a, [role="button"], input[type="button"], input[type="submit"]'));
+                } else {
+                    candidates = Array.from(doc.querySelectorAll('form'));
+                }
+
+                candidates = candidates.filter(isVisibleCandidate).slice(0, 200);
+                const items = candidates.map(el => ({
+                    selector: buildSelector(el, doc),
+                    label: labelFor(el),
+                }));
+
+                // de-dup selectors
+                const seen = new Set();
+                const uniq = items.filter(it => {
+                    const key = it.selector;
+                    if (!key || seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                }).slice(0, 80);
+
+                const current = String(elementSelect.value || '').trim();
+                elementSelect.innerHTML = '';
+
+                if (current && !seen.has(current)) {
+                    const curOpt = document.createElement('option');
+                    curOpt.value = current;
+                    curOpt.textContent = 'Actuel: ' + current;
+                    elementSelect.appendChild(curOpt);
+                }
+
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = uniq.length ? '— Choisir un élément —' : '— Aucun élément trouvé sur cette page —';
+                elementSelect.appendChild(placeholder);
+
+                uniq.forEach(it => {
+                    const opt = document.createElement('option');
+                    opt.value = it.selector;
+                    opt.textContent = `${it.label} (${it.selector})`;
+                    elementSelect.appendChild(opt);
+                });
+
+                if (current && (seen.has(current) || !uniq.length)) {
+                    elementSelect.value = current;
+                } else {
+                    elementSelect.value = '';
+                }
+            } catch (e) {
+                // On erreur, ne pas casser l’admin
+            }
+        }
+
+        document.addEventListener('change', function (e) {
+            const pageSel = e.target && e.target.matches ? (e.target.matches('select[name="match_path_pattern"]') ? e.target : null) : null;
+            if (pageSel) {
+                const form = pageSel.closest('form');
+                if (form) scanElementsForForm(form);
+                return;
+            }
+            const typeSel = e.target && e.target.matches ? (e.target.matches('select.meta-trigger-type') ? e.target : null) : null;
+            if (typeSel) {
+                const form = typeSel.closest('form');
+                if (form) scanElementsForForm(form);
+            }
+        });
+
+        // Initial scan for edit forms that already have a page selected
+        try {
+            document.querySelectorAll('form').forEach(form => {
+                const hasElementSelect = !!form.querySelector('select.meta-element-select[name="css_selector"]');
+                const hasPageSelect = !!form.querySelector('select[name="match_path_pattern"]');
+                if (hasElementSelect && hasPageSelect) {
+                    scanElementsForForm(form);
+                }
+            });
+        } catch (e) {}
 
         // Ouvrir automatiquement l'accordion "Triggers"
         function openMetaTriggersAccordion() {

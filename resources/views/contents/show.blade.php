@@ -28,8 +28,23 @@
     border-color: var(--herime-blue-hover) !important;
 }
 
+/* Variante invité (section prix): WhatsApp vert */
+.btn-whatsapp-herime.btn-whatsapp-herime--guest {
+    background: #25D366 !important;
+    border-color: #25D366 !important;
+    color: #ffffff !important;
+}
+
+.btn-whatsapp-herime.btn-whatsapp-herime--guest:hover,
+.btn-whatsapp-herime.btn-whatsapp-herime--guest:focus {
+    background: #1DA851 !important;
+    border-color: #1DA851 !important;
+    color: #ffffff !important;
+}
+
 /* Mobile price slider WhatsApp button */
 .mobile-price-slider__btn--whatsapp {
+    /* Par défaut (utilisateur connecté): bleu foncé du site */
     background: var(--herime-blue) !important;
     border-color: var(--herime-blue) !important;
     color: #ffffff !important;
@@ -39,6 +54,20 @@
 .mobile-price-slider__btn--whatsapp:focus {
     background: var(--herime-blue-hover) !important;
     border-color: var(--herime-blue-hover) !important;
+    color: #ffffff !important;
+}
+
+/* Variante invité: WhatsApp vert pour se différencier du bouton "Se connecter" */
+.mobile-price-slider__btn--whatsapp-guest {
+    background: #25D366 !important;
+    border-color: #25D366 !important;
+    color: #ffffff !important;
+}
+
+.mobile-price-slider__btn--whatsapp-guest:hover,
+.mobile-price-slider__btn--whatsapp-guest:focus {
+    background: #1DA851 !important;
+    border-color: #1DA851 !important;
     color: #ffffff !important;
 }
 
@@ -2145,6 +2174,13 @@ button.mobile-price-slider__btn--download i,
     justify-content: center !important;
 }
 
+/* Exceptions: boutons texte long dans un groupe (sinon tronqués par width:85px) */
+.mobile-price-slider__btn-group .mobile-price-slider__btn--login,
+.mobile-price-slider__btn-group .mobile-price-slider__btn--download {
+    width: 110px !important;
+    min-width: 110px !important;
+}
+
 .mobile-price-slider__btn-group .mobile-price-slider__btn i {
     font-size: 0.8rem !important;
 }
@@ -4056,7 +4092,7 @@ button.mobile-price-slider__btn--download i,
                             <div class="d-grid gap-2">
                                 @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
                                     <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
-                                       class="btn btn-whatsapp-herime btn-lg w-100">
+                                       class="btn btn-whatsapp-herime btn-whatsapp-herime--guest btn-lg w-100">
                                         <i class="fab fa-whatsapp me-2"></i>Contacter sur WhatsApp
                                     </a>
                                 @endif
@@ -4305,11 +4341,17 @@ button.mobile-price-slider__btn--download i,
                     $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
                 @endphp
                 @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
-                    <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
-                       class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp">
-                        <i class="fab fa-whatsapp"></i>
-                        <span>WhatsApp</span>
-                    </a>
+                    <div class="mobile-price-slider__btn-group">
+                        <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                           class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp mobile-price-slider__btn--whatsapp-guest">
+                            <i class="fab fa-whatsapp"></i>
+                            <span>WhatsApp</span>
+                        </a>
+                        <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Se connecter</span>
+                        </a>
+                    </div>
                 @else
                     <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
                         <i class="fas fa-sign-in-alt"></i>

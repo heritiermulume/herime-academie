@@ -54,6 +54,21 @@
             border-color: var(--herime-blue-hover) !important;
         }
 
+        /* Cartes (mobile/tablette): réduire l'écart icône/texte et éviter le débordement */
+        @media (max-width: 991.98px) {
+            .course-card .card-actions .btn-whatsapp-herime.btn-sm,
+            .course-scroll-item .card-actions .btn-whatsapp-herime.btn-sm {
+                white-space: normal !important; /* Bootstrap met souvent nowrap sur .btn */
+                overflow-wrap: anywhere;
+                line-height: 1.2;
+            }
+
+            .course-card .card-actions .btn-whatsapp-herime.btn-sm i,
+            .course-scroll-item .card-actions .btn-whatsapp-herime.btn-sm i {
+                margin-right: 0.25rem !important;
+            }
+        }
+
         /* Prévenir le débordement horizontal global */
         html {
             overflow-x: hidden;

@@ -4093,12 +4093,6 @@ class AdminController extends Controller
         $baseCurrency = Setting::getBaseCurrency();
         $commissionPercentage = Setting::get('external_provider_commission_percentage', 20);
         $metaTrackingEnabled = Setting::get('meta_tracking_enabled', false);
-        $metaGeoipFallbackEnabled = Setting::get('meta_geoip_fallback_enabled', false);
-        $metaConsentRequired = Setting::get('meta_consent_required', false);
-        $metaConsentCookieName = Setting::get('meta_consent_cookie_name', 'meta_consent');
-        $metaCapiEnabled = Setting::get('meta_capi_enabled', false);
-        $metaCapiAccessToken = Setting::get('meta_capi_access_token', '');
-        $metaCapiTestEventCode = Setting::get('meta_capi_test_event_code', '');
         
         // Paramètres Wallet
         $walletSettings = [
@@ -4134,56 +4128,16 @@ class AdminController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        // Options UI (combobox/select) pour réduire les erreurs de saisie
-        $routeNameOptions = collect(\Illuminate\Support\Facades\Route::getRoutes())
-            ->map(fn ($r) => $r->getName())
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
-
-        $pixelIdOptions = $metaPixels->pluck('pixel_id')->filter()->unique()->values()->all();
-
-        $metaCountryOptions = [
-            'CD','CM','CI','SN','BJ','TG','BF','ML','NE','GN','RW','UG','KE','TZ','GH','NG','ZA',
-            'FR','BE','CH','CA','US','GB',
-        ];
-
-        $knownFunnels = collect()
-            ->merge($metaPixels->pluck('funnel_keys')->filter()->flatten())
-            ->merge($metaTriggers->pluck('funnel_keys')->filter()->flatten())
-            ->filter(fn ($v) => is_string($v) && trim($v) !== '')
-            ->map(fn ($v) => trim($v))
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
-
-        $pathPatternOptions = collect()
-            ->merge($metaPixels->pluck('match_path_pattern'))
-            ->merge($metaPixels->pluck('excluded_path_patterns')->filter()->flatten())
-            ->merge($metaTriggers->pluck('match_path_pattern'))
-            ->filter(fn ($v) => is_string($v) && trim($v) !== '')
-            ->map(fn ($v) => trim($v))
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
-
-        // Pages (routes GET sans paramètres) pour faciliter le choix d'une page dans l'UI des triggers
+        // Pages (routes GET sans paramètres) pour choisir une page dans les triggers
         $metaPageOptions = collect(\Illuminate\Support\Facades\Route::getRoutes())
             ->filter(function ($r) {
                 try {
                     $methods = $r->methods();
                     $uri = ltrim((string) $r->uri(), '/');
 
-                    // GET pages only
                     if (!in_array('GET', $methods, true)) {
                         return false;
                     }
-
-                    // Exclure admin / api / routes avec paramètres (ex: {id})
                     if ($uri !== '' && (str_starts_with($uri, 'admin') || str_starts_with($uri, 'api'))) {
                         return false;
                     }
@@ -4199,17 +4153,15 @@ class AdminController extends Controller
             ->map(function ($r) {
                 $name = $r->getName();
                 $rawUri = (string) $r->uri();
-                $path = ltrim($rawUri, '/');
-                $path = $path === '' ? '/' : $path;
-
-                $label = $name ? ($name . ' — /' . ltrim($path, '/')) : ('/' . ltrim($path, '/'));
+                $path = '/' . ltrim($rawUri, '/');
                 if ($path === '/') {
                     $label = $name ? ($name . ' — /') : '/';
+                } else {
+                    $label = $name ? ($name . ' — ' . $path) : $path;
                 }
 
                 return [
-                    'path' => $path, // compatible MetaTrackingService::pathMatches (sans slash, sauf '/')
-                    'route_name' => $name,
+                    'path' => $path,
                     'label' => $label,
                 ];
             })
@@ -4264,20 +4216,9 @@ class AdminController extends Controller
             'commissionPercentage',
             'walletSettings',
             'metaTrackingEnabled',
-            'metaGeoipFallbackEnabled',
-            'metaConsentRequired',
-            'metaConsentCookieName',
-            'metaCapiEnabled',
-            'metaCapiAccessToken',
-            'metaCapiTestEventCode',
             'metaPixels',
             'metaEvents',
             'metaTriggers',
-            'routeNameOptions',
-            'pixelIdOptions',
-            'metaCountryOptions',
-            'knownFunnels',
-            'pathPatternOptions',
             'metaPageOptions',
             'metaEventNameOptions',
             'metaStandardEventNameOptions',
@@ -4365,51 +4306,6 @@ class AdminController extends Controller
                     'Activer le tracking Meta (Facebook Pixel) globalement'
                 );
 
-                Setting::set(
-                    'meta_geoip_fallback_enabled',
-                    $request->input('meta_geoip_fallback_enabled') === 'on' ? 1 : 0,
-                    'boolean',
-                    'Activer le fallback GeoIP (service externe) pour détecter le pays'
-                );
-
-                Setting::set(
-                    'meta_consent_required',
-                    $request->input('meta_consent_required') === 'on' ? 1 : 0,
-                    'boolean',
-                    'Exiger un consentement avant de charger Meta Pixel'
-                );
-                $cookieName = trim((string) $request->input('meta_consent_cookie_name', 'meta_consent'));
-                if ($cookieName === '') {
-                    $cookieName = 'meta_consent';
-                }
-                Setting::set(
-                    'meta_consent_cookie_name',
-                    $cookieName,
-                    'string',
-                    'Nom du cookie (valeur "1") qui indique le consentement Meta'
-                );
-
-                Setting::set(
-                    'meta_capi_enabled',
-                    $request->input('meta_capi_enabled') === 'on' ? 1 : 0,
-                    'boolean',
-                    'Activer Meta Conversions API (CAPI) pour déduplication et fiabilité'
-                );
-                $accessToken = trim((string) $request->input('meta_capi_access_token', ''));
-                Setting::set(
-                    'meta_capi_access_token',
-                    $accessToken,
-                    'string',
-                    'CAPI Access Token (Graph API) — à garder privé'
-                );
-                $testCode = trim((string) $request->input('meta_capi_test_event_code', ''));
-                Setting::set(
-                    'meta_capi_test_event_code',
-                    $testCode,
-                    'string',
-                    'CAPI Test Event Code (optionnel, Events Manager)'
-                );
-
                 return redirect()->route('admin.settings')->with('success', 'Paramètres Meta mis à jour.');
             }
 
@@ -4417,24 +4313,12 @@ class AdminController extends Controller
                 $request->validate([
                     'pixel_id' => 'required|string|max:64',
                     'pixel_name' => 'nullable|string|max:255',
-                    'pixel_priority' => 'nullable|integer|min:-1000|max:1000',
-                    'match_route_name' => 'nullable|string|max:255',
-                    'match_path_pattern' => 'nullable|string|max:255',
                 ]);
 
                 \App\Models\MetaPixel::create([
                     'pixel_id' => trim($request->input('pixel_id')),
                     'name' => $request->input('pixel_name'),
                     'is_active' => $request->input('pixel_is_active') === 'on',
-                    'priority' => (int) $request->input('pixel_priority', 0),
-                    'allowed_country_codes' => $parseCsv((string) $request->input('allowed_country_codes')),
-                    'excluded_country_codes' => $parseCsv((string) $request->input('excluded_country_codes')),
-                    'funnel_keys' => $parseCsv((string) $request->input('funnel_keys')),
-                    'match_route_name' => $request->input('match_route_name'),
-                    'match_path_pattern' => $request->input('match_path_pattern'),
-                    'excluded_route_names' => $parseCsv((string) $request->input('excluded_route_names')),
-                    'excluded_path_patterns' => $parseCsv((string) $request->input('excluded_path_patterns')),
-                    'notes' => $request->input('pixel_notes'),
                 ]);
 
                 return redirect()
@@ -4447,9 +4331,6 @@ class AdminController extends Controller
                     'meta_pixel_id' => 'required|integer|exists:meta_pixels,id',
                     'pixel_id' => 'required|string|max:64',
                     'pixel_name' => 'nullable|string|max:255',
-                    'pixel_priority' => 'nullable|integer|min:-1000|max:1000',
-                    'match_route_name' => 'nullable|string|max:255',
-                    'match_path_pattern' => 'nullable|string|max:255',
                 ]);
 
                 $pixel = \App\Models\MetaPixel::query()->findOrFail((int) $request->input('meta_pixel_id'));
@@ -4457,15 +4338,6 @@ class AdminController extends Controller
                     'pixel_id' => trim($request->input('pixel_id')),
                     'name' => $request->input('pixel_name'),
                     'is_active' => $request->input('pixel_is_active') === 'on',
-                    'priority' => (int) $request->input('pixel_priority', 0),
-                    'allowed_country_codes' => $parseCsv((string) $request->input('allowed_country_codes')),
-                    'excluded_country_codes' => $parseCsv((string) $request->input('excluded_country_codes')),
-                    'funnel_keys' => $parseCsv((string) $request->input('funnel_keys')),
-                    'match_route_name' => $request->input('match_route_name'),
-                    'match_path_pattern' => $request->input('match_path_pattern'),
-                    'excluded_route_names' => $parseCsv((string) $request->input('excluded_route_names')),
-                    'excluded_path_patterns' => $parseCsv((string) $request->input('excluded_path_patterns')),
-                    'notes' => $request->input('pixel_notes'),
                 ]);
                 $pixel->save();
 
@@ -4562,15 +4434,21 @@ class AdminController extends Controller
                     'meta_event_id' => 'nullable|integer|exists:meta_events,id',
                     'event_name' => 'required_without:meta_event_id|string|max:64',
                     'trigger_type' => 'required|string|in:page_load,click,form_submit',
-                    'trigger_priority' => 'nullable|integer|min:-1000|max:1000',
                     'css_selector' => 'nullable|string|max:255',
-                    'match_route_name' => 'nullable|string|max:255',
                     'match_path_pattern' => 'nullable|string|max:255',
                 ]);
 
                 $triggerType = $request->input('trigger_type');
+                if ($triggerType === 'page_load' && !$request->filled('match_path_pattern')) {
+                    return redirect()->route('admin.settings')->with('error', 'Pour page_load, la sélection de page est obligatoire (choisissez une page ou “Toutes les pages”).');
+                }
                 if (in_array($triggerType, ['click', 'form_submit'], true) && !$request->filled('css_selector')) {
                     return redirect()->route('admin.settings')->with('error', 'Le sélecteur CSS est obligatoire pour click/form_submit.');
+                }
+
+                $matchPathPattern = trim((string) $request->input('match_path_pattern', ''));
+                if ($matchPathPattern === '__all__') {
+                    $matchPathPattern = '';
                 }
 
                 $metaEventId = $request->input('meta_event_id');
@@ -4591,12 +4469,8 @@ class AdminController extends Controller
                 \App\Models\MetaEventTrigger::create([
                     'meta_event_id' => (int) $metaEventId,
                     'trigger_type' => $triggerType,
-                    'priority' => (int) $request->input('trigger_priority', 0),
-                    'match_route_name' => $request->input('match_route_name'),
-                    'match_path_pattern' => $request->input('match_path_pattern'),
                     'css_selector' => $request->input('css_selector'),
-                    'country_codes' => $parseCsv((string) $request->input('trigger_country_codes')),
-                    'funnel_keys' => $parseCsv((string) $request->input('trigger_funnel_keys')),
+                    'match_path_pattern' => $matchPathPattern !== '' ? $matchPathPattern : null,
                     'pixel_ids' => $parseCsv((string) $request->input('trigger_pixel_ids')),
                     'payload' => $parseJson((string) $request->input('trigger_payload')) ?? [],
                     'is_active' => $request->input('trigger_is_active') === 'on',
@@ -4612,18 +4486,24 @@ class AdminController extends Controller
                     'meta_event_id' => 'nullable|integer|exists:meta_events,id',
                     'event_name' => 'required_without:meta_event_id|string|max:64',
                     'trigger_type' => 'required|string|in:page_load,click,form_submit',
-                    'trigger_priority' => 'nullable|integer|min:-1000|max:1000',
                     'css_selector' => 'nullable|string|max:255',
-                    'match_route_name' => 'nullable|string|max:255',
                     'match_path_pattern' => 'nullable|string|max:255',
                 ]);
 
                 $triggerType = $request->input('trigger_type');
+                if ($triggerType === 'page_load' && !$request->filled('match_path_pattern')) {
+                    return redirect()->route('admin.settings')->with('error', 'Pour page_load, la sélection de page est obligatoire (choisissez une page ou “Toutes les pages”).');
+                }
                 if (in_array($triggerType, ['click', 'form_submit'], true) && !$request->filled('css_selector')) {
                     return redirect()->route('admin.settings')->with('error', 'Le sélecteur CSS est obligatoire pour click/form_submit.');
                 }
 
                 $trigger = \App\Models\MetaEventTrigger::query()->findOrFail((int) $request->input('meta_trigger_id'));
+
+                $matchPathPattern = trim((string) $request->input('match_path_pattern', ''));
+                if ($matchPathPattern === '__all__') {
+                    $matchPathPattern = '';
+                }
 
                 $metaEventId = $request->input('meta_event_id');
                 if (!$metaEventId) {
@@ -4642,12 +4522,8 @@ class AdminController extends Controller
                 $trigger->fill([
                     'meta_event_id' => (int) $metaEventId,
                     'trigger_type' => $triggerType,
-                    'priority' => (int) $request->input('trigger_priority', 0),
-                    'match_route_name' => $request->input('match_route_name'),
-                    'match_path_pattern' => $request->input('match_path_pattern'),
                     'css_selector' => $request->input('css_selector'),
-                    'country_codes' => $parseCsv((string) $request->input('trigger_country_codes')),
-                    'funnel_keys' => $parseCsv((string) $request->input('trigger_funnel_keys')),
+                    'match_path_pattern' => $matchPathPattern !== '' ? $matchPathPattern : null,
                     'pixel_ids' => $parseCsv((string) $request->input('trigger_pixel_ids')),
                     'payload' => $parseJson((string) $request->input('trigger_payload')) ?? [],
                     'is_active' => $request->input('trigger_is_active') === 'on',
