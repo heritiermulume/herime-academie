@@ -681,9 +681,20 @@ class Course extends Model
     public function getButtonStateForUser($userId = null): string
     {
         if (!$userId) {
-            // Si la vente est désactivée, on affiche quand même le bouton de connexion
-            // mais on vérifiera après la connexion
-            return 'login';
+            // Invité (non connecté)
+            // - Les actions "ajout au panier / procéder au paiement / WhatsApp" ne doivent pas dépendre de l'auth.
+            // - La connexion est exigée uniquement lors de l'initiation du paiement (côté panier / backend).
+            // - Pour les contenus gratuits (inscription), on garde la connexion requise.
+
+            if (!$this->is_sale_enabled) {
+                return 'sale_disabled';
+            }
+
+            if ($this->is_free) {
+                return 'login';
+            }
+
+            return 'purchase';
         }
 
         // Check if user is enrolled (for both free and paid courses)

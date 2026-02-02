@@ -4096,22 +4096,38 @@ button.mobile-price-slider__btn--download i,
                                         <i class="fab fa-whatsapp me-2"></i>Contacter sur WhatsApp
                                     </a>
                                 @endif
-                                @php
-                                    $finalLoginCourse = url()->full();
-                                    $callbackLoginCourse = route('sso.callback', ['redirect' => $finalLoginCourse]);
-                                    $ssoLoginUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse);
-                                @endphp
-                                <a href="{{ $ssoLoginUrlCourse }}" class="btn btn-primary btn-lg w-100">
-                                    <i class="fas fa-sign-in-alt me-2"></i>{{ $course->is_downloadable ? 'Se connecter pour télécharger' : 'Se connecter pour accéder au contenu' }}
-                                </a>
-                                @php
-                                    $finalRegisterCourse = url()->full();
-                                    $callbackRegisterCourse = route('sso.callback', ['redirect' => $finalRegisterCourse]);
-                                    $ssoRegisterUrlCourse = 'https://compte.herime.com/login?force_token=1&action=register&redirect=' . urlencode($callbackRegisterCourse);
-                                @endphp
-                                <a href="{{ $ssoRegisterUrlCourse }}" class="btn btn-outline-primary btn-lg w-100">
-                                    <i class="fas fa-user-plus me-2"></i>Créer un compte
-                                </a>
+
+                                @if(!$course->is_free && ($course->is_sale_enabled ?? true))
+                                    @if(!($course->is_in_person_program ?? false))
+                                        <button type="button" class="btn btn-outline-primary btn-lg w-100" onclick="addToCart({{ $course->id }})">
+                                            <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
+                                        </button>
+                                    @endif
+                                    <button type="button" class="btn btn-success btn-lg w-100" onclick="proceedToCheckout({{ $course->id }})">
+                                        <i class="fas fa-credit-card me-2"></i>Procéder au paiement
+                                    </button>
+                                @elseif($course->is_free)
+                                    @php
+                                        $finalLoginCourse = url()->full();
+                                        $callbackLoginCourse = route('sso.callback', ['redirect' => $finalLoginCourse]);
+                                        $ssoLoginUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse);
+                                    @endphp
+                                    <a href="{{ $ssoLoginUrlCourse }}" class="btn btn-primary btn-lg w-100">
+                                        <i class="fas fa-sign-in-alt me-2"></i>{{ $course->is_downloadable ? 'Se connecter pour télécharger' : 'Se connecter pour accéder au contenu' }}
+                                    </a>
+                                    @php
+                                        $finalRegisterCourse = url()->full();
+                                        $callbackRegisterCourse = route('sso.callback', ['redirect' => $finalRegisterCourse]);
+                                        $ssoRegisterUrlCourse = 'https://compte.herime.com/login?force_token=1&action=register&redirect=' . urlencode($callbackRegisterCourse);
+                                    @endphp
+                                    <a href="{{ $ssoRegisterUrlCourse }}" class="btn btn-outline-primary btn-lg w-100">
+                                        <i class="fas fa-user-plus me-2"></i>Créer un compte
+                                    </a>
+                                @else
+                                    <button type="button" class="btn btn-secondary btn-lg w-100" disabled>
+                                        <i class="fas fa-ban me-2"></i>Indisponible
+                                    </button>
+                                @endif
                             </div>
                         @else
                             <div class="d-grid gap-2">
@@ -4340,23 +4356,50 @@ button.mobile-price-slider__btn--download i,
                     $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
                     $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
                 @endphp
-                @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
-                    <div class="mobile-price-slider__btn-group">
-                        <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
-                           class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp mobile-price-slider__btn--whatsapp-guest">
-                            <i class="fab fa-whatsapp"></i>
-                            <span>WhatsApp</span>
-                        </a>
+                @if($course->is_free)
+                    @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                        <div class="mobile-price-slider__btn-group">
+                            <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                               class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp mobile-price-slider__btn--whatsapp-guest">
+                                <i class="fab fa-whatsapp"></i>
+                                <span>WhatsApp</span>
+                            </a>
+                            <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
+                                <i class="fas fa-sign-in-alt"></i>
+                                <span>Se connecter</span>
+                            </a>
+                        </div>
+                    @else
                         <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
                             <i class="fas fa-sign-in-alt"></i>
                             <span>Se connecter</span>
                         </a>
-                    </div>
+                    @endif
                 @else
-                    <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
-                        <i class="fas fa-sign-in-alt"></i>
-                        <span>Se connecter</span>
-                    </a>
+                    @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
+                        <div class="mobile-price-slider__btn-group">
+                            <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
+                               class="mobile-price-slider__btn mobile-price-slider__btn--whatsapp mobile-price-slider__btn--whatsapp-guest">
+                                <i class="fab fa-whatsapp"></i>
+                                <span>WhatsApp</span>
+                            </a>
+                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--success" onclick="proceedToCheckout({{ $course->id }})">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Payer</span>
+                            </button>
+                        </div>
+                    @else
+                        <div class="mobile-price-slider__btn-group">
+                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--outline" onclick="addToCart({{ $course->id }})">
+                                <i class="fas fa-shopping-cart"></i>
+                                <span>Panier</span>
+                            </button>
+                            <button type="button" class="mobile-price-slider__btn mobile-price-slider__btn--success" onclick="proceedToCheckout({{ $course->id }})">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Payer</span>
+                            </button>
+                        </div>
+                    @endif
                 @endif
             @else
                 @if($course->is_free)

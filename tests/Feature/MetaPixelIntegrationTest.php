@@ -82,7 +82,27 @@ class MetaPixelIntegrationTest extends TestCase
 
     public function test_removed_meta_capi_endpoint_returns_404(): void
     {
+        // Hardening: quand CAPI est désactivé (default), l'endpoint se comporte comme inexistant.
         $this->post('/meta/capi', [])->assertNotFound();
+    }
+
+    public function test_meta_capi_endpoint_works_when_enabled_and_token_present(): void
+    {
+        Setting::set('meta_tracking_enabled', true, 'boolean');
+        Setting::set('meta_capi_enabled', true, 'boolean');
+        Setting::set('meta_capi_access_token', 'TEST_TOKEN', 'string');
+
+        MetaPixel::create([
+            'pixel_id' => '111',
+            'is_active' => true,
+        ]);
+
+        $this->postJson('/meta/capi', [
+            'event_name' => 'PageView',
+            'event_id' => 'ev_test_123',
+            'event_source_url' => 'https://example.test/',
+            'payload' => [],
+        ])->assertNoContent();
     }
 
     public function test_admin_requires_page_selection_for_page_load_triggers_but_accepts_all_pages(): void
@@ -122,6 +142,29 @@ class MetaPixelIntegrationTest extends TestCase
             ])
             ->assertRedirect(route('admin.settings'))
             ->assertSessionHas('success');
+    }
+
+    public function test_admin_can_save_meta_capi_settings(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.settings.update'), [
+                'meta_action' => 'meta_update_global',
+                'meta_tracking_enabled' => 'on',
+                'meta_capi_enabled' => 'on',
+                'meta_capi_access_token' => 'EAAB_TEST',
+                'meta_capi_test_event_code' => 'TEST123',
+            ])
+            ->assertRedirect(route('admin.settings'))
+            ->assertSessionHas('success');
+
+        $this->assertTrue((bool) Setting::get('meta_capi_enabled', false));
+        $this->assertSame('EAAB_TEST', (string) Setting::get('meta_capi_access_token', ''));
+        $this->assertSame('TEST123', (string) Setting::get('meta_capi_test_event_code', ''));
     }
 }
 

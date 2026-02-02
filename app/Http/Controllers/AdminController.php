@@ -4306,6 +4306,31 @@ class AdminController extends Controller
                     'Activer le tracking Meta (Facebook Pixel) globalement'
                 );
 
+                Setting::set(
+                    'meta_capi_enabled',
+                    $request->input('meta_capi_enabled') === 'on' ? 1 : 0,
+                    'boolean',
+                    'Activer Meta Conversions API (CAPI) pour déduplication et fiabilité'
+                );
+
+                // Token CAPI (peut être vide si CAPI off)
+                $token = (string) $request->input('meta_capi_access_token', '');
+                Setting::set(
+                    'meta_capi_access_token',
+                    $token,
+                    'string',
+                    'CAPI Access Token (Graph API) — à garder privé'
+                );
+
+                // Test event code (optionnel)
+                $testCode = (string) $request->input('meta_capi_test_event_code', '');
+                Setting::set(
+                    'meta_capi_test_event_code',
+                    $testCode,
+                    'string',
+                    'CAPI Test Event Code (optionnel, Events Manager)'
+                );
+
                 return redirect()->route('admin.settings')->with('success', 'Paramètres Meta mis à jour.');
             }
 

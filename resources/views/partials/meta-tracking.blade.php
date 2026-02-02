@@ -50,6 +50,10 @@
             })
             ->all();
     }
+
+    $capiEnabled = $enabled
+        && (bool) \App\Models\Setting::get('meta_capi_enabled', false)
+        && trim((string) \App\Models\Setting::get('meta_capi_access_token', '')) !== '';
 @endphp
 
 @if($enabled && $pixelIds->count() > 0)
@@ -66,7 +70,40 @@
     @foreach($pixelIds as $pid)
     fbq('init', '{{ $pid }}');
     @endforeach
-    fbq('track', 'PageView');
+    (function () {
+        function genEventId() {
+            try {
+                if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+            } catch (e) {}
+            return 'ev_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+        }
+
+        const pageViewEventId = genEventId();
+        try { fbq('track', 'PageView', {}, { eventID: pageViewEventId }); } catch (e) { try { fbq('track', 'PageView'); } catch (e2) {} }
+
+        @if($capiEnabled)
+        try {
+            fetch('{{ route('meta.capi') }}', {
+                method: 'POST',
+                credentials: 'same-origin',
+                keepalive: true,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_name: 'PageView',
+                    event_id: pageViewEventId,
+                    event_source_url: (window.location && window.location.href) ? String(window.location.href) : '',
+                    payload: {},
+                    pixel_ids: @json($pixelIds->values()->all()),
+                })
+            }).catch(function () {});
+        } catch (e) {}
+        @endif
+    })();
     </script>
     <noscript>
         @foreach($pixelIds as $pid)
@@ -87,6 +124,22 @@
                 if (!Array.isArray(triggers) || !triggers.length) return;
 
                 const fired = new Set();
+
+                const capiEnabled = {{ $capiEnabled ? 'true' : 'false' }};
+                const capiUrl = capiEnabled ? '{{ route('meta.capi') }}' : null;
+                const capiHeaders = capiEnabled ? {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                } : null;
+
+                function genEventId() {
+                    try {
+                        if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+                    } catch (e) {}
+                    return 'ev_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+                }
 
                 function normalizePath(p) {
                     p = String(p || '').trim();
@@ -122,16 +175,35 @@
                     if (t.once_per_page && fired.has(uniqKey)) return;
 
                     const payload = (t.payload && typeof t.payload === 'object') ? t.payload : {};
+                    const eventId = genEventId();
 
                     try {
                         if (Array.isArray(t.pixel_ids) && t.pixel_ids.length) {
                             t.pixel_ids.forEach(function (id) {
-                                try { window.fbq('trackSingle', String(id), String(t.event_name), payload); } catch (e) {}
+                                try { window.fbq('trackSingle', String(id), String(t.event_name), payload, { eventID: eventId }); } catch (e) { try { window.fbq('trackSingle', String(id), String(t.event_name), payload); } catch (e2) {} }
                             });
                         } else {
-                            window.fbq('track', String(t.event_name), payload);
+                            try { window.fbq('track', String(t.event_name), payload, { eventID: eventId }); } catch (e) { try { window.fbq('track', String(t.event_name), payload); } catch (e2) {} }
                         }
                     } catch (e) {}
+
+                    if (capiEnabled && capiUrl) {
+                        try {
+                            fetch(capiUrl, {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                keepalive: true,
+                                headers: capiHeaders,
+                                body: JSON.stringify({
+                                    event_name: String(t.event_name),
+                                    event_id: eventId,
+                                    event_source_url: (window.location && window.location.href) ? String(window.location.href) : '',
+                                    payload: payload,
+                                    pixel_ids: (Array.isArray(t.pixel_ids) && t.pixel_ids.length) ? t.pixel_ids : null,
+                                })
+                            }).catch(function () {});
+                        } catch (e) {}
+                    }
 
                     if (t.once_per_page) fired.add(uniqKey);
                 }

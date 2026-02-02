@@ -413,6 +413,57 @@
                             </div>
                         </div>
 
+                        <hr class="my-3">
+
+                        <div class="d-flex flex-column gap-2">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       role="switch"
+                                       name="meta_capi_enabled"
+                                       id="meta_capi_enabled"
+                                       value="on"
+                                       {{ \App\Models\Setting::get('meta_capi_enabled', false) ? 'checked' : '' }}>
+                                <label class="form-check-label fw-semibold" for="meta_capi_enabled">
+                                    Activer Meta Conversions API (CAPI)
+                                </label>
+                                <div class="form-text">
+                                    Envoie les mêmes événements côté serveur pour renforcer le Pixel et faire la <strong>déduplication</strong> via <code>event_id</code>.
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mt-1">
+                                <div class="col-12 col-lg-8">
+                                    <label for="meta_capi_access_token" class="form-label fw-semibold">
+                                        Token CAPI (Access Token)
+                                    </label>
+                                    <input type="password"
+                                           class="form-control"
+                                           name="meta_capi_access_token"
+                                           id="meta_capi_access_token"
+                                           value="{{ (string) \App\Models\Setting::get('meta_capi_access_token', '') }}"
+                                           placeholder="EAAB...">
+                                    <div class="form-text">
+                                        À récupérer dans Meta Events Manager / Conversions API. <strong>À garder privé.</strong>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-lg-4">
+                                    <label for="meta_capi_test_event_code" class="form-label fw-semibold">
+                                        Test Event Code (optionnel)
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           name="meta_capi_test_event_code"
+                                           id="meta_capi_test_event_code"
+                                           value="{{ (string) \App\Models\Setting::get('meta_capi_test_event_code', '') }}"
+                                           placeholder="TEST1234">
+                                    <div class="form-text">
+                                        Pour vérifier les events côté Meta (mode test).
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mt-3">
                             <button type="submit" class="btn btn-success">
                                 <i class="fas fa-save me-2"></i>Enregistrer Meta
