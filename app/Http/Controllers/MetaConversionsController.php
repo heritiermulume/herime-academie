@@ -12,6 +12,10 @@ class MetaConversionsController extends Controller
     /**
      * Collect a browser-fired Meta event and forward it server-side to Meta Conversions API (CAPI).
      *
+     * Deduplication (recommandation Meta) : le même event_id doit être envoyé au Pixel (eventID)
+     * et à la CAPI pour chaque événement. Meta déduplique sur event_id + event_name dans une
+     * fenêtre de 48h. Un taux de couverture CAPI ~75 % peut réduire le coût par résultat.
+     *
      * Note: When CAPI is disabled or missing token, we behave as 404 (hardening).
      */
     public function track(Request $request)
@@ -94,6 +98,7 @@ class MetaConversionsController extends Controller
             }
         }
 
+        // event_id obligatoire pour la déduplication Pixel/CAPI (Event ID and Event Name, méthode recommandée Meta).
         $event = [
             'event_name' => $eventName,
             'event_time' => time(),

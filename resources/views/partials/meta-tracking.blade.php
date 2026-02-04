@@ -79,12 +79,20 @@
             return 'ev_' + Date.now() + '_' + Math.random().toString(16).slice(2);
         }
 
+        // Déduplication Meta : même eventID (Pixel) = event_id (CAPI) pour atteindre ~75% de couverture et réduire le coût par résultat.
         const pageViewEventId = genEventId();
         try { fbq('track', 'PageView', {}, { eventID: pageViewEventId }); } catch (e) { try { fbq('track', 'PageView'); } catch (e2) {} }
 
         @if($capiEnabled)
-        try {
-            fetch('{{ route('meta.capi') }}', {
+        (function sendPageViewCapi() {
+            var payload = {
+                event_name: 'PageView',
+                event_id: pageViewEventId,
+                event_source_url: (window.location && window.location.href) ? String(window.location.href) : '',
+                payload: {},
+                pixel_ids: @json($pixelIds->values()->all()),
+            };
+            var opts = {
                 method: 'POST',
                 credentials: 'same-origin',
                 keepalive: true,
@@ -94,15 +102,16 @@
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    event_name: 'PageView',
-                    event_id: pageViewEventId,
-                    event_source_url: (window.location && window.location.href) ? String(window.location.href) : '',
-                    payload: {},
-                    pixel_ids: @json($pixelIds->values()->all()),
-                })
-            }).catch(function () {});
-        } catch (e) {}
+                body: JSON.stringify(payload)
+            };
+            fetch('{{ route('meta.capi') }}', opts).then(function (r) {
+                if (!r.ok && r.status !== 204) throw new Error('CAPI failed');
+            }).catch(function () {
+                setTimeout(function () {
+                    fetch('{{ route('meta.capi') }}', opts).catch(function () {});
+                }, 600);
+            });
+        })();
         @endif
     })();
     </script>
@@ -189,21 +198,17 @@
                     } catch (e) {}
 
                     if (capiEnabled && capiUrl) {
-                        try {
-                            fetch(capiUrl, {
-                                method: 'POST',
-                                credentials: 'same-origin',
-                                keepalive: true,
-                                headers: capiHeaders,
-                                body: JSON.stringify({
-                                    event_name: String(t.event_name),
-                                    event_id: eventId,
-                                    event_source_url: (window.location && window.location.href) ? String(window.location.href) : '',
-                                    payload: payload,
-                                    pixel_ids: (Array.isArray(t.pixel_ids) && t.pixel_ids.length) ? t.pixel_ids : null,
-                                })
-                            }).catch(function () {});
-                        } catch (e) {}
+                        var capiBody = {
+                            event_name: String(t.event_name),
+                            event_id: eventId,
+                            event_source_url: (window.location && window.location.href) ? String(window.location.href) : '',
+                            payload: payload,
+                            pixel_ids: (Array.isArray(t.pixel_ids) && t.pixel_ids.length) ? t.pixel_ids : null,
+                        };
+                        var capiOpts = { method: 'POST', credentials: 'same-origin', keepalive: true, headers: capiHeaders, body: JSON.stringify(capiBody) };
+                        fetch(capiUrl, capiOpts).then(function (r) { if (!r.ok && r.status !== 204) throw new Error('CAPI failed'); }).catch(function () {
+                            setTimeout(function () { fetch(capiUrl, capiOpts).catch(function () {}); }, 600);
+                        });
                     }
 
                     if (t.once_per_page) fired.add(uniqKey);

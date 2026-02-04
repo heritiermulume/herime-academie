@@ -262,7 +262,15 @@ php artisan optimize
 - ✅ Mise à jour régulière de Composer et NPM
 - ✅ Sauvegardes régulières de la base de données
 
-## 18. Support O2Switch
+## 18. Meta Pixel & Conversions API (déduplication)
+
+Pour atteindre un bon taux de couverture CAPI (recommandation Meta, ~75 %) et réduire le coût par résultat :
+
+- Activer **Meta Conversions API** dans Réglages > Meta Pixel & Events.
+- Renseigner le **token CAPI** (Events Manager) et le garder privé.
+- Le projet envoie déjà le même **event_id** au Pixel et à la CAPI pour chaque événement (PageView + événements personnalisés). Voir `META_PIXEL_CAPI_DEDUPLICATION.md` pour les détails.
+
+## 19. Support O2Switch
 
 - Support : https://www.o2switch.fr/support/
 - Ticket système : Interface client O2Switch
