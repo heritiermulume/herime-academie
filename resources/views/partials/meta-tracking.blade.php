@@ -7,7 +7,7 @@
 
     $enabled = !$isAdmin && (bool) \App\Models\Setting::get('meta_tracking_enabled', false);
 
-    // Les IDs Pixel proviennent uniquement de la BDD
+    // Les IDs Pixel proviennent uniquement de la BDD (dédupliqués pour éviter double init = avertissement Meta Pixel Helper)
     $pixelIds = $enabled
         ? \App\Models\MetaPixel::query()
             ->where('is_active', true)
@@ -15,6 +15,7 @@
             ->pluck('pixel_id')
             ->filter(fn ($v) => is_string($v) && trim($v) !== '')
             ->map(fn ($v) => trim((string) $v))
+            ->unique()
             ->values()
         : collect();
 
