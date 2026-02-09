@@ -59,6 +59,9 @@
                                 <div class="cart-item-price-mobile">
                                     <div class="price-container">
                                         <span class="current-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}</span>
+                                        @if($item['course']->is_sale_active && $item['course']->active_sale_price !== null)
+                                            <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['course']->price) }}</span>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
