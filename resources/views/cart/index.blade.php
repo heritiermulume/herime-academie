@@ -63,17 +63,12 @@
                                 </div>
                             </div>
                             
-                            <!-- Formateur, niveau et prix barré sur la même ligne -->
+                            <!-- Formateur et niveau -->
                             <div class="recommended-meta-with-price d-flex justify-content-between align-items-center mb-0">
                                 <div class="recommended-meta">
                                     <span><i class="fas fa-user me-1"></i>{{ $item['course']->provider->name }}</span>
                                     <span><i class="fas fa-signal me-1"></i>{{ ucfirst($item['course']->level) }}</span>
                                 </div>
-                                @if($item['course']->is_sale_active && $item['course']->active_sale_price !== null)
-                                <div class="original-price-inline">
-                                    <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['course']->price) }}</span>
-                                </div>
-                                @endif
                             </div>
                             
                             <div class="recommended-actions">
