@@ -1456,6 +1456,19 @@ class AdminController extends Controller
             Review::where('user_id', $user->id)
                 ->where('content_id', $course->id)
                 ->delete();
+
+            // Supprimer l'historique d'envoi des emails d'inscription et de reçu pour ce contenu,
+            // afin qu'à la prochaine inscription les mails (inscription + reçu PDF) soient renvoyés
+            $enrollmentMailClasses = [
+                \App\Mail\CourseEnrolledMail::class,
+                \App\Mail\EnrollmentReceiptMail::class,
+            ];
+            foreach ($enrollmentMailClasses as $mailClass) {
+                SentEmail::where('recipient_email', $user->email)
+                    ->where('metadata->content_id', $course->id)
+                    ->where('metadata->mail_class', $mailClass)
+                    ->delete();
+            }
         });
 
         return redirect()->route('admin.users.show', $user)
@@ -1576,6 +1589,9 @@ class AdminController extends Controller
             'use_external_payment' => 'boolean',
             'external_payment_url' => 'nullable|url|max:500|required_if:use_external_payment,1',
             'external_payment_text' => 'nullable|string|max:100',
+            'send_receipt_enabled' => 'boolean',
+            'receipt_custom_title' => 'nullable|string|max:500',
+            'receipt_custom_body' => 'nullable|string|max:10000',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
             'thumbnail_chunk_path' => 'nullable|string|max:2048',
             'thumbnail_chunk_name' => 'nullable|string|max:255',
@@ -1742,6 +1758,9 @@ class AdminController extends Controller
             $courseData['is_featured'] = $request->boolean('is_featured', false);
             $courseData['show_customers_count'] = $request->boolean('show_customers_count', false);
             $courseData['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
+            $courseData['send_receipt_enabled'] = $request->boolean('send_receipt_enabled', false);
+            $courseData['receipt_custom_title'] = $request->filled('receipt_custom_title') ? $request->input('receipt_custom_title') : null;
+            $courseData['receipt_custom_body'] = $request->filled('receipt_custom_body') ? $request->input('receipt_custom_body') : null;
 
             if (!$courseData['is_in_person_program']) {
                 $courseData['whatsapp_number'] = null;
@@ -1915,6 +1934,8 @@ class AdminController extends Controller
             'sections.*.lessons.*.is_preview' => 'boolean',
             'sections.*.lessons.*.remove_existing_file' => 'nullable',
             'sections.*.lessons.*.existing_file_path' => 'nullable|string',
+            'receipt_custom_title' => 'nullable|string|max:500',
+            'receipt_custom_body' => 'nullable|string|max:10000',
         ], [
             'thumbnail.image' => 'Le fichier doit être une image.',
             'thumbnail.mimes' => 'Le fichier doit être de type: jpeg, png, jpg, gif, webp.',
@@ -2070,6 +2091,9 @@ class AdminController extends Controller
             $data['is_featured'] = $request->boolean('is_featured', false);
             $data['show_customers_count'] = $request->boolean('show_customers_count', false);
             $data['video_preview_is_unlisted'] = $request->boolean('video_preview_is_unlisted', false);
+            $data['send_receipt_enabled'] = $request->boolean('send_receipt_enabled', false);
+            $data['receipt_custom_title'] = $request->filled('receipt_custom_title') ? $request->input('receipt_custom_title') : null;
+            $data['receipt_custom_body'] = $request->filled('receipt_custom_body') ? $request->input('receipt_custom_body') : null;
 
             if (!$data['is_in_person_program']) {
                 $data['whatsapp_number'] = null;
@@ -4600,6 +4624,9 @@ class AdminController extends Controller
             // Paramètres Wallet
             'wallet_holding_period_days' => 'nullable|integer|min:0|max:365',
             'wallet_minimum_payout_amount' => 'nullable|numeric|min:0',
+            // Reçu PDF d'inscription
+            'receipt_default_title' => 'nullable|string|max:500',
+            'receipt_default_body' => 'nullable|string|max:10000',
         ]);
 
         Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
@@ -4634,6 +4661,20 @@ class AdminController extends Controller
             'boolean', 
             'Activer la libération automatique des fonds bloqués'
         );
+
+        // Reçu PDF d'inscription (optionnel)
+        Setting::set(
+            'receipt_pdf_enabled',
+            $request->input('receipt_pdf_enabled') === 'on',
+            'boolean',
+            'Activer l\'envoi du reçu PDF par email à l\'inscription (si activé sur le contenu)'
+        );
+        if ($request->has('receipt_default_title')) {
+            Setting::set('receipt_default_title', $request->input('receipt_default_title', ''), 'string', 'Titre par défaut du reçu PDF d\'inscription');
+        }
+        if ($request->has('receipt_default_body')) {
+            Setting::set('receipt_default_body', $request->input('receipt_default_body', ''), 'string', 'Corps par défaut du reçu PDF (HTML autorisé)');
+        }
 
         \Log::info('Paramètres Wallet mis à jour', [
             'wallet_holding_period_days' => $request->input('wallet_holding_period_days'),

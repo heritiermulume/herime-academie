@@ -459,6 +459,63 @@
                             </div>
                         </div>
 
+                        <!-- Envoyer un reçu PDF par email à l'inscription -->
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="send_receipt_enabled" name="send_receipt_enabled" value="1"
+                                           {{ old('send_receipt_enabled') ? 'checked' : '' }}
+                                           onchange="toggleReceiptFields()">
+                                    <label class="form-check-label" for="send_receipt_enabled">
+                                        <strong>Envoyer un reçu PDF par email à l'inscription</strong>
+                                    </label>
+                                    <small class="d-block text-muted">À activer dans Paramètres → Reçu PDF. L'inscrit reçoit instantanément un reçu par email.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12" id="receipt-custom-fields" style="display: {{ old('send_receipt_enabled') ? 'block' : 'none' }};">
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Laissez vide pour utiliser les textes par défaut définis dans <strong>Paramètres → Reçu PDF</strong>. Placeholders : <code>{user_name}</code>, <code>{course_title}</code>, <code>{enrollment_date}</code>, <code>{course_url}</code>, <code>{provider_name}</code>, etc.
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label for="receipt_custom_title" class="form-label fw-bold">Titre personnalisé du reçu (optionnel)</label>
+                                        <input type="text" class="form-control @error('receipt_custom_title') is-invalid @enderror"
+                                               id="receipt_custom_title" name="receipt_custom_title"
+                                               value="{{ old('receipt_custom_title') }}"
+                                               placeholder="Reçu d'inscription - {course_title}">
+                                        @error('receipt_custom_title')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                    <div class="col-12 mb-4">
+                                        <div class="form-label fw-bold d-flex align-items-center gap-2">
+                                            <label for="receipt_custom_body" class="mb-0">Corps personnalisé du reçu (optionnel, HTML et liens autorisés)</label>
+                                            <button type="button" class="btn btn-link btn-sm p-0 text-info flex-shrink-0 d-inline-flex align-items-center justify-content-center" style="font-size: 1rem; width: 1.75rem; height: 1.75rem; min-width: 1.75rem; min-height: 1.75rem;" title="Comment rédiger le corps du reçu" id="receiptBodyHelpBtn" aria-expanded="false">
+                                                <i class="fas fa-info-circle"></i>
+                                            </button>
+                                        </div>
+                                        <div class="mt-2 mb-3" id="receiptBodyHelpBlock" style="display: none;">
+                                            <div class="card card-body bg-light border-primary">
+                                                <h6 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Comment rédiger le corps personnalisé du reçu</h6>
+                                                <p class="mb-2">Rédigez le corps en <strong>HTML</strong> : utilisez de vraies balises comme <code>&lt;p&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;ul&gt;</code>, <code>&lt;li&gt;</code>, <code>&lt;a href="..."&gt;</code>. Les placeholders comme <code>{user_name}</code> ou <code>{course_title}</code> seront remplacés dans le PDF.</p>
+                                                <p class="mb-2 fw-bold small">Aperçu du rendu (texte par défaut) — les {user_name}, {course_title}, etc. sont remplacés dans le PDF :</p>
+                                                <div class="bg-white border rounded p-3 mb-3" style="max-height: 200px; overflow-y: auto;">
+                                                    {!! \App\Services\EnrollmentReceiptPdfService::DEFAULT_BODY !!}
+                                                </div>
+                                                <p class="mb-2 fw-bold small">Code source HTML correspondant (à recopier ou adapter) — dans le champ ci-dessus, tapez les balises avec les caractères <code>&lt;</code> et <code>&gt;</code> (ex. <code>&lt;p&gt;</code> pour un paragraphe) :</p>
+                                                <pre class="bg-white border rounded p-3 small mb-0 font-monospace" style="white-space: pre-wrap; word-wrap: break-word; max-height: 200px; overflow-y: auto;">{{ e(\App\Services\EnrollmentReceiptPdfService::DEFAULT_BODY) }}</pre>
+                                            </div>
+                                        </div>
+                                        <textarea class="form-control font-monospace @error('receipt_custom_body') is-invalid @enderror"
+                                                  id="receipt_custom_body" name="receipt_custom_body" rows="6"
+                                                  placeholder="Bonjour {user_name}, ...">{{ old('receipt_custom_body') }}</textarea>
+                                        @error('receipt_custom_body')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Paiement externe -->
                         <div class="row mb-4">
                             <div class="col-12">
@@ -1368,6 +1425,13 @@ function toggleDownloadFileFields() {
     }
 }
 
+function toggleReceiptFields() {
+    const checkbox = document.getElementById('send_receipt_enabled');
+    const fields = document.getElementById('receipt-custom-fields');
+    if (!checkbox || !fields) return;
+    fields.style.display = checkbox.checked ? 'block' : 'none';
+}
+
 // Gestion des champs "Programme en présentiel"
 function toggleInPersonFields() {
     const checkbox = document.getElementById('is_in_person_program');
@@ -1391,6 +1455,16 @@ function toggleInPersonFields() {
 
 document.addEventListener('DOMContentLoaded', function () {
     toggleInPersonFields();
+    toggleReceiptFields();
+    var receiptBodyHelpBtn = document.getElementById('receiptBodyHelpBtn');
+    var receiptBodyHelpBlock = document.getElementById('receiptBodyHelpBlock');
+    if (receiptBodyHelpBtn && receiptBodyHelpBlock) {
+        receiptBodyHelpBtn.addEventListener('click', function () {
+            var isHidden = receiptBodyHelpBlock.style.display === 'none';
+            receiptBodyHelpBlock.style.display = isHidden ? 'block' : 'none';
+            receiptBodyHelpBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        });
+    }
 });
 
 // Gestion des champs de paiement externe

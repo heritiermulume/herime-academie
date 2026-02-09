@@ -59,6 +59,17 @@
                             aria-selected="{{ $activeTab === 'currency' ? 'true' : 'false' }}">
                         <i class="fas fa-coins me-2"></i>Devise
                     </button>
+
+                    <button class="nav-link text-nowrap {{ $activeTab === 'receipt' ? 'active' : '' }}"
+                            id="tab-receipt-btn"
+                            data-bs-toggle="tab"
+                            data-bs-target="#tab-receipt"
+                            type="button"
+                            role="tab"
+                            aria-controls="tab-receipt"
+                            aria-selected="{{ $activeTab === 'receipt' ? 'true' : 'false' }}">
+                        <i class="fas fa-file-pdf me-2"></i>Reçu PDF
+                    </button>
                     <button class="nav-link text-nowrap {{ $activeTab === 'wallet' ? 'active' : '' }}"
                             id="tab-wallet-btn"
                             data-bs-toggle="tab"
@@ -217,6 +228,110 @@
                     </div>
                 </div>
 
+
+                {{-- TAB: Reçu PDF d'inscription --}}
+                @php
+                    $receiptPdfEnabled = \App\Models\Setting::get('receipt_pdf_enabled', true);
+                    $receiptDefaultTitle = \App\Models\Setting::get('receipt_default_title', \App\Services\EnrollmentReceiptPdfService::DEFAULT_TITLE);
+                    $receiptDefaultBody = \App\Models\Setting::get('receipt_default_body', \App\Services\EnrollmentReceiptPdfService::DEFAULT_BODY);
+                    $receiptPlaceholders = \App\Services\EnrollmentReceiptPdfService::PLACEHOLDERS;
+                @endphp
+                <div class="tab-pane fade {{ $activeTab === 'receipt' ? 'show active' : '' }}" id="tab-receipt" role="tabpanel" aria-labelledby="tab-receipt-btn" tabindex="0">
+                    <div class="row g-4">
+                        <div class="col-lg-8">
+                            <div class="card border-0 shadow-sm admin-form-card h-100">
+                                <div class="card-body p-4">
+                                    <h5 class="card-title mb-4 d-flex align-items-center gap-2">
+                                        <span class="admin-nav__icon" style="background: rgba(239, 68, 68, 0.15); color: #b91c1c;">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </span>
+                                        Reçu PDF d'inscription
+                                    </h5>
+                                    <p class="text-muted mb-4">
+                                        Lorsqu'un utilisateur s'inscrit à un cours et que l'option « Envoyer un reçu PDF » est activée sur le contenu, il reçoit par email un reçu au format PDF. Les textes par défaut ci-dessous peuvent être personnalisés par contenu dans l'édition du contenu.
+                                    </p>
+
+                                    <div class="form-check form-switch mb-4">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               role="switch"
+                                               name="receipt_pdf_enabled"
+                                               id="receipt_pdf_enabled"
+                                               value="on"
+                                               {{ $receiptPdfEnabled ? 'checked' : '' }}
+                                               form="admin-settings-general-form">
+                                        <label class="form-check-label fw-semibold" for="receipt_pdf_enabled">
+                                            Activer l'envoi de reçu PDF par email à l'inscription
+                                        </label>
+                                        <div class="form-text mt-2">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Si activé, les contenus pour lesquels « Envoyer un reçu PDF » est coché enverront automatiquement un reçu PDF à l'utilisateur après inscription.
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="receipt_default_title" class="form-label fw-semibold">
+                                            Titre par défaut du reçu
+                                        </label>
+                                        <input type="text"
+                                               name="receipt_default_title"
+                                               id="receipt_default_title"
+                                               class="form-control form-control-lg"
+                                               value="{{ old('receipt_default_title', $receiptDefaultTitle) }}"
+                                               placeholder="Reçu d'inscription - {course_title}"
+                                               form="admin-settings-general-form">
+                                        <div class="form-text mt-2">
+                                            Placeholders : @foreach($receiptPlaceholders as $key => $label) <code>{!! '{' !!}{{ $key }}{!! '}' !!}</code>@if(!$loop->last), @endif @endforeach
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="receipt_default_body" class="form-label fw-semibold">
+                                            Corps par défaut du reçu (HTML autorisé, liens cliquables avec &lt;a href="..."&gt;)
+                                        </label>
+                                        <textarea name="receipt_default_body"
+                                                  id="receipt_default_body"
+                                                  class="form-control font-monospace"
+                                                  rows="12"
+                                                  placeholder="Bonjour {user_name}, ..."
+                                                  form="admin-settings-general-form">{{ old('receipt_default_body', $receiptDefaultBody) }}</textarea>
+                                        <div class="form-text mt-2">
+                                            Utilisez les mêmes placeholders que pour le titre. Vous pouvez insérer des liens cliquables dans le PDF : <code>&lt;a href="https://...">Texte du lien&lt;/a&gt;</code>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="submit" class="btn btn-primary" form="admin-settings-general-form">
+                                            <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                                        </button>
+                                        <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-times me-2"></i>Annuler
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm admin-form-card h-100">
+                                <div class="card-body p-4">
+                                    <h6 class="card-title mb-3 d-flex align-items-center gap-2">
+                                        <span class="admin-nav__icon" style="background: rgba(239, 68, 68, 0.15); color: #b91c1c;">
+                                            <i class="fas fa-question-circle"></i>
+                                        </span>
+                                        Placeholders
+                                    </h6>
+                                    <ul class="list-unstyled small mb-0">
+                                        @foreach($receiptPlaceholders as $key => $label)
+                                            <li class="mb-2"><code>{!! '{' !!}{{ $key }}{!! '}' !!}</code> — {{ $label }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
                 {{-- TAB: Wallet --}}
                 <div class="tab-pane fade {{ $activeTab === 'wallet' ? 'show active' : '' }}" id="tab-wallet" role="tabpanel" aria-labelledby="tab-wallet-btn" tabindex="0">
                     <div class="row g-4">
@@ -340,6 +455,7 @@
                 <div class="tab-pane fade {{ $activeTab === 'meta' ? 'show active' : '' }}" id="tab-meta" role="tabpanel" aria-labelledby="tab-meta-btn" tabindex="0">
                     <div id="meta-settings-mount"></div>
                 </div>
+
             </div>
         </div>
     </section>

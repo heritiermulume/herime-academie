@@ -267,6 +267,13 @@ class CommunicationService
                     $metadata['course_title'] = $course->title;
                     $metadata['is_downloadable'] = (bool) $course->is_downloadable;
                 }
+            } elseif ($mailable instanceof \App\Mail\EnrollmentReceiptMail) {
+                $type = 'enrollment'; // même enum que CourseEnrolledMail (metadata distingue le reçu)
+                $course = $mailable->course ?? null;
+                if ($course) {
+                    $metadata['content_id'] = $course->id;
+                    $metadata['course_title'] = $course->title;
+                }
             } elseif ($mailable instanceof \App\Mail\AdminPaymentReceivedMail) {
                 $type = 'payment';
                 $metadata['kind'] = 'admin_payment_received';

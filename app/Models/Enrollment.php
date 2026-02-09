@@ -143,86 +143,125 @@ class Enrollment extends Model
                 $course->load('category');
             }
 
-            // Envoyer l'email directement de manière synchrone pour garantir l'envoi immédiat
+            $communicationService = null;
             try {
-                // Vérifier que l'email de l'utilisateur est valide
+                $communicationService = app(\App\Services\CommunicationService::class);
+            } catch (\Throwable $e) {
+                \Log::warning("CommunicationService non disponible, envoi direct par Mail::send()", [
+                    'enrollment_id' => $this->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            // Envoyer l'email d'inscription (synchrone)
+            try {
                 if (empty($user->email) || !filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
                     \Log::error("Email invalide pour l'utilisateur - impossible d'envoyer CourseEnrolledMail", [
                         'enrollment_id' => $this->id,
                         'content_id' => $course->id,
                         'user_id' => $user->id,
-                        'user_email' => $user->email,
+                        'user_email' => $user->email ?? null,
                     ]);
-                    return;
-                }
-
-                // Déduplication fiable: ne pas renvoyer si déjà envoyé et enregistré pour ce contenu
-                $alreadySent = false;
-                if (!empty($user->email)) {
+                } else {
                     $alreadySent = SentEmail::query()
                         ->where('recipient_email', $user->email)
                         ->where('metadata->mail_class', \App\Mail\CourseEnrolledMail::class)
                         ->where('metadata->content_id', $course->id)
                         ->where('status', 'sent')
                         ->exists();
-                }
 
-                if (!$alreadySent) {
-                    // Envoyer l'email et WhatsApp en parallèle
-                    $mailable = new \App\Mail\CourseEnrolledMail($course);
-                    $communicationService = app(\App\Services\CommunicationService::class);
-                    $communicationService->sendEmailAndWhatsApp($user, $mailable);
-                } else {
-                    \Log::info("CourseEnrolledMail déjà envoyé (déduplication)", [
+                    if (!$alreadySent) {
+                        $mailable = new \App\Mail\CourseEnrolledMail($course);
+                        if ($communicationService) {
+                            $communicationService->sendEmailAndWhatsApp($user, $mailable);
+                        } else {
+                            Mail::to($user->email)->send($mailable);
+                        }
+                        \Log::info("Email CourseEnrolledMail envoyé à {$user->email} pour le cours {$course->id}", [
+                            'enrollment_id' => $this->id,
+                            'content_id' => $course->id,
+                        ]);
+                    } else {
+                        \Log::info("CourseEnrolledMail déjà envoyé (déduplication)", [
+                            'enrollment_id' => $this->id,
+                            'content_id' => $course->id,
+                            'user_id' => $user->id,
+                        ]);
+                    }
+                }
+            } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+                \Log::error("Erreur SMTP CourseEnrolledMail", [
+                    'enrollment_id' => $this->id,
+                    'content_id' => $course->id,
+                    'user_id' => $user->id,
+                    'user_email' => $user->email ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error("Erreur envoi CourseEnrolledMail", [
+                    'enrollment_id' => $this->id,
+                    'content_id' => $course->id,
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+
+            // Reçu PDF : toujours tenter si conditions remplies (même si l'email d'inscription a échoué)
+            $receiptPdfEnabled = \App\Models\Setting::get('receipt_pdf_enabled', true);
+            $contentSendsReceipt = ($course->send_receipt_enabled ?? true) !== false;
+            $userEmailValid = !empty($user->email) && filter_var($user->email, FILTER_VALIDATE_EMAIL);
+
+            if (!$userEmailValid) {
+                \Log::info("Reçu PDF non envoyé: email utilisateur invalide ou vide", [
+                    'enrollment_id' => $this->id,
+                    'content_id' => $course->id,
+                    'user_id' => $user->id,
+                ]);
+            } elseif (!$receiptPdfEnabled) {
+                \Log::info("Reçu PDF non envoyé: option désactivée globalement (receipt_pdf_enabled)", [
+                    'enrollment_id' => $this->id,
+                    'content_id' => $course->id,
+                ]);
+            } elseif (!$contentSendsReceipt) {
+                \Log::info("Reçu PDF non envoyé: option désactivée pour ce contenu (send_receipt_enabled)", [
+                    'enrollment_id' => $this->id,
+                    'content_id' => $course->id,
+                    'send_receipt_enabled' => $course->send_receipt_enabled,
+                ]);
+            } else {
+                try {
+                    \Log::info("Tentative envoi reçu PDF d'inscription", [
+                        'enrollment_id' => $this->id,
+                        'content_id' => $course->id,
+                        'user_email' => $user->email,
+                    ]);
+                    $receiptService = app(\App\Services\EnrollmentReceiptPdfService::class);
+                    $pdfContent = $receiptService->generatePdfContent($this);
+                    if ($pdfContent === '' || strlen($pdfContent) < 100) {
+                        throw new \RuntimeException('Le contenu du PDF généré est vide ou invalide (taille: ' . strlen($pdfContent) . ' octets).');
+                    }
+                    $receiptMail = new \App\Mail\EnrollmentReceiptMail($course, $pdfContent);
+                    if ($communicationService) {
+                        $communicationService->sendEmailAndWhatsApp($user, $receiptMail, null, false);
+                    } else {
+                        Mail::to($user->email)->send($receiptMail);
+                    }
+                    \Log::info("Reçu PDF d'inscription envoyé à {$user->email} pour le cours {$course->id}", [
+                        'enrollment_id' => $this->id,
+                        'content_id' => $course->id,
+                    ]);
+                } catch (\Throwable $receiptException) {
+                    \Log::error("Erreur envoi reçu PDF d'inscription", [
                         'enrollment_id' => $this->id,
                         'content_id' => $course->id,
                         'user_id' => $user->id,
-                        'user_email' => $user->email,
+                        'user_email' => $user->email ?? null,
+                        'error' => $receiptException->getMessage(),
+                        'exception_class' => get_class($receiptException),
+                        'trace' => $receiptException->getTraceAsString(),
                     ]);
                 }
-                
-                \Log::info("Email CourseEnrolledMail envoyé avec succès à {$user->email} pour le cours {$course->id}", [
-                    'enrollment_id' => $this->id,
-                    'content_id' => $course->id,
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                    'course_title' => $course->title,
-                ]);
-            } catch (\Swift_TransportException $transportException) {
-                // Erreur de transport SMTP (connexion, authentification, etc.)
-                \Log::error("Erreur SMTP lors de l'envoi de l'email CourseEnrolledMail", [
-                    'enrollment_id' => $this->id,
-                    'content_id' => $course->id,
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                    'error' => $transportException->getMessage(),
-                    'error_code' => $transportException->getCode(),
-                    'trace' => $transportException->getTraceAsString(),
-                ]);
-                // Ne pas relancer l'exception pour ne pas bloquer l'inscription
-            } catch (\Exception $emailException) {
-                // Autres erreurs (validation, template, etc.)
-                \Log::error("Erreur lors de l'envoi de l'email CourseEnrolledMail", [
-                    'enrollment_id' => $this->id,
-                    'content_id' => $course->id,
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                    'error' => $emailException->getMessage(),
-                    'error_class' => get_class($emailException),
-                    'trace' => $emailException->getTraceAsString(),
-                ]);
-                // Ne pas relancer l'exception pour ne pas bloquer l'inscription
-            } catch (\Throwable $throwable) {
-                // Capturer toutes les erreurs fatales
-                \Log::error("Erreur fatale lors de l'envoi de l'email CourseEnrolledMail", [
-                    'enrollment_id' => $this->id,
-                    'content_id' => $course->id,
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                    'error' => $throwable->getMessage(),
-                    'error_class' => get_class($throwable),
-                    'trace' => $throwable->getTraceAsString(),
-                ]);
             }
             
             // Envoyer la notification (pour la base de données et l'affichage dans la navbar)
