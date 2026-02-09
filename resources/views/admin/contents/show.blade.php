@@ -517,6 +517,9 @@
                             @endif
                         </dd>
 
+                        <dt class="col-sm-6">Type de contenu</dt>
+                        <dd class="col-sm-6"><span class="badge bg-primary">{{ $course->getContentTypeLabel() }}</span></dd>
+
                         <dt class="col-sm-6">Téléchargeable</dt>
                         <dd class="col-sm-6">{{ $course->is_downloadable ? 'Oui' : 'Non' }}</dd>
 

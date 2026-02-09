@@ -124,7 +124,7 @@
                 <tr><td>Nom complet</td><td>{{ $user->name ?? $user->email ?? '—' }}</td></tr>
                 <tr><td>Titre du contenu</td><td>{{ $course->title }}</td></tr>
                 <tr><td>Date d'inscription</td><td>{{ $enrollmentDate }}</td></tr>
-                <tr><td>Type</td><td>{{ $course->is_downloadable ? 'Contenu téléchargeable' : 'Cours en ligne' }}</td></tr>
+                <tr><td>Type</td><td>{{ $course->getContentTypeLabel() }}</td></tr>
                 @if($course->provider)
                 <tr><td>Prestataire</td><td>{{ $course->provider->name }}</td></tr>
                 @endif

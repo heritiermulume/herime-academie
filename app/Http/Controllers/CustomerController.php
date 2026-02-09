@@ -441,8 +441,8 @@ class CustomerController extends Controller
         $customer = auth()->user();
         $redirectTo = $request->input('redirect_to', 'learn');
         
-        // Pour les cours téléchargeables, ne pas rediriger vers learning, mais vers la page du cours
-        if ($course->is_downloadable && $redirectTo === 'learn') {
+        // Pour les cours téléchargeables ou en présentiel, ne pas rediriger vers learning, mais vers la page du cours
+        if (($course->is_downloadable || ($course->is_in_person_program ?? false)) && $redirectTo === 'learn') {
             $redirectTo = 'course';
         }
         
@@ -501,9 +501,11 @@ class CustomerController extends Controller
             'status' => 'active',
         ]);
 
-        $successMessage = $course->is_downloadable 
+        $successMessage = $course->is_downloadable
             ? 'Inscription réussie ! Vous pouvez maintenant télécharger le cours.'
-            : 'Inscription réussie ! Vous pouvez commencer à apprendre.';
+            : (($course->is_in_person_program ?? false)
+                ? 'Inscription réussie ! Utilisez le bouton « Télécharger » pour obtenir votre reçu.'
+                : 'Inscription réussie ! Vous pouvez commencer à apprendre.');
 
         return $this->redirectAfterEnrollment($course, $redirectTo, $successMessage);
     }

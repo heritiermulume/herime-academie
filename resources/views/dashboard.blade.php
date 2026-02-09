@@ -198,9 +198,10 @@
                                             Inscrit le {{ $enrollment->enrolled_at->format('d/m/Y') }}
                                         </p>
                                     </div>
-                                    @if($course->is_downloadable)
+                                    @if($course->is_downloadable || ($course->is_in_person_program ?? false))
                                         <a href="{{ route('contents.download', $course->slug) }}" 
-                                           class="btn btn-sm btn-outline-primary">
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="{{ $course->getDownloadButtonText() }}">
                                             <i class="fas fa-download"></i>
                                         </a>
                                     @else

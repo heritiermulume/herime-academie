@@ -23,9 +23,9 @@
         </div>
         <div class="message">
             <p>Bonjour,</p>
-            <p>Veuillez trouver en pièce jointe votre reçu d'inscription au contenu <strong>{{ $course->title }}</strong>.</p>
+            <p>Veuillez trouver en pièce jointe votre reçu d'inscription au {{ $course->getContentLabel() }} <strong>{{ $course->title }}</strong>.</p>
             <p>
-                <a href="{{ $courseUrl }}" class="btn">Accéder au contenu</a>
+                <a href="{{ $courseUrl }}" class="btn">Accéder au {{ $course->getContentLabel() }}</a>
             </p>
         </div>
         <div class="footer">

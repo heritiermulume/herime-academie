@@ -47,22 +47,26 @@ class PaymentReceivedMail extends Mailable
         $hasDownloadable = $orderItems->contains(function ($item) {
             return $item->course && $item->course->is_downloadable;
         });
-        $hasNonDownloadable = $orderItems->contains(function ($item) {
-            return $item->course && !$item->course->is_downloadable;
+        $hasInPerson = $orderItems->contains(function ($item) {
+            return $item->course && ($item->course->is_in_person_program ?? false);
+        });
+        $hasOnline = $orderItems->contains(function ($item) {
+            return $item->course && !$item->course->is_downloadable && !($item->course->is_in_person_program ?? false);
         });
 
-        if ($hasDownloadable && !$hasNonDownloadable) {
-            // Uniquement des contenus téléchargeables
+        if ($hasDownloadable && !$hasInPerson && !$hasOnline) {
             $accessLabel = 'contenus';
-        } elseif (!$hasDownloadable && $hasNonDownloadable) {
-            // Uniquement des cours classiques
+        } elseif (!$hasDownloadable && $hasInPerson && !$hasOnline) {
+            $accessLabel = 'programmes';
+        } elseif (!$hasDownloadable && !$hasInPerson && $hasOnline) {
             $accessLabel = 'cours';
-        } elseif ($hasDownloadable && $hasNonDownloadable) {
-            // Panier mixte
-            $accessLabel = 'cours et contenus';
         } else {
-            // Fallback générique
-            $accessLabel = 'contenus';
+            $labels = array_filter([
+                $hasDownloadable ? 'contenus' : null,
+                $hasInPerson ? 'programmes' : null,
+                $hasOnline ? 'cours' : null,
+            ]);
+            $accessLabel = implode(', ', array_unique($labels)) ?: 'contenus';
         }
 
         // Sécuriser le formatage de la date au cas où paid_at serait null ou mal formaté

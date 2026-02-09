@@ -6,7 +6,10 @@
     $hasDownloadable = $order->orderItems->contains(function($item) {
         return $item->course && $item->course->is_downloadable;
     });
-    $generalLabel = $hasDownloadable ? 'produits' : 'cours';
+    $hasInPerson = $order->orderItems->contains(function($item) {
+        return $item->course && ($item->course->is_in_person_program ?? false);
+    });
+    $generalLabel = $hasDownloadable ? 'produits' : ($hasInPerson ? 'programmes' : 'cours');
 @endphp
 Détails de la commande et accès aux {{ $generalLabel }} associés.
 @endsection
@@ -31,14 +34,17 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
     // Fonction helper pour obtenir le terme approprié selon le type de contenu
     $getContentLabel = function($course) {
         if (!$course) return 'cours';
-        return $course->is_downloadable ? 'contenu' : 'cours';
+        return $course->getContentLabel();
     };
     
-    // Vérifier si la commande contient des produits téléchargeables
+    // Vérifier si la commande contient des produits téléchargeables ou programmes en présentiel
     $hasDownloadableItems = $order->orderItems->contains(function($item) {
         return $item->course && $item->course->is_downloadable;
     });
-    $generalLabel = $hasDownloadableItems ? 'produits' : 'cours';
+    $hasInPersonItems = $order->orderItems->contains(function($item) {
+        return $item->course && ($item->course->is_in_person_program ?? false);
+    });
+    $generalLabel = $hasDownloadableItems ? 'produits' : ($hasInPersonItems ? 'programmes' : 'cours');
 @endphp
 
 <div class="student-order-show">
@@ -96,6 +102,10 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                         <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
                             <i class="fas fa-eye me-1"></i>Voir
                         </a>
+                    @elseif($firstCourse && ($firstCourse->is_in_person_program ?? false))
+                        <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
+                            <i class="fas fa-eye me-1"></i>Voir le programme
+                        </a>
                     @else
                         <a href="{{ route('learning.course', $firstCourse->slug) }}" class="admin-btn success sm">
                             <i class="fas fa-play me-1"></i>Commencer le cours
@@ -148,7 +158,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                     @php($course = $item->course)
                     <div class="order-course-card">
                         <div class="order-course-card__meta">
-                            <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : 'Cours supprimé') : 'Contenu supprimé') }}</h4>
+                            <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : (($course->is_in_person_program ?? false) ? 'Programme supprimé' : 'Cours supprimé')) : 'Contenu supprimé') }}</h4>
                             <p>
                                 {{ $course->provider->name ?? 'Prestataire inconnu' }}
                                 @if($course && $course->category)
@@ -190,6 +200,8 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                 <p class="admin-card__subtitle">
                     @if($hasDownloadableItems)
                         Vous pouvez télécharger vos produits immédiatement.
+                    @elseif($hasInPersonItems)
+                        Consultez les détails de vos programmes et contactez les organisateurs via WhatsApp.
                     @else
                         Vous pouvez démarrer vos cours immédiatement.
                     @endif
@@ -200,10 +212,12 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                     @php($course = $enrollment->course)
                     <div class="order-enrollment-card">
                         <div>
-                            <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : 'Cours supprimé') : 'Contenu supprimé') }}</h4>
+                            <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : (($course->is_in_person_program ?? false) ? 'Programme supprimé' : 'Cours supprimé')) : 'Contenu supprimé') }}</h4>
                             <p>
                                 @if($course && $course->is_downloadable)
                                     Acheté le {{ optional($enrollment->created_at)->format('d/m/Y') }}
+                                @elseif($course && ($course->is_in_person_program ?? false))
+                                    Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y') }}
                                 @else
                                     Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y') }}
                                     · Progression {{ $enrollment->progress }}%
@@ -211,9 +225,9 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                             </p>
                         </div>
                         @if($course)
-                            @if($course->is_downloadable)
+                            @if($course->is_downloadable || ($course->is_in_person_program ?? false))
                                 <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
-                                    <i class="fas fa-download me-1"></i>Télécharger
+                                    <i class="fas fa-download me-1"></i>{{ $course->getDownloadButtonText() }}
                                 </a>
                             @else
                                 <a href="{{ route('learning.course', $course->slug) }}" class="admin-btn success sm">

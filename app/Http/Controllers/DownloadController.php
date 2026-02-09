@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\CourseLesson;
 use App\Models\CourseDownload;
+use App\Models\Enrollment;
+use App\Services\EnrollmentReceiptPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
@@ -12,8 +14,12 @@ use Illuminate\Support\Facades\Auth;
 
 class DownloadController extends Controller
 {
+    public function __construct(
+        private EnrollmentReceiptPdfService $receiptPdfService
+    ) {}
+
     /**
-     * Download course materials
+     * Download course materials (ou reçu d'inscription pour présentiel / contenu sans fichier)
      */
     public function course(Course $course)
     {
@@ -27,37 +33,112 @@ class DownloadController extends Controller
             return redirect()->route('login')->with('error', 'Vous devez être connecté pour télécharger ce cours.');
         }
 
-        // Vérifier que le cours est téléchargeable
-        if (!$course->is_downloadable) {
-            return back()->with('error', 'Ce cours n\'est pas disponible en téléchargement.');
+        $userId = Auth::id();
+
+        // Cours en présentiel : uniquement le reçu (priorité sur tout le reste)
+        if ($course->is_in_person_program ?? false) {
+            $enrollment = $this->getEnrollmentForReceipt($course, $userId);
+            if (!$enrollment) {
+                return back()->with('error', 'Vous devez être inscrit à ce programme pour télécharger le reçu.');
+            }
+            return $this->downloadEnrollmentReceipt($enrollment);
         }
 
-        // Vérifier l'accès au cours selon le type (gratuit/payant)
-        // Les utilisateurs déjà inscrits peuvent toujours télécharger, même si is_sale_enabled est maintenant false
-        if (!$this->hasAccessToCourse($course, Auth::id())) {
-            // Si la vente est désactivée et l'utilisateur n'est pas inscrit, bloquer
-            if (!$course->is_sale_enabled) {
-                return back()->with('error', 'Ce cours n\'est pas actuellement disponible.');
-            }
-            
-            if ($course->is_free) {
-                return back()->with('error', 'Vous devez être inscrit à ce cours pour le télécharger.');
-            } else {
+        // Cours téléchargeable : priorité au contenu (fichier ou ZIP des sections/leçons)
+        if ($course->is_downloadable) {
+            if (!$this->hasAccessToCourse($course, $userId)) {
+                if (!$course->is_sale_enabled) {
+                    return back()->with('error', 'Ce cours n\'est pas actuellement disponible.');
+                }
+                if ($course->is_free) {
+                    return back()->with('error', 'Vous devez être inscrit à ce cours pour le télécharger.');
+                }
                 return back()->with('error', 'Vous devez acheter ce cours pour le télécharger.');
             }
+
+            // Si un fichier de téléchargement spécifique est défini et existe, le télécharger
+            if ($course->download_file_path) {
+                $specificFileResponse = $this->tryDownloadSpecificFile($course);
+                if ($specificFileResponse) {
+                    $this->recordDownload($course, 'file');
+                    return $specificFileResponse;
+                }
+                // Fichier manquant : télécharger le reçu à la place
+                $enrollment = $this->getEnrollmentForReceipt($course, $userId);
+                if ($enrollment) {
+                    return $this->downloadEnrollmentReceipt($enrollment);
+                }
+                return back()->with('error', 'Le fichier de téléchargement n\'existe plus sur le serveur.');
+            }
+
+            // Sinon, créer un ZIP avec tout le contenu du cours (sections et leçons)
+            $zipResponse = $this->tryDownloadCourseAsZip($course);
+            if ($zipResponse) {
+                $this->recordDownload($course, 'zip');
+                return $zipResponse;
+            }
+
+            // Fallback : reçu d'inscription (téléchargeable sans fichier ni sections/leçons)
+            $enrollment = $this->getEnrollmentForReceipt($course, $userId);
+            if ($enrollment) {
+                return $this->downloadEnrollmentReceipt($enrollment);
+            }
+
+            return back()->with('error', 'Aucun contenu téléchargeable disponible pour ce cours.');
         }
 
-        // Si un fichier de téléchargement spécifique est défini, le télécharger directement
-        if ($course->download_file_path) {
-            // Enregistrer le téléchargement AVANT de télécharger
-            $this->recordDownload($course, 'file');
-            return $this->downloadSpecificFile($course);
-        }
+        return back()->with('error', 'Ce cours n\'est pas disponible en téléchargement.');
+    }
 
-        // Sinon, créer un ZIP avec tout le contenu du cours
-        // Enregistrer le téléchargement AVANT de créer le ZIP
-        $this->recordDownload($course, 'zip');
-        return $this->downloadCourseAsZip($course);
+    /**
+     * Obtenir l'inscription de l'utilisateur pour générer le reçu
+     */
+    private function getEnrollmentForReceipt(Course $course, int $userId): ?Enrollment
+    {
+        return Enrollment::where('content_id', $course->id)
+            ->where('user_id', $userId)
+            ->whereIn('status', ['active', 'completed'])
+            ->with(['user', 'course.provider', 'course.category'])
+            ->first();
+    }
+
+    /**
+     * Télécharger le reçu d'inscription en PDF
+     */
+    private function downloadEnrollmentReceipt(Enrollment $enrollment): Response
+    {
+        $pdfContent = $this->receiptPdfService->generatePdfContent($enrollment);
+        $filename = 'recu-inscription-' . \Illuminate\Support\Str::slug($enrollment->course->title) . '.pdf';
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Length' => strlen($pdfContent),
+        ]);
+    }
+
+    /**
+     * Tenter de télécharger le fichier spécifique (retourne null si fichier absent)
+     */
+    private function tryDownloadSpecificFile(Course $course)
+    {
+        if (!filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+            $disk = Storage::disk('local');
+            $cleanPath = ltrim($course->download_file_path, '/');
+            if (!$disk->exists($cleanPath)) {
+                return null;
+            }
+        }
+        return $this->downloadSpecificFile($course);
+    }
+
+    /**
+     * Tenter de télécharger le cours en ZIP (retourne null si aucun contenu)
+     */
+    private function tryDownloadCourseAsZip(Course $course)
+    {
+        $result = $this->downloadCourseAsZip($course);
+        return $result ?: null;
     }
 
     /**
@@ -166,15 +247,15 @@ class DownloadController extends Controller
      */
     private function downloadCourseAsZip(Course $course)
     {
-        // Récupérer toutes les leçons publiées du cours avec leurs sections
+        // Récupérer toutes les sections et leçons du cours (téléchargement = accès complet)
         $course->load([
             'provider',
             'category',
             'sections' => function($query) {
-                $query->where('is_published', true)->orderBy('sort_order');
+                $query->orderBy('sort_order');
             },
             'sections.lessons' => function($query) {
-                $query->where('is_published', true)->orderBy('sort_order');
+                $query->orderBy('sort_order');
             }
         ]);
 
@@ -216,7 +297,8 @@ class DownloadController extends Controller
         $zip->close();
 
         if (!$hasContent) {
-            return back()->with('error', 'Aucun contenu téléchargeable disponible pour ce cours.');
+            @unlink($zipPath);
+            return null;
         }
 
         return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
@@ -455,8 +537,8 @@ class DownloadController extends Controller
             $added = true;
         }
         
-        // Pour les leçons de type PDF, DOC, etc., ajouter aussi les informations
-        if (in_array($lesson->type, ['pdf', 'text', 'quiz'])) {
+        // Pour les leçons de type text, quiz, assignment, etc., ajouter les informations
+        if (in_array($lesson->type, ['text', 'quiz', 'assignment'])) {
             $infoFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . ' - Info.txt';
             $infoContent = "Titre: " . $lesson->title . "\n";
             $infoContent .= "Type: " . ucfirst($lesson->type) . "\n";
@@ -464,6 +546,16 @@ class DownloadController extends Controller
             if ($lesson->duration) {
                 $infoContent .= "Durée: " . $lesson->duration . " minutes\n";
             }
+            $zip->addFromString($sectionPath . $infoFileName, $infoContent);
+            $added = true;
+        }
+        
+        // Si aucune ressource ajoutée mais que la leçon existe, ajouter au minimum les métadonnées
+        if (!$added) {
+            $infoFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . ' - Info.txt';
+            $infoContent = "Titre: " . $lesson->title . "\n";
+            $infoContent .= "Type: " . ucfirst($lesson->type ?? 'texte') . "\n";
+            $infoContent .= "Description: " . ($lesson->description ?? 'Aucune description') . "\n";
             $zip->addFromString($sectionPath . $infoFileName, $infoContent);
             $added = true;
         }

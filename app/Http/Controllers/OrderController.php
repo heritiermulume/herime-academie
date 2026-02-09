@@ -223,43 +223,30 @@ class OrderController extends Controller
                 'confirmed_at' => now(),
             ]);
 
-            // Créer les inscriptions UNIQUEMENT pour les cours NON téléchargeables
-            // Les produits téléchargeables (cours téléchargeables, e-books, fichiers) n'ont pas besoin d'inscription
-            // Charger les orderItems si pas déjà chargés
+            // Créer une inscription pour TOUS les contenus de la commande (téléchargeable, présentiel, en ligne)
+            // pour envoyer le reçu par mail et permettre le téléchargement du reçu.
             if (!$order->relationLoaded('orderItems')) {
                 $order->load('orderItems.course');
             }
-            
+
             foreach ($order->orderItems as $item) {
-                // Charger le cours pour vérifier s'il est téléchargeable
                 $course = $item->course;
-                
                 if (!$course) {
                     continue;
                 }
-                
-                // Si le cours est téléchargeable, ne pas créer d'inscription
-                // L'accès au téléchargement est géré via les commandes payées
-                if ($course->is_downloadable) {
-                    continue;
-                }
-                
-                // Pour les cours non téléchargeables, créer l'inscription normalement
-                // Vérifier si l'utilisateur est déjà inscrit à ce cours
+
                 $existingEnrollment = Enrollment::where('user_id', $order->user_id)
                     ->where('content_id', $item->content_id)
                     ->first();
-                
+
                 if (!$existingEnrollment) {
-                    // La méthode createAndNotify envoie automatiquement les notifications et emails
-                    $enrollment = Enrollment::createAndNotify([
+                    Enrollment::createAndNotify([
                         'user_id' => $order->user_id,
                         'content_id' => $item->content_id,
                         'order_id' => $order->id,
                         'status' => 'active',
                     ]);
                 } else {
-                    // Mettre à jour l'inscription existante avec l'order_id
                     $existingEnrollment->update([
                         'order_id' => $order->id,
                         'status' => 'active',
@@ -299,6 +286,26 @@ class OrderController extends Controller
 
         // Charger les relations nécessaires pour les emails et notifications
         $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+
+        // Créer les inscriptions pour tous les contenus (reçu + accès)
+        foreach ($order->orderItems as $item) {
+            if (!$item->course) {
+                continue;
+            }
+            $existing = Enrollment::where('user_id', $order->user_id)
+                ->where('content_id', $item->content_id)
+                ->first();
+            if (!$existing) {
+                Enrollment::createAndNotify([
+                    'user_id' => $order->user_id,
+                    'content_id' => $item->content_id,
+                    'order_id' => $order->id,
+                    'status' => 'active',
+                ]);
+            } else {
+                $existing->update(['order_id' => $order->id, 'status' => 'active']);
+            }
+        }
 
         // Envoyer la notification de confirmation de paiement
         try {

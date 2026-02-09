@@ -161,7 +161,7 @@
             <h2>{{ $course->title }}</h2>
             @if($course->provider)
             @php
-                $providerLabel = $course->is_downloadable ? 'Prestataire' : 'Formateur';
+                $providerLabel = $course->getProviderLabel();
             @endphp
             <p style="color: #666; margin-top: 10px;">
                 <strong>{{ $providerLabel }}:</strong> {{ $course->provider->name }}

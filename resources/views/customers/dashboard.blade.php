@@ -86,9 +86,9 @@
                         @php
                             $progress = $lastUpdatedEnrollment->progress ?? 0;
                         @endphp
-                        @if($highlightCourse->is_downloadable ?? false)
+                        @if(($highlightCourse->is_downloadable ?? false) || ($highlightCourse->is_in_person_program ?? false))
                             <a href="{{ route('contents.download', $highlightCourse->slug) }}" class="admin-btn primary lg">
-                                <i class="fas fa-download me-2"></i>Télécharger
+                                <i class="fas fa-download me-2"></i>{{ $highlightCourse->getDownloadButtonText() }}
                             </a>
                         @else
                             <a href="{{ route('learning.course', $highlightCourse->slug) }}" class="admin-btn success lg">
@@ -206,9 +206,9 @@
                                     @php
                                         $progress = $enrollment->progress ?? 0;
                                     @endphp
-                                    @if($course->is_downloadable ?? false)
+                                    @if(($course->is_downloadable ?? false) || ($course->is_in_person_program ?? false))
                                         <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
-                                            <i class="fas fa-download me-1"></i>Télécharger
+                                            <i class="fas fa-download me-1"></i>{{ $course->getDownloadButtonText() }}
                                         </a>
                                     @else
                                         <a href="{{ route('learning.course', $course->slug) }}" class="admin-btn success sm">

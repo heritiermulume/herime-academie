@@ -159,13 +159,18 @@
                 $hasDownloadable = $order->orderItems->contains(function ($item) {
                     return $item->course && $item->course->is_downloadable;
                 });
-                $hasNonDownloadable = $order->orderItems->contains(function ($item) {
-                    return $item->course && !$item->course->is_downloadable;
+                $hasInPerson = $order->orderItems->contains(function ($item) {
+                    return $item->course && ($item->course->is_in_person_program ?? false);
+                });
+                $hasOnline = $order->orderItems->contains(function ($item) {
+                    return $item->course && !$item->course->is_downloadable && !($item->course->is_in_person_program ?? false);
                 });
                 
-                if ($hasDownloadable && !$hasNonDownloadable) {
+                if ($hasDownloadable && !$hasInPerson && !$hasOnline) {
                     $actionText = "Téléchargez-les maintenant depuis votre espace personnel.";
-                } elseif (!$hasDownloadable && $hasNonDownloadable) {
+                } elseif (!$hasDownloadable && $hasInPerson && !$hasOnline) {
+                    $actionText = "Consultez les détails de vos programmes et contactez les organisateurs via WhatsApp.";
+                } elseif (!$hasDownloadable && !$hasInPerson && $hasOnline) {
                     $actionText = "Commencez votre apprentissage dès maintenant.";
                 } else {
                     $actionText = "Accédez à vos contenus depuis votre espace personnel.";

@@ -41,6 +41,12 @@ class LearningController extends Controller
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement. Veuillez le télécharger pour y accéder.');
         }
 
+        // Cours en présentiel : pas de page d'apprentissage, uniquement le téléchargement du reçu
+        if ($course->is_in_person_program ?? false) {
+            return redirect()->route('contents.show', $course)
+                ->with('info', 'Ce programme en présentiel ne comporte pas de contenu en ligne. Utilisez le bouton « Télécharger » pour obtenir votre reçu d\'inscription.');
+        }
+
         $enrollment = $course->getEnrollmentFor(auth()->id());
         
         // Charger les données complètes depuis la base de données
@@ -117,6 +123,12 @@ class LearningController extends Controller
         if ($course->is_downloadable) {
             return redirect()->route('contents.show', $course)
                 ->with('error', 'Ce cours est disponible uniquement en téléchargement. Veuillez le télécharger pour y accéder.');
+        }
+
+        // Cours en présentiel : pas de page d'apprentissage
+        if ($course->is_in_person_program ?? false) {
+            return redirect()->route('contents.show', $course)
+                ->with('info', 'Ce programme en présentiel ne comporte pas de contenu en ligne. Utilisez le bouton « Télécharger » pour obtenir votre reçu d\'inscription.');
         }
 
         // Vérifier que la leçon appartient au cours

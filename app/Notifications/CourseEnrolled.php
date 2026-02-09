@@ -85,28 +85,30 @@ class CourseEnrolled extends Notification
         }
 
         // Personnaliser le message selon le type de contenu
-        if ($this->course->is_downloadable) {
+        if ($this->course->is_in_person_program ?? false) {
+            // Programme en présentiel
+            $message = ($this->course->is_free ? 'Inscription au programme confirmée !' : 'Réservation confirmée !')
+                . ' Consultez les détails : ' . $this->course->title;
+            $buttonText = 'Voir le programme';
+            $buttonUrl = route('contents.show', $this->course->slug);
+        } elseif ($this->course->is_downloadable) {
             // Contenu téléchargeable
             if ($this->course->is_free) {
-                // Téléchargeable gratuit
                 $message = 'Contenu gratuit disponible ! Vous pouvez maintenant télécharger : ' . $this->course->title;
                 $buttonText = 'Télécharger';
                 $buttonUrl = route('contents.show', $this->course->slug);
             } else {
-                // Téléchargeable payant
                 $message = 'Achat confirmé ! Vous pouvez maintenant télécharger : ' . $this->course->title;
                 $buttonText = 'Télécharger';
                 $buttonUrl = route('contents.show', $this->course->slug);
             }
         } else {
-            // Contenu non téléchargeable
+            // Cours en ligne
             if ($this->course->is_free) {
-                // Non téléchargeable gratuit
                 $message = 'Inscription confirmée ! Vous êtes maintenant inscrit au cours : ' . $this->course->title;
                 $buttonText = 'Commencer le cours';
                 $buttonUrl = route('learning.course', $this->course->slug);
             } else {
-                // Non téléchargeable payant
                 $message = 'Achat confirmé ! Vous pouvez maintenant accéder au cours : ' . $this->course->title;
                 $buttonText = 'Commencer le cours';
                 $buttonUrl = route('learning.course', $this->course->slug);

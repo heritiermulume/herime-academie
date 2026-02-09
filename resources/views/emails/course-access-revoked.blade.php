@@ -185,7 +185,7 @@
             <div class="course-meta">
                 @if($course->provider)
                 @php
-                    $providerLabel = $course->is_downloadable ? 'Prestataire' : 'Formateur';
+                    $providerLabel = $course->getProviderLabel();
                 @endphp
                 <div class="course-meta-item">
                     <strong>{{ $providerLabel }} :</strong>

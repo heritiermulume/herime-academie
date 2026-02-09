@@ -500,10 +500,18 @@
                                                 <br>
                                                 <small class="text-muted">Fichier déjà uploadé</small>
                                             </div>
-                                            <a href="{{ $course->download_file_url }}" target="_blank" class="btn btn-sm btn-outline-primary w-100 w-md-auto">
-                                                <i class="fas fa-download me-1"></i>Aperçu
-                                            </a>
+                                            <div class="d-flex flex-wrap gap-2 w-100 w-md-auto justify-content-center justify-content-md-end">
+                                                <a href="{{ $course->download_file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-external-link-alt me-1"></i>Aperçu
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" id="btnRemoveCurrentDownloadFile" title="Supprimer le fichier (enregistrez pour appliquer)">
+                                                    <i class="fas fa-trash me-1"></i>Supprimer
+                                                </button>
+                                            </div>
                                         </div>
+                                        <p class="small text-muted mt-2 mb-0 d-none" id="downloadFileRemovalNotice">
+                                            <i class="fas fa-info-circle me-1"></i>Le fichier sera supprimé lors de l'enregistrement. Pensez à enregistrer le formulaire.
+                                        </p>
                                     </div>
                                     @endif
                                     
@@ -3233,6 +3241,25 @@ function showDownloadFileError(message) {
         errorDiv.classList.add('d-block');
     }
 }
+
+// Bouton "Supprimer" pour le fichier de téléchargement actuel
+document.addEventListener('DOMContentLoaded', function() {
+    const btnRemove = document.getElementById('btnRemoveCurrentDownloadFile');
+    const removeCheckbox = document.getElementById('remove_download_file');
+    const currentFileBlock = document.getElementById('downloadCurrentFile');
+    const removalNotice = document.getElementById('downloadFileRemovalNotice');
+    if (btnRemove && removeCheckbox) {
+        btnRemove.addEventListener('click', function() {
+            removeCheckbox.checked = true;
+            if (currentFileBlock) {
+                currentFileBlock.classList.add('opacity-75', 'border', 'border-danger', 'rounded');
+            }
+            if (removalNotice) removalNotice.classList.remove('d-none');
+            btnRemove.disabled = true;
+            btnRemove.innerHTML = '<i class="fas fa-check me-1"></i>Marqué pour suppression';
+        });
+    }
+});
 
 // Effacer le fichier uploadé si une URL est saisie
 document.addEventListener('DOMContentLoaded', function() {

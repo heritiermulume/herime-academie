@@ -123,8 +123,8 @@ HTML;
     {
         $course->loadMissing(['provider', 'category']);
 
-        $contentType = $course->is_downloadable ? 'Contenu téléchargeable' : 'Cours en ligne';
-        $courseUrl = $course->is_downloadable
+        $contentType = $course->getContentTypeLabel();
+        $courseUrl = ($course->is_downloadable || ($course->is_in_person_program ?? false))
             ? route('contents.show', $course->slug)
             : route('learning.course', $course->slug);
 

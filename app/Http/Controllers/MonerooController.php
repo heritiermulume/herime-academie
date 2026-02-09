@@ -1090,12 +1090,13 @@ class MonerooController extends Controller
                 'new_status' => $order->fresh()->status,
             ]);
 
-            // Créer les Enrollments UNIQUEMENT pour les cours NON téléchargeables
-            // Les produits téléchargeables (cours téléchargeables, e-books, fichiers) n'ont pas besoin d'inscription
-            // L'accès au téléchargement est géré directement via les commandes payées
+            // Créer une inscription (enrollment) pour TOUS les contenus de la commande.
+            // - Cours en ligne : inscription nécessaire pour l'accès et pour le reçu.
+            // - Contenu téléchargeable : inscription nécessaire pour envoyer le reçu par mail et pour le bouton "Télécharger le reçu".
+            // - Cours en présentiel : inscription nécessaire pour le reçu et l'accès.
+            // L'accès au téléchargement (fichier/ZIP) reste géré via la commande payée (hasAccessToCourse).
             $enrollmentsCreated = 0;
-            $downloadableItems = 0;
-            
+
             foreach ($orderItems as $orderItem) {
                 \Log::info('Moneroo: Processing order item', [
                     'order_id' => $order->id,
@@ -1103,10 +1104,9 @@ class MonerooController extends Controller
                     'content_id' => $orderItem->content_id,
                     'user_id' => $order->user_id,
                 ]);
-                
-                // Charger le cours pour vérifier s'il est téléchargeable
+
                 $course = $orderItem->course;
-                
+
                 if (!$course) {
                     \Log::warning('Moneroo: Course not found for order item', [
                         'order_id' => $order->id,
@@ -1115,27 +1115,12 @@ class MonerooController extends Controller
                     ]);
                     continue;
                 }
-                
-                // Si le cours est téléchargeable, ne pas créer d'inscription
-                // L'accès au téléchargement est géré via les commandes payées
-                if ($course->is_downloadable) {
-                    $downloadableItems++;
-                    \Log::info('Moneroo: Skipping enrollment for downloadable product', [
-                        'order_id' => $order->id,
-                        'content_id' => $course->id,
-                        'course_title' => $course->title,
-                    ]);
-                    continue;
-                }
-                
-                // Pour les cours non téléchargeables, créer l'inscription normalement
-                // Vérifier si l'utilisateur n'est pas déjà inscrit
+
                 $existingEnrollment = Enrollment::where('user_id', $order->user_id)
                     ->where('content_id', $orderItem->content_id)
                     ->first();
 
                 if (!$existingEnrollment) {
-                    // La méthode createAndNotify envoie automatiquement les notifications et emails
                     $enrollment = Enrollment::createAndNotify([
                         'user_id' => $order->user_id,
                         'content_id' => $orderItem->content_id,
@@ -1143,12 +1128,14 @@ class MonerooController extends Controller
                         'status' => 'active',
                     ]);
                     $enrollmentsCreated++;
-                    
-                    \Log::info('Moneroo: Enrollment created for non-downloadable course', [
+
+                    \Log::info('Moneroo: Enrollment created', [
                         'enrollment_id' => $enrollment->id,
                         'order_id' => $order->id,
                         'content_id' => $orderItem->content_id,
                         'user_id' => $order->user_id,
+                        'is_downloadable' => $course->is_downloadable,
+                        'is_in_person' => $course->is_in_person_program ?? false,
                     ]);
                 } else {
                     \Log::info('Moneroo: Enrollment already exists', [
@@ -1162,7 +1149,6 @@ class MonerooController extends Controller
             \Log::info('Moneroo: Order items processed', [
                 'order_id' => $order->id,
                 'enrollments_created' => $enrollmentsCreated,
-                'downloadable_items' => $downloadableItems,
                 'total_order_items' => $orderItems->count(),
             ]);
 

@@ -70,10 +70,10 @@
                             </div>
                             <div class="col-md-3 text-end">
                                 <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total) }}</div>
-                                @if($item->course->is_downloadable)
+                                @if($item->course->is_downloadable || ($item->course->is_in_person_program ?? false))
                                     <a href="{{ route('contents.download', $item->course->slug) }}" 
                                        class="btn btn-primary btn-sm mt-2">
-                                        <i class="fas fa-download me-1"></i>Télécharger
+                                        <i class="fas fa-download me-1"></i>{{ $item->course->getDownloadButtonText() }}
                                     </a>
                                 @else
                                     <a href="{{ route('learning.course', $item->course->slug) }}" 

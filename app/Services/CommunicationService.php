@@ -367,7 +367,16 @@ class CommunicationService
                 $course = $mailable->course;
                 
                 // Personnaliser selon le type de contenu
-                if ($course->is_downloadable) {
+                if ($course->is_in_person_program ?? false) {
+                    // Programme en présentiel
+                    $courseUrl = route('contents.show', $course->slug);
+                    $message = ($course->is_free ? "🎓 *Inscription au programme confirmée !*" : "✅ *Réservation confirmée !*") . "\n\n" .
+                              "Bonjour *{$userName}*,\n\n" .
+                              "Votre inscription au programme en présentiel *{$course->title}* a été confirmée.\n\n" .
+                              "Consultez la page du programme pour les coordonnées WhatsApp et les prochaines étapes.\n\n" .
+                              "👉 {$courseUrl}\n\n" .
+                              "À bientôt !";
+                } elseif ($course->is_downloadable) {
                     // Contenu téléchargeable
                     if ($course->is_free) {
                         // Téléchargeable gratuit
@@ -428,25 +437,29 @@ class CommunicationService
                 $hasDownloadable = $orderItems->contains(function ($item) {
                     return $item->course && $item->course->is_downloadable;
                 });
-                $hasNonDownloadable = $orderItems->contains(function ($item) {
-                    return $item->course && !$item->course->is_downloadable;
+                $hasInPerson = $orderItems->contains(function ($item) {
+                    return $item->course && ($item->course->is_in_person_program ?? false);
+                });
+                $hasOnline = $orderItems->contains(function ($item) {
+                    return $item->course && !$item->course->is_downloadable && !($item->course->is_in_person_program ?? false);
                 });
                 
-                if ($hasDownloadable && !$hasNonDownloadable) {
-                    // Uniquement des contenus téléchargeables
+                if ($hasDownloadable && !$hasInPerson && !$hasOnline) {
                     $contentType = "contenus";
                     $actionText = "Téléchargez-les maintenant depuis votre espace personnel.";
-                } elseif (!$hasDownloadable && $hasNonDownloadable) {
-                    // Uniquement des cours classiques
+                } elseif (!$hasDownloadable && $hasInPerson && !$hasOnline) {
+                    $contentType = "programmes";
+                    $actionText = "Consultez les détails de vos programmes et contactez les organisateurs via WhatsApp.";
+                } elseif (!$hasDownloadable && !$hasInPerson && $hasOnline) {
                     $contentType = "cours";
                     $actionText = "Commencez votre apprentissage dès maintenant.";
-                } elseif ($hasDownloadable && $hasNonDownloadable) {
-                    // Panier mixte
-                    $contentType = "cours et contenus";
-                    $actionText = "Accédez à vos contenus depuis votre espace personnel.";
                 } else {
-                    // Fallback générique
-                    $contentType = "contenus";
+                    $types = array_filter([
+                        $hasDownloadable ? 'contenus' : null,
+                        $hasInPerson ? 'programmes' : null,
+                        $hasOnline ? 'cours' : null,
+                    ]);
+                    $contentType = implode(', ', array_unique($types)) ?: 'contenus';
                     $actionText = "Accédez à vos contenus depuis votre espace personnel.";
                 }
                 
@@ -491,19 +504,11 @@ class CommunicationService
                 if (!$course) {
                     return null;
                 }
-                if ($course->is_downloadable) {
-                    // Contenu téléchargeable
-                    $message = "⚠️ *Accès révoqué*\n\n" .
-                              "Bonjour *{$userName}*,\n\n" .
-                              "Votre accès au contenu *{$course->title}* a été révoqué.\n\n" .
-                              "Pour plus d'informations, contactez le support.";
-                } else {
-                    // Formation (non téléchargeable)
-                    $message = "⚠️ *Accès révoqué*\n\n" .
-                              "Bonjour *{$userName}*,\n\n" .
-                              "Votre accès à la formation *{$course->title}* a été révoqué.\n\n" .
-                              "Pour plus d'informations, contactez le support.";
-                }
+                $label = $course->getContentLabel();
+                $message = "⚠️ *Accès révoqué*\n\n" .
+                          "Bonjour *{$userName}*,\n\n" .
+                          "Votre accès au {$label} *{$course->title}* a été révoqué.\n\n" .
+                          "Pour plus d'informations, contactez le support.";
                 return $this->formatWhatsAppMessage($message, $user);
             
             case \App\Mail\CertificateIssuedMail::class:
@@ -512,7 +517,7 @@ class CommunicationService
                     return null;
                 }
                 $course = $certificate->course;
-                $label = $course->is_downloadable ? 'contenu' : 'formation';
+                $label = $course->getContentLabel();
                 $message = "🎉 *Certificat disponible*\n\n" .
                           "Bonjour *{$userName}*,\n\n" .
                           "Félicitations ! Votre certificat pour la {$label} *{$course->title}* est disponible.\n\n" .

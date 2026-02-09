@@ -4007,9 +4007,9 @@ button.mobile-price-slider__btn--download i,
                                     {{-- Contenu gratuit --}}
                                     @if($isEnrolled)
                                         {{-- Utilisateur inscrit au contenu gratuit --}}
-                                        @if($course->is_downloadable && $canDownloadCourse)
+                                        @if(($course->is_downloadable && $canDownloadCourse) || ($course->is_in_person_program ?? false))
                                             <a href="{{ route('contents.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
-                                                <i class="fas fa-download me-2"></i>Télécharger
+                                                <i class="fas fa-download me-2"></i>{{ $course->getDownloadButtonText() }}
                                             </a>
                                         @else
                                             @php
@@ -4053,9 +4053,9 @@ button.mobile-price-slider__btn--download i,
                                     {{-- Contenu payant --}}
                                     @if($isEnrolled)
                                         {{-- Utilisateur inscrit au contenu payant --}}
-                                        @if($course->is_downloadable && $canDownloadCourse)
+                                        @if(($course->is_downloadable && $canDownloadCourse) || ($course->is_in_person_program ?? false))
                                             <a href="{{ route('contents.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
-                                                <i class="fas fa-download me-2"></i>Télécharger
+                                                <i class="fas fa-download me-2"></i>{{ $course->getDownloadButtonText() }}
                                             </a>
                                         @else
                                             @php
@@ -4071,7 +4071,7 @@ button.mobile-price-slider__btn--download i,
                                             {{-- Pour les produits téléchargeables, accès direct au téléchargement après paiement --}}
                                             @if($canDownloadCourse)
                                                 <a href="{{ route('contents.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
-                                                    <i class="fas fa-download me-2"></i>Télécharger
+                                                    <i class="fas fa-download me-2"></i>{{ $course->getDownloadButtonText() }}
                                                 </a>
                                             @else
                                                 <button type="button" class="btn btn-secondary btn-lg w-100" disabled>
@@ -4277,7 +4277,7 @@ button.mobile-price-slider__btn--download i,
                     {{-- Contenu gratuit --}}
                     @if($isEnrolled)
                         {{-- Utilisateur inscrit au cours gratuit --}}
-                        @if($course->is_downloadable && $canDownloadCourse)
+                        @if(($course->is_downloadable && $canDownloadCourse) || ($course->is_in_person_program ?? false))
                             @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
                                 <div class="mobile-price-slider__btn-group">
                                     <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
@@ -4287,13 +4287,13 @@ button.mobile-price-slider__btn--download i,
                                     </a>
                                     <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                         <i class="fas fa-download"></i>
-                                        <span>Télécharger</span>
+                                        <span>{{ $course->getDownloadButtonTextMobile() }}</span>
                                     </a>
                                 </div>
                             @else
                                 <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                     <i class="fas fa-download"></i>
-                                    <span>Télécharger</span>
+                                    <span>{{ $course->getDownloadButtonTextMobile() }}</span>
                                 </a>
                             @endif
                         @else
@@ -4400,7 +4400,7 @@ button.mobile-price-slider__btn--download i,
                     {{-- Cours payant --}}
                     @if($isEnrolled)
                         {{-- Utilisateur inscrit au cours payant --}}
-                        @if($course->is_downloadable && $canDownloadCourse)
+                        @if(($course->is_downloadable && $canDownloadCourse) || ($course->is_in_person_program ?? false))
                             @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
                                 <div class="mobile-price-slider__btn-group">
                                     <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
@@ -4410,13 +4410,13 @@ button.mobile-price-slider__btn--download i,
                                     </a>
                                     <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                         <i class="fas fa-download"></i>
-                                        <span>Télécharger</span>
+                                        <span>{{ $course->getDownloadButtonTextMobile() }}</span>
                                     </a>
                                 </div>
                             @else
                                 <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                     <i class="fas fa-download"></i>
-                                    <span>Télécharger</span>
+                                    <span>{{ $course->getDownloadButtonTextMobile() }}</span>
                                 </a>
                             @endif
                         @else
@@ -4456,13 +4456,13 @@ button.mobile-price-slider__btn--download i,
                                         </a>
                                         <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                             <i class="fas fa-download"></i>
-                                            <span>Télécharger</span>
+                                            <span>{{ $course->getDownloadButtonTextMobile() }}</span>
                                         </a>
                                     </div>
                                 @else
                                     <a href="{{ route('contents.download', $course->slug) }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--download">
                                         <i class="fas fa-download"></i>
-                                        <span>Télécharger</span>
+                                        <span>{{ $course->getDownloadButtonTextMobile() }}</span>
                                     </a>
                                 @endif
                             @else

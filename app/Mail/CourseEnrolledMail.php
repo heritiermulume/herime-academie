@@ -43,7 +43,20 @@ class CourseEnrolledMail extends Mailable
         $this->course->load(['provider', 'category']);
 
         // Personnaliser selon le type de contenu
-        if ($this->course->is_downloadable) {
+        if ($this->course->is_in_person_program ?? false) {
+            // Programme en présentiel
+            $courseUrl = route('contents.show', $this->course->slug);
+            $buttonText = 'Voir le programme';
+            $messageTitle = $this->course->is_free ? 'Inscription au programme confirmée !' : 'Réservation confirmée !';
+            $messageText = $this->course->is_free
+                ? 'Votre inscription au programme en présentiel a été confirmée. Consultez la page du programme pour les coordonnées de contact (WhatsApp) et les prochaines étapes.'
+                : 'Votre réservation pour ce programme en présentiel a été confirmée. Consultez la page du programme pour les coordonnées de contact (WhatsApp) et les détails de participation.';
+            $features = [
+                'Contacter l\'organisateur via WhatsApp',
+                'Consulter les détails et le lieu du programme',
+                'Recevoir les informations pratiques',
+            ];
+        } elseif ($this->course->is_downloadable) {
             // Contenu téléchargeable
             if ($this->course->is_free) {
                 // Téléchargeable gratuit

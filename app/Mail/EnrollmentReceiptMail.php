@@ -41,7 +41,7 @@ class EnrollmentReceiptMail extends Mailable
             view: 'emails.enrollment-receipt',
             with: [
                 'course' => $this->course,
-                'courseUrl' => $this->course->is_downloadable
+                'courseUrl' => ($this->course->is_downloadable || ($this->course->is_in_person_program ?? false))
                     ? route('contents.show', $this->course->slug)
                     : route('learning.course', $this->course->slug),
             ],

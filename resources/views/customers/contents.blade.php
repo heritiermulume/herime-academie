@@ -245,10 +245,10 @@
                         </div>
                         <div class="customer-course-item__actions">
                             @if($isPurchasedNotEnrolled)
-                                @if($course->is_downloadable ?? false)
-                                    {{-- Produit téléchargeable acheté : accès direct au téléchargement, sans inscription --}}
+                                @if(($course->is_downloadable ?? false) || ($course->is_in_person_program ?? false))
+                                    {{-- Produit téléchargeable ou programme présentiel : télécharger (contenu ou reçu) --}}
                                     <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
-                                        <i class="fas fa-download me-1"></i>Télécharger
+                                        <i class="fas fa-download me-1"></i>{{ $course->getDownloadButtonText() }}
                                     </a>
                                 @else
                                     {{-- Contenu non téléchargeable : conserver la logique d'inscription --}}
@@ -261,9 +261,9 @@
                                     </form>
                                 @endif
                             @else
-                                @if($course->is_downloadable ?? false)
+                                @if(($course->is_downloadable ?? false) || ($course->is_in_person_program ?? false))
                                     <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
-                                        <i class="fas fa-download me-1"></i>Télécharger
+                                        <i class="fas fa-download me-1"></i>{{ $course->getDownloadButtonText() }}
                                     </a>
                                 @else
                                     <a href="{{ route('learning.course', $course->slug) }}" class="admin-btn success sm">

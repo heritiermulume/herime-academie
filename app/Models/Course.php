@@ -132,6 +132,96 @@ class Course extends Model
         ];
     }
 
+    /**
+     * Libellé du type de contenu : Contenu téléchargeable | Cours en ligne | Cours en présentiel
+     */
+    public function getContentTypeLabel(): string
+    {
+        if ($this->is_downloadable) {
+            return 'Contenu téléchargeable';
+        }
+        if ($this->is_in_person_program ?? false) {
+            return 'Cours en présentiel';
+        }
+        return 'Cours en ligne';
+    }
+
+    /**
+     * Libellé court pour les messages/notifications : contenu | cours | programme
+     */
+    public function getContentLabel(): string
+    {
+        if ($this->is_downloadable) {
+            return 'contenu';
+        }
+        if ($this->is_in_person_program ?? false) {
+            return 'programme';
+        }
+        return 'cours';
+    }
+
+    /**
+     * Libellé du prestataire selon le type : Prestataire | Formateur | Organisateur
+     */
+    public function getProviderLabel(): string
+    {
+        if ($this->is_downloadable) {
+            return 'Prestataire';
+        }
+        if ($this->is_in_person_program ?? false) {
+            return 'Organisateur';
+        }
+        return 'Formateur';
+    }
+
+    /**
+     * Texte du bouton de téléchargement selon le contexte
+     * Retourne "Télécharger le reçu" si c'est uniquement le reçu, sinon "Télécharger"
+     */
+    public function getDownloadButtonText(): string
+    {
+        // Cours en présentiel : toujours le reçu uniquement
+        if ($this->is_in_person_program ?? false) {
+            return 'Télécharger le reçu';
+        }
+
+        // Contenu téléchargeable : vérifier s'il y a du contenu à télécharger
+        if ($this->is_downloadable) {
+            // Si un fichier spécifique est défini, c'est du contenu
+            if ($this->download_file_path) {
+                return 'Télécharger';
+            }
+
+            // Vérifier s'il y a des sections avec des leçons
+            if (!$this->relationLoaded('sections')) {
+                $this->load('sections.lessons');
+            }
+            $hasContent = $this->sections->some(function ($section) {
+                return $section->lessons->isNotEmpty();
+            });
+
+            // Si pas de contenu (pas de fichier ni de sections/leçons), c'est le reçu uniquement
+            return $hasContent ? 'Télécharger' : 'Télécharger le reçu';
+        }
+
+        // Cours en ligne : ne devrait pas arriver ici (pas de bouton télécharger)
+        return 'Télécharger';
+    }
+
+    /**
+     * Texte du bouton de téléchargement pour mobile (version abrégée)
+     * Retourne "Téléch. reçu" si c'est uniquement le reçu, sinon "Télécharger"
+     */
+    public function getDownloadButtonTextMobile(): string
+    {
+        $text = $this->getDownloadButtonText();
+        // Abréger "Télécharger le reçu" en "Téléch. reçu" pour mobile
+        if ($text === 'Télécharger le reçu') {
+            return 'Téléch. reçu';
+        }
+        return $text;
+    }
+
     public function getWhatsappChatUrlAttribute(): ?string
     {
         try {
@@ -983,19 +1073,19 @@ class Course extends Model
         
         switch ($state) {
             case 'enrolled':
-                // Si le cours est téléchargeable, afficher le bouton "Télécharger"
-                if ($this->is_downloadable) {
+                // Cours téléchargeable ou en présentiel : bouton "Télécharger" (contenu ou reçu)
+                if ($this->is_downloadable || ($this->is_in_person_program ?? false)) {
                     return [
                         'type' => 'link',
                         'url' => route('contents.download', $this->slug),
                         'class' => 'btn btn-primary',
-                        'text' => 'Télécharger',
+                        'text' => $this->getDownloadButtonText(),
                         'icon' => 'fas fa-download',
                         'meta_trigger' => 'download',
                     ];
                 }
                 
-                // Pour les cours non téléchargeables, afficher "Commencer" ou "Continuer" selon la progression
+                // Pour les cours en ligne uniquement, afficher "Commencer" ou "Continuer" selon la progression
                 $enrollment = $this->getEnrollmentFor($userId);
                 $progress = $enrollment ? ($enrollment->progress ?? 0) : 0;
                 $buttonText = $progress > 0 ? 'Continuer' : 'Commencer';
@@ -1010,13 +1100,13 @@ class Course extends Model
                 ];
                 
             case 'purchased':
-                // Si le cours est téléchargeable, proposer le téléchargement direct (pas d'inscription nécessaire)
-                if ($this->is_downloadable) {
+                // Cours téléchargeable ou en présentiel : proposer le téléchargement (contenu ou reçu)
+                if ($this->is_downloadable || ($this->is_in_person_program ?? false)) {
                     return [
                         'type' => 'link',
                         'url' => route('contents.download', $this->slug),
                         'class' => 'btn btn-primary',
-                        'text' => 'Télécharger',
+                        'text' => $this->getDownloadButtonText(),
                         'icon' => 'fas fa-download',
                         'meta_trigger' => 'download',
                     ];
