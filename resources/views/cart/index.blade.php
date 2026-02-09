@@ -1543,6 +1543,35 @@ function showMessageModal(title, message) {
     });
 }
 
+// Fonction pour récupérer le montant actuel du panier depuis le serveur
+async function getCurrentCartTotal() {
+    try {
+        const response = await fetch('{{ route("cart.summary") }}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erreur lors de la récupération du montant');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.total || 0;
+        }
+        
+        return 0;
+    } catch (error) {
+        console.error('Erreur lors de la récupération du montant du panier:', error);
+        // En cas d'erreur, retourner le montant initial de la page
+        return {{ $total ?? 0 }};
+    }
+}
+
 // Fonction pour procéder au paiement Moneroo directement depuis le panier
 // Cette fonction surcharge celle définie dans app.blade.php pour la page cart
 // Elle doit être définie après le chargement du DOM pour prendre le dessus sur app.blade.php
@@ -1588,8 +1617,8 @@ function showMessageModal(title, message) {
         sessionStorage.setItem('moneroo_payment_started_at', Date.now().toString());
         
         try {
-            // Utiliser directement le montant PHP depuis le backend
-            const totalAmount = {{ $total ?? 0 }};
+            // Récupérer le montant actuel du panier depuis le serveur (pour s'assurer qu'il est à jour)
+            const totalAmount = await getCurrentCartTotal();
             
             if (!totalAmount || totalAmount <= 0) {
                 throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
@@ -1977,8 +2006,8 @@ async function proceedToCheckout(event) {
     }
     
     try {
-        // Utiliser directement le montant PHP depuis le backend
-        const totalAmount = {{ $total ?? 0 }};
+        // Récupérer le montant actuel du panier depuis le serveur (pour s'assurer qu'il est à jour)
+        const totalAmount = await getCurrentCartTotal();
         
         if (!totalAmount || totalAmount <= 0) {
             throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
@@ -2088,8 +2117,8 @@ const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) 
     }
     
     try {
-        // Utiliser directement le montant PHP depuis le backend
-        const totalAmount = {{ $total ?? 0 }};
+        // Récupérer le montant actuel du panier depuis le serveur (pour s'assurer qu'il est à jour)
+        const totalAmount = await getCurrentCartTotal();
         
         if (!totalAmount || totalAmount <= 0) {
             throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
