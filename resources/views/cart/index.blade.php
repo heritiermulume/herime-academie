@@ -2229,17 +2229,29 @@ function updateCartSummary() {
             }
             
             if (itemCountElement) {
+                // Mettre à jour le nombre d'articles
                 itemCountElement.textContent = data.item_count;
-                // Mettre à jour aussi le texte parent
+                
+                // Mettre à jour le texte parent avec le bon format (contenu/contenus)
                 const parentLabel = itemCountElement.parentElement;
-                if (parentLabel) {
-                    parentLabel.innerHTML = `<span class="text-muted">Sous-total (<span id="cart-items-count">${data.item_count}</span> contenu${data.item_count > 1 ? 's' : '' })</span>`;
+                if (parentLabel && parentLabel.classList.contains('summary-label')) {
+                    parentLabel.innerHTML = `Sous-total (<span id="cart-items-count">${data.item_count}</span> ${data.item_count > 1 ? 'contenus' : 'contenu'})`;
+                }
+            }
+            
+            // Si le panier est vide, désactiver le bouton de checkout
+            if (data.item_count === 0) {
+                const checkoutBtn = document.getElementById('proceedToCheckoutBtn');
+                if (checkoutBtn) {
+                    checkoutBtn.disabled = true;
+                    checkoutBtn.setAttribute('data-can-checkout', 'false');
                 }
             }
         }
     })
     .catch(error => {
         // Erreur silencieuse
+        console.error('Erreur lors de la mise à jour du résumé du panier:', error);
     });
 }
 

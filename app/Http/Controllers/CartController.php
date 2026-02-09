@@ -894,24 +894,43 @@ public function add(Request $request)
     public function getSummary(Request $request)
     {
         if (auth()->check()) {
-            $cartItems = auth()->user()->cartItems()->with('course')->get();
+            // Utilisateur connecté : utiliser la base de données
+            $cartItems = $this->getDatabaseCartItems();
         } else {
+            // Utilisateur non connecté : utiliser la session
             $cartItems = $this->getSessionCartItems();
         }
 
         // S'assurer que $cartItems est un tableau
         $cartItems = is_array($cartItems) ? $cartItems : $cartItems->toArray();
+        
+        // Filtrer les cours non publiés ou non disponibles à la vente
+        $cartItems = array_filter($cartItems, function($item) {
+            $course = $item['course'] ?? null;
+            if (!$course) {
+                return false;
+            }
+            return $course->is_published && $course->is_sale_enabled;
+        });
+        
+        // Réindexer le tableau après filtrage
+        $cartItems = array_values($cartItems);
+        
         $total = collect($cartItems)->sum('subtotal');
         $itemCount = count($cartItems);
+
+        // Utiliser CurrencyHelper pour le formatage cohérent
+        $formattedSubtotal = \App\Helpers\CurrencyHelper::formatWithSymbol($total);
+        $formattedTotal = \App\Helpers\CurrencyHelper::formatWithSymbol($total);
 
         return response()->json([
             'success' => true,
             'subtotal' => $total,
             'total' => $total,
             'item_count' => $itemCount,
-            'formatted_subtotal' => '$' . number_format($total, 2),
-            'formatted_total' => '$' . number_format($total, 2),
-            'item_text' => $itemCount . ' article' . ($itemCount > 1 ? 's' : '')
+            'formatted_subtotal' => $formattedSubtotal,
+            'formatted_total' => $formattedTotal,
+            'item_text' => $itemCount . ' contenu' . ($itemCount > 1 ? 's' : '')
         ]);
     }
 
