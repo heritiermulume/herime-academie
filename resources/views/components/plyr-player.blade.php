@@ -219,7 +219,7 @@
     @else
         <!-- Plyr Player Container pour vidéo interne -->
         @if(!empty($internalVideoUrl) && trim($internalVideoUrl) !== '')
-        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="metadata" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
+        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="auto" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
             <source src="{{ $internalVideoUrl }}" type="{{ $videoMimeType }}">
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>

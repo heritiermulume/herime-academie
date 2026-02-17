@@ -4595,7 +4595,7 @@ button.mobile-price-slider__btn--download i,
                                 @elseif($course->video_preview_url)
                                     <div class="preview-player-wrapper active" data-preview-id="0">
                                         <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-plyr-player-0">
-                                            <video id="plyr-player-0" class="plyr-player-video" playsinline>
+                                            <video id="plyr-player-0" class="plyr-player-video" playsinline preload="auto">
                                                 <source src="{{ $course->video_preview_url }}" type="video/mp4">
                                             </video>
                                         </div>
@@ -4800,7 +4800,7 @@ function loadPreviewList() {
                             const playerId = 'plyr-player-' + preview.id;
                             wrapper.innerHTML = `
                                 <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
-                                    <video id="${playerId}" class="plyr-player-video" playsinline>
+                                    <video id="${playerId}" class="plyr-player-video" playsinline preload="auto">
                                         <source src="${preview.video_url}" type="video/mp4">
                                     </video>
                                 </div>
@@ -5124,7 +5124,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                         const playerId = 'plyr-player-' + lessonId;
                         wrapper.innerHTML = `
                             <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
-                                <video id="${playerId}" class="plyr-player-video" playsinline>
+                                <video id="${playerId}" class="plyr-player-video" playsinline preload="auto">
                                     <source src="${videoUrl}" type="video/mp4">
                                 </video>
                             </div>
@@ -5201,7 +5201,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                     const playerId = 'plyr-player-' + lessonId;
                     wrapper.innerHTML = `
                         <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
-                            <video id="${playerId}" class="plyr-player-video" playsinline>
+                            <video id="${playerId}" class="plyr-player-video" playsinline preload="auto">
                                 <source src="${videoUrl}" type="video/mp4">
                             </video>
                         </div>
