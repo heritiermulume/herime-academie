@@ -21,6 +21,9 @@
 @section('admin-content')
 @php
     use Illuminate\Support\Str;
+    use App\Models\Enrollment;
+    use App\Models\LessonProgress;
+    use App\Models\CourseDownload;
 
     $stats = $course->stats ?? [];
     $sectionsCollection = collect($course->sections ?? []);
@@ -57,6 +60,17 @@
         'en' => 'Anglais',
     ];
     $languageLabel = $languageMap[$course->language] ?? ucfirst($course->language ?? 'Inconnu');
+
+    // Préparer les données d'activité des utilisateurs inscrits
+    $enrollmentsCollection = collect($course->enrollments ?? [])->sortByDesc('created_at');
+
+    // Préparer les téléchargements
+    $downloadsCollection = collect($course->downloads ?? [])->sortByDesc('created_at');
+    // Grouper les téléchargements par utilisateur pour un accès rapide côté tableau des inscrits
+    $downloadsByUser = $downloadsCollection->groupBy('user_id');
+
+    // Calculer le nombre de leçons totales pour le cours (pourcentage de complétion global)
+    $totalLessonsCount = $lessonsCollection->count();
 
     $videoPreviewUrl = $course->video_preview_url ?: null;
     if (!$videoPreviewUrl && !empty($course->video_preview_youtube_id)) {
@@ -391,6 +405,243 @@
                     @endif
                 </div>
             </section>
+
+            @if($enrollmentsCollection->isNotEmpty())
+                <section class="admin-panel">
+                    <div class="admin-panel__header d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">
+                            <i class="fas fa-users me-2"></i>Utilisateurs inscrits & activité
+                        </h3>
+                        <span class="badge bg-primary">
+                            {{ $enrollmentsCollection->count() }} inscrit{{ $enrollmentsCollection->count() > 1 ? 's' : '' }}
+                        </span>
+                    </div>
+                    <div class="admin-panel__body">
+                        <p class="text-muted small mb-3">
+                            Liste des clients inscrits à ce contenu, avec leur progression, leurs téléchargements et l’état de complétion de la formation.
+                        </p>
+                        <div class="admin-table">
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Utilisateur</th>
+                                            <th>Inscription</th>
+                                            <th>Progression</th>
+                                            <th>Formation terminée</th>
+                                            @if($course->is_downloadable)
+                                                <th>Téléchargements</th>
+                                            @endif
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($enrollmentsCollection as $enrollment)
+                                            @php
+                                                /** @var Enrollment $enrollment */
+                                                $user = $enrollment->user;
+                                                $progress = $enrollment->progress ?? 0;
+                                                $isCompleted = $enrollment->status === 'completed' || (!is_null($enrollment->completed_at));
+
+                                                // Téléchargements pour cet utilisateur
+                                                /** @var \Illuminate\Support\Collection<int, CourseDownload> $userDownloads */
+                                                $userDownloads = $downloadsByUser->get($enrollment->user_id, collect());
+                                                $downloadsCount = $userDownloads->count();
+
+                                                // Nombre de leçons complétées (basé sur LessonProgress)
+                                                /** @var \Illuminate\Support\Collection<int, LessonProgress> $userLessonProgress */
+                                                $userLessonProgress = collect($course->lessonProgress ?? [])->where('user_id', $enrollment->user_id);
+                                                $completedLessonsCount = $userLessonProgress->where('is_completed', true)->count();
+                                            @endphp
+                                            <tr>
+                                                <td style="min-width: 220px;">
+                                                    @if($user)
+                                                        <div class="d-flex align-items-center gap-3">
+                                                            <img src="{{ $user->avatar ?? asset('images/default-avatar.svg') }}"
+                                                                 alt="{{ $user->name }}"
+                                                                 class="rounded-circle flex-shrink-0"
+                                                                 style="width: 40px; height: 40px; object-fit: cover;">
+                                                            <div class="flex-grow-1 min-w-0">
+                                                                <div class="fw-semibold text-truncate">{{ $user->name }}</div>
+                                                                <div class="text-muted small text-truncate">{{ $user->email }}</div>
+                                                            </div>
+                                                        </div>
+                                                    @else
+                                                        <span class="text-muted">Utilisateur supprimé</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <div class="text-muted small">
+                                                        <div>
+                                                            <i class="far fa-calendar-alt me-1"></i>
+                                                            Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y') ?? 'N/A' }}
+                                                        </div>
+                                                        @if($enrollment->order_id)
+                                                            <div>
+                                                                <i class="fas fa-receipt me-1"></i>
+                                                                Commande #{{ $enrollment->order_id }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td style="min-width: 200px;">
+                                                    <div class="d-flex flex-column gap-1">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <span class="small text-muted">Progression</span>
+                                                            <span class="fw-semibold">{{ number_format($progress, 0) }}%</span>
+                                                        </div>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar {{ $progress >= 100 ? 'bg-success' : 'bg-info' }}"
+                                                                 role="progressbar"
+                                                                 style="width: {{ min(100, max(0, (int) $progress)) }}%;"
+                                                                 aria-valuenow="{{ (int) $progress }}"
+                                                                 aria-valuemin="0"
+                                                                 aria-valuemax="100">
+                                                            </div>
+                                                        </div>
+                                                        @if($totalLessonsCount > 0)
+                                                            <div class="small text-muted">
+                                                                {{ $completedLessonsCount }} / {{ $totalLessonsCount }} leçon{{ $totalLessonsCount > 1 ? 's' : '' }} complétée{{ $completedLessonsCount > 1 ? 's' : '' }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @if($isCompleted)
+                                                        <span class="badge bg-success">
+                                                            <i class="fas fa-check-circle me-1"></i>Terminée
+                                                        </span>
+                                                        @if($enrollment->completed_at)
+                                                            <div class="small text-muted mt-1">
+                                                                le {{ $enrollment->completed_at->format('d/m/Y') }}
+                                                            </div>
+                                                        @endif
+                                                    @else
+                                                        <span class="badge bg-secondary">
+                                                            <i class="fas fa-hourglass-half me-1"></i>En cours
+                                                        </span>
+                                                    @endif
+                                                </td>
+                                                @if($course->is_downloadable)
+                                                    <td>
+                                                        @if($downloadsCount > 0)
+                                                            <div class="fw-semibold">
+                                                                {{ $downloadsCount }} téléchargement{{ $downloadsCount > 1 ? 's' : '' }}
+                                                            </div>
+                                                            @php
+                                                                $lastDownload = $userDownloads->sortByDesc('created_at')->first();
+                                                            @endphp
+                                                            @if($lastDownload && $lastDownload->created_at)
+                                                                <div class="small text-muted">
+                                                                    Dernier : {{ $lastDownload->created_at->format('d/m/Y H:i') }}
+                                                                </div>
+                                                            @endif
+                                                        @else
+                                                            <span class="text-muted small">Aucun</span>
+                                                        @endif
+                                                    </td>
+                                                @endif
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            @endif
+
+            @if($downloadsCollection->isNotEmpty())
+                <section class="admin-panel">
+                    <div class="admin-panel__header d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">
+                            <i class="fas fa-download me-2"></i>Historique des téléchargements
+                        </h3>
+                        <span class="badge bg-info">
+                            {{ $downloadsCollection->count() }} téléchargement{{ $downloadsCollection->count() > 1 ? 's' : '' }}
+                        </span>
+                    </div>
+                    <div class="admin-panel__body">
+                        <p class="text-muted small mb-3">
+                            Liste détaillée de tous les téléchargements associés à ce contenu (ressources téléchargeables).
+                        </p>
+                        <div class="admin-table">
+                            <div class="table-responsive">
+                                <table class="table align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Utilisateur</th>
+                                            <th>Type</th>
+                                            <th>Date</th>
+                                            <th>IP / Localisation</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($downloadsCollection as $download)
+                                            @php
+                                                /** @var CourseDownload $download */
+                                                $user = $download->user;
+                                            @endphp
+                                            <tr>
+                                                <td style="min-width: 220px;">
+                                                    @if($user)
+                                                        <div class="d-flex align-items-center gap-3">
+                                                            <img src="{{ $user->avatar ?? asset('images/default-avatar.svg') }}"
+                                                                 alt="{{ $user->name }}"
+                                                                 class="rounded-circle flex-shrink-0"
+                                                                 style="width: 40px; height: 40px; object-fit: cover;">
+                                                            <div class="flex-grow-1 min-w-0">
+                                                                <div class="fw-semibold text-truncate">{{ $user->name }}</div>
+                                                                <div class="text-muted small text-truncate">{{ $user->email }}</div>
+                                                            </div>
+                                                        </div>
+                                                    @else
+                                                        <span class="text-muted">Utilisateur inconnu / supprimé</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-secondary text-capitalize">
+                                                        {{ $download->download_type ?: 'inconnu' }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="text-muted small">
+                                                        <div>
+                                                            <i class="far fa-calendar-alt me-1"></i>
+                                                            {{ optional($download->created_at)->format('d/m/Y') ?? 'N/A' }}
+                                                        </div>
+                                                        <div>
+                                                            <i class="far fa-clock me-1"></i>
+                                                            {{ optional($download->created_at)->format('H:i') ?? 'N/A' }}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td style="min-width: 220px;">
+                                                    <div class="text-muted small">
+                                                        @if($download->ip_address)
+                                                            <div><strong>IP :</strong> {{ $download->ip_address }}</div>
+                                                        @endif
+                                                        @if($download->country_name || $download->city || $download->region)
+                                                            <div>
+                                                                <strong>Localisation :</strong>
+                                                                {{ $download->city ? $download->city . ', ' : '' }}
+                                                                {{ $download->region ? $download->region . ', ' : '' }}
+                                                                {{ $download->country_name ?? $download->country ?? '' }}
+                                                            </div>
+                                                        @endif
+                                                        @if(!$download->ip_address && !$download->country_name && !$download->city && !$download->region)
+                                                            <span class="text-muted">Non disponible</span>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            @endif
         </div>
 
         <div class="col-md-4">

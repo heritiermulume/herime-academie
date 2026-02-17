@@ -219,7 +219,9 @@
     @else
         <!-- Plyr Player Container pour vidéo interne -->
         @if(!empty($internalVideoUrl) && trim($internalVideoUrl) !== '')
-        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="auto" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
+        {{-- Par défaut, on utilise un préchargement léger (metadata).
+             Le script JS ajustera dynamiquement ce comportement (auto sur desktop, léger sur mobile). --}}
+        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="metadata" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
             <source src="{{ $internalVideoUrl }}" type="{{ $videoMimeType }}">
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>
@@ -452,6 +454,18 @@
                         wrapper.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100"><i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><p class="text-white mb-2">Erreur: Élément source introuvable</p></div>';
                     }
                     return null;
+                }
+            }
+
+            // Adapter la stratégie de préchargement en fonction du device
+            // - Mobile (<= 991px) : préchargement léger pour économiser la data
+            // - Desktop : préchargement plus agressif pour un démarrage plus fluide
+            const isMobileDevice = window.innerWidth < 992;
+            if (isInternalVideo && playerElement.tagName === 'VIDEO') {
+                try {
+                    playerElement.setAttribute('preload', isMobileDevice ? 'metadata' : 'auto');
+                } catch (e) {
+                    // Erreur silencieuse si le navigateur ne supporte pas la modification
                 }
             }
             
