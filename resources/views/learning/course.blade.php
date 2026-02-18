@@ -1239,10 +1239,23 @@
         padding-top: 1rem !important;
     }
 
-    /* Ajouter des marges horizontales à la barre de progression sur tablette */
+    /* Barre de progression tablette : centrer, éviter débordement */
+    .learning-topbar {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        box-sizing: border-box;
+    }
     .learning-topbar .learning-progress-bar {
-        margin-left: 0.75rem;
-        margin-right: 0.75rem;
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+    .learning-topbar > .d-flex {
+        min-width: 0;
     }
 
     .learning-grid {
@@ -1573,16 +1586,26 @@
         padding: 0 !important;
     }
 
+    /* Topbar + barre de progression mobile : centrer, éviter débordement */
     .learning-topbar {
         margin-bottom: 0.3rem !important;
         margin-top: 0 !important;
         padding-top: 1rem !important;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        box-sizing: border-box;
     }
-
-    /* Ajouter des marges horizontales à la barre de progression sur mobile */
     .learning-topbar .learning-progress-bar {
-        margin-left: 0.5rem;
-        margin-right: 0.5rem;
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+    .learning-topbar > .d-flex {
+        min-width: 0;
     }
 
     .learning-grid {
@@ -2574,10 +2597,10 @@
         padding-top: 1rem !important;
     }
 
-    /* Ajouter des marges horizontales à la barre de progression sur très petit mobile */
-    .learning-topbar .learning-progress-bar {
-        margin-left: 0.4rem;
-        margin-right: 0.4rem;
+    /* Barre de progression très petit mobile */
+    .learning-topbar {
+        padding-left: 0.4rem;
+        padding-right: 0.4rem;
     }
 
     .learning-grid {
