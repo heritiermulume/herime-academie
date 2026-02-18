@@ -2151,6 +2151,37 @@
     .plyr__control[data-plyr="settings"]:hover {
         color: #ffcc33 !important;
     }
+    
+    /* Fullscreen mobile: forcer le lecteur au-dessus de navbar/sidebar */
+    .plyr.plyr--fullscreen,
+    .plyr.plyr--fullscreen.plyr--fullscreen-active {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        max-height: 100dvh !important;
+        z-index: 2147483647 !important;
+        background: #000 !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .plyr.plyr--fullscreen .plyr__video-wrapper,
+    .plyr.plyr--fullscreen .plyr__video-embed {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
 }
 
 @media (max-width: 767.98px) {

@@ -743,6 +743,26 @@
                 });
             }
 
+            // Fullscreen mobile : déplacer le lecteur dans body pour qu'il soit au-dessus de tout
+            (function() {
+                let fullscreenOriginalParent = null;
+                player.on('enterfullscreen', function() {
+                    const plyrContainer = player.elements && player.elements.container ? player.elements.container : (player.media && player.media.closest ? player.media.closest('.plyr') : null);
+                    if (!plyrContainer || !wrapper) return;
+                    if (!document.fullscreenElement && window.matchMedia('(max-width: 991.98px)').matches) {
+                        fullscreenOriginalParent = plyrContainer.parentNode;
+                        document.body.appendChild(plyrContainer);
+                    }
+                });
+                player.on('exitfullscreen', function() {
+                    const plyrContainer = player.elements && player.elements.container ? player.elements.container : (player.media && player.media.closest ? player.media.closest('.plyr') : null);
+                    if (fullscreenOriginalParent && plyrContainer) {
+                        fullscreenOriginalParent.appendChild(plyrContainer);
+                        fullscreenOriginalParent = null;
+                    }
+                });
+            })();
+
             // Sauvegarder la référence
             window['plyr_' + playerId] = player;
             
