@@ -984,6 +984,15 @@ body.has-global-announcement:has(.course-details-page) {
         max-height: 50vh !important;
         height: auto !important;
         overflow: hidden !important;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        cursor: pointer;
+    }
+    
+    .modal-fixed-height .modal-body #previewVideoContainer .plyr,
+    .modal-fixed-height .modal-body #previewVideoContainer .plyr__video-wrapper,
+    .modal-fixed-height .modal-body #previewVideoContainer .preview-player-wrapper {
+        touch-action: manipulation;
     }
     
     .modal-fixed-height .modal-body #previewVideoContainer.ratio {
@@ -4730,17 +4739,44 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Forcer le buffering du lecteur actif quand le modal s'ouvre
+// Forcer le buffering du lecteur actif quand le modal s'ouvre (desktop seulement - évite conflits iOS mobile)
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('coursePreviewModal');
     if (!modal) return;
     modal.addEventListener('shown.bs.modal', function() {
+        if (window.innerWidth < 992) return;
         const activeWrapper = document.querySelector('.preview-player-wrapper.active');
         if (!activeWrapper) return;
         const video = activeWrapper.querySelector('video');
         if (video && video.readyState < 3) {
             video.preload = 'auto';
             video.load();
+        }
+    });
+});
+
+// Fix mobile: lecture vidéo dans le modal (iOS exige play() en réponse directe au tap)
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.innerWidth >= 992) return;
+    const container = document.getElementById('previewVideoContainer');
+    const modal = document.getElementById('coursePreviewModal');
+    if (!container || !modal) return;
+    let mobilePlayHandler = null;
+    modal.addEventListener('shown.bs.modal', function() {
+        if (mobilePlayHandler) container.removeEventListener('touchend', mobilePlayHandler);
+        mobilePlayHandler = function() {
+            const activeWrapper = container.querySelector('.preview-player-wrapper.active');
+            if (!activeWrapper) return;
+            const video = activeWrapper.querySelector('video');
+            if (!video || video.readyState < 1 || !video.paused) return;
+            video.play().catch(function(){});
+        };
+        container.addEventListener('touchend', mobilePlayHandler, { passive: true });
+    });
+    modal.addEventListener('hidden.bs.modal', function() {
+        if (mobilePlayHandler) {
+            container.removeEventListener('touchend', mobilePlayHandler);
+            mobilePlayHandler = null;
         }
     });
 });
