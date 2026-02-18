@@ -1130,6 +1130,26 @@
         margin-bottom: 0.6rem;
     }
 
+    /* Preview player-shell sur tablette : éviter chevauchement, réduire tailles */
+    .player-shell-preview {
+        padding: 0.75rem 0.5rem !important;
+        gap: 0.25rem;
+        overflow-y: auto;
+    }
+    .player-shell-preview .fa-3x {
+        font-size: 1.5rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    .player-shell-preview p {
+        font-size: 0.7rem !important;
+        margin-bottom: 0.25rem !important;
+        line-height: 1.25;
+    }
+    .player-shell-preview .btn-commencer {
+        font-size: 0.8rem !important;
+        padding: 0.35rem 0.75rem !important;
+    }
+
     /* Insight cards dans le preview */
     .learning-player-card .insight-card {
         padding: 0.65rem 0.75rem;
@@ -1522,6 +1542,29 @@
     .learning-player-card .d-flex.flex-column.align-items-center .btn-lg {
         font-size: 0.7rem;
         padding: 0.35rem 0.8rem;
+    }
+
+    /* Preview player-shell sur mobile : éviter chevauchement, bouton compact */
+    .player-shell-preview {
+        padding: 0.5rem 0.4rem !important;
+        gap: 0.15rem;
+    }
+    .player-shell-preview .fa-3x {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+    .player-shell-preview p {
+        font-size: 0.65rem !important;
+        margin-bottom: 0.2rem !important;
+        padding: 0 0.25rem;
+    }
+    .player-shell-preview .btn-commencer {
+        font-size: 0.7rem !important;
+        padding: 0.3rem 0.6rem !important;
+        white-space: nowrap;
+    }
+    .player-shell-preview .btn-commencer i {
+        font-size: 0.65rem;
     }
 
     .learning-shell .container-fluid {
@@ -2501,6 +2544,24 @@
         padding: 0.3rem 0.7rem;
     }
 
+    /* Preview player-shell sur très petit mobile */
+    .player-shell-preview {
+        padding: 0.4rem 0.35rem !important;
+        gap: 0.1rem;
+    }
+    .player-shell-preview .fa-3x {
+        font-size: 1.1rem !important;
+        margin-bottom: 0.15rem !important;
+    }
+    .player-shell-preview p {
+        font-size: 0.6rem !important;
+        margin-bottom: 0.15rem !important;
+    }
+    .player-shell-preview .btn-commencer {
+        font-size: 0.65rem !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+
     .learning-shell .container-fluid {
         padding-top: 0 !important;
         margin-top: 0 !important;
@@ -3348,7 +3409,7 @@
                                             </div>
                                     @endswitch
                             @else
-                                <div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100">
+                                <div class="player-shell-preview d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100">
                                     <i class="fas fa-graduation-cap fa-3x mb-3 text-info"></i>
     
                                     <p class="text-muted mb-4 text-center">
@@ -3356,7 +3417,7 @@
                                     </p>
                                     @if($course->sections->first()?->lessons->first())
                                         <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $course->sections->first()->lessons->first()->id]) }}"
-                                           class="btn btn-info btn-lg px-4">
+                                           class="btn btn-info btn-lg px-4 btn-commencer">
                                             <i class="fas fa-play me-2"></i>Commencer maintenant
                                         </a>
                                     @endif
