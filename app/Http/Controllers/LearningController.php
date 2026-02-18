@@ -643,7 +643,25 @@ class LearningController extends Controller
     }
     
     /**
-     * Obtenir des cours recommandés (même algorithme que le panier)
+     * Base query pour les cours éligibles à l'apprentissage (non téléchargeables, avec leçons publiées)
+     */
+    private function learningEligibleCoursesQuery()
+    {
+        return Course::published()
+            ->where('is_free', false)
+            ->where('is_downloadable', false)
+            ->where(function ($q) {
+                $q->where('is_in_person_program', false)->orWhereNull('is_in_person_program');
+            })
+            ->whereHas('sections', function ($q) {
+                $q->whereHas('lessons', function ($q) {
+                    $q->where('is_published', true);
+                });
+            });
+    }
+
+    /**
+     * Obtenir des cours recommandés (uniquement cours accessibles à l'apprentissage en ligne)
      */
     private function getRecommendedCourses(Course $course)
     {
@@ -662,8 +680,7 @@ class LearningController extends Controller
         $recommendations = collect();
 
         // 1. Cours complémentaires de la même catégorie
-        $categoryRecommendations = Course::published()
-            ->where('is_free', false)
+        $categoryRecommendations = $this->learningEligibleCoursesQuery()
             ->where('category_id', $course->category_id)
             ->whereNotIn('id', $excludedCourseIds)
             ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
@@ -679,8 +696,7 @@ class LearningController extends Controller
         $recommendations = $recommendations->merge($categoryRecommendations);
 
         // 2. Cours du même niveau de difficulté (pour progression)
-        $levelRecommendations = Course::published()
-            ->where('is_free', false)
+        $levelRecommendations = $this->learningEligibleCoursesQuery()
             ->where('level', $course->level)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
@@ -697,8 +713,7 @@ class LearningController extends Controller
         $recommendations = $recommendations->merge($levelRecommendations);
 
         // 3. Cours du même prestataire (si l'utilisateur aime le style)
-        $providerRecommendations = Course::published()
-            ->where('is_free', false)
+        $providerRecommendations = $this->learningEligibleCoursesQuery()
             ->where('provider_id', $course->provider_id)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
@@ -715,8 +730,7 @@ class LearningController extends Controller
         $recommendations = $recommendations->merge($providerRecommendations);
 
         // 4. Cours populaires récents (tendance)
-        $trendingRecommendations = Course::published()
-            ->where('is_free', false)
+        $trendingRecommendations = $this->learningEligibleCoursesQuery()
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
             ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
@@ -741,8 +755,7 @@ class LearningController extends Controller
                 ->toArray();
 
             if (!empty($userEnrollments)) {
-                $userPreferenceRecommendations = Course::published()
-                    ->where('is_free', false)
+                $userPreferenceRecommendations = $this->learningEligibleCoursesQuery()
                     ->whereIn('category_id', $userEnrollments)
                     ->whereNotIn('id', $excludedCourseIds)
                     ->whereNotIn('id', $recommendations->pluck('id'))
@@ -762,8 +775,7 @@ class LearningController extends Controller
 
         // 6. Si on n'a pas assez de recommandations, ajouter des cours populaires
         if ($recommendations->count() < 4) {
-            $popularRecommendations = Course::published()
-                ->where('is_free', false)
+            $popularRecommendations = $this->learningEligibleCoursesQuery()
                 ->whereNotIn('id', $excludedCourseIds)
                 ->whereNotIn('id', $recommendations->pluck('id'))
                 ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
@@ -779,10 +791,10 @@ class LearningController extends Controller
             $recommendations = $recommendations->merge($popularRecommendations);
         }
 
-        // Filtrage final pour s'assurer qu'aucun cours gratuit ou acheté ne passe
+        // Filtrage final : uniquement cours éligibles à l'apprentissage (non téléchargeables, avec leçons)
         $finalRecommendations = $recommendations->filter(function($course) {
-            // Exclure les cours gratuits
-            if ($course->is_free) {
+            // Exclure cours gratuits, téléchargeables et programmes en présentiel
+            if ($course->is_free || $course->is_downloadable || ($course->is_in_person_program ?? false)) {
                 return false;
             }
             
