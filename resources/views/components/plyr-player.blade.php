@@ -743,23 +743,17 @@
                 });
             }
 
-            // Fullscreen mobile : déplacer le lecteur dans body pour qu'il soit au-dessus de tout
+            // Fullscreen mobile : ajouter classe au player-shell pour le faire passer au-dessus de tout (CSS :has + fallback)
             (function() {
-                let fullscreenOriginalParent = null;
+                const playerShell = wrapper ? wrapper.closest('.player-shell') : null;
+                if (!playerShell) return;
                 player.on('enterfullscreen', function() {
-                    const plyrContainer = player.elements && player.elements.container ? player.elements.container : (player.media && player.media.closest ? player.media.closest('.plyr') : null);
-                    if (!plyrContainer || !wrapper) return;
-                    if (!document.fullscreenElement && window.matchMedia('(max-width: 991.98px)').matches) {
-                        fullscreenOriginalParent = plyrContainer.parentNode;
-                        document.body.appendChild(plyrContainer);
+                    if (window.matchMedia('(max-width: 991.98px)').matches) {
+                        playerShell.classList.add('plyr-mobile-fullscreen');
                     }
                 });
                 player.on('exitfullscreen', function() {
-                    const plyrContainer = player.elements && player.elements.container ? player.elements.container : (player.media && player.media.closest ? player.media.closest('.plyr') : null);
-                    if (fullscreenOriginalParent && plyrContainer) {
-                        fullscreenOriginalParent.appendChild(plyrContainer);
-                        fullscreenOriginalParent = null;
-                    }
+                    playerShell.classList.remove('plyr-mobile-fullscreen');
                 });
             })();
 
