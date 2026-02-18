@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\CourseLesson;
 use App\Models\Category;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Enrollment;
 use App\Models\Announcement;
 use App\Models\Partner;
@@ -2352,6 +2353,105 @@ class AdminController extends Controller
         $baseCurrency = Setting::getBaseCurrency();
 
         return view('admin.contents.show', compact('course', 'baseCurrency'));
+    }
+
+    /**
+     * Liste paginée des utilisateurs inscrits à un contenu
+     */
+    public function contentEnrollments(Request $request, Course $course)
+    {
+        $course->load(['provider', 'category', 'downloads']);
+
+        $query = Enrollment::with(['user', 'order'])
+            ->where('content_id', $course->id);
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        if (in_array($sortBy, ['created_at', 'progress', 'status', 'completed_at'])) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->latest();
+        }
+
+        $enrollments = $query->paginate(20)->withQueryString();
+
+        $course->load(['sections.lessons']);
+        $totalLessonsCount = $course->sections->flatMap(fn ($s) => $s->lessons)->count();
+
+        return view('admin.contents.enrollments', compact('course', 'enrollments', 'totalLessonsCount'));
+    }
+
+    /**
+     * Liste paginée des achats (commandes) pour un contenu
+     */
+    public function contentPurchases(Request $request, Course $course)
+    {
+        $course->load(['provider', 'category']);
+
+        $query = OrderItem::with(['order.user', 'order'])
+            ->where('content_id', $course->id)
+            ->whereHas('order', function($q) {
+                $q->whereIn('status', ['paid', 'completed']);
+            });
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->whereHas('order.user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        if ($sortBy === 'total') {
+            $query->orderBy('order_items.total', $sortDirection);
+        } else {
+            $query->orderBy('order_items.created_at', $sortDirection);
+        }
+
+        $purchases = $query->paginate(20)->withQueryString();
+
+        return view('admin.contents.purchases', compact('course', 'purchases'));
+    }
+
+    /**
+     * Liste paginée des téléchargements pour un contenu
+     */
+    public function contentDownloads(Request $request, Course $course)
+    {
+        $course->load(['provider', 'category']);
+
+        $query = CourseDownload::with('user')
+            ->where('content_id', $course->id);
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->whereHas('user', function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $sortBy = $request->get('sort', 'created_at');
+        $sortDirection = $request->get('direction', 'desc');
+        if (in_array($sortBy, ['created_at'])) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->latest();
+        }
+
+        $downloads = $query->paginate(20)->withQueryString();
+
+        return view('admin.contents.downloads', compact('course', 'downloads'));
     }
 
     public function destroyCourse(Course $course)

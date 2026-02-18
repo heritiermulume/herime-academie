@@ -499,6 +499,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('contents.store');
         Route::get('/contents/{course}', [AdminController::class, 'showCourse'])->name('contents.show');
+        Route::get('/contents/{course}/enrollments', [AdminController::class, 'contentEnrollments'])->name('contents.enrollments');
+        Route::get('/contents/{course}/purchases', [AdminController::class, 'contentPurchases'])->name('contents.purchases');
+        Route::get('/contents/{course}/downloads', [AdminController::class, 'contentDownloads'])->name('contents.downloads');
         Route::get('/contents/{course}/edit', [AdminController::class, 'editCourse'])->name('contents.edit');
         Route::put('/contents/{course}', [AdminController::class, 'updateCourse'])
             ->middleware('sso.validate')

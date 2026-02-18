@@ -3410,11 +3410,6 @@
                                     @endswitch
                             @else
                                 <div class="player-shell-preview d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100">
-                                    <i class="fas fa-graduation-cap fa-3x mb-3 text-info"></i>
-    
-                                    <p class="text-muted mb-4 text-center">
-                                        Explorez le contenu du cours et lancez-vous dans une expérience immersive.
-                                    </p>
                                     @if($course->sections->first()?->lessons->first())
                                         <a href="{{ route('learning.lesson', ['course' => $course->slug, 'lesson' => $course->sections->first()->lessons->first()->id]) }}"
                                            class="btn btn-info btn-lg px-4 btn-commencer">

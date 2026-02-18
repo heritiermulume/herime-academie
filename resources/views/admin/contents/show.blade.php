@@ -408,13 +408,18 @@
 
             @if($enrollmentsCollection->isNotEmpty())
                 <section class="admin-panel">
-                    <div class="admin-panel__header d-flex justify-content-between align-items-center">
+                    <div class="admin-panel__header d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <h3 class="mb-0">
                             <i class="fas fa-users me-2"></i>Utilisateurs inscrits & activité
                         </h3>
-                        <span class="badge bg-primary">
-                            {{ $enrollmentsCollection->count() }} inscrit{{ $enrollmentsCollection->count() > 1 ? 's' : '' }}
-                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary">
+                                {{ $enrollmentsCollection->count() }} inscrit{{ $enrollmentsCollection->count() > 1 ? 's' : '' }}
+                            </span>
+                            <a href="{{ route('admin.contents.enrollments', $course) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-list me-1"></i>Voir tout
+                            </a>
+                        </div>
                     </div>
                     <div class="admin-panel__body">
                         <p class="text-muted small mb-3">
@@ -435,7 +440,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($enrollmentsCollection as $enrollment)
+                                        @foreach($enrollmentsCollection->take(5) as $enrollment)
                                             @php
                                                 /** @var Enrollment $enrollment */
                                                 $user = $enrollment->user;
@@ -546,19 +551,52 @@
                                 </table>
                             </div>
                         </div>
+                        @if($enrollmentsCollection->count() > 5)
+                            <div class="admin-panel__body border-top pt-3">
+                                <a href="{{ route('admin.contents.enrollments', $course) }}" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-arrow-right me-2"></i>Voir les {{ $enrollmentsCollection->count() }} inscrits
+                                </a>
+                            </div>
+                        @endif
+                    </div>
+                </section>
+            @endif
+
+            @if(!$course->is_free && ($purchasesCount ?? 0) > 0)
+                <section class="admin-panel">
+                    <div class="admin-panel__header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h3 class="mb-0">
+                            <i class="fas fa-shopping-cart me-2"></i>Achats
+                        </h3>
+                        <a href="{{ route('admin.contents.purchases', $course) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-list me-1"></i>Voir la liste des achats
+                        </a>
+                    </div>
+                    <div class="admin-panel__body">
+                        <p class="text-muted small mb-3">
+                            {{ $purchasesCount }} achat{{ $purchasesCount > 1 ? 's' : '' }} enregistré{{ $purchasesCount > 1 ? 's' : '' }} pour ce contenu.
+                        </p>
+                        <a href="{{ route('admin.contents.purchases', $course) }}" class="btn btn-primary">
+                            <i class="fas fa-shopping-cart me-2"></i>Voir tous les acheteurs
+                        </a>
                     </div>
                 </section>
             @endif
 
             @if($downloadsCollection->isNotEmpty())
                 <section class="admin-panel">
-                    <div class="admin-panel__header d-flex justify-content-between align-items-center">
+                    <div class="admin-panel__header d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <h3 class="mb-0">
                             <i class="fas fa-download me-2"></i>Historique des téléchargements
                         </h3>
-                        <span class="badge bg-info">
-                            {{ $downloadsCollection->count() }} téléchargement{{ $downloadsCollection->count() > 1 ? 's' : '' }}
-                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-info">
+                                {{ $downloadsCollection->count() }} téléchargement{{ $downloadsCollection->count() > 1 ? 's' : '' }}
+                            </span>
+                            <a href="{{ route('admin.contents.downloads', $course) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-list me-1"></i>Voir tout
+                            </a>
+                        </div>
                     </div>
                     <div class="admin-panel__body">
                         <p class="text-muted small mb-3">
@@ -576,7 +614,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($downloadsCollection as $download)
+                                        @foreach($downloadsCollection->take(5) as $download)
                                             @php
                                                 /** @var CourseDownload $download */
                                                 $user = $download->user;
@@ -639,6 +677,13 @@
                                 </table>
                             </div>
                         </div>
+                        @if($downloadsCollection->count() > 5)
+                            <div class="admin-panel__body border-top pt-3">
+                                <a href="{{ route('admin.contents.downloads', $course) }}" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-arrow-right me-2"></i>Voir les {{ $downloadsCollection->count() }} téléchargements
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </section>
             @endif
@@ -699,6 +744,40 @@
                             {{ $totalReviews ? number_format($totalReviews, 0, ',', ' ') : 'Aucun' }}
                         </dd>
                     </dl>
+                </div>
+            </section>
+
+            <section class="admin-panel">
+                <div class="admin-panel__header">
+                    <h3>
+                        <i class="fas fa-list me-2"></i>Listes détaillées
+                    </h3>
+                </div>
+                <div class="admin-panel__body">
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{{ route('admin.contents.enrollments', $course) }}" class="btn btn-outline-primary btn-sm d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-users me-2"></i>Utilisateurs inscrits</span>
+                            @if(($totalStudents ?? 0) > 0)
+                                <span class="badge bg-primary">{{ $totalStudents }}</span>
+                            @endif
+                        </a>
+                        @if(!$course->is_free)
+                        <a href="{{ route('admin.contents.purchases', $course) }}" class="btn btn-outline-primary btn-sm d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-shopping-cart me-2"></i>Achats</span>
+                            @if(($purchasesCount ?? 0) > 0)
+                                <span class="badge bg-primary">{{ $purchasesCount }}</span>
+                            @endif
+                        </a>
+                        @endif
+                        @if($course->is_downloadable)
+                        <a href="{{ route('admin.contents.downloads', $course) }}" class="btn btn-outline-primary btn-sm d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-download me-2"></i>Téléchargements</span>
+                            @if(($totalDownloads ?? 0) > 0)
+                                <span class="badge bg-primary">{{ $totalDownloads }}</span>
+                            @endif
+                        </a>
+                        @endif
+                    </div>
                 </div>
             </section>
 
