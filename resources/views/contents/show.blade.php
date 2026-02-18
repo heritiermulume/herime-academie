@@ -4668,18 +4668,25 @@ function attachInternalVideoRobustness(player) {
     let wasPlayingBeforeBuffering = false;
     let shouldResumeAfterSeek = false;
     let seekResumeTimeout = null;
+    let resumeDebounce = null;
+    function tryResume() {
+        if (resumeDebounce) clearTimeout(resumeDebounce);
+        resumeDebounce = setTimeout(function() {
+            if (wasPlayingBeforeBuffering) {
+                player.play().catch(function(){});
+                wasPlayingBeforeBuffering = false;
+            }
+            resumeDebounce = null;
+        }, 50);
+    }
     player.on('waiting', function() { wasPlayingBeforeBuffering = !player.paused; });
     player.on('playing', function() { wasPlayingBeforeBuffering = false; shouldResumeAfterSeek = true; });
     player.on('pause', function() {
         const m = player.media || player;
         if (!m.seeking && !m.ended) shouldResumeAfterSeek = false;
     });
-    player.on('canplay', function() {
-        if (wasPlayingBeforeBuffering) { player.play().catch(function(){}); wasPlayingBeforeBuffering = false; }
-    });
-    player.on('canplaythrough', function() {
-        if (wasPlayingBeforeBuffering) { player.play().catch(function(){}); wasPlayingBeforeBuffering = false; }
-    });
+    player.on('canplay', tryResume);
+    player.on('canplaythrough', tryResume);
     player.on('seeked', function() {
         if (seekResumeTimeout) clearTimeout(seekResumeTimeout);
         if (shouldResumeAfterSeek && !player.ended) {
@@ -5970,27 +5977,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Exécuter quand le modal est ouvert
+    // Exécuter quand le modal est ouvert (suffisant sur mobile sans MutationObserver)
     const previewModal = document.getElementById('coursePreviewModal');
     if (previewModal) {
         previewModal.addEventListener('shown.bs.modal', function() {
             setTimeout(updateAllPlyrTooltips, 200);
             setTimeout(updateAllPlyrTooltips, 500);
+            setTimeout(updateAllPlyrTooltips, 1500);
         });
     }
     
-    // Observer les changements du DOM pour mettre à jour les tooltips (avec debounce)
-    let tooltipUpdateTimeout;
-    const tooltipObserver = new MutationObserver(function() {
-        clearTimeout(tooltipUpdateTimeout);
-        tooltipUpdateTimeout = setTimeout(updateAllPlyrTooltips, 100);
-    });
-    
-    tooltipObserver.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: false // Ne pas observer les attributs pour éviter les boucles
-    });
+    // Observer les tooltips uniquement sur desktop - sur mobile, le MutationObserver
+    // sur document.body déclenche trop de mises à jour pendant le chargement vidéo
+    // (barre de progression, temps, etc.) et provoque un clignotement des boutons
+    if (window.innerWidth >= 992) {
+        let tooltipUpdateTimeout;
+        const tooltipObserver = new MutationObserver(function() {
+            clearTimeout(tooltipUpdateTimeout);
+            tooltipUpdateTimeout = setTimeout(updateAllPlyrTooltips, 150);
+        });
+        tooltipObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: false
+        });
+    }
     
     // Exécuter aussi au chargement initial
     if (document.readyState === 'loading') {
