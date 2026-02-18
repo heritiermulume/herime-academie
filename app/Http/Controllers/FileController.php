@@ -157,6 +157,9 @@ class FileController extends Controller
 
     /**
      * Streamer une vidéo avec support Range pour la lecture
+     * Optimisations type YouTube :
+     * - Chunks de 512 Ko pour débit élevé (vs 8 Ko)
+     * - Cache navigateur pour éviter re-téléchargements
      */
     protected function streamVideo($disk, string $path, string $mimeType): StreamedResponse
     {
@@ -164,40 +167,49 @@ class FileController extends Controller
         $fileSize = filesize($filePath);
         $start = 0;
         $end = $fileSize - 1;
-        
-        // Gérer les requêtes Range pour le streaming
-        if (isset($_SERVER['HTTP_RANGE'])) {
-            preg_match('/bytes=(\d+)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches);
-            $start = intval($matches[1]);
+
+        // Chunk size optimisé pour débit vidéo fluide (512 Ko vs 8 Ko)
+        // Réduit drastiquement le nombre d'appels système et améliore le throughput
+        $chunkSize = 524288;
+
+        $isRangeRequest = false;
+        if (isset($_SERVER['HTTP_RANGE']) && preg_match('/bytes=(\d+)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches)) {
+            $isRangeRequest = true;
+            $start = (int) $matches[1];
             if (!empty($matches[2])) {
-                $end = intval($matches[2]);
+                $end = (int) $matches[2];
             }
         }
-        
+
         $length = $end - $start + 1;
-        
-        $response = new StreamedResponse(function() use ($filePath, $start, $length) {
+        $statusCode = $isRangeRequest ? 206 : 200;
+
+        $response = new StreamedResponse(function () use ($filePath, $start, $length, $chunkSize) {
             $file = fopen($filePath, 'rb');
             fseek($file, $start);
             $remaining = $length;
-            
+
             while ($remaining > 0) {
-                $chunk = min(8192, $remaining);
-                echo fread($file, $chunk);
-                $remaining -= $chunk;
+                $readSize = min($chunkSize, $remaining);
+                echo fread($file, $readSize);
+                $remaining -= $readSize;
                 flush();
             }
-            
+
             fclose($file);
-        }, 206); // 206 Partial Content
-        
+        }, $statusCode);
+
         $response->headers->set('Content-Type', $mimeType);
-        $response->headers->set('Content-Length', $length);
-        $response->headers->set('Content-Range', "bytes $start-$end/$fileSize");
+        $response->headers->set('Content-Length', (string) $length);
         $response->headers->set('Accept-Ranges', 'bytes');
-        $response->headers->set('Cache-Control', 'no-cache, must-revalidate');
-        $response->headers->set('Pragma', 'no-cache');
-        
+        if ($isRangeRequest) {
+            $response->headers->set('Content-Range', "bytes $start-$end/$fileSize");
+        }
+
+        // Cache agressif pour vidéos (contenu stable)
+        // public + max-age permet au navigateur de garder les segments en cache
+        $response->headers->set('Cache-Control', 'public, max-age=86400');
+        $response->headers->set('Expires', gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
         return $response;
     }
 }

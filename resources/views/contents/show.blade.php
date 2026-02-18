@@ -3477,7 +3477,7 @@ button.mobile-price-slider__btn--download i,
                 <!-- Video Preview -->
                 @if($hasAnyPreview)
                 <div class="content-card" style="padding: 0.5rem;">
-                    <div class="video-preview-wrapper" data-bs-toggle="modal" data-bs-target="#coursePreviewModal">
+                    <div class="video-preview-wrapper" data-bs-toggle="modal" data-bs-target="#coursePreviewModal" @if($course->video_preview_url) data-prefetch-video-url="{{ $course->video_preview_url }}" @endif>
                         <div class="ratio ratio-16x9">
                             @php
                                 $thumbnailUrl = '';
@@ -4596,7 +4596,7 @@ button.mobile-price-slider__btn--download i,
                                     <div class="preview-player-wrapper active" data-preview-id="0">
                                         <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-plyr-player-0">
                                             {{-- Préchargement léger par défaut pour limiter l’impact sur mobile --}}
-                                            <video id="plyr-player-0" class="plyr-player-video" playsinline preload="metadata">
+                                            <video id="plyr-player-0" class="plyr-player-video" playsinline preload="auto">
                                                 <source src="{{ $course->video_preview_url }}" type="video/mp4">
                                             </video>
                                         </div>
@@ -4661,6 +4661,50 @@ function copyToClipboard(text) {
         }, 3000);
     });
 }
+
+// Prefetch vidéo au survol (technique type YouTube pour démarrage fluide)
+document.addEventListener('DOMContentLoaded', function() {
+    const wrapper = document.querySelector('.video-preview-wrapper[data-prefetch-video-url]');
+    if (!wrapper) return;
+    const videoUrl = wrapper.getAttribute('data-prefetch-video-url');
+    if (!videoUrl) return;
+    let prefetchTimer = null;
+    let prefetched = false;
+    wrapper.addEventListener('mouseenter', function() {
+        if (prefetched) return;
+        prefetchTimer = setTimeout(function() {
+            const el = document.createElement('video');
+            el.preload = 'auto';
+            el.style.cssText = 'position:absolute;width:0;height:0;opacity:0;pointer-events:none';
+            const src = document.createElement('source');
+            src.src = videoUrl;
+            src.type = 'video/mp4';
+            el.appendChild(src);
+            document.body.appendChild(el);
+            el.load();
+            prefetched = true;
+            setTimeout(function() { el.remove(); }, 60000);
+        }, 250);
+    });
+    wrapper.addEventListener('mouseleave', function() {
+        if (prefetchTimer) clearTimeout(prefetchTimer);
+    });
+});
+
+// Forcer le buffering du lecteur actif quand le modal s'ouvre
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('coursePreviewModal');
+    if (!modal) return;
+    modal.addEventListener('shown.bs.modal', function() {
+        const activeWrapper = document.querySelector('.preview-player-wrapper.active');
+        if (!activeWrapper) return;
+        const video = activeWrapper.querySelector('video');
+        if (video && video.readyState < 3) {
+            video.preload = 'auto';
+            video.load();
+        }
+    });
+});
 
 // Flag pour éviter les chargements multiples
 let isLoadingPreviewList = false;
@@ -5125,10 +5169,9 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                         targetWrapper = wrapper;
                     } else if (videoUrl) {
                         const playerId = 'plyr-player-' + lessonId;
-                        const isMobileDevice = window.innerWidth < 992;
                         wrapper.innerHTML = `
                             <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
-                                <video id="${playerId}" class="plyr-player-video" playsinline preload="${isMobileDevice ? 'metadata' : 'auto'}">
+                                <video id="${playerId}" class="plyr-player-video" playsinline preload="auto">
                                     <source src="${videoUrl}" type="video/mp4">
                                 </video>
                             </div>
@@ -5203,10 +5246,9 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                     targetWrapper = wrapper;
                 } else if (videoUrl) {
                     const playerId = 'plyr-player-' + lessonId;
-                    const isMobileDevice = window.innerWidth < 992;
                     wrapper.innerHTML = `
                         <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
-                            <video id="${playerId}" class="plyr-player-video" playsinline preload="${isMobileDevice ? 'metadata' : 'auto'}">
+                            <video id="${playerId}" class="plyr-player-video" playsinline preload="auto">
                                 <source src="${videoUrl}" type="video/mp4">
                             </video>
                         </div>

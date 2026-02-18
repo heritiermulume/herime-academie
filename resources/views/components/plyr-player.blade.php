@@ -219,9 +219,9 @@
     @else
         <!-- Plyr Player Container pour vidéo interne -->
         @if(!empty($internalVideoUrl) && trim($internalVideoUrl) !== '')
-        {{-- Par défaut, on utilise un préchargement léger (metadata).
-             Le script JS ajustera dynamiquement ce comportement (auto sur desktop, léger sur mobile). --}}
-        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="metadata" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
+        {{-- preload="auto" : buffering agressif type YouTube pour lecture fluide.
+             Le navigateur peut ignorer sur 4G/Data Saver. --}}
+        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="auto" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
             <source src="{{ $internalVideoUrl }}" type="{{ $videoMimeType }}">
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>
@@ -457,18 +457,8 @@
                 }
             }
 
-            // Adapter la stratégie de préchargement en fonction du device
-            // - Mobile (<= 991px) : préchargement léger pour économiser la data
-            // - Desktop : préchargement plus agressif pour un démarrage plus fluide
-            const isMobileDevice = window.innerWidth < 992;
-            if (isInternalVideo && playerElement.tagName === 'VIDEO') {
-                try {
-                    playerElement.setAttribute('preload', isMobileDevice ? 'metadata' : 'auto');
-                } catch (e) {
-                    // Erreur silencieuse si le navigateur ne supporte pas la modification
-                }
-            }
-            
+            // preload="auto" déjà en HTML pour lecture fluide type YouTube
+            // Le navigateur peut ignorer sur 4G/Data Saver
             player = new Plyr(playerElement, plyrConfig);
             
             // Vérifier que le lecteur est bien créé
