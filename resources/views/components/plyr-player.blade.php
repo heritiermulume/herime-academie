@@ -663,20 +663,84 @@
                 });
             }
             
-            // Indicateur de buffering pour vidéos internes
+            // Gestion robuste buffering et seek pour vidéos internes
             if (isInternalVideo) {
                 const bufferIndicator = document.getElementById('buffer-' + playerId);
+                let wasPlayingBeforeBuffering = false;
+                let shouldResumeAfterSeek = false;
+                let seekResumeTimeout = null;
+
                 if (bufferIndicator) {
                     player.on('waiting', function() {
                         bufferIndicator.classList.add('visible');
+                        wasPlayingBeforeBuffering = !player.paused;
                     });
                     player.on('playing', function() {
                         bufferIndicator.classList.remove('visible');
+                        wasPlayingBeforeBuffering = false;
+                        shouldResumeAfterSeek = true;
+                    });
+                    player.on('pause', function() {
+                        const media = player.media || player;
+                        if (!media.seeking && !media.ended) {
+                            shouldResumeAfterSeek = false;
+                        }
                     });
                     player.on('canplay', function() {
                         bufferIndicator.classList.remove('visible');
+                        if (wasPlayingBeforeBuffering) {
+                            player.play().catch(function() {});
+                            wasPlayingBeforeBuffering = false;
+                        }
+                    });
+                    player.on('canplaythrough', function() {
+                        bufferIndicator.classList.remove('visible');
+                        if (wasPlayingBeforeBuffering) {
+                            player.play().catch(function() {});
+                            wasPlayingBeforeBuffering = false;
+                        }
+                    });
+                } else {
+                    player.on('waiting', function() {
+                        wasPlayingBeforeBuffering = !player.paused;
+                    });
+                    player.on('playing', function() {
+                        wasPlayingBeforeBuffering = false;
+                        shouldResumeAfterSeek = true;
+                    });
+                    player.on('pause', function() {
+                        const media = player.media || player;
+                        if (!media.seeking && !media.ended) {
+                            shouldResumeAfterSeek = false;
+                        }
+                    });
+                    player.on('canplay', function() {
+                        if (wasPlayingBeforeBuffering) {
+                            player.play().catch(function() {});
+                            wasPlayingBeforeBuffering = false;
+                        }
                     });
                 }
+
+                // Reprise après seek si la vidéo jouait avant
+                player.on('seeked', function() {
+                    if (seekResumeTimeout) clearTimeout(seekResumeTimeout);
+                    if (shouldResumeAfterSeek && !player.ended) {
+                        seekResumeTimeout = setTimeout(function() {
+                            player.play().catch(function() {});
+                            seekResumeTimeout = null;
+                        }, 150);
+                    }
+                });
+
+                // Récupération si stalled (connexion lente)
+                player.on('stalled', function() {
+                    if (wasPlayingBeforeBuffering) {
+                        setTimeout(function() {
+                            player.play().catch(function() {});
+                        }, 800);
+                    }
+                });
             }
 
             // Sauvegarder la référence

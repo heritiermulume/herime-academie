@@ -4662,6 +4662,38 @@ function copyToClipboard(text) {
     });
 }
 
+// Reprise auto après buffering et seek pour vidéos internes (modal preview)
+function attachInternalVideoRobustness(player) {
+    if (!player || !player.media) return;
+    let wasPlayingBeforeBuffering = false;
+    let shouldResumeAfterSeek = false;
+    let seekResumeTimeout = null;
+    player.on('waiting', function() { wasPlayingBeforeBuffering = !player.paused; });
+    player.on('playing', function() { wasPlayingBeforeBuffering = false; shouldResumeAfterSeek = true; });
+    player.on('pause', function() {
+        const m = player.media || player;
+        if (!m.seeking && !m.ended) shouldResumeAfterSeek = false;
+    });
+    player.on('canplay', function() {
+        if (wasPlayingBeforeBuffering) { player.play().catch(function(){}); wasPlayingBeforeBuffering = false; }
+    });
+    player.on('canplaythrough', function() {
+        if (wasPlayingBeforeBuffering) { player.play().catch(function(){}); wasPlayingBeforeBuffering = false; }
+    });
+    player.on('seeked', function() {
+        if (seekResumeTimeout) clearTimeout(seekResumeTimeout);
+        if (shouldResumeAfterSeek && !player.ended) {
+            seekResumeTimeout = setTimeout(function() {
+                player.play().catch(function(){});
+                seekResumeTimeout = null;
+            }, 150);
+        }
+    });
+    player.on('stalled', function() {
+        if (wasPlayingBeforeBuffering) setTimeout(function() { player.play().catch(function(){}); }, 800);
+    });
+}
+
 // Prefetch vidéo au survol (technique type YouTube pour démarrage fluide)
 document.addEventListener('DOMContentLoaded', function() {
     const wrapper = document.querySelector('.video-preview-wrapper[data-prefetch-video-url]');
@@ -4870,6 +4902,7 @@ function loadPreviewList() {
                                             disableContextMenu: true
                                         });
                                         window['plyr_' + playerId] = player;
+                                        if (typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);
                                     } catch (error) {
                                         console.error('❌ Error initializing Plyr for video:', error);
                                     }
@@ -5195,6 +5228,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                         disableContextMenu: true
                                     });
                                     window['plyr_' + playerId] = player;
+                                    if (typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);
                                     
                                     // Désactiver le menu contextuel
                                     const wrapperEl = document.getElementById('wrapper-' + playerId);
@@ -5327,6 +5361,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                 disableContextMenu: true
                             });
                             window[playerKey] = player;
+                            if (typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);
                             
                             // Désactiver le menu contextuel
                             const wrapperEl = document.getElementById('wrapper-' + playerId);
@@ -5468,6 +5503,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                                 disableContextMenu: true
                                             });
                                             window[playerKey] = player;
+                                            if (typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);
                                             
                                             // Désactiver le menu contextuel
                                             const wrapperEl = document.getElementById('wrapper-' + playerId);
@@ -5599,6 +5635,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             const player = new Plyr(mainPlayerElement, playerConfig);
                             window[playerKey] = player;
+                            if (!isYouTube && typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);
                             
                             // Désactiver le menu contextuel
                             const wrapper = document.getElementById('wrapper-' + playerId) || mainPlayerElement.closest('.plyr-player-wrapper');
