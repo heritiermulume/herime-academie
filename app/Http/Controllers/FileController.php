@@ -168,9 +168,9 @@ class FileController extends Controller
         $start = 0;
         $end = $fileSize - 1;
 
-        // Chunk size optimisé pour débit vidéo fluide (512 Ko vs 8 Ko)
-        // Réduit drastiquement le nombre d'appels système et améliore le throughput
-        $chunkSize = 524288;
+        // Chunk size optimisé pour débit vidéo fluide (2 Mo)
+        // Réduit les appels système et améliore le throughput réseau
+        $chunkSize = 2097152;
 
         $isRangeRequest = false;
         if (isset($_SERVER['HTTP_RANGE']) && preg_match('/bytes=(\d+)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches)) {

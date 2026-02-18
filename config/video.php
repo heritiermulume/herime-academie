@@ -40,5 +40,9 @@ return [
         'enabled' => env('VIDEO_ROTATION_ENABLED', false),
         'rotation_interval_days' => env('VIDEO_ROTATION_INTERVAL_DAYS', 30),
     ],
+
+    // Optimisation streaming : moov atom au début (faststart) pour démarrage immédiat
+    // Requiert FFmpeg. Désactiver si FFmpeg indisponible (hébergement mutualisé).
+    'optimize_faststart' => env('VIDEO_OPTIMIZE_FASTSTART', true),
 ];
 

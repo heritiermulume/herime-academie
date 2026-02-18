@@ -8,6 +8,11 @@ use Illuminate\Support\Str;
 
 class FileUploadService
 {
+    public function __construct(
+        protected ?VideoOptimizationService $videoOptimization = null
+    ) {
+        $this->videoOptimization ??= app()->make(VideoOptimizationService::class);
+    }
     public const TEMPORARY_BASE_PATH = 'tmp/uploads';
 
     /**
@@ -117,6 +122,18 @@ class FileUploadService
 
         if (!$moved) {
             throw new \RuntimeException("Impossible de déplacer le fichier vers {$destinationPath}");
+        }
+
+        // Optimiser les MP4 pour streaming progressif (moov atom au début)
+        $ext = strtolower(pathinfo($destinationPath, PATHINFO_EXTENSION));
+        if (in_array($ext, ['mp4', 'm4v'])) {
+            try {
+                $optimizer = app(VideoOptimizationService::class);
+                $fullPath = $disk->path($destinationPath);
+                $optimizer->optimizeForStreaming($fullPath);
+            } catch (\Throwable $e) {
+                \Log::warning('Optimisation vidéo non effectuée', ['path' => $destinationPath, 'error' => $e->getMessage()]);
+            }
         }
 
         // Nettoyer les dossiers temporaires vides

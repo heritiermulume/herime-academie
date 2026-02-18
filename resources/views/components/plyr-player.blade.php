@@ -190,6 +190,38 @@
     visibility: visible !important;
 }
 
+/* Indicateur de buffering visible pour lecture fluide */
+.plyr-internal-video .video-buffer-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    z-index: 10;
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+.plyr-internal-video .video-buffer-indicator.visible {
+    display: flex !important;
+}
+.plyr-internal-video .video-buffer-indicator .spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: plyr-buffer-spin 0.8s linear infinite;
+}
+@keyframes plyr-buffer-spin {
+    to { transform: rotate(360deg); }
+}
+
 @media (max-width: 768px) {
     .video-watermark {
         bottom: 10px;
@@ -202,6 +234,12 @@
 
 @if($isYoutube || ($isInternalVideo && !empty($internalVideoUrl) && trim($internalVideoUrl) !== ''))
 <div class="plyr-player-wrapper {{ $isYoutube ? 'plyr-external-video' : 'plyr-internal-video' }} position-absolute top-0 start-0 w-100 h-100" id="wrapper-{{ $playerId }}" style="margin: 0; padding: 0; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; max-width: 100% !important; max-height: 100% !important; overflow: hidden;">
+    @if($isInternalVideo)
+    <div class="video-buffer-indicator" id="buffer-{{ $playerId }}" aria-hidden="true">
+        <span class="spinner"></span>
+        <span>Chargement...</span>
+    </div>
+    @endif
     <!-- Watermark overlay dynamique - Désactivé -->
     {{-- @if(auth()->check() && !$isPreview)
     <div class="video-watermark position-absolute" id="watermark-{{ $playerId }}">
@@ -625,6 +663,22 @@
                 });
             }
             
+            // Indicateur de buffering pour vidéos internes
+            if (isInternalVideo) {
+                const bufferIndicator = document.getElementById('buffer-' + playerId);
+                if (bufferIndicator) {
+                    player.on('waiting', function() {
+                        bufferIndicator.classList.add('visible');
+                    });
+                    player.on('playing', function() {
+                        bufferIndicator.classList.remove('visible');
+                    });
+                    player.on('canplay', function() {
+                        bufferIndicator.classList.remove('visible');
+                    });
+                }
+            }
+
             // Sauvegarder la référence
             window['plyr_' + playerId] = player;
             
