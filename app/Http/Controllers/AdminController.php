@@ -3039,7 +3039,57 @@ class AdminController extends Controller
         
         $query = User::where('is_active', true)->whereNotNull('email');
 
-        if ($type === 'role') {
+        if ($type === 'purchased_content') {
+            $contentId = $request->get('purchased_content_id');
+            if ($contentId) {
+                $query->whereHas('orders', function ($orderQuery) use ($contentId) {
+                    $orderQuery->whereIn('status', ['paid', 'completed'])
+                        ->whereHas('orderItems', function ($itemQuery) use ($contentId) {
+                            $itemQuery->where('content_id', $contentId);
+                        });
+                });
+            }
+        } elseif ($type === 'failed_payment') {
+            $query->whereHas('orders', function ($orderQuery) {
+                $orderQuery->where('status', 'cancelled')
+                    ->whereHas('payments', function ($paymentQuery) {
+                        $paymentQuery->where('status', 'failed');
+                    });
+            });
+        } elseif ($type === 'downloaded_free') {
+            $downloadedContentId = $request->get('downloaded_content_id');
+            $query->whereHas('downloads', function ($q) use ($downloadedContentId) {
+                $q->whereHas('content', function ($contentQuery) use ($downloadedContentId) {
+                    $contentQuery->where('is_downloadable', true)
+                        ->where('is_free', true)
+                        ->where('is_published', true);
+                    if ($downloadedContentId) {
+                        $contentQuery->where('id', $downloadedContentId);
+                    }
+                });
+            });
+        } elseif ($type === 'purchased') {
+            $purchaseType = $request->get('purchase_type', 'any');
+            $purchasedContentId = $request->get('purchased_content_id');
+            if ($purchaseType === 'specific_content' && $purchasedContentId) {
+                $query->whereHas('orders', function ($orderQuery) use ($purchasedContentId) {
+                    $orderQuery->whereIn('status', ['paid', 'completed'])
+                        ->whereHas('orderItems', function ($itemQuery) use ($purchasedContentId) {
+                            $itemQuery->where('content_id', $purchasedContentId);
+                        });
+                });
+            } else {
+                $query->whereHas('orders', function ($orderQuery) use ($purchaseType) {
+                    if ($purchaseType === 'paid') {
+                        $orderQuery->where('status', 'paid');
+                    } elseif ($purchaseType === 'completed') {
+                        $orderQuery->where('status', 'completed');
+                    } else {
+                        $orderQuery->whereIn('status', ['paid', 'completed']);
+                    }
+                });
+            }
+        } elseif ($type === 'role') {
             $roles = explode(',', $request->get('roles', ''));
             if (!empty($roles)) {
                 // Séparer les rôles normaux des ambassadeurs
@@ -3194,7 +3244,7 @@ class AdminController extends Controller
     {
         try {
             $request->validate([
-                'recipient_type' => 'required|in:all,role,course,category,provider,downloaded_free,purchased,registration_date,activity,selected,single',
+                'recipient_type' => 'required|in:all,role,course,category,provider,downloaded_free,purchased,purchased_content,failed_payment,registration_date,activity,selected,single',
                 'subject' => 'required|string|max:255',
                 'email_content' => 'required|string',
                 'send_type' => 'required|in:now,scheduled',
@@ -3205,6 +3255,7 @@ class AdminController extends Controller
             'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
             'provider_id' => 'nullable|required_if:recipient_type,provider|exists:users,id',
             'downloaded_content_id' => 'nullable|exists:contents,id',
+            'purchased_content_id' => 'nullable|required_if:recipient_type,purchased_content|exists:contents,id',
             'purchase_type' => 'nullable|required_if:recipient_type,purchased|in:any,paid,completed,specific_content',
             'purchased_content_id' => 'nullable|required_if:purchase_type,specific_content|exists:contents,id',
             'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
@@ -3258,6 +3309,15 @@ class AdminController extends Controller
             // Envoyer immédiatement en lots
             $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, $recipientType) {
                 foreach ($userChunk as $user) {
+                    // Éviter les doublons : ne pas renvoyer le même sujet au même user dans les 5 dernières minutes
+                    $recentSent = SentEmail::where('user_id', $user->id)
+                        ->where('subject', $subject)
+                        ->where('status', 'sent')
+                        ->where('created_at', '>=', now()->subMinutes(5))
+                        ->exists();
+                    if ($recentSent) {
+                        continue;
+                    }
                     try {
                         // Envoyer l'email de manière synchrone (immédiate)
                         // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
@@ -3571,6 +3631,30 @@ class AdminController extends Controller
                             $contentQuery->where('id', $downloadedContentId);
                         }
                     });
+                });
+                break;
+
+            case 'purchased_content':
+                $contentId = $request->input('purchased_content_id');
+                if ($contentId) {
+                    $query->whereHas('orders', function ($orderQuery) use ($contentId) {
+                        $orderQuery->whereIn('status', ['paid', 'completed'])
+                            ->whereHas('orderItems', function ($itemQuery) use ($contentId) {
+                                $itemQuery->where('content_id', $contentId);
+                            });
+                    });
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'failed_payment':
+                // Utilisateurs ayant tenté de payer mais la transaction a échoué
+                $query->whereHas('orders', function ($orderQuery) {
+                    $orderQuery->where('status', 'cancelled')
+                        ->whereHas('payments', function ($paymentQuery) {
+                            $paymentQuery->where('status', 'failed');
+                        });
                 });
                 break;
 
@@ -5598,7 +5682,57 @@ class AdminController extends Controller
         
         $query = User::where('is_active', true)->whereNotNull('phone');
 
-        if ($type === 'role') {
+        if ($type === 'purchased_content') {
+            $contentId = $request->get('purchased_content_id');
+            if ($contentId) {
+                $query->whereHas('orders', function ($orderQuery) use ($contentId) {
+                    $orderQuery->whereIn('status', ['paid', 'completed'])
+                        ->whereHas('orderItems', function ($itemQuery) use ($contentId) {
+                            $itemQuery->where('content_id', $contentId);
+                        });
+                });
+            }
+        } elseif ($type === 'failed_payment') {
+            $query->whereHas('orders', function ($orderQuery) {
+                $orderQuery->where('status', 'cancelled')
+                    ->whereHas('payments', function ($paymentQuery) {
+                        $paymentQuery->where('status', 'failed');
+                    });
+            });
+        } elseif ($type === 'downloaded_free') {
+            $downloadedContentId = $request->get('downloaded_content_id');
+            $query->whereHas('downloads', function ($q) use ($downloadedContentId) {
+                $q->whereHas('content', function ($contentQuery) use ($downloadedContentId) {
+                    $contentQuery->where('is_downloadable', true)
+                        ->where('is_free', true)
+                        ->where('is_published', true);
+                    if ($downloadedContentId) {
+                        $contentQuery->where('id', $downloadedContentId);
+                    }
+                });
+            });
+        } elseif ($type === 'purchased') {
+            $purchaseType = $request->get('purchase_type', 'any');
+            $purchasedContentId = $request->get('purchased_content_id');
+            if ($purchaseType === 'specific_content' && $purchasedContentId) {
+                $query->whereHas('orders', function ($orderQuery) use ($purchasedContentId) {
+                    $orderQuery->whereIn('status', ['paid', 'completed'])
+                        ->whereHas('orderItems', function ($itemQuery) use ($purchasedContentId) {
+                            $itemQuery->where('content_id', $purchasedContentId);
+                        });
+                });
+            } else {
+                $query->whereHas('orders', function ($orderQuery) use ($purchaseType) {
+                    if ($purchaseType === 'paid') {
+                        $orderQuery->where('status', 'paid');
+                    } elseif ($purchaseType === 'completed') {
+                        $orderQuery->where('status', 'completed');
+                    } else {
+                        $orderQuery->whereIn('status', ['paid', 'completed']);
+                    }
+                });
+            }
+        } elseif ($type === 'role') {
             $roles = explode(',', $request->get('roles', ''));
             if (!empty($roles)) {
                 // Séparer les rôles normaux des ambassadeurs
@@ -5710,7 +5844,7 @@ class AdminController extends Controller
     public function sendWhatsApp(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,role,course,category,provider,registration_date,activity,selected,single',
+            'recipient_type' => 'required|in:all,role,course,category,provider,downloaded_free,purchased,purchased_content,failed_payment,registration_date,activity,selected,single',
             'message' => 'required|string|max:4096',
             'send_type' => 'required|in:now',
             'roles' => 'nullable|required_if:recipient_type,role|array',
@@ -5718,6 +5852,16 @@ class AdminController extends Controller
             'content_id' => 'nullable|required_if:recipient_type,course|exists:contents,id',
             'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
             'provider_id' => 'nullable|required_if:recipient_type,provider|exists:users,id',
+            'downloaded_content_id' => 'nullable|exists:contents,id',
+            'purchased_content_id' => [
+                'nullable',
+                'exists:contents,id',
+                \Illuminate\Validation\Rule::requiredIf(function () use ($request) {
+                    return $request->recipient_type === 'purchased_content'
+                        || ($request->recipient_type === 'purchased' && $request->purchase_type === 'specific_content');
+                }),
+            ],
+            'purchase_type' => 'nullable|required_if:recipient_type,purchased|in:any,paid,completed,specific_content',
             'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
             'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
             'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
@@ -5939,6 +6083,30 @@ class AdminController extends Controller
                 });
                 break;
 
+            case 'purchased_content':
+                $contentId = $request->input('purchased_content_id');
+                if ($contentId) {
+                    $query->whereHas('orders', function ($orderQuery) use ($contentId) {
+                        $orderQuery->whereIn('status', ['paid', 'completed'])
+                            ->whereHas('orderItems', function ($itemQuery) use ($contentId) {
+                                $itemQuery->where('content_id', $contentId);
+                            });
+                    });
+                } else {
+                    return collect();
+                }
+                break;
+
+            case 'failed_payment':
+                // Utilisateurs ayant tenté de payer mais la transaction a échoué
+                $query->whereHas('orders', function ($orderQuery) {
+                    $orderQuery->where('status', 'cancelled')
+                        ->whereHas('payments', function ($paymentQuery) {
+                            $paymentQuery->where('status', 'failed');
+                        });
+                });
+                break;
+
             case 'purchased':
                 $purchaseType = $request->input('purchase_type', 'any');
                 $purchasedContentId = $request->input('purchased_content_id');
@@ -6135,7 +6303,7 @@ class AdminController extends Controller
     public function sendCombined(Request $request)
     {
         $request->validate([
-            'recipient_type' => 'required|in:all,role,course,category,provider,registration_date,activity,selected,single',
+            'recipient_type' => 'required|in:all,role,course,category,provider,downloaded_free,purchased,purchased_content,failed_payment,registration_date,activity,selected,single',
             'subject' => 'required|string|max:255',
             'email_content' => 'required|string',
             'roles' => 'nullable|required_if:recipient_type,role|array',
@@ -6143,6 +6311,16 @@ class AdminController extends Controller
             'content_id' => 'nullable|required_if:recipient_type,course|exists:contents,id',
             'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
             'provider_id' => 'nullable|required_if:recipient_type,provider|exists:users,id',
+            'downloaded_content_id' => 'nullable|exists:contents,id',
+            'purchased_content_id' => [
+                'nullable',
+                'exists:contents,id',
+                \Illuminate\Validation\Rule::requiredIf(function () use ($request) {
+                    return $request->recipient_type === 'purchased_content'
+                        || ($request->recipient_type === 'purchased' && $request->purchase_type === 'specific_content');
+                }),
+            ],
+            'purchase_type' => 'nullable|required_if:recipient_type,purchased|in:any,paid,completed,specific_content',
             'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
             'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
             'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
@@ -6232,6 +6410,15 @@ class AdminController extends Controller
         if ($sendEmail && $emailUsers->isNotEmpty()) {
             foreach ($emailUsers as $user) {
                 if ($user->email) {
+                    // Éviter les doublons : ne pas renvoyer le même sujet au même user dans les 5 dernières minutes
+                    $recentSent = SentEmail::where('user_id', $user->id)
+                        ->where('subject', $subject)
+                        ->where('status', 'sent')
+                        ->where('created_at', '>=', now()->subMinutes(5))
+                        ->exists();
+                    if ($recentSent) {
+                        continue;
+                    }
                     try {
                         // Exécuter directement le job sans passer par la queue
                         $job = new SendEmailJob($user, $subject, $emailContent, $attachmentPaths, $recipientType);

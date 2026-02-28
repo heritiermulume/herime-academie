@@ -38,6 +38,8 @@
                         <option value="provider">Utilisateurs inscrits à un prestataire</option>
                         <option value="downloaded_free">Utilisateurs ayant téléchargé un contenu gratuit</option>
                         <option value="purchased">Utilisateurs ayant effectué un achat</option>
+                        <option value="purchased_content">Utilisateurs ayant acheté un contenu spécifique</option>
+                        <option value="failed_payment">Utilisateurs dont le paiement a échoué</option>
                         <option value="registration_date">Par date d'inscription</option>
                         <option value="activity">Par activité</option>
                         <option value="selected">Utilisateurs sélectionnés</option>
@@ -396,11 +398,31 @@ document.addEventListener('DOMContentLoaded', function() {
         else if (type === 'category' && categorySelection) categorySelection.style.display = 'block';
         else if (type === 'provider' && providerSelection) providerSelection.style.display = 'block';
         else if (type === 'downloaded_free' && downloadedFreeSelection) downloadedFreeSelection.style.display = 'block';
-        else if (type === 'purchased' && purchasedSelection) purchasedSelection.style.display = 'block';
+        else if (type === 'purchased' && purchasedSelection) {
+            purchasedSelection.style.display = 'block';
+            const purchaseType = document.getElementById('purchase_type')?.value;
+            if (purchaseType === 'specific_content' && purchasedContentSelection) purchasedContentSelection.style.display = 'block';
+        } else if (type === 'purchased_content' && purchasedContentSelection) purchasedContentSelection.style.display = 'block';
+        else if (type === 'failed_payment') { /* pas de section supplémentaire */ }
         else if (type === 'registration_date' && registrationDateSelection) registrationDateSelection.style.display = 'block';
         else if (type === 'activity' && activitySelection) activitySelection.style.display = 'block';
         else if (type === 'single' && singleUserSelection) singleUserSelection.style.display = 'block';
         else if (type === 'selected' && multipleUsersSelection) multipleUsersSelection.style.display = 'block';
+    }
+    
+    // Gestion du type d'achat (pour purchased)
+    const purchaseTypeSelect = document.getElementById('purchase_type');
+    if (purchaseTypeSelect) {
+        purchaseTypeSelect.addEventListener('change', function() {
+            const recipientType = document.getElementById('recipient_type')?.value;
+            if (recipientType === 'purchased') {
+                const purchasedContentSelection = document.getElementById('purchased_content_selection');
+                if (purchasedContentSelection) {
+                    purchasedContentSelection.style.display = this.value === 'specific_content' ? 'block' : 'none';
+                }
+                setTimeout(() => window.updateRecipientCount(), 100);
+            }
+        });
     }
     
     // Gestion du type de destinataire
@@ -442,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (categoryId) categoryId.value = '';
             if (providerId) providerId.value = '';
             if (downloadedContentId) downloadedContentId.value = '';
-            if (purchaseType) purchaseType.value = '';
+            if (purchaseType) purchaseType.value = 'any';
             if (purchasedContentId) purchasedContentId.value = '';
             if (registrationDateFrom) registrationDateFrom.value = '';
             if (registrationDateTo) registrationDateTo.value = '';
@@ -623,6 +645,40 @@ document.addEventListener('DOMContentLoaded', function() {
                     countText.textContent = 'Impossible de compter les utilisateurs';
                     countDiv.style.display = 'block';
                 });
+        } else if (type === 'purchased_content') {
+            const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+            if (!purchasedContentId) {
+                countText.textContent = 'Veuillez sélectionner un contenu acheté';
+                countDiv.style.display = 'block';
+                return;
+            }
+            fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=purchased_content&purchased_content_id=${purchasedContentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        countText.textContent = `${data.count} utilisateur(s) ayant acheté ce contenu recevront ce message`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
+        } else if (type === 'failed_payment') {
+            fetch('{{ route("admin.announcements.count-users-whatsapp") }}?type=failed_payment')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        countText.textContent = `${data.count} utilisateur(s) dont le paiement a échoué recevront ce message`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    countText.textContent = 'Impossible de compter les utilisateurs';
+                    countDiv.style.display = 'block';
+                });
         } else if (type === 'registration_date') {
             const dateFrom = document.getElementById('registration_date_from')?.value;
             const dateTo = document.getElementById('registration_date_to')?.value;
@@ -725,8 +781,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     const providerSelect = document.getElementById('provider_id');
-    if (instructorSelect) {
-        instructorSelect.addEventListener('change', window.updateRecipientCount);
+    if (providerSelect) {
+        providerSelect.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const downloadedContentSelect = document.getElementById('downloaded_content_id');
+    if (downloadedContentSelect) {
+        downloadedContentSelect.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const purchaseTypeSelectCount = document.getElementById('purchase_type');
+    if (purchaseTypeSelectCount) {
+        purchaseTypeSelectCount.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const purchasedContentSelect = document.getElementById('purchased_content_id');
+    if (purchasedContentSelect) {
+        purchasedContentSelect.addEventListener('change', window.updateRecipientCount);
     }
     
     const registrationDateFrom = document.getElementById('registration_date_from');
@@ -971,10 +1042,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if (purchaseType === 'specific_content') {
                     const purchasedContentId = document.getElementById('purchased_content_id')?.value;
                     if (!purchasedContentId) {
-                        alert('Veuillez sélectionner un contenu');
+                        alert('Veuillez sélectionner un contenu acheté');
                         isValid = false;
                     }
                 }
+            } else if (type === 'purchased_content') {
+                const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+                if (!purchasedContentId) {
+                    alert('Veuillez sélectionner un contenu acheté');
+                    isValid = false;
+                }
+            } else if (type === 'failed_payment') {
+                // Pas de paramètre supplémentaire
             } else if (type === 'registration_date') {
                 const dateFrom = document.getElementById('registration_date_from')?.value;
                 const dateTo = document.getElementById('registration_date_to')?.value;

@@ -66,6 +66,10 @@
                         <option value="course">Utilisateurs inscrits à un contenu</option>
                         <option value="category">Utilisateurs inscrits à une catégorie</option>
                         <option value="provider">Utilisateurs inscrits à un prestataire</option>
+                        <option value="downloaded_free">Utilisateurs ayant téléchargé un contenu gratuit</option>
+                        <option value="purchased">Utilisateurs ayant effectué un achat</option>
+                        <option value="purchased_content">Utilisateurs ayant acheté un contenu spécifique</option>
+                        <option value="failed_payment">Utilisateurs dont le paiement a échoué</option>
                         <option value="registration_date">Par date d'inscription</option>
                         <option value="activity">Par activité</option>
                         <option value="selected">Utilisateurs sélectionnés</option>
@@ -144,6 +148,39 @@
                         @endforeach
                     </select>
                     <small class="text-muted">Seuls les utilisateurs inscrits à des contenus de ce prestataire recevront le message</small>
+                </div>
+
+                <!-- Sélection par téléchargement gratuit -->
+                <div class="mb-3" id="downloaded_free_selection" style="display: none;">
+                    <label class="form-label">Contenu téléchargeable gratuit *</label>
+                    <select class="form-select" id="downloaded_content_id" name="downloaded_content_id">
+                        <option value="">Tous les contenus téléchargeables gratuits</option>
+                        @foreach(\App\Models\Course::where('is_published', true)->where('is_downloadable', true)->where('is_free', true)->orderBy('title')->get() as $course)
+                            <option value="{{ $course->id }}">{{ $course->title }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Sélection par achat -->
+                <div class="mb-3" id="purchased_selection" style="display: none;">
+                    <label class="form-label">Type d'achat *</label>
+                    <select class="form-select" id="purchase_type" name="purchase_type">
+                        <option value="any">Tous les utilisateurs ayant effectué un achat</option>
+                        <option value="paid">Utilisateurs ayant des commandes payées</option>
+                        <option value="completed">Utilisateurs ayant des commandes complétées</option>
+                        <option value="specific_content">Utilisateurs ayant acheté un contenu spécifique</option>
+                    </select>
+                </div>
+
+                <!-- Sélection par contenu acheté (pour purchased_content) -->
+                <div class="mb-3" id="purchased_content_selection" style="display: none;">
+                    <label class="form-label">Contenu acheté *</label>
+                    <select class="form-select" id="purchased_content_id" name="purchased_content_id">
+                        <option value="">Sélectionner un contenu</option>
+                        @foreach(\App\Models\Course::where('is_published', true)->where('is_free', false)->orderBy('title')->get() as $course)
+                            <option value="{{ $course->id }}">{{ $course->title }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <!-- Sélection par date d'inscription -->
@@ -433,13 +470,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const courseSelection = document.getElementById('course_selection');
         const categorySelection = document.getElementById('category_selection');
         const providerSelection = document.getElementById('provider_selection');
+        const downloadedFreeSelection = document.getElementById('downloaded_free_selection');
+        const purchasedSelection = document.getElementById('purchased_selection');
+        const purchasedContentSelection = document.getElementById('purchased_content_selection');
         const registrationDateSelection = document.getElementById('registration_date_selection');
         const activitySelection = document.getElementById('activity_selection');
         const singleUserSelection = document.getElementById('single_user_selection');
         const multipleUsersSelection = document.getElementById('multiple_users_selection');
         
         // Masquer toutes les sections
-        [roleSelection, courseSelection, categorySelection, providerSelection, registrationDateSelection, activitySelection, singleUserSelection, multipleUsersSelection].forEach(el => {
+        [roleSelection, courseSelection, categorySelection, providerSelection, downloadedFreeSelection, purchasedSelection, purchasedContentSelection, registrationDateSelection, activitySelection, singleUserSelection, multipleUsersSelection].forEach(el => {
             if (el) el.style.display = 'none';
         });
         
@@ -452,6 +492,18 @@ document.addEventListener('DOMContentLoaded', function() {
             categorySelection.style.display = 'block';
         } else if (type === 'provider' && providerSelection) {
             providerSelection.style.display = 'block';
+        } else if (type === 'downloaded_free' && downloadedFreeSelection) {
+            downloadedFreeSelection.style.display = 'block';
+        } else if (type === 'purchased' && purchasedSelection) {
+            purchasedSelection.style.display = 'block';
+            const purchaseType = document.getElementById('purchase_type')?.value;
+            if (purchaseType === 'specific_content' && purchasedContentSelection) {
+                purchasedContentSelection.style.display = 'block';
+            }
+        } else if (type === 'purchased_content' && purchasedContentSelection) {
+            purchasedContentSelection.style.display = 'block';
+        } else if (type === 'failed_payment') {
+            // Pas de section supplémentaire
         } else if (type === 'registration_date' && registrationDateSelection) {
             registrationDateSelection.style.display = 'block';
         } else if (type === 'activity' && activitySelection) {
@@ -464,6 +516,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     window.updateRecipientSections = updateRecipientSections;
+    
+    // Gestion du type d'achat (pour purchased)
+    const purchaseTypeSelect = document.getElementById('purchase_type');
+    if (purchaseTypeSelect) {
+        purchaseTypeSelect.addEventListener('change', function() {
+            const recipientType = document.getElementById('recipient_type')?.value;
+            if (recipientType === 'purchased') {
+                const purchasedContentSelection = document.getElementById('purchased_content_selection');
+                if (purchasedContentSelection) {
+                    purchasedContentSelection.style.display = this.value === 'specific_content' ? 'block' : 'none';
+                }
+                setTimeout(() => window.updateRecipientCount(), 100);
+            }
+        });
+    }
     
     // Gestion du type de destinataire
     const recipientTypeSelect = document.getElementById('recipient_type');
@@ -601,6 +668,110 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (sendWhatsApp) {
                 fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=category&category_id=${categoryId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'downloaded_free') {
+            const downloadedContentId = document.getElementById('downloaded_content_id')?.value;
+            let url = `{{ route("admin.announcements.count-users") }}?type=downloaded_free`;
+            if (downloadedContentId) url += `&downloaded_content_id=${downloadedContentId}`;
+            if (sendEmail) {
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            let whatsappUrl = `{{ route("admin.announcements.count-users-whatsapp") }}?type=downloaded_free`;
+            if (downloadedContentId) whatsappUrl += `&downloaded_content_id=${downloadedContentId}`;
+            if (sendWhatsApp) {
+                fetch(whatsappUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'purchased') {
+            const purchaseType = document.getElementById('purchase_type')?.value;
+            const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+            if (!purchaseType || (purchaseType === 'specific_content' && !purchasedContentId)) {
+                countDiv.style.display = 'none';
+                return;
+            }
+            let url = `{{ route("admin.announcements.count-users") }}?type=purchased&purchase_type=${purchaseType}`;
+            if (purchasedContentId) url += `&purchased_content_id=${purchasedContentId}`;
+            if (sendEmail) {
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            let whatsappUrl = `{{ route("admin.announcements.count-users-whatsapp") }}?type=purchased&purchase_type=${purchaseType}`;
+            if (purchasedContentId) whatsappUrl += `&purchased_content_id=${purchasedContentId}`;
+            if (sendWhatsApp) {
+                fetch(whatsappUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'purchased_content') {
+            const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+            if (!purchasedContentId) {
+                countDiv.style.display = 'none';
+                return;
+            }
+            if (sendEmail) {
+                fetch(`{{ route("admin.announcements.count-users") }}?type=purchased_content&purchased_content_id=${purchasedContentId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            if (sendWhatsApp) {
+                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=purchased_content&purchased_content_id=${purchasedContentId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            whatsappCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+        } else if (type === 'failed_payment') {
+            if (sendEmail) {
+                fetch(`{{ route("admin.announcements.count-users") }}?type=failed_payment`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && typeof data.count !== 'undefined') {
+                            emailCount = data.count;
+                            updateCountDisplay();
+                        }
+                    });
+            }
+            if (sendWhatsApp) {
+                fetch(`{{ route("admin.announcements.count-users-whatsapp") }}?type=failed_payment`)
                     .then(response => response.json())
                     .then(data => {
                         if (data && typeof data.count !== 'undefined') {
@@ -749,6 +920,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const providerSelect = document.getElementById('provider_id');
     if (providerSelect) {
         providerSelect.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const downloadedContentSelect = document.getElementById('downloaded_content_id');
+    if (downloadedContentSelect) {
+        downloadedContentSelect.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const purchaseTypeSelectCount = document.getElementById('purchase_type');
+    if (purchaseTypeSelectCount) {
+        purchaseTypeSelectCount.addEventListener('change', window.updateRecipientCount);
+    }
+    
+    const purchasedContentSelect = document.getElementById('purchased_content_id');
+    if (purchasedContentSelect) {
+        purchasedContentSelect.addEventListener('change', window.updateRecipientCount);
     }
     
     const registrationDateFrom = document.getElementById('registration_date_from');
@@ -976,6 +1162,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('Veuillez sélectionner un prestataire');
                     isValid = false;
                 }
+            } else if (type === 'downloaded_free') {
+                // downloaded_content_id optionnel - tous les contenus gratuits si vide
+            } else if (type === 'purchased') {
+                const purchaseType = document.getElementById('purchase_type')?.value;
+                const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+                if (!purchaseType) {
+                    alert('Veuillez sélectionner un type d\'achat');
+                    isValid = false;
+                } else if (purchaseType === 'specific_content' && !purchasedContentId) {
+                    alert('Veuillez sélectionner un contenu acheté');
+                    isValid = false;
+                }
+            } else if (type === 'purchased_content') {
+                const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+                if (!purchasedContentId) {
+                    alert('Veuillez sélectionner un contenu acheté');
+                    isValid = false;
+                }
+            } else if (type === 'failed_payment') {
+                // Pas de paramètre supplémentaire
             } else if (type === 'registration_date') {
                 const dateFrom = document.getElementById('registration_date_from')?.value;
                 const dateTo = document.getElementById('registration_date_to')?.value;

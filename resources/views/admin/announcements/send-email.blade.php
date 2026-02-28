@@ -41,6 +41,8 @@
                         <option value="provider">Utilisateurs inscrits à un prestataire</option>
                         <option value="downloaded_free">Utilisateurs ayant téléchargé un contenu gratuit</option>
                         <option value="purchased">Utilisateurs ayant effectué un achat</option>
+                        <option value="purchased_content">Utilisateurs ayant acheté un contenu spécifique</option>
+                        <option value="failed_payment">Utilisateurs dont le paiement a échoué</option>
                         <option value="registration_date">Par date d'inscription</option>
                         <option value="activity">Par activité</option>
                         <option value="selected">Utilisateurs sélectionnés</option>
@@ -161,7 +163,7 @@
                     <small class="text-muted">Filtrez les utilisateurs selon leurs achats</small>
                 </div>
 
-                <!-- Sélection par contenu acheté -->
+                <!-- Sélection par contenu acheté (depuis purchased) -->
                 <div class="mb-3" id="purchased_content_selection" style="display: none;">
                     <label class="form-label">Contenu acheté *</label>
                     <select class="form-select" id="purchased_content_id" name="purchased_content_id">
@@ -670,6 +672,10 @@ document.addEventListener('DOMContentLoaded', function() {
             downloadedFreeSelection.setAttribute('style', 'display: block !important;');
         } else if (type === 'purchased' && purchasedSelection) {
             purchasedSelection.setAttribute('style', 'display: block !important;');
+        } else if (type === 'purchased_content' && purchasedContentSelection) {
+            purchasedContentSelection.setAttribute('style', 'display: block !important;');
+        } else if (type === 'failed_payment') {
+            // Aucune section supplémentaire pour failed_payment
         } else if (type === 'registration_date' && registrationDateSelection) {
             registrationDateSelection.setAttribute('style', 'display: block !important;');
         } else if (type === 'activity' && activitySelection) {
@@ -693,7 +699,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateRecipientSections(initialType);
         
         // Mettre à jour le compte si nécessaire au chargement
-        if (initialType === 'all' || initialType === 'role' || initialType === 'course' || initialType === 'category' || initialType === 'provider' || initialType === 'downloaded_free' || initialType === 'purchased' || initialType === 'registration_date' || initialType === 'activity') {
+        if (initialType === 'all' || initialType === 'role' || initialType === 'course' || initialType === 'category' || initialType === 'provider' || initialType === 'downloaded_free' || initialType === 'purchased' || initialType === 'purchased_content' || initialType === 'failed_payment' || initialType === 'registration_date' || initialType === 'activity') {
             setTimeout(function() {
                 if (window.updateRecipientCount) {
                     window.updateRecipientCount();
@@ -1144,6 +1150,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             fetch(`{{ route("admin.announcements.count-users") }}?type=provider&provider_id=${providerId}`)
+                .then(response => response.ok ? response.json() : Promise.reject(response))
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à des contenus de ce prestataire recevront cet email`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(() => { countText.textContent = 'Impossible de compter les utilisateurs'; countDiv.style.display = 'block'; });
+        } else if (type === 'purchased_content') {
+            const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+            if (!purchasedContentId) {
+                countText.textContent = 'Veuillez sélectionner un contenu';
+                countDiv.style.display = 'block';
+                return;
+            }
+            fetch(`{{ route("admin.announcements.count-users") }}?type=purchased_content&purchased_content_id=${purchasedContentId}`)
+                .then(response => response.ok ? response.json() : Promise.reject(response))
+                .then(data => {
+                    if (data && typeof data.count !== 'undefined') {
+                        countText.textContent = `${data.count} utilisateur(s) ayant acheté ce contenu recevront cet email`;
+                        countDiv.style.display = 'block';
+                    }
+                })
+                .catch(() => { countText.textContent = 'Impossible de compter les utilisateurs'; countDiv.style.display = 'block'; });
+        } else if (type === 'failed_payment') {
+            fetch(`{{ route("admin.announcements.count-users") }}?type=failed_payment`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Erreur réseau: ' + response.status);
@@ -1152,7 +1184,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(data => {
                     if (data && typeof data.count !== 'undefined') {
-                        countText.textContent = `${data.count} utilisateur(s) inscrit(s) à des contenus de ce prestataire recevront cet email`;
+                        countText.textContent = `${data.count} utilisateur(s) dont le paiement a échoué recevront cet email`;
                         countDiv.style.display = 'block';
                     }
                 })
@@ -1425,6 +1457,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert('Veuillez sélectionner un contenu');
                         isValid = false;
                     }
+                }
+            } else if (type === 'purchased_content') {
+                const purchasedContentId = document.getElementById('purchased_content_id')?.value;
+                if (!purchasedContentId) {
+                    alert('Veuillez sélectionner un contenu');
+                    isValid = false;
                 }
             } else if (type === 'registration_date') {
                 const dateFrom = document.getElementById('registration_date_from')?.value;
