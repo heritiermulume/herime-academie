@@ -314,6 +314,9 @@ class CommunicationService
                 return;
             }
 
+            // Limiter la longueur pour éviter dépassement (TEXT MySQL ≈ 65 Ko)
+            $errorMessageTruncated = $errorMessage !== null ? mb_substr($errorMessage, 0, 65000) : null;
+
             SentEmail::create([
                 'user_id' => $user->id,
                 'recipient_email' => $email,
@@ -323,7 +326,7 @@ class CommunicationService
                 'attachments' => null,
                 'type' => $type,
                 'status' => in_array($status, ['sent', 'failed', 'pending']) ? $status : 'sent',
-                'error_message' => $errorMessage,
+                'error_message' => $errorMessageTruncated,
                 'sent_at' => $status === 'sent' ? now() : null,
                 'metadata' => $metadata,
             ]);
