@@ -39,6 +39,8 @@ class CommunicationService
             'whatsapp' => ['success' => false, 'error' => null]
         ];
 
+        // --- Email : isolé dans un try/catch pour que son échec ne bloque jamais WhatsApp ---
+        try {
         // Envoyer l'email
         try {
             if ($user->email) {
@@ -137,8 +139,18 @@ class CommunicationService
 
             $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
         }
+        } catch (\Throwable $e) {
+            // Sécurité : aucune exception du bloc email ne doit empêcher l'envoi WhatsApp
+            $results['email'] = ['success' => false, 'error' => $e->getMessage()];
+            Log::error("CommunicationService: exception non gérée dans le bloc email (WhatsApp sera tout de même tenté)", [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
 
-        // Envoyer WhatsApp en parallèle (si activé et si l'utilisateur a un numéro)
+        // --- WhatsApp : isolé pour que son échec ne bloque jamais l'email (déjà envoyé ci-dessus) ---
+        // Envoyer WhatsApp (si activé et si l'utilisateur a un numéro)
         if ($sendWhatsApp) {
             if (!$user->phone) {
                 $results['whatsapp'] = ['success' => false, 'error' => 'Aucun numéro de téléphone pour cet utilisateur'];
@@ -194,7 +206,8 @@ class CommunicationService
                             'mailable' => get_class($mailable)
                         ]);
                     }
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
+                    // Capturer Exception et Error pour que l'échec WhatsApp ne remonte jamais (l'email est déjà envoyé)
                     $results['whatsapp'] = ['success' => false, 'error' => $e->getMessage()];
                     Log::error("Erreur lors du dispatch WhatsApp", [
                         'user_id' => $user->id,

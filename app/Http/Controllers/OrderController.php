@@ -356,6 +356,13 @@ class OrderController extends Controller
             \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
         }
 
+        // Notifier les admins du paiement reçu
+        try {
+            app(\App\Services\AdminPaymentNotifier::class)->notify($order);
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de la notification admin (markAsPaid) pour la commande {$order->id}: " . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Commande marquée comme payée.',

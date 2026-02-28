@@ -1430,14 +1430,27 @@ class MonerooController extends Controller
                 }
             }
             
-            // Envoyer les emails de paiement (même logique que Enrollment::sendEnrollmentNotifications)
-            $this->sendPaymentEmails($order);
-            
             \Log::info('Moneroo: Finalization completed successfully', [
                 'order_id' => $order->id,
                 'final_status' => $order->fresh()->status,
             ]);
         });
+
+        // Envoyer les emails de paiement APRÈS le commit de la transaction pour éviter qu'une exception
+        // (envoi SMTP, etc.) ne fasse rollback et empêche la commande d'être marquée payée.
+        // Inclut : confirmation à l'utilisateur, facture, notification aux admins.
+        $orderFinal = $order->fresh();
+        if ($orderFinal && in_array($orderFinal->status, ['paid', 'completed'])) {
+            try {
+                $this->sendPaymentEmails($orderFinal);
+            } catch (\Throwable $e) {
+                \Log::error('Moneroo: Erreur envoi emails après finalisation (commande déjà payée)', [
+                    'order_id' => $orderFinal->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+        }
     }
 
     public function successfulRedirect(Request $request)
