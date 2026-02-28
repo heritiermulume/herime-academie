@@ -749,6 +749,241 @@ class MonerooController extends Controller
         return response()->json($paymentData, $response->status());
     }
 
+    /**
+     * Synchroniser automatiquement les paiements Moneroo en attente.
+     * Appelé via middleware à chaque chargement de page.
+     * - Pour les admins : synchronise TOUTES les commandes en attente (données à jour).
+     * - Pour les clients : synchronise uniquement les paiements de l'utilisateur.
+     */
+    public function syncPendingPaymentsForUser(int $userId): void
+    {
+        $user = \App\Models\User::find($userId);
+        if ($user && $user->isAdmin()) {
+            $this->syncAllPendingPayments();
+        } else {
+            $this->syncPendingPaymentsForUserId($userId);
+        }
+    }
+
+    /**
+     * Synchroniser TOUS les paiements Moneroo en attente (pour les admins).
+     */
+    public function syncAllPendingPayments(): void
+    {
+        $cacheKey = 'moneroo_sync_admin_all';
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return;
+        }
+
+        $payments = Payment::where('payment_method', 'moneroo')
+            ->whereIn('status', ['pending', 'processing'])
+            ->where('created_at', '>=', now()->subHours(48))
+            ->with(['order.orderItems', 'order.user'])
+            ->get();
+
+        if ($payments->isEmpty()) {
+            \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
+            return;
+        }
+
+        foreach ($payments as $payment) {
+            try {
+                $this->verifyAndProcessPaymentForSync($payment);
+            } catch (\Throwable $e) {
+                \Log::error('Moneroo syncAllPendingPayments: Error processing payment', [
+                    'payment_id' => $payment->payment_id,
+                    'order_id' => $payment->order_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
+    }
+
+    /**
+     * Synchroniser les paiements Moneroo en attente pour un utilisateur spécifique.
+     */
+    private function syncPendingPaymentsForUserId(int $userId): void
+    {
+        $cacheKey = "moneroo_sync_user_{$userId}";
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return;
+        }
+
+        $payments = Payment::where('payment_method', 'moneroo')
+            ->whereIn('status', ['pending', 'processing'])
+            ->whereHas('order', fn ($q) => $q->where('user_id', $userId))
+            ->where('created_at', '>=', now()->subHours(48))
+            ->with(['order.orderItems', 'order.user'])
+            ->get();
+
+        if ($payments->isEmpty()) {
+            \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
+            return;
+        }
+
+        foreach ($payments as $payment) {
+            try {
+                $this->verifyAndProcessPaymentForSync($payment);
+            } catch (\Throwable $e) {
+                \Log::error('Moneroo syncPendingPaymentsForUserId: Error processing payment', [
+                    'payment_id' => $payment->payment_id,
+                    'order_id' => $payment->order_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
+    }
+
+    /**
+     * Vérifier un paiement auprès de Moneroo et finaliser si completed.
+     */
+    private function verifyAndProcessPaymentForSync(Payment $payment): void
+    {
+        $monerooPaymentId = data_get($payment->payment_data, 'moneroo_id')
+            ?? data_get($payment->payment_data, 'response.data.id')
+            ?? data_get($payment->payment_data, 'data.id')
+            ?? $payment->payment_id;
+
+        $response = Http::withHeaders($this->authHeaders())
+            ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
+
+        if (!$response->successful()) {
+            return;
+        }
+
+        $responseData = $response->json();
+        $statusData = $responseData['data'] ?? $responseData;
+        $status = $statusData['status'] ?? null;
+        $isProcessed = $statusData['is_processed'] ?? false;
+        $processedAt = $statusData['processed_at'] ?? null;
+
+        if (($status === 'success' || $status === 'completed') && ($isProcessed || $processedAt)) {
+            $payment->update([
+                'status' => 'completed',
+                'processed_at' => $processedAt ? \Carbon\Carbon::parse($processedAt) : now(),
+                'payment_data' => array_merge($payment->payment_data ?? [], [
+                    'auto_sync' => true,
+                    'synced_at' => now()->toIso8601String(),
+                ]),
+            ]);
+            $this->finalizeOrderAfterPayment($payment->order);
+            \Log::info('Moneroo: Order finalized after auto-sync on page load', [
+                'order_id' => $payment->order->id,
+                'payment_id' => $payment->payment_id,
+            ]);
+            return;
+        }
+
+        if (in_array($status, ['failed', 'cancelled', 'expired', 'rejected']) && $payment->order) {
+            $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
+            $payment->update(['status' => 'failed', 'failure_reason' => $failureReason]);
+            if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                $payment->order->update(['status' => 'cancelled']);
+            }
+            $this->sendPaymentFailureNotifications($payment->order, $failureReason);
+        }
+    }
+
+    /**
+     * Vérifier manuellement le statut d'un paiement pour une commande en attente.
+     * Utile lorsque la page de redirection n'a pas chargé (problème navigateur/connexion)
+     * et que le client a été débité mais la plateforme n'a pas enregistré la transaction.
+     */
+    public function verifyOrderPayment(Order $order)
+    {
+        if ($order->user_id !== auth()->id()) {
+            abort(403, 'Accès non autorisé à cette commande.');
+        }
+
+        if (in_array($order->status, ['paid', 'completed'])) {
+            return redirect()->route('orders.show', $order)->with('info',
+                'Cette commande est déjà enregistrée comme payée.'
+            );
+        }
+
+        $payment = Payment::where('payment_method', 'moneroo')
+            ->where('order_id', $order->id)
+            ->whereIn('status', ['pending', 'processing'])
+            ->with('order')
+            ->latest()
+            ->first();
+
+        if (!$payment) {
+            return redirect()->route('orders.index')->with('error',
+                'Aucun paiement en attente trouvé pour cette commande.'
+            );
+        }
+
+        $monerooPaymentId = data_get($payment->payment_data, 'moneroo_id')
+                         ?? data_get($payment->payment_data, 'response.data.id')
+                         ?? data_get($payment->payment_data, 'data.id')
+                         ?? $payment->payment_id;
+
+        $statusResponse = Http::withHeaders($this->authHeaders())
+            ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
+
+        if (!$statusResponse->successful()) {
+            \Log::warning('Moneroo verifyOrderPayment: API verification failed', [
+                'order_id' => $order->id,
+                'payment_id' => $payment->payment_id,
+                'response_status' => $statusResponse->status(),
+            ]);
+            return redirect()->route('orders.show', $order)->with('error',
+                'Impossible de vérifier le paiement. Veuillez réessayer ou contacter le support.'
+            );
+        }
+
+        $responseData = $statusResponse->json();
+        $statusData = $responseData['data'] ?? $responseData;
+        $status = $statusData['status'] ?? null;
+        $isProcessed = $statusData['is_processed'] ?? false;
+        $processedAt = $statusData['processed_at'] ?? null;
+
+        if (($status === 'success' || $status === 'completed') && ($isProcessed || $processedAt)) {
+            $payment->update([
+                'status' => 'completed',
+                'processed_at' => $processedAt ? \Carbon\Carbon::parse($processedAt) : now(),
+                'payment_data' => array_merge($payment->payment_data ?? [], [
+                    'manual_verify' => $statusData,
+                    'verified_at' => now()->toIso8601String(),
+                ]),
+            ]);
+            $this->finalizeOrderAfterPayment($payment->order);
+
+            \Log::info('Moneroo: Order finalized after manual verification', [
+                'order_id' => $order->id,
+                'payment_id' => $payment->payment_id,
+            ]);
+
+            return redirect()->route('orders.show', $order)->with('success',
+                'Paiement confirmé ! Votre commande a été enregistrée. Vous avez maintenant accès à vos contenus.'
+            );
+        }
+
+        if (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
+            $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
+            $payment->update([
+                'status' => 'failed',
+                'failure_reason' => $failureReason,
+            ]);
+            if (!in_array($order->status, ['paid', 'completed'])) {
+                $order->update(['status' => 'cancelled']);
+            }
+            $this->sendPaymentFailureNotifications($order, $failureReason);
+            return redirect()->route('orders.show', $order)->with('error',
+                'Le paiement n\'a pas abouti : ' . $failureReason
+            );
+        }
+
+        return redirect()->route('orders.show', $order)->with('info',
+            'Votre paiement est encore en cours de traitement. Veuillez patienter quelques minutes puis réessayer.'
+        );
+    }
+
     public function webhook(Request $request)
     {
         // IMPORTANT: Toujours retourner 200 OK si le webhook est reçu avec succès
@@ -779,13 +1014,21 @@ class MonerooController extends Controller
             return response()->json(['received' => false, 'message' => 'payment_id missing'], 200);
         }
 
+        // Moneroo envoie généralement son ID (py_xxx), pas notre référence locale
+        // Chercher par payment_id OU par moneroo_id dans payment_data
         $payment = Payment::where('payment_method', 'moneroo')
-            ->where('payment_id', $paymentId)
+            ->where(function ($query) use ($paymentId) {
+                $query->where('payment_id', $paymentId)
+                    ->orWhereJsonContains('payment_data->moneroo_id', $paymentId)
+                    ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
+                    ->orWhereJsonContains('payment_data->data->id', $paymentId);
+            })
             ->with(['order.orderItems', 'order.user'])
+            ->latest()
             ->first();
 
         if (!$payment) {
-            \Log::warning('Moneroo webhook: Payment not found', ['payment_id' => $paymentId]);
+            \Log::warning('Moneroo webhook: Payment not found', ['payment_id' => $paymentId, 'searched_by_moneroo_id' => true]);
             // Retourner 200 OK même si payment non trouvé (éviter retry sur transaction inexistante)
             return response()->json(['received' => false, 'message' => 'Payment not found'], 200);
         }

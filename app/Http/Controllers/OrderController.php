@@ -36,6 +36,7 @@ class OrderController extends Controller
                     });
                 },
                 'enrollments.course',
+                'payments',
                 'orderItems' => function($q) {
                     $q->whereHas('content', function($q2) {
                         $q2->where('is_published', true);
@@ -102,6 +103,7 @@ class OrderController extends Controller
             },
             'enrollments.course',
             'user',
+            'payments',
             'orderItems' => function($q) {
                 $q->whereHas('content', function($q2) {
                     $q2->where('is_published', true);

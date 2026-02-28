@@ -24,6 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Appliquer les middlewares globalement sur les routes web
         $middleware->web(append: [
             \App\Http\Middleware\HandleUploadErrors::class,
+            // Synchroniser automatiquement les paiements Moneroo en attente pour les clients
+            // Quand la connexion revient après une coupure, vérifie auprès de Moneroo et finalise
+            \App\Http\Middleware\SyncPendingMonerooPayments::class,
             // Capturer le contexte marketing (utm/funnel) et le persister
             \App\Http\Middleware\CaptureMarketingContext::class,
             // Valider le token SSO à chaque chargement de page pour les utilisateurs authentifiés

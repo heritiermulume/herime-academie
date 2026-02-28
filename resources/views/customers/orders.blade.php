@@ -164,6 +164,20 @@
                             @endif
                         </div>
                         <div class="student-order-card__actions">
+                            @php
+                                $hasPendingMoneroo = $order->payments
+                                    ->where('payment_method', 'moneroo')
+                                    ->whereIn('status', ['pending', 'processing'])
+                                    ->isNotEmpty();
+                            @endphp
+                            @if($hasPendingMoneroo)
+                                <form method="POST" action="{{ route('moneroo.verify-order', $order) }}" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="admin-btn primary sm">
+                                        <i class="fas fa-sync-alt me-1"></i>Vérifier le paiement
+                                    </button>
+                                </form>
+                            @endif
                             <a href="{{ route('orders.show', $order) }}" class="admin-btn ghost sm">
                                 <i class="fas fa-eye me-1"></i>Détails
                             </a>

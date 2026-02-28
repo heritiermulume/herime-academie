@@ -94,7 +94,23 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                 <p class="admin-card__subtitle">Numéro {{ $order->order_number }}</p>
             </div>
             <div class="student-order-show__actions">
-                @if(in_array($order->status, ['paid', 'completed']) && $order->enrollments->isNotEmpty())
+                @php
+                    $hasPendingMonerooPayment = $order->payments
+                        ->where('payment_method', 'moneroo')
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->isNotEmpty();
+                @endphp
+                @if($hasPendingMonerooPayment)
+                    <form method="POST" action="{{ route('moneroo.verify-order', $order) }}" class="d-inline">
+                        @csrf
+                        <button type="submit" class="admin-btn primary sm">
+                            <i class="fas fa-sync-alt me-1"></i>Vérifier le paiement
+                        </button>
+                    </form>
+                    <small class="order-verify-hint" style="display: block; margin-top: 0.5rem; color: #64748b; font-size: 0.8rem;">
+                        Vous avez été débité mais la page ne s’est pas actualisée ? Cliquez pour vérifier.
+                    </small>
+                @elseif(in_array($order->status, ['paid', 'completed']) && $order->enrollments->isNotEmpty())
                     @php
                         $firstCourse = optional($order->enrollments->first()->course);
                     @endphp

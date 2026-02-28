@@ -886,6 +886,7 @@ Route::prefix('moneroo')->name('moneroo.')->group(function () {
     Route::middleware('auth')->group(function () {
         Route::post('/initiate', [MonerooController::class, 'initiate'])->name('initiate');
         Route::get('/status/{paymentId}', [MonerooController::class, 'status'])->name('status');
+        Route::post('/verify-order/{order}', [MonerooController::class, 'verifyOrderPayment'])->name('verify-order');
         Route::post('/cancel/{paymentId}', [MonerooController::class, 'cancel'])->name('cancel');
         Route::post('/cancel-latest', [MonerooController::class, 'cancelLatestPending'])->name('cancel-latest');
         Route::post('/report-failure', [MonerooController::class, 'reportClientSideFailure'])->name('report-failure');
