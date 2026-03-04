@@ -39,7 +39,9 @@ return [
 
     'moneroo' => [
         'base_url' => env('MONEROO_BASE_URL', 'https://api.moneroo.io/v1'),
+        'utils_base_url' => env('MONEROO_UTILS_BASE_URL', 'https://api.moneroo.io'), // Endpoint utils sans /v1
         'api_key' => env('MONEROO_API_KEY'),
+        'environment' => env('MONEROO_ENVIRONMENT', 'production'),
         'webhook_secret' => env('MONEROO_WEBHOOK_SECRET'), // Secret pour valider les signatures webhook
         'default_country' => env('MONEROO_DEFAULT_COUNTRY', 'SN'),
         'default_currency' => env('MONEROO_DEFAULT_CURRENCY', 'USD'),

@@ -617,101 +617,97 @@ class ProviderController extends Controller
      */
     private function getMonerooConfiguration(): array
     {
-        // Utiliser l'API Moneroo pour récupérer les méthodes disponibles
-        $baseUrl = rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
+        // Endpoint utils Moneroo: GET /utils/payout/methods (sans /v1, à la racine de l'API)
+        // https://docs.moneroo.io/payouts/available-methods
+        $utilsBaseUrl = rtrim(config('services.moneroo.utils_base_url', 'https://api.moneroo.io'), '/');
         $apiKey = config('services.moneroo.api_key');
-        
-        if (!$apiKey) {
-            Log::error('MONEROO_API_KEY non configurée dans le fichier .env');
-            return ['countries' => [], 'providers' => [], 'methods' => []];
+
+        $url = "{$utilsBaseUrl}/utils/payout/methods";
+
+        // L'endpoint utils peut fonctionner sans clé API (liste publique)
+        $headers = [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+        ];
+        if ($apiKey) {
+            $headers['Authorization'] = 'Bearer ' . $apiKey;
         }
 
         try {
-            // Utiliser l'endpoint /utils/payout/methods selon la documentation Moneroo
-            // https://docs.moneroo.io/payouts/available-methods
-            $url = "{$baseUrl}/utils/payout/methods";
-            
             Log::info('Tentative de récupération des méthodes Moneroo depuis l\'API', [
                 'url' => $url,
                 'api_key_present' => !empty($apiKey),
-                'api_key_prefix' => substr($apiKey, 0, 10) . '...',
             ]);
-            
+
             $response = Http::timeout(15)
-                ->retry(2, 100) // 2 tentatives avec 100ms de délai
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $apiKey,
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ])
+                ->retry(2, 100)
+                ->withHeaders($headers)
                 ->get($url);
 
             if ($response->successful()) {
                 $responseData = $response->json();
-                // Format Moneroo: { "success": true, "data": {...} } ou directement un tableau
-                $data = $responseData['data'] ?? $responseData;
-                
-                Log::info('Moneroo configuration retrieved from API', [
-                    'has_data' => !empty($data),
-                    'response_structure' => array_keys($data ?? []),
-                    'status_code' => $response->status(),
-                ]);
-                
-                // Extraire les pays et providers selon la structure de la réponse Moneroo
+                // Format Moneroo: { "data": [...], "pagination": {...} }
+                $methodsList = $responseData['data'] ?? [];
+
+                if (!is_array($methodsList)) {
+                    $methodsList = [];
+                }
+
                 $countries = [];
                 $providers = [];
                 $methods = [];
-                
-                // La réponse peut être un tableau direct de méthodes ou contenir une clé 'methods'
-                $methodsList = is_array($data) && isset($data[0]) ? $data : ($data['methods'] ?? []);
-                
-                if (is_array($methodsList) && !empty($methodsList)) {
-                    // Parcourir toutes les méthodes de payout
-                    foreach ($methodsList as $method) {
-                        // Structure selon la documentation Moneroo
-                        $methodCode = $method['code'] ?? $method['short_code'] ?? '';
-                        $methodName = $method['name'] ?? $methodCode;
-                        $countryCode = $method['country'] ?? $method['countries'][0] ?? '';
-                        $currency = $method['currency'] ?? '';
-                        
-                        // Déterminer les champs requis selon la méthode
-                        $requiredFields = ['msisdn'];
-                        if ($methodCode === 'moneroo_payout_demo') {
-                            $requiredFields = ['account_number'];
-                        }
-                        
-                        // Stocker la méthode complète avec ses champs requis
-                        $methods[$methodCode] = [
-                            'code' => $methodCode,
-                            'name' => $methodName,
-                            'country' => $countryCode,
-                            'currency' => $currency,
-                            'required_fields' => $method['required_fields'] ?? $requiredFields,
-                            'icon_url' => $method['icon_url'] ?? '',
-                        ];
-                        
-                        // Ajouter le pays s'il n'existe pas
-                        // Utiliser le nom du pays depuis l'API si disponible
-                        if ($countryCode && !isset($countries[$countryCode])) {
-                            $countryName = $method['country_name'] ?? $method['country_display_name'] ?? $countryCode;
-                            $countries[$countryCode] = [
-                                'code' => $countryCode,
-                                'name' => $countryName,
-                            ];
-                        }
-                        
-                        // Ajouter le provider (méthode de payout)
-                        if ($methodCode) {
-                            $providers[] = [
-                                'code' => $methodCode,
-                                'name' => $methodName,
-                                'country' => $countryCode,
-                                'currencies' => $currency ? [$currency] : [],
-                                'required_fields' => $method['required_fields'] ?? $requiredFields,
-                                'logo' => $method['icon_url'] ?? '',
-                            ];
-                        }
+
+                foreach ($methodsList as $method) {
+                    if (empty($method['short_code']) || empty($method['is_enabled'])) {
+                        continue;
                     }
+
+                    $methodCode = $method['short_code'];
+                    $methodName = $method['name'] ?? $methodCode;
+
+                    // Devise: currency est un objet { code: "XOF", ... }
+                    $currencyCode = $method['currency']['code'] ?? $method['currency'] ?? '';
+
+                    // Pays: countries est un tableau [{ name, code, dial_code, ... }]
+                    $countryList = $method['countries'] ?? [];
+                    $countryCode = $countryList[0]['code'] ?? $method['country'] ?? '';
+                    $countryName = $countryList[0]['name'] ?? $countryCode;
+
+                    // Champs requis: extraire depuis fields[{ name: "msisdn" }] ou fields[{ name: "account_number" }]
+                    $requiredFields = ['msisdn'];
+                    if (!empty($method['fields']) && is_array($method['fields'])) {
+                        $requiredFields = array_values(array_filter(array_map(function ($f) {
+                            return $f['name'] ?? null;
+                        }, $method['fields'])));
+                    }
+                    if (empty($requiredFields)) {
+                        $requiredFields = $methodCode === 'moneroo_payout_demo' ? ['account_number'] : ['msisdn'];
+                    }
+
+                    $methods[$methodCode] = [
+                        'code' => $methodCode,
+                        'name' => $methodName,
+                        'country' => $countryCode,
+                        'currency' => $currencyCode,
+                        'required_fields' => $requiredFields,
+                        'icon_url' => $method['icon_url'] ?? '',
+                    ];
+
+                    if ($countryCode && !isset($countries[$countryCode])) {
+                        $countries[$countryCode] = [
+                            'code' => $countryCode,
+                            'name' => $countryName,
+                        ];
+                    }
+
+                    $providers[] = [
+                        'code' => $methodCode,
+                        'name' => $methodName,
+                        'country' => $countryCode,
+                        'currencies' => $currencyCode ? [$currencyCode] : [],
+                        'required_fields' => $requiredFields,
+                        'logo' => $method['icon_url'] ?? '',
+                    ];
                 }
                 
                 // Convertir le tableau associatif de pays en tableau indexé
