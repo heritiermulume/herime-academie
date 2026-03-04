@@ -7,7 +7,7 @@
         <i class="fas fa-arrow-left me-2"></i>Retour à mes contenus
     </a>
     @if(isset($course) && $course->slug)
-    <a href="{{ route('provider.contents.show', $course->slug) }}" class="admin-btn primary" target="_blank">
+    <a href="{{ route('contents.show', $course->slug) }}" class="admin-btn primary" target="_blank">
         <i class="fas fa-eye me-2"></i>Voir la page publique
     </a>
     @endif
@@ -28,7 +28,7 @@
         </div>
     @endif
 
-    <form action="{{ route('provider.contents.update', $course->id) }}" method="POST" id="courseForm" enctype="multipart/form-data">
+    <form action="{{ route('provider.contents.update', $course) }}" method="POST" id="courseForm" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <!-- Informations de base -->
