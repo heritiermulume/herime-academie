@@ -154,9 +154,8 @@
                            id="phone" 
                            name="phone" 
                            value="{{ $selectedPhone }}"
-                           placeholder="820000000"
-                           required
-                           disabled>
+                           placeholder="Ex: 820000000 (sans indicatif pays)"
+                           required>
                     @error('phone')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -166,7 +165,18 @@
         </div>
 
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary-custom" id="submitBtn">
+            @php
+                $minPayout = \App\Models\Setting::get('wallet_minimum_payout_amount', 5);
+                $canWithdraw = $wallet->available_balance >= $minPayout;
+            @endphp
+            @if(!$canWithdraw)
+            <div class="alert alert-warning mb-3">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Le montant minimum de retrait est de {{ number_format($minPayout, 0) }} {{ $wallet->currency }}. 
+                Votre solde disponible ({{ number_format($wallet->available_balance, 2) }} {{ $wallet->currency }}) ne permet pas encore de demander un retrait.
+            </div>
+            @endif
+            <button type="submit" class="btn btn-primary-custom" id="submitBtn" {{ !$canWithdraw ? 'disabled' : '' }}>
                 <i class="fas fa-check me-2"></i>Effectuer le retrait
             </button>
             <a href="{{ route('wallet.index') }}" class="btn btn-outline-custom">
@@ -277,7 +287,7 @@ function updateCurrencyField() {
             const option = document.createElement('option');
             option.value = currency;
             option.textContent = currency;
-            if (currentCurrencyValue === currency) {
+            if (currentCurrencyValue === currency || (currencies.length === 1 && !currentCurrencyValue)) {
                 option.selected = true;
             }
             currencySelect.appendChild(option);
@@ -313,7 +323,7 @@ function updateFieldsState() {
         currencySelect.disabled = true;
     }
     
-    phoneInput.disabled = !hasCountry || !hasProvider || !hasCurrency;
+    // Le champ téléphone reste toujours actif pour permettre la saisie
 }
 
 document.addEventListener('DOMContentLoaded', function() {

@@ -349,10 +349,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', [ProviderController::class, 'dashboard'])->name('dashboard');
         Route::resource('contents', CourseController::class)->except(['index', 'show'])->parameters(['contents' => 'course'])->middleware('sso.validate');
         Route::get('/contents/{course:slug}', [CourseController::class, 'show'])->name('contents.show');
-        Route::get('/contents/{course}/lessons', [ProviderController::class, 'lessons'])->name('contents.lessons');
-        Route::post('/contents/{course}/lessons', [ProviderController::class, 'storeLesson'])
-            ->middleware('sso.validate')
-            ->name('contents.lessons.store');
         Route::get('/customers', [ProviderController::class, 'customers'])->name('customers');
         Route::post('/contents/bulk-action', [ProviderController::class, 'bulkActionContents'])->middleware('sso.validate')->name('contents.bulk-action');
         Route::get('/contents/export', [ProviderController::class, 'exportContents'])->name('contents.export');

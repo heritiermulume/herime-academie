@@ -669,9 +669,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <div class="d-flex align-items-center gap-3">
                                             <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">
                                             <div>
+                                                @if($course->is_published)
                                                 <a href="{{ route('contents.show', $course->slug) }}" class="fw-semibold text-decoration-none text-dark">
+                                                @else
+                                                <span class="fw-semibold text-dark" style="cursor: default;">
+                                                @endif
                                                     {{ $course->title }}
+                                                @if($course->is_published)
                                                 </a>
+                                                @else
+                                                </span>
+                                                @endif
                                                 <div class="text-muted small">{{ Str::limit($course->subtitle ?? '', 60) }}</div>
                                             </div>
                                         </div>
@@ -708,14 +716,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </td>
                                     <td class="text-center">
                                         <div class="d-flex gap-2 justify-content-center">
+                                            @if($course->is_published)
                                             <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-light btn-sm course-actions-btn--mobile" title="Voir le contenu" target="_blank">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @else
+                                            <span class="btn btn-light btn-sm course-actions-btn--mobile disabled" title="Publiez le contenu pour le voir" style="opacity: 0.6; cursor: not-allowed;">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                            @endif
                                             <a href="{{ route('provider.contents.edit', $course) }}" class="btn btn-primary btn-sm course-actions-btn--mobile" title="Modifier le contenu">
                                                 <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a href="{{ route('provider.contents.lessons', $course->id) }}" class="btn btn-info btn-sm course-actions-btn--mobile" title="Gérer les leçons">
-                                                <i class="fas fa-list"></i>
                                             </a>
                                         </div>
                                     </td>

@@ -70,13 +70,24 @@
     @endif
 
     {{-- Actions rapides --}}
+    @php
+        $minPayout = \App\Models\Setting::get('wallet_minimum_payout_amount', 5);
+        $canWithdraw = $wallet->available_balance >= $minPayout;
+    @endphp
     <div class="wallet-actions-section">
         <h3 class="section-title"><i class="fas fa-bolt me-2"></i>Actions rapides</h3>
         <div class="wallet-actions-grid">
+            @if($canWithdraw)
             <a href="{{ route('wallet.create-payout') }}" class="wallet-action-btn primary">
                 <i class="fas fa-money-bill-wave"></i>
                 <span>Effectuer un retrait</span>
             </a>
+            @else
+            <span class="wallet-action-btn primary" style="opacity: 0.6; cursor: not-allowed; pointer-events: none;" title="Montant minimum de retrait : {{ $minPayout }} {{ $wallet->currency }}">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Effectuer un retrait</span>
+            </span>
+            @endif
             <a href="{{ route('wallet.transactions') }}" class="wallet-action-btn secondary">
                 <i class="fas fa-list"></i>
                 <span>Voir toutes les transactions</span>

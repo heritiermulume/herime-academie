@@ -6,7 +6,7 @@
     <a href="{{ route('provider.contents.index') }}" class="admin-btn outline" data-temp-upload-cancel>
         <i class="fas fa-arrow-left me-2"></i>Retour à mes contenus
     </a>
-    @if(isset($course) && $course->slug)
+    @if(isset($course) && $course->slug && $course->is_published)
     <a href="{{ route('contents.show', $course->slug) }}" class="admin-btn primary" target="_blank">
         <i class="fas fa-eye me-2"></i>Voir la page publique
     </a>

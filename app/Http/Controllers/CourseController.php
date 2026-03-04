@@ -1154,7 +1154,7 @@ class CourseController extends Controller
 
             DB::commit();
 
-            return redirect()->route('provider.contents.edit', $course)
+            return redirect()->route('provider.contents.index')
                 ->with('success', 'Cours mis à jour avec succès.');
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();

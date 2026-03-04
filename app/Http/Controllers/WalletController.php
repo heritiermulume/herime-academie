@@ -296,6 +296,12 @@ class WalletController extends Controller
             session()->flash('success', "{$releasedCount} fond(s) ont été automatiquement libérés et sont maintenant disponibles au retrait !");
         }
 
+        $minPayout = (float) \App\Models\Setting::get('wallet_minimum_payout_amount', 5);
+        if ($wallet->available_balance < $minPayout) {
+            return redirect()->route('wallet.index')
+                ->with('warning', "Le montant minimum de retrait est de {$minPayout} {$wallet->currency}. Votre solde disponible ({$wallet->available_balance} {$wallet->currency}) ne permet pas encore de demander un retrait.");
+        }
+
         // Récupérer la configuration Moneroo (pays et providers)
         $monerooData = $this->getMonerooConfiguration();
 
@@ -307,26 +313,28 @@ class WalletController extends Controller
      */
     public function storePayout(Request $request)
     {
+        $minPayout = (float) \App\Models\Setting::get('wallet_minimum_payout_amount', 5);
+
         // 🔒 PROTECTION : Validation stricte des entrées
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:5|max:100000',
-            'method' => 'required|string|in:mtn,orange,airtel,africell,vodacom',
+            'amount' => "required|numeric|min:{$minPayout}|max:100000",
+            'method' => 'required|string|max:64|regex:/^[a-zA-Z0-9_-]+$/',
             'phone' => ['required', 'string', 'regex:/^\+?[0-9]{10,15}$/'],
-            'country' => 'required|string|size:2|in:CD,CM,CI,SN,BJ,TG,BF,ML,NE,GN,RW,UG,KE,TZ',
-            'currency' => 'required|string|size:3|in:USD,CDF,XAF,XOF',
+            'country' => 'required|string|size:2|alpha',
+            'currency' => 'required|string|size:3|alpha',
             'description' => 'nullable|string|max:255',
         ], [
             'amount.required' => 'Le montant est obligatoire.',
-            'amount.min' => 'Le montant minimum est de 5.',
+            'amount.min' => "Le montant minimum est de {$minPayout}.",
             'amount.max' => 'Le montant maximum est de 100,000.',
             'method.required' => 'La méthode de paiement est obligatoire.',
-            'method.in' => 'La méthode de paiement sélectionnée n\'est pas valide.',
+            'method.regex' => 'La méthode de paiement sélectionnée n\'est pas valide.',
             'phone.required' => 'Le numéro de téléphone est obligatoire.',
             'phone.regex' => 'Le format du numéro de téléphone n\'est pas valide.',
             'country.required' => 'Le pays est obligatoire.',
-            'country.in' => 'Le pays sélectionné n\'est pas supporté.',
+            'country.alpha' => 'Le pays sélectionné n\'est pas valide.',
             'currency.required' => 'La devise est obligatoire.',
-            'currency.in' => 'La devise sélectionnée n\'est pas supportée.',
+            'currency.alpha' => 'La devise sélectionnée n\'est pas valide.',
         ]);
 
         $user = Auth::user();
@@ -347,6 +355,13 @@ class WalletController extends Controller
                 'wallet_id' => $wallet->id,
                 'released_count' => $releasedCount,
             ]);
+        }
+
+        // Vérifier que le solde atteint le montant minimum de retrait
+        if ($wallet->available_balance < $minPayout) {
+            return redirect()->back()
+                ->with('error', "Le montant minimum de retrait est de {$minPayout} {$wallet->currency}. Votre solde disponible ({$wallet->available_balance} {$wallet->currency}) ne permet pas encore de demander un retrait.")
+                ->withInput();
         }
 
         // Vérifier que le wallet a suffisamment de solde DISPONIBLE
@@ -503,152 +518,81 @@ class WalletController extends Controller
      */
     private function getMonerooConfiguration(): array
     {
-        $baseUrl = rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
+        $utilsBaseUrl = rtrim(config('services.moneroo.utils_base_url', 'https://api.moneroo.io'), '/');
         $apiKey = config('services.moneroo.api_key');
-        
-        if (!$apiKey) {
-            Log::error('MONEROO_API_KEY non configurée.');
-            return ['countries' => [], 'providers' => [], 'error' => 'API Key non configurée'];
+
+        $url = "{$utilsBaseUrl}/utils/payout/methods";
+
+        $headers = [
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+        ];
+        if ($apiKey) {
+            $headers['Authorization'] = 'Bearer ' . $apiKey;
         }
 
         try {
-            // Utiliser l'endpoint /payouts/available-methods selon la documentation Moneroo
-            $url = "{$baseUrl}/payouts/available-methods";
-            
             Log::info('Tentative de récupération des méthodes Moneroo', [
                 'url' => $url,
                 'api_key_present' => !empty($apiKey),
             ]);
-            
-            $response = Http::timeout(10)
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $apiKey,
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ])
+
+            $response = Http::timeout(15)
+                ->retry(2, 100)
+                ->withHeaders($headers)
                 ->get($url);
 
             if ($response->successful()) {
                 $responseData = $response->json();
-                
-                Log::info('Réponse Moneroo reçue', [
-                    'status' => $response->status(),
-                    'has_data' => isset($responseData['data']),
-                    'response_keys' => array_keys($responseData),
-                ]);
-                
-                $data = $responseData['data'] ?? $responseData;
-                
+                $methodsList = $responseData['data'] ?? [];
+
+                if (!is_array($methodsList)) {
+                    $methodsList = [];
+                }
+
                 $countries = [];
                 $providers = [];
-                
-                if (isset($data['methods']) && is_array($data['methods'])) {
-                    foreach ($data['methods'] as $method) {
-                        $countryCode = $method['country'] ?? '';
-                        $providerCode = $method['payment_method'] ?? $method['provider'] ?? '';
-                        $providerName = $method['name'] ?? $providerCode;
-                        $currencies = $method['currencies'] ?? ($method['currency'] ? [$method['currency']] : []);
-                        
-                        if ($countryCode && !isset($countries[$countryCode])) {
-                            $countries[$countryCode] = [
-                                'code' => $countryCode,
-                                'name' => $countryCode,
-                                'prefix' => '',
-                                'flag' => '',
-                                'currency' => !empty($currencies) ? $currencies[0] : '',
-                            ];
-                        }
-                        
-                        if ($providerCode) {
-                            $providers[] = [
-                                'code' => $providerCode,
-                                'name' => $providerName,
-                                'country' => $countryCode,
-                                'currencies' => $currencies,
-                                'currency' => !empty($currencies) ? $currencies[0] : '',
-                                'logo' => $method['logo'] ?? '',
-                            ];
-                        }
+
+                foreach ($methodsList as $method) {
+                    if (empty($method['short_code']) || empty($method['is_enabled'])) {
+                        continue;
                     }
-                    $countries = array_values($countries);
-                } elseif (isset($data['countries']) && is_array($data['countries'])) {
-                    foreach ($data['countries'] as $country) {
-                        $countryCode = $country['country'] ?? '';
-                        $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $countryCode;
-                        $countryCurrency = $country['currency'] ?? '';
-                        
-                        $countries[] = [
+
+                    $methodCode = $method['short_code'];
+                    $methodName = $method['name'] ?? $methodCode;
+                    $currencyCode = $method['currency']['code'] ?? $method['currency'] ?? '';
+                    $countryList = $method['countries'] ?? [];
+                    $countryCode = $countryList[0]['code'] ?? $method['country'] ?? '';
+                    $countryName = $countryList[0]['name'] ?? $countryCode;
+
+                    if ($countryCode && !isset($countries[$countryCode])) {
+                        $countries[$countryCode] = [
                             'code' => $countryCode,
                             'name' => $countryName,
-                            'prefix' => $country['prefix'] ?? '',
-                            'flag' => $country['flag'] ?? '',
-                            'currency' => $countryCurrency,
+                            'prefix' => '',
+                            'flag' => '',
+                            'currency' => $currencyCode,
                         ];
-                        
-                        if (isset($country['providers']) && is_array($country['providers'])) {
-                            foreach ($country['providers'] as $provider) {
-                                try {
-                                    $providerCode = $provider['provider'] ?? '';
-                                    $providerName = $provider['displayName'] ?? $provider['name'] ?? $providerCode;
-                                    
-                                    $currencies = [];
-                                    if (isset($provider['currencies']) && is_array($provider['currencies'])) {
-                                        $currencies = array_values(array_filter(
-                                            array_map(function($c) {
-                                                if (is_array($c) && isset($c['currency'])) {
-                                                    return $c['currency'];
-                                                }
-                                                if (is_string($c)) {
-                                                    return $c;
-                                                }
-                                                return null;
-                                            }, $provider['currencies']),
-                                            function($currency) {
-                                                return !empty($currency) && is_string($currency);
-                                            }
-                                        ));
-                                    } elseif (isset($provider['currency']) && !empty($provider['currency'])) {
-                                        if (is_array($provider['currency'])) {
-                                            $currencies = array_values(array_filter($provider['currency'], function($c) {
-                                                return !empty($c) && is_string($c);
-                                            }));
-                                        } else {
-                                            $currencies = [$provider['currency']];
-                                        }
-                                    }
-                                    
-                                    if (empty($currencies) && !empty($countryCurrency)) {
-                                        $currencies = [$countryCurrency];
-                                    }
-                                    
-                                    $providers[] = [
-                                        'code' => $providerCode,
-                                        'name' => $providerName,
-                                        'country' => $countryCode,
-                                        'logo' => $provider['logo'] ?? '',
-                                        'currencies' => $currencies,
-                                        'currency' => !empty($currencies) ? $currencies[0] : '',
-                                    ];
-                                } catch (\Exception $e) {
-                                    Log::warning('Error processing provider', [
-                                        'provider' => $provider['provider'] ?? 'unknown',
-                                        'error' => $e->getMessage(),
-                                    ]);
-                                    continue;
-                                }
-                            }
-                        }
                     }
+
+                    $providers[] = [
+                        'code' => $methodCode,
+                        'name' => $methodName,
+                        'country' => $countryCode,
+                        'currencies' => $currencyCode ? [$currencyCode] : [],
+                        'currency' => $currencyCode,
+                        'logo' => $method['icon_url'] ?? '',
+                    ];
                 }
-                
+
+                $countries = array_values($countries);
                 usort($countries, function($a, $b) {
                     return strcmp($a['name'], $b['name']);
                 });
-                
                 usort($providers, function($a, $b) {
                     return strcmp($a['name'], $b['name']);
                 });
-                
+
                 return [
                     'countries' => $countries,
                     'providers' => $providers,

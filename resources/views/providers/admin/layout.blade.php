@@ -665,12 +665,17 @@
         margin-bottom: 2rem;
     }
 
-    /* Stats grid */
+    /* Stats grid - 2 colonnes desktop, 1 colonne mobile */
     .admin-stats-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 1.5rem;
         margin-bottom: 2rem;
+    }
+    @media (max-width: 767px) {
+        .admin-stats-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .admin-stat-card {
