@@ -79,6 +79,63 @@ class MonerooPayoutService
     }
 
     /**
+     * Normalise le code méthode de payout pour l'API Moneroo.
+     * La doc officielle utilise des codes lowercase (ex: vodacom_cd). L'API utils peut renvoyer
+     * des variantes (ex: VODACOM_MPESA_COD). On envoie toujours le code attendu par /payouts/initialize.
+     * @see https://docs.moneroo.io/payouts/available-methods
+     */
+    private function normalizePayoutMethodCode(string $method): string
+    {
+        $method = trim($method);
+        if ($method === '') {
+            return $method;
+        }
+        $lower = strtolower($method);
+        // Mapping variantes API → code documenté (Vodacom RDC = vodacom_cd, pays CD)
+        $map = [
+            'vodacom_mpesa_cod' => 'vodacom_cd',
+            'vodacom_congo' => 'vodacom_cd',
+            'vodacom_rdc' => 'vodacom_cd',
+        ];
+        return $map[$lower] ?? $lower;
+    }
+
+    /**
+     * Normalise le code pays pour l'API Moneroo (ISO 3166-1 alpha-2 attendu).
+     * L'API peut renvoyer alpha-3 (ex: COD). On convertit en alpha-2 (CD) pour /payouts/initialize.
+     */
+    private function normalizePayoutCountryCode(string $country): string
+    {
+        $country = strtoupper(trim($country));
+        if (strlen($country) === 2) {
+            return $country;
+        }
+        $alpha3ToAlpha2 = [
+            'COD' => 'CD', // RDC
+            'COG' => 'CG', // Congo
+            'TCD' => 'TD', // Tchad
+            'CAF' => 'CF', // Centrafrique
+            'GIN' => 'GN', // Guinée
+            'MLI' => 'ML', // Mali
+            'BFA' => 'BF', // Burkina Faso
+            'NGA' => 'NG', // Nigeria
+            'KEN' => 'KE', // Kenya
+            'TZA' => 'TZ', // Tanzanie
+            'UGA' => 'UG', // Ouganda
+            'RWA' => 'RW', // Rwanda
+            'SEN' => 'SN', // Sénégal
+            'CIV' => 'CI', // Côte d'Ivoire
+            'BEN' => 'BJ', // Bénin
+            'TGO' => 'TG', // Togo
+            'GHA' => 'GH', // Ghana
+            'CMR' => 'CM', // Cameroun
+            'ZMB' => 'ZM', // Zambie
+            'MWI' => 'MW', // Malawi
+        ];
+        return $alpha3ToAlpha2[$country] ?? $country;
+    }
+
+    /**
      * Obtenir les champs recipient selon la méthode de payout
      * Selon la documentation Moneroo: https://docs.moneroo.io/payouts/available-methods#required-fields
      * 
@@ -121,6 +178,10 @@ class MonerooPayoutService
     ): array {
         try {
             $providerUser = User::findOrFail($providerId);
+
+            // Normaliser méthode et pays pour l'API (doc Moneroo: codes lowercase, pays en alpha-2)
+            $apiMethod = $this->normalizePayoutMethodCode($provider);
+            $apiCountry = $this->normalizePayoutCountryCode($country);
             
             // Extraire le prénom et le nom de famille (toujours des chaînes non vides pour l'API Moneroo)
             $names = $this->extractNames($providerUser->name ?? null);
@@ -128,21 +189,21 @@ class MonerooPayoutService
             // Convertir le montant en entier selon la devise
             $amountInteger = $this->convertAmountToInteger($amount, $currency);
 
-            // Obtenir les champs recipient selon la méthode
-            $recipientFields = $this->getRecipientFields($provider, $phoneNumber, $country);
+            // Obtenir les champs recipient selon la méthode (codes normalisés)
+            $recipientFields = $this->getRecipientFields($apiMethod, $phoneNumber, $apiCountry);
 
             // Préparer le payload selon la documentation Moneroo (customer.* requis en string)
             $payload = [
                 'amount' => $amountInteger, // integer requis
                 'currency' => strtoupper($currency), // ISO 4217 format
                 'description' => config('services.moneroo.company_name', 'Herime Académie') . ' - Paiement commission prestataire',
-                'method' => $provider, // Code de la méthode (ex: mtn_bj, orange_sn, moneroo_payout_demo, etc.)
+                'method' => $apiMethod, // Code documenté (ex: vodacom_cd, mtn_bj, orange_sn)
                 'customer' => [
                     'email' => (string) ($providerUser->email ?? 'noreply@herime-academie.local'),
                     'first_name' => (string) $names['first_name'],
                     'last_name' => (string) $names['last_name'],
                     'phone' => (int) preg_replace('/[^0-9]/', '', $phoneNumber), // integer optionnel selon la doc
-                    'country' => (string) $country, // ISO 3166-1 alpha-2, optionnel
+                    'country' => (string) $apiCountry, // ISO 3166-1 alpha-2 attendu par l'API
                 ],
                 'recipient' => $recipientFields, // msisdn (integer) ou account_number (integer) selon la méthode
                 'metadata' => [
@@ -493,14 +554,18 @@ class MonerooPayoutService
                 ];
             }
 
+            // Normaliser méthode et pays pour l'API (doc: vodacom_cd, pays CD en alpha-2)
+            $apiMethod = $this->normalizePayoutMethodCode($method);
+            $apiCountry = $this->normalizePayoutCountryCode($country);
+
             // Extraire le prénom et le nom de famille (toujours des chaînes non vides pour l'API Moneroo)
             $names = $this->extractNames($user->name ?? null);
 
             // Convertir le montant en entier selon la devise
             $amountInteger = $this->convertAmountToInteger($amount, $currency);
 
-            // Obtenir les champs recipient selon la méthode
-            $recipientFields = $this->getRecipientFields($method, $phoneNumber, $country);
+            // Obtenir les champs recipient selon la méthode (utiliser les codes normalisés pour l'API)
+            $recipientFields = $this->getRecipientFields($apiMethod, $phoneNumber, $apiCountry);
 
             // Préparer le payload selon la documentation Moneroo (customer.* requis en string)
             // Documentation: https://docs.moneroo.io/payouts/initialize-payout
@@ -508,13 +573,13 @@ class MonerooPayoutService
                 'amount' => $amountInteger, // integer requis
                 'currency' => strtoupper($currency), // ISO 4217 format
                 'description' => $description ?? (config('services.moneroo.company_name', 'Herime Académie') . ' - Retrait wallet'),
-                'method' => $method, // Code de la méthode (ex: mtn_cd, airtel_cd, moneroo_payout_demo, etc.)
+                'method' => $apiMethod, // Code documenté (ex: vodacom_cd, mtn_cd, airtel_cd)
                 'customer' => [
                     'email' => (string) ($user->email ?? 'noreply@herime-academie.local'),
                     'first_name' => (string) $names['first_name'],
                     'last_name' => (string) $names['last_name'],
                     'phone' => (int) preg_replace('/[^0-9]/', '', $phoneNumber), // integer optionnel selon la doc
-                    'country' => (string) $country, // ISO 3166-1 alpha-2, optionnel
+                    'country' => (string) $apiCountry, // ISO 3166-1 alpha-2 attendu par l'API
                 ],
                 'recipient' => $recipientFields, // msisdn (integer) ou account_number (integer) selon la méthode
                 'metadata' => [
@@ -529,7 +594,9 @@ class MonerooPayoutService
                 'wallet_id' => $wallet->id,
                 'amount' => $amountInteger,
                 'currency' => $currency,
-                'method' => $method,
+                'method' => $apiMethod,
+                'method_original' => $method,
+                'country' => $apiCountry,
             ]);
 
             // Créer le payout dans la base de données AVANT l'appel API
@@ -582,34 +649,48 @@ class MonerooPayoutService
                 'response' => $responseData,
             ]);
 
-            // Vérifier le format de réponse Moneroo: { "success": true, "message": "...", "data": { "id": "..." } }
-            $isSuccess = $response->successful() && 
-                        isset($responseData['success']) && 
-                        $responseData['success'] === true;
+            // Moneroo peut renvoyer l'ID du payout sous différents chemins selon l'API / version.
+            // Ex: data.id, data.payout.id, data.transaction.id, data.payout_id, etc.
+            $isSuccess = $response->successful() && (($responseData['success'] ?? null) === true);
 
             $payoutData = $responseData['data'] ?? [];
-            $actualPayoutId = $payoutData['id'] ?? null;
+            $actualPayoutId = data_get($responseData, 'data.id')
+                ?? data_get($responseData, 'data.payout.id')
+                ?? data_get($responseData, 'data.transaction.id')
+                ?? data_get($responseData, 'data.payout_id')
+                ?? data_get($responseData, 'data.transaction_id')
+                ?? data_get($responseData, 'id')
+                ?? data_get($payoutData, 'id');
 
-            if ($isSuccess && $actualPayoutId) {
-                // Mettre à jour le payout avec l'ID Moneroo
+            if ($isSuccess) {
+                // Mettre à jour le payout local comme "processing" même si l'ID n'est pas présent (on garde la réponse brute)
                 $walletPayout->update([
                     'moneroo_id' => $actualPayoutId,
                     'status' => 'processing',
                     'moneroo_data' => $responseData,
                 ]);
 
-                Log::info("Payout wallet Moneroo initié avec succès", [
-                    'moneroo_id' => $actualPayoutId,
-                    'wallet_payout_id' => $walletPayout->id,
-                    'user_id' => $user->id,
-                    'amount' => $amount,
-                ]);
+                if (!$actualPayoutId) {
+                    Log::warning('Moneroo: payout wallet initié mais ID introuvable dans la réponse', [
+                        'wallet_payout_id' => $walletPayout->id,
+                        'status_code' => $response->status(),
+                        'response' => $responseData,
+                    ]);
+                } else {
+                    Log::info("Payout wallet Moneroo initié avec succès", [
+                        'moneroo_id' => $actualPayoutId,
+                        'wallet_payout_id' => $walletPayout->id,
+                        'user_id' => $user->id,
+                        'amount' => $amount,
+                    ]);
+                }
 
                 return [
                     'success' => true,
                     'payout' => $walletPayout,
                     'moneroo_id' => $actualPayoutId,
-                    'status' => $payoutData['status'] ?? 'processing',
+                    'status' => data_get($payoutData, 'status', 'processing'),
+                    'message' => $responseData['message'] ?? null,
                 ];
             } else {
                 // En cas d'échec, annuler le payout et rembourser le wallet
