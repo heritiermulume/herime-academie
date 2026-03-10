@@ -4,9 +4,14 @@
 @section('admin-title', 'Gestion des contenus')
 @section('admin-subtitle', 'Pilotez l’ensemble des formations disponibles sur la plateforme')
 @section('admin-actions')
-    <a href="{{ route('admin.contents.create') }}" class="btn btn-primary">
-        <i class="fas fa-plus-circle me-2"></i>Nouveau contenu
-    </a>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a href="{{ route('admin.contents.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-2"></i>Nouveau contenu
+        </a>
+        <a href="{{ route('admin.contents.export') }}?{{ request()->getQueryString() }}" class="btn btn-outline-success" download>
+            <i class="fas fa-download me-2"></i>Exporter
+        </a>
+    </div>
 @endsection
 
 

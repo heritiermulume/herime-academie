@@ -388,9 +388,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('statistics.recalculate-all');
         
-        // Users management
+        // Users management (export avant {user} pour que /users/export ne soit pas capté par {user})
         Route::get('/users', [AdminController::class, 'users'])->name('users');
         Route::get('/users/create', [AdminController::class, 'createUser'])->name('users.create');
+        Route::get('/users/export', [AdminController::class, 'exportUsers'])->name('users.export');
         Route::post('/users', [AdminController::class, 'storeUser'])
             ->middleware('sso.validate')
             ->name('users.store');
@@ -407,7 +408,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('users.destroy');
         Route::post('/users/bulk-action', [AdminController::class, 'bulkActionUsers'])->middleware('sso.validate')->name('users.bulk-action');
-        Route::get('/users/export', [AdminController::class, 'exportUsers'])->name('users.export');
         
         // Gestion des accès aux cours
         Route::post('/users/{user}/grant-course-access', [AdminController::class, 'grantCourseAccess'])
@@ -488,9 +488,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('categories.destroy');
         
-        // Courses management
+        // Courses management (export avant {course} pour que /contents/export ne soit pas capté par {course})
         Route::get('/contents', [AdminController::class, 'courses'])->name('contents');
         Route::get('/contents/create', [AdminController::class, 'createCourse'])->name('contents.create');
+        Route::get('/contents/export', [AdminController::class, 'exportContents'])->name('contents.export');
         Route::post('/contents', [AdminController::class, 'storeCourse'])
             ->middleware('sso.validate')
             ->name('contents.store');
@@ -506,7 +507,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('contents.destroy');
         Route::post('/contents/bulk-action', [AdminController::class, 'bulkActionContents'])->middleware('sso.validate')->name('contents.bulk-action');
-        Route::get('/contents/export', [AdminController::class, 'exportContents'])->name('contents.export');
         
         // Course lessons management (disabled - legacy routes removed)
         
@@ -640,8 +640,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('reviews.delete');
         
-        // Certificates management
+        // Certificates management (export avant {certificate})
         Route::get('/certificates', [AdminController::class, 'certificates'])->name('certificates');
+        Route::get('/certificates/export', [AdminController::class, 'exportCertificates'])->name('certificates.export');
         Route::get('/certificates/{certificate}', [AdminController::class, 'showCertificate'])->name('certificates.show');
         Route::get('/certificates/{certificate}/download', [AdminController::class, 'downloadCertificate'])->name('certificates.download');
         Route::post('/certificates/{certificate}/regenerate', [AdminController::class, 'regenerateCertificate'])
@@ -657,11 +658,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('banners.toggle-active');
         
-        // Orders management
+        // Orders management (export avant {order} pour que /orders/export ne soit pas capté par {order})
         Route::get('/orders', [App\Http\Controllers\OrderController::class, 'adminIndex'])->name('orders.index');
+        Route::get('/orders/export', [App\Http\Controllers\OrderController::class, 'export'])->name('orders.export');
+        Route::get('/orders/filter', [App\Http\Controllers\OrderController::class, 'filter'])->name('orders.filter');
         Route::get('/orders/{order}', [App\Http\Controllers\OrderController::class, 'adminShow'])->name('orders.show');
         Route::post('/orders/bulk-action', [App\Http\Controllers\OrderController::class, 'bulkAction'])->middleware('sso.validate')->name('orders.bulk-action');
-        Route::get('/orders/export', [App\Http\Controllers\OrderController::class, 'export'])->name('orders.export');
         Route::post('/orders/{order}/confirm', [App\Http\Controllers\OrderController::class, 'confirm'])
             ->middleware('sso.validate')
             ->name('orders.confirm');
@@ -688,8 +690,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/uploads/video-preview', [AdminController::class, 'uploadVideoPreview'])
             ->middleware('sso.validate')
             ->name('uploads.video-preview');
-        Route::get('/orders/filter', [App\Http\Controllers\OrderController::class, 'filter'])->name('orders.filter');
-        Route::get('/orders/export', [App\Http\Controllers\OrderController::class, 'export'])->name('orders.export');
+        // Wallet module (admin)
+        Route::get('/wallet', [App\Http\Controllers\Admin\WalletController::class, 'index'])->name('wallet.index');
+        Route::get('/wallet/balance', [App\Http\Controllers\Admin\WalletController::class, 'balance'])->name('wallet.balance');
+        Route::get('/wallet/balance/export', [App\Http\Controllers\Admin\WalletController::class, 'exportBalance'])->name('wallet.balance.export');
+        Route::get('/wallet/accounts', [App\Http\Controllers\Admin\WalletController::class, 'accounts'])->name('wallet.accounts');
+        Route::post('/wallet/accounts', [App\Http\Controllers\Admin\WalletController::class, 'storeAccount'])
+            ->middleware('sso.validate')
+            ->name('wallet.accounts.store');
+        Route::delete('/wallet/accounts/{payoutAccount}', [App\Http\Controllers\Admin\WalletController::class, 'destroyAccount'])
+            ->middleware('sso.validate')
+            ->name('wallet.accounts.destroy');
+        Route::get('/wallet/payments', [App\Http\Controllers\Admin\WalletController::class, 'payments'])->name('wallet.payments');
+        Route::post('/wallet/payout', [App\Http\Controllers\Admin\WalletController::class, 'storePayout'])
+            ->middleware('sso.validate')
+            ->name('wallet.payout.store');
+        Route::post('/wallet/payout/manual', [App\Http\Controllers\Admin\WalletController::class, 'storeManualPayout'])
+            ->middleware('sso.validate')
+            ->name('wallet.payout.manual.store');
+        Route::get('/wallet/config', [App\Http\Controllers\Admin\WalletController::class, 'config'])->name('wallet.config');
+        Route::post('/wallet/config', [App\Http\Controllers\Admin\WalletController::class, 'updateConfig'])
+            ->middleware('sso.validate')
+            ->name('wallet.config.update');
+        Route::get('/wallet/moneroo-methods', [App\Http\Controllers\Admin\WalletController::class, 'monerooMethods'])->name('wallet.moneroo-methods');
         
         // Settings management - avec validation SSO pour la modification
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');

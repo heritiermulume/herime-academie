@@ -3,6 +3,11 @@
 @section('title', 'Gestion des certificats')
 @section('admin-title', 'Gestion des certificats')
 @section('admin-subtitle', 'Consultez et gérez tous les certificats délivrés aux clients')
+@section('admin-actions')
+    <a href="{{ route('admin.certificates.export') }}?{{ request()->getQueryString() }}" class="btn btn-outline-success" download>
+        <i class="fas fa-download me-2"></i>Exporter
+    </a>
+@endsection
 
 @push('modals')
     <!-- Modal de suppression -->

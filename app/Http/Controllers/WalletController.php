@@ -7,25 +7,28 @@ use App\Models\WalletTransaction;
 use App\Models\WalletPayout;
 use App\Models\Ambassador;
 use App\Services\MonerooPayoutService;
+use App\Services\MonerooPayoutMethodsService;
 use App\Services\WalletAutoReleaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
 
 class WalletController extends Controller
 {
     protected $monerooPayoutService;
     protected $autoReleaseService;
+    protected $payoutMethodsService;
 
     public function __construct(
         MonerooPayoutService $monerooPayoutService,
-        WalletAutoReleaseService $autoReleaseService
+        WalletAutoReleaseService $autoReleaseService,
+        MonerooPayoutMethodsService $payoutMethodsService
     ) {
         $this->middleware('auth');
         $this->monerooPayoutService = $monerooPayoutService;
         $this->autoReleaseService = $autoReleaseService;
+        $this->payoutMethodsService = $payoutMethodsService;
     }
 
     /**
@@ -94,8 +97,8 @@ class WalletController extends Controller
         // Récupérer les payouts en attente
         $pendingPayouts = $wallet->pendingPayouts();
 
-        // Récupérer la configuration Moneroo (pays et providers)
-        $monerooData = $this->getMonerooConfiguration();
+        // Données fournisseur (pays et opérateurs) depuis l'API Moneroo
+        $monerooData = $this->payoutMethodsService->getPayoutMethods();
 
         return view('wallet.index', compact(
             'wallet',
@@ -302,8 +305,8 @@ class WalletController extends Controller
                 ->with('warning', "Le montant minimum de retrait est de {$minPayout} {$wallet->currency}. Votre solde disponible ({$wallet->available_balance} {$wallet->currency}) ne permet pas encore de demander un retrait.");
         }
 
-        // Récupérer la configuration Moneroo (pays et providers)
-        $monerooData = $this->getMonerooConfiguration();
+        // Données fournisseur (pays et opérateurs) depuis l'API Moneroo
+        $monerooData = $this->payoutMethodsService->getPayoutMethods();
 
         return view('wallet.create-payout', compact('wallet', 'monerooData'));
     }
@@ -510,291 +513,5 @@ class WalletController extends Controller
                 'message' => 'Erreur lors du traitement du webhook',
             ], 400);
         }
-    }
-
-    /**
-     * Récupérer la configuration Moneroo (pays et providers)
-     * (Reprise de la méthode dans AmbassadorApplicationController)
-     */
-    private function getMonerooConfiguration(): array
-    {
-        $utilsBaseUrl = rtrim(config('services.moneroo.utils_base_url', 'https://api.moneroo.io'), '/');
-        $apiKey = config('services.moneroo.api_key');
-
-        $url = "{$utilsBaseUrl}/utils/payout/methods";
-
-        $headers = [
-            'Content-Type' => 'application/json',
-            'Accept' => 'application/json',
-        ];
-        if ($apiKey) {
-            $headers['Authorization'] = 'Bearer ' . $apiKey;
-        }
-
-        try {
-            Log::info('Tentative de récupération des méthodes Moneroo', [
-                'url' => $url,
-                'api_key_present' => !empty($apiKey),
-            ]);
-
-            $response = Http::timeout(15)
-                ->retry(2, 100)
-                ->withHeaders($headers)
-                ->get($url);
-
-            if ($response->successful()) {
-                $responseData = $response->json();
-                $methodsList = $responseData['data'] ?? [];
-
-                if (!is_array($methodsList)) {
-                    $methodsList = [];
-                }
-
-                $countries = [];
-                $providers = [];
-
-                foreach ($methodsList as $method) {
-                    if (empty($method['short_code']) || empty($method['is_enabled'])) {
-                        continue;
-                    }
-
-                    $methodCode = $method['short_code'];
-                    $methodName = $method['name'] ?? $methodCode;
-                    $currencyCode = $method['currency']['code'] ?? $method['currency'] ?? '';
-                    $countryList = $method['countries'] ?? [];
-                    $countryCode = $countryList[0]['code'] ?? $method['country'] ?? '';
-                    $countryName = $countryList[0]['name'] ?? $countryCode;
-
-                    if ($countryCode && !isset($countries[$countryCode])) {
-                        $countries[$countryCode] = [
-                            'code' => $countryCode,
-                            'name' => $countryName,
-                            'prefix' => '',
-                            'flag' => '',
-                            'currency' => $currencyCode,
-                        ];
-                    }
-
-                    $providers[] = [
-                        'code' => $methodCode,
-                        'name' => $methodName,
-                        'country' => $countryCode,
-                        'currencies' => $currencyCode ? [$currencyCode] : [],
-                        'currency' => $currencyCode,
-                        'logo' => $method['icon_url'] ?? '',
-                    ];
-                }
-
-                $countries = array_values($countries);
-                usort($countries, function($a, $b) {
-                    return strcmp($a['name'], $b['name']);
-                });
-                usort($providers, function($a, $b) {
-                    return strcmp($a['name'], $b['name']);
-                });
-
-                return [
-                    'countries' => $countries,
-                    'providers' => $providers,
-                ];
-            } else {
-                Log::warning('Échec de la récupération de la configuration Moneroo - Utilisation du fallback', [
-                    'status' => $response->status(),
-                    'response' => $response->body(),
-                    'url' => $url,
-                ]);
-                
-                // TEMPORAIRE: Utiliser les données statiques en attendant la confirmation de Moneroo
-                return $this->getStaticMonerooMethods();
-            }
-        } catch (\Exception $e) {
-            Log::warning('Erreur lors de la récupération de la configuration Moneroo - Utilisation du fallback', [
-                'error' => $e->getMessage(),
-                'url' => $url ?? 'URL non définie',
-            ]);
-            
-            // TEMPORAIRE: Utiliser les données statiques en attendant la confirmation de Moneroo
-            return $this->getStaticMonerooMethods();
-        }
-        
-        // TEMPORAIRE: Si aucune donnée de l'API, utiliser les données statiques
-        return $this->getStaticMonerooMethods();
-    }
-
-    /**
-     * TEMPORAIRE: Données statiques des méthodes Moneroo
-     * 
-     * En attendant la confirmation de Moneroo sur l'endpoint correct pour récupérer
-     * la liste des méthodes de payout disponibles via l'API.
-     * 
-     * À remplacer par l'appel API une fois que Moneroo fournira l'endpoint correct.
-     */
-    private function getStaticMonerooMethods(): array
-    {
-        return [
-            'countries' => [
-                [
-                    'code' => 'CD',
-                    'name' => 'République Démocratique du Congo',
-                    'prefix' => '+243',
-                    'flag' => '🇨🇩',
-                    'currency' => 'CDF',
-                ],
-                [
-                    'code' => 'CM',
-                    'name' => 'Cameroun',
-                    'prefix' => '+237',
-                    'flag' => '🇨🇲',
-                    'currency' => 'XAF',
-                ],
-                [
-                    'code' => 'CI',
-                    'name' => 'Côte d\'Ivoire',
-                    'prefix' => '+225',
-                    'flag' => '🇨🇮',
-                    'currency' => 'XOF',
-                ],
-                [
-                    'code' => 'SN',
-                    'name' => 'Sénégal',
-                    'prefix' => '+221',
-                    'flag' => '🇸🇳',
-                    'currency' => 'XOF',
-                ],
-                [
-                    'code' => 'BJ',
-                    'name' => 'Bénin',
-                    'prefix' => '+229',
-                    'flag' => '🇧🇯',
-                    'currency' => 'XOF',
-                ],
-                [
-                    'code' => 'BF',
-                    'name' => 'Burkina Faso',
-                    'prefix' => '+226',
-                    'flag' => '🇧🇫',
-                    'currency' => 'XOF',
-                ],
-                [
-                    'code' => 'ML',
-                    'name' => 'Mali',
-                    'prefix' => '+223',
-                    'flag' => '🇲🇱',
-                    'currency' => 'XOF',
-                ],
-                [
-                    'code' => 'NE',
-                    'name' => 'Niger',
-                    'prefix' => '+227',
-                    'flag' => '🇳🇪',
-                    'currency' => 'XOF',
-                ],
-                [
-                    'code' => 'TG',
-                    'name' => 'Togo',
-                    'prefix' => '+228',
-                    'flag' => '🇹🇬',
-                    'currency' => 'XOF',
-                ],
-                [
-                    'code' => 'GH',
-                    'name' => 'Ghana',
-                    'prefix' => '+233',
-                    'flag' => '🇬🇭',
-                    'currency' => 'GHS',
-                ],
-                [
-                    'code' => 'NG',
-                    'name' => 'Nigeria',
-                    'prefix' => '+234',
-                    'flag' => '🇳🇬',
-                    'currency' => 'NGN',
-                ],
-                [
-                    'code' => 'KE',
-                    'name' => 'Kenya',
-                    'prefix' => '+254',
-                    'flag' => '🇰🇪',
-                    'currency' => 'KES',
-                ],
-                [
-                    'code' => 'RW',
-                    'name' => 'Rwanda',
-                    'prefix' => '+250',
-                    'flag' => '🇷🇼',
-                    'currency' => 'RWF',
-                ],
-                [
-                    'code' => 'UG',
-                    'name' => 'Ouganda',
-                    'prefix' => '+256',
-                    'flag' => '🇺🇬',
-                    'currency' => 'UGX',
-                ],
-                [
-                    'code' => 'TZ',
-                    'name' => 'Tanzanie',
-                    'prefix' => '+255',
-                    'flag' => '🇹🇿',
-                    'currency' => 'TZS',
-                ],
-            ],
-            'providers' => [
-                // RDC
-                ['code' => 'vodacom_mpesa', 'name' => 'Vodacom M-Pesa', 'country' => 'CD', 'currencies' => ['USD', 'CDF'], 'currency' => 'USD', 'logo' => ''],
-                ['code' => 'airtel_money', 'name' => 'Airtel Money', 'country' => 'CD', 'currencies' => ['USD', 'CDF'], 'currency' => 'USD', 'logo' => ''],
-                ['code' => 'orange_money', 'name' => 'Orange Money', 'country' => 'CD', 'currencies' => ['USD', 'CDF'], 'currency' => 'USD', 'logo' => ''],
-                ['code' => 'africell_money', 'name' => 'Africell Money', 'country' => 'CD', 'currencies' => ['USD', 'CDF'], 'currency' => 'USD', 'logo' => ''],
-                
-                // Cameroun
-                ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money', 'country' => 'CM', 'currencies' => ['XAF'], 'currency' => 'XAF', 'logo' => ''],
-                ['code' => 'orange_money', 'name' => 'Orange Money', 'country' => 'CM', 'currencies' => ['XAF'], 'currency' => 'XAF', 'logo' => ''],
-                
-                // Côte d'Ivoire
-                ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money', 'country' => 'CI', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'orange_money', 'name' => 'Orange Money', 'country' => 'CI', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'moov_money', 'name' => 'Moov Money', 'country' => 'CI', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'wave', 'name' => 'Wave', 'country' => 'CI', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                
-                // Sénégal
-                ['code' => 'orange_money', 'name' => 'Orange Money', 'country' => 'SN', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'free_money', 'name' => 'Free Money', 'country' => 'SN', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'wave', 'name' => 'Wave', 'country' => 'SN', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                
-                // Bénin, Burkina Faso, Mali, Niger, Togo (Zone XOF)
-                ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money', 'country' => 'BJ', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'moov_money', 'name' => 'Moov Money', 'country' => 'BJ', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money', 'country' => 'BF', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'orange_money', 'name' => 'Orange Money', 'country' => 'BF', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'orange_money', 'name' => 'Orange Money', 'country' => 'ML', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'orange_money', 'name' => 'Orange Money', 'country' => 'NE', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                ['code' => 'moov_money', 'name' => 'Moov Money', 'country' => 'TG', 'currencies' => ['XOF'], 'currency' => 'XOF', 'logo' => ''],
-                
-                // Ghana
-                ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money', 'country' => 'GH', 'currencies' => ['GHS'], 'currency' => 'GHS', 'logo' => ''],
-                ['code' => 'vodafone_cash', 'name' => 'Vodafone Cash', 'country' => 'GH', 'currencies' => ['GHS'], 'currency' => 'GHS', 'logo' => ''],
-                ['code' => 'airteltigo', 'name' => 'AirtelTigo Money', 'country' => 'GH', 'currencies' => ['GHS'], 'currency' => 'GHS', 'logo' => ''],
-                
-                // Nigeria
-                ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money', 'country' => 'NG', 'currencies' => ['NGN'], 'currency' => 'NGN', 'logo' => ''],
-                
-                // Kenya
-                ['code' => 'mpesa', 'name' => 'M-Pesa', 'country' => 'KE', 'currencies' => ['KES'], 'currency' => 'KES', 'logo' => ''],
-                ['code' => 'airtel_money', 'name' => 'Airtel Money', 'country' => 'KE', 'currencies' => ['KES'], 'currency' => 'KES', 'logo' => ''],
-                
-                // Rwanda
-                ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money', 'country' => 'RW', 'currencies' => ['RWF'], 'currency' => 'RWF', 'logo' => ''],
-                ['code' => 'airtel_money', 'name' => 'Airtel Money', 'country' => 'RW', 'currencies' => ['RWF'], 'currency' => 'RWF', 'logo' => ''],
-                
-                // Ouganda
-                ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money', 'country' => 'UG', 'currencies' => ['UGX'], 'currency' => 'UGX', 'logo' => ''],
-                ['code' => 'airtel_money', 'name' => 'Airtel Money', 'country' => 'UG', 'currencies' => ['UGX'], 'currency' => 'UGX', 'logo' => ''],
-                
-                // Tanzanie
-                ['code' => 'mpesa', 'name' => 'M-Pesa', 'country' => 'TZ', 'currencies' => ['TZS'], 'currency' => 'TZS', 'logo' => ''],
-                ['code' => 'tigo_pesa', 'name' => 'Tigo Pesa', 'country' => 'TZ', 'currencies' => ['TZS'], 'currency' => 'TZS', 'logo' => ''],
-                ['code' => 'airtel_money', 'name' => 'Airtel Money', 'country' => 'TZ', 'currencies' => ['TZS'], 'currency' => 'TZS', 'logo' => ''],
-            ],
-        ];
     }
 }

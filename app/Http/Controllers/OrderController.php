@@ -607,6 +607,28 @@ class OrderController extends Controller
 
             $orders = $query->orderBy('created_at', 'desc')->get();
 
+            // Infos pour l'en-tête (filtres appliqués)
+            $filtersApplied = [];
+            if ($request->filled('status')) {
+                $filtersApplied[] = 'Statut : ' . $this->getStatusLabel($request->status);
+            }
+            if ($request->filled('payment_method')) {
+                $filtersApplied[] = 'Mode de paiement : ' . $this->getPaymentMethodLabel($request->payment_method);
+            }
+            if ($request->filled('date_from')) {
+                $filtersApplied[] = 'À partir du : ' . \Carbon\Carbon::parse($request->date_from)->format('d/m/Y');
+            }
+            if ($request->filled('date_to')) {
+                $filtersApplied[] = 'Jusqu\'au : ' . \Carbon\Carbon::parse($request->date_to)->format('d/m/Y');
+            }
+            if ($request->filled('search')) {
+                $filtersApplied[] = 'Recherche : "' . $request->search . '"';
+            }
+            if ($request->filled('ids')) {
+                $filtersApplied[] = 'Export sélectif (IDs fournis)';
+            }
+            $filtersLine = empty($filtersApplied) ? 'Aucun filtre' : implode(' ; ', $filtersApplied);
+
             // Générer le CSV
             $filename = 'commandes_' . now()->format('Y-m-d_H-i-s') . '.csv';
             
@@ -615,13 +637,19 @@ class OrderController extends Controller
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             ];
 
-            $callback = function() use ($orders) {
+            $callback = function() use ($orders, $request, $filtersLine) {
                 $file = fopen('php://output', 'w');
                 
                 // BOM pour UTF-8
                 fwrite($file, "\xEF\xBB\xBF");
                 
-                // En-têtes
+                // --- En-tête : titre et informations ---
+                fputcsv($file, ['Export des commandes - Herime Académie']);
+                fputcsv($file, ['Date d\'export', now()->format('d/m/Y à H:i')]);
+                fputcsv($file, ['Filtres appliqués', $filtersLine]);
+                fputcsv($file, []); // ligne vide
+
+                // En-têtes du tableau
                 fputcsv($file, [
                     'Numéro de commande',
                     'Client',
@@ -638,21 +666,43 @@ class OrderController extends Controller
                 ]);
 
                 // Données
+                $totalsByCurrency = [];
+                $countByStatus = [];
                 foreach ($orders as $order) {
+                    $total = (float) ($order->total_amount ?? $order->total ?? 0);
+                    $currency = $order->currency ?? 'USD';
+                    $totalsByCurrency[$currency] = ($totalsByCurrency[$currency] ?? 0) + $total;
+                    $countByStatus[$order->status] = ($countByStatus[$order->status] ?? 0) + 1;
+
                     fputcsv($file, [
-                        $order->order_number,
-                        $order->user->name,
-                        $order->user->email,
-                        number_format($order->total_amount, 2) . ' $',
+                        $order->order_number ?? '',
+                        $order->user?->name ?? 'N/A',
+                        $order->user?->email ?? '',
+                        \App\Helpers\CurrencyHelper::formatWithSymbol($total, $currency),
                         $this->getStatusLabel($order->status),
                         $this->getPaymentMethodLabel($order->payment_method),
                         $order->payment_reference ?? '',
-                        $order->created_at->format('d/m/Y H:i'),
-                        $order->confirmed_at ? $order->confirmed_at->format('d/m/Y H:i') : '',
-                        $order->paid_at ? $order->paid_at->format('d/m/Y H:i') : '',
-                        $order->completed_at ? $order->completed_at->format('d/m/Y H:i') : '',
+                        $order->created_at?->format('d/m/Y H:i') ?? '',
+                        $order->confirmed_at?->format('d/m/Y H:i') ?? '',
+                        $order->paid_at?->format('d/m/Y H:i') ?? '',
+                        $order->completed_at?->format('d/m/Y H:i') ?? '',
                         $order->notes ?? ''
                     ]);
+                }
+
+                // --- Ligne vide puis résumé / calculs ---
+                fputcsv($file, []);
+                fputcsv($file, ['Résumé']);
+                fputcsv($file, ['Nombre total de commandes', $orders->count()]);
+
+                foreach ($totalsByCurrency as $currency => $sum) {
+                    fputcsv($file, ['Montant total (' . $currency . ')', \App\Helpers\CurrencyHelper::formatWithSymbol($sum, $currency)]);
+                }
+
+                fputcsv($file, []);
+                fputcsv($file, ['Répartition par statut']);
+                foreach ($countByStatus as $status => $count) {
+                    fputcsv($file, [$this->getStatusLabel($status), $count]);
                 }
 
                 fclose($file);

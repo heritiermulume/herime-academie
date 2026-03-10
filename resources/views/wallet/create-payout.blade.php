@@ -155,7 +155,8 @@
                            name="phone" 
                            value="{{ $selectedPhone }}"
                            placeholder="Ex: 820000000 (sans indicatif pays)"
-                           required>
+                           required
+                           disabled>
                     @error('phone')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -323,7 +324,8 @@ function updateFieldsState() {
         currencySelect.disabled = true;
     }
     
-    // Le champ téléphone reste toujours actif pour permettre la saisie
+    // Activer le champ téléphone uniquement après sélection de la devise
+    phoneInput.disabled = !hasCountry || !hasProvider || !hasCurrency;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -351,6 +353,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     updateProviders();
     updateFieldsState();
+    
+    const currencySelect = document.getElementById('currency');
+    if (currencySelect) {
+        currencySelect.addEventListener('change', updateFieldsState);
+    }
     
     setTimeout(function() {
         const providerSelect = document.getElementById('method');

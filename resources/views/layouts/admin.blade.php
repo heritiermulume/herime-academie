@@ -86,6 +86,12 @@
             'active' => ['admin.announcements']
         ],
         [
+            'label' => 'Wallet',
+            'icon' => 'fas fa-wallet',
+            'route' => 'admin.wallet.index',
+            'active' => ['admin.wallet.*']
+        ],
+        [
             'label' => 'Paramètres',
             'icon' => 'fas fa-sliders-h',
             'route' => 'admin.settings',
@@ -197,10 +203,56 @@
     </div>
 </div>
 
+<!-- Modal moderne pour les messages flash (succès / erreur / info) -->
+@if(session('success') || session('error') || session('info') || session('warning'))
+@php
+    $flashType = session('success') ? 'success' : (session('error') ? 'error' : (session('warning') ? 'warning' : 'info'));
+    $flashMessage = session('success') ?? session('error') ?? session('warning') ?? session('info');
+    $flashConfig = [
+        'success' => ['title' => 'Succès', 'icon' => 'fa-check-circle', 'headerClass' => 'bg-success', 'gradient' => 'linear-gradient(135deg, #198754 0%, #20c997 100%)'],
+        'error'   => ['title' => 'Erreur', 'icon' => 'fa-exclamation-circle', 'headerClass' => 'bg-danger', 'gradient' => 'linear-gradient(135deg, #dc3545 0%, #e4606d 100%)'],
+        'warning' => ['title' => 'Attention', 'icon' => 'fa-exclamation-triangle', 'headerClass' => 'bg-warning', 'gradient' => 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)'],
+        'info'    => ['title' => 'Information', 'icon' => 'fa-info-circle', 'headerClass' => 'bg-info', 'gradient' => 'linear-gradient(135deg, #0dcaf0 0%, #6edff6 100%)'],
+    ];
+    $cfg = $flashConfig[$flashType] ?? $flashConfig['info'];
+@endphp
+<div class="modal fade" id="adminFlashModal" tabindex="-1" aria-labelledby="adminFlashModalLabel" aria-hidden="true" data-bs-backdrop="true" data-bs-keyboard="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header border-0 py-4 text-white" style="background: {{ $cfg['gradient'] }};">
+                <h5 class="modal-title fw-bold d-flex align-items-center" id="adminFlashModalLabel">
+                    <i class="fas {{ $cfg['icon'] }} me-3 fs-4"></i>{{ $cfg['title'] }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body py-4">
+                <p class="mb-0 fs-6 text-body">{{ $flashMessage }}</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal" style="border-radius: 10px;">
+                    <i class="fas fa-check me-2"></i>OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 @stack('modals')
 
 @push('scripts')
 <script src="{{ asset('js/modern-confirm-modal.js') }}"></script>
+@if(session('success') || session('error') || session('info') || session('warning'))
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var el = document.getElementById('adminFlashModal');
+    if (el && typeof bootstrap !== 'undefined') {
+        var modal = new bootstrap.Modal(el, { backdrop: true, keyboard: true });
+        modal.show();
+    }
+});
+</script>
+@endif
 @endpush
 
 @endsection

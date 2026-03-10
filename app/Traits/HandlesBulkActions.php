@@ -162,21 +162,38 @@ trait HandlesBulkActions
      */
     protected function exportToCsv($data, $columns, $filename)
     {
+        return $this->exportToCsvWithHeaderAndSummary($data, $columns, $filename, null, null, []);
+    }
+
+    /**
+     * Exporter en CSV avec titre, filtres appliqués et bloc de calculs (résumé)
+     *
+     * @param \Illuminate\Support\Collection|array $data
+     * @param array $columns [ 'key' => 'Label' ]
+     * @param string $filename Nom du fichier sans extension
+     * @param string|null $title Ex: "Export des contenus - Herime Académie"
+     * @param string|null $filtersLine Ex: "Statut : Publié ; Catégorie : X"
+     * @param array $summaryRows [ ['Label', 'Valeur'], ... ]
+     */
+    protected function exportToCsvWithHeaderAndSummary($data, $columns, $filename, $title = null, $filtersLine = null, array $summaryRows = [])
+    {
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}.csv\"",
         ];
 
-        $callback = function() use ($data, $columns) {
+        $callback = function() use ($data, $columns, $title, $filtersLine, $summaryRows) {
             $file = fopen('php://output', 'w');
-            
-            // BOM UTF-8 pour Excel
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // En-têtes
+
+            if ($title !== null && $title !== '') {
+                fputcsv($file, [$title]);
+                fputcsv($file, ['Date d\'export', now()->format('d/m/Y à H:i')]);
+                fputcsv($file, ['Filtres appliqués', $filtersLine ?? 'Aucun filtre']);
+                fputcsv($file, []);
+            }
+
             fputcsv($file, array_values($columns));
-            
-            // Données
             foreach ($data as $row) {
                 $csvRow = [];
                 foreach (array_keys($columns) as $key) {
@@ -185,7 +202,15 @@ trait HandlesBulkActions
                 }
                 fputcsv($file, $csvRow);
             }
-            
+
+            if (!empty($summaryRows)) {
+                fputcsv($file, []);
+                fputcsv($file, ['Résumé']);
+                foreach ($summaryRows as $row) {
+                    fputcsv($file, is_array($row) ? $row : [$row]);
+                }
+            }
+
             fclose($file);
         };
 

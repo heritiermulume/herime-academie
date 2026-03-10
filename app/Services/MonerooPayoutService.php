@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletPayout;
 use App\Notifications\ProviderPayoutReceived;
+use App\Services\AdminWalletPayoutNotifier;
 use App\Mail\ProviderPayoutReceivedMail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -231,16 +232,17 @@ class MonerooPayoutService
     }
 
     /**
-     * Vérifier le statut d'un payout
-     * 
-     * Documentation: https://docs.moneroo.io/payouts/verify-payout
+     * Vérifier le statut d'un payout (confirmer que la transaction a été traitée).
+     *
+     * @see https://docs.moneroo.io/payouts/verify-payout
+     * @see https://docs.moneroo.io/payouts/payout-status (initiated, pending, failed, success)
      */
     public function checkPayoutStatus(string $payoutId): array
     {
         try {
-            // Endpoint: GET /v1/payouts/{payoutId}
+            // Endpoint officiel: GET /v1/payouts/{payoutId}/verify
             $response = Http::withHeaders($this->authHeaders())
-                ->get("{$this->apiUrl}/payouts/{$payoutId}");
+                ->get("{$this->apiUrl}/payouts/{$payoutId}/verify");
 
             if ($response->successful()) {
                 $responseData = $response->json();
@@ -382,12 +384,13 @@ class MonerooPayoutService
     }
 
     /**
-     * Mapper le statut Moneroo vers le statut local
+     * Mapper le statut Moneroo vers le statut local.
+     * Doc: initiated (transitional), pending (transitional), failed (final), success (final).
      */
     private function mapMonerooStatusToLocalStatus(?string $monerooStatus): string
     {
-        return match($monerooStatus) {
-            'pending', 'processing' => 'pending',
+        return match ($monerooStatus) {
+            'initiated', 'pending', 'processing' => 'pending',
             'completed', 'success' => 'completed',
             'failed', 'error' => 'failed',
             default => 'pending',
@@ -618,6 +621,15 @@ class MonerooPayoutService
                 // Annuler le payout (cela remboursera automatiquement le wallet)
                 $walletPayout->cancel($failureReason);
 
+                try {
+                    app(AdminWalletPayoutNotifier::class)->notifyPayoutFailed($walletPayout->fresh(), $failureReason);
+                } catch (\Throwable $e) {
+                    Log::error('Moneroo wallet payout: échec notification admins (initiation échouée)', [
+                        'wallet_payout_id' => $walletPayout->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
                 return [
                     'success' => false,
                     'payout' => $walletPayout,
@@ -693,6 +705,20 @@ class MonerooPayoutService
                     }
 
                     $walletPayout->update($updateData);
+
+                    try {
+                        if ($newStatus === 'completed') {
+                            app(AdminWalletPayoutNotifier::class)->notifyPayoutCompleted($walletPayout->fresh());
+                        } elseif ($newStatus === 'failed') {
+                            $reason = $updateData['failure_reason'] ?? $walletPayout->failure_reason ?? 'Raison non précisée';
+                            app(AdminWalletPayoutNotifier::class)->notifyPayoutFailed($walletPayout->fresh(), $reason);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Moneroo wallet payout: échec notification admins (checkWalletPayoutStatus)', [
+                            'wallet_payout_id' => $walletPayout->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
 
                 return [
@@ -773,6 +799,20 @@ class MonerooPayoutService
 
         $walletPayout->update($updateData);
 
+        try {
+            if ($newStatus === 'completed') {
+                app(AdminWalletPayoutNotifier::class)->notifyPayoutCompleted($walletPayout->fresh());
+            } elseif ($newStatus === 'failed') {
+                $reason = $updateData['failure_reason'] ?? $walletPayout->failure_reason ?? 'Raison non précisée';
+                app(AdminWalletPayoutNotifier::class)->notifyPayoutFailed($walletPayout->fresh(), $reason);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Moneroo wallet payout: échec notification admins (callback)', [
+                'wallet_payout_id' => $walletPayout->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         Log::info("Callback Moneroo wallet payout traité", [
             'moneroo_id' => $monerooId,
             'wallet_payout_id' => $walletPayout->id,
@@ -784,11 +824,13 @@ class MonerooPayoutService
     }
 
     /**
-     * Mapper le statut Moneroo vers le statut local pour wallet payouts
+     * Mapper le statut Moneroo vers le statut local pour wallet payouts.
+     * Doc: initiated, pending (transitional), failed, success (final).
      */
     private function mapMonerooStatusToWalletPayoutStatus(?string $monerooStatus): string
     {
-        return match($monerooStatus) {
+        return match ($monerooStatus) {
+            'initiated' => 'pending',
             'pending' => 'pending',
             'processing' => 'processing',
             'completed', 'success' => 'completed',

@@ -1890,7 +1890,7 @@ function refreshAnalytics() {
 }
 
 .insight-card__value {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 700;
     margin-bottom: 0.25rem;
     color: #0b1f3a;

@@ -14,13 +14,6 @@
 @section('admin-content')
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
-            @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            @endif
-
             <div class="admin-table">
                 <div class="table-responsive">
                     <table class="table align-middle">

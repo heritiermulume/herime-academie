@@ -699,8 +699,8 @@ class AmbassadorApplicationController extends Controller
 
         $user = Auth::user();
 
-        // Récupérer les données Moneroo
-        $monerooData = $this->getMonerooConfiguration();
+        // Données fournisseur (pays et opérateurs) depuis l'API Moneroo
+        $monerooData = app(\App\Services\MonerooPayoutMethodsService::class)->getPayoutMethods();
 
         return view('ambassadors.admin.payment-settings', [
             'ambassador' => $ambassador,
@@ -710,183 +710,12 @@ class AmbassadorApplicationController extends Controller
     }
 
     /**
-     * Récupérer la configuration Moneroo (pays et providers)
+     * Récupérer la configuration Moneroo (pays et providers) depuis le fournisseur.
+     * @see https://docs.moneroo.io/payouts/available-methods
      */
     private function getMonerooConfiguration(): array
     {
-        // Utiliser l'API Moneroo pour récupérer les méthodes disponibles
-        $baseUrl = rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
-        $apiKey = config('services.moneroo.api_key');
-        
-        if (!$apiKey) {
-            Log::error('MONEROO_API_KEY non configurée.');
-            return ['countries' => [], 'providers' => []];
-        }
-
-        try {
-            // Utiliser l'endpoint /payouts/methods selon la documentation Moneroo
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->get("{$baseUrl}/payouts/methods");
-
-            if ($response->successful()) {
-                $responseData = $response->json();
-                // Format Moneroo: { "success": true, "data": {...} }
-                $data = $responseData['data'] ?? $responseData;
-                
-                Log::info('Moneroo configuration retrieved', [
-                    'has_data' => !empty($data),
-                ]);
-                
-                // Extraire les pays et providers selon la structure de la réponse Moneroo
-                $countries = [];
-                $providers = [];
-                
-                // Moneroo peut retourner les méthodes différemment
-                if (isset($data['methods']) && is_array($data['methods'])) {
-                    foreach ($data['methods'] as $method) {
-                        $countryCode = $method['country'] ?? '';
-                        $providerCode = $method['payment_method'] ?? $method['provider'] ?? '';
-                        $providerName = $method['name'] ?? $providerCode;
-                        $currencies = $method['currencies'] ?? ($method['currency'] ? [$method['currency']] : []);
-                        
-                        if ($countryCode && !isset($countries[$countryCode])) {
-                            $countries[$countryCode] = [
-                                'code' => $countryCode,
-                                'name' => $countryCode,
-                                'prefix' => '',
-                                'flag' => '',
-                                'currency' => !empty($currencies) ? $currencies[0] : '',
-                            ];
-                        }
-                        
-                        if ($providerCode) {
-                            $providers[] = [
-                                'code' => $providerCode,
-                                'name' => $providerName,
-                                'country' => $countryCode,
-                                'currencies' => $currencies,
-                                'currency' => !empty($currencies) ? $currencies[0] : '',
-                                'logo' => $method['logo'] ?? '',
-                            ];
-                        }
-                    }
-                    $countries = array_values($countries);
-                } elseif (isset($data['countries']) && is_array($data['countries'])) {
-                    foreach ($data['countries'] as $country) {
-                        $countryCode = $country['country'] ?? '';
-                        $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $countryCode;
-                        $countryCurrency = $country['currency'] ?? '';
-                        
-                        $countries[] = [
-                            'code' => $countryCode,
-                            'name' => $countryName,
-                            'prefix' => $country['prefix'] ?? '',
-                            'flag' => $country['flag'] ?? '',
-                            'currency' => $countryCurrency,
-                        ];
-                        
-                        // Extraire les providers pour ce pays
-                        if (isset($country['providers']) && is_array($country['providers'])) {
-                            foreach ($country['providers'] as $provider) {
-                                try {
-                                    $providerCode = $provider['provider'] ?? '';
-                                    $providerName = $provider['displayName'] ?? $provider['name'] ?? $providerCode;
-                                    
-                                    // Extraire les devises disponibles pour ce provider
-                                    // Structure selon checkout: provider.currencies est un tableau d'objets avec une propriété 'currency'
-                                    $currencies = [];
-                                    if (isset($provider['currencies']) && is_array($provider['currencies'])) {
-                                        // Filtrer et extraire les codes de devises
-                                        $currencies = array_values(array_filter(
-                                            array_map(function($c) {
-                                                // Si c'est un objet avec une propriété 'currency'
-                                                if (is_array($c) && isset($c['currency'])) {
-                                                    return $c['currency'];
-                                                }
-                                                // Si c'est directement une string
-                                                if (is_string($c)) {
-                                                    return $c;
-                                                }
-                                                return null;
-                                            }, $provider['currencies']),
-                                            function($currency) {
-                                                return !empty($currency) && is_string($currency);
-                                            }
-                                        ));
-                                    } elseif (isset($provider['currency']) && !empty($provider['currency'])) {
-                                        // Si currency est une seule devise (string)
-                                        if (is_array($provider['currency'])) {
-                                            $currencies = array_values(array_filter($provider['currency'], function($c) {
-                                                return !empty($c) && is_string($c);
-                                            }));
-                                        } else {
-                                            $currencies = [$provider['currency']];
-                                        }
-                                    }
-                                    
-                                    // Fallback sur la devise du pays si aucune devise trouvée
-                                    if (empty($currencies) && !empty($countryCurrency)) {
-                                        $currencies = [$countryCurrency];
-                                    }
-                                    
-                                    $providers[] = [
-                                        'code' => $providerCode,
-                                        'name' => $providerName,
-                                        'country' => $countryCode,
-                                        'logo' => $provider['logo'] ?? '',
-                                        'currencies' => $currencies, // Liste des codes de devises disponibles
-                                        'currency' => !empty($currencies) ? $currencies[0] : '', // Devise par défaut
-                                    ];
-                                } catch (\Exception $e) {
-                                    Log::warning('Error processing provider', [
-                                        'provider' => $provider['provider'] ?? 'unknown',
-                                        'error' => $e->getMessage(),
-                                        'trace' => $e->getTraceAsString(),
-                                    ]);
-                                    // Continuer avec le provider suivant même en cas d'erreur
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Trier les pays par nom
-                usort($countries, function($a, $b) {
-                    return strcmp($a['name'], $b['name']);
-                });
-                
-                // Trier les providers par nom
-                usort($providers, function($a, $b) {
-                    return strcmp($a['name'], $b['name']);
-                });
-                
-                Log::info('Moneroo configuration processed', [
-                    'countries_count' => count($countries),
-                    'providers_count' => count($providers),
-                ]);
-                
-                return [
-                    'countries' => $countries,
-                    'providers' => $providers,
-                ];
-            } else {
-                Log::warning('Échec de la récupération de la configuration Moneroo', [
-                    'status' => $response->status(),
-                    'response' => $response->body(),
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération de la configuration Moneroo', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-        }
-        
-        return ['countries' => [], 'providers' => []];
+        return app(\App\Services\MonerooPayoutMethodsService::class)->getPayoutMethods();
     }
 
     /**

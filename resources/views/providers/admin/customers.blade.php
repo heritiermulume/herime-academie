@@ -1,7 +1,7 @@
 @extends('providers.admin.layout')
 
 @section('admin-title', 'Clients & progrès')
-@section('admin-subtitle', 'Analysez l'engagement de vos clients, contactez-les et suivez leur progression globale.')
+@section('admin-subtitle', "Analysez l'engagement de vos clients, contactez-les et suivez leur progression globale.")
 
 @section('admin-actions')
     <a href="{{ route('provider.contents.index') }}" class="admin-btn outline">

@@ -4,7 +4,7 @@
 @section('admin-title', 'Gestion des commandes')
 @section('admin-subtitle', 'Suivez les transactions réalisées sur Herime Académie et leur état de traitement')
 @section('admin-actions')
-    <button class="btn btn-primary" onclick="exportOrders()">
+    <button type="button" class="btn btn-primary" id="adminOrdersExportBtn" onclick="exportOrders(event)">
         <i class="fas fa-download me-2"></i>Exporter
     </button>
 @endsection
@@ -383,29 +383,27 @@ if (ordersFilterForm) {
     });
 }
 
-function exportOrders() {
+function exportOrders(ev) {
     const urlParams = new URLSearchParams(window.location.search);
     const exportUrl = '{{ route("admin.orders.export") }}?' + urlParams.toString();
     
-    // Afficher un indicateur de chargement
-    const button = event.target;
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Exportation...';
-    button.disabled = true;
+    const button = document.getElementById('adminOrdersExportBtn') || (ev && (ev.currentTarget || ev.target));
+    if (button) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Exportation...';
+        button.disabled = true;
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }, 2000);
+    }
     
-    // Créer un lien temporaire pour télécharger le fichier
     const link = document.createElement('a');
     link.href = exportUrl;
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    // Restaurer le bouton après un délai
-    setTimeout(() => {
-        button.innerHTML = originalText;
-        button.disabled = false;
-    }, 2000);
 }
 
 let currentConfirmOrderId = null;

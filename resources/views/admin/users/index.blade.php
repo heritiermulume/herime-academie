@@ -5,9 +5,12 @@
 @section('admin-subtitle', 'Supervisez les comptes créés via Compte Herime et ajustez leurs rôles')
 @section('admin-actions')
     <div class="d-flex align-items-center gap-2 flex-wrap">
-    <a href="https://compte.herime.com" class="btn btn-primary" target="_blank" rel="noopener">
-        <i class="fas fa-user-plus me-2"></i>Nouvel utilisateur
-    </a>
+        <a href="https://compte.herime.com" class="btn btn-primary" target="_blank" rel="noopener">
+            <i class="fas fa-user-plus me-2"></i>Nouvel utilisateur
+        </a>
+        <a href="{{ route('admin.users.export') }}?{{ request()->getQueryString() }}" class="btn btn-outline-success" download>
+            <i class="fas fa-download me-2"></i>Exporter
+        </a>
         <div class="alert alert-info mb-0 py-2 px-3">
             <i class="fas fa-info-circle me-2"></i>
             <small>La création se fait via Compte Herime (compte.herime.com)</small>

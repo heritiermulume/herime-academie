@@ -2577,6 +2577,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 sectionDiv.className = 'card border-0 shadow-sm mb-3 course-section-card';
                 sectionDiv.id = `section-${sectionCount}`;
                 sectionDiv.innerHTML = `
+                    <input type="hidden" name="sections[${sectionCount}][id]" value="{{ $section->id }}">
                     <div class="card-header bg-gradient-primary text-white">
                         <div class="d-flex justify-content-between align-items-center">
                             <h6 class="mb-0 text-white">Section ${sectionCount}</h6>
@@ -2614,6 +2615,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const lessonDiv = document.createElement('div');
                             lessonDiv.className = 'card border-0 shadow-sm mb-2 course-lesson-card';
                             lessonDiv.innerHTML = `
+                                <input type="hidden" name="sections[${sectionCount}][lessons][${lessonCount}][id]" value="{{ $lesson->id }}">
                                 <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center course-lesson-card__header">
                                     <h6 class="mb-0 text-white"><i class="fas fa-play-circle me-2 text-white-50"></i>Leçon ${lessonCount}</h6>
                                     <i class="fas fa-times course-lesson-remove-icon text-white" role="button" onclick="removeLesson(this)" aria-label="Supprimer la leçon"></i>

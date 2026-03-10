@@ -356,7 +356,7 @@ class DownloadController extends Controller
         }
 
         if (!$filePath || !file_exists($filePath)) {
-            return back()->with('error', 'Aucun fichier disponible pour cette leçon ou le fichier n\'existe plus sur le serveur.');
+            return back()->with('error', 'Fichier non disponible sur le site.');
         }
 
         $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title);

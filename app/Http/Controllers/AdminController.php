@@ -863,138 +863,19 @@ class AdminController extends Controller
 
     public function editUser(User $user)
     {
-        // Récupérer les données Moneroo (pays et providers)
-        $monerooData = $this->getMonerooConfiguration();
-        
+        // Données fournisseur (pays et opérateurs) depuis l'API Moneroo
+        $monerooData = app(\App\Services\MonerooPayoutMethodsService::class)->getPayoutMethods();
+
         return view('admin.users.edit', compact('user', 'monerooData'));
     }
 
     /**
-     * Récupérer la configuration Moneroo (pays et providers)
-     * Selon la documentation: https://docs.moneroo.io/fr/payouts/methodes-disponibles
+     * Récupérer la configuration Moneroo (pays et providers) depuis le fournisseur.
+     * @see https://docs.moneroo.io/payouts/available-methods
      */
     private function getMonerooConfiguration(): array
     {
-        try {
-            $baseUrl = rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
-            $apiKey = config('services.moneroo.api_key');
-            
-            if (!$apiKey) {
-                Log::warning('Moneroo API key not configured');
-                return ['countries' => [], 'providers' => []];
-            }
-
-            // Utiliser l'endpoint /payouts/methods selon la documentation Moneroo
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json',
-            ])->get("{$baseUrl}/payouts/methods");
-
-            if ($response->successful()) {
-                $responseData = $response->json();
-                // Format Moneroo: { "success": true, "data": {...} }
-                $data = $responseData['data'] ?? $responseData;
-                
-                Log::info('Moneroo configuration retrieved', [
-                    'has_data' => !empty($data),
-                ]);
-                
-                // Extraire les pays et providers selon la structure de la réponse Moneroo
-                $countries = [];
-                $providers = [];
-                
-                // Moneroo peut retourner les méthodes différemment
-                if (isset($data['methods']) && is_array($data['methods'])) {
-                    foreach ($data['methods'] as $method) {
-                        $countryCode = $method['country'] ?? '';
-                        $providerCode = $method['payment_method'] ?? $method['provider'] ?? '';
-                        $providerName = $method['name'] ?? $providerCode;
-                        $currencies = $method['currencies'] ?? ($method['currency'] ? [$method['currency']] : []);
-                        
-                        if ($countryCode && !isset($countries[$countryCode])) {
-                            $countries[$countryCode] = [
-                                'code' => $countryCode,
-                                'name' => $countryCode,
-                                'prefix' => '',
-                                'flag' => '',
-                            ];
-                        }
-                        
-                        if ($providerCode) {
-                            $providers[] = [
-                                'code' => $providerCode,
-                                'name' => $providerName,
-                                'country' => $countryCode,
-                                'currencies' => $currencies,
-                                'logo' => $method['logo'] ?? '',
-                            ];
-                        }
-                    }
-                    $countries = array_values($countries);
-                } elseif (isset($data['countries']) && is_array($data['countries'])) {
-                    foreach ($data['countries'] as $country) {
-                        $countryCode = $country['country'] ?? $country['code'] ?? '';
-                        $countryName = $country['displayName']['fr'] ?? $country['displayName']['en'] ?? $country['name'] ?? $countryCode;
-                        
-                        $countries[] = [
-                            'code' => $countryCode,
-                            'name' => $countryName,
-                            'prefix' => $country['prefix'] ?? '',
-                            'flag' => $country['flag'] ?? '',
-                        ];
-                        
-                        if (isset($country['providers']) && is_array($country['providers'])) {
-                            foreach ($country['providers'] as $provider) {
-                                $providerCode = $provider['provider'] ?? $provider['payment_method'] ?? '';
-                                $providerName = $provider['displayName'] ?? $provider['name'] ?? $providerCode;
-                                $currencies = $provider['currencies'] ?? ($provider['currency'] ? [$provider['currency']] : []);
-                                
-                                $providers[] = [
-                                    'code' => $providerCode,
-                                    'name' => $providerName,
-                                    'country' => $countryCode,
-                                    'currencies' => $currencies,
-                                    'logo' => $provider['logo'] ?? '',
-                                ];
-                            }
-                        }
-                    }
-                }
-                
-                // Trier les pays par nom
-                usort($countries, function($a, $b) {
-                    return strcmp($a['name'], $b['name']);
-                });
-                
-                // Trier les providers par nom
-                usort($providers, function($a, $b) {
-                    return strcmp($a['name'], $b['name']);
-                });
-                
-                Log::info('Moneroo configuration processed', [
-                    'countries_count' => count($countries),
-                    'providers_count' => count($providers),
-                ]);
-                
-                return [
-                    'countries' => $countries,
-                    'providers' => $providers,
-                ];
-            } else {
-                Log::warning('Échec de la récupération de la configuration Moneroo', [
-                    'status' => $response->status(),
-                    'response' => $response->body(),
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération de la configuration Moneroo', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-        }
-        
-        return ['countries' => [], 'providers' => []];
+        return app(\App\Services\MonerooPayoutMethodsService::class)->getPayoutMethods();
     }
 
     /**
@@ -5554,6 +5435,90 @@ class AdminController extends Controller
     }
 
     /**
+     * Exporter les certificats (CSV avec titre, filtres et résumé)
+     */
+    public function exportCertificates(Request $request)
+    {
+        $query = Certificate::with(['user', 'course.provider', 'course.category']);
+
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('certificate_number', 'like', "%{$search}%")
+                  ->orWhere('title', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', "%{$search}%")
+                               ->orWhere('email', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('course', function ($courseQuery) use ($search) {
+                      $courseQuery->where('title', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->get('user_id'));
+        }
+
+        if ($request->filled('content_id')) {
+            $query->where('content_id', $request->get('content_id'));
+        }
+
+        $sortBy = $request->get('sort', 'issued_at');
+        $sortDirection = $request->get('direction', 'desc');
+        if (in_array($sortBy, ['certificate_number', 'title', 'issued_at', 'created_at'])) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->orderBy('issued_at', 'desc');
+        }
+
+        $data = $query->get();
+
+        $filtersApplied = [];
+        if ($request->filled('search')) {
+            $filtersApplied[] = 'Recherche : "' . $request->search . '"';
+        }
+        if ($request->filled('content_id')) {
+            $course = Course::find($request->content_id);
+            $filtersApplied[] = 'Contenu : ' . ($course ? $course->title : $request->content_id);
+        }
+        if ($request->filled('user_id')) {
+            $user = User::find($request->user_id);
+            $filtersApplied[] = 'Client : ' . ($user ? $user->name : $request->user_id);
+        }
+        $filtersLine = empty($filtersApplied) ? 'Aucun filtre' : implode(' ; ', $filtersApplied);
+
+        $thisMonth = $data->filter(fn($c) => $c->issued_at && $c->issued_at->isCurrentMonth())->count();
+        $thisYear = $data->filter(fn($c) => $c->issued_at && $c->issued_at->isCurrentYear())->count();
+        $summaryRows = [
+            ['Nombre total de certificats', $data->count()],
+            ['Délivrés ce mois', $thisMonth],
+            ['Délivrés cette année', $thisYear],
+        ];
+
+        $columns = [
+            'id' => 'ID',
+            'certificate_number' => 'Numéro',
+            'title' => 'Titre',
+            'user.name' => 'Client',
+            'user.email' => 'Email client',
+            'course.title' => 'Contenu',
+            'course.provider.name' => 'Prestataire',
+            'issued_at' => 'Date d\'émission',
+            'created_at' => 'Date de création',
+        ];
+
+        return $this->exportToCsvWithHeaderAndSummary(
+            $data,
+            $columns,
+            'certificats',
+            'Export des certificats - Herime Académie',
+            $filtersLine,
+            $summaryRows
+        );
+    }
+
+    /**
      * Afficher les détails d'un certificat
      */
     public function showCertificate(Certificate $certificate)
@@ -6571,6 +6536,43 @@ class AdminController extends Controller
             }
         }
 
+        if ($request->filled('ids')) {
+            $idsArray = is_array($request->ids) ? $request->ids : explode(',', $request->ids);
+            $idsArray = array_filter(array_map('trim', $idsArray));
+            if (!empty($idsArray)) {
+                $query->whereIn('id', $idsArray);
+            }
+        }
+
+        $data = $query->orderBy('created_at', 'desc')->get();
+
+        $filtersApplied = [];
+        if ($request->filled('search')) {
+            $filtersApplied[] = 'Recherche : "' . $request->search . '"';
+        }
+        if ($request->filled('role')) {
+            $roleLabelsFilter = ['admin' => 'Administrateur', 'provider' => 'Prestataire', 'customer' => 'Client', 'affiliate' => 'Affilié'];
+            $filtersApplied[] = 'Rôle : ' . ($roleLabelsFilter[$request->role] ?? $request->role);
+        }
+        if ($request->filled('status')) {
+            $filtersApplied[] = 'Statut : ' . ($request->status === 'active' ? 'Actif' : 'Inactif');
+        }
+        if ($request->filled('ids')) {
+            $filtersApplied[] = 'Export sélectif (IDs fournis)';
+        }
+        $filtersLine = empty($filtersApplied) ? 'Aucun filtre' : implode(' ; ', $filtersApplied);
+
+        $roleLabels = ['admin' => 'Administrateur', 'provider' => 'Prestataire', 'customer' => 'Client', 'affiliate' => 'Affilié'];
+        $byRole = $data->groupBy('role')->map->count();
+        $summaryRows = [
+            ['Nombre total d\'utilisateurs', $data->count()],
+            ['Actifs', $data->where('is_active', true)->count()],
+            ['Inactifs', $data->where('is_active', false)->count()],
+        ];
+        foreach ($byRole as $role => $count) {
+            $summaryRows[] = ['Rôle ' . ($roleLabels[$role] ?? $role), $count];
+        }
+
         $columns = [
             'id' => 'ID',
             'name' => 'Nom',
@@ -6584,7 +6586,18 @@ class AdminController extends Controller
             'last_login_at' => 'Dernière connexion'
         ];
 
-        return $this->exportData($request, $query, $columns, 'utilisateurs');
+        $format = $request->get('format', 'csv');
+        if ($format === 'excel') {
+            return $this->exportToExcel($data, $columns, 'utilisateurs');
+        }
+        return $this->exportToCsvWithHeaderAndSummary(
+            $data,
+            $columns,
+            'utilisateurs',
+            'Export des utilisateurs - Herime Académie',
+            $filtersLine,
+            $summaryRows
+        );
     }
 
     /**
@@ -6614,48 +6627,97 @@ class AdminController extends Controller
     {
         try {
             $query = Course::with(['category', 'provider'])
-            ->withCount(['enrollments', 'reviews'])
-            ->withAvg('reviews', 'rating');
+                ->withCount(['enrollments', 'reviews'])
+                ->withAvg('reviews', 'rating');
 
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $query->where(function($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('subtitle', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('category')) {
-            $query->where('category_id', $request->category);
-        }
-
-        if ($request->filled('status')) {
-            if ($request->status === 'published') {
-                $query->where('is_published', true);
-            } elseif ($request->status === 'draft') {
-                $query->where('is_published', false);
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                      ->orWhere('subtitle', 'like', "%{$search}%");
+                });
             }
-        }
 
-        if ($request->filled('provider')) {
-            $query->where('provider_id', $request->provider);
-        }
+            if ($request->filled('category')) {
+                $query->where('category_id', $request->category);
+            }
 
-        $columns = [
-            'id' => 'ID',
-            'title' => 'Titre',
-            'subtitle' => 'Sous-titre',
-            'category.name' => 'Catégorie',
-            'provider.name' => 'Prestataire',
-            'price' => 'Prix',
-            'is_free' => 'Gratuit',
-            'is_published' => 'Publié',
-            'enrollments_count' => 'Inscriptions',
-            'reviews_avg_rating' => 'Note moyenne',
-            'created_at' => 'Date de création'
-        ];
+            if ($request->filled('status')) {
+                if ($request->status === 'published') {
+                    $query->where('is_published', true);
+                } elseif ($request->status === 'draft') {
+                    $query->where('is_published', false);
+                }
+            }
 
-        return $this->exportData($request, $query, $columns, 'contenus');
+            if ($request->filled('provider')) {
+                $query->where('provider_id', $request->provider);
+            }
+
+            if ($request->filled('ids')) {
+                $idsArray = is_array($request->ids) ? $request->ids : explode(',', $request->ids);
+                $idsArray = array_filter(array_map('trim', $idsArray));
+                if (!empty($idsArray)) {
+                    $query->whereIn('id', $idsArray);
+                }
+            }
+
+            $data = $query->orderBy('created_at', 'desc')->get();
+
+            $filtersApplied = [];
+            if ($request->filled('search')) {
+                $filtersApplied[] = 'Recherche : "' . $request->search . '"';
+            }
+            if ($request->filled('category')) {
+                $cat = Category::find($request->category);
+                $filtersApplied[] = 'Catégorie : ' . ($cat ? $cat->name : $request->category);
+            }
+            if ($request->filled('status')) {
+                $filtersApplied[] = 'Statut : ' . ($request->status === 'published' ? 'Publié' : 'Brouillon');
+            }
+            if ($request->filled('provider')) {
+                $prov = User::find($request->provider);
+                $filtersApplied[] = 'Prestataire : ' . ($prov ? $prov->name : $request->provider);
+            }
+            if ($request->filled('ids')) {
+                $filtersApplied[] = 'Export sélectif (IDs fournis)';
+            }
+            $filtersLine = empty($filtersApplied) ? 'Aucun filtre' : implode(' ; ', $filtersApplied);
+
+            $publishedCount = $data->where('is_published', true)->count();
+            $draftCount = $data->where('is_published', false)->count();
+            $summaryRows = [
+                ['Nombre total de contenus', $data->count()],
+                ['Publiés', $publishedCount],
+                ['Brouillons', $draftCount],
+            ];
+
+            $columns = [
+                'id' => 'ID',
+                'title' => 'Titre',
+                'subtitle' => 'Sous-titre',
+                'category.name' => 'Catégorie',
+                'provider.name' => 'Prestataire',
+                'price' => 'Prix',
+                'is_free' => 'Gratuit',
+                'is_published' => 'Publié',
+                'enrollments_count' => 'Inscriptions',
+                'reviews_avg_rating' => 'Note moyenne',
+                'created_at' => 'Date de création'
+            ];
+
+            $format = $request->get('format', 'csv');
+            if ($format === 'excel') {
+                return $this->exportToExcel($data, $columns, 'contenus');
+            }
+            return $this->exportToCsvWithHeaderAndSummary(
+                $data,
+                $columns,
+                'contenus',
+                'Export des contenus - Herime Académie',
+                $filtersLine,
+                $summaryRows
+            );
         } catch (\Exception $e) {
             Log::error('Erreur exportContents', [
                 'error' => $e->getMessage(),

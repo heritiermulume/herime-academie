@@ -78,7 +78,7 @@ class Wallet extends Model
     /**
      * Créditer le wallet (directement disponible)
      */
-    public function credit(float $amount, string $type, string $description = null, $transactionable = null, array $metadata = []): WalletTransaction
+    public function credit(float $amount, string $type, ?string $description = null, $transactionable = null, array $metadata = []): WalletTransaction
     {
         \DB::beginTransaction();
         try {
@@ -117,8 +117,8 @@ class Wallet extends Model
     public function creditWithHold(
         float $amount, 
         string $type, 
-        int $holdingDays = null, 
-        string $description = null, 
+        ?int $holdingDays = null, 
+        ?string $description = null, 
         $transactionable = null, 
         array $metadata = []
     ): array {
@@ -191,7 +191,7 @@ class Wallet extends Model
     /**
      * Débiter le wallet
      */
-    public function debit(float $amount, string $type, string $description = null, $transactionable = null, array $metadata = []): WalletTransaction
+    public function debit(float $amount, string $type, ?string $description = null, $transactionable = null, array $metadata = []): WalletTransaction
     {
         \DB::beginTransaction();
         try {
