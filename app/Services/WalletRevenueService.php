@@ -28,7 +28,7 @@ class WalletRevenueService
             return $this->platformUser;
         }
 
-        $email = config('wallet.platform_email', 'platform@herime-academie.local');
+        $email = config('wallet.platform_email', 'platform@herime-academie.com');
         $this->platformUser = User::where('email', $email)->first();
 
         if (!$this->platformUser) {

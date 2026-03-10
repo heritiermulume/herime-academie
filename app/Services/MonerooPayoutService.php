@@ -63,14 +63,18 @@ class MonerooPayoutService
     }
 
     /**
-     * Extraire le prénom et le nom de famille depuis le nom complet
+     * Extraire le prénom et le nom de famille depuis le nom complet.
+     * Garantit des chaînes non vides pour l'API Moneroo (Customer.first_name / last_name requis).
      */
-    private function extractNames(string $fullName): array
+    private function extractNames(?string $fullName): array
     {
-        $parts = explode(' ', trim($fullName), 2);
+        $fullName = trim((string) ($fullName ?? ''));
+        $parts = $fullName === '' ? [] : explode(' ', $fullName, 2);
+        $firstName = trim((string) ($parts[0] ?? ''));
+        $lastName = trim((string) ($parts[1] ?? ''));
         return [
-            'first_name' => $parts[0] ?? '',
-            'last_name' => $parts[1] ?? '',
+            'first_name' => $firstName !== '' ? $firstName : '—',
+            'last_name' => $lastName !== '' ? $lastName : '—',
         ];
     }
 
@@ -118,28 +122,27 @@ class MonerooPayoutService
         try {
             $providerUser = User::findOrFail($providerId);
             
-            // Extraire le prénom et le nom de famille
-            $names = $this->extractNames($providerUser->name);
-            
+            // Extraire le prénom et le nom de famille (toujours des chaînes non vides pour l'API Moneroo)
+            $names = $this->extractNames($providerUser->name ?? null);
+
             // Convertir le montant en entier selon la devise
             $amountInteger = $this->convertAmountToInteger($amount, $currency);
-            
+
             // Obtenir les champs recipient selon la méthode
             $recipientFields = $this->getRecipientFields($provider, $phoneNumber, $country);
-            
-            // Préparer le payload selon la documentation Moneroo
-            // Documentation: https://docs.moneroo.io/payouts/initialize-payout
+
+            // Préparer le payload selon la documentation Moneroo (customer.* requis en string)
             $payload = [
                 'amount' => $amountInteger, // integer requis
                 'currency' => strtoupper($currency), // ISO 4217 format
                 'description' => config('services.moneroo.company_name', 'Herime Académie') . ' - Paiement commission prestataire',
                 'method' => $provider, // Code de la méthode (ex: mtn_bj, orange_sn, moneroo_payout_demo, etc.)
                 'customer' => [
-                    'email' => $providerUser->email, // requis
-                    'first_name' => $names['first_name'], // requis
-                    'last_name' => $names['last_name'], // requis
+                    'email' => (string) ($providerUser->email ?? 'noreply@herime-academie.local'),
+                    'first_name' => (string) $names['first_name'],
+                    'last_name' => (string) $names['last_name'],
                     'phone' => (int) preg_replace('/[^0-9]/', '', $phoneNumber), // integer optionnel selon la doc
-                    'country' => $country, // ISO 3166-1 alpha-2, optionnel
+                    'country' => (string) $country, // ISO 3166-1 alpha-2, optionnel
                 ],
                 'recipient' => $recipientFields, // msisdn (integer) ou account_number (integer) selon la méthode
                 'metadata' => [
@@ -490,16 +493,16 @@ class MonerooPayoutService
                 ];
             }
 
-            // Extraire le prénom et le nom de famille
-            $names = $this->extractNames($user->name);
-            
+            // Extraire le prénom et le nom de famille (toujours des chaînes non vides pour l'API Moneroo)
+            $names = $this->extractNames($user->name ?? null);
+
             // Convertir le montant en entier selon la devise
             $amountInteger = $this->convertAmountToInteger($amount, $currency);
-            
+
             // Obtenir les champs recipient selon la méthode
             $recipientFields = $this->getRecipientFields($method, $phoneNumber, $country);
-            
-            // Préparer le payload selon la documentation Moneroo
+
+            // Préparer le payload selon la documentation Moneroo (customer.* requis en string)
             // Documentation: https://docs.moneroo.io/payouts/initialize-payout
             $payload = [
                 'amount' => $amountInteger, // integer requis
@@ -507,11 +510,11 @@ class MonerooPayoutService
                 'description' => $description ?? (config('services.moneroo.company_name', 'Herime Académie') . ' - Retrait wallet'),
                 'method' => $method, // Code de la méthode (ex: mtn_cd, airtel_cd, moneroo_payout_demo, etc.)
                 'customer' => [
-                    'email' => $user->email, // requis
-                    'first_name' => $names['first_name'], // requis
-                    'last_name' => $names['last_name'], // requis
+                    'email' => (string) ($user->email ?? 'noreply@herime-academie.local'),
+                    'first_name' => (string) $names['first_name'],
+                    'last_name' => (string) $names['last_name'],
                     'phone' => (int) preg_replace('/[^0-9]/', '', $phoneNumber), // integer optionnel selon la doc
-                    'country' => $country, // ISO 3166-1 alpha-2, optionnel
+                    'country' => (string) $country, // ISO 3166-1 alpha-2, optionnel
                 ],
                 'recipient' => $recipientFields, // msisdn (integer) ou account_number (integer) selon la méthode
                 'metadata' => [
