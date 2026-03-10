@@ -25,25 +25,78 @@ class WalletController extends Controller
     ) {}
 
     /**
+     * Calcule le solde par devise comme la page Solde : revenus (commandes internes + commissions) − retraits réussis.
+     * Utilisé pour l’index et les paiements pour afficher le même montant que l’onglet Balance.
+     *
+     * @return array<string, array{revenue: float, payouts: float, balance: float}>
+     */
+    private function getBalanceByCurrencyFromRevenue(): array
+    {
+        $internalOrders = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
+            ->whereDoesntHave('orderItems', function ($query) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
+                        $providerQuery->where('role', 'provider');
+                    });
+                });
+            })
+            ->get();
+
+        $revenueByCurrency = [];
+        foreach ($internalOrders as $order) {
+            $currency = strtoupper($order->currency ?? 'USD');
+            $amount = (float) ($order->total_amount ?? $order->total ?? 0);
+            $revenueByCurrency[$currency] = ($revenueByCurrency[$currency] ?? 0) + $amount;
+        }
+
+        $commissions = ProviderPayout::withTrashed()->where('status', 'completed')->get();
+        foreach ($commissions as $p) {
+            $currency = strtoupper($p->currency ?? 'USD');
+            $revenueByCurrency[$currency] = ($revenueByCurrency[$currency] ?? 0) + (float) $p->commission_amount;
+        }
+
+        $payoutsByCurrency = WalletPayout::where('status', 'completed')
+            ->get()
+            ->groupBy(fn ($p) => strtoupper($p->currency ?? 'USD'))
+            ->map(fn ($group) => $group->sum('amount'))
+            ->toArray();
+
+        $result = [];
+        $allCurrencies = array_values(array_unique(array_merge(array_keys($revenueByCurrency), array_keys($payoutsByCurrency))));
+        foreach ($allCurrencies as $currency) {
+            $revenue = $revenueByCurrency[$currency] ?? 0;
+            $payouts = $payoutsByCurrency[$currency] ?? 0;
+            $result[$currency] = [
+                'revenue' => $revenue,
+                'payouts' => $payouts,
+                'balance' => max(0, $revenue - $payouts),
+            ];
+        }
+        return $result;
+    }
+
+    /**
      * Tableau de bord Wallet (onglet Accueil).
-     * Les portefeuilles sont regroupés par devise configurée sur le site (devise de base + devises des wallets existants).
+     * Les portefeuilles sont regroupés par devise ; le solde = même calcul que l’onglet Balance (revenus − retraits).
      */
     public function index()
     {
         $baseCurrency = Setting::get('base_currency', 'USD');
+        $balanceByCurrency = $this->getBalanceByCurrencyFromRevenue();
         $currenciesInWallets = Wallet::where('is_active', true)->distinct()->pluck('currency')->filter()->values()->toArray();
-        $configuredCurrencies = array_values(array_unique(array_merge([$baseCurrency], $currenciesInWallets)));
+        $configuredCurrencies = array_values(array_unique(array_merge([$baseCurrency], array_keys($balanceByCurrency), $currenciesInWallets)));
         sort($configuredCurrencies);
 
         $walletsByCurrency = [];
         foreach ($configuredCurrencies as $currency) {
+            $balanceData = $balanceByCurrency[$currency] ?? ['balance' => 0, 'revenue' => 0, 'payouts' => 0];
             $walletsInCurrency = Wallet::where('is_active', true)->where('currency', $currency)->get();
             $walletsByCurrency[] = [
                 'currency' => $currency,
-                'balance' => $walletsInCurrency->sum('balance'),
-                'available_balance' => $walletsInCurrency->sum('available_balance'),
-                'held_balance' => $walletsInCurrency->sum('held_balance'),
-                'total_earned' => $walletsInCurrency->sum('total_earned'),
+                'balance' => $balanceData['balance'],
+                'available_balance' => $balanceData['balance'],
+                'held_balance' => 0,
+                'total_earned' => $balanceData['revenue'] ?? $walletsInCurrency->sum('total_earned'),
                 'wallets_count' => $walletsInCurrency->count(),
             ];
         }
@@ -259,23 +312,25 @@ class WalletController extends Controller
 
     /**
      * Onglet Paiements : initier un payout, liste des paiements.
-     * Portefeuille source = portefeuilles principaux du site (un par devise), pas les portefeuilles des ambassadeurs.
+     * Portefeuille source = portefeuilles principaux du site (un par devise), solde = revenus − retraits (comme l’onglet Balance).
      */
     public function payments(Request $request)
     {
         $baseCurrency = Setting::get('base_currency', 'USD');
+        $balanceByCurrency = $this->getBalanceByCurrencyFromRevenue();
         $currenciesInWallets = Wallet::where('is_active', true)->distinct()->pluck('currency')->filter()->values()->toArray();
-        $configuredCurrencies = array_values(array_unique(array_merge([$baseCurrency], $currenciesInWallets)));
+        $configuredCurrencies = array_values(array_unique(array_merge([$baseCurrency], array_keys($balanceByCurrency), $currenciesInWallets)));
         sort($configuredCurrencies);
 
         $walletsByCurrency = [];
         foreach ($configuredCurrencies as $currency) {
+            $balanceData = $balanceByCurrency[$currency] ?? ['balance' => 0];
             $walletsInCurrency = Wallet::where('is_active', true)->where('currency', $currency)->get();
             $walletsByCurrency[] = [
                 'currency' => $currency,
-                'balance' => $walletsInCurrency->sum('balance'),
-                'available_balance' => $walletsInCurrency->sum('available_balance'),
-                'held_balance' => $walletsInCurrency->sum('held_balance'),
+                'balance' => $balanceData['balance'],
+                'available_balance' => $balanceData['balance'],
+                'held_balance' => 0,
                 'wallets_count' => $walletsInCurrency->count(),
             ];
         }

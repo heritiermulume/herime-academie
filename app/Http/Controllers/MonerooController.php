@@ -1410,11 +1410,12 @@ class MonerooController extends Controller
 				'session_cart_cleared' => true,
 				'promo_code_cleared' => true,
 			]);
-            
+
+            $commission = null;
             // Créer la commission d'ambassadeur si un code promo a été utilisé
             if ($order->ambassador_id && $order->ambassador_promo_code_id) {
                 $commission = $this->createAmbassadorCommission($order);
-                
+
                 // Envoyer un email à l'ambassadeur
                 if ($commission) {
                     try {
@@ -1429,7 +1430,21 @@ class MonerooController extends Controller
                     }
                 }
             }
-            
+
+            // Alimenter les wallets plateforme et ambassadeur à partir des revenus (idempotent)
+            try {
+                $revenueService = app(\App\Services\WalletRevenueService::class);
+                $revenueService->creditPlatformFromOrder($order);
+                if ($commission) {
+                    $revenueService->creditAmbassadorFromCommission($order, $commission);
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Moneroo: erreur alimentation wallets depuis commande', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             \Log::info('Moneroo: Finalization completed successfully', [
                 'order_id' => $order->id,
                 'final_status' => $order->fresh()->status,

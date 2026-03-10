@@ -266,6 +266,18 @@ class MonerooService
             $this->sendPayoutNotificationAndEmail($payout);
         }
 
+        // Alimenter le wallet plateforme avec la commission (idempotent)
+        if ($isNewlyCompleted) {
+            try {
+                app(\App\Services\WalletRevenueService::class)->creditPlatformFromProviderPayout($payout);
+            } catch (\Throwable $e) {
+                Log::error('MonerooService: erreur alimentation wallet plateforme depuis ProviderPayout', [
+                    'provider_payout_id' => $payout->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         Log::info("Callback Moneroo traité", [
             'payout_id' => $payoutId,
             'status' => $status,

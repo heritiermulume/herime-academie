@@ -3,6 +3,17 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Platform Wallet User Email
+    |--------------------------------------------------------------------------
+    |
+    | Email de l'utilisateur "plateforme" auquel sont rattachés les wallets
+    | des revenus internes et des commissions prestataires.
+    |
+    */
+    'platform_email' => env('WALLET_PLATFORM_EMAIL', 'platform@herime-academie.local'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Wallet Holding Period
     |--------------------------------------------------------------------------
     |
