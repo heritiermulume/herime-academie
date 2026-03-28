@@ -5008,8 +5008,13 @@
                 card.addEventListener('click', function(e) {
                     // Ne pas rediriger si on clique sur un bouton, un lien ou dans la zone d'actions
                     const clickedElement = e.target;
-                    const isButton = clickedElement.closest('.card-actions, .btn, button, a.btn, form');
-                    const isBadge = clickedElement.classList.contains('badge') || clickedElement.closest('.badge');
+                    const el =
+                        clickedElement && clickedElement.nodeType === Node.ELEMENT_NODE
+                            ? clickedElement
+                            : clickedElement?.parentElement;
+                    const isButton = el?.closest?.('.card-actions, .btn, button, a.btn, form');
+                    const isBadge =
+                        el?.classList?.contains('badge') || el?.closest?.('.badge');
                     
                     // Si on clique sur un badge ou un bouton, ne pas rediriger
                     if (isButton || isBadge) {
@@ -5017,7 +5022,7 @@
                     }
                     
                     // Si on clique directement sur un lien (autre que le lien de la carte), ne pas rediriger
-                    if (clickedElement.tagName === 'A' && !clickedElement.classList.contains('course-card-link')) {
+                    if (el && el.tagName === 'A' && !el.classList.contains('course-card-link')) {
                         return;
                     }
                     

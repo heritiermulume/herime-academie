@@ -114,7 +114,7 @@
                 </div>
             </div>
             
-            <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
+            <div class="card-actions">
                 <x-contenu-button :course="$course" size="small" :show-cart="false" />
             </div>
         </div>

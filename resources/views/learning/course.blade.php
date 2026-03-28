@@ -604,6 +604,28 @@
     border-radius: 10px;
 }
 
+.recommended-courses .recommended-item--pack {
+    align-items: flex-start;
+}
+
+.recommended-item--pack .recommended-item__link {
+    color: inherit;
+    min-width: 0;
+}
+
+.recommended-item--pack .recommended-item__link:hover {
+    color: inherit;
+}
+
+.recommended-item--pack .recommended-content {
+    min-width: 0;
+}
+
+.recommended-pack-cta {
+    flex-shrink: 0;
+    align-self: center;
+}
+
 .mobile-outline-drawer {
     position: fixed;
     inset: 0;
@@ -3715,22 +3737,40 @@
                             <h6 class="text-white fw-bold mb-3">Contenus et packs à explorer ensuite</h6>
                             <div class="recommended-courses">
                                 @foreach($recommendedPackages as $pkg)
-                                    <a href="{{ route('packs.show', $pkg) }}" class="recommended-item">
-                                        <div class="recommended-thumb">
-                                            <x-package-card-media :package="$pkg" variant="thumb" />
-                                        </div>
-                                        <div class="recommended-content flex-grow-1">
-                                            <h6><span class="badge bg-primary me-1">Pack</span>{{ $pkg->title }}</h6>
-                                            <div class="recommended-meta">
-                                                <span><i class="fas fa-box-open me-1"></i>{{ $pkg->contents_count }} contenus</span>
+                                    <div class="recommended-item recommended-item--pack">
+                                        <a href="{{ route('packs.show', $pkg) }}" class="recommended-item__link d-flex gap-3 flex-grow-1 text-decoration-none">
+                                            <div class="recommended-thumb">
+                                                <x-package-card-media :package="$pkg" variant="thumb" />
                                             </div>
-                                            <div class="recommended-actions">
-                                                <span class="badge bg-primary bg-opacity-10 text-success border-0">
-                                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($pkg->effective_price) }}
-                                                </span>
+                                            <div class="recommended-content flex-grow-1">
+                                                <h6><span class="badge bg-primary me-1">Pack</span>{{ $pkg->title }}</h6>
+                                                <div class="recommended-meta">
+                                                    <span><i class="fas fa-box-open me-1"></i>{{ $pkg->contents_count }} contenus</span>
+                                                </div>
+                                                <div class="recommended-actions">
+                                                    <span class="badge bg-primary bg-opacity-10 text-success border-0">
+                                                        {{ \App\Helpers\CurrencyHelper::formatWithSymbol($pkg->effective_price) }}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </a>
+                                        </a>
+                                        @if($pkg->is_published && $pkg->is_sale_enabled)
+                                            <div class="recommended-pack-cta d-flex flex-column gap-1">
+                                                <button type="button"
+                                                        class="btn btn-outline-primary btn-sm add-package-to-cart-btn"
+                                                        data-package-id="{{ $pkg->id }}"
+                                                        data-meta-trigger="add_to_cart">
+                                                    <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
+                                                </button>
+                                                <button type="button"
+                                                        class="btn btn-success btn-sm"
+                                                        data-meta-trigger="checkout"
+                                                        onclick="proceedToCheckoutPackage({{ $pkg->id }})">
+                                                    <i class="fas fa-credit-card me-2"></i>Procéder au paiement
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endforeach
                                 @foreach($recommendedCourses as $recommended)
                                     <a href="{{ route('contents.show', $recommended->slug) }}" class="recommended-item">

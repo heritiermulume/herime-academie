@@ -93,6 +93,18 @@
     padding-top: 0;
 }
 
+/*
+ * Bouton WhatsApp flottant (layout app) : sur mobile il est en z-index 1040 et passait
+ * devant la barre prix fixe. On le remonte du montant de cette barre (prix + boutons, 2 lignes possibles).
+ */
+@media (max-width: 991.98px) {
+    body:has(.course-details-page) .whatsapp-float-btn {
+        bottom: calc(
+            1rem + env(safe-area-inset-bottom, 0px) + var(--site-mobile-bottom-nav-height, 60px) + clamp(2.25rem, 12vw, 4.75rem)
+        );
+    }
+}
+
 /* Supprimer tout margin-top et padding-top du body sur cette page */
 body:has(.course-details-page),
 body.has-global-announcement:has(.course-details-page) {
@@ -1919,11 +1931,30 @@ body.has-global-announcement:has(.course-details-page) {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     padding: 0.5rem 0.75rem;
-    z-index: 999;
+    /* Sous la nav mobile (1000) mais au-dessus du défilement ; jamais au-dessus des modals Bootstrap */
+    z-index: 990;
     box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.1);
     display: none;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+}
+
+/* Modals (aperçu vidéo, confirmations, etc.) : la barre CTA / WhatsApp ne doit pas se superposer */
+body.modal-open .mobile-price-slider {
+    z-index: 1020 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+/* Sécurise l’empilement du modal d’aperçu (contenu imbriqué dans main) */
+body.modal-open .modal-backdrop {
+    z-index: 1050 !important;
+}
+
+#coursePreviewModal.modal {
+    z-index: 1060 !important;
 }
 
 .mobile-price-slider__content {

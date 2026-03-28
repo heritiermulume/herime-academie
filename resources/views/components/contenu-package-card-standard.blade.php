@@ -38,17 +38,28 @@
                     @endif
                 </div>
             </div>
-            <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
+            {{-- Même logique que <x-contenu-button> (état achat) : panier + paiement ; la fiche pack s’ouvre au clic sur la carte (data-course-url). --}}
+            <div class="card-actions">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('packs.show', $package) }}" class="btn btn-outline-secondary btn-sm w-100">
-                        <i class="fas fa-eye me-1"></i>Voir le pack
-                    </a>
                     @if($package->is_published && $package->is_sale_enabled)
                         <button type="button"
                                 class="btn btn-outline-primary btn-sm w-100 add-package-to-cart-btn"
-                                data-package-id="{{ $package->id }}">
-                            <i class="fas fa-cart-plus me-1"></i>Ajouter au panier
+                                data-package-id="{{ $package->id }}"
+                                data-meta-trigger="add_to_cart">
+                            <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
                         </button>
+                        <button type="button"
+                                class="btn btn-success btn-sm w-100"
+                                data-meta-trigger="checkout"
+                                onclick="proceedToCheckoutPackage({{ $package->id }});">
+                            <i class="fas fa-credit-card me-2"></i>Procéder au paiement
+                        </button>
+                    @elseif($package->is_published)
+                        <a href="{{ route('packs.show', $package) }}"
+                           class="btn btn-outline-primary btn-sm w-100"
+                           onclick="event.stopPropagation();">
+                            <i class="fas fa-eye me-2"></i>Voir le pack
+                        </a>
                     @endif
                 </div>
             </div>

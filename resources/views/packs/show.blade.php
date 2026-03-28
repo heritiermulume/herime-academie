@@ -3,6 +3,62 @@
 @section('title', ($package->meta_title ?: $package->title) . ' - Pack - Herime Académie')
 @section('description', $package->meta_description ?: \Illuminate\Support\Str::limit(strip_tags($package->short_description ?? $package->description ?? ''), 160))
 
+@push('styles')
+<style>
+/* Aligné sur le fil d’Ariane de la page détail contenu (contents/show) */
+.pack-show-hero {
+    --accent-color: #ffcc33;
+}
+
+.breadcrumb-modern {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 0.625rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.breadcrumb-modern .breadcrumb {
+    margin: 0;
+    padding: 0;
+}
+
+.breadcrumb-modern .breadcrumb-item {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.875rem;
+}
+
+.breadcrumb-modern .breadcrumb-item a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.breadcrumb-modern .breadcrumb-item a:hover {
+    color: var(--accent-color);
+}
+
+.breadcrumb-modern .breadcrumb-item.active {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.breadcrumb-modern .breadcrumb-item + .breadcrumb-item::before {
+    color: rgba(255, 255, 255, 0.6);
+    content: "›";
+    padding: 0 0.5rem;
+}
+
+/* .sticky-top (Bootstrap) = z-index 1020 > menu bas mobile (1000) : la carte prix masquait la nav */
+@media (max-width: 991.98px) {
+    .pack-show-aside-card.sticky-top {
+        z-index: 990 !important;
+    }
+}
+</style>
+@endpush
+
 @section('content')
 @php
     $listPrice = $package->contents_list_price_total;
@@ -10,13 +66,13 @@
     $savings = $listPrice > $effective ? $listPrice - $effective : 0;
 @endphp
 <section class="page-content-section" style="padding: 0 0 2rem;">
-    <div class="bg-primary text-white py-4 mb-4" style="--bs-bg-opacity: 1; background: linear-gradient(135deg, #003366 0%, #0a4d8c 100%) !important;">
+    <div class="pack-show-hero bg-primary text-white py-4 mb-4" style="--bs-bg-opacity: 1; background: linear-gradient(135deg, #003366 0%, #0a4d8c 100%) !important;">
         <div class="container">
-            <nav aria-label="breadcrumb" class="mb-2">
-                <ol class="breadcrumb mb-0 text-white-50">
-                    <li class="breadcrumb-item"><a href="{{ route('home') }}" class="text-white-50 text-decoration-none">Accueil</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('contents.index') }}#content-packs" class="text-white-50 text-decoration-none">Contenus</a></li>
-                    <li class="breadcrumb-item active text-white" aria-current="page">{{ \Illuminate\Support\Str::limit($package->title, 40) }}</li>
+            <nav aria-label="breadcrumb" class="breadcrumb-modern">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('home') }}">Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('contents.index') }}#content-packs">Contenus</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ \Illuminate\Support\Str::limit($package->title, 40) }}</li>
                 </ol>
             </nav>
             <div class="row align-items-center g-4">
@@ -111,7 +167,7 @@
             </div>
 
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
+                <div class="card border-0 shadow-sm sticky-top pack-show-aside-card" style="top: 1rem;">
                     <div class="card-body">
                         <div class="text-center mb-3">
                             @if($package->thumbnail_url && !$package->isYoutubeCoverVideo() && !$package->cover_video)

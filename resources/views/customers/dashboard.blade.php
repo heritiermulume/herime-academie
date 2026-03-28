@@ -381,16 +381,36 @@
                     @foreach($recommendedPackages as $package)
                         <div class="student-recommendations__item">
                             <div class="student-recommendations__media">
-                                <x-package-card-media :package="$package" variant="thumb" />
+                                <a href="{{ route('packs.show', $package) }}" class="text-decoration-none d-block h-100">
+                                    <x-package-card-media :package="$package" variant="thumb" />
+                                </a>
                             </div>
                             <div class="student-recommendations__content">
-                                <h4><span class="badge bg-primary me-1">Pack</span>{{ $package->title }}</h4>
+                                <h4>
+                                    <span class="badge bg-primary me-1">Pack</span>
+                                    <a href="{{ route('packs.show', $package) }}" class="text-decoration-none text-reset">{{ $package->title }}</a>
+                                </h4>
                                 <p>{{ $package->contents_count }} contenus · {{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</p>
                             </div>
-                            <div class="student-recommendations__actions">
-                                <a href="{{ route('packs.show', $package) }}" class="admin-btn ghost sm">
-                                    Voir le pack
-                                </a>
+                            <div class="student-recommendations__actions student-recommendations__actions--pack">
+                                @if($package->is_published && $package->is_sale_enabled)
+                                    <button type="button"
+                                            class="btn btn-outline-primary btn-sm add-package-to-cart-btn"
+                                            data-package-id="{{ $package->id }}"
+                                            data-meta-trigger="add_to_cart">
+                                        <i class="fas fa-shopping-cart me-2"></i>Ajouter au panier
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-success btn-sm"
+                                            data-meta-trigger="checkout"
+                                            onclick="proceedToCheckoutPackage({{ $package->id }})">
+                                        <i class="fas fa-credit-card me-2"></i>Procéder au paiement
+                                    </button>
+                                @else
+                                    <a href="{{ route('packs.show', $package) }}" class="admin-btn ghost sm">
+                                        Voir le pack
+                                    </a>
+                                @endif
                             </div>
                         </div>
                     @endforeach
@@ -819,6 +839,21 @@
         grid-column: 1 / span 2;
         display: flex;
         justify-content: flex-end;
+    }
+
+    .student-recommendations__actions--pack {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    @media (min-width: 576px) {
+        .student-recommendations__actions--pack {
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+        }
     }
 
     .student-course-item:hover,

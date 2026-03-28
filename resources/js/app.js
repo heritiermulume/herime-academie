@@ -16,8 +16,16 @@ window.Plyr = Plyr;
 window.adjustVideoPreloadForConnection = adjustVideoPreloadForConnection;
 window.herimeAttachHlsToVideo = attachHlsToVideo;
 
+function herimeClosestElement(target, selector) {
+    if (!target) {
+        return null;
+    }
+    const el = target.nodeType === Node.ELEMENT_NODE ? target : target.parentElement;
+    return el?.closest?.(selector) ?? null;
+}
+
 document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.add-package-to-cart-btn');
+    const btn = herimeClosestElement(e.target, '.add-package-to-cart-btn');
     if (!btn || btn.disabled) {
         return;
     }
