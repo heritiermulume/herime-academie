@@ -18,7 +18,7 @@ class FileController extends Controller
      * Route: /files/{type}/{path}
      * 
      * @param Request $request
-     * @param string $type Le type de fichier (thumbnails, previews, lessons, downloads, avatars, banners)
+     * @param string $type Le type de fichier (thumbnails, previews, lessons, downloads, avatars, banners, package-thumbnails, package-covers, etc.)
      * @param string $path Le chemin relatif du fichier
      * @return StreamedResponse|\Illuminate\Http\RedirectResponse
      */
@@ -121,6 +121,12 @@ class FileController extends Controller
             case 'temporary':
                 $basePath = FileUploadService::TEMPORARY_BASE_PATH;
                 break;
+            case 'package-thumbnails':
+                $basePath = 'packages/thumbnails';
+                break;
+            case 'package-covers':
+                $basePath = 'packages/covers';
+                break;
             default:
                 abort(400, 'Type de fichier non valide');
         }
@@ -148,6 +154,11 @@ class FileController extends Controller
         
         // Les thumbnails de cours sont publics (pour l'affichage des listes)
         if ($type === 'thumbnails') {
+            return true;
+        }
+
+        // Visuels des packs (catalogue public)
+        if (in_array($type, ['package-thumbnails', 'package-covers'], true)) {
             return true;
         }
         

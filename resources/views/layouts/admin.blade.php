@@ -21,6 +21,13 @@
             'active' => ['admin.contents', 'admin.contents.*']
         ],
         [
+            'label' => 'Packs',
+            'icon' => 'fas fa-box-open',
+            'route' => 'admin.packages.index',
+            'active' => ['admin.packages.*'],
+            'available' => Route::has('admin.packages.index')
+        ],
+        [
             'label' => 'Catégories',
             'icon' => 'fas fa-tags',
             'route' => 'admin.categories',
@@ -57,13 +64,6 @@
             'route' => 'admin.banners.index',
             'active' => ['admin.banners.*'],
             'available' => Route::has('admin.banners.index')
-        ],
-        [
-            'label' => 'Packs',
-            'icon' => 'fas fa-box-open',
-            'route' => 'admin.packages.index',
-            'active' => ['admin.packages.*'],
-            'available' => Route::has('admin.packages.index')
         ],
         [
             'label' => 'Témoignages',

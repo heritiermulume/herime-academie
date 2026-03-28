@@ -427,6 +427,10 @@ class FileUploadService
                 $type = 'email-images';
             } elseif (strpos($cleanPath, 'media/') === 0) {
                 $type = 'media';
+            } elseif (strpos($cleanPath, 'packages/thumbnails') === 0) {
+                $type = 'package-thumbnails';
+            } elseif (strpos($cleanPath, 'packages/covers') === 0) {
+                $type = 'package-covers';
             } else {
                 $type = 'files'; // Type par défaut
             }
@@ -468,6 +472,10 @@ class FileUploadService
             return 'email-images';
         } elseif (strpos($folder, 'media/') !== false) {
             return 'media';
+        } elseif (strpos($folder, 'packages/thumbnails') !== false) {
+            return 'package-thumbnails';
+        } elseif (strpos($folder, 'packages/covers') !== false) {
+            return 'package-covers';
         } elseif (strpos($folder, self::TEMPORARY_BASE_PATH) !== false) {
             return 'temporary';
         }
@@ -487,6 +495,8 @@ class FileUploadService
             'email-images' => 'email-images',
             'media' => 'media',
             'temporary' => self::TEMPORARY_BASE_PATH,
+            'package-thumbnails' => 'packages/thumbnails',
+            'package-covers' => 'packages/covers',
             default => null,
         };
     }
