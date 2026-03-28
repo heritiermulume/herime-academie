@@ -81,7 +81,7 @@
                             </div>
                         </div>
                     </div>
-                    @else
+                    @elseif(isset($item['course']) && is_object($item['course']))
                     <div class="recommended-item cart-item-wrapper" id="cart-item-{{ $item['course']->id }}">
                         <!-- Course Image -->
                         <div class="recommended-thumb">
@@ -119,8 +119,8 @@
                             <!-- Formateur et niveau -->
                             <div class="recommended-meta-with-price d-flex justify-content-between align-items-center mb-0">
                                 <div class="recommended-meta">
-                                    <span><i class="fas fa-user me-1"></i>{{ $item['course']->provider->name }}</span>
-                                    <span><i class="fas fa-signal me-1"></i>{{ ucfirst($item['course']->level) }}</span>
+                                    <span><i class="fas fa-user me-1"></i>{{ $item['course']->provider?->name ?? '—' }}</span>
+                                    <span><i class="fas fa-signal me-1"></i>{{ ucfirst((string) ($item['course']->level ?? '')) }}</span>
                                 </div>
                             </div>
                             
@@ -1914,8 +1914,9 @@ function removeCartLine(kind, courseId, packageId) {
         })
         .then(data => {
             if (data.success) {
-                // Supprimer l'élément spécifique du DOM
-                const itemElement = document.getElementById(`cart-item-${courseId}`);
+                const itemElement = kind === 'package'
+                    ? document.getElementById(`cart-package-${packageId}`)
+                    : document.getElementById(`cart-item-${courseId}`);
                 if (itemElement) {
                     itemElement.remove();
                 }

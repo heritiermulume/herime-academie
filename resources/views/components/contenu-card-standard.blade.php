@@ -27,7 +27,7 @@
             
             <div class="instructor-info">
                 <small class="instructor-name">
-                    <i class="fas fa-user me-1"></i>{{ Str::limit($course->provider->name, 20) }}
+                    <i class="fas fa-user me-1"></i>{{ Str::limit($course->provider?->name ?? 'Herime Académie', 20) }}
                 </small>
                 <div class="rating">
                     <i class="fas fa-star"></i>
@@ -94,7 +94,7 @@
                                 </div>
                                 @if($course->is_sale_active && $course->sale_end_at)
                                 <div class="course-price-row">
-                                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at?->toIso8601String() }}">
                                         <i class="fas fa-fire me-1 text-danger"></i>
                                         <span class="countdown-text">
                                             <span class="countdown-years">0</span><span>a</span> 

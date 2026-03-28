@@ -32,6 +32,7 @@ document.addEventListener('click', function (e) {
         return;
     }
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    btn.disabled = true;
     fetch(url, {
         method: 'POST',
         headers: {
@@ -45,15 +46,20 @@ document.addEventListener('click', function (e) {
         .then((r) => r.json())
         .then((data) => {
             if (data.success) {
-                if (typeof window.showNotification === 'function') {
-                    window.showNotification(data.message || 'Pack ajouté au panier', 'success');
-                }
                 if (typeof window.updateCartCount === 'function') {
                     window.updateCartCount();
                 }
-            } else if (typeof window.showNotification === 'function') {
-                window.showNotification(data.message || "Impossible d'ajouter le pack", 'error');
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(data.message || 'Pack ajouté au panier', 'success');
+                }
+            } else {
+                btn.disabled = false;
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(data.message || "Impossible d'ajouter le pack", 'error');
+                }
             }
         })
-        .catch(() => {});
+        .catch(() => {
+            btn.disabled = false;
+        });
 });

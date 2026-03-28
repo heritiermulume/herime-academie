@@ -10,6 +10,14 @@ use Illuminate\Support\Collection;
 class ContentPackageRecommendationService
 {
     /**
+     * Qualifie une colonne sur la table des contenus (évite « id » ambigu avec content_package_content.id en whereHas).
+     */
+    private static function contentColumn(string $name): string
+    {
+        return (new Course)->getTable().'.'.$name;
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $lines
      * @return array<int>
      */
@@ -122,7 +130,7 @@ class ContentPackageRecommendationService
         if ($cartContentIds !== []) {
             $overlap = $this->filterPurchased(
                 $this->baseQuery($excludeIds)
-                    ->whereHas('contents', fn ($q) => $q->whereIn('id', $cartContentIds))
+                    ->whereHas('contents', fn ($q) => $q->whereIn(self::contentColumn('id'), $cartContentIds))
                     ->whereNotIn('id', $pickedIds->all())
                     ->limit(2)
                     ->get()
@@ -133,7 +141,7 @@ class ContentPackageRecommendationService
         if ($packages->count() < 3 && $cartCategories !== []) {
             $cat = $this->filterPurchased(
                 $this->baseQuery($excludeIds)
-                    ->whereHas('contents', fn ($q) => $q->whereIn('category_id', $cartCategories))
+                    ->whereHas('contents', fn ($q) => $q->whereIn(self::contentColumn('category_id'), $cartCategories))
                     ->whereNotIn('id', $pickedIds->all())
                     ->limit(3)
                     ->get()
@@ -192,7 +200,7 @@ class ContentPackageRecommendationService
 
         $overlap = $this->filterPurchased(
             $this->baseQuery($excludeIds)
-                ->whereHas('contents', fn ($q) => $q->where('id', $course->id))
+                ->whereHas('contents', fn ($q) => $q->where(self::contentColumn('id'), $course->id))
                 ->limit(2)
                 ->get()
         );
@@ -202,7 +210,7 @@ class ContentPackageRecommendationService
             $cat = $this->filterPurchased(
                 $this->baseQuery($excludeIds)
                     ->whereNotIn('id', $pickedIds->all())
-                    ->whereHas('contents', fn ($q) => $q->where('category_id', $course->category_id))
+                    ->whereHas('contents', fn ($q) => $q->where(self::contentColumn('category_id'), $course->category_id))
                     ->limit(2)
                     ->get()
             );
@@ -241,7 +249,7 @@ class ContentPackageRecommendationService
             ->when($excludeCart !== [], fn ($q2) => $q2->whereNotIn('id', $excludeCart))
             ->whereHas('contents', function ($q2) use ($enrolledContentIds) {
                 if ($enrolledContentIds !== []) {
-                    $q2->whereNotIn('id', $enrolledContentIds);
+                    $q2->whereNotIn(self::contentColumn('id'), $enrolledContentIds);
                 }
             });
 

@@ -133,9 +133,10 @@
 
                         @if($package->is_published && $package->is_sale_enabled)
                             <button type="button"
-                                    class="btn btn-primary btn-lg w-100 add-package-to-cart-btn"
-                                    data-package-id="{{ $package->id }}">
-                                <i class="fas fa-cart-plus me-2"></i>{{ $package->cta_label ?: 'Ajouter le pack au panier' }}
+                                    class="btn btn-success btn-lg w-100"
+                                    data-meta-trigger="checkout"
+                                    onclick="proceedToCheckoutPackage({{ $package->id }})">
+                                <i class="fas fa-credit-card me-2"></i>{{ $package->cta_label ?: 'Procéder au paiement' }}
                             </button>
                         @else
                             <button type="button" class="btn btn-secondary btn-lg w-100" disabled>Indisponible</button>

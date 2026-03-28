@@ -4606,6 +4606,61 @@
             });
         }
 
+        // Même flux que proceedToCheckout(content) : ajout au panier puis redirection vers le panier (packs).
+        window.proceedToCheckoutPackage = function proceedToCheckoutPackage(packageId = null) {
+            const redirectToCart = () => {
+                window.location.href = '{{ route("cart.index") }}';
+            };
+
+            if (!packageId) {
+                redirectToCart();
+                return;
+            }
+
+            fetch('{{ route("cart.add") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ package_id: parseInt(packageId, 10) })
+            })
+            .then(async response => {
+                const contentType = response.headers.get('content-type');
+
+                if (!contentType || !contentType.includes('application/json')) {
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
+                    }
+                    throw new Error('Une erreur est survenue. Veuillez réessayer.');
+                }
+
+                if (!response.ok) {
+                    try {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || `Erreur ${response.status}`);
+                    } catch (e) {
+                        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+                    }
+                }
+
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    updateCartCount();
+                    setTimeout(redirectToCart, 150);
+                } else {
+                    redirectToCart();
+                }
+            })
+            .catch(() => {
+                redirectToCart();
+            });
+        };
+
         // Fonction pour gérer la transition sur la page du panier
         function handleCartPageTransition() {
             const emptyCartContainer = document.getElementById('empty-cart-container');

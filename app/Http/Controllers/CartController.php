@@ -642,10 +642,12 @@ class CartController extends Controller
                 ->with('course')
                 ->get()
                 ->pluck('course.category_id')
+                ->filter(fn ($id) => $id !== null && $id !== '')
                 ->unique()
-                ->toArray();
+                ->values()
+                ->all();
 
-            if (! empty($userEnrollments)) {
+            if ($userEnrollments !== []) {
                 $userPreferenceRecommendations = Course::published()
                     ->where('is_free', false)
                     ->whereIn('category_id', $userEnrollments)
@@ -821,6 +823,7 @@ class CartController extends Controller
         }
 
         $pkgRows = auth()->user()->cartPackages()->with([
+            'contentPackage' => fn ($q) => $q->withCount('contents'),
             'contentPackage.contents' => fn ($q) => $q->orderByPivot('sort_order'),
         ])->get();
 
@@ -867,6 +870,7 @@ class CartController extends Controller
 
         foreach ($norm['packages'] as $packageId) {
             $package = ContentPackage::query()
+                ->withCount('contents')
                 ->with(['contents' => fn ($q) => $q->orderByPivot('sort_order')])
                 ->find($packageId);
             if ($package && $package->is_published && $package->is_sale_enabled && $package->contents->isNotEmpty()) {

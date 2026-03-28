@@ -46,9 +46,10 @@
                         </a>
                         @if($package->is_published && $package->is_sale_enabled)
                             <button type="button"
-                                    class="btn btn-outline-primary btn-sm w-100 add-package-to-cart-btn"
-                                    data-package-id="{{ $package->id }}">
-                                <i class="fas fa-cart-plus me-1"></i>Ajouter au panier
+                                    class="btn btn-success btn-sm w-100"
+                                    data-meta-trigger="checkout"
+                                    onclick="event.stopPropagation(); proceedToCheckoutPackage({{ $package->id }});">
+                                <i class="fas fa-credit-card me-1"></i>{{ $package->cta_label ?: 'Procéder au paiement' }}
                             </button>
                         @endif
                     </div>
