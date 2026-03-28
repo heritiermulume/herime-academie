@@ -1,5 +1,13 @@
-@if($recommendedCourses->count() > 0)
+@php
+    $recommendedPackages = $recommendedPackages ?? collect();
+@endphp
+@if($recommendedCourses->count() > 0 || $recommendedPackages->count() > 0)
 <div class="row g-3">
+    @foreach($recommendedPackages as $package)
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <x-contenu-package-card-standard :package="$package" />
+    </div>
+    @endforeach
     @foreach($recommendedCourses as $course)
     <div class="col-12 col-sm-6 col-md-6 col-lg-3">
         <x-contenu-card-standard :course="$course" />

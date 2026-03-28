@@ -59,6 +59,13 @@
             'available' => Route::has('admin.banners.index')
         ],
         [
+            'label' => 'Packs',
+            'icon' => 'fas fa-box-open',
+            'route' => 'admin.packages.index',
+            'active' => ['admin.packages.*'],
+            'available' => Route::has('admin.packages.index')
+        ],
+        [
             'label' => 'Témoignages',
             'icon' => 'fas fa-quote-left',
             'route' => 'admin.testimonials',

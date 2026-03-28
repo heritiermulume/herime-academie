@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Enrollment;
 use App\Models\CartItem;
+use App\Models\CartPackage;
 use App\Models\AmbassadorPromoCode;
 use App\Models\Ambassador;
 use App\Models\AmbassadorCommission;
@@ -217,23 +218,44 @@ class MonerooController extends Controller
 
         $user = auth()->user();
 
-        // Récupérer les articles du panier
+        // Récupérer les articles du panier (contenus + packs)
         $cartItems = $user->cartItems()->with('course')->get();
-        // Filtrer les items invalides (cours supprimés ou non publiés)
         $cartItems = $cartItems->filter(function ($item) {
-            return $item->course !== null && $item->course->is_published;
+            return $item->course !== null && $item->course->is_published && $item->course->is_sale_enabled;
         })->values();
-        
-        if ($cartItems->isEmpty()) {
+
+        $cartPackages = $user->cartPackages()->with([
+            'contentPackage.contents' => fn ($q) => $q->orderByPivot('sort_order'),
+        ])->get();
+        $cartPackages = $cartPackages->filter(function ($row) {
+            $pkg = $row->contentPackage;
+            if (! $pkg || ! $pkg->is_published || ! $pkg->is_sale_enabled || $pkg->contents->isEmpty()) {
+                return false;
+            }
+            foreach ($pkg->contents as $c) {
+                if (! $c->is_published || ! $c->is_sale_enabled || $c->is_free) {
+                    return false;
+                }
+            }
+
+            return true;
+        })->values();
+
+        if ($cartItems->isEmpty() && $cartPackages->isEmpty()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Votre panier est vide ou contient uniquement des cours non disponibles.'
+                'message' => 'Votre panier est vide ou contient uniquement des articles non disponibles.',
             ], 400);
         }
 
         // PROTECTION CONTRE LES DOUBLES PAIEMENTS
-        // Vérifier si l'utilisateur a déjà une commande payée récente (dernières 24h) avec les mêmes cours
-        $contentIds = $cartItems->pluck('content_id')->sort()->values()->toArray();
+        // Empreinte = tous les content_id (y compris via packs), triés
+        $contentIds = $cartItems->pluck('content_id')
+            ->merge($cartPackages->flatMap(fn ($r) => $r->contentPackage->contents->pluck('id')))
+            ->unique()
+            ->sort()
+            ->values()
+            ->toArray();
         $recentPaidOrder = Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subHours(24))
@@ -369,8 +391,11 @@ class MonerooController extends Controller
         $baseCurrency = \App\Models\Setting::getBaseCurrency();
         
         // Calculer le total réel depuis le panier (dans la devise de base du site)
-        $subtotal = $cartItems->sum(function($item) {
+        $subtotal = $cartItems->sum(function ($item) {
             return optional($item->course)->current_price ?? optional($item->course)->price ?? 0;
+        });
+        $subtotal += $cartPackages->sum(function ($row) {
+            return (float) ($row->contentPackage->effective_price ?? 0);
         });
         
         // Valider et appliquer le code promo d'ambassadeur si fourni (requête ou session)
@@ -448,17 +473,41 @@ class MonerooController extends Controller
             ],
         ]);
 
-        // Créer les OrderItems
+        // Créer les OrderItems (lignes contenu seul)
         foreach ($cartItems as $cartItem) {
-            if (!$cartItem->course) { continue; }
+            if (! $cartItem->course) {
+                continue;
+            }
             $coursePrice = $cartItem->course->current_price ?? $cartItem->course->price ?? 0;
             OrderItem::create([
                 'order_id' => $order->id,
                 'content_id' => $cartItem->content_id,
+                'content_package_id' => null,
                 'price' => $cartItem->course->price ?? 0,
                 'sale_price' => $cartItem->course->is_sale_active ? $cartItem->course->active_sale_price : null,
                 'total' => $coursePrice,
             ]);
+        }
+
+        // Packs : une ligne par contenu ; le prix du pack sur la première ligne uniquement
+        foreach ($cartPackages as $row) {
+            $pkg = $row->contentPackage;
+            if (! $pkg) {
+                continue;
+            }
+            $effective = (float) ($pkg->effective_price ?? 0);
+            $first = true;
+            foreach ($pkg->contents as $course) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'content_id' => $course->id,
+                    'content_package_id' => $pkg->id,
+                    'price' => $first ? (float) $pkg->price : 0,
+                    'sale_price' => $first && $pkg->is_sale_active ? $pkg->sale_price : null,
+                    'total' => $first ? $effective : 0,
+                ]);
+                $first = false;
+            }
         }
 
 		$paymentId = 'pay_' . strtoupper(Str::random(16)) . '_' . time();
@@ -1396,7 +1445,9 @@ class MonerooController extends Controller
             ]);
 
 			// Vider le panier de l'utilisateur (DB + session par sécurité)
-			$cartItemsBeforeDelete = CartItem::where('user_id', $order->user_id)->count();
+			$cartItemsBeforeDelete = CartItem::where('user_id', $order->user_id)->count()
+				+ CartPackage::where('user_id', $order->user_id)->count();
+			CartPackage::where('user_id', $order->user_id)->delete();
 			$cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
 			Session::forget('cart');
 			
@@ -1654,6 +1705,7 @@ class MonerooController extends Controller
                             try {
                                 // Supprimer éventuels reliquats (même si déjà vidé par webhook)
                                 auth()->user()->cartItems()->delete();
+                                auth()->user()->cartPackages()->delete();
                             } catch (\Throwable $e) {}
                             \Session::forget('cart');
                         }

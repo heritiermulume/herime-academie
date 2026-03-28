@@ -1,10 +1,23 @@
-@if(isset($relatedCourses) && $relatedCourses->count() > 0)
+@php
+    $relatedCourses = $relatedCourses ?? collect();
+    $relatedPackages = $relatedPackages ?? collect();
+@endphp
+@if($relatedCourses->count() > 0 || $relatedPackages->count() > 0)
     <div class="content-card">
         <h2 class="section-title-modern">
             <i class="fas fa-thumbs-up"></i>
-            Recommandés
+            @if($relatedPackages->count() > 0)
+                Contenus et packs recommandés
+            @else
+                Recommandés
+            @endif
         </h2>
         <div class="row g-3">
+            @foreach($relatedPackages as $package)
+                <div class="col-12 col-sm-6 col-md-6 col-lg-4">
+                    <x-contenu-package-card-standard :package="$package" />
+                </div>
+            @endforeach
             @foreach($relatedCourses as $relatedCourse)
                 @php
                     $relatedCourseStats = $relatedCourse->getCourseStats();
@@ -135,3 +148,4 @@
         </div>
     </div>
 @endif
+

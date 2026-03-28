@@ -22,7 +22,7 @@ class VideoOptimizationService
      */
     public function optimizeForStreaming(string $fullPath): bool
     {
-        if (!config('video.optimize_faststart', true)) {
+        if (! config('video.optimize_faststart', false)) {
             return false;
         }
 

@@ -7,6 +7,7 @@ use App\Notifications\CoursePublishedNotification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -304,6 +305,13 @@ class Course extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class, 'content_id');
+    }
+
+    public function contentPackages(): BelongsToMany
+    {
+        return $this->belongsToMany(ContentPackage::class, 'content_package_content', 'content_id', 'content_package_id')
+            ->withPivot('sort_order')
+            ->withTimestamps();
     }
 
     public function certificates(): HasMany

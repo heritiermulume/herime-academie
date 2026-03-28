@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Announcement;
+use App\Models\CourseLesson;
+use App\Observers\CourseLessonObserver;
 use App\Events\CourseCompleted;
 use App\Listeners\GenerateCertificateOnCourseCompletion;
 use Illuminate\Support\ServiceProvider;
@@ -71,5 +73,7 @@ class AppServiceProvider extends ServiceProvider
             CourseCompleted::class,
             GenerateCertificateOnCourseCompletion::class
         );
+
+        CourseLesson::observe(CourseLessonObserver::class);
     }
 }

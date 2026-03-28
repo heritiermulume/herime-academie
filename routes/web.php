@@ -9,6 +9,8 @@ use App\Http\Controllers\ProviderApplicationController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\Admin\ContentPackageController as AdminContentPackageController;
+use App\Http\Controllers\ContentPackageController;
 use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\BlogController;
@@ -90,6 +92,8 @@ Route::get('/test-categories-view', function() {
     return view('admin.categories.index', compact('categories'));
 });
 Route::get('/contents', [CourseController::class, 'index'])->name('contents.index');
+Route::get('/packs', [ContentPackageController::class, 'index'])->name('packs.index');
+Route::get('/packs/{package}', [ContentPackageController::class, 'show'])->name('packs.show');
 Route::get('/contents/{course:slug}', [CourseController::class, 'show'])->name('contents.show');
 Route::get('/contents/{course:slug}/reviews', [CourseController::class, 'reviews'])->name('contents.reviews');
 Route::get('/contents/{course:slug}/preview-data', [CourseController::class, 'previewData'])->name('contents.preview-data');
@@ -240,6 +244,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('customer')->name('customer.')->middleware('role:customer')->group(function () {
         Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('dashboard');
         Route::get('/contents', [CustomerController::class, 'courses'])->name('contents');
+        Route::get('/packs/{package:slug}', [CustomerController::class, 'showPurchasedPack'])->name('pack');
         Route::get('/certificates', [CustomerController::class, 'certificates'])->name('certificates');
     });
     
@@ -657,6 +662,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/banners/{banner}/toggle-active', [BannerController::class, 'toggleActive'])
             ->middleware('sso.validate')
             ->name('banners.toggle-active');
+
+        Route::resource('packages', AdminContentPackageController::class)->middleware('sso.validate');
         
         // Orders management (export avant {order} pour que /orders/export ne soit pas capté par {order})
         Route::get('/orders', [App\Http\Controllers\OrderController::class, 'adminIndex'])->name('orders.index');

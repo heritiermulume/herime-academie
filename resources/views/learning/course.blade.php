@@ -3706,11 +3706,32 @@
                                 </div>
                             </div>
 
-                @if(!empty($recommendedCourses) && $recommendedCourses->count())
+                @php
+                    $recommendedPackages = $recommendedPackages ?? collect();
+                @endphp
+                @if((!empty($recommendedCourses) && $recommendedCourses->count()) || $recommendedPackages->count())
                     <div class="learning-card">
                         <div class="card-body">
-                            <h6 class="text-white fw-bold mb-3">Cours à explorer ensuite</h6>
+                            <h6 class="text-white fw-bold mb-3">Contenus et packs à explorer ensuite</h6>
                             <div class="recommended-courses">
+                                @foreach($recommendedPackages as $pkg)
+                                    <a href="{{ route('packs.show', $pkg) }}" class="recommended-item">
+                                        <div class="recommended-thumb">
+                                            <img src="{{ $pkg->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" alt="{{ $pkg->title }}">
+                                        </div>
+                                        <div class="recommended-content flex-grow-1">
+                                            <h6><span class="badge bg-primary me-1">Pack</span>{{ $pkg->title }}</h6>
+                                            <div class="recommended-meta">
+                                                <span><i class="fas fa-box-open me-1"></i>{{ $pkg->contents_count }} contenus</span>
+                                            </div>
+                                            <div class="recommended-actions">
+                                                <span class="badge bg-primary bg-opacity-10 text-success border-0">
+                                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($pkg->effective_price) }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                @endforeach
                                 @foreach($recommendedCourses as $recommended)
                                     <a href="{{ route('contents.show', $recommended->slug) }}" class="recommended-item">
                                         <div class="recommended-thumb">

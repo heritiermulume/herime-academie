@@ -3655,6 +3655,7 @@ button.mobile-price-slider__btn--download i,
                                      data-preview-youtube-id="{{ $lesson->youtube_video_id ?? '' }}"
                                      data-preview-is-unlisted="{{ $lesson->is_unlisted ? '1' : '0' }}"
                                      data-preview-video-url="{{ ($lesson->file_path ? $lesson->file_url : ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL) ? $lesson->content_file_url : ($lesson->content_url ?? ''))) }}"
+                                     data-preview-hls-url="{{ $lesson->hasHlsStreamReady() ? $lesson->hls_manifest_url : '' }}"
                                      data-preview-section="{{ htmlspecialchars($section->title, ENT_QUOTES, 'UTF-8') }}"
                                      style="cursor: pointer;"
                                      onclick="event.stopPropagation(); openPreviewLesson({{ $lesson->id }}, this); return false;"
@@ -3921,7 +3922,7 @@ button.mobile-price-slider__btn--download i,
 
                 <!-- Related Courses -->
                 <div class="d-none d-lg-block">
-                    @include('contents.partials.related-courses', ['relatedCourses' => $relatedCourses])
+                    @include('contents.partials.related-courses', ['relatedCourses' => $relatedCourses, 'relatedPackages' => $relatedPackages])
                 </div>
             </div>
 
@@ -4074,6 +4075,7 @@ button.mobile-price-slider__btn--download i,
                                                 <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
                                             </a>
                                         @endif
+                                        @include('contents.partials.repurchase-offer-cta', ['course' => $course, 'layout' => 'desktop'])
                                     @elseif($hasPurchased)
                                         {{-- Utilisateur a acheté --}}
                                         @if($course->is_downloadable)
@@ -4103,6 +4105,7 @@ button.mobile-price-slider__btn--download i,
                                                 </button>
                                             @endif
                                         @endif
+                                        @include('contents.partials.repurchase-offer-cta', ['course' => $course, 'layout' => 'desktop'])
                                     @else
                                         {{-- Utilisateur n'a pas encore acheté --}}
                                         @if($course->is_sale_enabled ?? true)
@@ -4187,7 +4190,7 @@ button.mobile-price-slider__btn--download i,
 
         {{-- Mobile: show related courses AFTER the sidebar (price) --}}
         <div class="d-block d-lg-none mt-4">
-            @include('contents.partials.related-courses', ['relatedCourses' => $relatedCourses])
+            @include('contents.partials.related-courses', ['relatedCourses' => $relatedCourses, 'relatedPackages' => $relatedPackages])
         </div>
     </div>
 </div>
@@ -4451,6 +4454,7 @@ button.mobile-price-slider__btn--download i,
                                 </a>
                             @endif
                         @endif
+                        @include('contents.partials.repurchase-offer-cta', ['course' => $course, 'layout' => 'mobile'])
                     @elseif($hasPurchased)
                         {{-- Utilisateur a acheté --}}
                         @if($course->is_downloadable)
@@ -4530,6 +4534,7 @@ button.mobile-price-slider__btn--download i,
                                 </button>
                             @endif
                         @endif
+                        @include('contents.partials.repurchase-offer-cta', ['course' => $course, 'layout' => 'mobile'])
                     @else
                         {{-- Utilisateur n'a pas encore acheté --}}
                         @if($course->is_sale_enabled ?? true)
@@ -4604,8 +4609,8 @@ button.mobile-price-slider__btn--download i,
                                 @elseif($course->video_preview_url)
                                     <div class="preview-player-wrapper active" data-preview-id="0">
                                         <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-plyr-player-0">
-                                            {{-- Préchargement léger par défaut pour limiter l’impact sur mobile --}}
-                                            <video id="plyr-player-0" class="plyr-player-video" playsinline preload="auto">
+                                            {{-- Préchargement config (défaut metadata) pour limiter data + laisser le streaming par plages --}}
+                                            <video id="plyr-player-0" class="plyr-player-video" playsinline preload="{{ in_array($p = config('video.player_preload', 'metadata'), ['none', 'metadata', 'auto'], true) ? $p : 'metadata' }}">
                                                 <source src="{{ $course->video_preview_url }}" type="video/mp4">
                                             </video>
                                         </div>
@@ -4650,7 +4655,15 @@ button.mobile-price-slider__btn--download i,
 @endsection
 
 @push('scripts')
+@php
+    $__herimeVideoPreload = config('video.player_preload', 'metadata');
+    if (! in_array($__herimeVideoPreload, ['none', 'metadata', 'auto'], true)) {
+        $__herimeVideoPreload = 'metadata';
+    }
+@endphp
 <script>
+const HERIME_VIDEO_PRELOAD = @json($__herimeVideoPreload);
+
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(function() {
         // Créer une notification toast moderne
@@ -4710,6 +4723,19 @@ function attachInternalVideoRobustness(player) {
     });
 }
 
+async function herimePreparePreviewVideo(videoEl) {
+    if (!videoEl || videoEl.tagName !== 'VIDEO') return;
+    const hls = videoEl.getAttribute('data-hls-url');
+    const fb = videoEl.getAttribute('data-fallback-src');
+    if (typeof window.herimeAttachHlsToVideo === 'function') {
+        await window.herimeAttachHlsToVideo(videoEl, hls || '', fb || '', 'video/mp4');
+    }
+    if ((!hls || hls === '') && typeof window.adjustVideoPreloadForConnection === 'function') {
+        window.adjustVideoPreloadForConnection(videoEl, HERIME_VIDEO_PRELOAD);
+        try { videoEl.load(); } catch (e) {}
+    }
+}
+
 // Prefetch vidéo au survol (technique type YouTube pour démarrage fluide)
 document.addEventListener('DOMContentLoaded', function() {
     const wrapper = document.querySelector('.video-preview-wrapper[data-prefetch-video-url]');
@@ -4722,7 +4748,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (prefetched) return;
         prefetchTimer = setTimeout(function() {
             const el = document.createElement('video');
-            el.preload = 'auto';
+            el.preload = 'metadata';
             el.style.cssText = 'position:absolute;width:0;height:0;opacity:0;pointer-events:none';
             const src = document.createElement('source');
             src.src = videoUrl;
@@ -4749,7 +4775,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!activeWrapper) return;
         const video = activeWrapper.querySelector('video');
         if (video && video.readyState < 3) {
-            video.preload = 'auto';
+            if (typeof window.adjustVideoPreloadForConnection === 'function') {
+                window.adjustVideoPreloadForConnection(video, HERIME_VIDEO_PRELOAD);
+            } else {
+                video.preload = 'metadata';
+            }
             video.load();
         }
     });
@@ -4902,9 +4932,6 @@ function loadPreviewList() {
                         wrapper.setAttribute('data-preview-id', preview.id);
                         wrapper.style.display = 'none';
                         
-                        // Créer un player Plyr pour cette leçon
-                        const isMobileDevice = window.innerWidth < 992;
-
                         if (preview.youtube_id) {
                             // Pour YouTube, créer un conteneur Plyr
                             const playerId = 'plyr-player-' + preview.id;
@@ -4918,22 +4945,30 @@ function loadPreviewList() {
                             
                             // Initialiser Plyr quand le wrapper sera affiché
                         } else if (preview.video_url) {
-                            // Pour les vidéos directes, créer un player Plyr
+                            // Pour les vidéos directes, créer un player Plyr (HLS si disponible)
                             const playerId = 'plyr-player-' + preview.id;
+                            const hlsAttrs = preview.hls_url
+                                ? ` data-hls-url="${preview.hls_url}" data-fallback-src="${preview.video_url}"`
+                                : '';
+                            const videoInner = preview.hls_url
+                                ? ''
+                                : `<source src="${preview.video_url}" type="video/mp4">`;
                             wrapper.innerHTML = `
                                 <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
-                                    <video id="${playerId}" class="plyr-player-video" playsinline preload="${isMobileDevice ? 'metadata' : 'auto'}">
-                                        <source src="${preview.video_url}" type="video/mp4">
+                                    <video id="${playerId}" class="plyr-player-video" playsinline preload="${HERIME_VIDEO_PRELOAD}"${hlsAttrs}>
+                                        ${videoInner}
                                     </video>
                                 </div>
                             `;
                             previewVideoContainer.appendChild(wrapper);
                             
-                            // Initialiser Plyr pour cette vidéo
-                            setTimeout(function() {
+                            setTimeout(async function() {
                                 const videoElement = document.getElementById(playerId);
                                 if (videoElement && window.Plyr) {
                                     try {
+                                        if (typeof herimePreparePreviewVideo === 'function') {
+                                            await herimePreparePreviewVideo(videoElement);
+                                        }
                                         const player = new Plyr(videoElement, {
                                             controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
                                             settings: ['quality', 'speed'],
@@ -4964,6 +4999,7 @@ function loadPreviewList() {
                 item.setAttribute('data-preview-youtube-id', preview.youtube_id || '');
                 item.setAttribute('data-preview-is-unlisted', preview.is_unlisted ? '1' : '0');
                 item.setAttribute('data-preview-video-url', preview.video_url || '');
+                item.setAttribute('data-preview-hls-url', preview.hls_url || '');
                 item.setAttribute('data-preview-section', preview.section || '');
                 item.style.cssText = preview.is_main 
                     ? 'border-color: #003366 !important; background: rgba(0, 51, 102, 0.05); cursor: pointer; transition: all 0.2s ease;'
@@ -5220,6 +5256,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
             if (previewVideoContainer && lessonElement) {
                 const youtubeId = lessonElement.getAttribute('data-preview-youtube-id') || '';
                 const videoUrl = lessonElement.getAttribute('data-preview-video-url') || '';
+                const hlsUrl = lessonElement.getAttribute('data-preview-hls-url') || '';
                 const isUnlisted = lessonElement.getAttribute('data-preview-is-unlisted') === '1';
                 
                 // Supprimer l'ancien wrapper
@@ -5245,21 +5282,27 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                         targetWrapper = wrapper;
                     } else if (videoUrl) {
                         const playerId = 'plyr-player-' + lessonId;
+                        const hlsAttrs = hlsUrl
+                            ? ` data-hls-url="${hlsUrl}" data-fallback-src="${videoUrl}"`
+                            : '';
+                        const videoInner = hlsUrl ? '' : `<source src="${videoUrl}" type="video/mp4">`;
                         wrapper.innerHTML = `
                             <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
-                                <video id="${playerId}" class="plyr-player-video" playsinline preload="auto">
-                                    <source src="${videoUrl}" type="video/mp4">
+                                <video id="${playerId}" class="plyr-player-video" playsinline preload="${HERIME_VIDEO_PRELOAD}"${hlsAttrs}>
+                                    ${videoInner}
                                 </video>
                             </div>
                         `;
                         previewVideoContainer.appendChild(wrapper);
                         targetWrapper = wrapper;
                         
-                        // Initialiser Plyr pour cette vidéo
-                        setTimeout(function() {
+                        setTimeout(async function() {
                             const videoElement = document.getElementById(playerId);
                             if (videoElement && window.Plyr) {
                                 try {
+                                    if (typeof herimePreparePreviewVideo === 'function') {
+                                        await herimePreparePreviewVideo(videoElement);
+                                    }
                                     const player = new Plyr(videoElement, {
                                         controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
                                         settings: ['quality', 'speed'],
@@ -5273,7 +5316,6 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                     window['plyr_' + playerId] = player;
                                     if (typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);
                                     
-                                    // Désactiver le menu contextuel
                                     const wrapperEl = document.getElementById('wrapper-' + playerId);
                                     if (wrapperEl) {
                                         wrapperEl.addEventListener('contextmenu', function(e) {
@@ -5303,6 +5345,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
         if (previewVideoContainer) {
             const youtubeId = lessonElement.getAttribute('data-preview-youtube-id') || '';
             const videoUrl = lessonElement.getAttribute('data-preview-video-url') || '';
+            const hlsUrl = lessonElement.getAttribute('data-preview-hls-url') || '';
             const isUnlisted = lessonElement.getAttribute('data-preview-is-unlisted') === '1';
             
             if (youtubeId || videoUrl) {
@@ -5323,21 +5366,27 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                     targetWrapper = wrapper;
                 } else if (videoUrl) {
                     const playerId = 'plyr-player-' + lessonId;
+                    const hlsAttrs = hlsUrl
+                        ? ` data-hls-url="${hlsUrl}" data-fallback-src="${videoUrl}"`
+                        : '';
+                    const videoInner = hlsUrl ? '' : `<source src="${videoUrl}" type="video/mp4">`;
                     wrapper.innerHTML = `
                         <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
-                            <video id="${playerId}" class="plyr-player-video" playsinline preload="auto">
-                                <source src="${videoUrl}" type="video/mp4">
+                            <video id="${playerId}" class="plyr-player-video" playsinline preload="${HERIME_VIDEO_PRELOAD}"${hlsAttrs}>
+                                ${videoInner}
                             </video>
                         </div>
                     `;
                     previewVideoContainer.appendChild(wrapper);
                     targetWrapper = wrapper;
                     
-                    // Initialiser Plyr pour cette vidéo
-                    setTimeout(function() {
+                    setTimeout(async function() {
                         const videoElement = document.getElementById(playerId);
                         if (videoElement && window.Plyr) {
                             try {
+                                if (typeof herimePreparePreviewVideo === 'function') {
+                                    await herimePreparePreviewVideo(videoElement);
+                                }
                                 const player = new Plyr(videoElement, {
                                     controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
                                     settings: ['quality', 'speed'],
@@ -5349,8 +5398,8 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                     disableContextMenu: true
                                 });
                                 window['plyr_' + playerId] = player;
+                                if (typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);
                                 
-                                // Désactiver le menu contextuel
                                 const wrapperEl = document.getElementById('wrapper-' + playerId);
                                 if (wrapperEl) {
                                     wrapperEl.addEventListener('contextmenu', function(e) {
@@ -5378,7 +5427,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
         targetWrapper.classList.add('active');
         
         // Initialiser Plyr si nécessaire
-        setTimeout(function() {
+        setTimeout(async function() {
             const playerElement = targetWrapper.querySelector('[id^="plyr-player-"]');
             if (playerElement && window.Plyr) {
                 const playerId = playerElement.id;
@@ -5391,8 +5440,10 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                         const isUnlisted = lessonElement?.getAttribute('data-preview-is-unlisted') === '1';
                         initializePreviewPlayer(lessonId, youtubeId, isUnlisted);
                     } else if (playerElement.tagName === 'VIDEO') {
-                        // C'est une vidéo directe
                         try {
+                            if (typeof herimePreparePreviewVideo === 'function') {
+                                await herimePreparePreviewVideo(playerElement);
+                            }
                             const player = new Plyr(playerElement, {
                                 controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
                                 settings: ['quality', 'speed'],
@@ -5639,7 +5690,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.addEventListener('shown.bs.modal', function() {
             
             // Initialiser Plyr pour le lecteur principal (ID 0) s'il existe
-            setTimeout(function() {
+            setTimeout(async function() {
                 const mainPlayerElement = document.querySelector('#plyr-player-0, [id^="plyr-player-0"]');
                 if (mainPlayerElement && window.Plyr) {
                     const playerId = mainPlayerElement.id || 'plyr-player-0';
@@ -5676,6 +5727,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 };
                             }
                             
+                            if (!isYouTube && mainPlayerElement.tagName === 'VIDEO') {
+                                if (typeof herimePreparePreviewVideo === 'function') {
+                                    await herimePreparePreviewVideo(mainPlayerElement);
+                                } else if (typeof window.adjustVideoPreloadForConnection === 'function') {
+                                    window.adjustVideoPreloadForConnection(mainPlayerElement, HERIME_VIDEO_PRELOAD);
+                                    try { mainPlayerElement.load(); } catch (e) {}
+                                }
+                            }
                             const player = new Plyr(mainPlayerElement, playerConfig);
                             window[playerKey] = player;
                             if (!isYouTube && typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);

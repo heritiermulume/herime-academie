@@ -52,6 +52,38 @@
             </div>
         </div>
 
+        @php
+            $purchasedPackagesSummaries = $purchasedPackagesSummaries ?? collect();
+        @endphp
+        @if($purchasedPackagesSummaries->isNotEmpty())
+            <div class="admin-panel mt-4" style="margin-top: 1.5rem;">
+                <div class="admin-panel__header">
+                    <h3 class="h6 mb-0 fw-bold">
+                        <i class="fas fa-box-open me-2"></i>Mes packs
+                    </h3>
+                    <a href="{{ route('customer.contents') }}#mes-packs" class="admin-btn soft sm">Voir tout</a>
+                </div>
+                <div class="admin-panel__body pt-3">
+                    <ul class="list-unstyled mb-0">
+                        @foreach($purchasedPackagesSummaries as $row)
+                            @php
+                                $pkg = $row['package'];
+                                $enrCount = $row['enrollments']->count();
+                                $total = $pkg->contents->filter(fn ($c) => $c->is_published)->count();
+                            @endphp
+                            <li class="d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 border-bottom border-light">
+                                <span class="fw-semibold">{{ $pkg->title }}</span>
+                                <a href="{{ route('customer.pack', $pkg) }}" class="admin-btn primary sm">
+                                    <i class="fas fa-folder-open me-1"></i>Ouvrir
+                                </a>
+                                <span class="small text-muted w-100 w-md-auto">{{ $enrCount }}/{{ $total }} contenus ouverts</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        @endif
+
         @if($lastUpdatedEnrollment && $lastUpdatedEnrollment->course)
             @php
                 $highlightCourse = $lastUpdatedEnrollment->course;
@@ -336,13 +368,36 @@
             </div>
         </div>
         <div class="admin-panel__body">
-            @if($recommendedCourses->isEmpty())
+            @php
+                $recommendedPackages = $recommendedPackages ?? collect();
+            @endphp
+            @if($recommendedCourses->isEmpty() && $recommendedPackages->isEmpty())
                 <div class="admin-empty-state">
                     <i class="fas fa-lightbulb"></i>
                     <p>De nouvelles recommandations apparaîtront après vos prochaines inscriptions.</p>
                 </div>
             @else
                 <div class="student-recommendations">
+                    @foreach($recommendedPackages as $package)
+                        <div class="student-recommendations__item">
+                            <div class="student-recommendations__media">
+                                @if($package->thumbnail_url)
+                                    <img src="{{ $package->thumbnail_url }}" alt="{{ $package->title }}">
+                                @else
+                                    <span><i class="fas fa-box-open"></i></span>
+                                @endif
+                            </div>
+                            <div class="student-recommendations__content">
+                                <h4><span class="badge bg-primary me-1">Pack</span>{{ $package->title }}</h4>
+                                <p>{{ $package->contents_count }} contenus · {{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</p>
+                            </div>
+                            <div class="student-recommendations__actions">
+                                <a href="{{ route('packs.show', $package) }}" class="admin-btn ghost sm">
+                                    Voir le pack
+                                </a>
+                            </div>
+                        </div>
+                    @endforeach
                     @foreach($recommendedCourses as $course)
                         <div class="student-recommendations__item">
                             <div class="student-recommendations__media">

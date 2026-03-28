@@ -27,11 +27,63 @@
                 <div class="cart-items-header">
                     <h2 class="cart-items-title">
                         <i class="fas fa-shopping-cart"></i>
-                        {{ count($cartItems) }} {{ count($cartItems) > 1 ? 'contenus' : 'contenu' }} dans votre panier
+                        {{ count($cartItems) }} {{ count($cartItems) > 1 ? 'articles' : 'article' }} dans votre panier
                     </h2>
                 </div>
                 <div class="cart-items-list recommended-courses" id="cart-items-container">
                         @foreach($cartItems as $item)
+                    @if(($item['type'] ?? 'content') === 'package')
+                    @php $pkg = $item['package']; @endphp
+                    <div class="recommended-item cart-item-wrapper" id="cart-package-{{ $pkg->id }}">
+                        <div class="recommended-thumb">
+                            <img src="{{ $pkg->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}"
+                                 alt="{{ $pkg->title }}">
+                        </div>
+                        <div class="recommended-content flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start mb-0">
+                                <h6 class="flex-grow-1 mb-0">
+                                    <a href="{{ route('packs.show', $pkg) }}" class="text-decoration-none">
+                                        <span class="badge bg-primary bg-opacity-15 text-primary me-2">Pack</span>{{ $pkg->title }}
+                                    </a>
+                                </h6>
+                                <div class="cart-item-price-mobile">
+                                    <div class="price-container">
+                                        <span class="current-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}</span>
+                                        @if($pkg->is_sale_active)
+                                            <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($pkg->price) }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="small text-muted mb-2">{{ $pkg->contents->count() }} contenus inclus</p>
+                            <div class="cart-item-actions mt-1">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger remove-btn"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#removeItemModal"
+                                        data-remove-kind="package"
+                                        data-package-id="{{ $pkg->id }}"
+                                        data-item-title="{{ $pkg->title }}"
+                                        title="Supprimer du panier">
+                                    <i class="fas fa-trash"></i>
+                                    <span class="btn-text">Supprimer</span>
+                                </button>
+                                <a href="{{ route('packs.show', $pkg) }}" class="btn btn-sm btn-outline-primary view-btn">
+                                    <i class="fas fa-eye"></i>
+                                    <span class="btn-text">Voir le pack</span>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="cart-item-price">
+                            <div class="price-container">
+                                <span class="current-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}</span>
+                                @if($pkg->is_sale_active)
+                                    <span class="original-price">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($pkg->price) }}</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    @else
                     <div class="recommended-item cart-item-wrapper" id="cart-item-{{ $item['course']->id }}">
                         <!-- Course Image -->
                         <div class="recommended-thumb">
@@ -91,6 +143,7 @@
                                         class="btn btn-sm btn-outline-danger remove-btn" 
                                         data-bs-toggle="modal" 
                                         data-bs-target="#removeItemModal"
+                                        data-remove-kind="content"
                                         data-course-id="{{ $item['course']->id }}"
                                         data-course-title="{{ $item['course']->title }}"
                                         title="Supprimer du panier">
@@ -116,6 +169,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
                         @endforeach
                 </div>
                 
@@ -239,7 +293,7 @@
         </div>
         
         <!-- Smart Course Recommendations -->
-        @if($recommendedCourses->count() > 0)
+        @if($recommendedCourses->count() > 0 || $recommendedPackages->count() > 0)
         <div class="mt-5 recommendations-container">
             <div class="row mb-4">
                 <div class="col-12">
@@ -247,11 +301,16 @@
                         <i class="fas fa-lightbulb me-2 text-warning"></i>
                         Recommandations pour vous
                     </h3>
-                    <p class="text-muted">Découvrez d'autres contenus qui pourraient vous intéresser</p>
+                    <p class="text-muted">Découvrez d'autres contenus et packs qui pourraient vous intéresser</p>
                 </div>
             </div>
             
             <div class="row g-3">
+                @foreach($recommendedPackages as $package)
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                    <x-contenu-package-card-standard :package="$package" />
+                </div>
+                @endforeach
                 @foreach($recommendedCourses as $course)
                 <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                     <x-contenu-card-standard :course="$course" />
@@ -280,13 +339,18 @@
                 <div class="col-12">
                     <h3 class="fw-bold text-dark mb-3">
                         <i class="fas fa-fire me-2 text-danger"></i>
-                        Contenus populaires
+                        Contenus et packs populaires
                     </h3>
-                    <p class="text-muted">Découvrez nos contenus les plus appréciés.</p>
+                    <p class="text-muted">Découvrez nos contenus et packs les plus appréciés.</p>
                 </div>
             </div>
             
             <div class="row g-3">
+                @foreach($popularPackages as $package)
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                    <x-contenu-package-card-standard :package="$package" />
+                </div>
+                @endforeach
                 @foreach($popularCourses as $course)
                 <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                     <x-contenu-card-standard :course="$course" />
@@ -1763,10 +1827,15 @@ function confirmRemoveItem() {
         showNotification('Erreur: Bouton de confirmation introuvable', 'error');
         return;
     }
-    
-    // Récupérer l'ID du cours depuis le dataset ou l'attribut
+    const kind = confirmBtn.dataset.removeKind || confirmBtn.getAttribute('data-remove-kind') || 'content';
     let courseId = confirmBtn.dataset.courseId || confirmBtn.getAttribute('data-course-id');
-    if (!courseId) {
+    let packageId = confirmBtn.dataset.packageId || confirmBtn.getAttribute('data-package-id');
+    if (kind === 'package') {
+        if (!packageId) {
+            showNotification('Erreur: ID du pack introuvable', 'error');
+            return;
+        }
+    } else if (!courseId) {
         showNotification('Erreur: ID du contenu introuvable', 'error');
         return;
     }
@@ -1781,35 +1850,36 @@ function confirmRemoveItem() {
         if (modal) {
             // Écouter l'événement de fermeture complète du modal
             modalElement.addEventListener('hidden.bs.modal', function handler() {
-                // Supprimer le cours après que le modal soit complètement fermé
-                removeItem(courseId);
-                // Retirer l'écouteur après utilisation
+                removeCartLine(kind, courseId, packageId);
                 modalElement.removeEventListener('hidden.bs.modal', handler);
             }, { once: true });
             modal.hide();
         } else {
             const bsModal = new bootstrap.Modal(modalElement);
             modalElement.addEventListener('hidden.bs.modal', function handler() {
-                removeItem(courseId);
+                removeCartLine(kind, courseId, packageId);
                 modalElement.removeEventListener('hidden.bs.modal', handler);
             }, { once: true });
             bsModal.hide();
         }
     } else {
-        // Si Bootstrap n'est pas disponible, supprimer directement
-        removeItem(courseId);
+        removeCartLine(kind, courseId, packageId);
     }
 }
 
-// Fonction pour supprimer un article du panier
-function removeItem(courseId) {
-    // S'assurer que courseId est un nombre
-    courseId = parseInt(courseId);
-    if (isNaN(courseId)) {
+function removeCartLine(kind, courseId, packageId) {
+    const body = kind === 'package'
+        ? { package_id: parseInt(packageId, 10) }
+        : { content_id: parseInt(courseId, 10) };
+    if (kind === 'package' && isNaN(body.package_id)) {
+        showNotification('Erreur: ID du pack invalide', 'error');
+        return;
+    }
+    if (kind !== 'package' && isNaN(body.content_id)) {
         showNotification('Erreur: ID du contenu invalide', 'error');
         return;
     }
-    
+
     fetch('{{ route("cart.remove") }}', {
         method: 'DELETE',
         headers: {
@@ -1818,9 +1888,7 @@ function removeItem(courseId) {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         },
-        body: JSON.stringify({
-            content_id: courseId
-        })
+        body: JSON.stringify(body)
     })
         .then(async response => {
             const contentType = response.headers.get('content-type');
@@ -2816,27 +2884,33 @@ document.addEventListener('DOMContentLoaded', function() {
     const removeItemModal = document.getElementById('removeItemModal');
     if (removeItemModal) {
         removeItemModal.addEventListener('show.bs.modal', function(event) {
-            // Bouton qui a déclenché le modal
             const button = event.relatedTarget;
             if (!button) {
                 return;
             }
-            
-            // Extraire les informations depuis les attributs data-*
+            const kind = button.getAttribute('data-remove-kind') || 'content';
             const courseId = button.getAttribute('data-course-id');
-            const courseTitle = button.getAttribute('data-course-title');
-            
-            // Mettre à jour le contenu du modal
+            const packageId = button.getAttribute('data-package-id');
+            const title = button.getAttribute('data-item-title') || button.getAttribute('data-course-title') || '';
             const modalTitle = removeItemModal.querySelector('#removeItemCourseTitle');
             if (modalTitle) {
-                modalTitle.textContent = courseTitle || 'ce contenu';
+                modalTitle.textContent = title || (kind === 'package' ? 'ce pack' : 'ce contenu');
             }
-            
-            // Stocker l'ID du cours dans le bouton de confirmation
             const confirmBtn = document.getElementById('confirmRemoveItemBtn');
             if (confirmBtn) {
-                confirmBtn.setAttribute('data-course-id', courseId);
-                confirmBtn.dataset.courseId = courseId;
+                confirmBtn.setAttribute('data-remove-kind', kind);
+                confirmBtn.dataset.removeKind = kind;
+                if (kind === 'package') {
+                    confirmBtn.setAttribute('data-package-id', packageId || '');
+                    confirmBtn.dataset.packageId = packageId || '';
+                    confirmBtn.removeAttribute('data-course-id');
+                    delete confirmBtn.dataset.courseId;
+                } else {
+                    confirmBtn.setAttribute('data-course-id', courseId || '');
+                    confirmBtn.dataset.courseId = courseId || '';
+                    confirmBtn.removeAttribute('data-package-id');
+                    delete confirmBtn.dataset.packageId;
+                }
             }
         });
         

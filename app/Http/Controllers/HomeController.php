@@ -9,6 +9,7 @@ use App\Models\Banner;
 use App\Models\Partner;
 use App\Models\Testimonial;
 use App\Models\User;
+use App\Models\ContentPackage;
 use App\Services\TemporaryUploadCleaner;
 use App\Traits\CourseStatistics;
 use Illuminate\Http\Request;
@@ -120,6 +121,21 @@ class HomeController extends Controller
             ->limit(4)
             ->get();
 
+        $featuredPackages = ContentPackage::query()
+            ->published()
+            ->featured()
+            ->withCount('contents')
+            ->ordered()
+            ->get();
+
+        $homePackagesAsideFeatured = ContentPackage::query()
+            ->published()
+            ->where('is_featured', false)
+            ->withCount('contents')
+            ->ordered()
+            ->limit(12)
+            ->get();
+
         // Calculer les statistiques pour chaque cours
         $featuredCourses = $this->addCourseStatistics($featuredCourses);
         $popularCourses = $this->addCourseStatistics($popularCourses);
@@ -134,6 +150,8 @@ class HomeController extends Controller
             'latestCourses',
             'topRatedCourses',
             'trendingCourses',
+            'featuredPackages',
+            'homePackagesAsideFeatured',
             'categories',
             'providers',
             'announcements',

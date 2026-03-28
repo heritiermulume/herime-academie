@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Models\Order;
 use App\Models\CourseDownload;
+use App\Models\ContentPackage;
+use App\Services\ContentPackageRecommendationService;
 use Illuminate\Support\Carbon;
 
 class CourseController extends Controller
@@ -188,7 +190,13 @@ class CourseController extends Controller
         
         $categories = Category::active()->ordered()->get();
 
-        return view('contents.index', compact('courses', 'categories'));
+        $packages = ContentPackage::query()
+            ->published()
+            ->withCount('contents')
+            ->ordered()
+            ->get();
+
+        return view('contents.index', compact('courses', 'categories', 'packages'));
     }
 
     public function show(Course $course)
@@ -356,11 +364,22 @@ class CourseController extends Controller
                 $relatedCourses = collect([]); // Collection vide en cas d'erreur
             }
 
+            try {
+                $relatedPackages = app(ContentPackageRecommendationService::class)->forCourse($course);
+            } catch (\Throwable $e) {
+                \Log::error('Erreur lors de l\'obtention des packs recommandés', [
+                    'content_id' => $course->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $relatedPackages = collect();
+            }
+
             return view('contents.show', compact(
                 'course',
                 'isEnrolled',
                 'enrollment',
                 'relatedCourses',
+                'relatedPackages',
                 'courseStats',
                 'buttonState',
                 'hasPurchased',
@@ -1578,6 +1597,7 @@ class CourseController extends Controller
                             'youtube_id' => $lesson->youtube_video_id ?? null,
                             'is_unlisted' => $lesson->is_unlisted ?? false,
                             'video_url' => $videoUrl,
+                            'hls_url' => $lesson->hasHlsStreamReady() ? $lesson->hls_manifest_url : null,
                             'is_preview' => true,
                         ];
                     });

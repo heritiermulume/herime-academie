@@ -153,6 +153,11 @@ class User extends Authenticatable
         return $this->hasMany(CartItem::class);
     }
 
+    public function cartPackages()
+    {
+        return $this->hasMany(CartPackage::class);
+    }
+
     public function lessonProgress()
     {
         return $this->hasMany(LessonProgress::class);
@@ -278,5 +283,14 @@ class User extends Authenticatable
     public function providerPayouts()
     {
         return $this->hasMany(ProviderPayout::class, 'provider_id');
+    }
+
+    public function hasPurchasedContentPackage(ContentPackage $package): bool
+    {
+        return Order::query()
+            ->where('user_id', $this->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
+            ->exists();
     }
 }

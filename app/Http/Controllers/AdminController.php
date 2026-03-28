@@ -4705,6 +4705,8 @@ class AdminController extends Controller
             // Reçu PDF d'inscription
             'receipt_default_title' => 'nullable|string|max:500',
             'receipt_default_body' => 'nullable|string|max:10000',
+            // Bouton WhatsApp flottant
+            'whatsapp_phone' => 'nullable|string|max:40',
         ]);
 
         Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
@@ -4753,6 +4755,19 @@ class AdminController extends Controller
         if ($request->has('receipt_default_body')) {
             Setting::set('receipt_default_body', $request->input('receipt_default_body', ''), 'string', 'Corps par défaut du reçu PDF (HTML autorisé)');
         }
+
+        Setting::set(
+            'whatsapp_float_enabled',
+            $request->input('whatsapp_float_enabled') === 'on',
+            'boolean',
+            'Afficher le bouton WhatsApp flottant sur le site public'
+        );
+        Setting::set(
+            'whatsapp_phone',
+            trim((string) $request->input('whatsapp_phone', '')),
+            'string',
+            'Numéro WhatsApp (indicatif pays, chiffres ; espaces et + acceptés à la saisie)'
+        );
 
         \Log::info('Paramètres Wallet mis à jour', [
             'wallet_holding_period_days' => $request->input('wallet_holding_period_days'),

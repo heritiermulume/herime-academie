@@ -3538,6 +3538,40 @@
             align-items: center;
             justify-content: center;
         }
+
+        /* Bouton WhatsApp flottant (paramètres admin) */
+        .whatsapp-float-btn {
+            position: fixed;
+            z-index: 1040;
+            right: 1rem;
+            bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + var(--site-mobile-bottom-nav-height, 0px));
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #25d366;
+            color: #fff !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.85rem;
+            text-decoration: none;
+            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .whatsapp-float-btn:hover,
+        .whatsapp-float-btn:focus-visible {
+            background: #1ebe57;
+            color: #fff !important;
+            transform: scale(1.06);
+            box-shadow: 0 6px 24px rgba(37, 211, 102, 0.45);
+        }
+
+        @media (min-width: 992px) {
+            .whatsapp-float-btn {
+                bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+            }
+        }
     </style>
 
     @stack('styles')
@@ -3684,6 +3718,25 @@
 
     <!-- Footer -->
     <x-footer />
+
+    @php
+        $whatsappFloatEnabled = \App\Models\Setting::get('whatsapp_float_enabled', false);
+        $whatsappPhoneDigits = preg_replace('/\D+/', '', (string) \App\Models\Setting::get('whatsapp_phone', ''));
+        $showWhatsappFloat = $whatsappFloatEnabled
+            && strlen($whatsappPhoneDigits) >= 8
+            && ! request()->routeIs('admin.*')
+            && ! request()->routeIs('provider.*');
+    @endphp
+    @if($showWhatsappFloat)
+        <a href="https://wa.me/{{ $whatsappPhoneDigits }}"
+           class="whatsapp-float-btn"
+           target="_blank"
+           rel="noopener noreferrer"
+           aria-label="Nous contacter sur WhatsApp"
+           title="WhatsApp">
+            <i class="fab fa-whatsapp" aria-hidden="true"></i>
+        </a>
+    @endif
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

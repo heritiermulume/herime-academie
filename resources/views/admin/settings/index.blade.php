@@ -59,6 +59,16 @@
                             aria-selected="{{ $activeTab === 'wallet' ? 'true' : 'false' }}">
                         <i class="fas fa-wallet me-2"></i>Wallet Ambassadeurs
                     </button>
+                    <button class="nav-link text-nowrap {{ $activeTab === 'whatsapp' ? 'active' : '' }}"
+                            id="tab-whatsapp-btn"
+                            data-bs-toggle="tab"
+                            data-bs-target="#tab-whatsapp"
+                            type="button"
+                            role="tab"
+                            aria-controls="tab-whatsapp"
+                            aria-selected="{{ $activeTab === 'whatsapp' ? 'true' : 'false' }}">
+                        <i class="fab fa-whatsapp me-2"></i>WhatsApp
+                    </button>
                     <button class="nav-link text-nowrap {{ $activeTab === 'meta' ? 'active' : '' }}"
                             id="tab-meta-btn"
                             data-bs-toggle="tab"
@@ -424,6 +434,91 @@
                                             <i class="fas fa-check text-success me-2"></i>Activez la libération auto uniquement si votre process de remboursement est stable.
                                         </li>
                                     </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @php
+                    $whatsappFloatEnabled = \App\Models\Setting::get('whatsapp_float_enabled', false);
+                    $whatsappPhone = \App\Models\Setting::get('whatsapp_phone', '');
+                @endphp
+                {{-- TAB: WhatsApp flottant --}}
+                <div class="tab-pane fade {{ $activeTab === 'whatsapp' ? 'show active' : '' }}" id="tab-whatsapp" role="tabpanel" aria-labelledby="tab-whatsapp-btn" tabindex="0">
+                    <div class="row g-4">
+                        <div class="col-lg-8">
+                            <div class="card border-0 shadow-sm admin-form-card h-100">
+                                <div class="card-body p-4">
+                                    <h5 class="card-title mb-4 d-flex align-items-center gap-2">
+                                        <span class="admin-nav__icon" style="background: rgba(37, 211, 102, 0.18); color: #128c3a;">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </span>
+                                        Bouton WhatsApp flottant
+                                    </h5>
+                                    <p class="text-muted mb-4">
+                                        Affiche un bouton fixe en bas à droite du site pour ouvrir une conversation WhatsApp. Renseignez le numéro au format international (avec indicatif pays, sans le 0 initial).
+                                    </p>
+
+                                    <div class="form-check form-switch mb-4">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               role="switch"
+                                               name="whatsapp_float_enabled"
+                                               id="whatsapp_float_enabled"
+                                               value="on"
+                                               {{ $whatsappFloatEnabled ? 'checked' : '' }}
+                                               form="admin-settings-general-form">
+                                        <label class="form-check-label fw-semibold" for="whatsapp_float_enabled">
+                                            Activer le bouton WhatsApp flottant
+                                        </label>
+                                        <div class="form-text mt-2">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Le bouton n’apparaît pas dans l’administration ni dans l’espace prestataire.
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="whatsapp_phone" class="form-label fw-semibold">
+                                            Numéro WhatsApp
+                                        </label>
+                                        <input type="text"
+                                               name="whatsapp_phone"
+                                               id="whatsapp_phone"
+                                               class="form-control form-control-lg"
+                                               value="{{ old('whatsapp_phone', $whatsappPhone) }}"
+                                               placeholder="Ex. +243 900 000 000"
+                                               autocomplete="tel"
+                                               form="admin-settings-general-form">
+                                        <div class="form-text mt-2">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Utilisé pour le lien <code>wa.me</code>. Les espaces et le signe + sont ignorés dans le lien.
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="submit" class="btn btn-primary" form="admin-settings-general-form">
+                                            <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                                        </button>
+                                        <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-times me-2"></i>Annuler
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm admin-form-card h-100">
+                                <div class="card-body p-4">
+                                    <h6 class="card-title mb-3 d-flex align-items-center gap-2">
+                                        <span class="admin-nav__icon" style="background: rgba(37, 211, 102, 0.18); color: #128c3a;">
+                                            <i class="fas fa-info-circle"></i>
+                                        </span>
+                                        Rappel
+                                    </h6>
+                                    <p class="text-muted small mb-0">
+                                        Le bouton ne s’affiche que si l’option est activée et qu’un numéro valide (au moins 8 chiffres après nettoyage) est enregistré.
+                                    </p>
                                 </div>
                             </div>
                         </div>

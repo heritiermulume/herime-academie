@@ -7,6 +7,10 @@ use App\Models\Course;
 use App\Models\CourseDownload;
 use App\Models\Enrollment;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\ContentPackage;
+use App\Services\ContentPackageRecommendationService;
+use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 
 // Classe pour représenter un cours acheté mais non inscrit
@@ -154,6 +158,9 @@ class CustomerController extends Controller
             ->limit(5)
             ->get();
 
+        $recommendedPackages = app(ContentPackageRecommendationService::class)
+            ->forCustomerDashboard($allEnrollments->pluck('content_id')->filter()->all());
+
         // Calculer les cours achetés (via les commandes payées)
         $purchasedCourses = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
@@ -212,7 +219,95 @@ class CustomerController extends Controller
             'stats' => $stats,
             'orders' => $recentOrders,
             'recommendedCourses' => $recommendedCourses,
+            'recommendedPackages' => $recommendedPackages,
+            'purchasedPackagesSummaries' => $this->purchasedPackagesSummaries($customer)->take(5),
             'lastUpdatedEnrollment' => $recentEnrollments->first(),
+        ]);
+    }
+
+    /**
+     * Packs achetés (commande payée) avec inscriptions associées par contenu.
+     *
+     * @return Collection<int, array{package: ContentPackage, order: ?Order, enrollments: \Illuminate\Support\Collection<int, \App\Models\Enrollment>}>
+     */
+    private function purchasedPackagesSummaries($customer): Collection
+    {
+        $packageIds = OrderItem::query()
+            ->whereHas('order', function ($q) use ($customer) {
+                $q->where('user_id', $customer->id)
+                    ->whereIn('status', ['paid', 'completed']);
+            })
+            ->whereNotNull('content_package_id')
+            ->distinct()
+            ->pluck('content_package_id');
+
+        if ($packageIds->isEmpty()) {
+            return collect();
+        }
+
+        return ContentPackage::query()
+            ->whereIn('id', $packageIds)
+            ->with([
+                'contents' => fn ($q) => $q->orderByPivot('sort_order'),
+                'contents.provider',
+                'contents.category',
+            ])
+            ->get()
+            ->map(function (ContentPackage $package) use ($customer) {
+                $order = Order::where('user_id', $customer->id)
+                    ->whereIn('status', ['paid', 'completed'])
+                    ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
+                    ->orderByDesc('paid_at')
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                $enrollments = $customer->enrollments()
+                    ->whereIn('content_id', $package->contents->pluck('id'))
+                    ->where('status', '!=', 'cancelled')
+                    ->get()
+                    ->keyBy('content_id');
+
+                return [
+                    'package' => $package,
+                    'order' => $order,
+                    'enrollments' => $enrollments,
+                ];
+            })
+            ->sortByDesc(fn (array $row) => $row['order']?->paid_at ?? $row['order']?->created_at)
+            ->values();
+    }
+
+    public function showPurchasedPack(ContentPackage $package)
+    {
+        $customer = auth()->user();
+        if (! $customer->hasPurchasedContentPackage($package)) {
+            abort(403);
+        }
+
+        $package->load([
+            'contents' => fn ($q) => $q->orderByPivot('sort_order'),
+            'contents.provider',
+            'contents.category',
+        ]);
+
+        $enrollments = $customer->enrollments()
+            ->whereIn('content_id', $package->contents->pluck('id'))
+            ->where('status', '!=', 'cancelled')
+            ->with(['course.provider', 'course.category'])
+            ->get()
+            ->keyBy('content_id');
+
+        $order = Order::where('user_id', $customer->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
+            ->orderByDesc('paid_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        return view('customers.pack-show', [
+            'package' => $package,
+            'enrollments' => $enrollments,
+            'order' => $order,
         ]);
     }
 
@@ -427,6 +522,7 @@ class CustomerController extends Controller
             'statusFilter' => $statusFilter,
             'search' => $search,
             'courseSummary' => $courseSummary,
+            'purchasedPackagesSummaries' => $this->purchasedPackagesSummaries($customer),
         ]);
     }
 
@@ -465,7 +561,7 @@ class CustomerController extends Controller
         // Pour les cours payants, vérifier que l'utilisateur a acheté le cours
         if (!$course->is_free) {
             $hasPurchased = Order::where('user_id', $customer->id)
-                ->where('status', 'paid')
+                ->whereIn('status', ['paid', 'completed'])
                 ->whereHas('orderItems', function ($query) use ($course) {
                     $query->where('content_id', $course->id);
                 })
@@ -506,6 +602,16 @@ class CustomerController extends Controller
             : (($course->is_in_person_program ?? false)
                 ? 'Inscription réussie ! Utilisez le bouton « Télécharger » pour obtenir votre reçu.'
                 : 'Inscription réussie ! Vous pouvez commencer à apprendre.');
+
+        $packSlug = $request->input('return_to_customer_pack');
+        if (is_string($packSlug) && $packSlug !== '') {
+            $returnPackage = ContentPackage::where('slug', $packSlug)->first();
+            if ($returnPackage && $customer->hasPurchasedContentPackage($returnPackage)) {
+                return redirect()
+                    ->route('customer.pack', $returnPackage)
+                    ->with('success', $successMessage);
+            }
+        }
 
         return $this->redirectAfterEnrollment($course, $redirectTo, $successMessage);
     }

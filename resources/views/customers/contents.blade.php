@@ -39,6 +39,59 @@
     </div>
 </section>
 
+@php
+    $purchasedPackagesSummaries = $purchasedPackagesSummaries ?? collect();
+@endphp
+@if($purchasedPackagesSummaries->isNotEmpty())
+<section class="admin-panel" id="mes-packs">
+    <div class="admin-panel__header">
+        <h3>
+            <i class="fas fa-box-open me-2"></i>Mes packs achetés
+        </h3>
+        <div class="admin-panel__actions">
+            <span class="text-muted small">{{ $purchasedPackagesSummaries->count() }} pack{{ $purchasedPackagesSummaries->count() > 1 ? 's' : '' }}</span>
+        </div>
+    </div>
+    <div class="admin-panel__body">
+        <p class="text-muted small mb-4">
+            Ouvrez un pack pour accéder à chaque contenu inclus (formation en ligne, téléchargement, etc.).
+        </p>
+        <div class="customer-pack-cards">
+            @foreach($purchasedPackagesSummaries as $row)
+                @php
+                    $pkg = $row['package'];
+                    $enrCount = $row['enrollments']->count();
+                    $total = $pkg->contents->filter(fn ($c) => $c->is_published)->count();
+                @endphp
+                <div class="customer-pack-card card border-0 shadow-sm mb-3">
+                    <div class="card-body d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
+                        <div class="d-flex gap-3 align-items-center min-w-0">
+                            <div class="rounded-3 overflow-hidden bg-light flex-shrink-0" style="width: 96px; height: 60px;">
+                                @if($pkg->thumbnail_url)
+                                    <img src="{{ $pkg->thumbnail_url }}" alt="" class="w-100 h-100 object-fit-cover">
+                                @else
+                                    <div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="fas fa-box-open"></i></div>
+                                @endif
+                            </div>
+                            <div class="min-w-0">
+                                <h4 class="h6 fw-bold mb-1 text-truncate">{{ $pkg->title }}</h4>
+                                <p class="small text-muted mb-0">
+                                    {{ $total }} contenu{{ $total > 1 ? 's' : '' }}
+                                    · {{ $enrCount }}/{{ $total }} accès activé{{ $enrCount > 1 ? 's' : '' }}
+                                </p>
+                            </div>
+                        </div>
+                        <a href="{{ route('customer.pack', $pkg) }}" class="admin-btn primary sm flex-shrink-0">
+                            <i class="fas fa-folder-open me-1"></i>Ouvrir le pack
+                        </a>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+</section>
+@endif
+
 <section class="admin-panel">
     <div class="admin-panel__header">
         <h3>

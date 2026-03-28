@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
 use App\Models\CartItem;
+use App\Models\CartPackage;
+use App\Models\ContentPackage;
+use App\Models\Course;
+use App\Services\ContentPackageRecommendationService;
 use App\Models\AmbassadorPromoCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
@@ -33,6 +36,8 @@ class CartController extends Controller
 
         // Obtenir des recommandations intelligentes basées sur le contenu du panier
         $recommendedCourses = $this->getSmartRecommendations($cartItems);
+        $recommendedPackages = app(ContentPackageRecommendationService::class)->forCartLines($cartItems);
+        $popularPackages = app(ContentPackageRecommendationService::class)->popularForCartContext($cartItems);
 
         // Obtenir les cours populaires pour le panier vide
         $popularCourses = $this->getPopularCoursesForCart();
@@ -40,7 +45,7 @@ class CartController extends Controller
         // Récupérer le code promo appliqué depuis la session
         $appliedPromoCode = Session::get('applied_promo_code');
         
-        return view('cart.index', compact('cartItems', 'subtotal', 'tax', 'total', 'recommendedCourses', 'popularCourses', 'appliedPromoCode'));
+        return view('cart.index', compact('cartItems', 'subtotal', 'tax', 'total', 'recommendedCourses', 'recommendedPackages', 'popularCourses', 'popularPackages', 'appliedPromoCode'));
     }
 
     /**
@@ -49,108 +54,96 @@ class CartController extends Controller
 public function add(Request $request)
     {
         try {
-            // Validation des données
             try {
                 $request->validate([
-                    'content_id' => 'required|exists:contents,id'
+                    'content_id' => 'required_without:package_id|nullable|exists:contents,id',
+                    'package_id' => 'required_without:content_id|nullable|exists:content_packages,id',
                 ]);
             } catch (\Illuminate\Validation\ValidationException $e) {
-                // Retourner une réponse JSON même en cas d'erreur de validation
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
-                    'errors' => $e->errors()
+                    'errors' => $e->errors(),
                 ], 422);
             }
 
-            $contentId = $request->content_id;
-            
-            // Récupérer le cours
+            if ($request->filled('package_id')) {
+                return $this->addPackageToCart((int) $request->package_id);
+            }
+
+            $contentId = (int) $request->content_id;
+
             try {
                 $course = Course::findOrFail($contentId);
             } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Contenu introuvable.'
+                    'message' => 'Contenu introuvable.',
                 ], 404);
             }
 
-            // Vérifier que le cours est publié
-            if (!$course->is_published) {
+            if (! $course->is_published) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ce contenu n\'est pas disponible.'
+                    'message' => 'Ce contenu n\'est pas disponible.',
                 ], 404);
             }
 
-            // Vérifier si la vente/inscription est activée
-            if (!$course->is_sale_enabled) {
+            if (! $course->is_sale_enabled) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ce contenu n\'est pas actuellement disponible à l\'achat.'
+                    'message' => 'Ce contenu n\'est pas actuellement disponible à l\'achat.',
                 ], 403);
             }
 
-            // Vérifier si le cours est gratuit
             if ($course->is_free) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Les contenus gratuits ne peuvent pas être ajoutés au panier. Inscrivez-vous directement.'
-                ]);
-            }
-
-            // Vérifier si l'utilisateur est déjà inscrit
-            if (auth()->check() && $course->isEnrolledBy(auth()->id())) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Vous êtes déjà inscrit à ce contenu.'
+                    'message' => 'Les contenus gratuits ne peuvent pas être ajoutés au panier. Inscrivez-vous directement.',
                 ]);
             }
 
             if (auth()->check()) {
-                // Vérifier si le cours est déjà dans le panier
                 if (auth()->user()->cartItems()->where('content_id', $contentId)->exists()) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Ce contenu est déjà dans votre panier.'
+                        'message' => 'Ce contenu est déjà dans votre panier.',
                     ]);
                 }
 
-                // Utilisateur connecté : sauvegarder en base de données
                 $this->addToDatabaseCart($contentId);
-                $cartCount = auth()->user()->cartItems()->count();
+                $cartCount = $this->totalCartLineCount();
             } else {
-                // Vérifier si le cours est déjà dans le panier de session
-                $cart = $this->getSessionCart();
-                if (isset($cart[$contentId])) {
+                $norm = $this->getSessionCartNormalized();
+                if (in_array($contentId, $norm['contents'], true)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Ce contenu est déjà dans votre panier.'
+                        'message' => 'Ce contenu est déjà dans votre panier.',
                     ]);
                 }
-
-                // Utilisateur non connecté : utiliser la session
-                $this->addToSessionCart($contentId);
-                $cartCount = count($cart) + 1;
+                $norm['contents'][] = $contentId;
+                $norm['contents'] = array_values(array_unique($norm['contents']));
+                $this->saveSessionCartNormalized($norm);
+                $cartCount = count($norm['contents']) + count($norm['packages']);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Contenu ajouté au panier avec succès.',
-                'cart_count' => $cartCount
+                'cart_count' => $cartCount,
             ]);
         } catch (\Exception $e) {
-            // Gérer toutes les autres erreurs potentielles
             \Log::error('Error adding content to cart', [
                 'error' => $e->getMessage(),
                 'content_id' => $request->content_id ?? null,
+                'package_id' => $request->package_id ?? null,
                 'user_id' => auth()->id(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur est survenue lors de l\'ajout au panier. Veuillez réessayer.'
+                'message' => 'Une erreur est survenue lors de l\'ajout au panier. Veuillez réessayer.',
             ], 500);
         }
     }
@@ -162,31 +155,45 @@ public function add(Request $request)
     public function remove(Request $request)
     {
         $request->validate([
-            'content_id' => 'required|exists:contents,id'
+            'content_id' => 'required_without:package_id|nullable|exists:contents,id',
+            'package_id' => 'required_without:content_id|nullable|exists:content_packages,id',
         ]);
 
-        $contentId = $request->content_id;
+        if ($request->filled('package_id')) {
+            $packageId = (int) $request->package_id;
+            if (auth()->check()) {
+                CartPackage::where('user_id', auth()->id())
+                    ->where('content_package_id', $packageId)
+                    ->delete();
+            } else {
+                $norm = $this->getSessionCartNormalized();
+                $norm['packages'] = array_values(array_filter($norm['packages'], fn ($id) => (int) $id !== $packageId));
+                $this->saveSessionCartNormalized($norm);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pack retiré du panier.',
+                'cart_count' => $this->totalCartLineCount(),
+            ]);
+        }
+
+        $contentId = (int) $request->content_id;
 
         if (auth()->check()) {
-            // Utilisateur connecté : supprimer de la base de données
             CartItem::where('user_id', auth()->id())
                 ->where('content_id', $contentId)
                 ->delete();
-            $cartCount = auth()->user()->cartItems()->count();
         } else {
-            // Utilisateur non connecté : utiliser la session
-            $cart = $this->getSessionCart();
-            $cart = array_values(array_filter($cart, function($id) use ($contentId) {
-                return $id != $contentId;
-            }));
-            $this->saveSessionCart($cart);
-            $cartCount = count($cart);
+            $norm = $this->getSessionCartNormalized();
+            $norm['contents'] = array_values(array_filter($norm['contents'], fn ($id) => (int) $id !== $contentId));
+            $this->saveSessionCartNormalized($norm);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Contenu supprimé du panier.',
-            'cart_count' => $cartCount
+            'cart_count' => $this->totalCartLineCount(),
         ]);
     }
 
@@ -196,20 +203,18 @@ public function add(Request $request)
     public function clear()
     {
         if (auth()->check()) {
-            // Utilisateur connecté : vider la base de données
             auth()->user()->cartItems()->delete();
+            auth()->user()->cartPackages()->delete();
         } else {
-            // Utilisateur non connecté : vider la session
-        Session::forget('cart');
+            Session::forget('cart');
         }
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Panier vidé avec succès.',
-            'cart_count' => 0
+            'cart_count' => 0,
         ]);
     }
-
 
     /**
      * Obtenir le nombre d'articles dans le panier
@@ -217,17 +222,8 @@ public function add(Request $request)
     public function count()
     {
         try {
-            if (auth()->check()) {
-                // Utilisateur connecté : compter depuis la base de données
-                $count = auth()->user()->cartItems()->count();
-            } else {
-                // Utilisateur non connecté : compter depuis la session
-                $cart = $this->getSessionCart();
-                $count = is_array($cart) ? count($cart) : 0;
-            }
-
             return response()->json([
-                'count' => $count
+                'count' => $this->totalCartLineCount(),
             ]);
         } catch (\Exception $e) {
             // Logger l'erreur pour le débogage
@@ -264,27 +260,39 @@ public function add(Request $request)
         // S'assurer que $cartItems est un tableau
         $cartItems = is_array($cartItems) ? $cartItems : [];
 
-        // Filtrer les cours qui ne sont plus disponibles à la vente
-        $unavailableCourses = [];
-        $cartItems = array_filter($cartItems, function($item) use (&$unavailableCourses) {
+        $unavailableLabels = [];
+        $cartItems = array_filter($cartItems, function ($item) use (&$unavailableLabels) {
+            $type = $item['type'] ?? 'content';
+            if ($type === 'package') {
+                $package = $item['package'] ?? null;
+                if (! $package) {
+                    return false;
+                }
+                if (! $package->is_published || ! $package->is_sale_enabled) {
+                    $unavailableLabels[] = $package->title;
+
+                    return false;
+                }
+
+                return true;
+            }
             $course = $item['course'] ?? null;
-            if (!$course) {
+            if (! $course) {
                 return false;
             }
-            
-            // Ne pas inclure les cours non publiés ou non disponibles à la vente
-            if (!$course->is_published || !$course->is_sale_enabled) {
-                $unavailableCourses[] = $course->title;
+            if (! $course->is_published || ! $course->is_sale_enabled) {
+                $unavailableLabels[] = $course->title;
+
                 return false;
             }
+
             return true;
         });
-
-        // Réindexer le tableau après filtrage
         $cartItems = array_values($cartItems);
 
-        if (!empty($unavailableCourses)) {
-            $message = 'Certains contenus de votre panier ne sont plus disponibles : ' . implode(', ', $unavailableCourses) . '. Veuillez les retirer du panier.';
+        if (! empty($unavailableLabels)) {
+            $message = 'Certains articles de votre panier ne sont plus disponibles : ' . implode(', ', $unavailableLabels) . '. Veuillez les retirer du panier.';
+
             return redirect()->route('cart.index')->with('warning', $message);
         }
 
@@ -344,22 +352,33 @@ public function add(Request $request)
     {
         $excludedIds = collect();
         
-        // 1. Exclure les cours déjà dans le panier
-        if (!empty($cartItems) && is_array($cartItems)) {
-            $cartContentIds = collect($cartItems)->map(function($item) {
-                // Gérer les deux structures possibles : avec 'course.id' ou directement 'id'
-                if (isset($item['course']['id'])) {
-                    return $item['course']['id'];
-                } elseif (isset($item['id'])) {
-                    return $item['id'];
-                } elseif (is_object($item) && isset($item->course->id)) {
-                    return $item->course->id;
-                } elseif (is_object($item) && isset($item->id)) {
-                    return $item->id;
+        // 1. Exclure les cours déjà dans le panier (y compris ceux contenus dans des packs)
+        if (! empty($cartItems) && is_array($cartItems)) {
+            $cartContentIds = collect($cartItems)->flatMap(function ($item) {
+                if (($item['type'] ?? 'content') === 'package') {
+                    $pkg = $item['package'] ?? null;
+
+                    return $pkg ? $pkg->contents->pluck('id')->all() : [];
                 }
-                return null;
-            })->filter()->toArray();
-            
+                if (isset($item['course'])) {
+                    $c = $item['course'];
+                    $cid = is_object($c) ? ($c->id ?? null) : ($c['id'] ?? null);
+
+                    return $cid ? [(int) $cid] : [];
+                }
+                if (isset($item['id'])) {
+                    return [(int) $item['id']];
+                }
+                if (is_object($item) && isset($item->course->id)) {
+                    return [(int) $item->course->id];
+                }
+                if (is_object($item) && isset($item->id)) {
+                    return [(int) $item->id];
+                }
+
+                return [];
+            })->filter()->unique()->values()->toArray();
+
             $excludedIds = $excludedIds->merge($cartContentIds);
         }
         
@@ -398,9 +417,21 @@ public function add(Request $request)
      */
     private function getPopularCoursesForCart()
     {
-        // Obtenir les IDs des cours à exclure (dans le panier + achetés/inscrits + gratuits)
-        $cartItems = session('cart', []);
-        $excludedCourseIds = $this->getExcludedCourseIds($cartItems);
+        $pseudoCart = [];
+        $norm = $this->getSessionCartNormalized();
+        foreach ($norm['contents'] as $cid) {
+            $pseudoCart[] = ['type' => 'content', 'course' => (object) ['id' => (int) $cid]];
+        }
+        foreach ($norm['packages'] as $pid) {
+            $p = ContentPackage::with('contents')->find($pid);
+            if ($p) {
+                $pseudoCart[] = ['type' => 'package', 'package' => $p];
+            }
+        }
+        if (auth()->check()) {
+            $pseudoCart = $this->getDatabaseCartItems();
+        }
+        $excludedCourseIds = $this->getExcludedCourseIds($pseudoCart);
         
         // Obtenir les cours populaires avec filtrage approprié
         $popularCourses = Course::published()
@@ -518,10 +549,11 @@ public function add(Request $request)
         }
 
         $recommendations = collect();
-        $cartContentIds = collect($cartItems)->pluck('course.id')->toArray();
-        $cartCategories = collect($cartItems)->pluck('course.category_id')->unique()->toArray();
-        $cartLevels = collect($cartItems)->pluck('course.level')->unique()->toArray();
-        $cartInstructors = collect($cartItems)->pluck('course.provider_id')->unique()->toArray();
+        $contentOnly = collect($cartItems)->filter(fn ($i) => ($i['type'] ?? 'content') === 'content');
+        $cartContentIds = $contentOnly->pluck('course.id')->filter()->unique()->values()->toArray();
+        $cartCategories = $contentOnly->pluck('course.category_id')->filter()->unique()->values()->toArray();
+        $cartLevels = $contentOnly->pluck('course.level')->filter()->unique()->values()->toArray();
+        $cartInstructors = $contentOnly->pluck('course.provider_id')->filter()->unique()->values()->toArray();
 
         // 1. Cours complémentaires de la même catégorie
         $categoryRecommendations = Course::published()
@@ -706,8 +738,9 @@ public function add(Request $request)
         $cartItems = is_array($cartItems) ? $cartItems : $cartItems->toArray();
 
         $recommendedCourses = $this->getSmartRecommendations($cartItems);
+        $recommendedPackages = app(ContentPackageRecommendationService::class)->forCartLines($cartItems);
 
-        $html = view('cart.partials.recommendations', compact('recommendedCourses'))->render();
+        $html = view('cart.partials.recommendations', compact('recommendedCourses', 'recommendedPackages'))->render();
 
         return response()->json([
             'success' => true,
@@ -751,87 +784,93 @@ public function add(Request $request)
     /**
      * Obtenir les articles du panier depuis la base de données
      */
-    private function getDatabaseCartItems()
+    private function getDatabaseCartItems(): array
     {
-        $cartItems = auth()->user()->cartItems()->with([
-            'course.category', 
-            'course.provider', 
-            'course.reviews', 
+        $lines = [];
+
+        $dbItems = auth()->user()->cartItems()->with([
+            'course.category',
+            'course.provider',
+            'course.reviews',
             'course.enrollments',
-            'course.sections.lessons'
+            'course.sections.lessons',
         ])->get();
-        
-        return $cartItems->filter(function ($item) {
-            $course = $item->course;
-            // Ne pas inclure les cours non publiés ou non disponibles à la vente
-            return $course && $course->is_published && $course->is_sale_enabled;
-        })->map(function ($item) {
-            $course = $item->course;
-            
-            // Ajouter les statistiques calculées avec vérifications
-            $course->stats = [
-                'total_lessons' => $course->sections ? $course->sections->sum(function($section) {
-                    return $section->lessons ? $section->lessons->count() : 0;
-                }) : 0,
-                'total_duration' => $course->sections ? $course->sections->sum(function($section) {
-                    return $section->lessons ? $section->lessons->sum('duration') : 0;
-                }) : 0,
-                'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
-                'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
-                'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
-            ];
-            
-            return [
-                'course' => $course,
-                'quantity' => 1,
-                'price' => $course->current_price,
-                'subtotal' => $course->current_price
-            ];
-        })->values()->toArray();
-    }
 
-    /**
-     * Obtenir les articles du panier depuis la session
-     */
-    private function getSessionCartItems()
-    {
-        $cart = $this->getSessionCart();
-        $cartItems = [];
-
-        foreach ($cart as $contentId) {
-            $course = Course::with([
-                'category', 
-                'provider', 
-                'reviews', 
-                'enrollments',
-                'sections.lessons'
-            ])->find($contentId);
-            
-            // Ne pas inclure les cours non publiés ou non disponibles à la vente
+        foreach ($dbItems as $item) {
+            $course = $item->course;
             if ($course && $course->is_published && $course->is_sale_enabled) {
-                // Ajouter les statistiques calculées avec vérifications
-                $course->stats = [
-                    'total_lessons' => $course->sections ? $course->sections->sum(function($section) {
-                        return $section->lessons ? $section->lessons->count() : 0;
-                    }) : 0,
-                    'total_duration' => $course->sections ? $course->sections->sum(function($section) {
-                        return $section->lessons ? $section->lessons->sum('duration') : 0;
-                    }) : 0,
-                    'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
-                    'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
-                    'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
-                ];
-                
-                $cartItems[] = [
+                $course->stats = $this->buildCourseStats($course);
+                $lines[] = [
+                    'type' => 'content',
                     'course' => $course,
                     'quantity' => 1,
                     'price' => $course->current_price,
-                    'subtotal' => $course->current_price
+                    'subtotal' => $course->current_price,
                 ];
             }
         }
 
-        return $cartItems;
+        $pkgRows = auth()->user()->cartPackages()->with([
+            'contentPackage.contents' => fn ($q) => $q->orderByPivot('sort_order'),
+        ])->get();
+
+        foreach ($pkgRows as $row) {
+            $package = $row->contentPackage;
+            if ($package && $package->is_published && $package->is_sale_enabled && $package->contents->isNotEmpty()) {
+                $lines[] = [
+                    'type' => 'package',
+                    'package' => $package,
+                    'quantity' => 1,
+                    'price' => $package->effective_price,
+                    'subtotal' => $package->effective_price,
+                ];
+            }
+        }
+
+        return $lines;
+    }
+
+    private function getSessionCartItems(): array
+    {
+        $norm = $this->getSessionCartNormalized();
+        $lines = [];
+
+        foreach ($norm['contents'] as $contentId) {
+            $course = Course::with([
+                'category',
+                'provider',
+                'reviews',
+                'enrollments',
+                'sections.lessons',
+            ])->find($contentId);
+            if ($course && $course->is_published && $course->is_sale_enabled) {
+                $course->stats = $this->buildCourseStats($course);
+                $lines[] = [
+                    'type' => 'content',
+                    'course' => $course,
+                    'quantity' => 1,
+                    'price' => $course->current_price,
+                    'subtotal' => $course->current_price,
+                ];
+            }
+        }
+
+        foreach ($norm['packages'] as $packageId) {
+            $package = ContentPackage::query()
+                ->with(['contents' => fn ($q) => $q->orderByPivot('sort_order')])
+                ->find($packageId);
+            if ($package && $package->is_published && $package->is_sale_enabled && $package->contents->isNotEmpty()) {
+                $lines[] = [
+                    'type' => 'package',
+                    'package' => $package,
+                    'quantity' => 1,
+                    'price' => $package->effective_price,
+                    'subtotal' => $package->effective_price,
+                ];
+            }
+        }
+
+        return $lines;
     }
 
     /**
@@ -846,46 +885,42 @@ public function add(Request $request)
     }
 
     /**
-     * Ajouter un cours au panier en session
-     */
-    private function addToSessionCart($contentId)
-    {
-        $cart = $this->getSessionCart();
-        
-        if (!in_array($contentId, $cart)) {
-            $cart[] = $contentId;
-            $this->saveSessionCart($cart);
-        }
-    }
-
-    /**
      * Synchroniser le panier de session avec la base de données lors de la connexion
      */
     public function syncSessionToDatabase()
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return;
         }
 
-        $sessionCart = $this->getSessionCart();
-        
-        foreach ($sessionCart as $contentId) {
-            // Vérifier si le cours n'est pas déjà dans le panier de l'utilisateur
-            if (!auth()->user()->cartItems()->where('content_id', $contentId)->exists()) {
-                $this->addToDatabaseCart($contentId);
+        $norm = $this->getSessionCartNormalized();
+
+        foreach ($norm['contents'] as $contentId) {
+            if (! auth()->user()->cartItems()->where('content_id', $contentId)->exists()) {
+                $this->addToDatabaseCart((int) $contentId);
             }
         }
 
-        // Vider la session après synchronisation
+        foreach ($norm['packages'] as $packageId) {
+            if (! auth()->user()->cartPackages()->where('content_package_id', $packageId)->exists()) {
+                CartPackage::create([
+                    'user_id' => auth()->id(),
+                    'content_package_id' => (int) $packageId,
+                ]);
+            }
+        }
+
         Session::forget('cart');
     }
 
     /**
-     * Obtenir le panier depuis la session
+     * @deprecated Utiliser getSessionCartNormalized()
      */
     private function getSessionCart()
     {
-        return Session::get('cart', []);
+        $n = $this->getSessionCartNormalized();
+
+        return $n['contents'];
     }
 
     /**
@@ -904,13 +939,16 @@ public function add(Request $request)
         // S'assurer que $cartItems est un tableau
         $cartItems = is_array($cartItems) ? $cartItems : $cartItems->toArray();
         
-        // Filtrer les cours non publiés ou non disponibles à la vente
-        $cartItems = array_filter($cartItems, function($item) {
-            $course = $item['course'] ?? null;
-            if (!$course) {
-                return false;
+        $cartItems = array_filter($cartItems, function ($item) {
+            $type = $item['type'] ?? 'content';
+            if ($type === 'package') {
+                $package = $item['package'] ?? null;
+
+                return $package && $package->is_published && $package->is_sale_enabled;
             }
-            return $course->is_published && $course->is_sale_enabled;
+            $course = $item['course'] ?? null;
+
+            return $course && $course->is_published && $course->is_sale_enabled;
         });
         
         // Réindexer le tableau après filtrage
@@ -930,16 +968,137 @@ public function add(Request $request)
             'item_count' => $itemCount,
             'formatted_subtotal' => $formattedSubtotal,
             'formatted_total' => $formattedTotal,
-            'item_text' => $itemCount . ' contenu' . ($itemCount > 1 ? 's' : '')
+            'item_text' => $itemCount . ' article' . ($itemCount > 1 ? 's' : '')
         ]);
     }
 
     /**
-     * Sauvegarder le panier en session
+     * @deprecated Utiliser saveSessionCartNormalized()
      */
     private function saveSessionCart($cart)
     {
-        Session::put('cart', $cart);
+        $this->saveSessionCartNormalized([
+            'contents' => is_array($cart) ? array_map('intval', $cart) : [],
+            'packages' => [],
+        ]);
+    }
+
+    private function buildCourseStats(Course $course): array
+    {
+        return [
+            'total_lessons' => $course->sections ? $course->sections->sum(function ($section) {
+                return $section->lessons ? $section->lessons->count() : 0;
+            }) : 0,
+            'total_duration' => $course->sections ? $course->sections->sum(function ($section) {
+                return $section->lessons ? $section->lessons->sum('duration') : 0;
+            }) : 0,
+            'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
+            'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
+            'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
+        ];
+    }
+
+    /**
+     * @return array{contents: int[], packages: int[]}
+     */
+    private function getSessionCartNormalized(): array
+    {
+        $raw = Session::get('cart', []);
+        if (is_array($raw) && (isset($raw['contents']) || isset($raw['packages']))) {
+            $contents = array_values(array_unique(array_map('intval', $raw['contents'] ?? [])));
+            $packages = array_values(array_unique(array_map('intval', $raw['packages'] ?? [])));
+
+            return ['contents' => $contents, 'packages' => $packages];
+        }
+        if (is_array($raw) && array_is_list($raw)) {
+            return [
+                'contents' => array_values(array_unique(array_map('intval', $raw))),
+                'packages' => [],
+            ];
+        }
+
+        return ['contents' => [], 'packages' => []];
+    }
+
+    /**
+     * @param  array{contents: int[], packages: int[]}  $normalized
+     */
+    private function saveSessionCartNormalized(array $normalized): void
+    {
+        Session::put('cart', [
+            'contents' => array_values(array_unique($normalized['contents'] ?? [])),
+            'packages' => array_values(array_unique($normalized['packages'] ?? [])),
+        ]);
+    }
+
+    private function totalCartLineCount(): int
+    {
+        if (auth()->check()) {
+            return auth()->user()->cartItems()->count() + auth()->user()->cartPackages()->count();
+        }
+        $n = $this->getSessionCartNormalized();
+
+        return count($n['contents']) + count($n['packages']);
+    }
+
+    private function addPackageToCart(int $packageId)
+    {
+        $package = ContentPackage::query()
+            ->with(['contents'])
+            ->find($packageId);
+
+        if (! $package || ! $package->is_published || ! $package->is_sale_enabled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ce pack n\'est pas disponible à l\'achat.',
+            ], 404);
+        }
+
+        if ($package->contents->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ce pack ne contient aucun contenu.',
+            ], 422);
+        }
+
+        foreach ($package->contents as $course) {
+            if (! $course->is_published || ! $course->is_sale_enabled || $course->is_free) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Un ou plusieurs contenus du pack ne sont pas disponibles à l\'achat.',
+                ], 422);
+            }
+        }
+
+        if (auth()->check()) {
+            if (auth()->user()->cartPackages()->where('content_package_id', $packageId)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce pack est déjà dans votre panier.',
+                ]);
+            }
+            CartPackage::create([
+                'user_id' => auth()->id(),
+                'content_package_id' => $packageId,
+            ]);
+        } else {
+            $norm = $this->getSessionCartNormalized();
+            if (in_array($packageId, $norm['packages'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce pack est déjà dans votre panier.',
+                ]);
+            }
+            $norm['packages'][] = $packageId;
+            $norm['packages'] = array_values(array_unique($norm['packages']));
+            $this->saveSessionCartNormalized($norm);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pack ajouté au panier avec succès.',
+            'cart_count' => $this->totalCartLineCount(),
+        ]);
     }
 
     /**

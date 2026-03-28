@@ -605,14 +605,14 @@ body {
 </section>
 
 <!-- Featured Courses Section -->
-@if($featuredCourses->count() > 0)
+@if($featuredCourses->count() > 0 || $featuredPackages->count() > 0)
 <section class="featured-courses py-5 bg-light">
     <div class="container">
         <div class="row mb-5">
             <div class="col-12 col-lg-8 mx-auto text-center">
-                <h2 class="display-5 fw-bold mb-3">Contenus en vedette</h2>
+                <h2 class="display-5 fw-bold mb-3">Contenus et packs en vedette</h2>
                 <p class="lead text-muted">
-                    Découvrez nos contenus les plus populaires et les mieux notés
+                    Découvrez nos contenus et packs les plus mis en avant
                 </p>
             </div>
         </div>
@@ -621,6 +621,9 @@ body {
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="course-scroll-wrapper" id="featuredCoursesScroll" data-scroll-amount="320">
+                @foreach($featuredPackages as $package)
+                    <x-home-pack-card :package="$package" />
+                @endforeach
                 @foreach($featuredCourses as $course)
                 <div class="course-scroll-item">
                     <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
@@ -760,14 +763,14 @@ body {
 @endif
 
 <!-- Popular Courses Section -->
-@if($popularCourses->count() > 0)
+@if($popularCourses->count() > 0 || $homePackagesAsideFeatured->count() > 0)
 <section class="popular-courses py-5">
     <div class="container">
         <div class="row mb-5">
             <div class="col-12 col-lg-8 mx-auto text-center">
-                <h2 class="display-5 fw-bold mb-3">Contenus populaires</h2>
+                <h2 class="display-5 fw-bold mb-3">Contenus et packs populaires</h2>
                 <p class="lead text-muted">
-                    Les contenus les plus suivis par notre communauté
+                    Les contenus et packs les plus suivis par notre communauté
                 </p>
             </div>
         </div>
@@ -776,6 +779,9 @@ body {
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="course-scroll-wrapper" id="popularCoursesScroll" data-scroll-amount="300">
+                @foreach($homePackagesAsideFeatured as $package)
+                    <x-home-pack-card :package="$package" />
+                @endforeach
                 @foreach($popularCourses as $course)
                 <div class="course-scroll-item">
                     <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">

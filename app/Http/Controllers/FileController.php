@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
-use App\Models\CourseLesson;
 use App\Models\User;
 use App\Services\FileUploadService;
 use Illuminate\Http\Request;
@@ -54,18 +53,33 @@ class FileController extends Controller
             abort(403, 'Accès refusé');
         }
         
-        // Obtenir le mime type
-        $mimeType = $disk->mimeType($fullPath);
-        if (!$mimeType) {
-            $mimeType = 'application/octet-stream';
+        // Types HLS / segments (mime parfois mal détecté sur le disque privé)
+        $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+        if ($ext === 'm3u8') {
+            $mimeType = 'application/vnd.apple.mpegurl';
+        } elseif ($ext === 'ts') {
+            $mimeType = 'video/mp2t';
+        } else {
+            $mimeType = $disk->mimeType($fullPath);
+            if (! $mimeType) {
+                $mimeType = 'application/octet-stream';
+            }
         }
-        
-        // Pour les vidéos, utiliser la lecture en streaming
+
+        // Pour les vidéos et segments TS, lecture avec support Range
         if (strpos($mimeType, 'video/') === 0) {
             return $this->streamVideo($disk, $fullPath, $mimeType);
         }
-        
-        // Pour les autres fichiers, servir directement
+
+        // Playlists HLS (fichiers courts, pas besoin de Range)
+        if ($ext === 'm3u8') {
+            return response()->file($disk->path($fullPath), [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+
         return response()->file($disk->path($fullPath), [
             'Content-Type' => $mimeType,
             'Content-Disposition' => 'inline',
@@ -157,8 +171,7 @@ class FileController extends Controller
 
     /**
      * Streamer une vidéo avec support Range pour la lecture
-     * Optimisations type YouTube :
-     * - Chunks de 512 Ko pour débit élevé (vs 8 Ko)
+     * - Taille des lectures fichier : config video.stream_chunk_bytes (défaut 512 Ko)
      * - Cache navigateur pour éviter re-téléchargements
      */
     protected function streamVideo($disk, string $path, string $mimeType): StreamedResponse
@@ -168,9 +181,9 @@ class FileController extends Controller
         $start = 0;
         $end = $fileSize - 1;
 
-        // Chunk size optimisé pour débit vidéo fluide (2 Mo)
-        // Réduit les appels système et améliore le throughput réseau
-        $chunkSize = 2097152;
+        // Taille de lecture configurable (défaut config/video.php, mutualisé ~256 Ko)
+        $chunkSize = (int) config('video.stream_chunk_bytes', 262144);
+        $chunkSize = max(65536, min($chunkSize, 8 * 1024 * 1024));
 
         $isRangeRequest = false;
         if (isset($_SERVER['HTTP_RANGE']) && preg_match('/bytes=(\d+)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches)) {

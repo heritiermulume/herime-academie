@@ -139,8 +139,14 @@
                         @foreach($cartItems as $item)
                         <div class="order-item">
                             <div class="item-info">
-                                <h6 class="item-title">{{ $item['course']->title ?? 'Cours' }}</h6>
-                                <p class="item-instructor text-muted">Par {{ $item['course']->provider->name ?? '' }}</p>
+                                @if(($item['type'] ?? 'content') === 'package')
+                                    @php $pkg = $item['package']; @endphp
+                                    <h6 class="item-title"><span class="badge bg-primary bg-opacity-15 text-primary me-1">Pack</span>{{ $pkg->title }}</h6>
+                                    <p class="item-instructor text-muted">{{ $pkg->contents->count() }} contenus inclus</p>
+                                @else
+                                    <h6 class="item-title">{{ $item['course']->title ?? 'Cours' }}</h6>
+                                    <p class="item-instructor text-muted">Par {{ $item['course']->provider->name ?? '' }}</p>
+                                @endif
                             </div>
                             <div class="item-price">
                                 {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item['subtotal']) }}

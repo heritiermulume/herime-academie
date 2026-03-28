@@ -7,6 +7,7 @@ use App\Models\CourseLesson;
 use App\Models\LessonProgress;
 use App\Models\Enrollment;
 use App\Events\CourseCompleted;
+use App\Services\ContentPackageRecommendationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -81,6 +82,7 @@ class LearningController extends Controller
         
         // Obtenir les cours recommandés
         $recommendedCourses = $this->getRecommendedCourses($course);
+        $recommendedPackages = app(ContentPackageRecommendationService::class)->forCourse($course);
 
         // Obtenir la leçon active (si une leçon est en cours de visualisation)
         $activeLessonId = session('active_lesson_id', null);
@@ -100,7 +102,7 @@ class LearningController extends Controller
             }
         }
 
-        return view('learning.course', compact('course', 'enrollment', 'progress', 'courseStats', 'recommendedCourses', 'activeLessonId'));
+        return view('learning.course', compact('course', 'enrollment', 'progress', 'courseStats', 'recommendedCourses', 'recommendedPackages', 'activeLessonId'));
     }
 
     /**
@@ -174,12 +176,13 @@ class LearningController extends Controller
         
         // Obtenir les cours recommandés
         $recommendedCourses = $this->getRecommendedCourses($course);
+        $recommendedPackages = app(ContentPackageRecommendationService::class)->forCourse($course);
 
         // Obtenir la leçon active
         $activeLesson = $lesson;
         $activeLessonId = $lesson->id;
 
-        return view('learning.course', compact('course', 'activeLesson', 'activeLessonId', 'lessonProgress', 'previousLesson', 'nextLesson', 'progress', 'courseStats', 'recommendedCourses'));
+        return view('learning.course', compact('course', 'activeLesson', 'activeLessonId', 'lessonProgress', 'previousLesson', 'nextLesson', 'progress', 'courseStats', 'recommendedCourses', 'recommendedPackages'));
     }
 
     /**

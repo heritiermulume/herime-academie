@@ -117,6 +117,17 @@
         ];
         $videoMimeType = $mimeTypes[$extension] ?? 'video/mp4';
     }
+
+    $playerPreload = config('video.player_preload', 'metadata');
+    if (! in_array($playerPreload, ['none', 'metadata', 'auto'], true)) {
+        $playerPreload = 'metadata';
+    }
+
+    $hlsManifestUrl = '';
+    if (isset($lesson) && is_object($lesson) && method_exists($lesson, 'hasHlsStreamReady') && $lesson->hasHlsStreamReady()) {
+        $hlsManifestUrl = (string) $lesson->hls_manifest_url;
+    }
+    $useHls = $hlsManifestUrl !== '' && $isInternalVideo;
     
 @endphp
 
@@ -232,7 +243,7 @@
 }
 </style>
 
-@if($isYoutube || ($isInternalVideo && !empty($internalVideoUrl) && trim($internalVideoUrl) !== ''))
+@if($isYoutube || ($isInternalVideo && !empty($internalVideoUrl) && trim($internalVideoUrl) !== '') || $useHls)
 <div class="plyr-player-wrapper {{ $isYoutube ? 'plyr-external-video' : 'plyr-internal-video' }} position-absolute top-0 start-0 w-100 h-100" id="wrapper-{{ $playerId }}" style="margin: 0; padding: 0; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; max-width: 100% !important; max-height: 100% !important; overflow: hidden;">
     @if($isInternalVideo)
     <div class="video-buffer-indicator" id="buffer-{{ $playerId }}" aria-hidden="true">
@@ -257,12 +268,15 @@
     @else
         <!-- Plyr Player Container pour vidéo interne -->
         @if(!empty($internalVideoUrl) && trim($internalVideoUrl) !== '')
-        {{-- preload="auto" : buffering agressif type YouTube pour lecture fluide.
-             Le navigateur peut ignorer sur 4G/Data Saver. --}}
-        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="auto" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
+        {{-- HLS multi-débits (hls.js) + repli MP4 progressif --}}
+        @if($useHls)
+        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="{{ $playerPreload }}" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;" data-hls-url="{{ $hlsManifestUrl }}" data-fallback-src="{{ $internalVideoUrl }}"></video>
+        @else
+        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="{{ $playerPreload }}" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
             <source src="{{ $internalVideoUrl }}" type="{{ $videoMimeType }}">
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>
+        @endif
         @else
         <div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100">
             <i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i>
@@ -296,7 +310,7 @@
 @endif
 
 @push('scripts')
-@if($isYoutube || $isInternalVideo)
+@if($isYoutube || $isInternalVideo || $useHls)
 <script>
 (function() {
     'use strict';
@@ -387,8 +401,8 @@
         return;
     }
     
-    // Fonction pour initialiser Plyr
-    function initPlyrPlayer() {
+    // Fonction pour initialiser Plyr (async pour HLS / hls.js)
+    async function initPlyrPlayer() {
         // Configuration de base pour Plyr
         const plyrConfig = {
             controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen'],
@@ -471,10 +485,23 @@
                 return null;
             }
             
-            // Pour les vidéos internes, vérifier que la source existe
+            // Vidéos internes : <source> MP4 ou HLS (data-hls-url)
             if (isInternalVideo && playerElement.tagName === 'VIDEO') {
+                const dataHls = playerElement.getAttribute('data-hls-url');
                 const sourceElement = playerElement.querySelector('source');
-                if (sourceElement) {
+                if (dataHls && dataHls.trim() !== '') {
+                    const fb = playerElement.getAttribute('data-fallback-src');
+                    if (!fb || fb.trim() === '') {
+                        console.error('HLS: fallback MP4 manquant');
+                        if (wrapper) {
+                            wrapper.innerHTML = '<div class="d-flex flex-column align-items-center justify-content-center bg-dark text-white p-5 position-absolute top-0 start-0 w-100 h-100"><i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><p class="text-white mb-2">Erreur: URL de secours vidéo introuvable</p></div>';
+                        }
+                        return null;
+                    }
+                    if ({{ config('app.debug') ? 'true' : 'false' }}) {
+                        console.log('Video HLS manifest URL:', dataHls);
+                    }
+                } else if (sourceElement) {
                     const videoSrc = sourceElement.getAttribute('src');
                     if ({{ config('app.debug') ? 'true' : 'false' }}) {
                         console.log('Video source URL:', videoSrc);
@@ -495,8 +522,16 @@
                 }
             }
 
-            // preload="auto" déjà en HTML pour lecture fluide type YouTube
-            // Le navigateur peut ignorer sur 4G/Data Saver
+            if (isInternalVideo && playerElement.tagName === 'VIDEO') {
+                const hlsUrl = playerElement.getAttribute('data-hls-url');
+                const fb = playerElement.getAttribute('data-fallback-src');
+                if (hlsUrl && typeof window.herimeAttachHlsToVideo === 'function') {
+                    await window.herimeAttachHlsToVideo(playerElement, hlsUrl, fb, @json($videoMimeType));
+                } else if (!hlsUrl && typeof window.adjustVideoPreloadForConnection === 'function') {
+                    window.adjustVideoPreloadForConnection(playerElement, @json($playerPreload));
+                    try { playerElement.load(); } catch (e) {}
+                }
+            }
             player = new Plyr(playerElement, plyrConfig);
             
             // Vérifier que le lecteur est bien créé
@@ -1059,15 +1094,15 @@
         modalElement.addEventListener('shown.bs.modal', function() {
             const existingPlayer = window['plyr_' + playerId];
             if (!existingPlayer) {
-                initPlyrPlayer();
+                void initPlyrPlayer();
             }
         });
     } else {
         // Sinon, initialiser normalement
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initPlyrPlayer);
+            document.addEventListener('DOMContentLoaded', function() { void initPlyrPlayer(); });
         } else {
-            initPlyrPlayer();
+            void initPlyrPlayer();
         }
     }
     }

@@ -166,4 +166,47 @@ class CourseLesson extends Model
         $service = app(\App\Services\FileUploadService::class);
         return $service->getUrl($this->content_url, 'courses/lessons');
     }
+
+    /**
+     * Chemin relatif disque (storage/app/private) de la vidéo hébergée, hors URL externe / YouTube.
+     */
+    public function getInternalStorageVideoPath(): ?string
+    {
+        if (! empty($this->youtube_video_id)) {
+            return null;
+        }
+
+        foreach ([$this->file_path, $this->content_url] as $p) {
+            if (empty($p) || filter_var($p, FILTER_VALIDATE_URL)) {
+                continue;
+            }
+            $ext = strtolower(pathinfo($p, PATHINFO_EXTENSION));
+
+            if (in_array($ext, ['mp4', 'm4v', 'mov', 'webm', 'mkv'], true)) {
+                return $p;
+            }
+        }
+
+        return null;
+    }
+
+    public function hasHlsStreamReady(): bool
+    {
+        return $this->hls_status === 'ready'
+            && ! empty($this->hls_manifest_path);
+    }
+
+    /**
+     * URL signée via FileController pour le master.m3u8 (HLS).
+     */
+    public function getHlsManifestUrlAttribute(): string
+    {
+        if (! $this->hasHlsStreamReady()) {
+            return '';
+        }
+
+        $p = ltrim((string) $this->hls_manifest_path, '/');
+
+        return route('files.serve', ['type' => 'lessons', 'path' => $p]);
+    }
 }
