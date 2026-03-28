@@ -15,3 +15,45 @@ import { attachHlsToVideo } from './video-hls';
 window.Plyr = Plyr;
 window.adjustVideoPreloadForConnection = adjustVideoPreloadForConnection;
 window.herimeAttachHlsToVideo = attachHlsToVideo;
+
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.add-package-to-cart-btn');
+    if (!btn || btn.disabled) {
+        return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    const id = btn.getAttribute('data-package-id');
+    if (!id) {
+        return;
+    }
+    const url = document.body?.dataset?.cartAddUrl;
+    if (!url) {
+        return;
+    }
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token,
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ package_id: parseInt(id, 10) }),
+    })
+        .then((r) => r.json())
+        .then((data) => {
+            if (data.success) {
+                if (typeof window.showNotification === 'function') {
+                    window.showNotification(data.message || 'Pack ajouté au panier', 'success');
+                }
+                if (typeof window.updateCartCount === 'function') {
+                    window.updateCartCount();
+                }
+            } else if (typeof window.showNotification === 'function') {
+                window.showNotification(data.message || "Impossible d'ajouter le pack", 'error');
+            }
+        })
+        .catch(() => {});
+});

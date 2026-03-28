@@ -14,13 +14,7 @@
     <div class="admin-panel__body">
         <div class="customer-pack-hero d-flex flex-column flex-md-row gap-4 align-items-start mb-4">
             <div class="customer-pack-hero__thumb flex-shrink-0 rounded-3 overflow-hidden bg-light" style="width: 100%; max-width: 280px; aspect-ratio: 16/10;">
-                @if($package->thumbnail_url)
-                    <img src="{{ $package->thumbnail_url }}" alt="" class="w-100 h-100 object-fit-cover">
-                @else
-                    <div class="d-flex align-items-center justify-content-center h-100 text-muted">
-                        <i class="fas fa-box-open fa-3x opacity-50"></i>
-                    </div>
-                @endif
+                <x-package-card-media :package="$package" variant="nested" />
             </div>
             <div class="flex-grow-1">
                 <span class="badge bg-primary mb-2">Pack</span>

@@ -381,11 +381,7 @@
                     @foreach($recommendedPackages as $package)
                         <div class="student-recommendations__item">
                             <div class="student-recommendations__media">
-                                @if($package->thumbnail_url)
-                                    <img src="{{ $package->thumbnail_url }}" alt="{{ $package->title }}">
-                                @else
-                                    <span><i class="fas fa-box-open"></i></span>
-                                @endif
+                                <x-package-card-media :package="$package" variant="thumb" />
                             </div>
                             <div class="student-recommendations__content">
                                 <h4><span class="badge bg-primary me-1">Pack</span>{{ $package->title }}</h4>

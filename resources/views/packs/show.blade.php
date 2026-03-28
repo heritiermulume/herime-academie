@@ -151,41 +151,4 @@
     </div>
 </section>
 
-@push('scripts')
-<script>
-document.querySelectorAll('.add-package-to-cart-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        const id = this.getAttribute('data-package-id');
-        if (!id) return;
-        fetch('{{ route('cart.add') }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ package_id: parseInt(id, 10) })
-        }).then(r => r.json()).then(data => {
-            if (data.success) {
-                if (typeof showNotification === 'function') {
-                    showNotification(data.message || 'Pack ajouté au panier', 'success');
-                } else {
-                    alert(data.message || 'Pack ajouté au panier');
-                }
-                if (typeof updateCartCount === 'function') updateCartCount();
-            } else {
-                if (typeof showNotification === 'function') {
-                    showNotification(data.message || 'Impossible d\'ajouter le pack', 'error');
-                } else {
-                    alert(data.message || 'Impossible d\'ajouter le pack');
-                }
-            }
-        }).catch(() => {
-            alert('Erreur réseau');
-        });
-    });
-});
-</script>
-@endpush
 @endsection

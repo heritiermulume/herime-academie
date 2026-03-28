@@ -139,10 +139,9 @@
                         @foreach($cartItems as $item)
                         <div class="order-item">
                             <div class="item-info">
-                                @if(($item['type'] ?? 'content') === 'package')
-                                    @php $pkg = $item['package']; @endphp
+                                @if(($item['type'] ?? 'content') === 'package' && ($pkg = $item['package'] ?? null) instanceof \App\Models\ContentPackage)
                                     <h6 class="item-title"><span class="badge bg-primary bg-opacity-15 text-primary me-1">Pack</span>{{ $pkg->title }}</h6>
-                                    <p class="item-instructor text-muted">{{ $pkg->contents->count() }} contenus inclus</p>
+                                    <p class="item-instructor text-muted">{{ (int) ($pkg->contents_count ?? $pkg->contents->count()) }} contenus inclus</p>
                                 @else
                                     <h6 class="item-title">{{ $item['course']->title ?? 'Cours' }}</h6>
                                     <p class="item-instructor text-muted">Par {{ $item['course']->provider->name ?? '' }}</p>

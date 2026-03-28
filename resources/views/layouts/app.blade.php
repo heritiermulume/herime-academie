@@ -3583,7 +3583,7 @@
     {{-- Meta (Facebook) Pixel + Events (dynamique via BDD) --}}
     @include('partials.meta-tracking')
     </head>
-<body>
+<body data-cart-add-url="{{ route('cart.add') }}">
     @php
         if (isset($globalAnnouncement) && $globalAnnouncement) {
             $now = \Illuminate\Support\Carbon::now();

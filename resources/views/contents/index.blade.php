@@ -153,40 +153,7 @@
                     <div class="row g-3">
                         @foreach($packages as $package)
                             <div class="col-lg-4 col-md-6 col-sm-6">
-                                <article class="card h-100 border-0 shadow-sm overflow-hidden course-card">
-                                    <a href="{{ route('packs.show', $package) }}" class="text-decoration-none text-dark d-flex flex-column h-100">
-                                        <div class="ratio ratio-16x9 bg-light">
-                                            @if($package->thumbnail_url)
-                                                <img src="{{ $package->thumbnail_url }}" alt="" class="object-fit-cover w-100 h-100">
-                                            @else
-                                                <div class="d-flex align-items-center justify-content-center text-muted">
-                                                    <i class="fas fa-box-open fa-3x opacity-50"></i>
-                                                </div>
-                                            @endif
-                                        </div>
-                                        <div class="card-body d-flex flex-column flex-grow-1">
-                                            @if($package->is_featured)
-                                                <span class="badge bg-warning text-dark align-self-start mb-2">À la une</span>
-                                            @endif
-                                            <h3 class="h6 card-title mb-1">{{ $package->title }}</h3>
-                                            @if($package->subtitle)
-                                                <p class="text-muted small mb-2">{{ $package->subtitle }}</p>
-                                            @endif
-                                            <p class="small text-muted flex-grow-1 mb-0">{{ Str::limit(strip_tags($package->short_description ?? ''), 120) }}</p>
-                                            <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top border-light">
-                                                <span class="badge bg-primary bg-opacity-10 text-primary">{{ $package->contents_count }} contenus</span>
-                                                <div class="text-end">
-                                                    @if($package->is_sale_active)
-                                                        <span class="text-decoration-line-through text-muted small me-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->price) }}</span>
-                                                        <strong class="text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</strong>
-                                                    @else
-                                                        <strong class="text-primary">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</strong>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </article>
+                                <x-contenu-package-card-standard :package="$package" />
                             </div>
                         @endforeach
                     </div>

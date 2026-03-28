@@ -4,8 +4,7 @@
     <div class="course-card" data-course-url="{{ route('packs.show', $package) }}" style="cursor: pointer;">
         <div class="card" style="position: relative;">
             <div class="position-relative">
-                <img src="{{ $package->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}"
-                     class="card-img-top" alt="{{ $package->title }}">
+                <x-package-card-media :package="$package" />
                 <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
                     <span class="badge bg-primary">Pack</span>
                     @if($package->is_featured)
@@ -37,6 +36,20 @@
                             </div>
                         @else
                             <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</span>
+                        @endif
+                    </div>
+                </div>
+                <div class="card-actions mt-2" onclick="event.stopPropagation(); event.preventDefault();">
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('packs.show', $package) }}" class="btn btn-outline-secondary btn-sm w-100">
+                            <i class="fas fa-eye me-1"></i>Voir le pack
+                        </a>
+                        @if($package->is_published && $package->is_sale_enabled)
+                            <button type="button"
+                                    class="btn btn-outline-primary btn-sm w-100 add-package-to-cart-btn"
+                                    data-package-id="{{ $package->id }}">
+                                <i class="fas fa-cart-plus me-1"></i>Ajouter au panier
+                            </button>
                         @endif
                     </div>
                 </div>

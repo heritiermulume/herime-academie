@@ -32,12 +32,10 @@
                 </div>
                 <div class="cart-items-list recommended-courses" id="cart-items-container">
                         @foreach($cartItems as $item)
-                    @if(($item['type'] ?? 'content') === 'package')
-                    @php $pkg = $item['package']; @endphp
+                    @if(($item['type'] ?? 'content') === 'package' && ($pkg = $item['package'] ?? null) instanceof \App\Models\ContentPackage)
                     <div class="recommended-item cart-item-wrapper" id="cart-package-{{ $pkg->id }}">
                         <div class="recommended-thumb">
-                            <img src="{{ $pkg->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}"
-                                 alt="{{ $pkg->title }}">
+                            <x-package-card-media :package="$pkg" variant="thumb" />
                         </div>
                         <div class="recommended-content flex-grow-1">
                             <div class="d-flex justify-content-between align-items-start mb-0">
@@ -55,7 +53,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <p class="small text-muted mb-2">{{ $pkg->contents->count() }} contenus inclus</p>
+                            <p class="small text-muted mb-2">{{ (int) ($pkg->contents_count ?? $pkg->contents->count()) }} contenus inclus</p>
                             <div class="cart-item-actions mt-1">
                                 <button type="button"
                                         class="btn btn-sm btn-outline-danger remove-btn"

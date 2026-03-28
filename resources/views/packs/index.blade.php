@@ -26,13 +26,7 @@
                     <article class="card h-100 border-0 shadow-sm overflow-hidden course-card">
                         <a href="{{ route('packs.show', $package) }}" class="text-decoration-none text-dark">
                             <div class="ratio ratio-16x9 bg-light">
-                                @if($package->thumbnail_url)
-                                    <img src="{{ $package->thumbnail_url }}" alt="" class="object-fit-cover w-100 h-100">
-                                @else
-                                    <div class="d-flex align-items-center justify-content-center text-muted">
-                                        <i class="fas fa-box-open fa-3x opacity-50"></i>
-                                    </div>
-                                @endif
+                                <x-package-card-media :package="$package" variant="nested" />
                             </div>
                             <div class="card-body d-flex flex-column">
                                 @if($package->is_featured)

@@ -3,8 +3,7 @@
 <div class="course-card" data-course-url="{{ route('packs.show', $package) }}" style="cursor: pointer;">
     <div class="card" style="position: relative;">
         <div class="position-relative">
-            <img src="{{ $package->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}"
-                 class="card-img-top" alt="{{ $package->title }}">
+            <x-package-card-media :package="$package" />
             <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
                 <span class="badge bg-primary">Pack</span>
                 @if($package->is_featured)
@@ -40,48 +39,19 @@
                 </div>
             </div>
             <div class="card-actions" onclick="event.stopPropagation(); event.preventDefault();">
-                @if($package->is_published && $package->is_sale_enabled)
-                    <button type="button"
-                            class="btn btn-outline-primary btn-sm w-100 add-package-to-cart-btn"
-                            data-package-id="{{ $package->id }}">
-                        <i class="fas fa-cart-plus me-1"></i>Ajouter au panier
-                    </button>
-                @endif
+                <div class="d-grid gap-2">
+                    <a href="{{ route('packs.show', $package) }}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="fas fa-eye me-1"></i>Voir le pack
+                    </a>
+                    @if($package->is_published && $package->is_sale_enabled)
+                        <button type="button"
+                                class="btn btn-outline-primary btn-sm w-100 add-package-to-cart-btn"
+                                data-package-id="{{ $package->id }}">
+                            <i class="fas fa-cart-plus me-1"></i>Ajouter au panier
+                        </button>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-@once
-    @push('scripts')
-        <script>
-            document.addEventListener('click', function (e) {
-                const btn = e.target.closest('.add-package-to-cart-btn');
-                if (!btn || btn.disabled) return;
-                e.preventDefault();
-                e.stopPropagation();
-                const id = btn.getAttribute('data-package-id');
-                if (!id) return;
-                fetch('{{ route('cart.add') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({ package_id: parseInt(id, 10) })
-                }).then(function (r) { return r.json(); }).then(function (data) {
-                    if (data.success) {
-                        if (typeof showNotification === 'function') {
-                            showNotification(data.message || 'Pack ajouté au panier', 'success');
-                        }
-                        if (typeof updateCartCount === 'function') updateCartCount();
-                    } else if (typeof showNotification === 'function') {
-                        showNotification(data.message || 'Impossible d\'ajouter le pack', 'error');
-                    }
-                }).catch(function () {});
-            });
-        </script>
-    @endpush
-@endonce

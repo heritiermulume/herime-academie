@@ -67,11 +67,7 @@
                     <div class="card-body d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
                         <div class="d-flex gap-3 align-items-center min-w-0">
                             <div class="rounded-3 overflow-hidden bg-light flex-shrink-0" style="width: 96px; height: 60px;">
-                                @if($pkg->thumbnail_url)
-                                    <img src="{{ $pkg->thumbnail_url }}" alt="" class="w-100 h-100 object-fit-cover">
-                                @else
-                                    <div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="fas fa-box-open"></i></div>
-                                @endif
+                                <x-package-card-media :package="$pkg" variant="thumb" />
                             </div>
                             <div class="min-w-0">
                                 <h4 class="h6 fw-bold mb-1 text-truncate">{{ $pkg->title }}</h4>

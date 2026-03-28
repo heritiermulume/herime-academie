@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AmbassadorPromoCode;
 use App\Models\CartItem;
 use App\Models\CartPackage;
 use App\Models\ContentPackage;
 use App\Models\Course;
 use App\Services\ContentPackageRecommendationService;
-use App\Models\AmbassadorPromoCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 
@@ -41,17 +41,17 @@ class CartController extends Controller
 
         // Obtenir les cours populaires pour le panier vide
         $popularCourses = $this->getPopularCoursesForCart();
-        
+
         // Récupérer le code promo appliqué depuis la session
         $appliedPromoCode = Session::get('applied_promo_code');
-        
+
         return view('cart.index', compact('cartItems', 'subtotal', 'tax', 'total', 'recommendedCourses', 'recommendedPackages', 'popularCourses', 'popularPackages', 'appliedPromoCode'));
     }
 
     /**
      * Ajouter un cours au panier
      */
-public function add(Request $request)
+    public function add(Request $request)
     {
         try {
             try {
@@ -148,7 +148,6 @@ public function add(Request $request)
         }
     }
 
-
     /**
      * Supprimer un cours du panier
      */
@@ -230,12 +229,12 @@ public function add(Request $request)
             \Log::error('Error getting cart count', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             // Retourner 0 en cas d'erreur pour éviter de casser l'interface
             return response()->json([
-                'count' => 0
+                'count' => 0,
             ], 200);
         }
     }
@@ -245,7 +244,7 @@ public function add(Request $request)
      */
     public function checkout()
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return redirect()->route('login')->with('error', 'Vous devez être connecté pour procéder au paiement.');
         }
 
@@ -291,7 +290,7 @@ public function add(Request $request)
         $cartItems = array_values($cartItems);
 
         if (! empty($unavailableLabels)) {
-            $message = 'Certains articles de votre panier ne sont plus disponibles : ' . implode(', ', $unavailableLabels) . '. Veuillez les retirer du panier.';
+            $message = 'Certains articles de votre panier ne sont plus disponibles : '.implode(', ', $unavailableLabels).'. Veuillez les retirer du panier.';
 
             return redirect()->route('cart.index')->with('warning', $message);
         }
@@ -316,32 +315,32 @@ public function add(Request $request)
      */
     private function isCoursePurchased($course)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return false;
         }
-        
+
         $userId = auth()->id();
-        
+
         // Vérifier si l'utilisateur est inscrit au cours
         $isEnrolled = $course->isEnrolledBy($userId);
         if ($isEnrolled) {
             return true;
         }
-        
+
         // Vérifier si l'utilisateur a acheté le cours (pour les cours payants)
-        if (!$course->is_free) {
+        if (! $course->is_free) {
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
                 ->where('status', 'paid')
-                ->whereHas('orderItems', function($query) use ($course) {
+                ->whereHas('orderItems', function ($query) use ($course) {
                     $query->where('content_id', $course->id);
                 })
                 ->exists();
-            
+
             if ($hasPurchased) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -351,14 +350,18 @@ public function add(Request $request)
     private function getExcludedCourseIds($cartItems)
     {
         $excludedIds = collect();
-        
+        $cartContentIds = [];
+
         // 1. Exclure les cours déjà dans le panier (y compris ceux contenus dans des packs)
         if (! empty($cartItems) && is_array($cartItems)) {
             $cartContentIds = collect($cartItems)->flatMap(function ($item) {
                 if (($item['type'] ?? 'content') === 'package') {
                     $pkg = $item['package'] ?? null;
+                    if ($pkg instanceof ContentPackage) {
+                        return $pkg->contents->pluck('id')->all();
+                    }
 
-                    return $pkg ? $pkg->contents->pluck('id')->all() : [];
+                    return [];
                 }
                 if (isset($item['course'])) {
                     $c = $item['course'];
@@ -381,14 +384,14 @@ public function add(Request $request)
 
             $excludedIds = $excludedIds->merge($cartContentIds);
         }
-        
+
         // 2. Exclure les cours gratuits (toujours)
         $freeContentIds = Course::published()
             ->where('is_free', true)
             ->pluck('id')
             ->toArray();
         $excludedIds = $excludedIds->merge($freeContentIds);
-        
+
         // 3. Si l'utilisateur est connecté, exclure les cours déjà achetés ou auxquels il est inscrit
         if (auth()->check()) {
             $purchasedCourseIds = auth()->user()
@@ -397,18 +400,18 @@ public function add(Request $request)
                 ->pluck('content_id')
                 ->toArray();
             $excludedIds = $excludedIds->merge($purchasedCourseIds);
-            
+
             // Debug: Log des cours exclus
-            \Log::info('Cours exclus pour l\'utilisateur ' . auth()->id() . ':', [
-                'cart_content_ids' => $cartContentIds ?? [],
+            \Log::info('Cours exclus pour l\'utilisateur '.auth()->id().':', [
+                'cart_content_ids' => $cartContentIds,
                 'purchased_content_ids' => $purchasedCourseIds,
                 'free_content_ids' => $freeContentIds,
-                'total_excluded' => count($excludedIds->toArray())
+                'total_excluded' => count($excludedIds->toArray()),
             ]);
         }
-        
+
         $result = $excludedIds->unique()->values()->toArray();
-        
+
         return $result;
     }
 
@@ -432,7 +435,7 @@ public function add(Request $request)
             $pseudoCart = $this->getDatabaseCartItems();
         }
         $excludedCourseIds = $this->getExcludedCourseIds($pseudoCart);
-        
+
         // Obtenir les cours populaires avec filtrage approprié
         $popularCourses = Course::published()
             ->where('is_free', false) // Exclure les cours gratuits
@@ -443,47 +446,48 @@ public function add(Request $request)
             ->orderBy('created_at', 'desc')
             ->limit(20) // Augmenter la limite pour compenser le filtrage
             ->get();
-        
+
         // Filtrage manuel supplémentaire pour s'assurer qu'aucun cours indésirable ne passe
-        $popularCourses = $popularCourses->filter(function($course) {
+        $popularCourses = $popularCourses->filter(function ($course) {
             // Exclure les cours gratuits (double vérification)
             if ($course->is_free) {
                 return false;
             }
-            
+
             // Si l'utilisateur est connecté, exclure les cours déjà achetés ou auxquels il est inscrit
             if (auth()->check()) {
                 $isPurchased = auth()->user()
                     ->enrollments()
                     ->where('content_id', $course->id)
                     ->whereIn('status', ['active', 'completed'])
-                    
+
                     ->exists();
-                
+
                 if ($isPurchased) {
                     return false;
                 }
             }
-            
+
             return true;
         });
-        
+
         // Ajouter les statistiques à chaque cours
-        $popularCourses = $popularCourses->map(function($course) {
+        $popularCourses = $popularCourses->map(function ($course) {
             $course->stats = [
-                'total_lessons' => $course->sections ? $course->sections->sum(function($section) {
+                'total_lessons' => $course->sections ? $course->sections->sum(function ($section) {
                     return $section->lessons ? $section->lessons->count() : 0;
                 }) : 0,
-                'total_duration' => $course->sections ? $course->sections->sum(function($section) {
+                'total_duration' => $course->sections ? $course->sections->sum(function ($section) {
                     return $section->lessons ? $section->lessons->sum('duration') : 0;
                 }) : 0,
                 'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                 'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
                 'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
             ];
+
             return $course;
         })->take(8); // Limiter à 8 cours après filtrage
-        
+
         return $popularCourses;
     }
 
@@ -495,8 +499,8 @@ public function add(Request $request)
     {
         // Obtenir les IDs des cours à exclure
         $excludedCourseIds = $this->getExcludedCourseIds($cartItems);
-        
-        if (empty($cartItems) || !is_array($cartItems)) {
+
+        if (empty($cartItems) || ! is_array($cartItems)) {
             // Si le panier est vide, recommander des cours populaires
             $courses = Course::published()
                 ->where('is_free', false) // Force l'exclusion des cours gratuits
@@ -505,45 +509,45 @@ public function add(Request $request)
                 ->orderBy('created_at', 'desc')
                 ->limit(4)
                 ->get();
-                
+
             // Double vérification : filtrer manuellement les cours gratuits et achetés
-            $courses = $courses->filter(function($course) {
+            $courses = $courses->filter(function ($course) {
                 // Exclure les cours gratuits
                 if ($course->is_free) {
                     return false;
                 }
-                
+
                 // Exclure les cours achetés ou auxquels l'utilisateur est inscrit
                 if (auth()->check()) {
                     $isPurchased = auth()->user()
                         ->enrollments()
                         ->where('content_id', $course->id)
                         ->whereIn('status', ['active', 'completed'])
-                        
+
                         ->exists();
-                    
+
                     if ($isPurchased) {
                         return false;
                     }
                 }
-                
+
                 return true;
             });
-                
-            
+
             // Ajouter les statistiques calculées
-            return $courses->map(function($course) {
+            return $courses->map(function ($course) {
                 $course->stats = [
-                    'total_lessons' => $course->sections ? $course->sections->sum(function($section) {
+                    'total_lessons' => $course->sections ? $course->sections->sum(function ($section) {
                         return $section->lessons ? $section->lessons->count() : 0;
                     }) : 0,
-                    'total_duration' => $course->sections ? $course->sections->sum(function($section) {
+                    'total_duration' => $course->sections ? $course->sections->sum(function ($section) {
                         return $section->lessons ? $section->lessons->sum('duration') : 0;
                     }) : 0,
                     'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                     'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
                     'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
                 ];
+
                 return $course;
             });
         }
@@ -555,56 +559,62 @@ public function add(Request $request)
         $cartLevels = $contentOnly->pluck('course.level')->filter()->unique()->values()->toArray();
         $cartInstructors = $contentOnly->pluck('course.provider_id')->filter()->unique()->values()->toArray();
 
-        // 1. Cours complémentaires de la même catégorie
-        $categoryRecommendations = Course::published()
-            ->where('is_free', false)
-            ->whereIn('category_id', $cartCategories)
-            ->whereNotIn('id', $excludedCourseIds)
-            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
-            ->orderBy('created_at', 'desc')
-            ->limit(2)
-            ->get();
+        // 1. Cours complémentaires de la même catégorie (ignoré si panier sans contenu seul : ex. que des packs)
+        $categoryRecommendations = collect();
+        if ($cartCategories !== []) {
+            $categoryRecommendations = Course::published()
+                ->where('is_free', false)
+                ->whereIn('category_id', $cartCategories)
+                ->whereNotIn('id', $excludedCourseIds)
+                ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                ->orderBy('created_at', 'desc')
+                ->limit(2)
+                ->get();
 
-        // Filtrer manuellement les cours gratuits et achetés
-        $categoryRecommendations = $categoryRecommendations->filter(function($course) {
-            return !$course->is_free && !$this->isCoursePurchased($course);
-        });
+            $categoryRecommendations = $categoryRecommendations->filter(function ($course) {
+                return ! $course->is_free && ! $this->isCoursePurchased($course);
+            });
+        }
 
         $recommendations = $recommendations->merge($categoryRecommendations);
 
         // 2. Cours du même niveau de difficulté (pour progression)
-        $levelRecommendations = Course::published()
-            ->where('is_free', false)
-            ->whereIn('level', $cartLevels)
-            ->whereNotIn('id', $excludedCourseIds)
-            ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
-            ->orderBy('created_at', 'desc')
-            ->limit(1)
-            ->get();
+        $levelRecommendations = collect();
+        if ($cartLevels !== []) {
+            $levelRecommendations = Course::published()
+                ->where('is_free', false)
+                ->whereIn('level', $cartLevels)
+                ->whereNotIn('id', $excludedCourseIds)
+                ->whereNotIn('id', $recommendations->pluck('id'))
+                ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                ->orderBy('created_at', 'desc')
+                ->limit(1)
+                ->get();
 
-        // Filtrer manuellement les cours gratuits et achetés
-        $levelRecommendations = $levelRecommendations->filter(function($course) {
-            return !$course->is_free && !$this->isCoursePurchased($course);
-        });
+            $levelRecommendations = $levelRecommendations->filter(function ($course) {
+                return ! $course->is_free && ! $this->isCoursePurchased($course);
+            });
+        }
 
         $recommendations = $recommendations->merge($levelRecommendations);
 
         // 3. Contenus du même prestataire (si l'utilisateur aime le style)
-        $providerRecommendations = Course::published()
-            ->where('is_free', false)
-            ->whereIn('provider_id', $cartInstructors)
-            ->whereNotIn('id', $excludedCourseIds)
-            ->whereNotIn('id', $recommendations->pluck('id'))
-            ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
-            ->orderBy('created_at', 'desc')
-            ->limit(1)
-            ->get();
+        $providerRecommendations = collect();
+        if ($cartInstructors !== []) {
+            $providerRecommendations = Course::published()
+                ->where('is_free', false)
+                ->whereIn('provider_id', $cartInstructors)
+                ->whereNotIn('id', $excludedCourseIds)
+                ->whereNotIn('id', $recommendations->pluck('id'))
+                ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                ->orderBy('created_at', 'desc')
+                ->limit(1)
+                ->get();
 
-        // Filtrer manuellement les cours gratuits et achetés
-        $providerRecommendations = $providerRecommendations->filter(function($course) {
-            return !$course->is_free && !$this->isCoursePurchased($course);
-        });
+            $providerRecommendations = $providerRecommendations->filter(function ($course) {
+                return ! $course->is_free && ! $this->isCoursePurchased($course);
+            });
+        }
 
         $recommendations = $recommendations->merge($providerRecommendations);
 
@@ -620,8 +630,8 @@ public function add(Request $request)
             ->get();
 
         // Filtrer manuellement les cours gratuits et achetés
-        $trendingRecommendations = $trendingRecommendations->filter(function($course) {
-            return !$course->is_free && !$this->isCoursePurchased($course);
+        $trendingRecommendations = $trendingRecommendations->filter(function ($course) {
+            return ! $course->is_free && ! $this->isCoursePurchased($course);
         });
 
         $recommendations = $recommendations->merge($trendingRecommendations);
@@ -635,7 +645,7 @@ public function add(Request $request)
                 ->unique()
                 ->toArray();
 
-            if (!empty($userEnrollments)) {
+            if (! empty($userEnrollments)) {
                 $userPreferenceRecommendations = Course::published()
                     ->where('is_free', false)
                     ->whereIn('category_id', $userEnrollments)
@@ -647,8 +657,8 @@ public function add(Request $request)
                     ->get();
 
                 // Filtrer manuellement les cours gratuits et achetés
-                $userPreferenceRecommendations = $userPreferenceRecommendations->filter(function($course) {
-                    return !$course->is_free && !$this->isCoursePurchased($course);
+                $userPreferenceRecommendations = $userPreferenceRecommendations->filter(function ($course) {
+                    return ! $course->is_free && ! $this->isCoursePurchased($course);
                 });
 
                 $recommendations = $recommendations->merge($userPreferenceRecommendations);
@@ -667,56 +677,56 @@ public function add(Request $request)
                 ->get();
 
             // Filtrer manuellement les cours gratuits et achetés
-            $popularRecommendations = $popularRecommendations->filter(function($course) {
-                return !$course->is_free && !$this->isCoursePurchased($course);
+            $popularRecommendations = $popularRecommendations->filter(function ($course) {
+                return ! $course->is_free && ! $this->isCoursePurchased($course);
             });
 
             $recommendations = $recommendations->merge($popularRecommendations);
         }
 
         // Filtrage final pour s'assurer qu'aucun cours gratuit ou acheté ne passe
-        $finalRecommendations = $recommendations->filter(function($course) {
+        $finalRecommendations = $recommendations->filter(function ($course) {
             // Exclure les cours gratuits
             if ($course->is_free) {
                 return false;
             }
-            
+
             // Exclure les cours achetés ou auxquels l'utilisateur est inscrit
             if (auth()->check()) {
                 $isPurchased = auth()->user()
                     ->enrollments()
                     ->where('content_id', $course->id)
                     ->whereIn('status', ['active', 'completed'])
-                    
+
                     ->exists();
-                
+
                 if ($isPurchased) {
                     return false;
                 }
             }
-            
+
             return true;
         })->shuffle()->take(4);
-        
-        return $finalRecommendations->map(function($course) {
+
+        return $finalRecommendations->map(function ($course) {
             // Charger les relations nécessaires si elles ne sont pas déjà chargées
-            if (!$course->relationLoaded('sections')) {
+            if (! $course->relationLoaded('sections')) {
                 $course->load(['sections.lessons', 'reviews', 'enrollments']);
             }
-            
+
             // Ajouter les statistiques calculées
             $course->stats = [
-                'total_lessons' => $course->sections ? $course->sections->sum(function($section) {
+                'total_lessons' => $course->sections ? $course->sections->sum(function ($section) {
                     return $section->lessons ? $section->lessons->count() : 0;
                 }) : 0,
-                'total_duration' => $course->sections ? $course->sections->sum(function($section) {
+                'total_duration' => $course->sections ? $course->sections->sum(function ($section) {
                     return $section->lessons ? $section->lessons->sum('duration') : 0;
                 }) : 0,
                 'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                 'average_rating' => $course->reviews ? $course->reviews->avg('rating') ?? 0 : 0,
                 'total_reviews' => $course->reviews ? $course->reviews->count() : 0,
             ];
-            
+
             return $course;
         });
     }
@@ -744,7 +754,7 @@ public function add(Request $request)
 
         return response()->json([
             'success' => true,
-            'html' => $html
+            'html' => $html,
         ]);
     }
 
@@ -768,7 +778,7 @@ public function add(Request $request)
                     'thumbnail' => $course->thumbnail,
                     'price' => $course->current_price,
                     'quantity' => $quantity,
-                    'subtotal' => $course->current_price * $quantity
+                    'subtotal' => $course->current_price * $quantity,
                 ];
                 $total += $course->current_price * $quantity;
             }
@@ -777,7 +787,7 @@ public function add(Request $request)
         return response()->json([
             'items' => $cartItems,
             'total' => $total,
-            'count' => array_sum($cart)
+            'count' => array_sum($cart),
         ]);
     }
 
@@ -880,7 +890,7 @@ public function add(Request $request)
     {
         CartItem::create([
             'user_id' => auth()->id(),
-            'content_id' => $contentId
+            'content_id' => $contentId,
         ]);
     }
 
@@ -938,7 +948,7 @@ public function add(Request $request)
 
         // S'assurer que $cartItems est un tableau
         $cartItems = is_array($cartItems) ? $cartItems : $cartItems->toArray();
-        
+
         $cartItems = array_filter($cartItems, function ($item) {
             $type = $item['type'] ?? 'content';
             if ($type === 'package') {
@@ -950,10 +960,10 @@ public function add(Request $request)
 
             return $course && $course->is_published && $course->is_sale_enabled;
         });
-        
+
         // Réindexer le tableau après filtrage
         $cartItems = array_values($cartItems);
-        
+
         $total = collect($cartItems)->sum('subtotal');
         $itemCount = count($cartItems);
 
@@ -968,7 +978,7 @@ public function add(Request $request)
             'item_count' => $itemCount,
             'formatted_subtotal' => $formattedSubtotal,
             'formatted_total' => $formattedTotal,
-            'item_text' => $itemCount . ' article' . ($itemCount > 1 ? 's' : '')
+            'item_text' => $itemCount.' article'.($itemCount > 1 ? 's' : ''),
         ]);
     }
 
@@ -1108,7 +1118,7 @@ public function add(Request $request)
     {
         try {
             $request->validate([
-                'promo_code' => 'required|string|max:50'
+                'promo_code' => 'required|string|max:50',
             ]);
 
             $code = strtoupper(trim($request->promo_code));
@@ -1118,18 +1128,18 @@ public function add(Request $request)
                 ->with('ambassador.user')
                 ->first();
 
-            if (!$promoCode) {
+            if (! $promoCode) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Code promo invalide ou introuvable.'
+                    'message' => 'Code promo invalide ou introuvable.',
                 ], 404);
             }
 
             // Vérifier si le code promo est valide
-            if (!$promoCode->isValid()) {
+            if (! $promoCode->isValid()) {
                 $message = 'Ce code promo n\'est plus valide.';
-                
-                if (!$promoCode->is_active) {
+
+                if (! $promoCode->is_active) {
                     $message = 'Ce code promo a été désactivé.';
                 } elseif ($promoCode->expires_at && $promoCode->expires_at->isPast()) {
                     $message = 'Ce code promo a expiré.';
@@ -1139,15 +1149,15 @@ public function add(Request $request)
 
                 return response()->json([
                     'success' => false,
-                    'message' => $message
+                    'message' => $message,
                 ], 400);
             }
 
             // Vérifier si l'ambassadeur est actif
-            if (!$promoCode->ambassador->is_active) {
+            if (! $promoCode->ambassador->is_active) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'L\'ambassadeur associé à ce code n\'est plus actif.'
+                    'message' => 'L\'ambassadeur associé à ce code n\'est plus actif.',
                 ], 400);
             }
 
@@ -1156,7 +1166,7 @@ public function add(Request $request)
                 'code' => $promoCode->code,
                 'ambassador_id' => $promoCode->ambassador_id,
                 'promo_code_id' => $promoCode->id,
-                'ambassador_name' => $promoCode->ambassador->user->name ?? 'Ambassadeur'
+                'ambassador_name' => $promoCode->ambassador->user->name ?? 'Ambassadeur',
             ]);
 
             return response()->json([
@@ -1164,26 +1174,26 @@ public function add(Request $request)
                 'message' => 'Code promo appliqué avec succès!',
                 'promo_code' => $promoCode->code,
                 'ambassador_name' => $promoCode->ambassador->user->name ?? 'Ambassadeur',
-                'discount' => 0 // Pour l'instant pas de réduction, juste le tracking
+                'discount' => 0, // Pour l'instant pas de réduction, juste le tracking
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Veuillez entrer un code promo valide.',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             \Log::error('Error applying promo code', [
                 'error' => $e->getMessage(),
                 'code' => $request->promo_code ?? null,
                 'user_id' => auth()->id(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur est survenue lors de l\'application du code promo.'
+                'message' => 'Une erreur est survenue lors de l\'application du code promo.',
             ], 500);
         }
     }
@@ -1199,19 +1209,19 @@ public function add(Request $request)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Code promo retiré avec succès.'
+                'message' => 'Code promo retiré avec succès.',
             ]);
 
         } catch (\Exception $e) {
             \Log::error('Error removing promo code', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur est survenue lors du retrait du code promo.'
+                'message' => 'Une erreur est survenue lors du retrait du code promo.',
             ], 500);
         }
     }

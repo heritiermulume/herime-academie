@@ -3717,7 +3717,7 @@
                                 @foreach($recommendedPackages as $pkg)
                                     <a href="{{ route('packs.show', $pkg) }}" class="recommended-item">
                                         <div class="recommended-thumb">
-                                            <img src="{{ $pkg->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop' }}" alt="{{ $pkg->title }}">
+                                            <x-package-card-media :package="$pkg" variant="thumb" />
                                         </div>
                                         <div class="recommended-content flex-grow-1">
                                             <h6><span class="badge bg-primary me-1">Pack</span>{{ $pkg->title }}</h6>
