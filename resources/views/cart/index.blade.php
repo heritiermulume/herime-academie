@@ -3,7 +3,7 @@
 @section('title', 'Mon Panier - Herime Académie')
 
 @section('content')
-<div class="udemy-cart-container">
+<div class="udemy-cart-container" data-reload-after-package-add="1">
     <div class="cart-wrapper">
         <!-- Header Section -->
         <div class="cart-header">

@@ -52,7 +52,7 @@
                                 class="btn btn-success btn-sm w-100"
                                 data-meta-trigger="checkout"
                                 onclick="proceedToCheckoutPackage({{ $package->id }});">
-                            <i class="fas fa-credit-card me-2"></i>Procéder au paiement
+                            <i class="fas fa-credit-card me-2"></i>{{ $package->cta_label ?: 'Procéder au paiement' }}
                         </button>
                     @elseif($package->is_published)
                         <a href="{{ route('packs.show', $package) }}"

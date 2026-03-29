@@ -60,6 +60,13 @@ document.addEventListener('click', function (e) {
                 if (typeof window.showNotification === 'function') {
                     window.showNotification(data.message || 'Pack ajouté au panier', 'success');
                 }
+                // Page panier : même comportement que l’ajout d’un contenu (addToCartFromCartPage) — recharger pour afficher la ligne pack.
+                if (document.querySelector('[data-reload-after-package-add="1"]')) {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                    return;
+                }
             } else {
                 btn.disabled = false;
                 if (typeof window.showNotification === 'function') {
