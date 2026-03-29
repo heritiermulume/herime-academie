@@ -100,7 +100,7 @@
 @media (max-width: 991.98px) {
     body:has(.course-details-page) .whatsapp-float-btn {
         bottom: calc(
-            1rem + env(safe-area-inset-bottom, 0px) + var(--site-mobile-bottom-nav-height, 60px) + clamp(2.25rem, 12vw, 4.75rem) + 1.3rem
+            1rem + env(safe-area-inset-bottom, 0px) + var(--site-mobile-bottom-nav-height, 60px) + clamp(2.25rem, 12vw, 4.75rem) + 0.8rem
         );
     }
 }

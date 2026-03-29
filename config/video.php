@@ -58,7 +58,7 @@ return [
     /*
     | Préchargement du lecteur HTML5 (vidéos hébergées sur la plateforme).
     | - metadata : charge surtout la durée et les infos ; la vidéo se remplit au fil de la lecture (recommandé, moins de données, mieux sur 3G/4G).
-    | - none : minimum jusqu’au clic sur lecture (idéal si VIDEO_PLAYER_PRELOAD reste metadata mais l’utilisateur a « Économiseur de données »).
+    | - none : minimum jusqu’au clic sur lecture (le client peut passer à metadata sur 2G pour éviter un premier clic « sans réaction »).
     | - auto : ancien comportement type « tout précharger » — plus lourd pour la facture data et les connexions lentes.
     */
     'player_preload' => env('VIDEO_PLAYER_PRELOAD', 'metadata'),

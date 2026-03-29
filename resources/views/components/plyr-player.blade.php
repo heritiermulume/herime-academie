@@ -701,6 +701,16 @@
             // Gestion robuste buffering et seek pour vidéos internes
             if (isInternalVideo) {
                 const bufferIndicator = document.getElementById('buffer-' + playerId);
+                if (bufferIndicator && typeof window.herimeGetNetworkPlaybackProfile === 'function') {
+                    try {
+                        if (window.herimeGetNetworkPlaybackProfile() === 'slow') {
+                            const label = bufferIndicator.querySelector('span:last-of-type');
+                            if (label) {
+                                label.textContent = 'Connexion lente — mise en mémoire tampon…';
+                            }
+                        }
+                    } catch (e) {}
+                }
                 let wasPlayingBeforeBuffering = false;
                 let shouldResumeAfterSeek = false;
                 let seekResumeTimeout = null;
