@@ -285,6 +285,16 @@ class User extends Authenticatable
         return $this->hasMany(ProviderPayout::class, 'provider_id');
     }
 
+    public function subscriptions()
+    {
+        return $this->hasMany(UserSubscription::class);
+    }
+
+    public function activeSubscriptions()
+    {
+        return $this->subscriptions()->whereIn('status', ['trialing', 'active']);
+    }
+
     public function hasPurchasedContentPackage(ContentPackage $package): bool
     {
         return Order::query()

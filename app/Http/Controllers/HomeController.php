@@ -10,6 +10,7 @@ use App\Models\Partner;
 use App\Models\Testimonial;
 use App\Models\User;
 use App\Models\ContentPackage;
+use App\Models\SubscriptionPlan;
 use App\Services\TemporaryUploadCleaner;
 use App\Traits\CourseStatistics;
 use Illuminate\Http\Request;
@@ -43,25 +44,25 @@ class HomeController extends Controller
             ->featured()
             ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->latest()
-            ->limit(3)
+            ->limit(10)
             ->get();
 
         $popularCourses = Course::published()
             ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->popular()
-            ->limit(8)
+            ->limit(10)
             ->get();
 
         $latestCourses = Course::published()
             ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->latest()
-            ->limit(6)
+            ->limit(10)
             ->get();
 
         $topRatedCourses = Course::published()
             ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->topRated()
-            ->limit(6)
+            ->limit(10)
             ->get();
 
         // Récupérer les catégories les plus populaires basées sur les inscriptions récentes
@@ -118,7 +119,7 @@ class HomeController extends Controller
             })
             ->withCount('enrollments')
             ->orderBy('enrollments_count', 'desc')
-            ->limit(4)
+            ->limit(10)
             ->get();
 
         $featuredPackages = ContentPackage::query()
@@ -126,6 +127,12 @@ class HomeController extends Controller
             ->featured()
             ->withCount('contents')
             ->ordered()
+            ->get();
+
+        $homeSubscriptionPlans = SubscriptionPlan::query()
+            ->where('is_active', true)
+            ->orderBy('price')
+            ->limit(3)
             ->get();
 
         $homePackagesAsideFeatured = ContentPackage::query()
@@ -152,6 +159,7 @@ class HomeController extends Controller
             'trendingCourses',
             'featuredPackages',
             'homePackagesAsideFeatured',
+            'homeSubscriptionPlans',
             'categories',
             'providers',
             'announcements',

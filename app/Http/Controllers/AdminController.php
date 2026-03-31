@@ -1457,6 +1457,8 @@ class AdminController extends Controller
             'sale_start_at' => 'nullable|date',
             'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
             'is_free' => 'boolean',
+            'requires_subscription' => 'boolean',
+            'required_subscription_tier' => 'nullable|in:starter,pro,enterprise',
             'is_downloadable' => 'boolean',
             'is_in_person_program' => 'boolean',
             'whatsapp_number' => 'nullable|string|max:30|required_if:is_in_person_program,1',
@@ -1631,6 +1633,8 @@ class AdminController extends Controller
             $courseData['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
 
             $courseData['is_free'] = $request->boolean('is_free', false);
+            $courseData['requires_subscription'] = $request->boolean('requires_subscription', false);
+            $courseData['required_subscription_tier'] = $request->input('required_subscription_tier');
             $courseData['is_downloadable'] = $request->boolean('is_downloadable', false);
             $courseData['is_in_person_program'] = $request->boolean('is_in_person_program', false);
             $courseData['use_external_payment'] = $request->boolean('use_external_payment', false);
@@ -1670,6 +1674,12 @@ class AdminController extends Controller
                     $courseData['sale_start_at'] = null;
                     $courseData['sale_end_at'] = null;
                 }
+            }
+
+            if (!$courseData['requires_subscription']) {
+                $courseData['required_subscription_tier'] = null;
+            } elseif (empty($courseData['required_subscription_tier'])) {
+                $courseData['required_subscription_tier'] = 'starter';
             }
 
             $course = Course::create($courseData);
@@ -1776,6 +1786,8 @@ class AdminController extends Controller
             'price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
             'is_free' => 'boolean',
+            'requires_subscription' => 'boolean',
+            'required_subscription_tier' => 'nullable|in:starter,pro,enterprise',
             'is_downloadable' => 'boolean',
             'is_in_person_program' => 'boolean',
             'whatsapp_number' => 'nullable|string|max:30|required_if:is_in_person_program,1',
@@ -1964,6 +1976,8 @@ class AdminController extends Controller
             $data['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
 
             $data['is_free'] = $request->boolean('is_free', false);
+            $data['requires_subscription'] = $request->boolean('requires_subscription', false);
+            $data['required_subscription_tier'] = $request->input('required_subscription_tier');
             $data['is_downloadable'] = $request->boolean('is_downloadable', false);
             $data['is_in_person_program'] = $request->boolean('is_in_person_program', false);
             $data['use_external_payment'] = $request->boolean('use_external_payment', false);
@@ -2003,6 +2017,12 @@ class AdminController extends Controller
                     $data['sale_start_at'] = null;
                     $data['sale_end_at'] = null;
                 }
+            }
+
+            if (!$data['requires_subscription']) {
+                $data['required_subscription_tier'] = null;
+            } elseif (empty($data['required_subscription_tier'])) {
+                $data['required_subscription_tier'] = 'starter';
             }
 
             $course->update($data);

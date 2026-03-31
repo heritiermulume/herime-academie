@@ -310,6 +310,12 @@ body.has-global-announcement:has(.course-details-page) {
     color: white;
 }
 
+.course-badge.subscription {
+    background: rgba(15, 23, 42, 0.82);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
 .course-title-hero {
     font-size: 1.5rem;
     font-weight: 700;
@@ -3387,6 +3393,27 @@ button.mobile-price-slider__btn--download i,
 
             <h1 class="course-title-hero">{{ $course->title }}</h1>
 
+            <div class="course-badges">
+                @if($course->is_featured)
+                    <span class="course-badge featured">En vedette</span>
+                @endif
+                @if($course->is_free)
+                    <span class="course-badge free">Gratuit</span>
+                @endif
+                @if($course->requires_subscription)
+                    <a href="{{ auth()->check() ? route('customer.subscriptions') : route('login') }}"
+                       class="course-badge subscription text-decoration-none">
+                        <i class="fas fa-lock me-1"></i>Abonnement requis ({{ strtoupper($course->required_subscription_tier ?? 'starter') }})
+                    </a>
+                @endif
+                @if($course->category)
+                    <span class="course-badge category">{{ $course->category->name }}</span>
+                @endif
+                @if($course->level)
+                    <span class="course-badge level">{{ ucfirst($course->level) }}</span>
+                @endif
+            </div>
+
             <div class="course-stats-hero">
                 <div class="course-stat-item">
                     <div class="d-flex align-items-center gap-1 flex-wrap">
@@ -4485,7 +4512,6 @@ button.mobile-price-slider__btn--download i,
                                 </a>
                             @endif
                         @endif
-                        @include('contents.partials.repurchase-offer-cta', ['course' => $course, 'layout' => 'mobile'])
                     @elseif($hasPurchased)
                         {{-- Utilisateur a acheté --}}
                         @if($course->is_downloadable)
@@ -4565,7 +4591,6 @@ button.mobile-price-slider__btn--download i,
                                 </button>
                             @endif
                         @endif
-                        @include('contents.partials.repurchase-offer-cta', ['course' => $course, 'layout' => 'mobile'])
                     @else
                         {{-- Utilisateur n'a pas encore acheté --}}
                         @if($course->is_sale_enabled ?? true)

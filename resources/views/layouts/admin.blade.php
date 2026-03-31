@@ -40,6 +40,12 @@
             'active' => ['admin.orders.*']
         ],
         [
+            'label' => 'Abonnements',
+            'icon' => 'fas fa-repeat',
+            'route' => 'admin.subscriptions.index',
+            'active' => ['admin.subscriptions.*']
+        ],
+        [
             'label' => 'Utilisateurs',
             'icon' => 'fas fa-users-cog',
             'route' => 'admin.users',

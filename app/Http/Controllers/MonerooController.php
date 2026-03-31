@@ -1077,6 +1077,11 @@ class MonerooController extends Controller
             ->first();
 
         if (!$payment) {
+            $subscriptionHandled = $this->handleSubscriptionInvoiceWebhook($payload, $paymentData, $paymentId, $status);
+            if ($subscriptionHandled) {
+                return response()->json(['received' => true], 200);
+            }
+
             \Log::warning('Moneroo webhook: Payment not found', ['payment_id' => $paymentId, 'searched_by_moneroo_id' => true]);
             // Retourner 200 OK même si payment non trouvé (éviter retry sur transaction inexistante)
             return response()->json(['received' => false, 'message' => 'Payment not found'], 200);
@@ -1197,6 +1202,57 @@ class MonerooController extends Controller
                 'error' => 'Error processing callback (logged)',
             ], 200);
         }
+    }
+
+    private function handleSubscriptionInvoiceWebhook(array $payload, array $paymentData, ?string $paymentId, ?string $status): bool
+    {
+        $kind = data_get($paymentData, 'metadata.kind')
+            ?? data_get($payload, 'metadata.kind');
+
+        if ($kind !== 'subscription_invoice') {
+            return false;
+        }
+
+        $invoiceId = data_get($paymentData, 'metadata.invoice_id')
+            ?? data_get($payload, 'metadata.invoice_id');
+
+        if (!$invoiceId) {
+            return false;
+        }
+
+        $invoice = \App\Models\SubscriptionInvoice::query()->find($invoiceId);
+        if (!$invoice) {
+            return false;
+        }
+
+        $mappedStatus = match ($status) {
+            'success', 'completed' => 'paid',
+            'failed', 'cancelled', 'expired', 'rejected' => 'failed',
+            default => 'pending',
+        };
+
+        $invoice->update([
+            'status' => $mappedStatus,
+            'paid_at' => $mappedStatus === 'paid' ? now() : null,
+            'metadata' => array_merge($invoice->metadata ?? [], [
+                'moneroo_callback' => $payload,
+                'last_moneroo_payment_id' => $paymentId,
+                'last_moneroo_status' => $status,
+            ]),
+        ]);
+
+        if ($mappedStatus === 'paid' && $invoice->subscription) {
+            $invoice->subscription->update(['status' => 'active']);
+        }
+        if ($invoice->user) {
+            if ($mappedStatus === 'paid') {
+                $invoice->user->notify(new \App\Notifications\SubscriptionInvoicePaid($invoice));
+            } elseif ($mappedStatus === 'failed') {
+                $invoice->user->notify(new \App\Notifications\SubscriptionInvoiceFailed($invoice));
+            }
+        }
+
+        return true;
     }
 
     /**

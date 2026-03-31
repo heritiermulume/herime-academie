@@ -1154,6 +1154,70 @@ body {
 </section>
 @endif
 
+<!-- Subscription Plans Section -->
+@if($homeSubscriptionPlans->count() > 0)
+<section class="subscription-plans-home py-5 text-white" style="background-color: #003366;">
+    <div class="container">
+        <div class="row mb-5">
+            <div class="col-12 col-lg-9 mx-auto text-center">
+                <span class="badge bg-light text-primary mb-3 px-3 py-2">Abonnements</span>
+                <h2 class="display-5 fw-bold mb-3">Passez au niveau superieur avec un plan adapte a vos objectifs</h2>
+                <p class="lead text-white-50 mb-0">
+                    Accedez a davantage de contenus premium, avancez plus vite avec une logique de progression continue et
+                    investissez dans vos competences a moindre cout grace a nos formules d'abonnement.
+                </p>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            @foreach($homeSubscriptionPlans as $plan)
+                @php
+                    $billingLabel = match ($plan->billing_period) {
+                        'monthly' => 'mois',
+                        'yearly' => 'an',
+                        default => null,
+                    };
+                @endphp
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="fw-bold mb-2">{{ $plan->name }}</h5>
+                            <p class="text-muted mb-3">{{ Str::limit($plan->description, 120) }}</p>
+
+                            <div class="mb-3">
+                                <span class="h3 fw-bold text-primary mb-0">
+                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($plan->effective_price) }}
+                                </span>
+                                @if($billingLabel)
+                                    <span class="text-muted">/ {{ $billingLabel }}</span>
+                                @endif
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                @if($plan->trial_days > 0)
+                                    <span class="badge text-bg-success">{{ $plan->trial_days }} jours d'essai gratuit</span>
+                                @endif
+                                <span class="badge text-bg-light border">{{ ucfirst((string) $plan->plan_type) }}</span>
+                            </div>
+
+                            <a href="{{ route('customer.subscriptions') }}" class="btn btn-primary mt-auto">
+                                Choisir ce plan <i class="fas fa-arrow-right ms-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ route('customer.subscriptions') }}" class="btn btn-outline-light btn-lg">
+                Voir tous les plans d'abonnement <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+@endif
+
 <!-- CTA Section -->
 <section class="cta-section bg-primary text-white py-5">
     <div class="container">

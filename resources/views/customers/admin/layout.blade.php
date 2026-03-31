@@ -33,6 +33,13 @@
             'url' => route('orders.index'),
             'active' => ['orders.index', 'orders.show'],
         ],
+        [
+            'label' => 'Abonnements',
+            'icon' => 'fas fa-repeat',
+            'route' => 'customer.subscriptions',
+            'url' => route('customer.subscriptions'),
+            'active' => ['customer.subscriptions', 'subscriptions.*'],
+        ],
     ];
 
     if (\Illuminate\Support\Facades\Route::has('profile.edit')) {
@@ -152,6 +159,13 @@
         padding: 0.5rem 3.1rem 3.2rem 0;
     }
 
+    .student-admin-shell,
+    .admin-main,
+    .admin-content {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
     .admin-sidebar-wrapper {
         position: relative;
         width: 280px;
@@ -172,6 +186,7 @@
         height: calc(100vh - var(--site-navbar-height, 64px));
         border-radius: 0;
         box-shadow: 0 24px 55px -40px rgba(30, 58, 138, 0.45);
+        box-sizing: border-box;
     }
 
     .admin-sidebar__brand {

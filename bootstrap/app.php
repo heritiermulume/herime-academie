@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'sync.cart' => \App\Http\Middleware\SyncCartOnLogin::class,
             'sso.validate' => \App\Http\Middleware\ValidateSSOToken::class,
             'sso.page.load' => \App\Http\Middleware\ValidateSSOOnPageLoad::class,
+            'subscription.access' => \App\Http\Middleware\EnsureSubscriptionAccess::class,
         ]);
         
         // Appliquer les middlewares globalement sur les routes web

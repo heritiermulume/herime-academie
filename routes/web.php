@@ -28,6 +28,9 @@ use App\Http\Controllers\Auth\SSOController;
 use App\Http\Controllers\SSOCallbackController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\MetaConversionsController;
+use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
+use App\Http\Controllers\Admin\SubscriptionPlanController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -244,9 +247,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('customer')->name('customer.')->middleware('role:customer')->group(function () {
         Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('dashboard');
         Route::get('/contents', [CustomerController::class, 'courses'])->name('contents');
+        Route::get('/subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions');
         Route::get('/packs/{package:slug}', [CustomerController::class, 'showPurchasedPack'])->name('pack');
         Route::get('/certificates', [CustomerController::class, 'certificates'])->name('certificates');
     });
+    Route::post('/subscriptions/plans/{plan}/subscribe', [SubscriptionController::class, 'subscribe'])
+        ->middleware('sso.validate')
+        ->name('subscriptions.subscribe');
+    Route::post('/subscriptions/{subscription}/cancel', [SubscriptionController::class, 'cancel'])
+        ->middleware('sso.validate')
+        ->name('subscriptions.cancel');
+    Route::post('/subscriptions/{subscription}/resume', [SubscriptionController::class, 'resume'])
+        ->middleware('sso.validate')
+        ->name('subscriptions.resume');
+    Route::post('/subscriptions/invoices/{invoice}/pay', [SubscriptionController::class, 'payInvoice'])
+        ->middleware('sso.validate')
+        ->name('subscriptions.invoices.pay');
+    Route::get('/subscriptions/invoices/{invoice}/return', [SubscriptionController::class, 'invoiceReturn'])->name('subscriptions.invoices.return');
     
     // Certificate download route (accessible to authenticated users who own the certificate)
     Route::get('/certificates/{certificate}/download', [CustomerController::class, 'downloadCertificate'])
@@ -255,7 +272,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Enrollment route (accessible to all authenticated users) - avec validation SSO
     Route::post('/customer/courses/{course:slug}/enroll', [CustomerController::class, 'enroll'])
-        ->middleware('sso.validate')
+        ->middleware(['sso.validate', 'subscription.access'])
         ->name('customer.contents.enroll');
 
     // Review routes (accessible to all authenticated users who are enrolled)
@@ -690,6 +707,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Payments (transactions) management
         Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
 
+        // Subscriptions module
+        Route::get('/subscriptions', [AdminSubscriptionController::class, 'index'])->name('subscriptions.index');
+        Route::post('/subscriptions/invoices/{invoice}/mark-paid', [AdminSubscriptionController::class, 'markInvoicePaid'])
+            ->middleware('sso.validate')
+            ->name('subscriptions.invoices.mark-paid');
+        Route::get('/subscriptions/plans', [SubscriptionPlanController::class, 'index'])->name('subscriptions.plans.index');
+        Route::get('/subscriptions/plans/create', [SubscriptionPlanController::class, 'create'])->name('subscriptions.plans.create');
+        Route::post('/subscriptions/plans', [SubscriptionPlanController::class, 'store'])
+            ->middleware('sso.validate')
+            ->name('subscriptions.plans.store');
+        Route::get('/subscriptions/plans/{plan}/edit', [SubscriptionPlanController::class, 'edit'])->name('subscriptions.plans.edit');
+        Route::put('/subscriptions/plans/{plan}', [SubscriptionPlanController::class, 'update'])
+            ->middleware('sso.validate')
+            ->name('subscriptions.plans.update');
+        Route::delete('/subscriptions/plans/{plan}', [SubscriptionPlanController::class, 'destroy'])
+            ->middleware('sso.validate')
+            ->name('subscriptions.plans.destroy');
+
         // Uploads (AJAX) for admin - avec validation SSO
         Route::post('/uploads/lesson-file', [AdminController::class, 'uploadLessonFile'])
             ->middleware('sso.validate')
@@ -771,8 +806,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Learning routes - avec validation SSO pour les actions de progression
-    Route::get('/learning/courses/{course:slug}', [LearningController::class, 'learn'])->name('learning.course');
-    Route::get('/learning/courses/{course:slug}/lessons/{lesson}', [LearningController::class, 'lesson'])->name('learning.lesson');
+    Route::get('/learning/courses/{course:slug}', [LearningController::class, 'learn'])
+        ->middleware('subscription.access')
+        ->name('learning.course');
+    Route::get('/learning/courses/{course:slug}/lessons/{lesson}', [LearningController::class, 'lesson'])
+        ->middleware('subscription.access')
+        ->name('learning.lesson');
     Route::post('/learning/courses/{course:slug}/lessons/{lesson}/start', [LearningController::class, 'startLesson'])
         ->middleware('sso.validate')
         ->name('learning.start-lesson');

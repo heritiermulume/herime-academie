@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
             TestimonialSeeder::class,
             NotificationSeeder::class,
             BannerSeeder::class,
+            SubscriptionPlanSeeder::class,
+            SubscriptionTieredLocalizedPricingSeeder::class,
         ]);
     }
 }

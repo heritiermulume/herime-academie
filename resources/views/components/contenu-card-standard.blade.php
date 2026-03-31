@@ -12,6 +12,13 @@
                 @if($course->is_free)
                 <span class="badge bg-success">Gratuit</span>
                 @endif
+                @if($course->requires_subscription)
+                <a href="{{ auth()->check() ? route('customer.subscriptions') : route('login') }}"
+                   class="badge bg-dark text-decoration-none"
+                   onclick="event.stopPropagation();">
+                    <i class="fas fa-lock me-1"></i>{{ strtoupper($course->required_subscription_tier ?? 'starter') }}
+                </a>
+                @endif
                 @if($course->sale_discount_percentage)
                 <span class="badge bg-danger">
                     -{{ $course->sale_discount_percentage }}%

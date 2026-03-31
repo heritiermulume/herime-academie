@@ -29,6 +29,11 @@ class Kernel extends ConsoleKernel
         // lors de l'accès au wallet, sans dépendance au cron. La commande artisan reste disponible
         // pour des libérations manuelles si nécessaire : php artisan wallet:release-holds
 
+        // Traitement automatique des abonnements (renouvellements et factures périodiques)
+        $schedule->command('subscriptions:process-renewals')
+            ->hourly()
+            ->name('subscriptions-process-renewals');
+
     }
 
     /**

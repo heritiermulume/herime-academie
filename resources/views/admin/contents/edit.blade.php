@@ -417,6 +417,25 @@
                                     </label>
                                 </div>
                                 <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="requires_subscription" name="requires_subscription" value="1"
+                                           {{ old('requires_subscription', $course->requires_subscription) ? 'checked' : '' }}
+                                           onchange="syncSubscriptionTierFields()">
+                                    <label class="form-check-label" for="requires_subscription">
+                                        <strong>Contenu reserve aux abonnes</strong>
+                                    </label>
+                                </div>
+                                <div id="required_subscription_tier_group" class="mt-2" style="display: {{ old('requires_subscription', $course->requires_subscription) ? 'block' : 'none' }};">
+                                    <label for="required_subscription_tier" class="form-label fw-bold mb-1">Niveau minimum requis</label>
+                                    <select class="form-select @error('required_subscription_tier') is-invalid @enderror" id="required_subscription_tier" name="required_subscription_tier">
+                                        <option value="starter" {{ old('required_subscription_tier', $course->required_subscription_tier ?? 'starter') === 'starter' ? 'selected' : '' }}>Starter</option>
+                                        <option value="pro" {{ old('required_subscription_tier', $course->required_subscription_tier) === 'pro' ? 'selected' : '' }}>Pro</option>
+                                        <option value="enterprise" {{ old('required_subscription_tier', $course->required_subscription_tier) === 'enterprise' ? 'selected' : '' }}>Enterprise</option>
+                                    </select>
+                                    @error('required_subscription_tier')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="is_published" name="is_published" value="1" 
                                            {{ old('is_published', $course->is_published) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_published">
@@ -2741,6 +2760,18 @@ function removeLearning(button) {
 }
 
 // Sauvegarder comme brouillon
+function syncSubscriptionTierFields() {
+    const checkbox = document.getElementById('requires_subscription');
+    const group = document.getElementById('required_subscription_tier_group');
+    const select = document.getElementById('required_subscription_tier');
+    if (!checkbox || !group || !select) return;
+
+    group.style.display = checkbox.checked ? 'block' : 'none';
+    if (!checkbox.checked) {
+        select.value = 'starter';
+    }
+}
+
 // Gestion du cours gratuit
 function syncFreeCourseFields(isInitial = false) {
     const priceField = document.getElementById('price');
@@ -2857,6 +2888,8 @@ document.addEventListener('DOMContentLoaded', function() {
             syncFreeCourseFields();
         });
     }
+
+    syncSubscriptionTierFields();
 });
 
 // Gestion des champs de paiement externe

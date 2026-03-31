@@ -1,0 +1,139 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\SubscriptionInvoice;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
+use App\Models\UserSubscription;
+use App\Services\SubscriptionService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
+
+class SubscriptionSystemTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_localized_pricing_is_used_for_user_currency(): void
+    {
+        $plan = new SubscriptionPlan([
+            'price' => 100,
+            'annual_discount_percent' => 0,
+            'metadata' => [
+                'localized_pricing' => [
+                    'CDF' => ['amount' => 250000],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(250000.0, $plan->effectivePriceForCurrency('CDF'));
+        $this->assertSame(100.0, $plan->effectivePriceForCurrency('USD'));
+    }
+
+    public function test_trial_subscription_renews_and_generates_invoice(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'customer',
+        ]);
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Pro Monthly',
+            'slug' => 'pro-monthly-test',
+            'plan_type' => 'recurring',
+            'billing_period' => 'monthly',
+            'price' => 20,
+            'trial_days' => 7,
+            'is_active' => true,
+            'auto_renew_default' => true,
+            'metadata' => ['localized_pricing' => ['USD' => ['amount' => 20]]],
+        ]);
+
+        $service = app(SubscriptionService::class);
+        $subscription = $service->subscribe($user, $plan, 'moneroo');
+
+        $this->assertSame('trialing', $subscription->status);
+        $this->assertNotNull($subscription->trial_ends_at);
+        $this->assertDatabaseCount('subscription_invoices', 0);
+
+        $this->travelTo($subscription->current_period_ends_at->copy()->addMinute());
+        $service->processRenewals();
+
+        $subscription->refresh();
+        $this->assertSame('active', $subscription->status);
+        $this->assertDatabaseHas('subscription_invoices', [
+            'user_subscription_id' => $subscription->id,
+            'status' => 'pending',
+            'currency' => 'USD',
+        ]);
+    }
+
+    public function test_invoice_payment_flow_updates_from_moneroo_webhook(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'customer',
+        ]);
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Starter',
+            'slug' => 'starter-test',
+            'plan_type' => 'recurring',
+            'billing_period' => 'monthly',
+            'price' => 10,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => true,
+        ]);
+
+        $subscription = UserSubscription::create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'past_due',
+            'starts_at' => now(),
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'auto_renew' => true,
+            'payment_method' => 'moneroo',
+        ]);
+
+        $invoice = SubscriptionInvoice::create([
+            'invoice_number' => 'SUB-T-001',
+            'user_subscription_id' => $subscription->id,
+            'user_id' => $user->id,
+            'amount' => 10,
+            'currency' => 'USD',
+            'status' => 'pending',
+            'due_at' => now()->addDay(),
+        ]);
+
+        Http::fake([
+            '*' => Http::response([
+                'success' => true,
+                'data' => ['id' => 'py_test_123', 'payment_url' => 'https://pay.example/redirect'],
+            ], 200),
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('subscriptions.invoices.pay', $invoice))
+            ->assertRedirect('https://pay.example/redirect');
+
+        $payload = [
+            'data' => [
+                'id' => 'py_test_123',
+                'status' => 'success',
+                'metadata' => [
+                    'kind' => 'subscription_invoice',
+                    'invoice_id' => (string) $invoice->id,
+                ],
+            ],
+        ];
+
+        $this->postJson('/moneroo/webhook', $payload)->assertOk();
+
+        $invoice->refresh();
+        $subscription->refresh();
+        $this->assertSame('paid', $invoice->status);
+        $this->assertSame('active', $subscription->status);
+    }
+}
+
