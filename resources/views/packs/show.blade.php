@@ -56,6 +56,14 @@
         z-index: 990 !important;
     }
 }
+
+/* Prix un peu moins imposant sur desktop */
+@media (min-width: 992px) {
+    .pack-show-price-current {
+        font-size: 2rem;
+        line-height: 1.2;
+    }
+}
 </style>
 @endpush
 
@@ -175,9 +183,9 @@
                             <div class="mt-2">
                                 @if($package->is_sale_active)
                                     <span class="text-muted text-decoration-line-through d-block">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->price) }}</span>
-                                    <span class="display-6 fw-bold text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($effective) }}</span>
+                                    <span class="display-6 fw-bold text-success pack-show-price-current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($effective) }}</span>
                                 @else
-                                    <span class="display-6 fw-bold text-primary">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($effective) }}</span>
+                                    <span class="display-6 fw-bold text-primary pack-show-price-current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($effective) }}</span>
                                 @endif
                             </div>
                         </div>
