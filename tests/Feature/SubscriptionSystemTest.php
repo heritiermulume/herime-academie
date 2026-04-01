@@ -11,6 +11,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Notifications\AdminSubscriptionActivated;
+use App\Notifications\SubscriptionActivated;
 use App\Services\SubscriptionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -276,6 +278,83 @@ class SubscriptionSystemTest extends TestCase
         ]);
 
         $this->assertTrue($user->hasPurchasedContentPackage($package));
+    }
+
+    public function test_subscription_notifications_include_contents_and_packages_in_payload(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $provider = User::factory()->create(['role' => 'provider']);
+        $category = Category::create([
+            'name' => 'Notifications',
+            'slug' => 'notifications-' . uniqid(),
+        ]);
+
+        $course = Course::create([
+            'provider_id' => $provider->id,
+            'category_id' => $category->id,
+            'title' => 'Cours notif abonnement',
+            'slug' => 'cours-notif-abonnement-' . uniqid(),
+            'description' => 'desc',
+            'price' => 45,
+            'is_free' => false,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+            'level' => 'beginner',
+            'language' => 'fr',
+        ]);
+
+        $package = ContentPackage::create([
+            'title' => 'Pack notif abonnement',
+            'slug' => 'pack-notif-abonnement-' . uniqid(),
+            'price' => 90,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+        ]);
+        $package->contents()->sync([$course->id]);
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Plan notif',
+            'slug' => 'plan-notif-' . uniqid(),
+            'plan_type' => 'one_time',
+            'billing_period' => null,
+            'price' => 90,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => false,
+            'metadata' => [
+                'included_package_ids' => [$package->id],
+            ],
+        ]);
+        $plan->contents()->sync([$course->id]);
+
+        $subscription = UserSubscription::create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'active',
+            'starts_at' => now(),
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'auto_renew' => false,
+            'payment_method' => 'moneroo',
+        ]);
+
+        $invoice = SubscriptionInvoice::create([
+            'invoice_number' => 'SUB-NOTIF-' . strtoupper(substr(uniqid(), -6)),
+            'user_subscription_id' => $subscription->id,
+            'user_id' => $user->id,
+            'amount' => 90,
+            'currency' => 'USD',
+            'status' => 'pending',
+            'due_at' => now()->addDay(),
+        ]);
+
+        $customerPayload = (new SubscriptionActivated($subscription, $invoice))->toArray($user);
+        $adminPayload = (new AdminSubscriptionActivated($subscription, $invoice))->toArray($user);
+
+        $this->assertContains($course->title, $customerPayload['included_contents']);
+        $this->assertContains($package->title, $customerPayload['included_packages']);
+        $this->assertContains($course->title, $adminPayload['included_contents']);
+        $this->assertContains($package->title, $adminPayload['included_packages']);
     }
 }
 

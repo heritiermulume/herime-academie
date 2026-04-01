@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ContentPackage;
 use App\Models\SubscriptionInvoice;
 use App\Models\UserSubscription;
 use App\Notifications\SubscriptionInvoicePaid;
@@ -13,11 +14,24 @@ class SubscriptionController extends Controller
     public function index(Request $request)
     {
         $subscriptions = UserSubscription::query()
-            ->with(['user', 'plan'])
+            ->with(['user', 'plan', 'plan.contents'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
             ->latest()
             ->paginate(20)
             ->withQueryString();
+        $includedPackageIds = $subscriptions->getCollection()
+            ->pluck('plan.metadata')
+            ->filter(fn ($metadata) => is_array($metadata))
+            ->flatMap(fn ($metadata) => collect(data_get($metadata, 'included_package_ids', [])))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        $includedPackagesById = ContentPackage::query()
+            ->whereIn('id', $includedPackageIds)
+            ->get()
+            ->keyBy('id');
 
         $invoices = SubscriptionInvoice::query()
             ->with(['subscription.plan', 'user'])
@@ -25,7 +39,7 @@ class SubscriptionController extends Controller
             ->limit(30)
             ->get();
 
-        return view('admin.subscriptions.index', compact('subscriptions', 'invoices'));
+        return view('admin.subscriptions.index', compact('subscriptions', 'invoices', 'includedPackagesById'));
     }
 
     public function markInvoicePaid(SubscriptionInvoice $invoice)

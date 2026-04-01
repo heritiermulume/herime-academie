@@ -2,6 +2,7 @@
 
 @php
     $selectedContents = $selectedContents ?? [];
+    $packages = $packages ?? collect();
 @endphp
 
 <div class="admin-form-grid admin-form-grid--two">
@@ -43,7 +44,7 @@
         <input type="number" min="0" max="365" name="trial_days" class="form-control" value="{{ old('trial_days', $plan->trial_days ?? 0) }}">
     </div>
     <div>
-        <label class="form-label fw-semibold">Formations liées (achat unique)</label>
+        <label class="form-label fw-semibold">Formations incluses (achat unique)</label>
         @php
             $selectedContents = collect(old('content_ids', isset($plan) ? ($plan->contents()->pluck('contents.id')->all() ?: array_filter([$plan->content_id])) : []))
                 ->map(fn ($id) => (int) $id)
@@ -57,6 +58,22 @@
             @endforeach
         </select>
         <small class="text-muted">Maintenez Ctrl (Windows) / Cmd (Mac) pour sélectionner plusieurs formations.</small>
+    </div>
+    <div>
+        <label class="form-label fw-semibold">Packs inclus (achat unique)</label>
+        @php
+            $selectedPackageIds = collect(old('package_ids', isset($plan) ? data_get($plan->metadata, 'included_package_ids', []) : []))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+        @endphp
+        <select name="package_ids[]" class="form-select" multiple size="6">
+            @foreach($packages as $package)
+                <option value="{{ $package->id }}" @selected(in_array($package->id, ($selectedPackageIds ?? []), true))>{{ $package->title }}</option>
+            @endforeach
+        </select>
+        <small class="text-muted">Maintenez Ctrl (Windows) / Cmd (Mac) pour sélectionner plusieurs packs.</small>
     </div>
     <div class="d-flex align-items-center gap-4">
         <div class="form-check">

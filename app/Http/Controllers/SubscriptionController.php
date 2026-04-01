@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
+use App\Models\ContentPackage;
 use App\Models\User;
 use App\Notifications\AdminSubscriptionActivated;
 use App\Notifications\SubscriptionActivated;
@@ -23,7 +24,24 @@ class SubscriptionController extends Controller
             ? (\App\Models\Setting::getBaseCurrency()['code'] ?? 'USD')
             : (\App\Models\Setting::getBaseCurrency() ?: 'USD')));
 
-        $plans = SubscriptionPlan::query()->where('is_active', true)->with('content')->orderBy('price')->get();
+        $plans = SubscriptionPlan::query()
+            ->where('is_active', true)
+            ->with(['content', 'contents'])
+            ->orderBy('price')
+            ->get();
+        $includedPackageIds = $plans
+            ->pluck('metadata')
+            ->filter(fn ($metadata) => is_array($metadata))
+            ->flatMap(fn ($metadata) => collect(data_get($metadata, 'included_package_ids', [])))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        $includedPackagesById = ContentPackage::query()
+            ->whereIn('id', $includedPackageIds)
+            ->get()
+            ->keyBy('id');
         $subscriptions = auth()->user()->subscriptions()->with('plan')->latest()->get();
         $invoices = SubscriptionInvoice::query()
             ->where('user_id', auth()->id())
@@ -31,7 +49,7 @@ class SubscriptionController extends Controller
             ->limit(20)
             ->get();
 
-        return view('customers.subscriptions.index', compact('plans', 'subscriptions', 'invoices', 'preferredCurrency'));
+        return view('customers.subscriptions.index', compact('plans', 'subscriptions', 'invoices', 'preferredCurrency', 'includedPackagesById'));
     }
 
     public function subscribe(Request $request, SubscriptionPlan $plan, SubscriptionService $service)

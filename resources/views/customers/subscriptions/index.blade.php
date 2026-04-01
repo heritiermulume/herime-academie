@@ -52,6 +52,15 @@
                 <div class="col-12 col-md-6 col-xl-4">
                     <div class="admin-card h-100 subscription-plan-card">
                         <div class="admin-card__body">
+                            @php
+                                $includedPackageIds = collect(data_get($plan->metadata, 'included_package_ids', []))
+                                    ->map(fn ($id) => (int) $id)
+                                    ->filter()
+                                    ->values();
+                                $includedPackages = $includedPackageIds
+                                    ->map(fn ($id) => $includedPackagesById[$id] ?? null)
+                                    ->filter();
+                            @endphp
                             @php($currentPlanSubscription = $currentSubscriptionsByPlan->get($plan->id))
                             <h5 class="fw-bold mb-1">{{ $plan->name }}</h5>
                             <p class="text-muted small mb-2">{{ $plan->description }}</p>
@@ -69,6 +78,16 @@
                             @php($localizedAmount = $plan->effectivePriceForCurrency($preferredCurrency))
                             <p class="h4 mb-2">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($localizedAmount, $preferredCurrency) }}</p>
                             <p class="small text-muted mb-2">Devise du site: {{ $preferredCurrency }}</p>
+                            @if($plan->contents->isNotEmpty())
+                                <p class="small text-muted mb-1">
+                                    Formations incluses: {{ $plan->contents->pluck('title')->take(2)->join(', ') }}@if($plan->contents->count() > 2) +{{ $plan->contents->count() - 2 }}@endif
+                                </p>
+                            @endif
+                            @if($includedPackages->isNotEmpty())
+                                <p class="small text-muted mb-2">
+                                    Packs inclus: {{ $includedPackages->pluck('title')->take(2)->join(', ') }}@if($includedPackages->count() > 2) +{{ $includedPackages->count() - 2 }}@endif
+                                </p>
+                            @endif
                             @if($plan->trial_days > 0)
                                 <p class="small text-success mb-2">{{ $plan->trial_days }} jours d'essai gratuit</p>
                             @endif

@@ -125,16 +125,18 @@
 
                 @if(!empty($package->marketing_benefits))
                     <h2 class="h5 mt-4">Ce que vous gagnez</h2>
-                    <ul>
+                    <ul class="list-unstyled">
                         @foreach($package->marketing_benefits as $line)
-                            @if($line)<li>{{ $line }}</li>@endif
+                            @if($line)
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i>{{ $line }}</li>
+                            @endif
                         @endforeach
                     </ul>
                 @endif
 
                 @if($package->description)
                     <div class="content-description mt-4">
-                        {!! $package->description !!}
+                        {!! nl2br(e($package->description)) !!}
                     </div>
                 @endif
 
@@ -152,13 +154,6 @@
                             <div class="flex-grow-1 min-w-0">
                                 <div class="fw-semibold">{{ $course->title }}</div>
                                 <div class="small text-muted">{{ $course->category->name ?? '' }} · {{ ucfirst($course->level) }}</div>
-                                <div class="small mt-1">
-                                    @if($course->is_free)
-                                        <span class="badge bg-success">Gratuit</span>
-                                    @else
-                                        <span>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->effective_price ?? $course->price) }}</span>
-                                    @endif
-                                </div>
                             </div>
                             <div class="align-self-center text-muted"><i class="fas fa-chevron-right"></i></div>
                         </a>
@@ -205,6 +200,29 @@
                 </div>
             </div>
         </div>
+
+        @if($recommendedPackages->isNotEmpty() || $recommendedCourses->isNotEmpty())
+            <section class="mt-5">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h2 class="h4 mb-0">Contenus et packs recommandés</h2>
+                    <a href="{{ route('contents.index') }}#content-packs" class="btn btn-outline-primary btn-sm">
+                        Voir plus
+                    </a>
+                </div>
+                <div class="row g-4">
+                    @foreach($recommendedCourses as $recommendedCourse)
+                        <div class="col-md-6 col-xl-4">
+                            <x-contenu-card-standard :course="$recommendedCourse" />
+                        </div>
+                    @endforeach
+                    @foreach($recommendedPackages as $recommendedPackage)
+                        <div class="col-md-6 col-xl-4">
+                            <x-contenu-package-card-standard :package="$recommendedPackage" />
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
     </div>
 </section>
 

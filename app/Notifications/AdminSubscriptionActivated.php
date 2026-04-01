@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Helpers\CurrencyHelper;
+use App\Models\ContentPackage;
 use App\Models\SubscriptionInvoice;
 use App\Models\UserSubscription;
 use Illuminate\Bus\Queueable;
@@ -27,6 +28,7 @@ class AdminSubscriptionActivated extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        [$includedContentTitles, $includedPackageTitles] = $this->resolveIncludedItems();
         $user = $this->subscription->user;
         $planName = $this->subscription->plan->name ?? 'Plan';
 
@@ -46,12 +48,21 @@ class AdminSubscriptionActivated extends Notification
                 ->line('Montant : ' . CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
                 ->line('Statut : En attente de paiement');
         }
+        if (!empty($includedContentTitles)) {
+            $mail->line('Formations incluses : ' . collect($includedContentTitles)->take(3)->join(', ')
+                . (count($includedContentTitles) > 3 ? ' +' . (count($includedContentTitles) - 3) : ''));
+        }
+        if (!empty($includedPackageTitles)) {
+            $mail->line('Packs inclus : ' . collect($includedPackageTitles)->take(3)->join(', ')
+                . (count($includedPackageTitles) > 3 ? ' +' . (count($includedPackageTitles) - 3) : ''));
+        }
 
         return $mail;
     }
 
     public function toArray(object $notifiable): array
     {
+        [$includedContentTitles, $includedPackageTitles] = $this->resolveIncludedItems();
         $user = $this->subscription->user;
 
         return [
@@ -62,6 +73,8 @@ class AdminSubscriptionActivated extends Notification
             'customer_name' => $user->name ?? 'N/A',
             'customer_email' => $user->email ?? null,
             'plan_name' => $this->subscription->plan->name ?? 'Plan',
+            'included_contents' => $includedContentTitles,
+            'included_packages' => $includedPackageTitles,
             'message' => $this->isRenewal
                 ? 'Réabonnement programmé par ' . ($user->name ?? 'un client') . '.'
                 : 'Nouvel abonnement créé par ' . ($user->name ?? 'un client') . '.',
@@ -69,6 +82,39 @@ class AdminSubscriptionActivated extends Notification
             'button_url' => route('admin.subscriptions.index'),
             'url' => route('admin.subscriptions.index'),
         ];
+    }
+
+    private function resolveIncludedItems(): array
+    {
+        $this->subscription->loadMissing('plan.contents');
+        $plan = $this->subscription->plan;
+        if (!$plan) {
+            return [[], []];
+        }
+
+        $includedContentTitles = $plan->contents
+            ->pluck('title')
+            ->filter()
+            ->values()
+            ->all();
+
+        $includedPackageIds = collect(data_get($plan->metadata, 'included_package_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $includedPackageTitles = empty($includedPackageIds)
+            ? []
+            : ContentPackage::query()
+                ->whereIn('id', $includedPackageIds)
+                ->pluck('title')
+                ->filter()
+                ->values()
+                ->all();
+
+        return [$includedContentTitles, $includedPackageTitles];
     }
 }
 

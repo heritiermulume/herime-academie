@@ -37,6 +37,15 @@
                 </thead>
                 <tbody>
                     @forelse($plans as $plan)
+                        @php
+                            $includedPackageIds = collect(data_get($plan->metadata, 'included_package_ids', []))
+                                ->map(fn ($id) => (int) $id)
+                                ->filter()
+                                ->values();
+                            $includedPackages = $includedPackageIds
+                                ->map(fn ($id) => $includedPackagesById[$id] ?? null)
+                                ->filter();
+                        @endphp
                         <tr>
                             <td>
                                 <div class="fw-semibold">{{ $plan->name }}</div>
@@ -46,6 +55,11 @@
                                     </small>
                                 @elseif($plan->content)
                                     <small class="text-muted">Formation: {{ $plan->content->title }}</small>
+                                @endif
+                                @if($includedPackages->isNotEmpty())
+                                    <small class="text-muted d-block">
+                                        Packs: {{ $includedPackages->pluck('title')->take(2)->join(', ') }}@if($includedPackages->count() > 2) +{{ $includedPackages->count() - 2 }}@endif
+                                    </small>
                                 @endif
                             </td>
                             <td>{{ $planTypeLabels[$plan->plan_type] ?? ucfirst((string) $plan->plan_type) }}</td>

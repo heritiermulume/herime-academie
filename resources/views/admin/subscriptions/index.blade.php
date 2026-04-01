@@ -37,9 +37,31 @@
                 <thead><tr><th>Client</th><th>Plan</th><th>Statut</th><th>Période</th><th>Méthode</th></tr></thead>
                 <tbody>
                     @forelse($subscriptions as $sub)
+                        @php
+                            $plan = $sub->plan;
+                            $includedPackageIds = collect(data_get($plan?->metadata, 'included_package_ids', []))
+                                ->map(fn ($id) => (int) $id)
+                                ->filter()
+                                ->values();
+                            $includedPackages = $includedPackageIds
+                                ->map(fn ($id) => $includedPackagesById[$id] ?? null)
+                                ->filter();
+                        @endphp
                         <tr>
                             <td>{{ $sub->user->name }}</td>
-                            <td>{{ $sub->plan->name ?? 'Plan supprimé' }}</td>
+                            <td>
+                                <div>{{ $sub->plan->name ?? 'Plan supprimé' }}</div>
+                                @if($plan && $plan->contents->isNotEmpty())
+                                    <small class="text-muted d-block">
+                                        Formations: {{ $plan->contents->pluck('title')->take(2)->join(', ') }}@if($plan->contents->count() > 2) +{{ $plan->contents->count() - 2 }}@endif
+                                    </small>
+                                @endif
+                                @if($includedPackages->isNotEmpty())
+                                    <small class="text-muted d-block">
+                                        Packs: {{ $includedPackages->pluck('title')->take(2)->join(', ') }}@if($includedPackages->count() > 2) +{{ $includedPackages->count() - 2 }}@endif
+                                    </small>
+                                @endif
+                            </td>
                             <td>{{ $subscriptionStatusLabels[$sub->status] ?? $sub->status }}</td>
                             <td>{{ optional($sub->current_period_starts_at)->format('d/m/Y') }} - {{ optional($sub->current_period_ends_at)->format('d/m/Y') }}</td>
                             <td>{{ $sub->payment_method ? ($paymentMethodLabels[$sub->payment_method] ?? strtoupper((string) $sub->payment_method)) : '-' }}</td>

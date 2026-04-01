@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ContentPackage;
 use App\Models\Course;
 use App\Models\SubscriptionPlan;
 use Illuminate\Http\Request;
@@ -13,15 +14,29 @@ class SubscriptionPlanController extends Controller
     public function index()
     {
         $plans = SubscriptionPlan::with(['content', 'contents'])->latest()->paginate(15);
+        $includedPackageIds = $plans->getCollection()
+            ->pluck('metadata')
+            ->filter(fn ($metadata) => is_array($metadata))
+            ->flatMap(fn ($metadata) => collect(data_get($metadata, 'included_package_ids', [])))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        $includedPackagesById = ContentPackage::query()
+            ->whereIn('id', $includedPackageIds)
+            ->get()
+            ->keyBy('id');
 
-        return view('admin.subscriptions.plans.index', compact('plans'));
+        return view('admin.subscriptions.plans.index', compact('plans', 'includedPackagesById'));
     }
 
     public function create()
     {
         $contents = Course::query()->where('is_published', true)->orderBy('title')->limit(300)->get();
+        $packages = ContentPackage::query()->where('is_published', true)->orderBy('title')->limit(300)->get();
 
-        return view('admin.subscriptions.plans.create', compact('contents'));
+        return view('admin.subscriptions.plans.create', compact('contents', 'packages'));
     }
 
     public function store(Request $request)
@@ -37,6 +52,8 @@ class SubscriptionPlanController extends Controller
             'content_id' => ['nullable', 'exists:contents,id'],
             'content_ids' => ['nullable', 'array'],
             'content_ids.*' => ['nullable', 'exists:contents,id'],
+            'package_ids' => ['nullable', 'array'],
+            'package_ids.*' => ['nullable', 'exists:content_packages,id'],
             'is_active' => ['nullable', 'boolean'],
             'auto_renew_default' => ['nullable', 'boolean'],
         ]);
@@ -56,6 +73,7 @@ class SubscriptionPlanController extends Controller
         if ($data['plan_type'] !== 'one_time') {
             $data['content_id'] = null;
             $selectedContentIds = [];
+            $selectedPackageIds = [];
         } else {
             $selectedContentIds = collect($request->input('content_ids', []))
                 ->filter()
@@ -63,8 +81,32 @@ class SubscriptionPlanController extends Controller
                 ->unique()
                 ->values()
                 ->all();
+            $selectedPackageIds = collect($request->input('package_ids', []))
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+            $packageContentIds = ContentPackage::query()
+                ->whereIn('id', $selectedPackageIds)
+                ->with('contents:id')
+                ->get()
+                ->flatMap(fn (ContentPackage $package) => $package->contents->pluck('id'))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+            $selectedContentIds = collect($selectedContentIds)
+                ->merge($packageContentIds)
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
             $data['content_id'] = $selectedContentIds[0] ?? $data['content_id'] ?? null;
         }
+        $data['metadata'] = [
+            'included_package_ids' => $selectedPackageIds,
+        ];
 
         $plan = SubscriptionPlan::create($data);
         $plan->contents()->sync($selectedContentIds ?? []);
@@ -75,8 +117,9 @@ class SubscriptionPlanController extends Controller
     public function edit(SubscriptionPlan $plan)
     {
         $contents = Course::query()->where('is_published', true)->orderBy('title')->limit(300)->get();
+        $packages = ContentPackage::query()->where('is_published', true)->orderBy('title')->limit(300)->get();
 
-        return view('admin.subscriptions.plans.edit', compact('plan', 'contents'));
+        return view('admin.subscriptions.plans.edit', compact('plan', 'contents', 'packages'));
     }
 
     public function update(Request $request, SubscriptionPlan $plan)
@@ -92,6 +135,8 @@ class SubscriptionPlanController extends Controller
             'content_id' => ['nullable', 'exists:contents,id'],
             'content_ids' => ['nullable', 'array'],
             'content_ids.*' => ['nullable', 'exists:contents,id'],
+            'package_ids' => ['nullable', 'array'],
+            'package_ids.*' => ['nullable', 'exists:content_packages,id'],
             'is_active' => ['nullable', 'boolean'],
             'auto_renew_default' => ['nullable', 'boolean'],
         ]);
@@ -110,6 +155,7 @@ class SubscriptionPlanController extends Controller
         if ($data['plan_type'] !== 'one_time') {
             $data['content_id'] = null;
             $selectedContentIds = [];
+            $selectedPackageIds = [];
         } else {
             $selectedContentIds = collect($request->input('content_ids', []))
                 ->filter()
@@ -117,8 +163,32 @@ class SubscriptionPlanController extends Controller
                 ->unique()
                 ->values()
                 ->all();
+            $selectedPackageIds = collect($request->input('package_ids', []))
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+            $packageContentIds = ContentPackage::query()
+                ->whereIn('id', $selectedPackageIds)
+                ->with('contents:id')
+                ->get()
+                ->flatMap(fn (ContentPackage $package) => $package->contents->pluck('id'))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+            $selectedContentIds = collect($selectedContentIds)
+                ->merge($packageContentIds)
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
             $data['content_id'] = $selectedContentIds[0] ?? $data['content_id'] ?? null;
         }
+        $metadata = is_array($plan->metadata) ? $plan->metadata : [];
+        $metadata['included_package_ids'] = $selectedPackageIds;
+        $data['metadata'] = $metadata;
 
         $plan->update($data);
         $plan->contents()->sync($selectedContentIds ?? []);
