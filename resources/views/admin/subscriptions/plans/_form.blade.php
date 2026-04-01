@@ -1,5 +1,9 @@
 @csrf
 
+@php
+    $selectedContents = $selectedContents ?? [];
+@endphp
+
 <div class="admin-form-grid admin-form-grid--two">
     <div>
         <label class="form-label fw-semibold">Nom du plan</label>
@@ -8,7 +12,9 @@
     <div>
         <label class="form-label fw-semibold">Type</label>
         <select name="plan_type" class="form-select" required>
-            @php($selectedType = old('plan_type', $plan->plan_type ?? 'recurring'))
+            @php
+                $selectedType = old('plan_type', $plan->plan_type ?? 'recurring');
+            @endphp
             <option value="recurring" @selected($selectedType === 'recurring')>Abonnement récurrent</option>
             <option value="one_time" @selected($selectedType === 'one_time')>Achat unique (formation)</option>
             <option value="freemium" @selected($selectedType === 'freemium')>Freemium</option>
@@ -16,7 +22,9 @@
     </div>
     <div>
         <label class="form-label fw-semibold">Période de facturation</label>
-        @php($selectedPeriod = old('billing_period', $plan->billing_period ?? 'monthly'))
+        @php
+            $selectedPeriod = old('billing_period', $plan->billing_period ?? 'monthly');
+        @endphp
         <select name="billing_period" class="form-select">
             <option value="monthly" @selected($selectedPeriod === 'monthly')>Mensuel</option>
             <option value="yearly" @selected($selectedPeriod === 'yearly')>Annuel</option>
@@ -45,7 +53,7 @@
         @endphp
         <select name="content_ids[]" class="form-select" multiple size="6">
             @foreach($contents as $content)
-                <option value="{{ $content->id }}" @selected(in_array($content->id, $selectedContents, true))>{{ $content->title }}</option>
+                <option value="{{ $content->id }}" @selected(in_array($content->id, ($selectedContents ?? []), true))>{{ $content->title }}</option>
             @endforeach
         </select>
         <small class="text-muted">Maintenez Ctrl (Windows) / Cmd (Mac) pour sélectionner plusieurs formations.</small>

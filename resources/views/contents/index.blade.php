@@ -142,30 +142,53 @@
                     @endif
                 </div>
 
-                @if(isset($packages) && $packages->isNotEmpty())
-                <div id="content-packs" class="mb-5">
-                    <h2 class="h4 fw-bold mb-3" style="color: #0f172a;">
-                        <i class="fas fa-box-open me-2 text-primary"></i>Packs de contenus
-                    </h2>
-                    <p class="text-muted small mb-4">
-                        Plusieurs formations regroupées à prix avantageux.
-                    </p>
-                    <div class="row g-3">
-                        @foreach($packages as $package)
-                            <div class="col-lg-4 col-md-6 col-sm-6">
-                                <x-contenu-package-card-standard :package="$package" />
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
                 <!-- Results -->
                 <div class="row">
                     <div class="col-12">
-                        @if($courses->count() > 0)
+                        @if($courses->count() > 0 || (isset($packages) && $packages->isNotEmpty()))
+                        @php
+                            $mixCourses = collect($courses->items());
+                            $mixPackages = collect($packages ?? []);
+                            $mixedItems = collect();
+
+                            // Mélange simple : 3 contenus puis 1 pack (quand disponible).
+                            while ($mixCourses->isNotEmpty() || $mixPackages->isNotEmpty()) {
+                                for ($i = 0; $i < 3; $i++) {
+                                    if ($mixCourses->isNotEmpty()) {
+                                        $mixedItems->push([
+                                            'type' => 'course',
+                                            'item' => $mixCourses->shift(),
+                                        ]);
+                                    }
+                                }
+
+                                if ($mixPackages->isNotEmpty()) {
+                                    $mixedItems->push([
+                                        'type' => 'package',
+                                        'item' => $mixPackages->shift(),
+                                    ]);
+                                }
+
+                                if ($mixCourses->isEmpty() && $mixPackages->isNotEmpty()) {
+                                    $mixPackages->each(function ($package) use ($mixedItems) {
+                                        $mixedItems->push([
+                                            'type' => 'package',
+                                            'item' => $package,
+                                        ]);
+                                    });
+                                    $mixPackages = collect();
+                                }
+                            }
+                        @endphp
                         <div id="courses-container" class="row g-3">
-                            @foreach($courses as $course)
+                            @foreach($mixedItems as $mixedItem)
+                            @if($mixedItem['type'] === 'package')
+                            @php $package = $mixedItem['item']; @endphp
+                            <div class="col-lg-4 col-md-6 col-sm-6 course-item">
+                                <x-contenu-package-card-standard :package="$package" />
+                            </div>
+                            @else
+                            @php $course = $mixedItem['item']; @endphp
                             <div class="col-lg-4 col-md-6 col-sm-6 course-item">
                                 <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
                                     <div class="card course-card-inner" style="position: relative;">
@@ -296,6 +319,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
                             @endforeach
                         </div>
 

@@ -190,11 +190,35 @@ class CourseController extends Controller
         
         $categories = Category::active()->ordered()->get();
 
-        $packages = ContentPackage::query()
+        $packagesQuery = ContentPackage::query()
             ->published()
             ->withCount('contents')
-            ->ordered()
-            ->get();
+            ->ordered();
+
+        // Appliquer la même recherche texte pour les packs.
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $packagesQuery->where(function ($q) use ($searchTerm) {
+                $q->where('title', 'like', "%{$searchTerm}%")
+                    ->orWhere('subtitle', 'like', "%{$searchTerm}%")
+                    ->orWhere('short_description', 'like', "%{$searchTerm}%")
+                    ->orWhere('description', 'like', "%{$searchTerm}%")
+                    ->orWhereHas('contents', function ($contentQuery) use ($searchTerm) {
+                        $contentQuery->where('title', 'like', "%{$searchTerm}%")
+                            ->orWhereHas('provider', function ($providerQuery) use ($searchTerm) {
+                                $providerQuery->where('name', 'like', "%{$searchTerm}%");
+                            })
+                            ->orWhereHas('category', function ($categoryQuery) use ($searchTerm) {
+                                $categoryQuery->where('name', 'like', "%{$searchTerm}%");
+                            });
+                    });
+            });
+        }
+
+        // Éviter de répéter les packs à chaque page de pagination.
+        $packages = (int) $request->get('page', 1) === 1
+            ? $packagesQuery->get()
+            : collect();
 
         return view('contents.index', compact('courses', 'categories', 'packages'));
     }

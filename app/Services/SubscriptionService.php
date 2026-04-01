@@ -78,25 +78,46 @@ class SubscriptionService
             $this->createInvoice($subscription, $amount, $currency, $paymentMethod);
         }
 
+        $this->grantLinkedContentAccess($subscription);
+
+        return $subscription;
+    }
+
+    public function grantLinkedContentAccess(UserSubscription $subscription): int
+    {
+        $subscription->loadMissing('plan');
+        $plan = $subscription->plan;
+
+        if (! $plan) {
+            return 0;
+        }
+
         $linkedContentIds = $plan->contents()->pluck('contents.id')->all();
         if (empty($linkedContentIds) && $plan->content_id) {
             $linkedContentIds = [(int) $plan->content_id];
         }
 
+        $created = 0;
         foreach ($linkedContentIds as $contentId) {
-            Enrollment::firstOrCreate(
+            $enrollment = Enrollment::firstOrCreate(
                 [
-                    'user_id' => $user->id,
-                    'content_id' => $contentId,
+                    'user_id' => $subscription->user_id,
+                    'content_id' => (int) $contentId,
                 ],
                 [
                     'status' => 'active',
                     'progress' => 0,
                 ]
             );
+
+            if ($enrollment->wasRecentlyCreated) {
+                $created++;
+            } elseif ($enrollment->status !== 'active') {
+                $enrollment->update(['status' => 'active']);
+            }
         }
 
-        return $subscription;
+        return $created;
     }
 
     public function createInvoice(

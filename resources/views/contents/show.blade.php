@@ -245,6 +245,9 @@ body.has-global-announcement:has(.course-details-page) {
 .breadcrumb-modern .breadcrumb {
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
 }
 
 .breadcrumb-modern .breadcrumb-item {
@@ -275,9 +278,31 @@ body.has-global-announcement:has(.course-details-page) {
 
 .course-badges {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.5rem;
+    margin-top: 0.25rem;
     margin-bottom: 1rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+}
+
+.course-badges::-webkit-scrollbar {
+    display: none;
+}
+
+.course-badges > * {
+    flex: 0 0 auto;
+}
+
+.course-badge-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .course-badge {
@@ -288,11 +313,24 @@ body.has-global-announcement:has(.course-details-page) {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
     white-space: nowrap;
+    position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    z-index: auto !important;
 }
 
 .course-badge.featured {
     background: linear-gradient(135deg, var(--accent-color) 0%, #e6b800 100%);
     color: var(--primary-color);
+    position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
 }
 
 .course-badge.free {
@@ -303,11 +341,16 @@ body.has-global-announcement:has(.course-details-page) {
 .course-badge.category {
     background: rgba(255, 255, 255, 0.2);
     color: white;
+    position: static !important;
+    inset: auto !important;
 }
 
 .course-badge.level {
     background: rgba(255, 255, 255, 0.15);
     color: white;
+    /* Prevent clashes with generic external ".level" selectors */
+    position: static !important;
+    inset: auto !important;
 }
 
 .course-badge.subscription {
@@ -3394,9 +3437,6 @@ button.mobile-price-slider__btn--download i,
             <h1 class="course-title-hero">{{ $course->title }}</h1>
 
             <div class="course-badges">
-                @if($course->is_featured)
-                    <span class="course-badge featured">En vedette</span>
-                @endif
                 @if($course->is_free)
                     <span class="course-badge free">Gratuit</span>
                 @endif
@@ -3406,46 +3446,57 @@ button.mobile-price-slider__btn--download i,
                         <i class="fas fa-lock me-1"></i>Abonnement requis ({{ strtoupper($course->required_subscription_tier ?? 'starter') }})
                     </a>
                 @endif
-                @if($course->category)
-                    <span class="course-badge category">{{ $course->category->name }}</span>
+                @if($course->category || $course->level)
+                    <div class="course-badge-meta">
+                        @if($course->category)
+                            <span class="course-badge category">{{ $course->category->name }}</span>
+                        @endif
+                        @if($course->level)
+                            <span class="course-badge level">{{ ucfirst($course->level) }}</span>
+                        @endif
+                    </div>
                 @endif
-                @if($course->level)
-                    <span class="course-badge level">{{ ucfirst($course->level) }}</span>
+                @if($course->is_featured)
+                    <span class="course-badge featured">En vedette</span>
                 @endif
             </div>
 
             <div class="course-stats-hero">
-                <div class="course-stat-item">
-                    <div class="d-flex align-items-center gap-1 flex-wrap">
-                        <div class="d-flex align-items-center gap-1" style="margin-right: 0.25rem;">
-                            @php
-                                // Calculer le nombre d'étoiles pleines basé sur la note moyenne
-                                $ratingValue = (float)$averageRatingApproved;
-                                $fullStars = floor($ratingValue);
-                                $hasHalfStar = ($ratingValue - $fullStars) >= 0.5;
-                            @endphp
-                            @for($i = 1; $i <= 5; $i++)
-                                @if($i <= $fullStars)
-                                    <i class="fas fa-star" style="color: #ffc107; font-size: 0.85rem;"></i>
-                                @elseif($i == ($fullStars + 1) && $hasHalfStar)
-                                    <i class="fas fa-star-half-alt" style="color: #ffc107; font-size: 0.85rem;"></i>
-                                @else
-                                    <i class="far fa-star" style="color: rgba(255, 255, 255, 0.5); font-size: 0.85rem;"></i>
-                                @endif
-                            @endfor
+                @if($reviewsCountApproved > 0)
+                    <div class="course-stat-item">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <div class="d-flex align-items-center gap-1" style="margin-right: 0.25rem;">
+                                @php
+                                    // Calculer le nombre d'étoiles pleines basé sur la note moyenne
+                                    $ratingValue = (float)$averageRatingApproved;
+                                    $fullStars = floor($ratingValue);
+                                    $hasHalfStar = ($ratingValue - $fullStars) >= 0.5;
+                                @endphp
+                                @for($i = 1; $i <= 5; $i++)
+                                    @if($i <= $fullStars)
+                                        <i class="fas fa-star" style="color: #ffc107; font-size: 0.85rem;"></i>
+                                    @elseif($i == ($fullStars + 1) && $hasHalfStar)
+                                        <i class="fas fa-star-half-alt" style="color: #ffc107; font-size: 0.85rem;"></i>
+                                    @else
+                                        <i class="far fa-star" style="color: rgba(255, 255, 255, 0.5); font-size: 0.85rem;"></i>
+                                    @endif
+                                @endfor
+                            </div>
+                            <span>{{ number_format($averageRatingApproved, 1) }} ({{ $reviewsCountApproved }} avis)</span>
                         </div>
-                        <span>{{ $averageRatingApproved > 0 ? number_format($averageRatingApproved, 1) : '0.0' }} ({{ $reviewsCountApproved }} avis)</span>
                     </div>
-                </div>
-                @if(!$course->is_downloadable)
-                <div class="course-stat-item">
-                    <i class="fas fa-clock"></i>
-                    <span>{{ $totalDuration }} min</span>
-                </div>
-                <div class="course-stat-item">
-                    <i class="fas fa-play-circle"></i>
-                    <span>{{ $totalLessons }} leçons</span>
-                </div>
+                @endif
+                @if(!$course->is_downloadable && $totalLessons > 0)
+                    @if($totalDuration > 0)
+                    <div class="course-stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ $totalDuration }} min</span>
+                    </div>
+                    @endif
+                    <div class="course-stat-item">
+                        <i class="fas fa-play-circle"></i>
+                        <span>{{ $totalLessons }} leçons</span>
+                    </div>
                 @endif
                 @if($course->show_customers_count)
                 @php
@@ -3654,10 +3705,12 @@ button.mobile-price-slider__btn--download i,
                             <i class="fas fa-list-ul"></i>
                             Contenus
                         </h2>
-                        @if(!$course->is_downloadable)
+                        @if(!$course->is_downloadable && $totalLessons > 0)
                         <div class="text-muted">
                             <i class="fas fa-play-circle me-1"></i>{{ $totalLessons }} leçon{{ $totalLessons > 1 ? 's' : '' }}
-                            <i class="fas fa-clock ms-3 me-1"></i>{{ $totalDuration }} min
+                            @if($totalDuration > 0)
+                                <i class="fas fa-clock ms-3 me-1"></i>{{ $totalDuration }} min
+                            @endif
                         </div>
                         @endif
                     </div>

@@ -1243,6 +1243,7 @@ class MonerooController extends Controller
 
         if ($mappedStatus === 'paid' && $invoice->subscription) {
             $invoice->subscription->update(['status' => 'active']);
+            app(\App\Services\SubscriptionService::class)->grantLinkedContentAccess($invoice->subscription);
         }
         if ($invoice->user) {
             if ($mappedStatus === 'paid') {

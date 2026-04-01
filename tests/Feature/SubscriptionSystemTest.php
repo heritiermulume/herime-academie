@@ -4,6 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
+use App\Models\Category;
+use App\Models\ContentPackage;
+use App\Models\Course;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\User;
 use App\Models\UserSubscription;
 use App\Services\SubscriptionService;
@@ -134,6 +139,143 @@ class SubscriptionSystemTest extends TestCase
         $subscription->refresh();
         $this->assertSame('paid', $invoice->status);
         $this->assertSame('active', $subscription->status);
+    }
+
+    public function test_subscription_invoice_payment_grants_access_to_linked_contents(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $provider = User::factory()->create(['role' => 'provider']);
+        $category = Category::create([
+            'name' => 'Dev',
+            'slug' => 'dev-' . uniqid(),
+        ]);
+
+        $course = Course::create([
+            'provider_id' => $provider->id,
+            'category_id' => $category->id,
+            'title' => 'Cours abonnement',
+            'slug' => 'cours-abonnement-' . uniqid(),
+            'description' => 'desc',
+            'price' => 50,
+            'is_free' => false,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+            'level' => 'beginner',
+            'language' => 'fr',
+        ]);
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Plan contenu lié',
+            'slug' => 'plan-lie-' . uniqid(),
+            'plan_type' => 'recurring',
+            'billing_period' => 'monthly',
+            'price' => 10,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => true,
+        ]);
+        $plan->contents()->sync([$course->id]);
+
+        $subscription = UserSubscription::create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'past_due',
+            'starts_at' => now(),
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'auto_renew' => true,
+            'payment_method' => 'moneroo',
+        ]);
+
+        $invoice = SubscriptionInvoice::create([
+            'invoice_number' => 'SUB-T-LINK',
+            'user_subscription_id' => $subscription->id,
+            'user_id' => $user->id,
+            'amount' => 10,
+            'currency' => 'USD',
+            'status' => 'pending',
+            'due_at' => now()->addDay(),
+        ]);
+
+        $payload = [
+            'data' => [
+                'id' => 'py_sub_link',
+                'status' => 'success',
+                'metadata' => [
+                    'kind' => 'subscription_invoice',
+                    'invoice_id' => (string) $invoice->id,
+                ],
+            ],
+        ];
+
+        $this->postJson('/moneroo/webhook', $payload)->assertOk();
+
+        $this->assertDatabaseHas('enrollments', [
+            'user_id' => $user->id,
+            'content_id' => $course->id,
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_pack_purchase_is_recorded_in_order_items(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $provider = User::factory()->create(['role' => 'provider']);
+        $category = Category::create([
+            'name' => 'Backend',
+            'slug' => 'backend-' . uniqid(),
+        ]);
+
+        $course = Course::create([
+            'provider_id' => $provider->id,
+            'category_id' => $category->id,
+            'title' => 'Cours pack',
+            'slug' => 'cours-pack-' . uniqid(),
+            'description' => 'desc',
+            'price' => 80,
+            'is_free' => false,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+            'level' => 'beginner',
+            'language' => 'fr',
+        ]);
+
+        $package = ContentPackage::create([
+            'title' => 'Pack Test',
+            'slug' => 'pack-test-' . uniqid(),
+            'price' => 60,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+        ]);
+        $package->contents()->sync([$course->id]);
+
+        $order = Order::create([
+            'order_number' => 'ORD-PACK-' . strtoupper(substr(uniqid(), -6)),
+            'user_id' => $user->id,
+            'subtotal' => 60,
+            'total' => 60,
+            'total_amount' => 60,
+            'currency' => 'USD',
+            'status' => 'paid',
+            'payment_method' => 'moneroo',
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'content_id' => $course->id,
+            'content_package_id' => $package->id,
+            'price' => 60,
+            'sale_price' => null,
+            'total' => 60,
+        ]);
+
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => $order->id,
+            'content_id' => $course->id,
+            'content_package_id' => $package->id,
+        ]);
+
+        $this->assertTrue($user->hasPurchasedContentPackage($package));
     }
 }
 

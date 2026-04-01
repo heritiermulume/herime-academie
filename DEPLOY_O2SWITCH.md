@@ -276,6 +276,96 @@ Pour atteindre un bon taux de couverture CAPI (recommandation Meta, ~75 %) et r�
 - Ticket système : Interface client O2Switch
 - Documentation : https://www.o2switch.fr/services/hosting/documentation/
 
+## 20. Go Live abonnement/paiement (copier-coller O2Switch)
+
+> Adapter `~/public_html/herime-academie` à votre chemin réel du projet.
+
+### 20.1 Cron Laravel Scheduler (obligatoire)
+
+Dans **cPanel > Tâches Cron**, ajoutez :
+
+```bash
+* * * * * /opt/alt/php82/usr/bin/php ~/public_html/herime-academie/artisan schedule:run >> /dev/null 2>&1
+```
+
+Vérification rapide :
+
+```bash
+cd ~/public_html/herime-academie
+php artisan schedule:list
+```
+
+Vous devez voir `subscriptions:process-renewals`.
+
+### 20.2 Variables `.env` critiques
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://votre-domaine.com
+
+MONEROO_API_KEY=...
+MONEROO_BASE_URL=https://api.moneroo.io/v1
+MONEROO_WEBHOOK_SECRET=...
+```
+
+Après modification `.env` :
+
+```bash
+cd ~/public_html/herime-academie
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+### 20.3 Webhook Moneroo
+
+- URL à configurer chez Moneroo : `https://votre-domaine.com/moneroo/webhook`
+- Méthode : `POST`
+- Signature : activer la signature HMAC et utiliser le même secret que `MONEROO_WEBHOOK_SECRET`.
+
+### 20.4 Smoke tests post-déploiement
+
+1. **Abonnement**
+   - Souscrire à un plan.
+   - Vérifier en base : facture créée, puis statut `paid` après webhook.
+   - Vérifier que l’utilisateur obtient des `enrollments` sur les contenus liés au plan.
+2. **Pack**
+   - Acheter un pack.
+   - Vérifier `orders` et `order_items` avec `content_package_id` renseigné.
+3. **Renouvellement**
+   - Forcer un abonnement expiré (`current_period_ends_at <= now`) en préprod.
+   - Lancer `php artisan subscriptions:process-renewals`.
+   - Vérifier génération de facture de renouvellement + statut attendu.
+
+### 20.5 Commandes de diagnostic express
+
+```bash
+cd ~/public_html/herime-academie
+
+# Logs temps réel
+tail -f storage/logs/laravel.log
+
+# Lancer manuellement le renouvellement
+php artisan subscriptions:process-renewals
+
+# Etat des migrations
+php artisan migrate:status
+
+# Vérifier les routes liées
+php artisan route:list | rg "moneroo|subscriptions"
+```
+
+### 20.6 Rollback rapide (incident)
+
+```bash
+cd ~/public_html/herime-academie
+php artisan down --render="errors::503"
+# restaurer code/DB/snapshot selon votre procédure
+php artisan up
+```
+
 ---
 
 ## Nouvelle URL de production
