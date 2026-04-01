@@ -217,6 +217,9 @@
                         Voir plus
                     </a>
                 </div>
+                <p class="text-muted mb-4">
+                    Découvrez d'autres contenus sélectionnés pour compléter ce pack et accélérer vos résultats.
+                </p>
                 <div class="row g-4">
                     @foreach($recommendedCourses as $recommendedCourse)
                         <div class="col-md-6 col-xl-4">
