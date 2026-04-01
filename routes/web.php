@@ -438,6 +438,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/users/{user}/contents/{course}/revoke-access', [AdminController::class, 'revokeCourseAccess'])
             ->middleware('sso.validate')
             ->name('users.revoke-content-access');
+        Route::delete('/users/{user}/packages/{package}/revoke-access', [AdminController::class, 'revokePackageAccess'])
+            ->middleware('sso.validate')
+            ->name('users.revoke-package-access');
         Route::delete('/users/{user}/contents/{course}/unenroll', [AdminController::class, 'unenrollUser'])
             ->middleware('sso.validate')
             ->name('users.unenroll');

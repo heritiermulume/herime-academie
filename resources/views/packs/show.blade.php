@@ -113,6 +113,19 @@
         </div>
     </div>
 
+    <div class="container d-lg-none mb-4">
+        @if($package->is_published && $package->is_sale_enabled)
+            <button type="button"
+                    class="btn btn-success btn-lg w-100"
+                    data-meta-trigger="checkout"
+                    onclick="proceedToCheckoutPackage({{ $package->id }})">
+                <i class="fas fa-cart-plus me-2"></i>Obtenir ce pack
+            </button>
+        @else
+            <button type="button" class="btn btn-secondary btn-lg w-100" disabled>Indisponible</button>
+        @endif
+    </div>
+
     <div class="container">
         <div class="row g-4">
             <div class="col-lg-8">
@@ -161,7 +174,9 @@
                             </div>
                             <div class="flex-grow-1 min-w-0">
                                 <div class="fw-semibold">{{ $course->title }}</div>
-                                <div class="small text-muted">{{ $course->category->name ?? '' }} · {{ ucfirst($course->level) }}</div>
+                                <div class="small text-muted">
+                                    {{ $course->category->name ?? '' }} · {{ ['beginner' => 'Débutant', 'intermediate' => 'Intermédiaire', 'advanced' => 'Avancé'][$course->level] ?? ucfirst($course->level) }}
+                                </div>
                             </div>
                             <div class="align-self-center text-muted"><i class="fas fa-chevron-right"></i></div>
                         </a>
@@ -174,7 +189,7 @@
                     <div class="card-body">
                         <div class="text-center mb-3">
                             @if($package->thumbnail_url && !$package->isYoutubeCoverVideo() && !$package->cover_video)
-                                <img src="{{ $package->thumbnail_url }}" alt="" class="img-fluid rounded mb-3" style="max-height: 180px; object-fit: cover;">
+                                <img src="{{ $package->thumbnail_url }}" alt="" class="img-fluid rounded mb-3 d-block mx-auto" style="max-height: 180px; object-fit: cover;">
                             @endif
                             @if($savings > 0)
                                 <div class="badge bg-success mb-2">Économisez {{ \App\Helpers\CurrencyHelper::formatWithSymbol($savings) }}</div>
@@ -211,11 +226,8 @@
 
         @if($recommendedPackages->isNotEmpty() || $recommendedCourses->isNotEmpty())
             <section class="mt-5">
-                <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="mb-3">
                     <h2 class="h4 mb-0">Contenus et packs recommandés</h2>
-                    <a href="{{ route('contents.index') }}#content-packs" class="btn btn-outline-primary btn-sm">
-                        Voir plus
-                    </a>
                 </div>
                 <p class="text-muted mb-4">
                     Découvrez d'autres contenus sélectionnés pour compléter ce pack et accélérer vos résultats.

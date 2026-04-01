@@ -203,7 +203,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                 </div>
                 <div class="admin-panel__body">
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <span class="text-muted">Accès aux cours: {{ $allAccess->count() }}</span>
+                        <span class="text-muted">Accès (cours + packs): {{ $allAccess->count() }}</span>
                         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#grantAccessModal">
                             <i class="fas fa-gift me-2"></i>Donner accès gratuit
                         </button>
@@ -215,7 +215,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                 <thead>
                                     <tr>
                                         <th style="width: 60px;">Avatar</th>
-                                        <th style="min-width: 250px;">Contenu</th>
+                                        <th style="min-width: 250px;">Contenu / Pack</th>
                                         <th>Statut</th>
                                         <th>Progression</th>
                                         <th>Type d'accès</th>
@@ -226,10 +226,17 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                     @foreach($allAccess as $access)
                                         @php
                                             $course = $access->course ?? null;
+                                            $package = $access->package ?? null;
+                                            $isPackage = isset($access->is_package_access) && $access->is_package_access;
                                         @endphp
                                         <tr>
                                             <td>
-                                                @if($course && $course->thumbnail_url)
+                                                @if($isPackage && $package && $package->thumbnail_url)
+                                                    <img src="{{ $package->thumbnail_url }}"
+                                                         alt="{{ $package->title }}"
+                                                         class="rounded"
+                                                         style="width: 50px; height: 50px; object-fit: cover;">
+                                                @elseif($course && $course->thumbnail_url)
                                                     <img src="{{ $course->thumbnail_url }}" 
                                                          alt="{{ $course->title }}" 
                                                          class="rounded"
@@ -237,20 +244,29 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                 @else
                                                     <div class="bg-light rounded d-flex align-items-center justify-content-center" 
                                                          style="width: 50px; height: 50px;">
-                                                        <i class="fas fa-book text-muted"></i>
+                                                        <i class="fas {{ $isPackage ? 'fa-box-open' : 'fa-book' }} text-muted"></i>
                                                     </div>
                                                 @endif
                                             </td>
                                             <td>
                                                 <div>
-                                                    <strong>{{ $course ? $course->title : 'Cours supprimé' }}</strong>
-                                                    @if($course && $course->provider)
+                                                    @if($isPackage)
+                                                        <strong>{{ $package ? $package->title : 'Pack supprimé' }}</strong>
+                                                        @if($package)
+                                                            <br><small class="text-muted">Pack ({{ $package->contents_count ?? $package->contents?->count() ?? 0 }} contenu(x))</small>
+                                                        @endif
+                                                    @else
+                                                        <strong>{{ $course ? $course->title : 'Cours supprimé' }}</strong>
+                                                    @endif
+                                                    @if(!$isPackage && $course && $course->provider)
                                                         <br><small class="text-muted">par {{ $course->provider->name }}</small>
                                                     @endif
                                                 </div>
                                             </td>
                                             <td>
-                                                @if(isset($access->is_purchased_not_enrolled) && $access->is_purchased_not_enrolled)
+                                                @if($isPackage)
+                                                    <span class="badge bg-success">Actif</span>
+                                                @elseif(isset($access->is_purchased_not_enrolled) && $access->is_purchased_not_enrolled)
                                                     <span class="badge bg-info">
                                                         <i class="fas fa-shopping-cart me-1"></i>Acheté
                                                     </span>
@@ -278,7 +294,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                 @endif
                                             </td>
                                             <td>
-                                                @if(isset($access->is_purchased_not_enrolled) || isset($access->is_downloaded_free))
+                                                @if($isPackage || isset($access->is_purchased_not_enrolled) || isset($access->is_downloaded_free))
                                                     <span class="text-muted">—</span>
                                                 @else
                                                     <div class="progress" style="height: 20px; width: 100px;">
@@ -289,7 +305,11 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                 @endif
                                             </td>
                                             <td>
-                                                @if(isset($access->is_purchased_not_enrolled) && $access->is_purchased_not_enrolled)
+                                                @if($isPackage)
+                                                    <span class="badge bg-primary">
+                                                        <i class="fas fa-box-open me-1"></i>Pack
+                                                    </span>
+                                                @elseif(isset($access->is_purchased_not_enrolled) && $access->is_purchased_not_enrolled)
                                                     <span class="badge bg-primary">
                                                         <i class="fas fa-shopping-cart me-1"></i>Acheté
                                                     </span>
@@ -308,7 +328,13 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                 @endif
                                             </td>
                                             <td class="text-center">
-                                                @if($course && $course->id && !isset($access->is_downloaded_free))
+                                                @if($isPackage && $package && $package->id)
+                                                    <button type="button" class="btn btn-sm btn-danger btn-action-small"
+                                                            onclick="confirmRevokePackageAccess({{ $user->id }}, {{ $package->id }}, {{ (int) ($access->order_id ?? 0) }}, {{ json_encode($package->title ?? 'Pack') }})"
+                                                            title="Enlever l'accès au pack">
+                                                        <i class="fas fa-ban"></i>
+                                                    </button>
+                                                @elseif(!$isPackage && $course && $course->id && !isset($access->is_downloaded_free))
                                                     <button type="button" class="btn btn-sm btn-danger btn-action-small" 
                                                             onclick="confirmRevokeAccess({{ $user->id }}, {{ $course->id }}, {{ json_encode($course->title ?? 'Contenu') }})"
                                                             title="Enlever l'accès">
@@ -436,13 +462,13 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
     </div>
 
 
-    <!-- Modal pour donner accès gratuit à un cours -->
+    <!-- Modal pour donner accès gratuit à un contenu ou un pack -->
     <div class="modal fade" id="grantAccessModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">
-                        <i class="fas fa-gift me-2"></i>Donner accès gratuit à un contenu
+                        <i class="fas fa-gift me-2"></i>Donner accès gratuit à un contenu ou un pack
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -450,61 +476,80 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                     @csrf
                     <div class="modal-body">
                         <p class="text-muted mb-3">
-                            Sélectionnez un contenu pour donner un accès gratuit à <strong>{{ $user->name }}</strong>.
+                            Sélectionnez un contenu ou un pack pour donner un accès gratuit à <strong>{{ $user->name }}</strong>.
                         </p>
                         
                         <div class="mb-3">
-                            <label for="content_id" class="form-label fw-semibold">Contenu <span class="text-danger">*</span></label>
-                            <select class="form-select" id="content_id" name="content_id" required>
-                                <option value="">Sélectionner un contenu...</option>
-                                @foreach($allCourses as $course)
-                                    @php
-                                        $hasAccess = false;
-                                        foreach ($allAccess as $access) {
-                                            if (($access->content_id ?? null) == $course->id) {
-                                                $hasAccess = true;
-                                                break;
-                                            }
-                                        }
-                                    @endphp
-                                    @if(!$hasAccess)
-                                        <option value="{{ $course->id }}">
-                                            {{ $course->title }}
-                                            @if($course->category)
-                                                - {{ $course->category->name }}
-                                            @endif
-                                            @if($course->provider)
-                                                ({{ $course->provider->name }})
-                                            @endif
-                                            @if($course->is_free)
-                                                <span class="text-success">[Gratuit]</span>
-                                            @else
-                                                <span class="text-primary">[Payant - {{ number_format($course->price, 0, ',', ' ') }} FCFA]</span>
-                                            @endif
-                                        </option>
-                                    @endif
-                                @endforeach
+                            <label for="grant_access_target" class="form-label fw-semibold">Contenu / Pack <span class="text-danger">*</span></label>
+                            @php
+                                $accessibleCourseIds = collect($allAccess)
+                                    ->pluck('content_id')
+                                    ->filter()
+                                    ->unique()
+                                    ->values();
+                            @endphp
+                            <select class="form-select" id="grant_access_target" name="grant_access_target" required>
+                                <option value="">Sélectionner un contenu ou un pack...</option>
+                                <optgroup label="Contenus">
+                                    @foreach($allCourses as $course)
+                                        @php
+                                            $hasAccess = $accessibleCourseIds->contains($course->id);
+                                        @endphp
+                                        @if(!$hasAccess)
+                                            <option value="course:{{ $course->id }}">
+                                                {{ $course->title }}
+                                                @if($course->category)
+                                                    - {{ $course->category->name }}
+                                                @endif
+                                                @if($course->provider)
+                                                    ({{ $course->provider->name }})
+                                                @endif
+                                            </option>
+                                        @endif
+                                    @endforeach
+                                </optgroup>
+                                <optgroup label="Packs">
+                                    @foreach($allPackages as $package)
+                                        @php
+                                            $packCourseIds = $package->contents->pluck('id')->filter();
+                                            $hasAccessToAllPackCourses = $packCourseIds->isNotEmpty() && $packCourseIds->every(function ($id) use ($accessibleCourseIds) {
+                                                return $accessibleCourseIds->contains($id);
+                                            });
+                                        @endphp
+                                        @if(!$hasAccessToAllPackCourses)
+                                            <option value="package:{{ $package->id }}">
+                                                {{ $package->title }} ({{ $package->contents->count() }} contenu(x))
+                                            </option>
+                                        @endif
+                                    @endforeach
+                                </optgroup>
                             </select>
+                            <input type="hidden" name="content_id" id="content_id_input">
+                            <input type="hidden" name="package_id" id="package_id_input">
                             @php
                                 $availableCoursesCount = 0;
                                 foreach ($allCourses as $course) {
-                                    $hasAccess = false;
-                                    foreach ($allAccess as $access) {
-                                        if (($access->content_id ?? null) == $course->id) {
-                                            $hasAccess = true;
-                                            break;
-                                        }
-                                    }
+                                    $hasAccess = $accessibleCourseIds->contains($course->id);
                                     if (!$hasAccess) {
                                         $availableCoursesCount++;
                                     }
                                 }
-                                $hasNoAvailableCourses = $availableCoursesCount == 0;
+                                $availablePackagesCount = 0;
+                                foreach ($allPackages as $package) {
+                                    $packCourseIds = $package->contents->pluck('id')->filter();
+                                    $hasAccessToAllPackCourses = $packCourseIds->isNotEmpty() && $packCourseIds->every(function ($id) use ($accessibleCourseIds) {
+                                        return $accessibleCourseIds->contains($id);
+                                    });
+                                    if (!$hasAccessToAllPackCourses) {
+                                        $availablePackagesCount++;
+                                    }
+                                }
+                                $hasNoAvailableTargets = ($availableCoursesCount + $availablePackagesCount) === 0;
                             @endphp
-                            @if($hasNoAvailableCourses)
+                            @if($hasNoAvailableTargets)
                                 <small class="text-muted d-block mt-2">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Tous les contenus disponibles sont déjà accessibles à cet utilisateur.
+                                    Tous les contenus et packs disponibles sont déjà accessibles à cet utilisateur.
                                 </small>
                             @endif
                         </div>
@@ -517,22 +562,9 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                         @php
-                            $hasAvailableCourses = false;
-                            foreach ($allCourses as $course) {
-                                $hasAccess = false;
-                                foreach ($allAccess as $access) {
-                                    if (($access->content_id ?? null) == $course->id) {
-                                        $hasAccess = true;
-                                        break;
-                                    }
-                                }
-                                if (!$hasAccess) {
-                                    $hasAvailableCourses = true;
-                                    break;
-                                }
-                            }
+                            $hasAvailableTargets = !$hasNoAvailableTargets;
                         @endphp
-                        <button type="submit" class="btn btn-primary" {{ $hasAvailableCourses ? '' : 'disabled' }}>
+                        <button type="submit" class="btn btn-primary" {{ $hasAvailableTargets ? '' : 'disabled' }}>
                             <i class="fas fa-gift me-2"></i>Donner l'accès
                         </button>
                     </div>
@@ -895,5 +927,70 @@ async function confirmRevokeAccess(userId, courseId, courseTitle) {
         form.submit();
     }
 }
+
+async function confirmRevokePackageAccess(userId, packageId, orderId, packageTitle) {
+    const message = `Êtes-vous sûr de vouloir enlever l'accès au pack « ${packageTitle} » ? L'utilisateur perdra l'accès aux contenus liés à ce pack.`;
+
+    const confirmed = await showModernConfirmModal(message, {
+        title: 'Enlever l\'accès au pack',
+        confirmButtonText: 'Enlever l\'accès',
+        confirmButtonClass: 'btn-danger',
+        icon: 'fa-exclamation-triangle'
+    });
+
+    if (confirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/users/${userId}/packages/${packageId}/revoke-access?order_id=${orderId}`;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const targetSelect = document.getElementById('grant_access_target');
+    const contentInput = document.getElementById('content_id_input');
+    const packageInput = document.getElementById('package_id_input');
+
+    if (!targetSelect || !contentInput || !packageInput) {
+        return;
+    }
+
+    const syncGrantAccessInputs = () => {
+        const value = targetSelect.value || '';
+        contentInput.value = '';
+        packageInput.value = '';
+
+        if (!value.includes(':')) {
+            return;
+        }
+
+        const [type, id] = value.split(':');
+        if (type === 'course') {
+            contentInput.value = id || '';
+        } else if (type === 'package') {
+            packageInput.value = id || '';
+        }
+    };
+
+    targetSelect.addEventListener('change', syncGrantAccessInputs);
+    syncGrantAccessInputs();
+});
 </script>
 @endpush

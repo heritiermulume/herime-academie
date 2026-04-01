@@ -71,7 +71,7 @@ class SendWhatsAppFromEmailJob implements ShouldQueue
                 'recipient_name' => $this->user->name,
                 'message_id' => $result['message_id'] ?? null,
                 'message' => $this->message,
-                'type' => 'auto',
+                'type' => 'notification',
                 'status' => $result['success'] ? 'sent' : 'failed',
                 'error_message' => $result['error'] ?? null,
                 'sent_at' => $result['success'] ? now() : null,
@@ -107,7 +107,7 @@ class SendWhatsAppFromEmailJob implements ShouldQueue
                     'recipient_phone' => $this->user->phone,
                     'recipient_name' => $this->user->name,
                     'message' => $this->message,
-                    'type' => 'auto',
+                    'type' => 'notification',
                     'status' => 'failed',
                     'error_message' => $e->getMessage(),
                     'metadata' => [

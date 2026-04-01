@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Course;
+use App\Models\ContentPackage;
 use App\Models\CourseLesson;
 use App\Models\Category;
 use App\Models\Order;
@@ -987,12 +988,53 @@ class AdminController extends Controller
                 return $enrollment->course !== null;
             });
         
+        // Récupérer les accès packs (commandes payées/complétées contenant des packs)
+        $packageAccesses = Order::where('user_id', $user->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function ($query) {
+                $query->whereNotNull('content_package_id');
+            })
+            ->with(['orderItems.contentPackage'])
+            ->get()
+            ->flatMap(function ($order) {
+                return $order->orderItems
+                    ->filter(function ($item) {
+                        if (empty($item->content_package_id) || $item->contentPackage === null) {
+                            return false;
+                        }
+
+                        $marker = '[PACK_REVOKED:' . (int) $item->content_package_id . ']';
+                        return !str_contains((string) ($order->notes ?? ''), $marker);
+                    })
+                    ->map(function ($item) use ($order) {
+                        return (object) [
+                            'id' => null,
+                            'content_id' => null,
+                            'course' => null,
+                            'package' => $item->contentPackage,
+                            'status' => 'active',
+                            'progress' => null,
+                            'order_id' => $order->id,
+                            'order' => $order,
+                            'created_at' => $order->paid_at ?? $order->created_at,
+                            'is_package_access' => true,
+                        ];
+                    });
+            })
+            ->unique(function ($row) {
+                return ($row->order_id ?? 'no-order') . ':' . ($row->package->id ?? 'no-package');
+            })
+            ->values();
+
+        $packageOrderIds = $packageAccesses->pluck('order_id')->filter()->unique()->all();
+
         // Récupérer les cours achetés (via commandes payées) qui n'ont pas d'inscription
         $purchasedCourseIds = $enrollments->pluck('content_id')->filter()->all();
         $purchasedCourses = \App\Models\Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($query) use ($purchasedCourseIds) {
                 $query->whereNotIn('content_id', $purchasedCourseIds ?: [0])
+                    ->whereNull('content_package_id')
                     ->whereNotNull('content_id')
                     ->whereHas('content', function($q) {
                         $q->where('is_published', true);
@@ -1109,8 +1151,20 @@ class AdminController extends Controller
                 ->filter(); // Filtrer les valeurs null
         }
         
+        // Masquer les lignes de cours issues d'une commande pack (on affichera le pack)
+        $enrollments = $enrollments->filter(function ($enrollment) use ($packageOrderIds) {
+            if (empty($enrollment->order_id)) {
+                return true;
+            }
+
+            return !in_array($enrollment->order_id, $packageOrderIds);
+        });
+
         // Combiner toutes les sources d'accès
-        $allAccess = $enrollments->concat($purchasedCourses)->concat($downloadedFreeCourses)
+        $allAccess = $enrollments
+            ->concat($purchasedCourses)
+            ->concat($downloadedFreeCourses)
+            ->concat($packageAccesses)
             ->sortByDesc('created_at')
             ->values();
         
@@ -1119,8 +1173,20 @@ class AdminController extends Controller
             ->with(['provider', 'category'])
             ->orderBy('title')
             ->get();
-        
-        return view('admin.users.show', compact('user', 'enrollments', 'allAccess', 'allCourses'));
+
+        // Charger tous les packs publiés pour le modal d'ajout
+        $allPackages = ContentPackage::query()
+            ->where('is_published', true)
+            ->with([
+                'contents' => function ($query) {
+                    $query->where('is_published', true)->orderBy('title');
+                },
+                'contents.provider',
+            ])
+            ->orderBy('title')
+            ->get();
+
+        return view('admin.users.show', compact('user', 'enrollments', 'allAccess', 'allCourses', 'allPackages'));
     }
 
     /**
@@ -1206,32 +1272,123 @@ class AdminController extends Controller
     public function grantCourseAccess(Request $request, User $user)
     {
         $request->validate([
-            'content_id' => 'required|exists:contents,id',
+            'content_id' => 'nullable|required_without:package_id|exists:contents,id',
+            'package_id' => 'nullable|required_without:content_id|exists:content_packages,id',
         ]);
 
-        $course = Course::findOrFail($request->content_id);
+        // Accès à un seul contenu
+        if ($request->filled('content_id')) {
+            $course = Course::findOrFail($request->content_id);
 
-        // Vérifier si l'utilisateur n'est pas déjà inscrit
-        $existingEnrollment = Enrollment::where('user_id', $user->id)
-            ->where('content_id', $course->id)
-            ->first();
+            // Vérifier si l'utilisateur n'est pas déjà inscrit
+            $existingEnrollment = Enrollment::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->first();
 
-        if ($existingEnrollment) {
+            if ($existingEnrollment) {
+                return redirect()->route('admin.users.show', $user)
+                    ->with('error', 'L\'utilisateur a déjà accès à ce cours.');
+            }
+
+            // Créer l'inscription avec order_id null (accès gratuit)
+            Enrollment::createAndNotify([
+                'user_id' => $user->id,
+                'content_id' => $course->id,
+                'order_id' => null, // Accès gratuit donné par l'admin
+                'status' => 'active',
+            ]);
+
             return redirect()->route('admin.users.show', $user)
-                ->with('error', 'L\'utilisateur a déjà accès à ce cours.');
+                ->with('success', "Accès gratuit au contenu \"{$course->title}\" accordé avec succès. L'utilisateur a été notifié par email.");
         }
 
-        // Créer l'inscription avec order_id null (accès gratuit)
-        // La méthode createAndNotify envoie automatiquement les notifications et emails
-        Enrollment::createAndNotify([
+        // Accès à un pack (accorde l'accès à tous les contenus du pack)
+        $package = ContentPackage::query()
+            ->where('id', $request->package_id)
+            ->where('is_published', true)
+            ->with(['contents' => function ($query) {
+                $query->where('is_published', true);
+            }])
+            ->firstOrFail();
+
+        if ($package->contents->isEmpty()) {
+            return redirect()->route('admin.users.show', $user)
+                ->with('error', 'Ce pack ne contient aucun contenu publiable.');
+        }
+
+        // Créer une commande gratuite "admin_grant" pour tracer l'accès pack dans l'historique admin
+        $freeOrder = Order::create([
+            'order_number' => 'ADM-PACK-' . strtoupper(Str::random(8)) . '-' . time(),
             'user_id' => $user->id,
-            'content_id' => $course->id,
-            'order_id' => null, // Accès gratuit donné par l'admin
-            'status' => 'active',
+            'subtotal' => 0,
+            'discount' => 0,
+            'tax' => 0,
+            'total' => 0,
+            'total_amount' => 0,
+            'currency' => config('app.currency', 'XOF'),
+            'status' => 'completed',
+            'payment_method' => 'admin_grant',
+            'notes' => "Accès pack offert par un administrateur (pack #{$package->id}).",
+            'paid_at' => now(),
+            'completed_at' => now(),
         ]);
 
+        $first = true;
+        foreach ($package->contents as $course) {
+            OrderItem::create([
+                'order_id' => $freeOrder->id,
+                'content_id' => $course->id,
+                'content_package_id' => $package->id,
+                'price' => $first ? (float) ($package->price ?? 0) : 0,
+                'sale_price' => null,
+                'total' => 0,
+            ]);
+            $first = false;
+        }
+
+        $createdCount = 0;
+        $failedCount = 0;
+        foreach ($package->contents as $course) {
+            $alreadyEnrolled = Enrollment::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->exists();
+
+            if ($alreadyEnrolled) {
+                continue;
+            }
+
+            try {
+                Enrollment::createAndNotify([
+                    'user_id' => $user->id,
+                    'content_id' => $course->id,
+                    'order_id' => $freeOrder->id,
+                    'status' => 'active',
+                ]);
+
+                $createdCount++;
+            } catch (\Throwable $e) {
+                $failedCount++;
+                \Log::error('Échec attribution accès pack pour un contenu', [
+                    'user_id' => $user->id,
+                    'package_id' => $package->id,
+                    'content_id' => $course->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if ($createdCount === 0) {
+            return redirect()->route('admin.users.show', $user)
+                ->with('error', 'L\'utilisateur a déjà accès à tous les contenus de ce pack.');
+        }
+
+        $message = "Accès gratuit au pack \"{$package->title}\" accordé avec succès ({$createdCount} contenu(x) ajouté(s)).";
+        if ($failedCount > 0) {
+            $message .= " {$failedCount} envoi(s) ont échoué sans bloquer les autres opérations.";
+        }
+
         return redirect()->route('admin.users.show', $user)
-            ->with('success', "Accès gratuit au contenu \"{$course->title}\" accordé avec succès. L'utilisateur a été notifié par email.");
+            ->with('success', $message);
     }
 
     /**
@@ -1363,6 +1520,161 @@ class AdminController extends Controller
     public function unenrollUser(User $user, Course $course)
     {
         return $this->revokeCourseAccess($user, $course);
+    }
+
+    /**
+     * Révoquer un accès pack accordé par l'admin (admin_grant).
+     */
+    public function revokePackageAccess(Request $request, User $user, ContentPackage $package)
+    {
+        $orderId = (int) $request->query('order_id', 0);
+        if ($orderId <= 0) {
+            return redirect()->route('admin.users.show', $user)
+                ->with('error', 'Révocation du pack impossible: commande introuvable.');
+        }
+
+        $order = Order::where('id', $orderId)
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function ($query) use ($package) {
+                $query->where('content_package_id', $package->id);
+            })
+            ->with(['orderItems' => function ($query) use ($package) {
+                $query->where('content_package_id', $package->id);
+            }])
+            ->first();
+
+        if (!$order) {
+            return redirect()->route('admin.users.show', $user)
+                ->with('error', 'Cet accès pack ne peut pas être révoqué automatiquement.');
+        }
+
+        $revocationMarker = '[PACK_REVOKED:' . $package->id . ']';
+        if (str_contains((string) ($order->notes ?? ''), $revocationMarker)) {
+            return redirect()->route('admin.users.show', $user)
+                ->with('error', 'Cet accès pack a déjà été révoqué.');
+        }
+
+        $contentIds = $order->orderItems->pluck('content_id')->filter()->unique()->values();
+        if ($contentIds->isEmpty()) {
+            return redirect()->route('admin.users.show', $user)
+                ->with('error', 'Aucun contenu lié à ce pack n\'a été trouvé.');
+        }
+
+        $revocableContentIds = $contentIds->filter(function ($contentId) use ($user, $order) {
+            // Vérifier s'il existe un autre droit d'accès pédagogique pour ce contenu
+            $hasOtherEnrollment = Enrollment::where('user_id', $user->id)
+                ->where('content_id', $contentId)
+                ->where('status', '!=', 'cancelled')
+                ->where('order_id', '!=', $order->id)
+                ->exists();
+
+            $hasOtherPaidOrder = Order::where('user_id', $user->id)
+                ->whereIn('status', ['paid', 'completed'])
+                ->where('id', '!=', $order->id)
+                ->whereHas('orderItems', function ($query) use ($contentId) {
+                    $query->where('content_id', $contentId);
+                })
+                ->exists();
+
+            return !($hasOtherEnrollment || $hasOtherPaidOrder);
+        })->values();
+
+        // Envoyer notifications/mails/messages pour chaque contenu révoqué sans bloquer la suite
+        $revocableCourses = Course::whereIn('id', $revocableContentIds)->get()->keyBy('id');
+        foreach ($revocableContentIds as $contentId) {
+            $course = $revocableCourses->get($contentId);
+            if (!$course) {
+                continue;
+            }
+
+            try {
+                $mailable = new \App\Mail\CourseAccessRevokedMail($course);
+                $communicationService = app(\App\Services\CommunicationService::class);
+                $communicationService->sendEmailAndWhatsApp($user, $mailable);
+            } catch (\Throwable $e) {
+                \Log::error("Erreur envoi email/WhatsApp révocation pack", [
+                    'user_id' => $user->id,
+                    'package_id' => $package->id,
+                    'content_id' => $contentId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            try {
+                Notification::sendNow($user, new \App\Notifications\CourseAccessRevoked($course));
+            } catch (\Throwable $e) {
+                \Log::error("Erreur envoi notification DB révocation pack", [
+                    'user_id' => $user->id,
+                    'package_id' => $package->id,
+                    'content_id' => $contentId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        DB::transaction(function () use ($user, $order, $package, $revocationMarker, $revocableContentIds) {
+
+            if ($revocableContentIds->isNotEmpty()) {
+                Enrollment::where('user_id', $user->id)
+                    ->where('order_id', $order->id)
+                    ->whereIn('content_id', $revocableContentIds)
+                    ->delete();
+
+                LessonProgress::where('user_id', $user->id)
+                    ->whereIn('content_id', $revocableContentIds)
+                    ->delete();
+
+                LessonNote::where('user_id', $user->id)
+                    ->whereIn('content_id', $revocableContentIds)
+                    ->delete();
+
+                $discussionIds = LessonDiscussion::where('user_id', $user->id)
+                    ->whereIn('content_id', $revocableContentIds)
+                    ->pluck('id');
+                if ($discussionIds->isNotEmpty()) {
+                    DiscussionLike::whereIn('discussion_id', $discussionIds)->delete();
+                    LessonDiscussion::whereIn('id', $discussionIds)->delete();
+                }
+
+                $likedDiscussionIds = DiscussionLike::where('user_id', $user->id)
+                    ->whereHas('discussion', function ($query) use ($revocableContentIds) {
+                        $query->whereIn('content_id', $revocableContentIds);
+                    })
+                    ->pluck('id');
+                if ($likedDiscussionIds->isNotEmpty()) {
+                    DiscussionLike::whereIn('id', $likedDiscussionIds)->delete();
+                }
+
+                Certificate::where('user_id', $user->id)
+                    ->whereIn('content_id', $revocableContentIds)
+                    ->delete();
+
+                Review::where('user_id', $user->id)
+                    ->whereIn('content_id', $revocableContentIds)
+                    ->delete();
+
+                foreach ($revocableContentIds as $contentId) {
+                    SentEmail::where('recipient_email', $user->email)
+                        ->where('metadata->content_id', $contentId)
+                        ->whereIn('metadata->mail_class', [
+                            \App\Mail\CourseEnrolledMail::class,
+                            \App\Mail\EnrollmentReceiptMail::class,
+                        ])
+                        ->delete();
+                }
+            }
+
+            // Conserver l'historique de paiement, mais masquer ce pack des accès actifs.
+            $currentNotes = trim((string) ($order->notes ?? ''));
+            $extraNote = "Accès pédagogique pack révoqué par admin (pack #{$package->id}). {$revocationMarker}";
+            $order->update([
+                'notes' => $currentNotes === '' ? $extraNote : ($currentNotes . "\n" . $extraNote),
+            ]);
+        });
+
+        return redirect()->route('admin.users.show', $user)
+            ->with('success', "Accès au pack \"{$package->title}\" retiré avec succès.");
     }
 
     // Gestion des cours

@@ -910,7 +910,7 @@ class MonerooController extends Controller
         $isProcessed = $statusData['is_processed'] ?? false;
         $processedAt = $statusData['processed_at'] ?? null;
 
-        if (($status === 'success' || $status === 'completed') && ($isProcessed || $processedAt)) {
+        if (in_array($status, ['success', 'completed'])) {
             $payment->update([
                 'status' => 'completed',
                 'processed_at' => $processedAt ? \Carbon\Carbon::parse($processedAt) : now(),
@@ -992,7 +992,7 @@ class MonerooController extends Controller
         $isProcessed = $statusData['is_processed'] ?? false;
         $processedAt = $statusData['processed_at'] ?? null;
 
-        if (($status === 'success' || $status === 'completed') && ($isProcessed || $processedAt)) {
+        if (in_array($status, ['success', 'completed'])) {
             $payment->update([
                 'status' => 'completed',
                 'processed_at' => $processedAt ? \Carbon\Carbon::parse($processedAt) : now(),
@@ -1120,14 +1120,14 @@ class MonerooController extends Controller
             $payment->update([
                 'status' => $mapped,
                 'payment_data' => $paymentData,
-                'processed_at' => (($status === 'completed' || $status === 'success') && ($isProcessed || $processedAt)) 
+                'processed_at' => in_array($status, ['completed', 'success'])
                     ? ($processedAt ? \Carbon\Carbon::parse($processedAt) : now()) 
                     : null,
             ]);
 
             // Traiter selon le statut final
             // Un paiement est réussi si status est "success" ou "completed" ET is_processed est true
-			if (($status === 'completed' || $status === 'success') && ($isProcessed || $processedAt) && $payment->order) {
+			if (in_array($status, ['completed', 'success']) && $payment->order) {
 				// Mettre à jour la commande avec la référence et les frais si fournis
 				$feeAmount = $paymentData['fee'] ?? ($paymentData['fees']['amount'] ?? null);
 				$feeCurrency = $paymentData['fee_currency'] ?? ($paymentData['fees']['currency'] ?? null);
@@ -1391,7 +1391,9 @@ class MonerooController extends Controller
             ]);
             
             // Vérifier si déjà finalisée (idempotence)
-            if (in_array($order->status, ['paid', 'completed'])) {
+            // "paid" peut exister sans finalisation complète (enrollments/panier),
+            // on ne court-circuite donc que si la commande est "completed".
+            if ($order->status === 'completed') {
                 \Log::info('Moneroo: Order already finalized', [
                     'order_id' => $order->id,
                     'status' => $order->status,
@@ -1714,7 +1716,9 @@ class MonerooController extends Controller
                     $redirectStatus = strtolower($paymentStatus ?? '');
                     $isSuccessFromRedirect = in_array($redirectStatus, ['success', 'completed']);
                     
-                    if ($status === 'success' || ($status === 'completed' && $isProcessed) || ($isSuccessFromRedirect && $isProcessed)) {
+                    if (in_array($status, ['success', 'completed']) || $isSuccessFromRedirect) {
+                        $orderWasAlreadyPaid = in_array($payment->order->status, ['paid', 'completed']);
+
                         // Paiement complété : s'assurer que tout est finalisé
                         if ($payment->status !== 'completed') {
                             $payment->update([
@@ -1752,7 +1756,6 @@ class MonerooController extends Controller
 						$payment->order->update($updates);
                         
                         // Finaliser la commande si pas déjà fait
-                        $orderWasAlreadyPaid = in_array($payment->order->status, ['paid', 'completed']);
                         if (!$orderWasAlreadyPaid) {
                             $this->finalizeOrderAfterPayment($payment->order);
                         }
