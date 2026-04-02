@@ -103,7 +103,9 @@
                             <dd class="col-sm-8">{{ $order->paid_at->format('d/m/Y à H:i') }}</dd>
                         @endif
 
-                        @php($lastPayment = $order->payments()->latest()->first())
+                        @php
+                            $lastPayment = $order->payments()->latest()->first();
+                        @endphp
                         @if($lastPayment && $lastPayment->failure_reason)
                             <dt class="col-sm-4">Raison de l'échec</dt>
                             <dd class="col-sm-8">

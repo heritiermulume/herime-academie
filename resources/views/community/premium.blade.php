@@ -28,9 +28,25 @@
         color: #fff;
         padding: 3rem 0 2.5rem;
     }
+    @media (max-width: 767.98px) {
+        .community-premium-hero {
+            padding: 2rem 0 1.5rem;
+        }
+    }
     .community-premium-hero h1 {
         font-weight: 700;
         letter-spacing: -0.02em;
+    }
+    /* Même échelle que Devenir Ambassadeur (h2 + h1-md) */
+    @media (min-width: 768px) {
+        .community-premium-hero .h1-md {
+            font-size: 2.5rem;
+        }
+    }
+    @media (max-width: 767.98px) {
+        .community-premium-hero .h1-md {
+            font-size: 1.75rem;
+        }
     }
     .community-premium-card {
         border: 2px solid #e9ecef;
@@ -43,7 +59,7 @@
         box-shadow: 0 12px 40px rgba(0, 51, 102, 0.12);
     }
     .community-premium-price {
-        font-size: clamp(2rem, 5vw, 2.75rem);
+        font-size: clamp(1.35rem, 4.2vw, 2.5rem);
         font-weight: 700;
         color: #003366;
         letter-spacing: -0.02em;
@@ -99,7 +115,7 @@
         <div class="row justify-content-center">
             <div class="col-lg-9 text-center">
                 <p class="text-uppercase small mb-2 opacity-75">{{ $pt('kicker', 'Dernière étape') }}</p>
-                <h1 class="display-6 mb-3">{{ $pt('title', 'Après ça, tu fais partie des membres premium') }}</h1>
+                <h1 class="h2 h1-md fw-bold mb-3">{{ $pt('title', 'Après ça, tu fais partie des membres premium') }}</h1>
                 <p class="lead mb-0 opacity-90">
                     {{ $pt('lead', 'Tu es à un pas d’accéder à la communauté privée des membres, notre espace Membre Herime, et de débloquer toutes les ressources qui l’accompagnent.') }}
                 </p>

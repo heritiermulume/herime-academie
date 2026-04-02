@@ -1009,14 +1009,14 @@ body {
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2 text-start">
                 <p class="text-uppercase small fw-semibold mb-2" style="letter-spacing: 0.12em; opacity: 0.85;">Espace exclusif · Membre Herime</p>
-                <h2 class="display-6 fw-bold mb-3 lh-sm">La communauté privée des entrepreneurs qui <span class="text-warning" style="text-shadow: 0 0 24px rgba(255, 193, 7, 0.35);">passent à l’action</span></h2>
-                <p class="lead mb-3" style="opacity: 0.95; font-size: 1.15rem;">
+                <h2 class="h1-md fw-bold mb-3 lh-sm">La communauté privée des entrepreneurs qui <span class="text-warning" style="text-shadow: 0 0 24px rgba(255, 193, 7, 0.35);">passent à l’action</span></h2>
+                <p class="lead mb-3 opacity-90">
                     Le cadre et l’entourage pour lancer ton activité, trouver des clients et avancer plus vite, sans rester seul.
                 </p>
-                <p class="mb-4 fst-italic border-start border-warning border-3 ps-3" style="opacity: 0.9;">
+                <p class="mb-4 fst-italic border-start border-warning border-3 ps-3 opacity-90">
                     Ici, on ne consomme pas des vidéos dans le vide : on avance avec des pairs qui vendent, testent et s’entraident pour que ton prochain client ne soit plus une question de « si », mais de « quand ».
                 </p>
-                <p class="fw-bold mb-3 fs-5">Voici ce qui t’attend à l’intérieur :</p>
+                <p class="h6 fw-bold mb-3">Voici ce qui t’attend à l’intérieur :</p>
                 <ul class="list-unstyled mb-4 community-network-list text-start w-100">
                     <li class="d-flex align-items-start justify-content-start mb-3 text-start">
                         <i class="fas fa-check-circle text-warning flex-shrink-0 me-3 mt-1"></i>
@@ -1881,6 +1881,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @push('styles')
 <style>
+/* Titres type page Devenir Ambassadeur (h2 + .h1-md, lisible sur mobile) */
+@media (min-width: 768px) {
+    .h1-md {
+        font-size: 2.5rem;
+    }
+}
+@media (max-width: 767.98px) {
+    .h1-md {
+        font-size: 1.75rem;
+    }
+}
+
 /* CTA Section - No gap with footer */
 .cta-section {
     margin-bottom: 0 !important;

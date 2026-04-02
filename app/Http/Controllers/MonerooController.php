@@ -87,6 +87,35 @@ class MonerooController extends Controller
     }
 
     /**
+     * Indique si une commande payée donne encore un accès actif pour chaque ligne du panier
+     * (mêmes content_id). Sinon révocation admin : ne pas bloquer un nouveau paiement.
+     *
+     * @param  array<int|string>  $contentIds
+     */
+    private function paidOrderStillGrantsActiveAccessForContents(Order $order, array $contentIds): bool
+    {
+        $contentIdSet = array_fill_keys(array_map('intval', $contentIds), true);
+        $notes = (string) ($order->notes ?? '');
+
+        foreach ($order->orderItems as $item) {
+            $cid = (int) $item->content_id;
+            if (! isset($contentIdSet[$cid])) {
+                continue;
+            }
+            $pkgId = (int) ($item->content_package_id ?? 0);
+            if ($pkgId > 0) {
+                if (str_contains($notes, '[PACK_REVOKED:' . $pkgId . ']')) {
+                    return false;
+                }
+            } elseif (str_contains($notes, '[COURSE_REVOKED:' . $cid . ']')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Convertir le montant dans la plus petite unité de la devise
      * Pour XOF (Franc CFA), il n'y a pas de sous-unité, donc on arrondit à l'entier
      * Pour les devises avec centimes (USD, EUR, etc.), multiplier par 100
@@ -266,9 +295,13 @@ class MonerooController extends Controller
                 $query->whereIn('content_id', $contentIds);
             }])
             ->get()
-            ->filter(function($order) use ($contentIds) {
+            ->filter(function ($order) use ($contentIds) {
                 $orderCourseIds = $order->orderItems->pluck('content_id')->sort()->values()->toArray();
-                return $orderCourseIds === $contentIds;
+                if ($orderCourseIds !== $contentIds) {
+                    return false;
+                }
+
+                return $this->paidOrderStillGrantsActiveAccessForContents($order, $contentIds);
             })
             ->first();
 
