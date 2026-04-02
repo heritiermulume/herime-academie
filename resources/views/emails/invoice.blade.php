@@ -331,31 +331,17 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($orderItems as $item)
-                @php
-                    $course = $item->course;
-                    $itemPrice = $item->sale_price ?? $item->price;
-                    $itemTotal = $item->total ?? $itemPrice;
-                @endphp
+                @foreach(($invoiceLines ?? collect()) as $line)
                 <tr>
                     <td>
-                        <div class="course-title">
-                            @if($course)
-                                {{ $course->title }}
-                            @else
-                                Contenu supprimé
-                            @endif
-                        </div>
-                        @if($course && $course->provider)
-                        @php
-                            $providerLabel = $course->getProviderLabel();
-                        @endphp
-                        <div class="course-meta">{{ $providerLabel }} : {{ $course->provider->name }}</div>
+                        <div class="course-title">{{ $line['label'] }}</div>
+                        @if(!empty($line['meta']))
+                            <div class="course-meta">{{ $line['meta'] }}</div>
                         @endif
                     </td>
-                    <td class="text-center">1</td>
-                    <td class="text-right">{{ number_format((float)$itemPrice, 2, ',', ' ') }} {{ $order->currency }}</td>
-                    <td class="text-right"><strong>{{ number_format((float)$itemTotal, 2, ',', ' ') }} {{ $order->currency }}</strong></td>
+                    <td class="text-center">{{ (int) ($line['quantity'] ?? 1) }}</td>
+                    <td class="text-right">{{ number_format((float) ($line['unit_price'] ?? 0), 2, ',', ' ') }} {{ $order->currency }}</td>
+                    <td class="text-right"><strong>{{ number_format((float) ($line['line_total'] ?? 0), 2, ',', ' ') }} {{ $order->currency }}</strong></td>
                 </tr>
                 @endforeach
             </tbody>

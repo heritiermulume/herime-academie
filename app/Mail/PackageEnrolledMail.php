@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\ContentPackage;
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -9,57 +10,45 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class PaymentFailedMail extends Mailable
+class PackageEnrolledMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $order;
-    public $failureReason;
+    public function __construct(
+        public ContentPackage $package,
+        public ?Order $order = null
+    ) {}
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct(Order $order, ?string $failureReason = null)
-    {
-        $this->order = $order;
-        $this->failureReason = $failureReason;
-    }
-
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
         return new Envelope(
             from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Académie'),
-            subject: 'Échec du paiement - ' . config('app.name'),
+            subject: 'Accès à votre pack — ' . $this->package->title . ' — Herime Académie',
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
-        // Charger les relations nécessaires
-        $this->order->load(array_merge(['user'], Order::eagerLoadOrderItemsWithPackages()));
+        if (! $this->package->relationLoaded('contents')) {
+            $this->package->load('contents');
+        }
 
-        $orderUrl = route('orders.show', $this->order);
+        $packUrl = route('customer.pack', $this->package);
+        $courseCount = $this->package->contents->count();
 
         return new Content(
-            view: 'emails.payment-failed',
+            view: 'emails.package-enrolled',
             with: [
+                'package' => $this->package,
                 'order' => $this->order,
-                'orderUrl' => $orderUrl,
-                'failureReason' => $this->failureReason,
+                'packUrl' => $packUrl,
+                'courseCount' => $courseCount,
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],
         );
     }
 
     /**
-     * Get the attachments for the message.
-     *
      * @return array<int, \Illuminate\Mail\Mailables\Attachment>
      */
     public function attachments(): array
@@ -67,4 +56,3 @@ class PaymentFailedMail extends Mailable
         return [];
     }
 }
-

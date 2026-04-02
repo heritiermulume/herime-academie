@@ -3397,7 +3397,7 @@ button.mobile-price-slider__btn--download i,
         }
     } catch (\Throwable $e) {
         // En cas d'erreur fatale, utiliser des valeurs par défaut
-        \Log::error('Erreur fatale dans la section @php de courses.show', [
+        \Log::error('Erreur fatale dans la section @php de contents.show', [
             'content_id' => $course->id ?? null,
             'error' => $e->getMessage(),
             'file' => $e->getFile(),

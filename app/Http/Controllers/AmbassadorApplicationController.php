@@ -144,7 +144,7 @@ class AmbassadorApplicationController extends Controller
             ->get();
 
         $recentOrders = \App\Models\Order::where('ambassador_id', $ambassador->id)
-            ->with(['user', 'orderItems.course'])
+            ->with(array_merge(['user'], \App\Models\Order::eagerLoadOrderItemsWithPackages()))
             ->latest()
             ->limit(5)
             ->get();

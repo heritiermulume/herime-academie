@@ -3,13 +3,18 @@
 @section('admin-title', 'Commande ' . $order->order_number)
 @section('admin-subtitle')
 @php
-    $hasDownloadable = $order->orderItems->contains(function($item) {
+    $hasPackItems = $order->orderItems->contains(fn ($item) => ! empty($item->content_package_id));
+    $hasDownloadable = $order->orderItems->contains(function ($item) {
         return $item->course && $item->course->is_downloadable;
     });
-    $hasInPerson = $order->orderItems->contains(function($item) {
+    $hasInPerson = $order->orderItems->contains(function ($item) {
         return $item->course && ($item->course->is_in_person_program ?? false);
     });
-    $generalLabel = $hasDownloadable ? 'produits' : ($hasInPerson ? 'programmes' : 'cours');
+    $generalLabel = $hasDownloadable
+        ? 'produits'
+        : ($hasInPerson
+            ? 'programmes'
+            : ($hasPackItems ? 'contenus' : 'cours'));
 @endphp
 Détails de la commande et accès aux {{ $generalLabel }} associés.
 @endsection
@@ -37,14 +42,38 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
         return $course->getContentLabel();
     };
     
-    // Vérifier si la commande contient des produits téléchargeables ou programmes en présentiel
-    $hasDownloadableItems = $order->orderItems->contains(function($item) {
+    $hasPackItems = $order->orderItems->contains(fn ($item) => ! empty($item->content_package_id));
+    $hasDownloadableItems = $order->orderItems->contains(function ($item) {
         return $item->course && $item->course->is_downloadable;
     });
-    $hasInPersonItems = $order->orderItems->contains(function($item) {
+    $hasInPersonItems = $order->orderItems->contains(function ($item) {
         return $item->course && ($item->course->is_in_person_program ?? false);
     });
-    $generalLabel = $hasDownloadableItems ? 'produits' : ($hasInPersonItems ? 'programmes' : 'cours');
+    $generalLabel = $hasDownloadableItems
+        ? 'produits'
+        : ($hasInPersonItems
+            ? 'programmes'
+            : ($hasPackItems ? 'contenus' : 'cours'));
+
+    // Blocs d'affichage : un pack = une carte regroupée (ordre des lignes commande conservé)
+    $orderItemsSorted = $order->orderItems->sortBy('id')->values();
+    $renderedPackIds = [];
+    $orderLineBlocks = [];
+    foreach ($orderItemsSorted as $item) {
+        if (! empty($item->content_package_id)) {
+            $pid = (int) $item->content_package_id;
+            if (isset($renderedPackIds[$pid])) {
+                continue;
+            }
+            $renderedPackIds[$pid] = true;
+            $orderLineBlocks[] = [
+                'type' => 'pack',
+                'items' => $orderItemsSorted->where('content_package_id', $pid)->values(),
+            ];
+        } else {
+            $orderLineBlocks[] = ['type' => 'course', 'item' => $item];
+        }
+    }
 @endphp
 
 <div class="student-order-show">
@@ -110,22 +139,29 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                     <small class="order-verify-hint" style="display: block; margin-top: 0.5rem; color: #64748b; font-size: 0.8rem;">
                         Vous avez été débité mais la page ne s’est pas actualisée ? Cliquez pour vérifier.
                     </small>
-                @elseif(in_array($order->status, ['paid', 'completed']) && $order->enrollments->isNotEmpty())
+                @elseif(in_array($order->status, ['paid', 'completed']))
                     @php
-                        $firstCourse = optional($order->enrollments->first()->course);
+                        $firstPackItem = $order->orderItems->first(fn ($i) => ! empty($i->content_package_id) && $i->contentPackage);
+                        $firstCourse = optional($order->enrollments->first())->course;
                     @endphp
-                    @if($firstCourse && $firstCourse->is_downloadable)
-                        <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
-                            <i class="fas fa-eye me-1"></i>Voir
+                    @if($firstPackItem)
+                        <a href="{{ route('customer.pack', $firstPackItem->contentPackage) }}" class="admin-btn primary sm">
+                            <i class="fas fa-box-open me-1"></i>Ouvrir le pack
                         </a>
-                    @elseif($firstCourse && ($firstCourse->is_in_person_program ?? false))
-                        <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
-                            <i class="fas fa-eye me-1"></i>Voir le programme
-                        </a>
-                    @else
-                        <a href="{{ route('learning.course', $firstCourse->slug) }}" class="admin-btn success sm">
-                            <i class="fas fa-play me-1"></i>Commencer le cours
-                        </a>
+                    @elseif($firstCourse)
+                        @if($firstCourse->is_downloadable)
+                            <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
+                                <i class="fas fa-eye me-1"></i>Voir
+                            </a>
+                        @elseif($firstCourse->is_in_person_program ?? false)
+                            <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
+                                <i class="fas fa-eye me-1"></i>Voir le programme
+                            </a>
+                        @else
+                            <a href="{{ route('learning.course', $firstCourse->slug) }}" class="admin-btn success sm">
+                                <i class="fas fa-play me-1"></i>Commencer le cours
+                            </a>
+                        @endif
                     @endif
                 @endif
                 <a href="{{ route('orders.index') }}" class="admin-btn soft sm">
@@ -170,32 +206,92 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
 
         @if($order->orderItems && $order->orderItems->count() > 0)
             <div class="student-order-show__courses">
-                @foreach($order->orderItems as $item)
-                    @php($course = $item->course)
-                    <div class="order-course-card">
-                        <div class="order-course-card__meta">
-                            <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : (($course->is_in_person_program ?? false) ? 'Programme supprimé' : 'Cours supprimé')) : 'Contenu supprimé') }}</h4>
-                            <p>
-                                {{ $course->provider->name ?? 'Prestataire inconnu' }}
-                                @if($course && $course->category)
-                                    · {{ $course->category->name }}
+                @foreach($orderLineBlocks as $block)
+                    @if($block['type'] === 'pack')
+                        @php
+                            $packItems = $block['items'];
+                            $firstPackItem = $packItems->first();
+                            $pkg = $firstPackItem?->contentPackage;
+                            $packTotal = \App\Models\Order::billedAmountForContentPackage($order->orderItems, (int) $firstPackItem->content_package_id);
+                            $courseCount = $packItems->filter(fn ($i) => $i->course)->count();
+                        @endphp
+                        <div class="order-pack-card">
+                            <div class="order-pack-card__main order-course-card">
+                                <div class="order-course-card__meta">
+                                    <h4>
+                                        @if($pkg)
+                                            <i class="fas fa-box-open me-1" style="color: #6366f1;"></i>{{ $pkg->title }}
+                                        @else
+                                            <i class="fas fa-box-open me-1 text-muted"></i>Pack (référence indisponible)
+                                        @endif
+                                    </h4>
+                                    <p class="text-muted mb-0">
+                                        Pack · {{ $courseCount }} contenu{{ $courseCount > 1 ? 's' : '' }} inclus
+                                    </p>
+                                </div>
+                                <div class="order-course-card__info">
+                                    <span class="order-course-card__price">
+                                        {{ \App\Helpers\CurrencyHelper::formatWithSymbol($packTotal) }}
+                                    </span>
+                                    <span class="order-course-card__quantity">Forfait</span>
+                                </div>
+                                @if($pkg && in_array($order->status, ['paid', 'completed']))
+                                    <div class="order-course-card__actions">
+                                        <a href="{{ route('customer.pack', $pkg) }}" class="admin-btn ghost sm">
+                                            <i class="fas fa-folder-open me-1"></i>Ouvrir le pack
+                                        </a>
+                                    </div>
                                 @endif
-                            </p>
-                        </div>
-                        <div class="order-course-card__info">
-                            <span class="order-course-card__price">
-                                {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0) }}
-                            </span>
-                            <span class="order-course-card__quantity">Quantité : 1</span>
-                        </div>
-                        @if($course)
-                            <div class="order-course-card__actions">
-                                <a href="{{ route('contents.show', $course->slug) }}" class="admin-btn ghost sm">
-                                    <i class="fas fa-eye me-1"></i>Voir {{ $getContentLabel($course) }}
-                                </a>
                             </div>
-                        @endif
-                    </div>
+                            <div class="order-pack-card__contents">
+                                <span class="order-pack-card__contents-label">Contenus du pack</span>
+                                <ul class="order-pack-card__list">
+                                    @foreach($packItems as $pItem)
+                                        @php($pcourse = $pItem->course)
+                                        <li>
+                                            @if($pcourse)
+                                                <a href="{{ route('contents.show', $pcourse->slug) }}" class="order-pack-card__link">
+                                                    {{ $pcourse->title }}
+                                                </a>
+                                                @if($pcourse->provider)
+                                                    <span class="order-pack-card__link-meta">{{ $pcourse->provider->name }}</span>
+                                                @endif
+                                            @else
+                                                <span class="text-muted">Contenu indisponible</span>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @else
+                        @php($item = $block['item'])
+                        @php($course = $item->course)
+                        <div class="order-course-card">
+                            <div class="order-course-card__meta">
+                                <h4>{{ $course->title ?? ($course ? ($course->is_downloadable ? 'Produit supprimé' : (($course->is_in_person_program ?? false) ? 'Programme supprimé' : 'Cours supprimé')) : 'Contenu supprimé') }}</h4>
+                                <p>
+                                    {{ $course->provider->name ?? 'Prestataire inconnu' }}
+                                    @if($course && $course->category)
+                                        · {{ $course->category->name }}
+                                    @endif
+                                </p>
+                            </div>
+                            <div class="order-course-card__info">
+                                <span class="order-course-card__price">
+                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0) }}
+                                </span>
+                                <span class="order-course-card__quantity">Quantité : 1</span>
+                            </div>
+                            @if($course)
+                                <div class="order-course-card__actions">
+                                    <a href="{{ route('contents.show', $course->slug) }}" class="admin-btn ghost sm">
+                                        <i class="fas fa-eye me-1"></i>Voir {{ $getContentLabel($course) }}
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
                 @endforeach
             </div>
         @else
@@ -423,6 +519,71 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
         gap: 1rem;
     }
 
+    .order-pack-card {
+        border-radius: 1rem;
+        border: 1px solid rgba(99, 102, 241, 0.22);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(248, 250, 252, 0.95) 48%);
+        box-shadow: 0 12px 32px -24px rgba(99, 102, 241, 0.35);
+        overflow: hidden;
+    }
+
+    .order-pack-card .order-course-card {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+    }
+
+    .order-pack-card__contents {
+        padding: 0.85rem 1.25rem 1.15rem;
+        background: rgba(255, 255, 255, 0.65);
+    }
+
+    .order-pack-card__contents-label {
+        display: block;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #64748b;
+        font-weight: 600;
+        margin-bottom: 0.55rem;
+    }
+
+    .order-pack-card__list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .order-pack-card__list li {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 0.45rem 0.65rem;
+        border-radius: 0.65rem;
+        background: rgba(248, 250, 252, 0.9);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+    }
+
+    .order-pack-card__link {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #2563eb;
+        text-decoration: none;
+    }
+
+    .order-pack-card__link:hover {
+        text-decoration: underline;
+    }
+
+    .order-pack-card__link-meta {
+        font-size: 0.78rem;
+        color: #94a3b8;
+    }
+
     .order-course-card {
         display: flex;
         justify-content: space-between;
@@ -505,6 +666,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
     @media (max-width: 768px) {
         .student-order-show__header,
         .order-course-card,
+        .order-pack-card .order-course-card,
         .order-enrollment-card {
             flex-direction: column;
             align-items: flex-start;

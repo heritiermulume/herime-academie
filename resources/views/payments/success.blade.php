@@ -56,32 +56,74 @@
                     </h5>
                 </div>
                 <div class="card-body p-0">
-                    @foreach($order->orderItems as $item)
+                    @php
+                        $order->loadMissing(['orderItems.course', 'orderItems.contentPackage']);
+                        $successRows = [];
+                        $seenPack = [];
+                        foreach ($order->orderItems->sortBy('id') as $item) {
+                            if (! empty($item->content_package_id)) {
+                                $pid = (int) $item->content_package_id;
+                                if (isset($seenPack[$pid])) {
+                                    continue;
+                                }
+                                $seenPack[$pid] = true;
+                                $pkg = $item->contentPackage;
+                                $successRows[] = [
+                                    'type' => 'pack',
+                                    'package' => $pkg,
+                                    'amount' => \App\Models\Order::billedAmountForContentPackage($order->orderItems, $pid),
+                                ];
+                            } else {
+                                $successRows[] = ['type' => 'course', 'item' => $item];
+                            }
+                        }
+                    @endphp
+                    @foreach($successRows as $row)
                     <div class="border-bottom p-4">
                         <div class="row align-items-center">
-                            <div class="col-md-3">
-                                <img src="{{ $item->course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&h=60&fit=crop' }}" 
-                                     alt="{{ $item->course->title }}" class="img-fluid rounded">
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="fw-bold mb-1">{{ $item->course->title }}</h6>
-                                <p class="text-muted small mb-1">{{ $item->course->provider->name }}</p>
-                                <span class="badge bg-primary">{{ $item->course->category->name }}</span>
-                            </div>
-                            <div class="col-md-3 text-end">
-                                <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total) }}</div>
-                                @if($item->course->is_downloadable || ($item->course->is_in_person_program ?? false))
-                                    <a href="{{ route('contents.download', $item->course->slug) }}" 
+                            @if($row['type'] === 'pack' && ($pkg = $row['package'] ?? null))
+                                <div class="col-md-3">
+                                    <div class="bg-light rounded d-flex align-items-center justify-content-center" style="min-height: 60px;">
+                                        <i class="fas fa-box-open text-primary fa-2x"></i>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="fw-bold mb-1">{{ $pkg->title }}</h6>
+                                    <p class="text-muted small mb-1">Pack — prix forfaitaire</p>
+                                    <span class="badge bg-primary">Pack</span>
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($row['amount']) }}</div>
+                                    <a href="{{ route('customer.pack', $pkg) }}"
                                        class="btn btn-primary btn-sm mt-2">
-                                        <i class="fas fa-download me-1"></i>{{ $item->course->getDownloadButtonText() }}
+                                        <i class="fas fa-folder-open me-1"></i>Ouvrir le pack
                                     </a>
-                                @else
-                                    <a href="{{ route('learning.course', $item->course->slug) }}" 
-                                       class="btn btn-primary btn-sm mt-2">
-                                        <i class="fas fa-play me-1"></i>Commencer
-                                    </a>
-                                @endif
-                            </div>
+                                </div>
+                            @elseif($row['type'] === 'course' && ($item = $row['item'] ?? null) && $item->course)
+                                <div class="col-md-3">
+                                    <img src="{{ $item->course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=100&h=60&fit=crop' }}"
+                                         alt="{{ $item->course->title }}" class="img-fluid rounded">
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="fw-bold mb-1">{{ $item->course->title }}</h6>
+                                    <p class="text-muted small mb-1">{{ $item->course->provider->name }}</p>
+                                    <span class="badge bg-primary">{{ $item->course->category->name }}</span>
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total) }}</div>
+                                    @if($item->course->is_downloadable || ($item->course->is_in_person_program ?? false))
+                                        <a href="{{ route('contents.download', $item->course->slug) }}"
+                                           class="btn btn-primary btn-sm mt-2">
+                                            <i class="fas fa-download me-1"></i>{{ $item->course->getDownloadButtonText() }}
+                                        </a>
+                                    @else
+                                        <a href="{{ route('learning.course', $item->course->slug) }}"
+                                           class="btn btn-primary btn-sm mt-2">
+                                            <i class="fas fa-play me-1"></i>Commencer
+                                        </a>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
                     @endforeach

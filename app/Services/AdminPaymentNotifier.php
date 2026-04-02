@@ -26,8 +26,8 @@ class AdminPaymentNotifier
             if (!$order->relationLoaded('user')) {
                 $order->load('user');
             }
-            if (!$order->relationLoaded('orderItems')) {
-                $order->load('orderItems.course');
+            if (! $order->relationLoaded('orderItems')) {
+                $order->load(\App\Models\Order::eagerLoadOrderItemsWithPackages());
             }
 
             $admins = User::admins()

@@ -28,7 +28,7 @@
     $downloadsByUser = collect($course->downloads ?? [])->groupBy('user_id');
 @endphp
 
-    <section class="admin-panel admin-panel--main">
+    <section class="admin-panel admin-panel--main admin-panel--table-no-inner-scroll">
         <div class="admin-panel__body">
             <x-admin.search-panel
                 :action="route('admin.contents.enrollments', $course)"
@@ -39,7 +39,7 @@
                 placeholder="Rechercher par nom ou email..."
             />
 
-            <div class="admin-table">
+            <div class="admin-table admin-table--no-inner-scroll">
                 <div class="table-responsive">
                     <table class="table align-middle mb-0">
                         <thead>

@@ -224,6 +224,9 @@
                     $receiptDefaultTitle = \App\Models\Setting::get('receipt_default_title', \App\Services\EnrollmentReceiptPdfService::DEFAULT_TITLE);
                     $receiptDefaultBody = \App\Models\Setting::get('receipt_default_body', \App\Services\EnrollmentReceiptPdfService::DEFAULT_BODY);
                     $receiptPlaceholders = \App\Services\EnrollmentReceiptPdfService::PLACEHOLDERS;
+                    $receiptPackTitle = \App\Models\Setting::get('receipt_pack_title', \App\Services\PackageReceiptPdfService::DEFAULT_TITLE);
+                    $receiptPackBody = \App\Models\Setting::get('receipt_pack_body', \App\Services\PackageReceiptPdfService::DEFAULT_BODY);
+                    $receiptPackPlaceholders = \App\Services\PackageReceiptPdfService::PLACEHOLDERS;
                 @endphp
                 <div class="tab-pane fade {{ $activeTab === 'receipt' ? 'show active' : '' }}" id="tab-receipt" role="tabpanel" aria-labelledby="tab-receipt-btn" tabindex="0">
                     <div class="row g-4">
@@ -254,13 +257,51 @@
                                         </label>
                                         <div class="form-text mt-2">
                                             <i class="fas fa-info-circle me-1"></i>
-                                            Si activé, les contenus pour lesquels « Envoyer un reçu PDF » est coché enverront automatiquement un reçu PDF à l'utilisateur après inscription.
+                                            Si activé, les contenus pour lesquels « Envoyer un reçu PDF » est coché enverront automatiquement un reçu PDF à l'utilisateur après inscription. Pour les <strong>packs</strong>, un reçu PDF unique est également envoyé (voir ci-dessous).
+                                        </div>
+                                    </div>
+
+                                    <hr class="my-4">
+
+                                    <h6 class="fw-semibold mb-3">
+                                        <i class="fas fa-box-open text-primary me-2"></i>Reçu PDF — achat ou accès à un pack
+                                    </h6>
+                                    <p class="text-muted small mb-3">
+                                        Un seul PDF par pack et par commande, listant les contenus inclus. Les inscriptions aux cours du pack ne déclenchent pas de reçu par cours.
+                                    </p>
+
+                                    <div class="mb-4">
+                                        <label for="receipt_pack_title" class="form-label fw-semibold">
+                                            Titre du reçu pack
+                                        </label>
+                                        <input type="text"
+                                               name="receipt_pack_title"
+                                               id="receipt_pack_title"
+                                               class="form-control"
+                                               value="{{ old('receipt_pack_title', $receiptPackTitle) }}"
+                                               placeholder="Reçu d'achat — Pack {package_title}"
+                                               form="admin-settings-general-form">
+                                        <div class="form-text mt-2">
+                                            Placeholders pack : @foreach($receiptPackPlaceholders as $key => $label) <code>{!! '{' !!}{{ $key }}{!! '}' !!}</code>@if(!$loop->last), @endif @endforeach
                                         </div>
                                     </div>
 
                                     <div class="mb-4">
+                                        <label for="receipt_pack_body" class="form-label fw-semibold">
+                                            Corps du reçu pack (HTML autorisé)
+                                        </label>
+                                        <textarea name="receipt_pack_body"
+                                                  id="receipt_pack_body"
+                                                  class="form-control font-monospace"
+                                                  rows="10"
+                                                  form="admin-settings-general-form">{{ old('receipt_pack_body', $receiptPackBody) }}</textarea>
+                                    </div>
+
+                                    <hr class="my-4">
+
+                                    <div class="mb-4">
                                         <label for="receipt_default_title" class="form-label fw-semibold">
-                                            Titre par défaut du reçu
+                                            Titre par défaut du reçu (contenu seul)
                                         </label>
                                         <input type="text"
                                                name="receipt_default_title"
@@ -276,7 +317,7 @@
 
                                     <div class="mb-4">
                                         <label for="receipt_default_body" class="form-label fw-semibold">
-                                            Corps par défaut du reçu (HTML autorisé, liens cliquables avec &lt;a href="..."&gt;)
+                                            Corps par défaut du reçu — contenu seul (HTML autorisé, liens cliquables avec &lt;a href="..."&gt;)
                                         </label>
                                         <textarea name="receipt_default_body"
                                                   id="receipt_default_body"
@@ -311,6 +352,13 @@
                                     </h6>
                                     <ul class="list-unstyled small mb-0">
                                         @foreach($receiptPlaceholders as $key => $label)
+                                            <li class="mb-2"><code>{!! '{' !!}{{ $key }}{!! '}' !!}</code> — {{ $label }}</li>
+                                        @endforeach
+                                    </ul>
+                                    <hr class="my-3">
+                                    <p class="small fw-semibold mb-2">Pack</p>
+                                    <ul class="list-unstyled small mb-0">
+                                        @foreach($receiptPackPlaceholders as $key => $label)
                                             <li class="mb-2"><code>{!! '{' !!}{{ $key }}{!! '}' !!}</code> — {{ $label }}</li>
                                         @endforeach
                                     </ul>

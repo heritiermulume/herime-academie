@@ -40,10 +40,10 @@
             @endif
         </div>
 
-        <p><strong>Contenus achetés :</strong></p>
+        <p><strong>Articles achetés :</strong></p>
         <ul>
-            @foreach($order->orderItems as $item)
-                <li>{{ $item->course?->title ?? 'Contenu' }}</li>
+            @foreach(\App\Models\Order::previewTitlesForOrderItems($order->orderItems) as $label)
+                <li>{{ $label }}</li>
             @endforeach
         </ul>
 

@@ -147,18 +147,34 @@
                             </div>
                             <div class="student-order-card__meta">
                                 <span><i class="fas fa-credit-card me-1"></i>{{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'Non spécifié')) }}</span>
-                                <span><i class="fas fa-layer-group me-1"></i>{{ $order->orderItems->count() > 0 ? $order->orderItems->count() : $order->enrollments->count() }} contenus</span>
+                                @php
+                                    $lineCount = $order->orderItems->count() > 0
+                                        ? \App\Models\Order::logicalOrderLineCount($order->orderItems)
+                                        : $order->enrollments->count();
+                                @endphp
+                                <span><i class="fas fa-layer-group me-1"></i>{{ $lineCount }} article{{ $lineCount > 1 ? 's' : '' }}</span>
                                 @if($order->payment_reference)
                                     <span><i class="fas fa-hashtag me-1"></i>{{ $order->payment_reference }}</span>
                                 @endif
                             </div>
-                            @if($order->enrollments->isNotEmpty())
+                            @php
+                                $previewTitles = \App\Models\Order::previewTitlesForOrderItems($order->orderItems);
+                                if ($previewTitles->isEmpty()) {
+                                    $previewTitles = collect();
+                                    foreach ($order->enrollments as $enrollment) {
+                                        if ($enrollment->course) {
+                                            $previewTitles->push($enrollment->course->title);
+                                        }
+                                    }
+                                }
+                            @endphp
+                            @if($previewTitles->isNotEmpty())
                                 <div class="student-order-card__courses">
-                                    @foreach($order->enrollments->take(3) as $enrollment)
-                                        <span>{{ $enrollment->course->title ?? 'Contenu supprimé' }}</span>
+                                    @foreach($previewTitles->take(3) as $title)
+                                        <span>{{ $title }}</span>
                                     @endforeach
-                                    @if($order->enrollments->count() > 3)
-                                        <span class="text-muted">+ {{ $order->enrollments->count() - 3 }} autre(s)</span>
+                                    @if($previewTitles->count() > 3)
+                                        <span class="text-muted">+ {{ $previewTitles->count() - 3 }} autre(s)</span>
                                     @endif
                                 </div>
                             @endif
@@ -181,19 +197,26 @@
                             <a href="{{ route('orders.show', $order) }}" class="admin-btn ghost sm">
                                 <i class="fas fa-eye me-1"></i>Détails
                             </a>
-                            @if(in_array($order->status, ['paid', 'completed']) && $order->enrollments->isNotEmpty())
+                            @if(in_array($order->status, ['paid', 'completed']))
                                 @php
-                                    $firstCourse = optional($order->enrollments->first()->course);
+                                    $firstPackItem = $order->orderItems->first(fn ($i) => ! empty($i->content_package_id) && $i->contentPackage);
+                                    $firstCourse = optional($order->enrollments->first())->course;
                                 @endphp
-                                @if($firstCourse && $firstCourse->is_downloadable)
-                                    <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
-                                        <i class="fas fa-eye me-1"></i>Voir le contenu
+                                @if($firstPackItem)
+                                    <a href="{{ route('customer.pack', $firstPackItem->contentPackage) }}" class="admin-btn primary sm">
+                                        <i class="fas fa-box-open me-1"></i>Ouvrir le pack
                                     </a>
-                                @else
-                                    <a href="{{ route('learning.course', $firstCourse->slug) }}"
-                                       class="admin-btn success sm">
-                                        <i class="fas fa-play me-1"></i>Commencer un contenu
-                                    </a>
+                                @elseif($firstCourse)
+                                    @if($firstCourse->is_downloadable)
+                                        <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
+                                            <i class="fas fa-eye me-1"></i>Voir le contenu
+                                        </a>
+                                    @else
+                                        <a href="{{ route('learning.course', $firstCourse->slug) }}"
+                                           class="admin-btn success sm">
+                                            <i class="fas fa-play me-1"></i>Commencer un contenu
+                                        </a>
+                                    @endif
                                 @endif
                             @endif
                         </div>

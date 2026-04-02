@@ -2,11 +2,11 @@
 
 @php
     $hasAccess = auth()->check() && auth()->user()->hasPurchasedContentPackage($package);
-    $courseUrl = $hasAccess ? route('customer.pack', $package) : route('packs.show', $package);
+    $packShowUrl = route('packs.show', $package);
 @endphp
 
 <div class="course-scroll-item">
-    <div class="course-card" data-course-url="{{ $courseUrl }}" style="cursor: pointer;">
+    <div class="course-card" data-course-url="{{ $packShowUrl }}" style="cursor: pointer;">
         <div class="card" style="position: relative;">
             <div class="position-relative">
                 <x-package-card-media :package="$package" />
@@ -47,6 +47,11 @@
                 <div class="card-actions mt-2">
                     <div class="d-grid gap-2" onclick="event.stopPropagation();">
                         @if($hasAccess)
+                            <a href="{{ $packShowUrl }}"
+                               class="btn btn-outline-primary btn-sm w-100"
+                               onclick="event.stopPropagation();">
+                                <i class="fas fa-info-circle me-2"></i>Voir les détails
+                            </a>
                             <a href="{{ route('customer.pack', $package) }}"
                                class="btn btn-success btn-sm w-100"
                                onclick="event.stopPropagation();">

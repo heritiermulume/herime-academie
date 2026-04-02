@@ -138,7 +138,7 @@
                                         <th>Date</th>
                                         <th>Commande</th>
                                         <th>Client</th>
-                                        <th>Cours</th>
+                                        <th>Articles</th>
                                         <th>Montant de la commande</th>
                                         <th>Commission</th>
                                         <th>Statut</th>
@@ -161,8 +161,8 @@
                                             </div>
                                         </td>
                                         <td>
-                                            @foreach($order->orderItems as $item)
-                                                <div class="small">{{ Str::limit($item->course->title, 30) }}</div>
+                                            @foreach(\App\Models\Order::previewTitlesForOrderItems($order->orderItems) as $label)
+                                                <div class="small">{{ Str::limit($label, 30) }}</div>
                                             @endforeach
                                         </td>
                                         <td>

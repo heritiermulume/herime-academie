@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         $lessonTable = Schema::hasTable('content_lessons') ? 'content_lessons' : (Schema::hasTable('course_lessons') ? 'course_lessons' : null);
+        $contentsTable = Schema::hasTable('contents') ? 'contents' : 'courses';
 
         // If a previous attempt partially created the table, complete missing FK and exit.
         if (Schema::hasTable('lesson_notes')) {
@@ -27,10 +28,10 @@ return new class extends Migration
             return;
         }
 
-        Schema::create('lesson_notes', function (Blueprint $table) use ($lessonTable) {
+        Schema::create('lesson_notes', function (Blueprint $table) use ($lessonTable, $contentsTable) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('content_id')->constrained()->onDelete('cascade');
+            $table->foreignId('content_id')->constrained($contentsTable)->onDelete('cascade');
             $table->foreignId('lesson_id')->constrained($lessonTable ?: 'content_lessons')->onDelete('cascade');
             $table->text('content');
             $table->integer('timestamp')->nullable()->comment('Timestamp in seconds for video lessons');

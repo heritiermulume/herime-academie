@@ -420,7 +420,7 @@
                                         <tr>
                                 <th>Commande</th>
                                 <th>Client</th>
-                                <th>Cours</th>
+                                <th>Articles</th>
                                 <th>Montant</th>
                                 <th>Statut</th>
                                             <th>Date</th>
@@ -438,8 +438,8 @@
                                                     <small class="text-muted">{{ $order->user->email ?? 'Email indisponible' }}</small>
                                                 </td>
                                                 <td>
-                                                    @foreach($order->orderItems as $item)
-                                                        <div class="text-muted small">{{ Str::limit($item->course->title ?? 'Contenu supprimé', 40) }}</div>
+                                                    @foreach(\App\Models\Order::previewTitlesForOrderItems($order->orderItems) as $label)
+                                                        <div class="text-muted small">{{ Str::limit($label, 40) }}</div>
                                                     @endforeach
                                                 </td>
                                                 <td>{{ $formatCurrency($order->total) }}</td>

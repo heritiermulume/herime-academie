@@ -33,7 +33,4 @@
             </a>
         @endif
     @endif
-    <a href="{{ route('contents.show', $course->slug) }}" class="admin-btn ghost sm">
-        Fiche contenu
-    </a>
 </div>

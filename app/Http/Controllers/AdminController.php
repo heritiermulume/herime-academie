@@ -28,6 +28,7 @@ use App\Models\DiscussionLike;
 use App\Traits\DatabaseCompatibility;
 use App\Traits\HandlesBulkActions;
 use App\Services\FileUploadService;
+use App\Services\PackageEnrollmentNotifier;
 use App\Helpers\FileHelper;
 use App\Notifications\AnnouncementPublished;
 use App\Notifications\CategoryCreatedNotification;
@@ -208,7 +209,7 @@ class AdminController extends Controller
             ->get();
 
         // Commandes récentes
-        $recentOrders = Order::with(['user', 'orderItems.course'])
+        $recentOrders = Order::with(array_merge(['user'], Order::eagerLoadOrderItemsWithPackages()))
             ->latest()
             ->limit(10)
             ->get();
@@ -1376,7 +1377,7 @@ class AdminController extends Controller
                     'content_id' => $course->id,
                     'order_id' => $freeOrder->id,
                     'status' => 'active',
-                ]);
+                ], false);
 
                 $createdCount++;
             } catch (\Throwable $e) {
@@ -1394,6 +1395,8 @@ class AdminController extends Controller
             return redirect()->route('admin.users.show', $user)
                 ->with('error', 'L\'utilisateur a déjà accès à tous les contenus de ce pack.');
         }
+
+        app(PackageEnrollmentNotifier::class)->notify($user, $package, $freeOrder);
 
         $message = "Accès gratuit au pack \"{$package->title}\" accordé avec succès ({$createdCount} contenu(x) ajouté(s)).";
         if ($failedCount > 0) {
@@ -1721,6 +1724,17 @@ class AdminController extends Controller
                 $order->update([
                     'notes' => $currentNotes === '' ? $extraNote : ($currentNotes . "\n" . $extraNote),
                 ]);
+            }
+
+            foreach ($packOrderIds as $oid) {
+                SentEmail::where('recipient_email', $user->email)
+                    ->where('metadata->content_package_id', $package->id)
+                    ->where('metadata->order_id', $oid)
+                    ->whereIn('metadata->mail_class', [
+                        \App\Mail\PackageEnrolledMail::class,
+                        \App\Mail\PackageEnrollmentReceiptMail::class,
+                    ])
+                    ->delete();
             }
         });
 
@@ -5088,6 +5102,8 @@ class AdminController extends Controller
             // Reçu PDF d'inscription
             'receipt_default_title' => 'nullable|string|max:500',
             'receipt_default_body' => 'nullable|string|max:10000',
+            'receipt_pack_title' => 'nullable|string|max:500',
+            'receipt_pack_body' => 'nullable|string|max:10000',
             // Bouton WhatsApp flottant
             'whatsapp_phone' => 'nullable|string|max:40',
         ]);
@@ -5137,6 +5153,12 @@ class AdminController extends Controller
         }
         if ($request->has('receipt_default_body')) {
             Setting::set('receipt_default_body', $request->input('receipt_default_body', ''), 'string', 'Corps par défaut du reçu PDF (HTML autorisé)');
+        }
+        if ($request->has('receipt_pack_title')) {
+            Setting::set('receipt_pack_title', $request->input('receipt_pack_title', ''), 'string', 'Titre du reçu PDF pour les packs');
+        }
+        if ($request->has('receipt_pack_body')) {
+            Setting::set('receipt_pack_body', $request->input('receipt_pack_body', ''), 'string', 'Corps du reçu PDF pour les packs (HTML autorisé)');
         }
 
         Setting::set(

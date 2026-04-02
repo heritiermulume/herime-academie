@@ -39,6 +39,10 @@ class EmailService
             $content = 'Facture envoyée - voir pièce jointe';
         } elseif ($mailable instanceof \App\Mail\CourseEnrolledMail) {
             $content = 'Confirmation d\'inscription au cours';
+        } elseif ($mailable instanceof \App\Mail\PackageEnrolledMail) {
+            $content = 'Accès au pack confirmé';
+        } elseif ($mailable instanceof \App\Mail\PackageEnrollmentReceiptMail) {
+            $content = 'Reçu PDF — pack';
         }
         
         try {

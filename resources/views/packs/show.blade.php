@@ -72,6 +72,7 @@
     $listPrice = $package->contents_list_price_total;
     $effective = $package->effective_price;
     $savings = $listPrice > $effective ? $listPrice - $effective : 0;
+    $hasAccess = auth()->check() && auth()->user()->hasPurchasedContentPackage($package);
 @endphp
 <section class="page-content-section" style="padding: 0 0 2rem;">
     <div class="pack-show-hero bg-primary text-white py-4 mb-4" style="--bs-bg-opacity: 1; background: linear-gradient(135deg, #003366 0%, #0a4d8c 100%) !important;">
@@ -114,7 +115,11 @@
     </div>
 
     <div class="container d-lg-none mb-4">
-        @if($package->is_published && $package->is_sale_enabled)
+        @if($hasAccess)
+            <a href="{{ route('customer.pack', $package) }}" class="btn btn-success btn-lg w-100">
+                <i class="fas fa-folder-open me-2"></i>Ouvrir le pack
+            </a>
+        @elseif($package->is_published && $package->is_sale_enabled)
             <button type="button"
                     class="btn btn-success btn-lg w-100"
                     data-meta-trigger="checkout"
@@ -205,7 +210,12 @@
                             </div>
                         </div>
 
-                        @if($package->is_published && $package->is_sale_enabled)
+                        @if($hasAccess)
+                            <a href="{{ route('customer.pack', $package) }}"
+                               class="btn btn-success btn-lg w-100">
+                                <i class="fas fa-folder-open me-2"></i>Ouvrir le pack
+                            </a>
+                        @elseif($package->is_published && $package->is_sale_enabled)
                             <button type="button"
                                     class="btn btn-success btn-lg w-100"
                                     data-meta-trigger="checkout"
@@ -217,7 +227,11 @@
                         @endif
 
                         <p class="small text-muted mt-3 mb-0 text-center">
-                            Accès à tous les contenus listés après paiement.
+                            @if($hasAccess)
+                                Vous avez accès à tous les contenus de ce pack.
+                            @else
+                                Accès à tous les contenus listés après paiement.
+                            @endif
                         </p>
                     </div>
                 </div>

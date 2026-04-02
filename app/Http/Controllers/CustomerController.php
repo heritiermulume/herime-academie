@@ -157,27 +157,40 @@ class CustomerController extends Controller
             ->get();
 
         $recentOrders = $customer->orders()
-            ->with(['enrollments' => function($q) {
-                $q->whereHas('content', function($q2) {
-                    $q2->where('is_published', true);
-                });
-            }, 'enrollments.course'])
+            ->with(array_merge(
+                [
+                    'enrollments' => function ($q) {
+                        $q->whereHas('content', function ($q2) {
+                            $q2->where('is_published', true);
+                        });
+                    },
+                    'enrollments.course',
+                ],
+                Order::eagerLoadOrderItemsWithPackages()
+            ))
             ->latest()
             ->limit(4)
             ->get();
 
+        $excludeRecommendedCourseIds = $allEnrollments->pluck('content_id')
+            ->merge($activePackCourseIds)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
         $recommendedCourses = Course::published()
             ->with(['provider', 'category'])
-            ->whereNotIn('id', $allEnrollments->pluck('content_id')->filter()->all())
+            ->whereNotIn('id', $excludeRecommendedCourseIds ?: [0])
             ->latest()
             ->limit(5)
             ->get();
 
         $recommendedPackages = app(ContentPackageRecommendationService::class)
-            ->forCustomerDashboard($allEnrollments->pluck('content_id')->filter()->all());
+            ->forCustomerDashboard($excludeRecommendedCourseIds);
 
-        // Calculer les cours achetés (via les commandes payées)
-        $purchasedCourses = Order::where('user_id', $customer->id)
+        // Cours achetés hors pack (lignes de commande standalone, non révoquées)
+        $purchasedStandaloneCourseIds = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($q) {
                 $q->whereNull('content_package_id')
@@ -198,10 +211,14 @@ class CustomerController extends Controller
                 })->pluck('content_id');
             })
             ->unique()
-            ->count();
+            ->values();
 
-        // Calculer les contenus téléchargeables achetés
-        $purchasedDownloadableCourses = Order::where('user_id', $customer->id)
+        $packsOwnedCount = $purchasedPackagesSummaries->count();
+        // Quantité « achats contenus » : cours distincts hors pack + 1 par pack actif
+        $purchasedCourses = $purchasedStandaloneCourseIds->count() + $packsOwnedCount;
+
+        // Téléchargeables : hors pack + contenus publiés téléchargeables inclus dans les packs actifs
+        $standaloneDownloadableIds = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($q) {
                 $q->whereNull('content_package_id')
@@ -223,20 +240,80 @@ class CustomerController extends Controller
                 })->pluck('content_id');
             })
             ->unique()
-            ->count();
+            ->values();
+
+        $packDownloadableIds = $purchasedPackagesSummaries->flatMap(function (array $row) {
+            return $row['package']->contents
+                ->filter(fn ($c) => (bool) ($c->is_published ?? false) && (bool) ($c->is_downloadable ?? false))
+                ->pluck('id');
+        })->unique()->values();
+
+        $purchasedDownloadableCourses = $standaloneDownloadableIds->merge($packDownloadableIds)->unique()->count();
+
+        // Inscriptions « hors affichage pack » + packs comme entrées distinctes (quantité bibliothèque)
+        $standaloneEnrolledCount = $allEnrollments->count();
+        $enrolledTotal = $standaloneEnrolledCount + $packsOwnedCount;
+
+        $standaloneActive = $allEnrollments->where('status', 'active')->count();
+        $standaloneCompleted = $allEnrollments->where('status', 'completed')->count();
+        $packActive = 0;
+        $packCompleted = 0;
+        $sumPackProgress = 0.0;
+        foreach ($purchasedPackagesSummaries as $row) {
+            $agg = $this->packageAggregatesForStats($row['package'], $row['enrollments']);
+            $sumPackProgress += (float) $agg['progress'];
+            if ($agg['status'] === 'completed') {
+                $packCompleted++;
+            } elseif ($agg['status'] === 'active') {
+                $packActive++;
+            }
+        }
+
+        // Progression moyenne : moyenne des progressions cours (hors pack dans la liste) + % agrégé par pack
+        $sumStandaloneProgress = (float) $allEnrollments->sum('progress');
+        $progressDenominator = $standaloneEnrolledCount + $packsOwnedCount;
+        $averageProgress = $progressDenominator > 0
+            ? round(($sumStandaloneProgress + $sumPackProgress) / $progressDenominator, 1)
+            : 0.0;
+
+        // Durée d'apprentissage : tous les contenus suivis (y compris ceux issus d'un pack)
+        $allLearningEnrollments = $customer->enrollments()
+            ->whereHas('content', function ($q) {
+                $q->where('is_published', true);
+            })
+            ->where('status', '!=', 'cancelled')
+            ->with(['course'])
+            ->get()
+            ->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
+                $course = $enrollment->course;
+                if (! $course) {
+                    return false;
+                }
+                if ($course->is_downloadable && $course->is_free) {
+                    return $downloadedFreeCourseIds->contains($course->id);
+                }
+
+                return true;
+            });
+
+        $learningMinutes = $allLearningEnrollments->sum(function ($enrollment) {
+            return $enrollment->course ? (int) ($enrollment->course->duration ?? 0) : 0;
+        });
+
+        $totalPurchasesAmount = $this->customerPaidOrdersTotalSum($customer->id);
 
         $stats = [
-            'total_courses' => $allEnrollments->count(),
-            'enrolled_courses' => $allEnrollments->count(), // Cours inscrits
-            'purchased_courses' => $purchasedCourses, // Cours achetés
-            'purchased_downloadable_courses' => $purchasedDownloadableCourses, // Contenus téléchargeables achetés
-            'active_courses' => $allEnrollments->where('status', 'active')->count(),
-            'completed_courses' => $allEnrollments->where('status', 'completed')->count(),
+            'total_courses' => $enrolledTotal,
+            'enrolled_courses' => $enrolledTotal,
+            'packs_owned' => $packsOwnedCount,
+            'purchased_courses' => $purchasedCourses,
+            'purchased_downloadable_courses' => $purchasedDownloadableCourses,
+            'active_courses' => $standaloneActive + $packActive,
+            'completed_courses' => $standaloneCompleted + $packCompleted,
             'certificates_earned' => $totalCertificates,
-            'average_progress' => $allEnrollments->count() > 0 ? round($allEnrollments->avg('progress'), 1) : 0,
-            'learning_minutes' => $allEnrollments->sum(function ($enrollment) {
-                return $enrollment->course ? $enrollment->course->duration : 0;
-            }),
+            'average_progress' => $averageProgress,
+            'learning_minutes' => $learningMinutes,
+            'total_purchases_amount' => $totalPurchasesAmount,
         ];
 
         return view('customers.dashboard', [
@@ -314,6 +391,54 @@ class CustomerController extends Controller
             ->filter()
             ->sortByDesc(fn (array $row) => $row['order']?->paid_at ?? $row['order']?->created_at)
             ->values();
+    }
+
+    /**
+     * Statut et % de complétion d'un pack (même règles que la liste « Mes contenus »).
+     *
+     * @param  \Illuminate\Support\Collection<int|string, \App\Models\Enrollment>  $enrollmentsKeyedByContentId
+     * @return array{status: string, progress: float}
+     */
+    private function packageAggregatesForStats(ContentPackage $package, Collection $enrollmentsKeyedByContentId): array
+    {
+        $publishedContents = $package->contents->filter(fn ($c) => (bool) ($c->is_published ?? false));
+        $total = $publishedContents->count();
+        $publishedIds = $publishedContents->pluck('id');
+
+        $subset = $enrollmentsKeyedByContentId->only($publishedIds->all());
+        $completed = $subset->where('status', 'completed')->count();
+        $active = $subset->where('status', 'active')->count();
+        $suspended = $subset->where('status', 'suspended')->count();
+        $progress = $total > 0 ? (float) (($completed / $total) * 100) : 0.0;
+
+        $status = 'active';
+        if ($total > 0 && $completed >= $total) {
+            $status = 'completed';
+        } elseif ($active <= 0 && $suspended > 0) {
+            $status = 'suspended';
+        }
+
+        return ['status' => $status, 'progress' => $progress];
+    }
+
+    private function customerPaidOrdersTotalSum(int $userId): float
+    {
+        return (float) Order::query()
+            ->where('user_id', $userId)
+            ->whereIn('status', ['paid', 'completed'])
+            ->get()
+            ->sum(function (Order $order) {
+                $a = $order->total_amount;
+                if ($a !== null && $a !== '') {
+                    return (float) $a;
+                }
+                $b = $order->total;
+                if ($b !== null && $b !== '') {
+                    return (float) $b;
+                }
+
+                return 0.0;
+            });
     }
 
     public function showPurchasedPack(ContentPackage $package)
@@ -604,6 +729,8 @@ class CustomerController extends Controller
             'completed' => $statusCounts->get('completed', 0),
             'suspended' => $statusCounts->get('suspended', 0),
             'cancelled' => $statusCounts->get('cancelled', 0),
+            'packs_count' => $packageItems->count(),
+            'total_purchases_amount' => $this->customerPaidOrdersTotalSum($customer->id),
         ];
 
         return view('customers.contents', [

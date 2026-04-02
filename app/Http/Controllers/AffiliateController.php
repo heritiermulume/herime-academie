@@ -39,7 +39,7 @@ class AffiliateController extends Controller
 
         // Commandes récentes générées
         $recentOrders = Order::where('affiliate_id', $affiliate->id)
-            ->with(['user', 'orderItems.course'])
+            ->with(array_merge(['user'], Order::eagerLoadOrderItemsWithPackages()))
             ->latest()
             ->limit(10)
             ->get();
@@ -73,7 +73,7 @@ class AffiliateController extends Controller
         // Historique des gains
         $earnings = Order::where('affiliate_id', $affiliate->id)
             ->where('status', 'paid')
-            ->with(['user', 'orderItems.course'])
+            ->with(array_merge(['user'], Order::eagerLoadOrderItemsWithPackages()))
             ->latest()
             ->paginate(20);
 

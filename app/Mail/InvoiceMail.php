@@ -41,7 +41,10 @@ class InvoiceMail extends Mailable
     public function content(): Content
     {
         // Charger les relations nécessaires
-        $this->order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+        $this->order->load(array_merge(
+            ['user', 'coupon', 'affiliate', 'payments'],
+            Order::eagerLoadOrderItemsWithPackages()
+        ));
 
         return new Content(
             view: 'emails.invoice',
@@ -49,6 +52,7 @@ class InvoiceMail extends Mailable
                 'order' => $this->order,
                 'user' => $this->order->user,
                 'orderItems' => $this->order->orderItems,
+                'invoiceLines' => Order::invoiceDisplayLines($this->order),
                 'payment' => $this->order->payments()->where('status', 'completed')->first(),
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],

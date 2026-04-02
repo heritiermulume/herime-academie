@@ -191,10 +191,8 @@
             <div class="courses-list">
                 <p><strong>Contenus concernés :</strong></p>
                 <ul>
-                    @foreach($order->orderItems as $item)
-                        @if($item->course)
-                        <li>• {{ $item->course->title }}</li>
-                        @endif
+                    @foreach(\App\Models\Order::previewTitlesForOrderItems($order->orderItems) as $label)
+                        <li>• {{ $label }}</li>
                     @endforeach
                 </ul>
             </div>

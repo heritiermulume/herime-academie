@@ -280,12 +280,36 @@ class CommunicationService
                     $metadata['course_title'] = $course->title;
                     $metadata['is_downloadable'] = (bool) $course->is_downloadable;
                 }
+            } elseif ($mailable instanceof \App\Mail\PackageEnrolledMail) {
+                $type = 'enrollment';
+                $pkg = $mailable->package ?? null;
+                if ($pkg) {
+                    $metadata['content_package_id'] = $pkg->id;
+                    $metadata['package_title'] = $pkg->title;
+                }
+                $ord = $mailable->order ?? null;
+                if ($ord) {
+                    $metadata['order_id'] = $ord->id;
+                    $metadata['order_number'] = $ord->order_number;
+                }
             } elseif ($mailable instanceof \App\Mail\EnrollmentReceiptMail) {
                 $type = 'enrollment'; // même enum que CourseEnrolledMail (metadata distingue le reçu)
                 $course = $mailable->course ?? null;
                 if ($course) {
                     $metadata['content_id'] = $course->id;
                     $metadata['course_title'] = $course->title;
+                }
+            } elseif ($mailable instanceof \App\Mail\PackageEnrollmentReceiptMail) {
+                $type = 'enrollment';
+                $pkg = $mailable->package ?? null;
+                if ($pkg) {
+                    $metadata['content_package_id'] = $pkg->id;
+                    $metadata['package_title'] = $pkg->title;
+                }
+                $ord = $mailable->order ?? null;
+                if ($ord) {
+                    $metadata['order_id'] = $ord->id;
+                    $metadata['order_number'] = $ord->order_number;
                 }
             } elseif ($mailable instanceof \App\Mail\AdminPaymentReceivedMail) {
                 $type = 'payment';
@@ -307,6 +331,9 @@ class CommunicationService
             }
             if (!empty($metadata['content_id'])) {
                 $dedupeQuery->where('metadata->content_id', $metadata['content_id']);
+            }
+            if (!empty($metadata['content_package_id'])) {
+                $dedupeQuery->where('metadata->content_package_id', $metadata['content_package_id']);
             }
 
             $alreadySent = (clone $dedupeQuery)->where('status', 'sent')->exists();
@@ -440,45 +467,29 @@ class CommunicationService
                     }
                 }
                 return $this->formatWhatsAppMessage($message, $user);
+
+            case \App\Mail\PackageEnrolledMail::class:
+                $package = $mailable->package;
+                $packUrl = route('customer.pack', $package);
+                $message = "📦 *Accès à votre pack*\n\n" .
+                    "Bonjour *{$userName}*,\n\n" .
+                    "Votre pack *{$package->title}* est disponible. Tous les contenus inclus sont accessibles depuis la page du pack.\n\n" .
+                    "👉 {$packUrl}\n\n" .
+                    "Bonne formation !";
+
+                return $this->formatWhatsAppMessage($message, $user);
             
             case \App\Mail\PaymentReceivedMail::class:
                 $order = property_exists($mailable, 'order') ? $mailable->order : null;
                 if (!$order) {
                     return null;
                 }
-                
-                // Déterminer le type de contenus achetés
-                $order->load(['orderItems.course']);
-                $orderItems = $order->orderItems;
-                $hasDownloadable = $orderItems->contains(function ($item) {
-                    return $item->course && $item->course->is_downloadable;
-                });
-                $hasInPerson = $orderItems->contains(function ($item) {
-                    return $item->course && ($item->course->is_in_person_program ?? false);
-                });
-                $hasOnline = $orderItems->contains(function ($item) {
-                    return $item->course && !$item->course->is_downloadable && !($item->course->is_in_person_program ?? false);
-                });
-                
-                if ($hasDownloadable && !$hasInPerson && !$hasOnline) {
-                    $contentType = "contenus";
-                    $actionText = "Téléchargez-les maintenant depuis votre espace personnel.";
-                } elseif (!$hasDownloadable && $hasInPerson && !$hasOnline) {
-                    $contentType = "programmes";
-                    $actionText = "Consultez les détails de vos programmes et contactez les organisateurs via WhatsApp.";
-                } elseif (!$hasDownloadable && !$hasInPerson && $hasOnline) {
-                    $contentType = "cours";
-                    $actionText = "Commencez votre apprentissage dès maintenant.";
-                } else {
-                    $types = array_filter([
-                        $hasDownloadable ? 'contenus' : null,
-                        $hasInPerson ? 'programmes' : null,
-                        $hasOnline ? 'cours' : null,
-                    ]);
-                    $contentType = implode(', ', array_unique($types)) ?: 'contenus';
-                    $actionText = "Accédez à vos contenus depuis votre espace personnel.";
-                }
-                
+
+                $order->load(\App\Models\Order::eagerLoadOrderItemsWithPackages());
+                $copy = \App\Models\Order::paymentConfirmationCopy($order->orderItems);
+                $contentType = $copy['whatsapp_types_label'];
+                $actionText = $copy['action_text'];
+
                 $message = "✅ *Paiement reçu*\n\n" .
                           "Bonjour *{$userName}*,\n\n" .
                           "Votre paiement pour la commande *{$order->order_number}* a été confirmé.\n\n" .

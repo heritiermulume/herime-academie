@@ -13,6 +13,7 @@ $kernel->bootstrap();
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 echo "========================================\n";
 echo "DIAGNOSTIC ERREUR 500 - HERIME ACADEMIE\n";
@@ -65,20 +66,25 @@ try {
     DB::connection()->getPdo();
     echo "✓ Connexion à la base de données: OK\n";
     
-    // Vérifier si la colonne video_url existe
-    $columns = DB::select('SHOW COLUMNS FROM course_lessons');
-    $hasVideoUrl = false;
-    foreach ($columns as $column) {
-        if ($column->Field === 'video_url') {
-            $hasVideoUrl = true;
-            break;
+    // Leçons : table renommée course_lessons → content_lessons
+    $lessonsTable = Schema::hasTable('content_lessons') ? 'content_lessons' : (Schema::hasTable('course_lessons') ? 'course_lessons' : null);
+    if ($lessonsTable) {
+        $columns = DB::select('SHOW COLUMNS FROM `'.$lessonsTable.'`');
+        $hasVideoUrl = false;
+        foreach ($columns as $column) {
+            if ($column->Field === 'video_url') {
+                $hasVideoUrl = true;
+                break;
+            }
         }
-    }
-    
-    if ($hasVideoUrl) {
-        echo "⚠ ATTENTION: La colonne 'video_url' existe dans course_lessons\n";
+
+        if ($hasVideoUrl) {
+            echo "⚠ ATTENTION: La colonne 'video_url' existe dans {$lessonsTable}\n";
+        } else {
+            echo "✓ Colonne 'video_url' n'existe pas (normal) dans {$lessonsTable}\n";
+        }
     } else {
-        echo "✓ Colonne 'video_url' n'existe pas (normal)\n";
+        echo "⚠ Aucune table content_lessons / course_lessons trouvée\n";
     }
 } catch (\Exception $e) {
     echo "✗ Erreur de connexion à la base de données: " . $e->getMessage() . "\n";
@@ -92,7 +98,7 @@ echo "-------------------------------\n";
 
 $routesToTest = [
     '/' => 'GET',
-    '/courses' => 'GET',
+    '/contents' => 'GET',
 ];
 
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);

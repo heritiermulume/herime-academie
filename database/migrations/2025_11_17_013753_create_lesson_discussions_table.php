@@ -16,11 +16,12 @@ return new class extends Migration
         }
 
         $lessonTable = Schema::hasTable('content_lessons') ? 'content_lessons' : (Schema::hasTable('course_lessons') ? 'course_lessons' : 'content_lessons');
+        $contentsTable = Schema::hasTable('contents') ? 'contents' : 'courses';
 
-        Schema::create('lesson_discussions', function (Blueprint $table) use ($lessonTable) {
+        Schema::create('lesson_discussions', function (Blueprint $table) use ($lessonTable, $contentsTable) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('content_id')->constrained()->onDelete('cascade');
+            $table->foreignId('content_id')->constrained($contentsTable)->onDelete('cascade');
             $table->foreignId('lesson_id')->constrained($lessonTable)->onDelete('cascade');
             $table->foreignId('parent_id')->nullable()->constrained('lesson_discussions')->onDelete('cascade');
             $table->text('content');

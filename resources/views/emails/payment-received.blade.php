@@ -153,31 +153,8 @@
             </div>
 
             <p>Vous avez maintenant accès à tous les {{ $accessLabel ?? 'contenus' }} que vous avez achetés.</p>
-            
-            @php
-                $order->load(['orderItems.course']);
-                $hasDownloadable = $order->orderItems->contains(function ($item) {
-                    return $item->course && $item->course->is_downloadable;
-                });
-                $hasInPerson = $order->orderItems->contains(function ($item) {
-                    return $item->course && ($item->course->is_in_person_program ?? false);
-                });
-                $hasOnline = $order->orderItems->contains(function ($item) {
-                    return $item->course && !$item->course->is_downloadable && !($item->course->is_in_person_program ?? false);
-                });
-                
-                if ($hasDownloadable && !$hasInPerson && !$hasOnline) {
-                    $actionText = "Téléchargez-les maintenant depuis votre espace personnel.";
-                } elseif (!$hasDownloadable && $hasInPerson && !$hasOnline) {
-                    $actionText = "Consultez les détails de vos programmes et contactez les organisateurs via WhatsApp.";
-                } elseif (!$hasDownloadable && !$hasInPerson && $hasOnline) {
-                    $actionText = "Commencez votre apprentissage dès maintenant.";
-                } else {
-                    $actionText = "Accédez à vos contenus depuis votre espace personnel.";
-                }
-            @endphp
-            
-            <p><strong>{{ $actionText }}</strong></p>
+
+            <p><strong>{{ $actionText ?? 'Accédez à vos contenus depuis votre espace personnel.' }}</strong></p>
 
             <div class="button-container">
                 <a href="{{ $orderUrl }}" class="button">Voir ma commande</a>

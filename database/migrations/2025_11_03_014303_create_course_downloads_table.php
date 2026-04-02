@@ -17,9 +17,11 @@ return new class extends Migration
             return;
         }
 
-        Schema::create('course_downloads', function (Blueprint $table) {
+        $contentsTable = Schema::hasTable('contents') ? 'contents' : 'courses';
+
+        Schema::create('course_downloads', function (Blueprint $table) use ($contentsTable) {
             $table->id();
-            $table->foreignId('content_id')->constrained()->onDelete('cascade');
+            $table->foreignId('content_id')->constrained($contentsTable)->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();

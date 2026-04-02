@@ -31,7 +31,10 @@ class AdminPaymentReceivedMail extends Mailable
 
     public function content(): Content
     {
-        $this->order->load(['user', 'orderItems.course', 'payments']);
+        $this->order->load(array_merge(
+            ['user', 'payments'],
+            \App\Models\Order::eagerLoadOrderItemsWithPackages()
+        ));
 
         $adminUrl = null;
         try {

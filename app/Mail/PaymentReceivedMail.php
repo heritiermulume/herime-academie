@@ -39,35 +39,9 @@ class PaymentReceivedMail extends Mailable
      */
     public function content(): Content
     {
-        // Charger les relations nécessaires
-        $this->order->load(['orderItems.course', 'user']);
+        $this->order->load(array_merge(['user'], Order::eagerLoadOrderItemsWithPackages()));
 
-        // Déterminer le libellé adapté selon le type de contenus achetés
-        $orderItems = $this->order->orderItems;
-        $hasDownloadable = $orderItems->contains(function ($item) {
-            return $item->course && $item->course->is_downloadable;
-        });
-        $hasInPerson = $orderItems->contains(function ($item) {
-            return $item->course && ($item->course->is_in_person_program ?? false);
-        });
-        $hasOnline = $orderItems->contains(function ($item) {
-            return $item->course && !$item->course->is_downloadable && !($item->course->is_in_person_program ?? false);
-        });
-
-        if ($hasDownloadable && !$hasInPerson && !$hasOnline) {
-            $accessLabel = 'contenus';
-        } elseif (!$hasDownloadable && $hasInPerson && !$hasOnline) {
-            $accessLabel = 'programmes';
-        } elseif (!$hasDownloadable && !$hasInPerson && $hasOnline) {
-            $accessLabel = 'cours';
-        } else {
-            $labels = array_filter([
-                $hasDownloadable ? 'contenus' : null,
-                $hasInPerson ? 'programmes' : null,
-                $hasOnline ? 'cours' : null,
-            ]);
-            $accessLabel = implode(', ', array_unique($labels)) ?: 'contenus';
-        }
+        $copy = Order::paymentConfirmationCopy($this->order->orderItems);
 
         // Sécuriser le formatage de la date au cas où paid_at serait null ou mal formaté
         $paidAtText = null;
@@ -87,7 +61,8 @@ class PaymentReceivedMail extends Mailable
             with: [
                 'order' => $this->order,
                 'orderUrl' => $orderUrl,
-                'accessLabel' => $accessLabel,
+                'accessLabel' => $copy['access_label'],
+                'actionText' => $copy['action_text'],
                 'paidAtText' => $paidAtText,
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],

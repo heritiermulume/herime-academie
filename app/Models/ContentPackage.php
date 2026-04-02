@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
+/**
+ * Pack commercial : le prix de vente forfait est l’attribut calculé `effective_price`.
+ * Ne pas utiliser `contents_list_price_total` comme prix de vente (c’est une valeur indicative si les contenus sont achetés séparément).
+ */
 class ContentPackage extends Model
 {
     protected $fillable = [
@@ -240,7 +244,8 @@ class ContentPackage extends Model
     }
 
     /**
-     * Somme des prix publics des contenus (pour affichage « valeur » du pack).
+     * Somme des prix publics des contenus si achetés séparément (comparaison marketing uniquement).
+     * Le prix de vente du pack est `effective_price` — ne pas utiliser cette somme comme montant facturé.
      */
     public function getContentsListPriceTotalAttribute(): float
     {

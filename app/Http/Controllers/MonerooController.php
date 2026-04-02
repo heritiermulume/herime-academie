@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
-use App\Models\Enrollment;
 use App\Models\CartItem;
 use App\Models\CartPackage;
 use App\Models\AmbassadorPromoCode;
@@ -13,6 +12,7 @@ use App\Models\Ambassador;
 use App\Models\AmbassadorCommission;
 use App\Models\SentEmail;
 use App\Models\Setting;
+use App\Services\OrderEnrollmentService;
 use App\Mail\InvoiceMail;
 use App\Mail\PaymentFailedMail;
 use Illuminate\Http\Request;
@@ -1416,9 +1416,10 @@ class MonerooController extends Controller
             \Log::info('Moneroo: OrderItems loaded', [
                 'order_id' => $order->id,
                 'order_items_count' => $orderItems->count(),
-                'items_data' => $orderItems->map(fn($item) => [
+                'items_data' => $orderItems->map(fn ($item) => [
                     'id' => $item->id,
                     'content_id' => $item->content_id,
+                    'content_package_id' => $item->content_package_id,
                     'price' => $item->price,
                 ])->toArray(),
             ]);
@@ -1441,61 +1442,9 @@ class MonerooController extends Controller
                 'new_status' => $order->fresh()->status,
             ]);
 
-            // Créer une inscription (enrollment) pour TOUS les contenus de la commande.
-            // - Cours en ligne : inscription nécessaire pour l'accès et pour le reçu.
-            // - Contenu téléchargeable : inscription nécessaire pour envoyer le reçu par mail et pour le bouton "Télécharger le reçu".
-            // - Cours en présentiel : inscription nécessaire pour le reçu et l'accès.
-            // L'accès au téléchargement (fichier/ZIP) reste géré via la commande payée (hasAccessToCourse).
-            $enrollmentsCreated = 0;
-
-            foreach ($orderItems as $orderItem) {
-                \Log::info('Moneroo: Processing order item', [
-                    'order_id' => $order->id,
-                    'order_item_id' => $orderItem->id,
-                    'content_id' => $orderItem->content_id,
-                    'user_id' => $order->user_id,
-                ]);
-
-                $course = $orderItem->course;
-
-                if (!$course) {
-                    \Log::warning('Moneroo: Course not found for order item', [
-                        'order_id' => $order->id,
-                        'order_item_id' => $orderItem->id,
-                        'content_id' => $orderItem->content_id,
-                    ]);
-                    continue;
-                }
-
-                $existingEnrollment = Enrollment::where('user_id', $order->user_id)
-                    ->where('content_id', $orderItem->content_id)
-                    ->first();
-
-                if (!$existingEnrollment) {
-                    $enrollment = Enrollment::createAndNotify([
-                        'user_id' => $order->user_id,
-                        'content_id' => $orderItem->content_id,
-                        'order_id' => $order->id,
-                        'status' => 'active',
-                    ]);
-                    $enrollmentsCreated++;
-
-                    \Log::info('Moneroo: Enrollment created', [
-                        'enrollment_id' => $enrollment->id,
-                        'order_id' => $order->id,
-                        'content_id' => $orderItem->content_id,
-                        'user_id' => $order->user_id,
-                        'is_downloadable' => $course->is_downloadable,
-                        'is_in_person' => $course->is_in_person_program ?? false,
-                    ]);
-                } else {
-                    \Log::info('Moneroo: Enrollment already exists', [
-                        'order_id' => $order->id,
-                        'content_id' => $orderItem->content_id,
-                        'existing_enrollment_id' => $existingEnrollment->id,
-                    ]);
-                }
-            }
+            // Inscriptions : cours seuls → mails/notifs par contenu ; lignes pack → silencieux + un mail/notif par pack.
+            $orderItems->loadMissing(['course', 'contentPackage']);
+            $enrollmentsCreated = app(OrderEnrollmentService::class)->syncEnrollmentsFromOrderItems($order, $orderItems);
 
             \Log::info('Moneroo: Order items processed', [
                 'order_id' => $order->id,
@@ -2318,8 +2267,8 @@ class MonerooController extends Controller
             if (!$order->relationLoaded('user')) {
                 $order->load('user');
             }
-            if (!$order->relationLoaded('orderItems')) {
-                $order->load('orderItems.course');
+            if (! $order->relationLoaded('orderItems')) {
+                $order->load(Order::eagerLoadOrderItemsWithPackages());
             }
             if (!$order->relationLoaded('coupon')) {
                 $order->load('coupon');
@@ -2477,8 +2426,8 @@ class MonerooController extends Controller
             if (!$order->relationLoaded('user')) {
                 $order->load('user');
             }
-            if (!$order->relationLoaded('orderItems')) {
-                $order->load('orderItems.course');
+            if (! $order->relationLoaded('orderItems')) {
+                $order->load(Order::eagerLoadOrderItemsWithPackages());
             }
             if (!$order->relationLoaded('payments')) {
                 $order->load('payments');
@@ -2557,7 +2506,7 @@ class MonerooController extends Controller
         $orders = Order::where('user_id', $userId)
             ->where('status', 'pending')
             ->where('created_at', '<', $threshold)
-            ->with(['user', 'orderItems.course', 'payments'])
+            ->with(array_merge(['user', 'payments'], Order::eagerLoadOrderItemsWithPackages()))
             ->get();
         foreach ($orders as $order) {
             $order->update(['status' => 'cancelled']);

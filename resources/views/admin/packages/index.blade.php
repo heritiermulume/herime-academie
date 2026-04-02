@@ -39,8 +39,10 @@
                                 <td>{{ $package->contents_count }}</td>
                                 <td>
                                     @if($package->is_sale_active)
-                                        <span class="text-decoration-line-through text-muted me-1">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->price) }}</span>
-                                        <span class="fw-semibold text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</span>
+                                        <div class="d-flex flex-column align-items-start gap-1 lh-sm">
+                                            <span class="text-decoration-line-through text-muted small">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->price) }}</span>
+                                            <span class="fw-semibold text-success">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</span>
+                                        </div>
                                     @else
                                         {{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}
                                     @endif

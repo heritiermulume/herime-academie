@@ -51,29 +51,9 @@ class PaymentReceived extends Notification
         
         $orderUrl = route('orders.show', $order);
 
-        // Déterminer le type de contenus achetés
-        $order->load(['orderItems.course']);
-        $orderItems = $order->orderItems;
-        $hasDownloadable = $orderItems->contains(function ($item) {
-            return $item->course && $item->course->is_downloadable;
-        });
-        $hasNonDownloadable = $orderItems->contains(function ($item) {
-            return $item->course && !$item->course->is_downloadable;
-        });
-        
-        if ($hasDownloadable && !$hasNonDownloadable) {
-            // Uniquement des contenus téléchargeables
-            $accessMessage = 'Vous avez maintenant accès à tous les contenus que vous avez achetés. Téléchargez-les depuis votre espace personnel.';
-        } elseif (!$hasDownloadable && $hasNonDownloadable) {
-            // Uniquement des cours classiques
-            $accessMessage = 'Vous avez maintenant accès à tous les cours que vous avez achetés. Commencez votre apprentissage dès maintenant.';
-        } elseif ($hasDownloadable && $hasNonDownloadable) {
-            // Panier mixte
-            $accessMessage = 'Vous avez maintenant accès à tous les cours et contenus que vous avez achetés.';
-        } else {
-            // Fallback générique
-            $accessMessage = 'Vous avez maintenant accès à tous les contenus que vous avez achetés.';
-        }
+        $order->load(Order::eagerLoadOrderItemsWithPackages());
+        $copy = Order::paymentConfirmationCopy($order->orderItems);
+        $accessMessage = 'Vous avez maintenant accès à tous les ' . $copy['access_label'] . ' que vous avez achetés. ' . $copy['action_text'];
         
         $mail = (new MailMessage)
             ->subject('Paiement confirmé - ' . config('app.name'))
@@ -99,36 +79,16 @@ class PaymentReceived extends Notification
      */
     public function toArray(object $notifiable): array
     {
-        // Déterminer le type de contenus achetés
-        $this->order->load(['orderItems.course']);
-        $orderItems = $this->order->orderItems;
-        $hasDownloadable = $orderItems->contains(function ($item) {
-            return $item->course && $item->course->is_downloadable;
-        });
-        $hasInPerson = $orderItems->contains(function ($item) {
-            return $item->course && ($item->course->is_in_person_program ?? false);
-        });
-        $hasOnline = $orderItems->contains(function ($item) {
-            return $item->course && !$item->course->is_downloadable && !($item->course->is_in_person_program ?? false);
-        });
-        
-        if ($hasDownloadable && !$hasInPerson && !$hasOnline) {
-            $actionText = 'Téléchargez vos contenus maintenant.';
-        } elseif (!$hasDownloadable && $hasInPerson && !$hasOnline) {
-            $actionText = 'Consultez les détails de vos programmes maintenant.';
-        } elseif (!$hasDownloadable && !$hasInPerson && $hasOnline) {
-            $actionText = 'Commencez votre apprentissage maintenant.';
-        } else {
-            $actionText = 'Accédez à vos contenus maintenant.';
-        }
-        
+        $this->order->load(Order::eagerLoadOrderItemsWithPackages());
+        $copy = Order::paymentConfirmationCopy($this->order->orderItems);
+
         return [
             'type' => 'payment_received',
             'order_id' => $this->order->id,
             'order_number' => $this->order->order_number,
             'amount' => $this->order->total,
             'currency' => $this->order->currency,
-            'message' => 'Votre paiement de ' . number_format($this->order->total, 2) . ' ' . $this->order->currency . ' a été confirmé. ' . $actionText,
+            'message' => 'Votre paiement de ' . number_format($this->order->total, 2) . ' ' . $this->order->currency . ' a été confirmé. ' . $copy['action_text'],
             'button_text' => 'Voir ma commande',
             'button_url' => route('orders.show', $this->order),
             'url' => route('orders.show', $this->order),

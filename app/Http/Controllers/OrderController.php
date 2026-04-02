@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\Enrollment;
+use App\Services\OrderEnrollmentService;
 use App\Mail\InvoiceMail;
 use App\Mail\CourseAccessRevokedMail;
 use App\Notifications\PaymentReceived;
@@ -18,6 +18,53 @@ use Illuminate\Support\Facades\Notification;
 class OrderController extends Controller
 {
     use HandlesBulkActions;
+
+    /**
+     * Lignes de commande visibles côté client : cours publiés ou achat de pack (content_package_id).
+     *
+     * @return array<string, mixed>
+     */
+    protected function withCustomerOrderListRelations(): array
+    {
+        $orderItemsConstraint = fn ($q) => $q->forCustomerListing();
+
+        return [
+            'enrollments' => function ($q) {
+                $q->whereHas('content', function ($q2) {
+                    $q2->where('is_published', true);
+                });
+            },
+            'enrollments.course',
+            'payments',
+            'orderItems' => $orderItemsConstraint,
+            'orderItems.course',
+            'orderItems.contentPackage',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function withCustomerOrderDetailRelations(): array
+    {
+        $orderItemsConstraint = fn ($q) => $q->forCustomerListing();
+
+        return [
+            'enrollments' => function ($q) {
+                $q->whereHas('content', function ($q2) {
+                    $q2->where('is_published', true);
+                });
+            },
+            'enrollments.course',
+            'user',
+            'payments',
+            'orderItems' => $orderItemsConstraint,
+            'orderItems.course.provider',
+            'orderItems.course.category',
+            'orderItems.contentPackage',
+        ];
+    }
+
     /**
      * Afficher les commandes de l'utilisateur connecté (étudiant)
      */
@@ -29,21 +76,7 @@ class OrderController extends Controller
         $search = $request->get('q');
 
         $ordersQuery = Order::where('user_id', $user->id)
-            ->with([
-                'enrollments' => function($q) {
-                    $q->whereHas('content', function($q2) {
-                        $q2->where('is_published', true);
-                    });
-                },
-                'enrollments.course',
-                'payments',
-                'orderItems' => function($q) {
-                    $q->whereHas('content', function($q2) {
-                        $q2->where('is_published', true);
-                    });
-                },
-                'orderItems.course'
-            ])
+            ->with($this->withCustomerOrderListRelations())
             ->latest();
 
         if ($status !== 'all') {
@@ -95,23 +128,7 @@ class OrderController extends Controller
             abort(403, 'Accès non autorisé à cette commande.');
         }
 
-        $order->load([
-            'enrollments' => function($q) {
-                $q->whereHas('content', function($q2) {
-                    $q2->where('is_published', true);
-                });
-            },
-            'enrollments.course',
-            'user',
-            'payments',
-            'orderItems' => function($q) {
-                $q->whereHas('content', function($q2) {
-                    $q2->where('is_published', true);
-                });
-            },
-            'orderItems.course.provider',
-            'orderItems.course.category'
-        ]);
+        $order->load($this->withCustomerOrderDetailRelations());
         
         // Si c'est une requête AJAX, retourner le statut en JSON
         if ($request->ajax() || $request->wantsJson()) {
@@ -190,7 +207,13 @@ class OrderController extends Controller
      */
     public function adminShow(Order $order)
     {
-        $order->load(['user', 'enrollments.course', 'orderItems.course.provider', 'orderItems.course.category']);
+        $order->load([
+            'user',
+            'enrollments.course',
+            'orderItems.course.provider',
+            'orderItems.course.category',
+            'orderItems.contentPackage',
+        ]);
         
         return view('admin.orders.show', compact('order'));
     }
@@ -228,33 +251,11 @@ class OrderController extends Controller
             // Créer une inscription pour TOUS les contenus de la commande (téléchargeable, présentiel, en ligne)
             // pour envoyer le reçu par mail et permettre le téléchargement du reçu.
             if (!$order->relationLoaded('orderItems')) {
-                $order->load('orderItems.course');
+                $order->load(['orderItems.course', 'orderItems.contentPackage']);
             }
 
-            foreach ($order->orderItems as $item) {
-                $course = $item->course;
-                if (!$course) {
-                    continue;
-                }
-
-                $existingEnrollment = Enrollment::where('user_id', $order->user_id)
-                    ->where('content_id', $item->content_id)
-                    ->first();
-
-                if (!$existingEnrollment) {
-                    Enrollment::createAndNotify([
-                        'user_id' => $order->user_id,
-                        'content_id' => $item->content_id,
-                        'order_id' => $order->id,
-                        'status' => 'active',
-                    ]);
-                } else {
-                    $existingEnrollment->update([
-                        'order_id' => $order->id,
-                        'status' => 'active',
-                    ]);
-                }
-            }
+            $order->orderItems->loadMissing(['course', 'contentPackage']);
+            app(OrderEnrollmentService::class)->syncEnrollmentsFromOrderItems($order, $order->orderItems);
 
             return response()->json([
                 'success' => true,
@@ -287,27 +288,13 @@ class OrderController extends Controller
         ]);
 
         // Charger les relations nécessaires pour les emails et notifications
-        $order->load(['user', 'orderItems.course', 'coupon', 'affiliate', 'payments']);
+        $order->load(array_merge(
+            ['user', 'coupon', 'affiliate', 'payments'],
+            Order::eagerLoadOrderItemsWithPackages()
+        ));
 
-        // Créer les inscriptions pour tous les contenus (reçu + accès)
-        foreach ($order->orderItems as $item) {
-            if (!$item->course) {
-                continue;
-            }
-            $existing = Enrollment::where('user_id', $order->user_id)
-                ->where('content_id', $item->content_id)
-                ->first();
-            if (!$existing) {
-                Enrollment::createAndNotify([
-                    'user_id' => $order->user_id,
-                    'content_id' => $item->content_id,
-                    'order_id' => $order->id,
-                    'status' => 'active',
-                ]);
-            } else {
-                $existing->update(['order_id' => $order->id, 'status' => 'active']);
-            }
-        }
+        $order->orderItems->loadMissing(['course', 'contentPackage']);
+        app(OrderEnrollmentService::class)->syncEnrollmentsFromOrderItems($order, $order->orderItems);
 
         // Envoyer la notification de confirmation de paiement
         try {
@@ -447,7 +434,10 @@ class OrderController extends Controller
             $orderId = $order->id;
 
             // Charger les relations nécessaires
-            $order->load(['enrollments.course', 'enrollments.user', 'orderItems.course', 'payments', 'user']);
+            $order->load(array_merge(
+                ['enrollments.course', 'enrollments.user', 'payments', 'user'],
+                Order::eagerLoadOrderItemsWithPackages()
+            ));
 
             // Envoyer l'email de notification de suppression de commande à l'utilisateur
             if ($order->user && $order->user->email) {
@@ -568,7 +558,10 @@ class OrderController extends Controller
     public function export(Request $request)
     {
         try {
-            $query = Order::with(['user', 'enrollments.course']);
+            $query = Order::with(array_merge(
+                ['user', 'enrollments.course'],
+                Order::eagerLoadOrderItemsWithPackages()
+            ));
 
             // Appliquer les mêmes filtres que dans adminIndex
             if ($request->filled('status')) {

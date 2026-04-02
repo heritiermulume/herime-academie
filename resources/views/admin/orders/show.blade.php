@@ -187,15 +187,35 @@
             <section class="admin-panel">
                 <div class="admin-panel__header">
                     <h3>
-                        <i class="fas fa-list me-2"></i>Contenus inclus
+                        <i class="fas fa-list me-2"></i>Articles inclus
                     </h3>
                 </div>
                 <div class="admin-panel__body">
-                    @php($relItems = $order->orderItems ?? collect())
+                    @php
+                        $relItems = $order->orderItems ?? collect();
+                        $orderItemsSorted = $relItems->sortBy('id')->values();
+                        $renderedPackIds = [];
+                        $adminOrderLineBlocks = [];
+                        foreach ($orderItemsSorted as $item) {
+                            if (! empty($item->content_package_id)) {
+                                $pid = (int) $item->content_package_id;
+                                if (isset($renderedPackIds[$pid])) {
+                                    continue;
+                                }
+                                $renderedPackIds[$pid] = true;
+                                $adminOrderLineBlocks[] = [
+                                    'type' => 'pack',
+                                    'items' => $orderItemsSorted->where('content_package_id', $pid)->values(),
+                                ];
+                            } else {
+                                $adminOrderLineBlocks[] = ['type' => 'course', 'item' => $item];
+                            }
+                        }
+                    @endphp
                     @if($relItems->count() > 0)
                         <div class="admin-table">
                             <div class="table-responsive">
-                                <table class="table align-middle">
+                                <table class="table align-middle admin-order-items-table">
                                     <thead>
                                         <tr>
                                             <th>Contenu</th>
@@ -206,68 +226,184 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($relItems as $item)
-                                            <tr>
-                                                <td style="min-width: 280px;">
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        @if($item->course)
-                                                            <img src="{{ $item->course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $item->course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">
-                                                        @else
-                                                            <div class="rounded bg-light d-flex align-items-center justify-content-center" style="width: 64px; height: 48px;">
-                                                                <i class="fas fa-book text-muted"></i>
+                                        @foreach($adminOrderLineBlocks as $block)
+                                            @if($block['type'] === 'pack')
+                                                @php
+                                                    $packItems = $block['items'];
+                                                    $firstPackItem = $packItems->first();
+                                                    $pkg = $firstPackItem?->contentPackage;
+                                                    $packTotal = \App\Models\Order::billedAmountForContentPackage($order->orderItems, (int) $firstPackItem->content_package_id);
+                                                    $courseCount = $packItems->filter(fn ($i) => $i->course)->count();
+                                                @endphp
+                                                <tr class="admin-order-pack-row admin-order-pack-row--head">
+                                                    <td style="min-width: 280px;">
+                                                        <div class="d-flex align-items-center gap-3">
+                                                            <div class="rounded d-flex align-items-center justify-content-center admin-order-pack-icon">
+                                                                <i class="fas fa-box-open text-primary"></i>
                                                             </div>
-                                                        @endif
-                                                        <div>
-                                                            @if($item->course)
-                                                                <a href="{{ route('admin.contents.show', $item->course) }}" class="fw-semibold text-decoration-none text-dark">
-                                                                    {{ $item->course->title }}
-                                                                </a>
-                                                                <div class="text-muted small">{{ Str::limit($item->course->subtitle ?? '', 60) }}</div>
-                                                            @else
-                                                                <div class="fw-semibold text-muted">Cours supprimé</div>
-                                                                <div class="text-muted small">Ce cours n'existe plus dans le système</div>
-                                                            @endif
+                                                            <div>
+                                                                @if($pkg)
+                                                                    <a href="{{ route('admin.packages.edit', $pkg) }}" class="fw-bold text-decoration-none text-dark">
+                                                                        {{ $pkg->title }}
+                                                                    </a>
+                                                                @else
+                                                                    <span class="fw-bold text-muted">Pack (réf. indisponible)</span>
+                                                                @endif
+                                                                <div class="text-muted small">
+                                                                    Pack · {{ $courseCount }} contenu{{ $courseCount > 1 ? 's' : '' }} · forfait
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    @if($item->course && $item->course->provider)
-                                                        <span class="admin-chip">
-                                                            <i class="fas fa-user"></i>{{ $item->course->provider->name }}
-                                                        </span>
-                                                    @else
-                                                        <span class="text-muted">—</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    @if($item->course && $item->course->category)
+                                                    </td>
+                                                    <td><span class="text-muted">—</span></td>
+                                                    <td>
                                                         <span class="admin-chip admin-chip--info">
-                                                            {{ $item->course->category->name }}
+                                                            <i class="fas fa-layer-group"></i> Pack
                                                         </span>
-                                                    @else
-                                                        <span class="text-muted">—</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <div class="fw-bold text-success">
-                                                        {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0, $order->currency) }}
-                                                    </div>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex gap-2 justify-content-center">
-                                                        @if($item->course)
-                                                            <a href="{{ route('admin.contents.show', $item->course) }}" class="btn btn-light btn-sm" title="Voir le contenu">
-                                                                <i class="fas fa-eye"></i>
-                                                            </a>
-                                                            <a href="{{ route('contents.show', $item->course->slug) }}" class="btn btn-info btn-sm" target="_blank" title="Voir sur le site">
-                                                                <i class="fas fa-external-link-alt"></i>
-                                                            </a>
+                                                    </td>
+                                                    <td>
+                                                        <div class="fw-bold text-success">
+                                                            {{ \App\Helpers\CurrencyHelper::formatWithSymbol($packTotal, $order->currency) }}
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        @if($pkg)
+                                                            <div class="d-flex gap-2 justify-content-center">
+                                                                <a href="{{ route('admin.packages.edit', $pkg) }}" class="btn btn-primary btn-sm" title="Éditer le pack">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                            </div>
                                                         @else
                                                             <span class="text-muted small">—</span>
                                                         @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                                    </td>
+                                                </tr>
+                                                @foreach($packItems as $pItem)
+                                                    @php($course = $pItem->course)
+                                                    <tr class="admin-order-pack-row admin-order-pack-row--sub">
+                                                        <td style="min-width: 280px;">
+                                                            <div class="d-flex align-items-center gap-3 ps-3 ps-md-4 border-start border-2 ms-2 ms-md-3" style="border-color: rgba(13, 110, 253, 0.35) !important;">
+                                                                @if($course)
+                                                                    <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $course->title }}" class="rounded" style="width: 48px; height: 36px; object-fit: cover;">
+                                                                @else
+                                                                    <div class="rounded bg-light d-flex align-items-center justify-content-center" style="width: 48px; height: 36px;">
+                                                                        <i class="fas fa-book text-muted small"></i>
+                                                                    </div>
+                                                                @endif
+                                                                <div>
+                                                                    @if($course)
+                                                                        <a href="{{ route('admin.contents.show', $course) }}" class="fw-semibold text-decoration-none text-dark">
+                                                                            {{ $course->title }}
+                                                                        </a>
+                                                                        <div class="text-muted small">{{ Str::limit($course->subtitle ?? '', 50) }}</div>
+                                                                    @else
+                                                                        <span class="text-muted small">Contenu indisponible</span>
+                                                                    @endif
+                                                                    <div class="text-muted" style="font-size: 0.7rem;">Inclus dans le pack</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            @if($course && $course->provider)
+                                                                <span class="admin-chip">
+                                                                    <i class="fas fa-user"></i>{{ $course->provider->name }}
+                                                                </span>
+                                                            @else
+                                                                <span class="text-muted">—</span>
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if($course && $course->category)
+                                                                <span class="admin-chip admin-chip--info">
+                                                                    {{ $course->category->name }}
+                                                                </span>
+                                                            @else
+                                                                <span class="text-muted">—</span>
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            <span class="text-muted small">Inclus</span>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            @if($course)
+                                                                <div class="d-flex gap-2 justify-content-center">
+                                                                    <a href="{{ route('admin.contents.show', $course) }}" class="btn btn-light btn-sm" title="Voir le contenu">
+                                                                        <i class="fas fa-eye"></i>
+                                                                    </a>
+                                                                    <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-info btn-sm" target="_blank" title="Voir sur le site">
+                                                                        <i class="fas fa-external-link-alt"></i>
+                                                                    </a>
+                                                                </div>
+                                                            @else
+                                                                <span class="text-muted small">—</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            @else
+                                                @php($item = $block['item'])
+                                                <tr>
+                                                    <td style="min-width: 280px;">
+                                                        <div class="d-flex align-items-center gap-3">
+                                                            @if($item->course)
+                                                                <img src="{{ $item->course->thumbnail_url ?: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=120&q=80' }}" alt="{{ $item->course->title }}" class="rounded" style="width: 64px; height: 48px; object-fit: cover;">
+                                                            @else
+                                                                <div class="rounded bg-light d-flex align-items-center justify-content-center" style="width: 64px; height: 48px;">
+                                                                    <i class="fas fa-book text-muted"></i>
+                                                                </div>
+                                                            @endif
+                                                            <div>
+                                                                @if($item->course)
+                                                                    <a href="{{ route('admin.contents.show', $item->course) }}" class="fw-semibold text-decoration-none text-dark">
+                                                                        {{ $item->course->title }}
+                                                                    </a>
+                                                                    <div class="text-muted small">{{ Str::limit($item->course->subtitle ?? '', 60) }}</div>
+                                                                @else
+                                                                    <div class="fw-semibold text-muted">Article supprimé</div>
+                                                                    <div class="text-muted small">Référence indisponible</div>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        @if($item->course && $item->course->provider)
+                                                            <span class="admin-chip">
+                                                                <i class="fas fa-user"></i>{{ $item->course->provider->name }}
+                                                            </span>
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        @if($item->course && $item->course->category)
+                                                            <span class="admin-chip admin-chip--info">
+                                                                {{ $item->course->category->name }}
+                                                            </span>
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        <div class="fw-bold text-success">
+                                                            {{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total ?? $item->price ?? 0, $order->currency) }}
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <div class="d-flex gap-2 justify-content-center">
+                                                            @if($item->course)
+                                                                <a href="{{ route('admin.contents.show', $item->course) }}" class="btn btn-light btn-sm" title="Voir le contenu">
+                                                                    <i class="fas fa-eye"></i>
+                                                                </a>
+                                                                <a href="{{ route('contents.show', $item->course->slug) }}" class="btn btn-info btn-sm" target="_blank" title="Voir sur le site">
+                                                                    <i class="fas fa-external-link-alt"></i>
+                                                                </a>
+                                                            @else
+                                                                <span class="text-muted small">—</span>
+                                                            @endif
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endif
                                         @endforeach
                                     </tbody>
                                 </table>
@@ -362,6 +498,25 @@
 
 @push('styles')
 <style>
+/* Regroupement pack sur la fiche commande */
+.admin-order-items-table .admin-order-pack-row--head {
+    background: linear-gradient(90deg, rgba(13, 110, 253, 0.09), rgba(248, 250, 252, 0.98));
+    border-left: 4px solid rgba(13, 110, 253, 0.5);
+}
+.admin-order-items-table .admin-order-pack-row--head td {
+    border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+    vertical-align: middle;
+}
+.admin-order-items-table .admin-order-pack-row--sub td {
+    background: rgba(248, 250, 252, 0.72);
+    border-bottom: 1px solid rgba(241, 245, 249, 0.9);
+}
+.admin-order-pack-icon {
+    width: 64px;
+    height: 48px;
+    background: rgba(13, 110, 253, 0.12);
+}
+
 /* Styles identiques à analytics */
 .admin-card {
     background: #ffffff;

@@ -17,7 +17,7 @@
             'icon' => 'fas fa-book-open',
             'route' => 'customer.contents',
             'url' => url('/customer/contents'),
-            'active' => ['customer.contents', 'customer.contents.*'],
+            'active' => ['customer.contents', 'customer.contents.*', 'customer.pack'],
         ],
         [
             'label' => 'Certificats',
@@ -69,7 +69,7 @@
                     <span class="admin-sidebar__role">Client</span>
                     <strong class="admin-sidebar__name">{{ $customer?->name }}</strong>
                     @if($customer?->email)
-                        <small class="admin-sidebar__email">{{ $customer->email }}</small>
+                        <small class="admin-sidebar__email" title="{{ $customer->email }}">{{ $customer->email }}</small>
                     @endif
                 </div>
             </div>
@@ -195,22 +195,37 @@
         align-items: center;
     }
 
+    .admin-sidebar__meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.2rem;
+        min-width: 0;
+        flex: 1;
+    }
+
     .admin-sidebar__avatar {
         width: 64px;
         height: 64px;
-        border-radius: 16px;
+        flex-shrink: 0;
+        border-radius: 50%;
         overflow: hidden;
         border: 3px solid rgba(255, 255, 255, 0.35);
         background: rgba(255, 255, 255, 0.1);
+        aspect-ratio: 1;
     }
 
     .admin-sidebar__avatar img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        object-position: center;
+        display: block;
     }
 
     .admin-sidebar__role {
+        display: block;
+        width: 100%;
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -218,14 +233,23 @@
     }
 
     .admin-sidebar__name {
+        display: block;
+        width: 100%;
         font-size: 1.1rem;
         font-weight: 700;
+        line-height: 1.25;
+        word-break: break-word;
     }
 
     .admin-sidebar__email {
         font-size: 0.8rem;
         opacity: 0.75;
         display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .admin-sidebar__nav {

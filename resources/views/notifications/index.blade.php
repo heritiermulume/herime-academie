@@ -41,6 +41,9 @@
                                         @case('course_enrolled')
                                             <i class="fas fa-user-plus"></i>
                                             @break
+                                        @case('package_enrolled')
+                                            <i class="fas fa-box-open"></i>
+                                            @break
                                         @case('course_completed')
                                             <i class="fas fa-certificate"></i>
                                             @break
@@ -81,7 +84,11 @@
                                     <span class="notification-time text-muted">{{ $notification->created_at->diffForHumans() }}</span>
                                 </div>
                                 <p class="notification-message mb-2 {{ !$notification->read_at ? 'fw-medium' : '' }}">{{ $message }}</p>
-                                @if(isset($notification->data['course_title']))
+                                @if(isset($notification->data['package_title']))
+                                    <p class="notification-meta text-primary mb-2 small">
+                                        <i class="fas fa-layer-group me-1"></i>{{ $notification->data['package_title'] }}
+                                    </p>
+                                @elseif(isset($notification->data['course_title']))
                                     <p class="notification-meta text-primary mb-2 small">
                                         <i class="fas fa-book me-1"></i>{{ $notification->data['course_title'] }}
                                     </p>
@@ -489,6 +496,7 @@ setInterval(function() {
 }
 
 .notification-icon-wrap--course_enrolled,
+.notification-icon-wrap--package_enrolled,
 .notification-icon-wrap--success,
 .notification-icon-wrap--payment_received {
     background: rgba(34, 197, 94, 0.12);

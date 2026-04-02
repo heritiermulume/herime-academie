@@ -19,12 +19,22 @@
             <div class="admin-stat-card">
                 <p class="admin-stat-card__label">Contenus inscrits</p>
                 <p class="admin-stat-card__value">{{ number_format($stats['enrolled_courses']) }}</p>
-                <p class="admin-stat-card__muted">{{ $stats['active_courses'] }} en cours · {{ $stats['completed_courses'] }} terminés</p>
+                <p class="admin-stat-card__muted">
+                    {{ $stats['active_courses'] }} en cours · {{ $stats['completed_courses'] }} terminés
+                    @if(($stats['packs_owned'] ?? 0) > 0)
+                        · {{ number_format($stats['packs_owned']) }} pack{{ $stats['packs_owned'] > 1 ? 's' : '' }}
+                    @endif
+                </p>
             </div>
             <div class="admin-stat-card">
                 <p class="admin-stat-card__label">Contenus achetés</p>
                 <p class="admin-stat-card__value">{{ number_format($stats['purchased_courses']) }}</p>
-                <p class="admin-stat-card__muted">Total de vos achats</p>
+                <p class="admin-stat-card__muted">Cours + packs (sans double comptage des cours dans un pack)</p>
+            </div>
+            <div class="admin-stat-card">
+                <p class="admin-stat-card__label">Montant total des achats</p>
+                <p class="admin-stat-card__value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($stats['total_purchases_amount'] ?? 0) }}</p>
+                <p class="admin-stat-card__muted">Commandes payées ou complétées</p>
             </div>
             <div class="admin-stat-card">
                 <p class="admin-stat-card__label">Produits téléchargeables</p>
@@ -61,7 +71,7 @@
                     <h3 class="h6 mb-0 fw-bold">
                         <i class="fas fa-box-open me-2"></i>Mes packs
                     </h3>
-                    <a href="{{ route('customer.contents') }}#mes-packs" class="admin-btn soft sm">Voir tout</a>
+                    <a href="{{ route('customer.contents') }}" class="admin-btn soft sm">Voir tout</a>
                 </div>
                 <div class="admin-panel__body pt-3">
                     <ul class="list-unstyled mb-0">

@@ -40,7 +40,7 @@ class OrderDeletedMail extends Mailable
     public function content(): Content
     {
         // Charger les relations nécessaires
-        $this->order->load(['orderItems.course', 'user']);
+        $this->order->load(array_merge(['user'], Order::eagerLoadOrderItemsWithPackages()));
 
         return new Content(
             view: 'emails.order-deleted',

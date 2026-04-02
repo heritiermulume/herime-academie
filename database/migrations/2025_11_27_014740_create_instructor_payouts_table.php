@@ -17,11 +17,13 @@ return new class extends Migration
             return;
         }
 
-        Schema::create('provider_payouts', function (Blueprint $table) {
+        $contentsTable = Schema::hasTable('contents') ? 'contents' : 'courses';
+
+        Schema::create('provider_payouts', function (Blueprint $table) use ($contentsTable) {
             $table->id();
             $table->foreignId('provider_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
-            $table->foreignId('content_id')->constrained('contents')->onDelete('cascade');
+            $table->foreignId('content_id')->constrained($contentsTable)->onDelete('cascade');
             $table->string('payout_id')->unique(); // ID unique pour Moneroo
             $table->decimal('amount', 10, 2); // Montant à payer au formateur
             $table->decimal('commission_percentage', 5, 2); // Pourcentage de commission retenu

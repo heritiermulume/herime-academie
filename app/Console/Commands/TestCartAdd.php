@@ -55,7 +55,7 @@ class TestCartAdd extends Command
         $cartItems = $user->cartItems()->with('course')->get();
         $this->info("   Nombre d'articles: " . $cartItems->count());
         foreach ($cartItems as $item) {
-            $this->line("   - {$item->course->title} (ID: {$item->course_id})");
+            $this->line("   - {$item->course->title} (ID: {$item->content_id})");
         }
         
         // Vérifier si le cours est déjà dans le panier

@@ -823,6 +823,17 @@ document.addEventListener('DOMContentLoaded', function() {
         overflow: hidden;
         border: 1px solid #e2e8f0;
     }
+    /* Pas de barre de défilement sur le bloc tableau : défilement géré par la fenêtre */
+    .admin-panel--table-no-inner-scroll {
+        overflow: visible;
+    }
+    .admin-table--no-inner-scroll {
+        overflow: visible;
+    }
+    .admin-table--no-inner-scroll > .table-responsive {
+        overflow-x: visible !important;
+        -webkit-overflow-scrolling: auto;
+    }
     .admin-table table {
         margin-bottom: 0;
     }

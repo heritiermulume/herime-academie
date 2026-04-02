@@ -84,26 +84,24 @@ class Enrollment extends Model
     }
 
     /**
-     * Créer une inscription et envoyer automatiquement les notifications et emails
-     * 
-     * @param array $attributes Les attributs de l'inscription
-     * @return Enrollment L'inscription créée
+     * Créer une inscription et, si demandé, envoyer les notifications et emails par contenu.
+     * Mettre $sendEnrollmentCommunications à false pour les cours achetés dans un pack (email/notif pack unique).
+     *
+     * @param  array<string, mixed>  $attributes
      */
-    public static function createAndNotify(array $attributes): self
+    public static function createAndNotify(array $attributes, bool $sendEnrollmentCommunications = true): self
     {
-        // Désactiver temporairement l'événement created pour éviter double envoi
         static::$skipNotifications = true;
-        
+
         try {
-            // Créer l'inscription (l'événement created sera ignoré)
             $enrollment = static::create($attributes);
 
-            // Envoyer les notifications et emails manuellement
-            $enrollment->sendEnrollmentNotifications();
+            if ($sendEnrollmentCommunications) {
+                $enrollment->sendEnrollmentNotifications();
+            }
 
             return $enrollment;
         } finally {
-            // Réactiver les notifications pour les prochaines créations
             static::$skipNotifications = false;
         }
     }

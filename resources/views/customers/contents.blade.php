@@ -35,6 +35,17 @@
                 </p>
                 <p class="admin-stat-card__muted">À réactiver si nécessaire</p>
             </div>
+            <div class="admin-stat-card">
+                <p class="admin-stat-card__label">Montant total des achats</p>
+                <p class="admin-stat-card__value">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($courseSummary['total_purchases_amount'] ?? 0) }}</p>
+                <p class="admin-stat-card__muted">
+                    @if(($courseSummary['packs_count'] ?? 0) > 0)
+                        Inclut vos packs ({{ number_format($courseSummary['packs_count']) }})
+                    @else
+                        Commandes payées ou complétées
+                    @endif
+                </p>
+            </div>
         </div>
     </div>
 </section>

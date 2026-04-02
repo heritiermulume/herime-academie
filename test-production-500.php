@@ -177,11 +177,18 @@ try {
 
 echo "\n";
 
-// Test 5: Vérifier les colonnes de la table course_lessons
-echo "5. COLONNES DE course_lessons\n";
-echo "-----------------------------\n";
+// Test 5: Vérifier les colonnes des leçons (content_lessons après migration)
+$lessonsTable = \Illuminate\Support\Facades\Schema::hasTable('content_lessons')
+    ? 'content_lessons'
+    : (\Illuminate\Support\Facades\Schema::hasTable('course_lessons') ? 'course_lessons' : null);
+$lessonsSectionTitle = $lessonsTable ?? 'leçons (aucune table content_lessons / course_lessons)';
+echo "5. COLONNES DE {$lessonsSectionTitle}\n";
+echo str_repeat('-', min(60, max(29, strlen($lessonsSectionTitle) + 12)))."\n";
 try {
-    $columns = DB::select('SHOW COLUMNS FROM course_lessons');
+    if (! $lessonsTable) {
+        throw new \RuntimeException('Aucune table content_lessons / course_lessons');
+    }
+    $columns = DB::select('SHOW COLUMNS FROM `'.$lessonsTable.'`');
     echo "Colonnes trouvées:\n";
     foreach ($columns as $column) {
         echo "  - {$column->Field} ({$column->Type})\n";
