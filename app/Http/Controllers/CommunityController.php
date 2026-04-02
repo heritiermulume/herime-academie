@@ -19,7 +19,7 @@ class CommunityController extends Controller
             ? (Setting::getBaseCurrency()['code'] ?? 'USD')
             : (Setting::getBaseCurrency() ?: 'USD')));
 
-        $communityPlans = SubscriptionPlan::query()
+        $recurringCommunity = SubscriptionPlan::query()
             ->where('is_active', true)
             ->where('plan_type', 'recurring')
             ->with(['content', 'contents'])
@@ -35,7 +35,18 @@ class CommunityController extends Controller
                     'membre-herime-trimestriel',
                     'membre-herime-annuel',
                 ], true);
-            })
+            });
+
+        $premiumCatalogPlans = SubscriptionPlan::query()
+            ->where('is_active', true)
+            ->where('plan_type', 'premium')
+            ->with(['content', 'contents'])
+            ->orderBy('price')
+            ->get();
+
+        $communityPlans = $recurringCommunity
+            ->merge($premiumCatalogPlans)
+            ->unique('id')
             ->sortBy(function (SubscriptionPlan $plan) {
                 return (int) data_get($plan->metadata, 'community_display_order', 99);
             })

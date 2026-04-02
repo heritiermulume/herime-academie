@@ -108,12 +108,23 @@ class SubscriptionPlan extends Model
     }
 
     /**
+     * Plans visibles sur l’accueil et dans « Mes abonnements » (hors offres réservées à /communaute/membre-premium).
+     *
      * @param  \Illuminate\Support\Collection<int, \App\Models\SubscriptionPlan>  $plans
      * @return \Illuminate\Support\Collection<int, \App\Models\SubscriptionPlan>
      */
     public static function filterOutCommunityPremium($plans)
     {
-        return $plans->filter(fn (self $plan) => ! $plan->isCommunityPremiumPlan())->values();
+        return $plans->filter(function (self $plan) {
+            if ($plan->isCommunityPremiumPlan()) {
+                return false;
+            }
+            if ($plan->isPremiumCatalogPlan()) {
+                return false;
+            }
+
+            return true;
+        })->values();
     }
 }
 

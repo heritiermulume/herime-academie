@@ -77,12 +77,18 @@
                                     {{ $plan->is_active ? 'Actif' : 'Inactif' }}
                                 </span>
                             </td>
-                            <td class="text-end">
-                                <a href="{{ route('admin.subscriptions.plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary">Modifier</a>
-                                <form method="POST" action="{{ route('admin.subscriptions.plans.destroy', $plan) }}" class="d-inline">
+                            <td class="text-end text-nowrap">
+                                <a href="{{ route('admin.subscriptions.plans.edit', $plan) }}" class="btn btn-sm btn-outline-primary" title="Modifier">
+                                    <i class="fas fa-edit" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Modifier</span>
+                                </a>
+                                <form method="POST" action="{{ route('admin.subscriptions.plans.destroy', $plan) }}" class="d-inline" onsubmit="return confirm('Supprimer ce plan ?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce plan ?')">Supprimer</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger ms-1" title="Supprimer">
+                                        <i class="fas fa-trash" aria-hidden="true"></i>
+                                        <span class="visually-hidden">Supprimer</span>
+                                    </button>
                                 </form>
                             </td>
                         </tr>
