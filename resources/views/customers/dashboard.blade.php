@@ -63,40 +63,11 @@
         </div>
 
         @php
-            $purchasedPackagesSummaries = $purchasedPackagesSummaries ?? collect();
+            $resumeHighlightEnrollment = $resumeHighlightEnrollment ?? null;
         @endphp
-        @if($purchasedPackagesSummaries->isNotEmpty())
-            <div class="admin-panel mt-4" style="margin-top: 1.5rem;">
-                <div class="admin-panel__header">
-                    <h3 class="h6 mb-0 fw-bold">
-                        <i class="fas fa-box-open me-2"></i>Mes packs
-                    </h3>
-                    <a href="{{ route('customer.contents') }}" class="admin-btn soft sm">Voir tout</a>
-                </div>
-                <div class="admin-panel__body pt-3">
-                    <ul class="list-unstyled mb-0">
-                        @foreach($purchasedPackagesSummaries as $row)
-                            @php
-                                $pkg = $row['package'];
-                                $enrCount = $row['enrollments']->count();
-                                $total = $pkg->contents->filter(fn ($c) => $c->is_published)->count();
-                            @endphp
-                            <li class="d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 border-bottom border-light">
-                                <span class="fw-semibold">{{ $pkg->title }}</span>
-                                <a href="{{ route('customer.pack', $pkg) }}" class="admin-btn primary sm">
-                                    <i class="fas fa-folder-open me-1"></i>Ouvrir
-                                </a>
-                                <span class="small text-muted w-100 w-md-auto">{{ $enrCount }}/{{ $total }} contenus ouverts</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-            </div>
-        @endif
-
-        @if($lastUpdatedEnrollment && $lastUpdatedEnrollment->course)
+        @if($resumeHighlightEnrollment && $resumeHighlightEnrollment->course)
             @php
-                $highlightCourse = $lastUpdatedEnrollment->course;
+                $highlightCourse = $resumeHighlightEnrollment->course;
             @endphp
             <div class="admin-card student-highlight">
                 <div class="student-highlight__content">
@@ -109,41 +80,33 @@
                                 · {{ $highlightCourse->category->name }}
                             @endif
                         </p>
-                        @if(!($highlightCourse->is_downloadable ?? false))
-                            <div class="student-progress">
-                                <div class="student-progress__meta">
-                                    <span>Progression</span>
-                                    <strong>{{ $lastUpdatedEnrollment->progress }}%</strong>
-                                </div>
-                                <div class="student-progress__bar">
-                                    <span style="width: {{ $lastUpdatedEnrollment->progress }}%"></span>
-                                </div>
-                                <small class="student-progress__hint">
-                                    Dernière mise à jour {{ $lastUpdatedEnrollment->updated_at?->diffForHumans() }}
-                                </small>
+                        <div class="student-progress">
+                            <div class="student-progress__meta">
+                                <span>Progression</span>
+                                <strong>{{ $resumeHighlightEnrollment->progress }}%</strong>
                             </div>
-                        @endif
+                            <div class="student-progress__bar">
+                                <span style="width: {{ $resumeHighlightEnrollment->progress }}%"></span>
+                            </div>
+                            <small class="student-progress__hint">
+                                Dernière mise à jour {{ $resumeHighlightEnrollment->updated_at?->diffForHumans() }}
+                            </small>
+                        </div>
                     </div>
                     <div class="student-highlight__actions">
                         @php
-                            $progress = $lastUpdatedEnrollment->progress ?? 0;
+                            $progress = $resumeHighlightEnrollment->progress ?? 0;
                         @endphp
-                        @if(($highlightCourse->is_downloadable ?? false) || ($highlightCourse->is_in_person_program ?? false))
-                            <a href="{{ route('contents.download', $highlightCourse->slug) }}" class="admin-btn primary lg">
-                                <i class="fas fa-download me-2"></i>{{ $highlightCourse->getDownloadButtonText() }}
-                            </a>
-                        @else
-                            <a href="{{ route('learning.course', $highlightCourse->slug) }}" class="admin-btn success lg">
-                                <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
-                            </a>
-                        @endif
+                        <a href="{{ route('learning.course', $highlightCourse->slug) }}" class="admin-btn success lg">
+                            <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
+                        </a>
                         <a href="{{ route('customer.contents') }}" class="admin-btn ghost">
                             Voir tous mes contenus
                         </a>
                     </div>
                 </div>
             </div>
-        @else
+        @elseif($enrollments->isEmpty())
         <div class="admin-card student-highlight empty">
             <div class="student-highlight__content">
                 <div>

@@ -1002,6 +1002,94 @@ body {
 </section>
 @endif
 
+<!-- Communauté / réseau Membre Herime -->
+<section class="community-network-section py-5 text-white position-relative overflow-hidden" style="background: linear-gradient(135deg, #001a33 0%, #003366 50%, #002b52 100%);">
+    <div class="position-absolute top-0 end-0 opacity-10 d-none d-lg-block" style="width: 420px; height: 420px; background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%); transform: translate(30%, -30%);"></div>
+    <div class="container position-relative">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6 order-lg-2 text-start">
+                <p class="text-uppercase small fw-semibold mb-2" style="letter-spacing: 0.12em; opacity: 0.85;">Espace exclusif · Membre Herime</p>
+                <h2 class="display-6 fw-bold mb-3 lh-sm">La communauté privée des entrepreneurs qui <span class="text-warning" style="text-shadow: 0 0 24px rgba(255, 193, 7, 0.35);">passent à l’action</span></h2>
+                <p class="lead mb-3" style="opacity: 0.95; font-size: 1.15rem;">
+                    Le cadre et l’entourage pour lancer ton activité, trouver des clients et avancer plus vite, sans rester seul.
+                </p>
+                <p class="mb-4 fst-italic border-start border-warning border-3 ps-3" style="opacity: 0.9;">
+                    Ici, on ne consomme pas des vidéos dans le vide : on avance avec des pairs qui vendent, testent et s’entraident pour que ton prochain client ne soit plus une question de « si », mais de « quand ».
+                </p>
+                <p class="fw-bold mb-3 fs-5">Voici ce qui t’attend à l’intérieur :</p>
+                <ul class="list-unstyled mb-4 community-network-list text-start w-100">
+                    <li class="d-flex align-items-start justify-content-start mb-3 text-start">
+                        <i class="fas fa-check-circle text-warning flex-shrink-0 me-3 mt-1"></i>
+                        <span class="text-start">Accès complet à la communauté privée <strong>Membre Herime</strong></span>
+                    </li>
+                    <li class="d-flex align-items-start justify-content-start mb-3 text-start">
+                        <i class="fas fa-check-circle text-warning flex-shrink-0 me-3 mt-1"></i>
+                        <span class="text-start">Accès à <strong>toutes les formations</strong></span>
+                    </li>
+                    <li class="d-flex align-items-start justify-content-start mb-3 text-start">
+                        <i class="fas fa-check-circle text-warning flex-shrink-0 me-3 mt-1"></i>
+                        <span class="text-start">Accès à un <strong>réseau d’opportunités</strong> (clients, partenaires, missions rémunérées)</span>
+                    </li>
+                    <li class="d-flex align-items-start justify-content-start mb-3 text-start">
+                        <i class="fas fa-check-circle text-warning flex-shrink-0 me-3 mt-1"></i>
+                        <span class="text-start">Accès aux <strong>lives &amp; feedbacks collectifs</strong> pour progresser plus vite</span>
+                    </li>
+                    <li class="d-flex align-items-start justify-content-start mb-3 text-start">
+                        <i class="fas fa-check-circle text-warning flex-shrink-0 me-3 mt-1"></i>
+                        <span class="text-start">Accès aux <strong>templates premium</strong> prêts à l’emploi (tunnels de vente, Canva…)</span>
+                    </li>
+                </ul>
+                <a href="{{ route('community.premium') }}" class="btn btn-warning btn-lg px-4 fw-semibold rounded-pill shadow">
+                    <i class="fas fa-bolt me-2"></i>Je veux rejoindre le réseau
+                </a>
+            </div>
+            <div class="col-lg-6 order-lg-1 text-center">
+                @php
+                    $cm = $communityHomeMedia ?? \App\Services\CommunitySettingsService::homeMedia();
+                    $cmUrl = $cm['url'] ?? \App\Services\CommunitySettingsService::DEFAULT_HOME_IMAGE;
+                    $cmType = $cm['type'] ?? 'image';
+                    $cmPoster = trim((string) ($cm['poster'] ?? ''));
+                    $isYoutube = $cmType === 'video' && (str_contains($cmUrl, 'youtu.be') || str_contains($cmUrl, 'youtube.com'));
+                    $youtubeId = '';
+                    if ($isYoutube && preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/', $cmUrl, $m)) {
+                        $youtubeId = $m[1];
+                    }
+                @endphp
+                <div class="rounded-4 overflow-hidden shadow-lg" style="border: 3px solid rgba(255,255,255,0.15);">
+                    @if($cmType === 'video' && $isYoutube && $youtubeId !== '')
+                        <div class="ratio ratio-16x9" style="min-height: 280px;">
+                            <iframe src="https://www.youtube-nocookie.com/embed/{{ $youtubeId }}?rel=0"
+                                    title="Communauté Membre Herime"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowfullscreen
+                                    loading="lazy"
+                                    class="rounded-4"></iframe>
+                        </div>
+                    @elseif($cmType === 'video')
+                        <video class="w-100 rounded-4"
+                               controls
+                               playsinline
+                               @if($cmPoster !== '') poster="{{ $cmPoster }}" @endif
+                               style="max-height: 420px; object-fit: cover; min-height: 280px;">
+                            <source src="{{ $cmUrl }}" type="video/mp4">
+                            Votre navigateur ne lit pas la vidéo. <a href="{{ $cmUrl }}" class="text-warning">Ouvrir le fichier</a>
+                        </video>
+                    @else
+                        <img src="{{ $cmUrl }}"
+                             alt="Entrepreneurs en réseau, collaboration et communauté"
+                             class="img-fluid w-100"
+                             style="object-fit: cover; min-height: 280px; max-height: 420px;"
+                             loading="lazy"
+                             width="900"
+                             height="700">
+                    @endif
+                </div>
+                <p class="small mt-3 mb-0 opacity-80 fw-medium">Rejoins ceux qui exécutent : contenu, pairs et outils pour ne plus stagner.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Trending Courses Section -->
 @if($trendingCourses->count() > 0)
 <section class="trending-courses py-5 bg-light">
@@ -1175,8 +1263,16 @@ body {
                     $billingLabel = match ($plan->billing_period) {
                         'monthly' => 'mois',
                         'yearly' => 'an',
+                        'quarterly' => 'trimestre',
+                        'semiannual' => 'semestre',
                         default => null,
                     };
+                    $planTypeHomeLabels = [
+                        'recurring' => 'Récurrent',
+                        'premium' => 'Premium',
+                        'one_time' => 'Achat unique',
+                        'freemium' => 'Freemium',
+                    ];
                 @endphp
                 <div class="col-12 col-md-6 col-lg-4">
                     <div class="card h-100 border-0 shadow-sm">
@@ -1197,7 +1293,7 @@ body {
                                 @if($plan->trial_days > 0)
                                     <span class="badge text-bg-success">{{ $plan->trial_days }} jours d'essai gratuit</span>
                                 @endif
-                                <span class="badge text-bg-light border">{{ ucfirst((string) $plan->plan_type) }}</span>
+                                <span class="badge text-bg-light border">{{ $planTypeHomeLabels[$plan->plan_type] ?? ucfirst((string) $plan->plan_type) }}</span>
                             </div>
 
                             <a href="{{ route('customer.subscriptions') }}" class="btn btn-primary mt-auto">

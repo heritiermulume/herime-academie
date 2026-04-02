@@ -4708,6 +4708,31 @@ class AdminController extends Controller
             'Donate',
         ];
 
+        $premiumPageTexts = Setting::get('community_premium_page_texts', []);
+        if (! is_array($premiumPageTexts)) {
+            $premiumPageTexts = [];
+        }
+        $planHighlights = Setting::get('community_premium_plan_highlights', []);
+        if (! is_array($planHighlights)) {
+            $planHighlights = [];
+        }
+        $communitySettings = [
+            'home_media_type' => Setting::get('community_home_media_type', 'image'),
+            'home_media_url' => Setting::get('community_home_media_url', ''),
+            'home_media_poster_url' => Setting::get('community_home_media_poster_url', ''),
+            'premium_kicker' => $premiumPageTexts['kicker'] ?? '',
+            'premium_title' => $premiumPageTexts['title'] ?? '',
+            'premium_lead' => $premiumPageTexts['lead'] ?? '',
+            'premium_second' => $premiumPageTexts['second'] ?? '',
+            'premium_guest_title' => $premiumPageTexts['guest_box_title'] ?? '',
+            'premium_guest_text' => $premiumPageTexts['guest_box_text'] ?? '',
+            'premium_plans_title' => $premiumPageTexts['plans_intro_title'] ?? '',
+            'premium_plans_subtitle' => $premiumPageTexts['plans_intro_subtitle'] ?? '',
+            'highlight_trimestriel' => $planHighlights['membre-herime-trimestriel'] ?? '',
+            'highlight_semestriel' => $planHighlights['membre-herime-semestriel'] ?? '',
+            'highlight_annuel' => $planHighlights['membre-herime-annuel'] ?? '',
+        ];
+
         return view('admin.settings.index', compact(
             'baseCurrency',
             'currencies',
@@ -4721,6 +4746,7 @@ class AdminController extends Controller
             'metaPageOptions',
             'metaEventNameOptions',
             'metaStandardEventNameOptions',
+            'communitySettings',
         ));
     }
 
@@ -4729,6 +4755,135 @@ class AdminController extends Controller
      */
     public function updateSettings(Request $request)
     {
+        if ($request->input('settings_form') === 'community') {
+            $request->validate([
+                'community_home_media_type' => 'required|in:image,video',
+                'community_home_media_chunk_path' => 'nullable|string|max:1024',
+                'community_home_poster_chunk_path' => 'nullable|string|max:1024',
+                'community_home_media_external_url' => 'nullable|string|max:2048',
+                'community_home_media_poster_external_url' => 'nullable|string|max:2048',
+                'community_home_media_reset' => 'nullable|boolean',
+                'community_home_poster_reset' => 'nullable|boolean',
+                'community_premium_kicker' => 'nullable|string|max:500',
+                'community_premium_title' => 'nullable|string|max:500',
+                'community_premium_lead' => 'nullable|string|max:4000',
+                'community_premium_second' => 'nullable|string|max:4000',
+                'community_premium_guest_title' => 'nullable|string|max:500',
+                'community_premium_guest_text' => 'nullable|string|max:4000',
+                'community_premium_plans_title' => 'nullable|string|max:500',
+                'community_premium_plans_subtitle' => 'nullable|string|max:2000',
+                'community_highlight_trimestriel' => 'nullable|string|max:2000',
+                'community_highlight_semestriel' => 'nullable|string|max:2000',
+                'community_highlight_annuel' => 'nullable|string|max:2000',
+            ]);
+
+            Setting::set('community_home_media_type', $request->input('community_home_media_type', 'image'), 'string', 'Bloc accueil communauté : type média');
+
+            $currentMain = trim((string) Setting::get('community_home_media_url', ''));
+            $currentPoster = trim((string) Setting::get('community_home_media_poster_url', ''));
+
+            if ($request->filled('community_home_media_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('community_home_media_chunk_path'));
+                if ($chunkPath) {
+                    try {
+                        $finalPath = $this->fileUploadService->promoteTemporaryFile($chunkPath, 'site/community-home');
+                        if ($this->isCommunityHomeStoredFile($currentMain)) {
+                            $this->fileUploadService->deleteFile($currentMain);
+                        }
+                        Setting::set('community_home_media_url', $finalPath, 'string', 'Bloc accueil : média (fichier ou URL externe)');
+                    } catch (\Throwable $e) {
+                        \Log::error('Community home media chunk promote failed', ['error' => $e->getMessage()]);
+
+                        return redirect()->route('admin.settings', ['tab' => 'community'])
+                            ->with('error', 'Le média n’a pas pu être enregistré. Réessayez ou contactez le support.')
+                            ->withInput();
+                    }
+                }
+            } elseif ($request->boolean('community_home_media_reset')) {
+                if ($this->isCommunityHomeStoredFile($currentMain)) {
+                    $this->fileUploadService->deleteFile($currentMain);
+                }
+                Setting::set('community_home_media_url', '', 'string', 'Bloc accueil : média (fichier ou URL externe)');
+            } else {
+                $externalMain = trim((string) $request->input('community_home_media_external_url', ''));
+                if ($externalMain !== '') {
+                    if ($this->isCommunityHomeStoredFile($currentMain)) {
+                        $this->fileUploadService->deleteFile($currentMain);
+                    }
+                    Setting::set('community_home_media_url', $externalMain, 'string', 'Bloc accueil : média (fichier ou URL externe)');
+                }
+            }
+
+            if ($request->filled('community_home_poster_chunk_path')) {
+                $posterChunk = $this->sanitizeUploadedPath($request->input('community_home_poster_chunk_path'));
+                if ($posterChunk) {
+                    try {
+                        $posterFinal = $this->fileUploadService->promoteTemporaryFile($posterChunk, 'site/community-home');
+                        if ($this->isCommunityHomeStoredFile($currentPoster)) {
+                            $this->fileUploadService->deleteFile($currentPoster);
+                        }
+                        Setting::set('community_home_media_poster_url', $posterFinal, 'string', 'Bloc accueil : affiche vidéo (poster)');
+                    } catch (\Throwable $e) {
+                        \Log::error('Community home poster chunk promote failed', ['error' => $e->getMessage()]);
+
+                        return redirect()->route('admin.settings', ['tab' => 'community'])
+                            ->with('error', 'L’affiche (poster) n’a pas pu être enregistrée.')
+                            ->withInput();
+                    }
+                }
+            } elseif ($request->boolean('community_home_poster_reset')) {
+                if ($this->isCommunityHomeStoredFile($currentPoster)) {
+                    $this->fileUploadService->deleteFile($currentPoster);
+                }
+                Setting::set('community_home_media_poster_url', '', 'string', 'Bloc accueil : affiche vidéo (poster)');
+            } else {
+                $externalPoster = trim((string) $request->input('community_home_media_poster_external_url', ''));
+                if ($externalPoster !== '') {
+                    if ($this->isCommunityHomeStoredFile($currentPoster)) {
+                        $this->fileUploadService->deleteFile($currentPoster);
+                    }
+                    Setting::set('community_home_media_poster_url', $externalPoster, 'string', 'Bloc accueil : affiche vidéo (poster)');
+                }
+            }
+
+            $pageTexts = [];
+            foreach ([
+                'kicker' => $request->input('community_premium_kicker'),
+                'title' => $request->input('community_premium_title'),
+                'lead' => $request->input('community_premium_lead'),
+                'second' => $request->input('community_premium_second'),
+                'guest_box_title' => $request->input('community_premium_guest_title'),
+                'guest_box_text' => $request->input('community_premium_guest_text'),
+                'plans_intro_title' => $request->input('community_premium_plans_title'),
+                'plans_intro_subtitle' => $request->input('community_premium_plans_subtitle'),
+            ] as $key => $val) {
+                if (is_string($val) && trim($val) !== '') {
+                    $pageTexts[$key] = trim($val);
+                }
+            }
+            Setting::set('community_premium_page_texts', $pageTexts, 'json', 'Textes page /communaute/membre-premium');
+
+            $highlights = Setting::get('community_premium_plan_highlights', []);
+            if (! is_array($highlights)) {
+                $highlights = [];
+            }
+            foreach ([
+                'membre-herime-trimestriel' => trim((string) $request->input('community_highlight_trimestriel', '')),
+                'membre-herime-semestriel' => trim((string) $request->input('community_highlight_semestriel', '')),
+                'membre-herime-annuel' => trim((string) $request->input('community_highlight_annuel', '')),
+            ] as $slug => $text) {
+                if ($text !== '') {
+                    $highlights[$slug] = $text;
+                } else {
+                    unset($highlights[$slug]);
+                }
+            }
+            Setting::set('community_premium_plan_highlights', $highlights, 'json', 'Détails affichés sous les options (par slug de plan)');
+
+            return redirect()->route('admin.settings', ['tab' => 'community'])
+                ->with('success', 'Paramètres Communauté Membre Herime enregistrés. Les prix des formules se modifient dans Abonnements → Plans (plans avec métadonnée membre communauté).');
+        }
+
         // Gestion Meta (Pixel + Events) via /admin/settings (sans dépendre des autres settings)
         if ($request->filled('meta_action')) {
             $action = $request->string('meta_action')->toString();
@@ -5620,6 +5775,21 @@ class AdminController extends Controller
         return empty($normalized) ? null : implode(', ', $normalized);
     }
 
+    private function isCommunityHomeStoredFile(?string $value): bool
+    {
+        $v = trim((string) $value);
+        if ($v === '' || filter_var($v, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+        if (str_starts_with($v, 'http://') || str_starts_with($v, 'https://')) {
+            return false;
+        }
+
+        $v = ltrim($v, '/');
+
+        return str_starts_with($v, 'site/community-home/');
+    }
+
     private function sanitizeUploadedPath(?string $path): ?string
     {
         if (!$path) {
@@ -5645,6 +5815,7 @@ class AdminController extends Controller
             'courses/previews',
             'courses/lessons',
             'courses/downloads',
+            'site/community-home',
         ];
 
         foreach ($allowedPrefixes as $prefix) {

@@ -44,8 +44,8 @@ class SubscriptionPlanController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'plan_type' => ['required', 'in:recurring,one_time,freemium'],
-            'billing_period' => ['nullable', 'in:monthly,yearly'],
+            'plan_type' => ['required', 'in:recurring,one_time,freemium,premium'],
+            'billing_period' => ['nullable', 'in:monthly,yearly,semiannual,quarterly'],
             'price' => ['required', 'numeric', 'min:0'],
             'annual_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'trial_days' => ['nullable', 'integer', 'min:0', 'max:365'],
@@ -64,7 +64,7 @@ class SubscriptionPlanController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['auto_renew_default'] = $request->boolean('auto_renew_default');
 
-        if ($data['plan_type'] !== 'recurring') {
+        if (! in_array($data['plan_type'], ['recurring', 'premium'], true)) {
             $data['billing_period'] = null;
             $data['trial_days'] = 0;
             $data['auto_renew_default'] = false;
@@ -127,8 +127,8 @@ class SubscriptionPlanController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'plan_type' => ['required', 'in:recurring,one_time,freemium'],
-            'billing_period' => ['nullable', 'in:monthly,yearly'],
+            'plan_type' => ['required', 'in:recurring,one_time,freemium,premium'],
+            'billing_period' => ['nullable', 'in:monthly,yearly,semiannual,quarterly'],
             'price' => ['required', 'numeric', 'min:0'],
             'annual_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'trial_days' => ['nullable', 'integer', 'min:0', 'max:365'],
@@ -146,7 +146,7 @@ class SubscriptionPlanController extends Controller
         $data['is_active'] = $request->boolean('is_active');
         $data['auto_renew_default'] = $request->boolean('auto_renew_default');
 
-        if ($data['plan_type'] !== 'recurring') {
+        if (! in_array($data['plan_type'], ['recurring', 'premium'], true)) {
             $data['billing_period'] = null;
             $data['trial_days'] = 0;
             $data['auto_renew_default'] = false;

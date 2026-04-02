@@ -29,6 +29,7 @@ use App\Http\Controllers\SSOCallbackController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\MetaConversionsController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Admin\SubscriptionPlanController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +48,8 @@ Route::get('/about', function() {
 Route::get('/contact', function() {
     return view('contact');
 })->name('contact');
+
+Route::get('/communaute/membre-premium', [CommunityController::class, 'premiumJoin'])->name('community.premium');
 
 Route::post('/contact', [App\Http\Controllers\ContactController::class, 'store'])->name('contact.store');
 

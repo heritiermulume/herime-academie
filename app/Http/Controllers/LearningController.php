@@ -672,12 +672,10 @@ class LearningController extends Controller
         $excludedCourseIds = [$course->id];
         
         if (auth()->check()) {
-            $userEnrollments = auth()->user()->enrollments()
-                ->whereIn('status', ['active', 'completed'])
-                
-                ->pluck('content_id')
-                ->toArray();
-            $excludedCourseIds = array_merge($excludedCourseIds, $userEnrollments);
+            $excludedCourseIds = array_values(array_unique(array_merge(
+                $excludedCourseIds,
+                auth()->user()->getRecommendationExcludedContentIds()
+            )));
         }
 
         $recommendations = collect();
@@ -795,26 +793,15 @@ class LearningController extends Controller
         }
 
         // Filtrage final : uniquement cours éligibles à l'apprentissage (non téléchargeables, avec leçons)
-        $finalRecommendations = $recommendations->filter(function($course) {
-            // Exclure cours gratuits, téléchargeables et programmes en présentiel
+        $finalRecommendations = $recommendations->filter(function ($course) {
             if ($course->is_free || $course->is_downloadable || ($course->is_in_person_program ?? false)) {
                 return false;
             }
-            
-            // Exclure les cours achetés ou auxquels l'utilisateur est inscrit
-            if (auth()->check()) {
-                $isPurchased = auth()->user()
-                    ->enrollments()
-                    ->where('content_id', $course->id)
-                    ->whereIn('status', ['active', 'completed'])
-                    
-                    ->exists();
-                
-                if ($isPurchased) {
-                    return false;
-                }
+
+            if (auth()->check() && $this->isCoursePurchased($course)) {
+                return false;
             }
-            
+
             return true;
         })->shuffle()->take(4);
         
@@ -871,7 +858,7 @@ class LearningController extends Controller
         // Vérifier si l'utilisateur a acheté le cours (pour les cours payants)
         if (!$course->is_free) {
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
-                ->where('status', 'paid')
+                ->whereIn('status', ['paid', 'completed'])
                 ->whereHas('orderItems', function($query) use ($course) {
                     $query->where('content_id', $course->id);
                 })

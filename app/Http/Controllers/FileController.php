@@ -127,6 +127,9 @@ class FileController extends Controller
             case 'package-covers':
                 $basePath = 'packages/covers';
                 break;
+            case 'community-home':
+                $basePath = 'site/community-home';
+                break;
             default:
                 abort(400, 'Type de fichier non valide');
         }
@@ -144,7 +147,7 @@ class FileController extends Controller
     protected function hasAccess(string $type, string $path): bool
     {
         // Les avatars, banners, email-images et media sont publics (mais protégés par l'URL)
-        if (in_array($type, ['avatars', 'banners', 'email-images', 'media'])) {
+        if (in_array($type, ['avatars', 'banners', 'email-images', 'media', 'community-home'], true)) {
             return true;
         }
 

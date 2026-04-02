@@ -11,6 +11,7 @@ use App\Models\Testimonial;
 use App\Models\User;
 use App\Models\ContentPackage;
 use App\Models\SubscriptionPlan;
+use App\Services\CommunitySettingsService;
 use App\Services\TemporaryUploadCleaner;
 use App\Traits\CourseStatistics;
 use Illuminate\Http\Request;
@@ -129,11 +130,14 @@ class HomeController extends Controller
             ->ordered()
             ->get();
 
-        $homeSubscriptionPlans = SubscriptionPlan::query()
-            ->where('is_active', true)
-            ->orderBy('price')
-            ->limit(3)
-            ->get();
+        $homeSubscriptionPlans = SubscriptionPlan::filterOutCommunityPremium(
+            SubscriptionPlan::query()
+                ->where('is_active', true)
+                ->orderBy('price')
+                ->get()
+        )->take(3);
+
+        $communityHomeMedia = CommunitySettingsService::homeMedia();
 
         $homePackagesAsideFeatured = ContentPackage::query()
             ->published()
@@ -160,6 +164,7 @@ class HomeController extends Controller
             'featuredPackages',
             'homePackagesAsideFeatured',
             'homeSubscriptionPlans',
+            'communityHomeMedia',
             'categories',
             'providers',
             'announcements',

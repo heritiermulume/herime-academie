@@ -310,4 +310,57 @@ class User extends Authenticatable
             })
             ->exists();
     }
+
+    /**
+     * IDs des contenus à exclure des recommandations : déjà accessibles (inscription non annulée,
+     * achat standalone non révoqué, contenus des packs achetés non révoqués).
+     *
+     * @return array<int>
+     */
+    public function getRecommendationExcludedContentIds(): array
+    {
+        $ids = $this->enrollments()
+            ->whereHas('content', fn ($q) => $q->where('is_published', true))
+            ->where('status', '!=', 'cancelled')
+            ->pluck('content_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id);
+
+        $orders = Order::query()
+            ->where('user_id', $this->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->with(['orderItems'])
+            ->get();
+
+        $packageIds = collect();
+        foreach ($orders as $order) {
+            foreach ($order->orderItems as $item) {
+                if ($item->content_package_id) {
+                    $marker = '[PACK_REVOKED:' . (int) $item->content_package_id . ']';
+                    if (str_contains((string) ($order->notes ?? ''), $marker)) {
+                        continue;
+                    }
+                    $packageIds->push((int) $item->content_package_id);
+                } elseif ($item->content_id) {
+                    $marker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
+                    if (str_contains((string) ($order->notes ?? ''), $marker)) {
+                        continue;
+                    }
+                    $ids->push((int) $item->content_id);
+                }
+            }
+        }
+
+        if ($packageIds->isNotEmpty()) {
+            $packages = ContentPackage::query()
+                ->whereIn('id', $packageIds->unique()->all())
+                ->with(['contents' => fn ($q) => $q->where('is_published', true)])
+                ->get();
+            foreach ($packages as $package) {
+                $ids = $ids->merge($package->contents->pluck('id')->map(fn ($id) => (int) $id));
+            }
+        }
+
+        return $ids->unique()->values()->all();
+    }
 }

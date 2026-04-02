@@ -82,5 +82,39 @@ class SubscriptionPlan extends Model
 
         return $this->effective_price;
     }
+
+    /**
+     * Abonnement « Membre Herime » / communauté : exclu des listes publiques d’abonnements.
+     */
+    public function isCommunityPremiumPlan(): bool
+    {
+        return filter_var(data_get($this->metadata, 'community_premium'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Plan « Premium » : accès automatique à toutes les formations publiées, non téléchargeables, avec au moins une leçon.
+     */
+    public function isPremiumCatalogPlan(): bool
+    {
+        return $this->plan_type === 'premium';
+    }
+
+    /**
+     * Facturation par période (mensuel / semestriel / annuel), essais et renouvellements automatiques.
+     */
+    public function usesRecurringBilling(): bool
+    {
+        return in_array($this->plan_type, ['recurring', 'premium'], true);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \App\Models\SubscriptionPlan>  $plans
+     * @return \Illuminate\Support\Collection<int, \App\Models\SubscriptionPlan>
+     */
+    public static function filterOutCommunityPremium($plans)
+    {
+        return $plans->filter(fn (self $plan) => ! $plan->isCommunityPremiumPlan())->values();
+    }
 }
+
 

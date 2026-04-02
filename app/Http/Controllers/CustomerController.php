@@ -6,6 +6,7 @@ use App\Models\Certificate;
 use App\Models\Course;
 use App\Models\CourseDownload;
 use App\Models\Enrollment;
+use App\Models\LessonProgress;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ContentPackage;
@@ -63,11 +64,11 @@ class CustomerController extends Controller
             ->unique()
             ->values();
 
-        $recentEnrollments = $customer->enrollments()
+        // Liste tableau de bord : contenus hors pack + contenus inclus dans les packs (même liste)
+        $dashboardRecentEnrollments = $customer->enrollments()
             ->whereHas('content', function($q) {
                 $q->where('is_published', true);
             })
-            // Ne jamais afficher les inscriptions annulées/révoquées dans l'espace client
             ->where('status', '!=', 'cancelled')
             ->with(['course.provider', 'course.category', 'order', 'course.downloads'])
             ->orderByDesc('updated_at')
@@ -94,19 +95,13 @@ class CustomerController extends Controller
             ->unique()
             ->values();
 
-        $recentEnrollments = $recentEnrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds, $activePackCourseIds) {
+        $dashboardRecentEnrollments = $dashboardRecentEnrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
             $course = $enrollment->course;
             if (! $course) {
                 return false;
             }
 
-            // Les contenus d'un pack actif sont accessibles depuis la page pack uniquement.
-            if ($activePackCourseIds->contains($course->id)) {
-                return false;
-            }
-
             if ($course->is_downloadable && $course->is_free) {
-                // Garder uniquement si le cours a été téléchargé au moins une fois
                 return $downloadedFreeCourseIds->contains($course->id);
             }
 
@@ -136,8 +131,7 @@ class CustomerController extends Controller
             })
             ->count();
 
-        // Charger les compteurs de téléchargements pour chaque cours récent
-        foreach ($recentEnrollments as $enrollment) {
+        foreach ($dashboardRecentEnrollments as $enrollment) {
             $course = $enrollment->course;
             if ($course && $course->is_downloadable) {
                 $course->user_downloads_count = CourseDownload::where('content_id', $course->id)
@@ -145,6 +139,37 @@ class CustomerController extends Controller
                     ->count() ?? 0;
                 $course->total_downloads_count = CourseDownload::where('content_id', $course->id)->count() ?? 0;
             }
+        }
+
+        // « Reprendre » : uniquement cours non téléchargeable, hors pack, avec au moins une leçon entamée
+        $courseIdsWithLessonActivity = LessonProgress::query()
+            ->where('user_id', $customer->id)
+            ->where(function ($q) {
+                $q->whereNotNull('started_at')
+                    ->orWhere('time_watched', '>', 0)
+                    ->orWhere('is_completed', true);
+            })
+            ->pluck('content_id')
+            ->unique()
+            ->values();
+
+        $resumeHighlightEnrollment = null;
+        if ($courseIdsWithLessonActivity->isNotEmpty()) {
+            $resumeQuery = $customer->enrollments()
+                ->whereHas('content', function ($q) {
+                    $q->where('is_published', true)
+                        ->where('is_downloadable', false);
+                })
+                ->where('status', '!=', 'cancelled')
+                ->whereIn('content_id', $courseIdsWithLessonActivity)
+                ->with(['course.provider', 'course.category'])
+                ->orderByDesc('updated_at');
+
+            if ($activePackCourseIds->isNotEmpty()) {
+                $resumeQuery->whereNotIn('content_id', $activePackCourseIds->all());
+            }
+
+            $resumeHighlightEnrollment = $resumeQuery->first();
         }
 
         $certificates = $customer->certificates()
@@ -172,15 +197,11 @@ class CustomerController extends Controller
             ->limit(4)
             ->get();
 
-        $excludeRecommendedCourseIds = $allEnrollments->pluck('content_id')
-            ->merge($activePackCourseIds)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        $excludeRecommendedCourseIds = $customer->getRecommendationExcludedContentIds();
 
         $recommendedCourses = Course::published()
             ->with(['provider', 'category'])
+            ->where('is_free', false)
             ->whereNotIn('id', $excludeRecommendedCourseIds ?: [0])
             ->latest()
             ->limit(5)
@@ -318,14 +339,13 @@ class CustomerController extends Controller
 
         return view('customers.dashboard', [
             'user' => $customer,
-            'enrollments' => $recentEnrollments,
+            'enrollments' => $dashboardRecentEnrollments,
             'certificates' => $certificates,
             'stats' => $stats,
             'orders' => $recentOrders,
             'recommendedCourses' => $recommendedCourses,
             'recommendedPackages' => $recommendedPackages,
-            'purchasedPackagesSummaries' => $purchasedPackagesSummaries->take(5),
-            'lastUpdatedEnrollment' => $recentEnrollments->first(),
+            'resumeHighlightEnrollment' => $resumeHighlightEnrollment,
         ]);
     }
 

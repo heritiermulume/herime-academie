@@ -330,7 +330,7 @@ class CartController extends Controller
         // Vérifier si l'utilisateur a acheté le cours (pour les cours payants)
         if (! $course->is_free) {
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
-                ->where('status', 'paid')
+                ->whereIn('status', ['paid', 'completed'])
                 ->whereHas('orderItems', function ($query) use ($course) {
                     $query->where('content_id', $course->id);
                 })
@@ -392,13 +392,9 @@ class CartController extends Controller
             ->toArray();
         $excludedIds = $excludedIds->merge($freeContentIds);
 
-        // 3. Si l'utilisateur est connecté, exclure les cours déjà achetés ou auxquels il est inscrit
+        // 3. Si l'utilisateur est connecté, exclure les contenus déjà accessibles (inscription, achat, pack)
         if (auth()->check()) {
-            $purchasedCourseIds = auth()->user()
-                ->enrollments()
-                ->whereIn('status', ['active', 'completed']) // Inclure les cours actifs ET complétés
-                ->pluck('content_id')
-                ->toArray();
+            $purchasedCourseIds = auth()->user()->getRecommendationExcludedContentIds();
             $excludedIds = $excludedIds->merge($purchasedCourseIds);
 
             // Debug: Log des cours exclus
@@ -454,18 +450,8 @@ class CartController extends Controller
                 return false;
             }
 
-            // Si l'utilisateur est connecté, exclure les cours déjà achetés ou auxquels il est inscrit
-            if (auth()->check()) {
-                $isPurchased = auth()->user()
-                    ->enrollments()
-                    ->where('content_id', $course->id)
-                    ->whereIn('status', ['active', 'completed'])
-
-                    ->exists();
-
-                if ($isPurchased) {
-                    return false;
-                }
+            if (auth()->check() && $this->isCoursePurchased($course)) {
+                return false;
             }
 
             return true;
@@ -510,25 +496,14 @@ class CartController extends Controller
                 ->limit(4)
                 ->get();
 
-            // Double vérification : filtrer manuellement les cours gratuits et achetés
+            // Double vérification : filtrer manuellement les cours gratuits et déjà accessibles
             $courses = $courses->filter(function ($course) {
-                // Exclure les cours gratuits
                 if ($course->is_free) {
                     return false;
                 }
 
-                // Exclure les cours achetés ou auxquels l'utilisateur est inscrit
-                if (auth()->check()) {
-                    $isPurchased = auth()->user()
-                        ->enrollments()
-                        ->where('content_id', $course->id)
-                        ->whereIn('status', ['active', 'completed'])
-
-                        ->exists();
-
-                    if ($isPurchased) {
-                        return false;
-                    }
+                if (auth()->check() && $this->isCoursePurchased($course)) {
+                    return false;
                 }
 
                 return true;
@@ -686,25 +661,14 @@ class CartController extends Controller
             $recommendations = $recommendations->merge($popularRecommendations);
         }
 
-        // Filtrage final pour s'assurer qu'aucun cours gratuit ou acheté ne passe
+        // Filtrage final : pas de gratuit ni de contenu déjà accessible (achat / inscription)
         $finalRecommendations = $recommendations->filter(function ($course) {
-            // Exclure les cours gratuits
             if ($course->is_free) {
                 return false;
             }
 
-            // Exclure les cours achetés ou auxquels l'utilisateur est inscrit
-            if (auth()->check()) {
-                $isPurchased = auth()->user()
-                    ->enrollments()
-                    ->where('content_id', $course->id)
-                    ->whereIn('status', ['active', 'completed'])
-
-                    ->exists();
-
-                if ($isPurchased) {
-                    return false;
-                }
+            if (auth()->check() && $this->isCoursePurchased($course)) {
+                return false;
             }
 
             return true;

@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('admin-title', 'Plans d\'abonnement')
-@section('admin-subtitle', 'Créez des offres mensuelles, annuelles, freemium et achat unique.')
+@section('admin-subtitle', 'Créez des offres récurrentes, Premium (catalogue), freemium et achat unique.')
 @section('admin-actions')
     <a href="{{ route('admin.subscriptions.plans.create') }}" class="btn btn-primary">
         <i class="fas fa-plus me-1"></i>Nouveau plan
@@ -12,12 +12,15 @@
 @php
     $planTypeLabels = [
         'recurring' => 'Récurrent',
+        'premium' => 'Premium',
         'one_time' => 'Achat unique',
         'freemium' => 'Freemium',
     ];
 
     $billingPeriodLabels = [
         'monthly' => 'Mensuel',
+        'quarterly' => 'Trimestriel',
+        'semiannual' => 'Semestriel',
         'yearly' => 'Annuel',
     ];
 @endphp
@@ -48,7 +51,11 @@
                         @endphp
                         <tr>
                             <td>
-                                <div class="fw-semibold">{{ $plan->name }}</div>
+                                <div class="fw-semibold">{{ $plan->name }}
+                                    @if($plan->isCommunityPremiumPlan())
+                                        <span class="badge rounded-pill ms-1" style="background:#003366;">Membre communauté</span>
+                                    @endif
+                                </div>
                                 @if($plan->contents->isNotEmpty())
                                     <small class="text-muted">
                                         Formations: {{ $plan->contents->pluck('title')->take(2)->join(', ') }}@if($plan->contents->count() > 2) +{{ $plan->contents->count() - 2 }}@endif

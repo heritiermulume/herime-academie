@@ -72,6 +72,42 @@ class SubscriptionPlanSeeder extends Seeder
                 'content_id' => $firstPublishedCourseId,
                 'metadata' => ['label' => 'Acces unique'],
             ],
+            [
+                'name' => 'Réseau Membre Herime — Semestriel',
+                'slug' => 'membre-herime-semestriel',
+                'description' => 'Communauté privée Membre Herime, formations, réseau, lives et templates premium (facturation tous les 6 mois).',
+                'plan_type' => 'recurring',
+                'billing_period' => 'semiannual',
+                'price' => 149.00,
+                'annual_discount_percent' => 0,
+                'trial_days' => 0,
+                'is_active' => true,
+                'auto_renew_default' => true,
+                'content_id' => null,
+                'metadata' => [
+                    'community_premium' => true,
+                    'community_display_order' => 1,
+                    'label' => 'Semestriel',
+                ],
+            ],
+            [
+                'name' => 'Réseau Membre Herime — Annuel',
+                'slug' => 'membre-herime-annuel',
+                'description' => 'Communauté privée Membre Herime, formations, réseau, lives et templates premium (facturation annuelle).',
+                'plan_type' => 'recurring',
+                'billing_period' => 'yearly',
+                'price' => 249.00,
+                'annual_discount_percent' => 0,
+                'trial_days' => 0,
+                'is_active' => true,
+                'auto_renew_default' => true,
+                'content_id' => null,
+                'metadata' => [
+                    'community_premium' => true,
+                    'community_display_order' => 2,
+                    'label' => 'Annuel',
+                ],
+            ],
         ];
 
         foreach ($plans as $plan) {

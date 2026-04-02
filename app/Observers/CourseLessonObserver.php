@@ -3,9 +3,12 @@
 namespace App\Observers;
 
 use App\Jobs\EncodeLessonVideoToHls;
+use App\Models\Course;
 use App\Models\CourseLesson;
 use App\Services\HlsEncodingService;
+use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CourseLessonObserver
 {
@@ -67,6 +70,37 @@ class CourseLessonObserver
         ]);
 
         EncodeLessonVideoToHls::dispatch($lesson->id);
+    }
+
+    public function created(CourseLesson $lesson): void
+    {
+        $this->syncPremiumAccessForParentCourse($lesson);
+    }
+
+    public function restored(CourseLesson $lesson): void
+    {
+        $this->syncPremiumAccessForParentCourse($lesson);
+    }
+
+    protected function syncPremiumAccessForParentCourse(CourseLesson $lesson): void
+    {
+        if (! $lesson->content_id) {
+            return;
+        }
+
+        $course = Course::query()->find($lesson->content_id);
+        if (! $course) {
+            return;
+        }
+
+        try {
+            app(SubscriptionService::class)->grantPremiumSubscribersAccessToCourse($course);
+        } catch (\Throwable $e) {
+            Log::warning('grantPremiumSubscribersAccessToCourse (lesson observer): ' . $e->getMessage(), [
+                'content_id' => $course->id,
+                'lesson_id' => $lesson->id,
+            ]);
+        }
     }
 
     protected function previousInternalVideoPath(CourseLesson $lesson): ?string

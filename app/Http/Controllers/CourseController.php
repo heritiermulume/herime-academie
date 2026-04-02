@@ -1419,7 +1419,7 @@ class CourseController extends Controller
         // Vérifier si l'utilisateur a acheté le cours (pour les cours payants)
         if (!$course->is_free) {
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
-                ->where('status', 'paid')
+                ->whereIn('status', ['paid', 'completed'])
                 ->whereHas('orderItems', function($query) use ($course) {
                     $query->where('content_id', $course->id);
                 })
@@ -1468,14 +1468,9 @@ class CourseController extends Controller
             ->toArray();
         $excludedIds = $excludedIds->merge($freeCourseIds);
         
-        // 3. Si l'utilisateur est connecté, exclure les cours déjà achetés ou auxquels il est inscrit
+        // 3. Si l'utilisateur est connecté, exclure les contenus déjà accessibles (inscription, achat, pack)
         if (auth()->check()) {
-            $purchasedCourseIds = auth()->user()
-                ->enrollments()
-                ->whereIn('status', ['active', 'completed']) // Inclure les cours actifs ET complétés
-                ->pluck('content_id')
-                ->toArray();
-            $excludedIds = $excludedIds->merge($purchasedCourseIds);
+            $excludedIds = $excludedIds->merge(auth()->user()->getRecommendationExcludedContentIds());
         }
         
         return $excludedIds->unique()->values()->toArray();

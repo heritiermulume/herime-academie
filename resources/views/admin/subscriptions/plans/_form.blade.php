@@ -17,9 +17,13 @@
                 $selectedType = old('plan_type', $plan->plan_type ?? 'recurring');
             @endphp
             <option value="recurring" @selected($selectedType === 'recurring')>Abonnement récurrent</option>
+            <option value="premium" @selected($selectedType === 'premium')>Premium (catalogue en ligne)</option>
             <option value="one_time" @selected($selectedType === 'one_time')>Achat unique (formation)</option>
             <option value="freemium" @selected($selectedType === 'freemium')>Freemium</option>
         </select>
+        <small id="subscription-plan-premium-help" class="text-muted d-block mt-1 {{ $selectedType === 'premium' ? '' : 'd-none' }}">
+            <strong>Premium</strong> : accès automatique à toutes les formations <strong>publiées</strong>, <strong>non téléchargeables</strong>, avec <strong>au moins une leçon</strong>. Même logique de facturation qu’un abonnement récurrent (période, essai, renouvellement).
+        </small>
     </div>
     <div>
         <label class="form-label fw-semibold">Période de facturation</label>
@@ -28,6 +32,8 @@
         @endphp
         <select name="billing_period" class="form-select">
             <option value="monthly" @selected($selectedPeriod === 'monthly')>Mensuel</option>
+            <option value="quarterly" @selected($selectedPeriod === 'quarterly')>Trimestriel (3 mois)</option>
+            <option value="semiannual" @selected($selectedPeriod === 'semiannual')>Semestriel (6 mois)</option>
             <option value="yearly" @selected($selectedPeriod === 'yearly')>Annuel</option>
         </select>
     </div>
@@ -101,3 +107,15 @@
     <a href="{{ route('admin.subscriptions.plans.index') }}" class="btn btn-light border">Annuler</a>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var typeSelect = document.querySelector('select[name="plan_type"]');
+    var premiumHelp = document.getElementById('subscription-plan-premium-help');
+    if (!typeSelect || !premiumHelp) return;
+    function sync() {
+        premiumHelp.classList.toggle('d-none', typeSelect.value !== 'premium');
+    }
+    typeSelect.addEventListener('change', sync);
+    sync();
+});
+</script>

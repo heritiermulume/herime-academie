@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Setting;
 use App\Models\SubscriptionInvoice;
@@ -117,7 +118,192 @@ class SubscriptionService
             }
         }
 
+        if ($plan->isCommunityPremiumPlan()) {
+            $created += $this->grantAllNonDownloadableEnrollmentsForCommunityMember($subscription);
+        }
+
+        if ($plan->isPremiumCatalogPlan()) {
+            $created += $this->grantAllPremiumCatalogEnrollments($subscription);
+        }
+
         return $created;
+    }
+
+    /**
+     * Inscrit l’utilisateur à tous les contenus publiés non téléchargeables (abonnement Membre Herime).
+     */
+    public function grantAllNonDownloadableEnrollmentsForCommunityMember(UserSubscription $subscription): int
+    {
+        $subscription->loadMissing('plan');
+        if (! $subscription->plan?->isCommunityPremiumPlan()) {
+            return 0;
+        }
+
+        $contentIds = Course::query()
+            ->where('is_published', true)
+            ->where('is_downloadable', false)
+            ->pluck('id');
+
+        $created = 0;
+        foreach ($contentIds as $contentId) {
+            $enrollment = Enrollment::firstOrCreate(
+                [
+                    'user_id' => $subscription->user_id,
+                    'content_id' => (int) $contentId,
+                ],
+                [
+                    'status' => 'active',
+                    'progress' => 0,
+                ]
+            );
+
+            if ($enrollment->wasRecentlyCreated) {
+                $created++;
+            } elseif ($enrollment->status !== 'active') {
+                $enrollment->update(['status' => 'active']);
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * Inscrit l’utilisateur à toutes les formations publiées, non téléchargeables, avec au moins une leçon (plan Premium).
+     */
+    public function grantAllPremiumCatalogEnrollments(UserSubscription $subscription): int
+    {
+        $subscription->loadMissing('plan');
+        if (! $subscription->plan?->isPremiumCatalogPlan()) {
+            return 0;
+        }
+
+        $contentIds = Course::query()
+            ->where('is_published', true)
+            ->where('is_downloadable', false)
+            ->whereHas('lessons')
+            ->pluck('id');
+
+        $created = 0;
+        foreach ($contentIds as $contentId) {
+            $enrollment = Enrollment::firstOrCreate(
+                [
+                    'user_id' => $subscription->user_id,
+                    'content_id' => (int) $contentId,
+                ],
+                [
+                    'status' => 'active',
+                    'progress' => 0,
+                ]
+            );
+
+            if ($enrollment->wasRecentlyCreated) {
+                $created++;
+            } elseif ($enrollment->status !== 'active') {
+                $enrollment->update(['status' => 'active']);
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * Lorsqu’une formation éligible est publiée ou reçoit une leçon, ouvrir l’accès aux abonnés « Premium » actifs.
+     */
+    public function grantPremiumSubscribersAccessToCourse(Course $course): int
+    {
+        if (! $course->is_published || $course->is_downloadable || ! $course->lessons()->exists()) {
+            return 0;
+        }
+
+        $planIds = SubscriptionPlan::query()
+            ->where('plan_type', 'premium')
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($planIds->isEmpty()) {
+            return 0;
+        }
+
+        $subscriptions = UserSubscription::query()
+            ->whereIn('subscription_plan_id', $planIds->all())
+            ->whereIn('status', ['active', 'trialing'])
+            ->where(function ($q) {
+                $q->whereNull('ended_at')->orWhere('ended_at', '>', now());
+            })
+            ->get();
+
+        $touched = 0;
+        foreach ($subscriptions as $sub) {
+            $enrollment = Enrollment::firstOrCreate(
+                [
+                    'user_id' => $sub->user_id,
+                    'content_id' => (int) $course->id,
+                ],
+                [
+                    'status' => 'active',
+                    'progress' => 0,
+                ]
+            );
+
+            if ($enrollment->wasRecentlyCreated) {
+                $touched++;
+            } elseif ($enrollment->status !== 'active') {
+                $enrollment->update(['status' => 'active']);
+                $touched++;
+            }
+        }
+
+        return $touched;
+    }
+
+    /**
+     * Lorsqu’un contenu non téléchargeable est publié (ou modifié en ce sens), ouvrir l’accès aux membres communauté actifs.
+     */
+    public function grantCommunityMembersAccessToCourse(Course $course): int
+    {
+        if (! $course->is_published || $course->is_downloadable) {
+            return 0;
+        }
+
+        $planIds = SubscriptionPlan::query()
+            ->get()
+            ->filter(fn (SubscriptionPlan $p) => $p->isCommunityPremiumPlan())
+            ->pluck('id');
+
+        if ($planIds->isEmpty()) {
+            return 0;
+        }
+
+        $subscriptions = UserSubscription::query()
+            ->whereIn('subscription_plan_id', $planIds->all())
+            ->whereIn('status', ['active', 'trialing'])
+            ->where(function ($q) {
+                $q->whereNull('ended_at')->orWhere('ended_at', '>', now());
+            })
+            ->get();
+
+        $touched = 0;
+        foreach ($subscriptions as $sub) {
+            $enrollment = Enrollment::firstOrCreate(
+                [
+                    'user_id' => $sub->user_id,
+                    'content_id' => (int) $course->id,
+                ],
+                [
+                    'status' => 'active',
+                    'progress' => 0,
+                ]
+            );
+
+            if ($enrollment->wasRecentlyCreated) {
+                $touched++;
+            } elseif ($enrollment->status !== 'active') {
+                $enrollment->update(['status' => 'active']);
+                $touched++;
+            }
+        }
+
+        return $touched;
     }
 
     public function createInvoice(
@@ -179,7 +365,7 @@ class SubscriptionService
             ->chunkById(100, function ($subscriptions) use (&$processed) {
                 foreach ($subscriptions as $subscription) {
                     $plan = $subscription->plan;
-                    if (!$plan || !$plan->is_active || $plan->plan_type !== 'recurring') {
+                    if (! $plan || ! $plan->is_active || ! $plan->usesRecurringBilling()) {
                         $subscription->update([
                             'status' => 'expired',
                             'ended_at' => now(),
@@ -221,13 +407,16 @@ class SubscriptionService
 
     private function calculatePeriodEnd(SubscriptionPlan $plan, $from)
     {
-        if ($plan->plan_type !== 'recurring') {
+        if (! $plan->usesRecurringBilling()) {
             return $from;
         }
 
-        return $plan->billing_period === 'yearly'
-            ? $from->copy()->addYear()
-            : $from->copy()->addMonth();
+        return match ($plan->billing_period) {
+            'yearly' => $from->copy()->addYear(),
+            'semiannual' => $from->copy()->addMonths(6),
+            'quarterly' => $from->copy()->addMonths(3),
+            default => $from->copy()->addMonth(),
+        };
     }
 }
 

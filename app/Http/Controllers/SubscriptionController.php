@@ -24,11 +24,13 @@ class SubscriptionController extends Controller
             ? (\App\Models\Setting::getBaseCurrency()['code'] ?? 'USD')
             : (\App\Models\Setting::getBaseCurrency() ?: 'USD')));
 
-        $plans = SubscriptionPlan::query()
-            ->where('is_active', true)
-            ->with(['content', 'contents'])
-            ->orderBy('price')
-            ->get();
+        $plans = SubscriptionPlan::filterOutCommunityPremium(
+            SubscriptionPlan::query()
+                ->where('is_active', true)
+                ->with(['content', 'contents'])
+                ->orderBy('price')
+                ->get()
+        );
         $includedPackageIds = $plans
             ->pluck('metadata')
             ->filter(fn ($metadata) => is_array($metadata))
@@ -108,8 +110,21 @@ class SubscriptionController extends Controller
             }
         }
 
+        $redirectRoute = $request->input('redirect_after_subscribe');
+        $allowedRedirects = ['customer.subscriptions', 'community.premium'];
+
         if ($existingCurrent) {
+            if ($redirectRoute && in_array($redirectRoute, $allowedRedirects, true)) {
+                return redirect()->route($redirectRoute)
+                    ->with('success', 'Réabonnement programmé pour la prochaine période.');
+            }
+
             return back()->with('success', 'Réabonnement programmé pour la prochaine période.');
+        }
+
+        if ($redirectRoute && in_array($redirectRoute, $allowedRedirects, true)) {
+            return redirect()->route($redirectRoute)
+                ->with('success', 'Abonnement activé avec succès. Finalisez le paiement de votre facture si nécessaire.');
         }
 
         return back()->with('success', 'Abonnement activé avec succès.');

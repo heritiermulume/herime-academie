@@ -205,6 +205,7 @@ class ChunkUploadController extends Controller
             'preview' => 'courses/previews',
             'media', 'lesson' => 'courses/lessons',
             'document' => 'ambassador-applications/documents',
+            'community_home', 'community_home_poster' => 'site/community-home',
             default => 'courses/lessons',
         };
     }

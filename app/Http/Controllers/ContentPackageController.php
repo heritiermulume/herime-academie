@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
 use App\Models\ContentPackage;
+use App\Models\Course;
+use Illuminate\Support\Facades\Auth;
 
 class ContentPackageController extends Controller
 {
@@ -50,9 +51,15 @@ class ContentPackageController extends Controller
             ->values()
             ->all();
 
+        $excludeCourseIds = array_values(array_unique(array_merge(
+            $packageContentIds,
+            Auth::check() ? Auth::user()->getRecommendationExcludedContentIds() : []
+        )));
+
         $recommendedCourses = Course::query()
             ->published()
-            ->whereNotIn('id', $packageContentIds)
+            ->where('is_free', false)
+            ->whereNotIn('id', $excludeCourseIds ?: [0])
             ->when(! empty($packageCategoryIds), fn ($q) => $q->whereIn('category_id', $packageCategoryIds))
             ->with(['provider', 'category'])
             ->withCount(['enrollments', 'reviews'])
@@ -66,10 +73,11 @@ class ContentPackageController extends Controller
             $missing = 3 - $recommendedCourses->count();
             $fallbackCourses = Course::query()
                 ->published()
+                ->where('is_free', false)
                 ->whereNotIn('id', array_merge(
-                    $packageContentIds,
+                    $excludeCourseIds,
                     $recommendedCourses->pluck('id')->map(fn ($id) => (int) $id)->all()
-                ))
+                ) ?: [0])
                 ->with(['provider', 'category'])
                 ->withCount(['enrollments', 'reviews'])
                 ->withAvg('reviews', 'rating')

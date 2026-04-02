@@ -7,12 +7,15 @@
 @php
     $planTypeLabels = [
         'recurring' => 'Récurrent',
+        'premium' => 'Premium',
         'one_time' => 'Achat unique',
         'freemium' => 'Freemium',
     ];
 
     $billingPeriodLabels = [
         'monthly' => 'Mensuel',
+        'quarterly' => 'Trimestriel',
+        'semiannual' => 'Semestriel',
         'yearly' => 'Annuel',
     ];
 
@@ -78,7 +81,11 @@
                             @php($localizedAmount = $plan->effectivePriceForCurrency($preferredCurrency))
                             <p class="h4 mb-2">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($localizedAmount, $preferredCurrency) }}</p>
                             <p class="small text-muted mb-2">Devise du site: {{ $preferredCurrency }}</p>
-                            @if($plan->contents->isNotEmpty())
+                            @if($plan->plan_type === 'premium')
+                                <p class="small text-muted mb-1">
+                                    Accès à toutes les formations en ligne du catalogue (non téléchargeables, avec leçons).
+                                </p>
+                            @elseif($plan->contents->isNotEmpty())
                                 <p class="small text-muted mb-1">
                                     Formations incluses: {{ $plan->contents->pluck('title')->take(2)->join(', ') }}@if($plan->contents->count() > 2) +{{ $plan->contents->count() - 2 }}@endif
                                 </p>
