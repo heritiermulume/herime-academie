@@ -2,19 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContentPackage;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
-use App\Models\ContentPackage;
 use App\Models\User;
+use App\Models\UserSubscription;
 use App\Notifications\AdminSubscriptionActivated;
 use App\Notifications\SubscriptionActivated;
-use App\Models\UserSubscription;
 use App\Services\SubscriptionService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
 {
@@ -56,7 +57,7 @@ class SubscriptionController extends Controller
 
     public function subscribe(Request $request, SubscriptionPlan $plan, SubscriptionService $service)
     {
-        if (!$plan->is_active) {
+        if (! $plan->is_active) {
             return back()->with('error', 'Ce plan n\'est plus disponible.');
         }
 
@@ -122,9 +123,17 @@ class SubscriptionController extends Controller
             return back()->with('success', 'Réabonnement programmé pour la prochaine période.');
         }
 
+        if (
+            $invoice
+            && $invoice->status === 'pending'
+            && (float) $invoice->amount > 0
+        ) {
+            return $this->redirectToMonerooCheckout($invoice);
+        }
+
         if ($redirectRoute && in_array($redirectRoute, $allowedRedirects, true)) {
             return redirect()->route($redirectRoute)
-                ->with('success', 'Abonnement activé avec succès. Finalisez le paiement de votre facture si nécessaire.');
+                ->with('success', 'Abonnement activé avec succès.');
         }
 
         return back()->with('success', 'Abonnement activé avec succès.');
@@ -165,13 +174,21 @@ class SubscriptionController extends Controller
             return back()->with('info', 'Cette facture est deja payee.');
         }
 
-        $paymentRef = 'subinv_' . Str::upper(Str::random(12));
+        return $this->redirectToMonerooCheckout($invoice);
+    }
+
+    /**
+     * Initialise un paiement Moneroo pour une facture d’abonnement et redirige vers la page de paiement.
+     */
+    private function redirectToMonerooCheckout(SubscriptionInvoice $invoice): RedirectResponse
+    {
+        $paymentRef = 'subinv_'.Str::upper(Str::random(12));
         $minorAmount = $this->toMonerooMinor((float) $invoice->amount, (string) $invoice->currency);
 
         $payload = [
             'amount' => $minorAmount,
             'currency' => $invoice->currency ?: config('services.moneroo.default_currency', 'USD'),
-            'description' => 'Paiement facture abonnement ' . $invoice->invoice_number,
+            'description' => 'Paiement facture abonnement '.$invoice->invoice_number,
             'return_url' => route('subscriptions.invoices.return', ['invoice' => $invoice->id, 'payment_ref' => $paymentRef]),
             'customer' => [
                 'email' => auth()->user()->email,
@@ -188,12 +205,12 @@ class SubscriptionController extends Controller
         ];
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.moneroo.api_key'),
+            'Authorization' => 'Bearer '.config('services.moneroo.api_key'),
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->post(rtrim((string) config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/') . '/payments/initialize', $payload);
+        ])->post(rtrim((string) config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/').'/payments/initialize', $payload);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return back()->with('error', 'Impossible d\'initialiser le paiement de la facture.');
         }
 
@@ -243,4 +260,3 @@ class SubscriptionController extends Controller
         return (int) round($amount * 100);
     }
 }
-

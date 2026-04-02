@@ -52,10 +52,10 @@ class CommunityController extends Controller
             })
             ->values();
 
-        // Une seule offre « Premium » sur la page : colonne court terme (trimestriel > semestriel > mensuel) + colonne annuel.
-        $planShort = $communityPlans->firstWhere('billing_period', 'quarterly')
-            ?? $communityPlans->firstWhere('billing_period', 'semiannual')
-            ?? $communityPlans->firstWhere('billing_period', 'monthly');
+        // Une seule offre sur la page : cycle court (mensuel > trimestriel > semestriel) + annuel — bascule dans la même carte.
+        $planShort = $communityPlans->firstWhere('billing_period', 'monthly')
+            ?? $communityPlans->firstWhere('billing_period', 'quarterly')
+            ?? $communityPlans->firstWhere('billing_period', 'semiannual');
         $planAnnual = $communityPlans->firstWhere('billing_period', 'yearly');
 
         return view('community.premium', [

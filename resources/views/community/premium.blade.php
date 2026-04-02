@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Rejoindre le réseau — Membre premium | Herime Académie')
-@section('description', 'Dernière étape pour accéder à la communauté privée Membre Herime : choisissez la facturation trimestrielle ou annuelle et finalisez votre adhésion.')
+@section('description', 'Dernière étape pour accéder à la communauté privée Membre Herime : choisissez la facturation mensuelle ou annuelle et finalisez votre adhésion.')
 
 @section('content')
 @php
@@ -43,9 +43,11 @@
         box-shadow: 0 12px 40px rgba(0, 51, 102, 0.12);
     }
     .community-premium-price {
-        font-size: 1.75rem;
+        font-size: clamp(2rem, 5vw, 2.75rem);
         font-weight: 700;
         color: #003366;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
     }
     .community-premium-cta {
         background: #003366;
@@ -57,10 +59,38 @@
     .community-premium-cta:hover {
         background: #002147;
     }
-    @media (min-width: 768px) {
-        .community-premium-col-divider {
-            border-left: 1px solid #e9ecef;
-        }
+    .community-premium-segment {
+        display: flex;
+        padding: 4px;
+        border-radius: 12px;
+        background: #f1f3f5;
+        max-width: 22rem;
+        margin-left: auto;
+        margin-right: auto;
+        gap: 4px;
+    }
+    .community-premium-segment-btn {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0.55rem 0.75rem;
+        border-radius: 9px;
+        transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .community-premium-segment-btn:hover {
+        color: #003366;
+    }
+    .community-premium-segment-btn.is-active {
+        background: #fff;
+        color: #003366;
+        box-shadow: 0 1px 4px rgba(0, 51, 102, 0.12);
+    }
+    .community-premium-segment-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
     }
 </style>
 
@@ -129,11 +159,54 @@
             <div class="row mb-4">
                 <div class="col-lg-8 mx-auto text-center">
                     <h2 class="h3 fw-bold mb-2" style="color: #003366;">{{ $pt('plans_intro_title', 'Choisis ta formule') }}</h2>
-                    <p class="text-muted mb-0">{{ $pt('plans_intro_subtitle', 'Une offre Membre Herime : facturation trimestrielle ou annuelle, mêmes avantages.') }}</p>
+                    <p class="text-muted mb-0">{{ $pt('plans_intro_subtitle', 'Une offre Membre Herime : même avantages, choisis la période de facturation qui te convient.') }}</p>
                 </div>
             </div>
+            @php
+                $planShortLabel = $communityPremiumPlanShort
+                    ? ($billingLabels[$communityPremiumPlanShort->billing_period] ?? ucfirst((string) $communityPremiumPlanShort->billing_period))
+                    : '';
+                $defaultPremiumPlan = ($communityPremiumPlanAnnual && $communityPremiumPlanShort)
+                    ? $communityPremiumPlanAnnual
+                    : ($communityPremiumPlanAnnual ?? $communityPremiumPlanShort);
+                $premiumSegmentCount = (int) (bool) $communityPremiumPlanShort + (int) (bool) $communityPremiumPlanAnnual;
+                $premiumSsoCallback = route('sso.callback', ['redirect' => url()->full()]);
+                $premiumSsoLoginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($premiumSsoCallback);
+                $premiumPlansPayload = [
+                    'short' => null,
+                    'annual' => null,
+                    'defaultKey' => ($communityPremiumPlanAnnual && $communityPremiumPlanShort) ? 'annual' : ($communityPremiumPlanAnnual ? 'annual' : 'short'),
+                ];
+                if ($communityPremiumPlanShort) {
+                    $premiumPlansPayload['short'] = [
+                        'subscribe_url' => route('subscriptions.subscribe', $communityPremiumPlanShort),
+                        'price_formatted' => \App\Helpers\CurrencyHelper::formatWithSymbol(
+                            $communityPremiumPlanShort->effectivePriceForCurrency($preferredCurrency),
+                            $preferredCurrency
+                        ),
+                        'period_label' => $planShortLabel,
+                        'name' => $communityPremiumPlanShort->name,
+                        'description' => $communityPremiumPlanShort->description,
+                        'highlight' => $premiumPlanHighlights[$communityPremiumPlanShort->slug] ?? '',
+                    ];
+                }
+                if ($communityPremiumPlanAnnual) {
+                    $annualLabel = $billingLabels[$communityPremiumPlanAnnual->billing_period] ?? 'Annuel';
+                    $premiumPlansPayload['annual'] = [
+                        'subscribe_url' => route('subscriptions.subscribe', $communityPremiumPlanAnnual),
+                        'price_formatted' => \App\Helpers\CurrencyHelper::formatWithSymbol(
+                            $communityPremiumPlanAnnual->effectivePriceForCurrency($preferredCurrency),
+                            $preferredCurrency
+                        ),
+                        'period_label' => $annualLabel,
+                        'name' => $communityPremiumPlanAnnual->name,
+                        'description' => $communityPremiumPlanAnnual->description,
+                        'highlight' => $premiumPlanHighlights[$communityPremiumPlanAnnual->slug] ?? '',
+                    ];
+                }
+            @endphp
             <div class="row justify-content-center">
-                <div class="col-12 col-xl-10">
+                <div class="col-12 col-md-10 col-lg-7 col-xl-6">
                     <div class="card community-premium-card shadow-sm">
                         <div class="card-body p-4 p-md-5">
                             <div class="text-center mb-4 pb-md-3 border-bottom border-light">
@@ -142,34 +215,125 @@
                                     {{ $pt('premium_single_card_lead', 'Communauté privée, formations, réseau, lives et ressources premium. Choisis uniquement la fréquence de paiement qui te convient.') }}
                                 </p>
                             </div>
-                            <div class="row g-4 align-items-stretch">
-                                <div class="col-md-6">
-                                    @include('community.partials.premium-plan-column', [
-                                        'plan' => $communityPremiumPlanShort,
-                                        'preferredCurrency' => $preferredCurrency,
-                                        'premiumPlanHighlights' => $premiumPlanHighlights,
-                                        'periodLabel' => $communityPremiumPlanShort
-                                            ? ($billingLabels[$communityPremiumPlanShort->billing_period] ?? ucfirst((string) $communityPremiumPlanShort->billing_period))
-                                            : 'Trimestriel',
-                                    ])
+
+                            @if($premiumSegmentCount > 1)
+                                <div class="community-premium-segment mb-4" role="tablist" aria-label="Période de facturation">
+                                    @if($communityPremiumPlanShort)
+                                        <button type="button" class="community-premium-segment-btn" data-premium-key="short" aria-selected="false">
+                                            {{ $planShortLabel }}
+                                        </button>
+                                    @endif
+                                    @if($communityPremiumPlanAnnual)
+                                        <button type="button" class="community-premium-segment-btn" data-premium-key="annual" aria-selected="false">
+                                            Annuel
+                                        </button>
+                                    @endif
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="community-premium-col-divider h-100 ps-md-4">
-                                        @include('community.partials.premium-plan-column', [
-                                            'plan' => $communityPremiumPlanAnnual,
-                                            'preferredCurrency' => $preferredCurrency,
-                                            'premiumPlanHighlights' => $premiumPlanHighlights,
-                                            'periodLabel' => $communityPremiumPlanAnnual
-                                                ? ($billingLabels[$communityPremiumPlanAnnual->billing_period] ?? ucfirst((string) $communityPremiumPlanAnnual->billing_period))
-                                                : 'Annuel',
-                                        ])
-                                    </div>
-                                </div>
+                            @endif
+
+                            <div class="text-center px-md-2">
+                                <h4 id="community-premium-plan-name" class="h6 fw-bold mb-2" style="color: #003366;">{{ $defaultPremiumPlan->name }}</h4>
+                                <p id="community-premium-desc" class="text-muted small mb-2 {{ $defaultPremiumPlan->description ? '' : 'd-none' }}">{{ $defaultPremiumPlan->description }}</p>
+                                <p id="community-premium-highlight" class="small text-secondary mb-3 {{ !empty($premiumPlanHighlights[$defaultPremiumPlan->slug] ?? null) ? '' : 'd-none' }}">{{ $premiumPlanHighlights[$defaultPremiumPlan->slug] ?? '' }}</p>
+                                <p id="community-premium-price" class="community-premium-price mb-1">
+                                    {{ \App\Helpers\CurrencyHelper::formatWithSymbol($defaultPremiumPlan->effectivePriceForCurrency($preferredCurrency), $preferredCurrency) }}
+                                </p>
+                                <p id="community-premium-billing-line" class="small text-muted mb-4">
+                                    Facturation {{ strtolower($billingLabels[$defaultPremiumPlan->billing_period] ?? $defaultPremiumPlan->billing_period) }} · {{ $preferredCurrency }}
+                                </p>
+
+                                @auth
+                                    <form id="community-premium-subscribe-form" method="POST" action="{{ route('subscriptions.subscribe', $defaultPremiumPlan) }}">
+                                        @csrf
+                                        <input type="hidden" name="redirect_after_subscribe" value="community.premium">
+                                        <button type="submit" class="btn btn-lg text-white w-100 community-premium-cta">
+                                            <i class="fas fa-lock-open me-2"></i>Procéder au paiement
+                                        </button>
+                                    </form>
+                                @else
+                                    <a href="{{ $premiumSsoLoginUrl }}" class="btn btn-lg text-white w-100 community-premium-cta d-inline-block">
+                                        <i class="fas fa-lock-open me-2"></i>Procéder au paiement
+                                    </a>
+                                    <p class="small text-muted mt-3 mb-0">{{ $pt('premium_pay_login_hint', 'Tu seras invité à te connecter pour finaliser le paiement en toute sécurité.') }}</p>
+                                @endauth
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            @if($premiumSegmentCount > 1)
+                <script type="application/json" id="community-premium-plans-json">{!! json_encode($premiumPlansPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+                <script>
+                    (function () {
+                        var root = document.getElementById('community-premium-plans-json');
+                        if (!root) return;
+                        var payload;
+                        try {
+                            payload = JSON.parse(root.textContent || '{}');
+                        } catch (e) {
+                            return;
+                        }
+                        var form = document.getElementById('community-premium-subscribe-form');
+                        var buttons = document.querySelectorAll('.community-premium-segment-btn[data-premium-key]');
+                        var nameEl = document.getElementById('community-premium-plan-name');
+                        var descEl = document.getElementById('community-premium-desc');
+                        var hiEl = document.getElementById('community-premium-highlight');
+                        var priceEl = document.getElementById('community-premium-price');
+                        var billEl = document.getElementById('community-premium-billing-line');
+
+                        function applyKey(key) {
+                            var data = payload[key];
+                            if (!data) return;
+                            if (priceEl) priceEl.textContent = data.price_formatted;
+                            if (billEl) {
+                                billEl.textContent = 'Facturation ' + String(data.period_label || '').toLowerCase() + ' · {{ $preferredCurrency }}';
+                            }
+                            if (nameEl) nameEl.textContent = data.name || '';
+                            if (descEl) {
+                                if (data.description) {
+                                    descEl.textContent = data.description;
+                                    descEl.classList.remove('d-none');
+                                } else {
+                                    descEl.textContent = '';
+                                    descEl.classList.add('d-none');
+                                }
+                            }
+                            if (hiEl) {
+                                if (data.highlight) {
+                                    hiEl.textContent = data.highlight;
+                                    hiEl.classList.remove('d-none');
+                                } else {
+                                    hiEl.textContent = '';
+                                    hiEl.classList.add('d-none');
+                                }
+                            }
+                            if (form && data.subscribe_url) {
+                                form.action = data.subscribe_url;
+                            }
+                            buttons.forEach(function (btn) {
+                                var k = btn.getAttribute('data-premium-key');
+                                var on = k === key;
+                                btn.classList.toggle('is-active', on);
+                                btn.setAttribute('aria-selected', on ? 'true' : 'false');
+                            });
+                        }
+
+                        var initial = payload.defaultKey;
+                        if (!payload[initial]) {
+                            initial = payload.short ? 'short' : 'annual';
+                        }
+                        applyKey(initial);
+
+                        buttons.forEach(function (btn) {
+                            btn.addEventListener('click', function () {
+                                var k = btn.getAttribute('data-premium-key');
+                                if (k && payload[k]) applyKey(k);
+                            });
+                        });
+                    })();
+                </script>
+            @endif
         @endif
 
         <div class="text-center mt-5">
