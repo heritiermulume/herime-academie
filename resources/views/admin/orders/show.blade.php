@@ -189,7 +189,7 @@
             <section class="admin-panel">
                 <div class="admin-panel__header">
                     <h3>
-                        <i class="fas fa-list me-2"></i>Articles inclus
+                        <i class="fas fa-list me-2"></i>Contenus inclus
                     </h3>
                 </div>
                 <div class="admin-panel__body">
@@ -245,7 +245,7 @@
                                                             </div>
                                                             <div>
                                                                 @if($pkg)
-                                                                    <a href="{{ route('admin.packages.edit', $pkg) }}" class="fw-bold text-decoration-none text-dark">
+                                                                    <a href="{{ route('admin.packages.show', $pkg) }}" class="fw-bold text-decoration-none text-dark">
                                                                         {{ $pkg->title }}
                                                                     </a>
                                                                 @else
@@ -271,9 +271,14 @@
                                                     <td class="text-center">
                                                         @if($pkg)
                                                             <div class="d-flex gap-2 justify-content-center">
-                                                                <a href="{{ route('admin.packages.edit', $pkg) }}" class="btn btn-primary btn-sm" title="Éditer le pack">
-                                                                    <i class="fas fa-edit"></i>
+                                                                <a href="{{ route('admin.packages.show', $pkg) }}" class="btn btn-light btn-sm" title="Voir le pack">
+                                                                    <i class="fas fa-eye"></i>
                                                                 </a>
+                                                                @if($pkg->is_published)
+                                                                    <a href="{{ route('packs.show', $pkg) }}" class="btn btn-info btn-sm" target="_blank" title="Voir sur le site">
+                                                                        <i class="fas fa-external-link-alt"></i>
+                                                                    </a>
+                                                                @endif
                                                             </div>
                                                         @else
                                                             <span class="text-muted small">—</span>

@@ -27,6 +27,13 @@ class ContentPackageController extends Controller
         return view('admin.packages.index', compact('packages'));
     }
 
+    public function show(ContentPackage $package)
+    {
+        $package->load(['contents' => fn ($q) => $q->orderByPivot('sort_order')]);
+
+        return view('admin.packages.show', compact('package'));
+    }
+
     public function create()
     {
         $courses = Course::query()
