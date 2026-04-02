@@ -39,55 +39,6 @@
     </div>
 </section>
 
-@php
-    $purchasedPackagesSummaries = $purchasedPackagesSummaries ?? collect();
-@endphp
-@if($purchasedPackagesSummaries->isNotEmpty())
-<section class="admin-panel" id="mes-packs">
-    <div class="admin-panel__header">
-        <h3>
-            <i class="fas fa-box-open me-2"></i>Mes packs achetés
-        </h3>
-        <div class="admin-panel__actions">
-            <span class="text-muted small">{{ $purchasedPackagesSummaries->count() }} pack{{ $purchasedPackagesSummaries->count() > 1 ? 's' : '' }}</span>
-        </div>
-    </div>
-    <div class="admin-panel__body">
-        <p class="text-muted small mb-4">
-            Ouvrez un pack pour accéder à chaque contenu inclus (formation en ligne, téléchargement, etc.).
-        </p>
-        <div class="customer-pack-cards">
-            @foreach($purchasedPackagesSummaries as $row)
-                @php
-                    $pkg = $row['package'];
-                    $enrCount = $row['enrollments']->count();
-                    $total = $pkg->contents->filter(fn ($c) => $c->is_published)->count();
-                @endphp
-                <div class="customer-pack-card card border-0 shadow-sm mb-3">
-                    <div class="card-body d-flex flex-column flex-md-row gap-3 align-items-md-center justify-content-between">
-                        <div class="d-flex gap-3 align-items-center min-w-0">
-                            <div class="rounded-3 overflow-hidden bg-light flex-shrink-0" style="width: 96px; height: 60px;">
-                                <x-package-card-media :package="$pkg" variant="thumb" />
-                            </div>
-                            <div class="min-w-0">
-                                <h4 class="h6 fw-bold mb-1 text-truncate">{{ $pkg->title }}</h4>
-                                <p class="small text-muted mb-0">
-                                    {{ $total }} contenu{{ $total > 1 ? 's' : '' }}
-                                    · {{ $enrCount }}/{{ $total }} accès activé{{ $enrCount > 1 ? 's' : '' }}
-                                </p>
-                            </div>
-                        </div>
-                        <a href="{{ route('customer.pack', $pkg) }}" class="admin-btn primary sm flex-shrink-0">
-                            <i class="fas fa-folder-open me-1"></i>Ouvrir le pack
-                        </a>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    </div>
-</section>
-@endif
-
 <section class="admin-panel">
     <div class="admin-panel__header">
         <h3>
@@ -110,7 +61,7 @@
                             id="search" 
                             name="q" 
                             class="modern-filters__input"
-                            placeholder="Rechercher un contenu, prestataire..."
+                            placeholder="Rechercher un contenu, un pack, un prestataire..."
                             value="{{ $search }}"
                         >
                         @if($search)
@@ -182,6 +133,75 @@
         @else
             <div class="customer-course-list">
                 @foreach($enrollments as $enrollment)
+                    @php
+                        $itemType = $enrollment->item_type ?? 'course';
+                    @endphp
+                    @if($itemType === 'package')
+                        @php
+                            $pkg = $enrollment->package ?? null;
+                            $total = (int) ($enrollment->package_total_contents ?? 0);
+                            $enrCount = (int) ($enrollment->package_enrollments_count ?? 0);
+                            $statusKey = $enrollment->status ?? 'active';
+                            $progress = (int) ($enrollment->progress ?? 0);
+                        @endphp
+                        @if(!$pkg)
+                            @continue
+                        @endif
+                        <div class="customer-course-item">
+                            <div class="customer-course-item__meta">
+                                <div class="customer-course-item__thumbnail">
+                                    <x-package-card-media :package="$pkg" variant="thumb" />
+                                </div>
+                                <div>
+                                    <h4>{{ $pkg->title }}</h4>
+                                    <p>
+                                        Pack
+                                        @if($pkg->contents->isNotEmpty())
+                                            · {{ $total }} contenu{{ $total > 1 ? 's' : '' }}
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="customer-course-item__progress">
+                                <div class="customer-course-item__stats">
+                                    <span>
+                                        <i class="fas fa-box-open me-1"></i>
+                                        {{ $enrCount }}/{{ $total }} accès activé{{ $enrCount > 1 ? 's' : '' }}
+                                    </span>
+                                </div>
+                                <div class="customer-course-item__status">
+                                    @if($statusKey === 'active')
+                                        <span class="admin-badge info">
+                                            <i class="fas fa-circle"></i>
+                                            En cours
+                                        </span>
+                                    @elseif($statusKey === 'completed')
+                                        <span class="admin-badge success">
+                                            <i class="fas fa-circle"></i>
+                                            Terminé
+                                        </span>
+                                    @elseif($statusKey === 'suspended')
+                                        <span class="admin-badge warning">
+                                            <i class="fas fa-circle"></i>
+                                            Suspendu
+                                        </span>
+                                    @else
+                                        <span class="admin-badge info">
+                                            <i class="fas fa-circle"></i>
+                                            {{ ucfirst((string) $statusKey) }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="customer-course-item__actions">
+                                <a href="{{ route('customer.pack', $pkg) }}" class="admin-btn primary sm">
+                                    <i class="fas fa-folder-open me-1"></i>Ouvrir le pack
+                                </a>
+                            </div>
+                        </div>
+                        @continue
+                    @endif
+
                     @php
                         $course = $enrollment->course ?? null;
                     @endphp

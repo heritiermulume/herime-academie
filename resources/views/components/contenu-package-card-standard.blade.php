@@ -1,6 +1,11 @@
 @props(['package'])
 
-<div class="course-card" data-course-url="{{ route('packs.show', $package) }}" style="cursor: pointer;">
+@php
+    $hasAccess = auth()->check() && auth()->user()->hasPurchasedContentPackage($package);
+    $courseUrl = $hasAccess ? route('customer.pack', $package) : route('packs.show', $package);
+@endphp
+
+<div class="course-card" data-course-url="{{ $courseUrl }}" style="cursor: pointer;">
     <div class="card" style="position: relative;">
         <div class="position-relative">
             <x-package-card-media :package="$package" />
@@ -41,7 +46,13 @@
             {{-- Même logique que <x-contenu-button> (état achat) : panier + paiement ; la fiche pack s’ouvre au clic sur la carte (data-course-url). --}}
             <div class="card-actions">
                 <div class="d-grid gap-2">
-                    @if($package->is_published && $package->is_sale_enabled)
+                    @if($hasAccess)
+                        <a href="{{ route('customer.pack', $package) }}"
+                           class="btn btn-success btn-sm w-100"
+                           onclick="event.stopPropagation();">
+                            <i class="fas fa-folder-open me-2"></i>Ouvrir le pack
+                        </a>
+                    @elseif($package->is_published && $package->is_sale_enabled)
                         <button type="button"
                                 class="btn btn-outline-primary btn-sm w-100 add-package-to-cart-btn"
                                 data-package-id="{{ $package->id }}"

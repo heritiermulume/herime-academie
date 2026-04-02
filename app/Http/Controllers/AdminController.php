@@ -998,26 +998,25 @@ class AdminController extends Controller
             ->get()
             ->flatMap(function ($order) {
                 return $order->orderItems
-                    ->filter(function ($item) {
-                        if (empty($item->content_package_id) || $item->contentPackage === null) {
-                            return false;
-                        }
-
-                        $marker = '[PACK_REVOKED:' . (int) $item->content_package_id . ']';
-                        return !str_contains((string) ($order->notes ?? ''), $marker);
+                    ->filter(function ($item) use ($order) {
+                        return !empty($item->content_package_id) && $item->contentPackage !== null;
                     })
                     ->map(function ($item) use ($order) {
+                        $marker = '[PACK_REVOKED:' . (int) $item->content_package_id . ']';
+                        $isRevoked = str_contains((string) ($order->notes ?? ''), $marker);
+
                         return (object) [
                             'id' => null,
                             'content_id' => null,
                             'course' => null,
                             'package' => $item->contentPackage,
-                            'status' => 'active',
+                            'status' => $isRevoked ? 'revoked' : 'active',
                             'progress' => null,
                             'order_id' => $order->id,
                             'order' => $order,
                             'created_at' => $order->paid_at ?? $order->created_at,
                             'is_package_access' => true,
+                            'is_revoked_purchase' => $isRevoked,
                         ];
                     });
             })
@@ -1026,7 +1025,14 @@ class AdminController extends Controller
             })
             ->values();
 
-        $packageOrderIds = $packageAccesses->pluck('order_id')->filter()->unique()->all();
+        $activePackageOrderIds = $packageAccesses
+            ->filter(function ($row) {
+                return !(bool) ($row->is_revoked_purchase ?? false);
+            })
+            ->pluck('order_id')
+            ->filter()
+            ->unique()
+            ->all();
 
         // Récupérer les cours achetés (via commandes payées) qui n'ont pas d'inscription
         $purchasedCourseIds = $enrollments->pluck('content_id')->filter()->all();
@@ -1048,7 +1054,7 @@ class AdminController extends Controller
                 }
                 
                 return $order->orderItems
-                    ->filter(function($item) use ($purchasedCourseIds) {
+                    ->filter(function($item) use ($purchasedCourseIds, $order) {
                         // Vérifier que le cours existe et est publié
                         if (!$item->content_id || !$item->course) {
                             return false;
@@ -1072,26 +1078,34 @@ class AdminController extends Controller
                         if (!$item->course) {
                             return null;
                         }
+
+                        $revocationMarker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
+                        $isRevoked = str_contains((string) ($order->notes ?? ''), $revocationMarker);
                         
                         // Créer un objet similaire à un enrollment pour la compatibilité avec la vue
                         return (object)[
                             'id' => null,
                             'content_id' => $item->content_id,
                             'course' => $item->course,
-                            'status' => 'purchased',
+                            'status' => $isRevoked ? 'revoked' : 'purchased',
                             'progress' => 0,
                             'order_id' => $order->id,
                             'order' => $order,
                             'created_at' => $order->created_at,
                             'is_purchased_not_enrolled' => true,
+                            'is_revoked_purchase' => $isRevoked,
                         ];
                     })
                     ->filter(); // Filtrer les valeurs null
             });
         
         // Récupérer les cours téléchargeables gratuits téléchargés au moins une fois
+        $activePurchasedCourses = $purchasedCourses->filter(function ($row) {
+            return !(bool) ($row->is_revoked_purchase ?? false);
+        });
+
         $allAccessCourseIds = $enrollments->pluck('content_id')
-            ->merge($purchasedCourses->pluck('content_id'))
+            ->merge($activePurchasedCourses->pluck('content_id'))
             ->filter()
             ->unique()
             ->all();
@@ -1152,12 +1166,12 @@ class AdminController extends Controller
         }
         
         // Masquer les lignes de cours issues d'une commande pack (on affichera le pack)
-        $enrollments = $enrollments->filter(function ($enrollment) use ($packageOrderIds) {
+        $enrollments = $enrollments->filter(function ($enrollment) use ($activePackageOrderIds) {
             if (empty($enrollment->order_id)) {
                 return true;
             }
 
-            return !in_array($enrollment->order_id, $packageOrderIds);
+            return !in_array($enrollment->order_id, $activePackageOrderIds);
         });
 
         // Combiner toutes les sources d'accès
@@ -1333,17 +1347,16 @@ class AdminController extends Controller
             'completed_at' => now(),
         ]);
 
-        $first = true;
         foreach ($package->contents as $course) {
             OrderItem::create([
                 'order_id' => $freeOrder->id,
                 'content_id' => $course->id,
                 'content_package_id' => $package->id,
-                'price' => $first ? (float) ($package->price ?? 0) : 0,
-                'sale_price' => null,
+                // Attribution gratuite: ne jamais compter un montant.
+                'price' => 0,
+                'sale_price' => 0,
                 'total' => 0,
             ]);
-            $first = false;
         }
 
         $createdCount = 0;
@@ -1407,6 +1420,8 @@ class AdminController extends Controller
      */
     public function revokeCourseAccess(User $user, Course $course)
     {
+        $revocationMarker = '[COURSE_REVOKED:' . (int) $course->id . ']';
+
         // Vérifier qu'il existe au moins une inscription OU une commande payée pour ce contenu
         $hasEnrollment = Enrollment::where('user_id', $user->id)
             ->where('content_id', $course->id)
@@ -1416,6 +1431,10 @@ class AdminController extends Controller
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($query) use ($course) {
                 $query->where('content_id', $course->id);
+            })
+            ->where(function ($q) use ($revocationMarker) {
+                $q->whereNull('notes')
+                    ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
             })
             ->exists();
 
@@ -1448,7 +1467,7 @@ class AdminController extends Controller
         }
 
         // Supprimer toutes les données de liaison utilisateur <-> contenu
-        DB::transaction(function () use ($user, $course) {
+        DB::transaction(function () use ($user, $course, $revocationMarker) {
             // Toutes les inscriptions à ce contenu
             Enrollment::where('user_id', $user->id)
                 ->where('content_id', $course->id)
@@ -1508,6 +1527,26 @@ class AdminController extends Controller
                     ->where('metadata->mail_class', $mailClass)
                     ->delete();
             }
+
+            // Conserver l'historique de paiement/commande et marquer la révocation pédagogique.
+            $ordersToMark = Order::where('user_id', $user->id)
+                ->whereIn('status', ['paid', 'completed'])
+                ->whereHas('orderItems', function ($query) use ($course) {
+                    $query->where('content_id', $course->id);
+                })
+                ->get();
+
+            $extraNote = "Accès pédagogique contenu révoqué par admin (contenu #{$course->id}). {$revocationMarker}";
+            foreach ($ordersToMark as $order) {
+                if (str_contains((string) ($order->notes ?? ''), $revocationMarker)) {
+                    continue;
+                }
+
+                $currentNotes = trim((string) ($order->notes ?? ''));
+                $order->update([
+                    'notes' => $currentNotes === '' ? $extraNote : ($currentNotes . "\n" . $extraNote),
+                ]);
+            }
         });
 
         return redirect()->route('admin.users.show', $user)
@@ -1527,51 +1566,61 @@ class AdminController extends Controller
      */
     public function revokePackageAccess(Request $request, User $user, ContentPackage $package)
     {
+        // order_id est conservé uniquement pour la compatibilité avec l'UI,
+        // mais on révoque le pack de façon "globale" sur toutes les commandes actives.
         $orderId = (int) $request->query('order_id', 0);
-        if ($orderId <= 0) {
-            return redirect()->route('admin.users.show', $user)
-                ->with('error', 'Révocation du pack impossible: commande introuvable.');
-        }
+        unset($orderId);
 
-        $order = Order::where('id', $orderId)
-            ->where('user_id', $user->id)
+        $revocationMarker = '[PACK_REVOKED:' . (int) $package->id . ']';
+
+        // Toutes les commandes payées/complétées qui contiennent ce pack
+        $packOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function ($query) use ($package) {
                 $query->where('content_package_id', $package->id);
             })
-            ->with(['orderItems' => function ($query) use ($package) {
-                $query->where('content_package_id', $package->id);
-            }])
-            ->first();
+            ->get();
 
-        if (!$order) {
+        if ($packOrders->isEmpty()) {
             return redirect()->route('admin.users.show', $user)
                 ->with('error', 'Cet accès pack ne peut pas être révoqué automatiquement.');
         }
 
-        $revocationMarker = '[PACK_REVOKED:' . $package->id . ']';
-        if (str_contains((string) ($order->notes ?? ''), $revocationMarker)) {
+        $packOrderIds = $packOrders->pluck('id')->values();
+        $packOrdersMissingMarker = $packOrders->filter(function ($order) use ($revocationMarker) {
+            return !str_contains((string) ($order->notes ?? ''), $revocationMarker);
+        })->values();
+
+        if ($packOrdersMissingMarker->isEmpty()) {
             return redirect()->route('admin.users.show', $user)
                 ->with('error', 'Cet accès pack a déjà été révoqué.');
         }
 
-        $contentIds = $order->orderItems->pluck('content_id')->filter()->unique()->values();
+        // Contenus liés à ce pack (sur toutes les commandes en question)
+        $contentIds = OrderItem::query()
+            ->whereIn('order_id', $packOrderIds)
+            ->where('content_package_id', $package->id)
+            ->pluck('content_id')
+            ->filter()
+            ->unique()
+            ->values();
+
         if ($contentIds->isEmpty()) {
             return redirect()->route('admin.users.show', $user)
                 ->with('error', 'Aucun contenu lié à ce pack n\'a été trouvé.');
         }
 
-        $revocableContentIds = $contentIds->filter(function ($contentId) use ($user, $order) {
+        $revocableContentIds = $contentIds->filter(function ($contentId) use ($user, $packOrderIds) {
             // Vérifier s'il existe un autre droit d'accès pédagogique pour ce contenu
             $hasOtherEnrollment = Enrollment::where('user_id', $user->id)
                 ->where('content_id', $contentId)
                 ->where('status', '!=', 'cancelled')
-                ->where('order_id', '!=', $order->id)
+                ->whereNotIn('order_id', $packOrderIds)
                 ->exists();
 
             $hasOtherPaidOrder = Order::where('user_id', $user->id)
                 ->whereIn('status', ['paid', 'completed'])
-                ->where('id', '!=', $order->id)
+                ->whereNotIn('id', $packOrderIds)
                 ->whereHas('orderItems', function ($query) use ($contentId) {
                     $query->where('content_id', $contentId);
                 })
@@ -1613,11 +1662,11 @@ class AdminController extends Controller
             }
         }
 
-        DB::transaction(function () use ($user, $order, $package, $revocationMarker, $revocableContentIds) {
+        DB::transaction(function () use ($user, $package, $revocationMarker, $packOrderIds, $packOrdersMissingMarker, $revocableContentIds) {
 
             if ($revocableContentIds->isNotEmpty()) {
                 Enrollment::where('user_id', $user->id)
-                    ->where('order_id', $order->id)
+                    ->whereIn('order_id', $packOrderIds)
                     ->whereIn('content_id', $revocableContentIds)
                     ->delete();
 
@@ -1666,15 +1715,17 @@ class AdminController extends Controller
             }
 
             // Conserver l'historique de paiement, mais masquer ce pack des accès actifs.
-            $currentNotes = trim((string) ($order->notes ?? ''));
             $extraNote = "Accès pédagogique pack révoqué par admin (pack #{$package->id}). {$revocationMarker}";
-            $order->update([
-                'notes' => $currentNotes === '' ? $extraNote : ($currentNotes . "\n" . $extraNote),
-            ]);
+            foreach ($packOrdersMissingMarker as $order) {
+                $currentNotes = trim((string) ($order->notes ?? ''));
+                $order->update([
+                    'notes' => $currentNotes === '' ? $extraNote : ($currentNotes . "\n" . $extraNote),
+                ]);
+            }
         });
 
         return redirect()->route('admin.users.show', $user)
-            ->with('success', "Accès au pack \"{$package->title}\" retiré avec succès.");
+            ->with('success', "Accès au pack \"{$package->title}\" retiré avec succès (révocation sur {$packOrdersMissingMarker->count()} commande(s)).");
     }
 
     // Gestion des cours

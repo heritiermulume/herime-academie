@@ -228,6 +228,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                             $course = $access->course ?? null;
                                             $package = $access->package ?? null;
                                             $isPackage = isset($access->is_package_access) && $access->is_package_access;
+                                            $isRevokedPurchase = isset($access->is_revoked_purchase) && $access->is_revoked_purchase;
                                         @endphp
                                         <tr>
                                             <td>
@@ -264,7 +265,11 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                 </div>
                                             </td>
                                             <td>
-                                                @if($isPackage)
+                                                @if($isRevokedPurchase)
+                                                    <span class="badge bg-warning text-dark">
+                                                        <i class="fas fa-ban me-1"></i>Révoqué (achat conservé)
+                                                    </span>
+                                                @elseif($isPackage)
                                                     <span class="badge bg-success">Actif</span>
                                                 @elseif(isset($access->is_purchased_not_enrolled) && $access->is_purchased_not_enrolled)
                                                     <span class="badge bg-info">
@@ -305,7 +310,11 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                 @endif
                                             </td>
                                             <td>
-                                                @if($isPackage)
+                                                @if($isRevokedPurchase)
+                                                    <span class="badge bg-secondary">
+                                                        <i class="fas fa-receipt me-1"></i>Achat conservé
+                                                    </span>
+                                                @elseif($isPackage)
                                                     <span class="badge bg-primary">
                                                         <i class="fas fa-box-open me-1"></i>Pack
                                                     </span>
@@ -328,7 +337,9 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                 @endif
                                             </td>
                                             <td class="text-center">
-                                                @if($isPackage && $package && $package->id)
+                                                @if($isRevokedPurchase)
+                                                    <span class="text-muted">—</span>
+                                                @elseif($isPackage && $package && $package->id)
                                                     <button type="button" class="btn btn-sm btn-danger btn-action-small"
                                                             onclick="confirmRevokePackageAccess({{ $user->id }}, {{ $package->id }}, {{ (int) ($access->order_id ?? 0) }}, {{ json_encode($package->title ?? 'Pack') }})"
                                                             title="Enlever l'accès au pack">

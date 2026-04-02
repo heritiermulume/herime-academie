@@ -297,10 +297,17 @@ class User extends Authenticatable
 
     public function hasPurchasedContentPackage(ContentPackage $package): bool
     {
+        $revocationMarker = '[PACK_REVOKED:' . (int) $package->id . ']';
+
         return Order::query()
             ->where('user_id', $this->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
+            ->where(function ($q) use ($revocationMarker) {
+                // Si le pack a été révoqué, on considère que l'utilisateur ne l'a plus acheté côté applicatif.
+                $q->whereNull('notes')
+                    ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+            })
             ->exists();
     }
 }

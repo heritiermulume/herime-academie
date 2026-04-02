@@ -380,20 +380,28 @@
                 <div class="student-recommendations">
                     @foreach($recommendedPackages as $package)
                         <div class="student-recommendations__item">
+                            @php
+                                $hasAccess = auth()->check() && auth()->user()->hasPurchasedContentPackage($package);
+                                $packUrl = $hasAccess ? route('customer.pack', $package) : route('packs.show', $package);
+                            @endphp
                             <div class="student-recommendations__media">
-                                <a href="{{ route('packs.show', $package) }}" class="text-decoration-none d-block h-100">
+                                <a href="{{ $packUrl }}" class="text-decoration-none d-block h-100">
                                     <x-package-card-media :package="$package" variant="thumb" />
                                 </a>
                             </div>
                             <div class="student-recommendations__content">
                                 <h4>
                                     <span class="badge bg-primary me-1">Pack</span>
-                                    <a href="{{ route('packs.show', $package) }}" class="text-decoration-none text-reset">{{ $package->title }}</a>
+                                    <a href="{{ $packUrl }}" class="text-decoration-none text-reset">{{ $package->title }}</a>
                                 </h4>
                                 <p>{{ $package->contents_count }} contenus · {{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</p>
                             </div>
                             <div class="student-recommendations__actions student-recommendations__actions--pack">
-                                @if($package->is_published && $package->is_sale_enabled)
+                                @if($hasAccess)
+                                    <a href="{{ route('customer.pack', $package) }}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-folder-open me-2"></i>Ouvrir le pack
+                                    </a>
+                                @elseif($package->is_published && $package->is_sale_enabled)
                                     <button type="button"
                                             class="btn btn-outline-primary btn-sm add-package-to-cart-btn"
                                             data-package-id="{{ $package->id }}"

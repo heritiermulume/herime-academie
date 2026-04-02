@@ -1,7 +1,12 @@
 @props(['package'])
 
+@php
+    $hasAccess = auth()->check() && auth()->user()->hasPurchasedContentPackage($package);
+    $courseUrl = $hasAccess ? route('customer.pack', $package) : route('packs.show', $package);
+@endphp
+
 <div class="course-scroll-item">
-    <div class="course-card" data-course-url="{{ route('packs.show', $package) }}" style="cursor: pointer;">
+    <div class="course-card" data-course-url="{{ $courseUrl }}" style="cursor: pointer;">
         <div class="card" style="position: relative;">
             <div class="position-relative">
                 <x-package-card-media :package="$package" />
@@ -41,18 +46,26 @@
                 </div>
                 <div class="card-actions mt-2">
                     <div class="d-grid gap-2" onclick="event.stopPropagation();">
-                        <a href="{{ route('packs.show', $package) }}"
-                           class="btn btn-outline-primary btn-sm w-100"
-                           onclick="event.stopPropagation();">
-                            <i class="fas fa-eye me-2"></i>Voir le pack
-                        </a>
-                        @if($package->is_published && $package->is_sale_enabled)
-                            <button type="button"
-                                    class="btn btn-success btn-sm w-100"
-                                    data-meta-trigger="checkout"
-                                    onclick="event.stopPropagation(); proceedToCheckoutPackage({{ $package->id }});">
-                                <i class="fas fa-credit-card me-2"></i>{{ $package->cta_label ?: 'Procéder au paiement' }}
-                            </button>
+                        @if($hasAccess)
+                            <a href="{{ route('customer.pack', $package) }}"
+                               class="btn btn-success btn-sm w-100"
+                               onclick="event.stopPropagation();">
+                                <i class="fas fa-folder-open me-2"></i>Ouvrir le pack
+                            </a>
+                        @else
+                            <a href="{{ route('packs.show', $package) }}"
+                               class="btn btn-outline-primary btn-sm w-100"
+                               onclick="event.stopPropagation();">
+                                <i class="fas fa-eye me-2"></i>Voir le pack
+                            </a>
+                            @if($package->is_published && $package->is_sale_enabled)
+                                <button type="button"
+                                        class="btn btn-success btn-sm w-100"
+                                        data-meta-trigger="checkout"
+                                        onclick="event.stopPropagation(); proceedToCheckoutPackage({{ $package->id }});">
+                                    <i class="fas fa-credit-card me-2"></i>{{ $package->cta_label ?: 'Procéder au paiement' }}
+                                </button>
+                            @endif
                         @endif
                     </div>
                 </div>

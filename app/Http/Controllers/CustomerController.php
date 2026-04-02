@@ -56,6 +56,12 @@ class CustomerController extends Controller
     public function dashboard()
     {
         $customer = auth()->user();
+        $purchasedPackagesSummaries = $this->purchasedPackagesSummaries($customer);
+        $activePackCourseIds = $purchasedPackagesSummaries
+            ->flatMap(fn (array $row) => $row['package']->contents->pluck('id'))
+            ->filter()
+            ->unique()
+            ->values();
 
         $recentEnrollments = $customer->enrollments()
             ->whereHas('content', function($q) {
@@ -88,9 +94,14 @@ class CustomerController extends Controller
             ->unique()
             ->values();
 
-        $recentEnrollments = $recentEnrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
+        $recentEnrollments = $recentEnrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds, $activePackCourseIds) {
             $course = $enrollment->course;
             if (! $course) {
+                return false;
+            }
+
+            // Les contenus d'un pack actif sont accessibles depuis la page pack uniquement.
+            if ($activePackCourseIds->contains($course->id)) {
                 return false;
             }
 
@@ -102,9 +113,13 @@ class CustomerController extends Controller
             return true;
         })->values();
 
-        $allEnrollments = $allEnrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
+        $allEnrollments = $allEnrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds, $activePackCourseIds) {
             $course = $enrollment->course;
             if (! $course) {
+                return false;
+            }
+
+            if ($activePackCourseIds->contains($course->id)) {
                 return false;
             }
 
@@ -165,15 +180,21 @@ class CustomerController extends Controller
         $purchasedCourses = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($q) {
-                $q->whereHas('content', function($q2) {
+                $q->whereNull('content_package_id')
+                  ->whereHas('content', function($q2) {
                     $q2->where('is_published', true);
                 });
             })
             ->with(['orderItems.course'])
             ->get()
             ->flatMap(function ($order) {
-                return $order->orderItems->filter(function($item) {
-                    return $item->course && $item->course->is_published;
+                return $order->orderItems->filter(function($item) use ($order) {
+                    if (!($item->course && $item->course->is_published)) {
+                        return false;
+                    }
+
+                    $revocationMarker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
+                    return !str_contains((string) ($order->notes ?? ''), $revocationMarker);
                 })->pluck('content_id');
             })
             ->unique()
@@ -183,7 +204,8 @@ class CustomerController extends Controller
         $purchasedDownloadableCourses = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', function($q) {
-                $q->whereHas('content', function($q2) {
+                $q->whereNull('content_package_id')
+                  ->whereHas('content', function($q2) {
                     $q2->where('is_published', true)
                        ->where('is_downloadable', true);
                 });
@@ -191,8 +213,13 @@ class CustomerController extends Controller
             ->with(['orderItems.course'])
             ->get()
             ->flatMap(function ($order) {
-                return $order->orderItems->filter(function($item) {
-                    return $item->course && $item->course->is_published && $item->course->is_downloadable;
+                return $order->orderItems->filter(function($item) use ($order) {
+                    if (!($item->course && $item->course->is_published && $item->course->is_downloadable)) {
+                        return false;
+                    }
+
+                    $revocationMarker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
+                    return !str_contains((string) ($order->notes ?? ''), $revocationMarker);
                 })->pluck('content_id');
             })
             ->unique()
@@ -220,7 +247,7 @@ class CustomerController extends Controller
             'orders' => $recentOrders,
             'recommendedCourses' => $recommendedCourses,
             'recommendedPackages' => $recommendedPackages,
-            'purchasedPackagesSummaries' => $this->purchasedPackagesSummaries($customer)->take(5),
+            'purchasedPackagesSummaries' => $purchasedPackagesSummaries->take(5),
             'lastUpdatedEnrollment' => $recentEnrollments->first(),
         ]);
     }
@@ -254,12 +281,23 @@ class CustomerController extends Controller
             ])
             ->get()
             ->map(function (ContentPackage $package) use ($customer) {
+                $revocationMarker = '[PACK_REVOKED:' . (int) $package->id . ']';
+
                 $order = Order::where('user_id', $customer->id)
                     ->whereIn('status', ['paid', 'completed'])
                     ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
+                    ->where(function ($q) use ($revocationMarker) {
+                        $q->whereNull('notes')
+                            ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+                    })
                     ->orderByDesc('paid_at')
                     ->orderByDesc('created_at')
                     ->first();
+
+                if (!$order) {
+                    // Toutes les commandes contenant ce pack ont été révoquées.
+                    return null;
+                }
 
                 $enrollments = $customer->enrollments()
                     ->whereIn('content_id', $package->contents->pluck('id'))
@@ -273,6 +311,7 @@ class CustomerController extends Controller
                     'enrollments' => $enrollments,
                 ];
             })
+            ->filter()
             ->sortByDesc(fn (array $row) => $row['order']?->paid_at ?? $row['order']?->created_at)
             ->values();
     }
@@ -297,12 +336,24 @@ class CustomerController extends Controller
             ->get()
             ->keyBy('content_id');
 
+        $revocationMarker = '[PACK_REVOKED:' . (int) $package->id . ']';
+
         $order = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
+            ->where(function ($q) use ($revocationMarker) {
+                $q->whereNull('notes')
+                    ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+            })
             ->orderByDesc('paid_at')
             ->orderByDesc('created_at')
             ->first();
+
+        if (!$order) {
+            // Possibilité rare: le check hasPurchasedContentPackage est passé, mais la commande la plus récente est révoquée.
+            // On renvoie 403 pour rester cohérent avec l'accès applicatif.
+            abort(403);
+        }
 
         return view('customers.pack-show', [
             'package' => $package,
@@ -317,29 +368,30 @@ class CustomerController extends Controller
 
         $statusFilter = $request->get('status', 'all');
         $search = $request->get('q');
+        $purchasedPackagesSummaries = $this->purchasedPackagesSummaries($customer);
+        $activePackCourseIds = $purchasedPackagesSummaries
+            ->flatMap(fn (array $row) => $row['package']->contents->pluck('id'))
+            ->filter()
+            ->unique()
+            ->values();
+        $activePackOrderIds = $purchasedPackagesSummaries
+            ->pluck('order')
+            ->filter()
+            ->pluck('id')
+            ->filter()
+            ->unique()
+            ->values();
 
-        // Récupérer les enrollments existants (seulement pour les cours publiés)
-        $baseQuery = $customer->enrollments()
+        // Récupérer les inscriptions existantes (seulement pour les cours publiés)
+        $enrollments = $customer->enrollments()
             ->whereHas('content', function($q) {
                 $q->where('is_published', true);
             })
-            // Ne jamais remontrer les inscriptions annulées/révoquées dans l'espace client,
-            // même si le filtre de statut est sur "Annulé".
+            // Ne jamais remontrer les inscriptions annulées/révoquées dans l'espace client
             ->where('status', '!=', 'cancelled')
             ->with(['course.provider', 'course.category', 'order', 'course.downloads'])
-            ->orderByDesc('updated_at');
-
-        if ($statusFilter !== 'all') {
-            $baseQuery->where('status', $statusFilter);
-        }
-
-        if (!empty($search)) {
-            $baseQuery->whereHas('content', function ($query) use ($search) {
-                $query->where('title', 'like', '%' . $search . '%');
-            });
-        }
-
-        $enrollments = $baseQuery->get();
+            ->orderByDesc('updated_at')
+            ->get();
 
         // Identifier les cours téléchargeables gratuits déjà téléchargés par l'utilisateur
         $downloadedFreeCourseIds = CourseDownload::where('user_id', $customer->id)
@@ -354,9 +406,14 @@ class CustomerController extends Controller
 
         // Filtrer les inscriptions : un cours téléchargeable gratuit n'apparaît
         // que s'il a été téléchargé au moins une fois
-        $enrollments = $enrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
+        $enrollments = $enrollments->filter(function ($enrollment) use ($downloadedFreeCourseIds, $activePackCourseIds) {
             $course = $enrollment->course;
             if (! $course) {
+                return false;
+            }
+
+            // Les contenus inclus dans un pack actif sont consultés depuis la page du pack.
+            if ($activePackCourseIds->contains($course->id)) {
                 return false;
             }
 
@@ -367,69 +424,152 @@ class CustomerController extends Controller
             return true;
         })->values();
 
-        // Récupérer les cours achetés mais non inscrits (seulement si le filtre le permet)
-        $purchasedButNotEnrolled = collect();
-        
-        // Inclure les cours achetés mais non inscrits seulement si le filtre est 'all' ou si on cherche spécifiquement
-        if ($statusFilter === 'all' || empty($statusFilter)) {
-            // Tenir compte de toutes les inscriptions (y compris annulées) pour éviter
-            // de ré-afficher un cours dont l'accès a été explicitement révoqué.
-            $allEnrollmentCourseIds = $customer->enrollments()
-                ->whereHas('content', function($q) {
-                    $q->where('is_published', true);
-                })
-                ->pluck('content_id')
-                ->filter()
-                ->all();
-            
-            $purchasedButNotEnrolled = Order::where('user_id', $customer->id)
-                ->whereIn('status', ['paid', 'completed'])
-                ->whereHas('orderItems', function ($query) use ($allEnrollmentCourseIds) {
-                    $query->whereNotIn('content_id', $allEnrollmentCourseIds)
-                        ->whereHas('content', function($q) {
-                            $q->where('is_published', true);
-                        });
-                })
-                ->with(['orderItems.course' => function($q) {
-                    $q->where('is_published', true);
-                }, 'orderItems.course.provider', 'orderItems.course.category', 'orderItems.course.downloads'])
-                ->get()
-                ->flatMap(function ($order) {
-                    return $order->orderItems->filter(function($item) {
-                        return $item->course && $item->course->is_published;
-                    })->map(function ($item) use ($order) {
-                        // Créer un objet PurchasedCourseEnrollment pour la compatibilité avec la vue
-                        return new PurchasedCourseEnrollment($item->course, $order);
+        // Cours achetés mais non inscrits (hors contenus de packs actifs)
+        // Tenir compte de toutes les inscriptions (y compris annulées) pour éviter
+        // de ré-afficher un cours dont l'accès a été explicitement révoqué.
+        $allEnrollmentCourseIds = $customer->enrollments()
+            ->whereHas('content', function($q) {
+                $q->where('is_published', true);
+            })
+            ->pluck('content_id')
+            ->filter()
+            ->all();
+
+        $purchasedButNotEnrolled = Order::where('user_id', $customer->id)
+            ->whereIn('status', ['paid', 'completed'])
+            ->whereHas('orderItems', function ($query) use ($allEnrollmentCourseIds, $activePackCourseIds) {
+                $query->whereNotIn('content_id', $allEnrollmentCourseIds)
+                    ->whereNotIn('content_id', $activePackCourseIds->all() ?: [0])
+                    // Les contenus vendus via un pack ne doivent pas réapparaître dans la liste externe.
+                    ->whereNull('content_package_id')
+                    ->whereHas('content', function($q) {
+                        $q->where('is_published', true);
                     });
-                })
-                ->filter(function ($fakeEnrollment) use ($search) {
-                    // Filtrer par recherche si nécessaire
-                    if (!empty($search)) {
-                        $course = $fakeEnrollment->course;
-                        if (!$course) return false;
-                        return stripos($course->title, $search) !== false;
+            })
+            ->with(['orderItems.course' => function($q) {
+                $q->where('is_published', true);
+            }, 'orderItems.course.provider', 'orderItems.course.category', 'orderItems.course.downloads'])
+            ->get()
+            ->flatMap(function ($order) {
+                return $order->orderItems->filter(function($item) use ($order) {
+                    if (!empty($item->content_package_id)) {
+                        return false;
                     }
-                    return true;
+
+                    if (!($item->course && $item->course->is_published)) {
+                        return false;
+                    }
+
+                    $revocationMarker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
+                    return !str_contains((string) ($order->notes ?? ''), $revocationMarker);
+                })->map(function ($item) use ($order) {
+                    return new PurchasedCourseEnrollment($item->course, $order);
                 });
-        }
+            });
 
-        // Combiner les enrollments et les cours achetés mais non inscrits
-        // Utiliser collect() pour créer une collection normale (pas Eloquent Collection)
-        $allCourses = collect($enrollments->all())->merge($purchasedButNotEnrolled);
+        $courseItems = collect($enrollments->all())->merge($purchasedButNotEnrolled)
+            ->map(function ($item) {
+                $course = $item->course ?? null;
+                if (!$course) {
+                    return null;
+                }
 
-        // Trier par date de mise à jour (enrollments) ou date de commande (purchased)
-        $allCourses = $allCourses->sortByDesc(function ($item) {
-            if (isset($item->is_purchased_not_enrolled) && $item->is_purchased_not_enrolled) {
-                return isset($item->order) ? $item->order->created_at ?? now() : now();
+                $isPurchasedNotEnrolled = isset($item->is_purchased_not_enrolled) && $item->is_purchased_not_enrolled;
+                $status = $isPurchasedNotEnrolled ? 'purchased' : ((string) ($item->status ?? 'active'));
+
+                return (object) [
+                    'item_type' => 'course',
+                    'course' => $course,
+                    'package' => null,
+                    'order' => $item->order ?? null,
+                    'status' => $status,
+                    'progress' => $isPurchasedNotEnrolled ? 0 : (float) ($item->progress ?? 0),
+                    'is_purchased_not_enrolled' => $isPurchasedNotEnrolled,
+                    'created_at' => $item->updated_at ?? ($item->order->created_at ?? now()),
+                ];
+            })
+            ->filter()
+            ->values();
+
+        $packageItems = $purchasedPackagesSummaries->map(function (array $row) {
+            /** @var ContentPackage $package */
+            $package = $row['package'];
+            $order = $row['order'];
+            $enrollments = $row['enrollments'];
+            $publishedContents = $package->contents->filter(fn ($c) => (bool) ($c->is_published ?? false));
+            $total = $publishedContents->count();
+            $completed = $enrollments->where('status', 'completed')->count();
+            $active = $enrollments->where('status', 'active')->count();
+            $suspended = $enrollments->where('status', 'suspended')->count();
+            $progress = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+
+            $status = 'active';
+            if ($total > 0 && $completed >= $total) {
+                $status = 'completed';
+            } elseif ($active <= 0 && $suspended > 0) {
+                $status = 'suspended';
             }
-            return $item->updated_at ?? now();
+
+            return (object) [
+                'item_type' => 'package',
+                'course' => null,
+                'package' => $package,
+                'order' => $order,
+                'status' => $status,
+                'progress' => $progress,
+                'package_total_contents' => $total,
+                'package_enrollments_count' => $enrollments->count(),
+                'created_at' => $order?->paid_at ?? $order?->created_at ?? now(),
+            ];
         })->values();
+
+        // Fusionner contenus + packs dans la même liste et appliquer filtres/recherche communs.
+        $allItemsBase = $courseItems->merge($packageItems)->values();
+        $allItems = $allItemsBase->filter(function ($item) use ($search, $statusFilter) {
+            if (!empty($search)) {
+                $term = mb_strtolower((string) $search);
+                if ($item->item_type === 'package') {
+                    $package = $item->package;
+                    $haystack = [
+                        (string) ($package->title ?? ''),
+                        (string) ($package->subtitle ?? ''),
+                        (string) ($package->short_description ?? ''),
+                        (string) $package->contents->pluck('title')->join(' '),
+                    ];
+                    $matched = false;
+                    foreach ($haystack as $chunk) {
+                        if ($chunk !== '' && str_contains(mb_strtolower($chunk), $term)) {
+                            $matched = true;
+                            break;
+                        }
+                    }
+                    if (!$matched) {
+                        return false;
+                    }
+                } else {
+                    $course = $item->course;
+                    $provider = $course?->provider?->name ?? '';
+                    $title = $course?->title ?? '';
+                    if (!str_contains(mb_strtolower($title . ' ' . $provider), $term)) {
+                        return false;
+                    }
+                }
+            }
+
+            if ($statusFilter !== 'all') {
+                return (string) $item->status === (string) $statusFilter;
+            }
+
+            return true;
+        })->values();
+
+        $allItems = $allItems->sortByDesc(fn ($item) => $item->created_at ?? now())->values();
 
         // Pagination manuelle
         $currentPage = $request->get('page', 1);
         $perPage = 12;
-        $total = $allCourses->count();
-        $items = $allCourses->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        $total = $allItems->count();
+        $items = $allItems->slice(($currentPage - 1) * $perPage, $perPage)->values();
 
         // Créer une pagination personnalisée avec une collection normale
         $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
@@ -442,6 +582,10 @@ class CustomerController extends Controller
 
         // Ajouter les statistiques de téléchargement
         foreach ($paginator as $item) {
+            if (($item->item_type ?? 'course') !== 'course') {
+                continue;
+            }
+
             $course = $item->course;
             if ($course && $course->is_downloadable) {
                 $course->user_downloads_count = CourseDownload::where('content_id', $course->id)
@@ -451,69 +595,15 @@ class CustomerController extends Controller
             }
         }
 
-        // Calculer les statistiques AVANT les filtres pour avoir les totaux réels
-        // Compter tous les enrollments par statut (cours inscrits) - sans filtres,
-        // en appliquant aussi la règle sur les cours téléchargeables gratuits.
-        $allEnrollmentsForStats = $customer->enrollments()
-            ->whereHas('content', function($q) {
-                $q->where('is_published', true);
-            })
-            // Ne pas compter les inscriptions annulées/révoquées dans les statistiques
-            ->where('status', '!=', 'cancelled')
-            ->with('course')
-            ->get()
-            ->filter(function ($enrollment) use ($downloadedFreeCourseIds) {
-                $course = $enrollment->course;
-                if (! $course) {
-                    return false;
-                }
-
-                if ($course->is_downloadable && $course->is_free) {
-                    return $downloadedFreeCourseIds->contains($course->id);
-                }
-
-                return true;
-            })
-            ->values();
-        
-        $enrollmentCounts = $allEnrollmentsForStats
+        $statusCounts = $allItemsBase
             ->groupBy('status')
-            ->map(function($group) {
-                return $group->count();
-            });
-
-        // Compter tous les cours achetés mais non inscrits - sans filtres
-        $allEnrolledCourseIds = $allEnrollmentsForStats->pluck('content_id')->filter()->all();
-        $purchasedButNotEnrolledCount = Order::where('user_id', $customer->id)
-            ->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', function ($query) use ($allEnrolledCourseIds) {
-                $query->whereNotIn('content_id', $allEnrolledCourseIds)
-                    ->whereHas('content', function($q) {
-                        $q->where('is_published', true);
-                    });
-            })
-            ->with(['orderItems.course'])
-            ->get()
-            ->flatMap(function ($order) {
-                return $order->orderItems->filter(function($item) {
-                    return $item->course && $item->course->is_published;
-                });
-            })
-            ->unique('content_id')
-            ->count();
-
-        // Total de tous les cours (inscrits + achetés mais non inscrits)
-        $totalEnrolled = $allEnrollmentsForStats->count();
-        $totalAll = $totalEnrolled + $purchasedButNotEnrolledCount;
-
+            ->map(fn ($rows) => $rows->count());
         $courseSummary = [
-            'total' => $totalAll, // Total de tous les cours
-            'total_enrolled' => $totalEnrolled, // Total des cours inscrits
-            'total_purchased_not_enrolled' => $purchasedButNotEnrolledCount, // Total des cours achetés mais non inscrits
-            'active' => $enrollmentCounts->get('active', 0),
-            'completed' => $enrollmentCounts->get('completed', 0),
-            'suspended' => $enrollmentCounts->get('suspended', 0),
-            'cancelled' => $enrollmentCounts->get('cancelled', 0),
+            'total' => $allItemsBase->count(),
+            'active' => $statusCounts->get('active', 0),
+            'completed' => $statusCounts->get('completed', 0),
+            'suspended' => $statusCounts->get('suspended', 0),
+            'cancelled' => $statusCounts->get('cancelled', 0),
         ];
 
         return view('customers.contents', [
@@ -522,7 +612,7 @@ class CustomerController extends Controller
             'statusFilter' => $statusFilter,
             'search' => $search,
             'courseSummary' => $courseSummary,
-            'purchasedPackagesSummaries' => $this->purchasedPackagesSummaries($customer),
+            'purchasedPackagesSummaries' => $purchasedPackagesSummaries,
         ]);
     }
 
@@ -560,10 +650,16 @@ class CustomerController extends Controller
 
         // Pour les cours payants, vérifier que l'utilisateur a acheté le cours
         if (!$course->is_free) {
+            $revocationMarker = '[COURSE_REVOKED:' . (int) $course->id . ']';
+
             $hasPurchased = Order::where('user_id', $customer->id)
                 ->whereIn('status', ['paid', 'completed'])
                 ->whereHas('orderItems', function ($query) use ($course) {
                     $query->where('content_id', $course->id);
+                })
+                ->where(function ($q) use ($revocationMarker) {
+                    $q->whereNull('notes')
+                        ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
                 })
                 ->exists();
 
@@ -576,10 +672,16 @@ class CustomerController extends Controller
         // Récupérer l'order_id si le cours a été acheté
         $orderId = null;
         if (!$course->is_free) {
+            $revocationMarker = '[COURSE_REVOKED:' . (int) $course->id . ']';
+
             $order = Order::where('user_id', $customer->id)
                 ->whereIn('status', ['paid', 'completed'])
                 ->whereHas('orderItems', function ($query) use ($course) {
                     $query->where('content_id', $course->id);
+                })
+                ->where(function ($q) use ($revocationMarker) {
+                    $q->whereNull('notes')
+                        ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
                 })
                 ->first();
             

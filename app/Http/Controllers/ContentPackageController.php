@@ -21,11 +21,25 @@ class ContentPackageController extends Controller
 
         $recommendedPackages = ContentPackage::query()
             ->published()
+            ->where('is_sale_enabled', true)
+            ->where('price', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('sale_price')
+                    ->orWhere('sale_price', '>', 0);
+            })
             ->whereKeyNot($package->id)
             ->withCount('contents')
             ->ordered()
-            ->limit(3)
+            ->limit(8)
             ->get();
+
+        if (auth()->check()) {
+            $recommendedPackages = $recommendedPackages
+                ->filter(fn (ContentPackage $p) => ! auth()->user()->hasPurchasedContentPackage($p))
+                ->values();
+        }
+
+        $recommendedPackages = $recommendedPackages->take(3)->values();
 
         $packageContentIds = $package->contents->pluck('id')->map(fn ($id) => (int) $id)->all();
         $packageCategoryIds = $package->contents

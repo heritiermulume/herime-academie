@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\ContentPackage;
 use App\Models\Course;
-use App\Models\Order;
 use Illuminate\Support\Collection;
 
 class ContentPackageRecommendationService
@@ -62,11 +61,7 @@ class ContentPackageRecommendationService
             return false;
         }
 
-        return Order::query()
-            ->where('user_id', auth()->id())
-            ->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
-            ->exists();
+        return auth()->user()->hasPurchasedContentPackage($package);
     }
 
     /**
@@ -77,6 +72,11 @@ class ContentPackageRecommendationService
         $q = ContentPackage::query()
             ->published()
             ->where('is_sale_enabled', true)
+            ->where('price', '>', 0)
+            ->where(function ($q2) {
+                $q2->whereNull('sale_price')
+                    ->orWhere('sale_price', '>', 0);
+            })
             ->withCount('contents')
             ->ordered();
 
@@ -241,12 +241,7 @@ class ContentPackageRecommendationService
         $enrolledContentIds = array_values(array_unique(array_filter($enrolledContentIds)));
         $excludeCart = $this->excludedPackageIdsFromSessionAndUser();
 
-        $q = ContentPackage::query()
-            ->published()
-            ->where('is_sale_enabled', true)
-            ->withCount('contents')
-            ->ordered()
-            ->when($excludeCart !== [], fn ($q2) => $q2->whereNotIn('id', $excludeCart))
+        $q = $this->baseQuery($excludeCart)
             ->whereHas('contents', function ($q2) use ($enrolledContentIds) {
                 if ($enrolledContentIds !== []) {
                     $q2->whereNotIn(self::contentColumn('id'), $enrolledContentIds);
