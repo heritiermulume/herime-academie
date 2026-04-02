@@ -3539,12 +3539,10 @@
             justify-content: center;
         }
 
-        /* Bouton WhatsApp flottant (paramètres admin)
-           z-index au-dessus des backdrops/modales (≈1050) et de l’annonce globale (1055),
-           pour rester visible et cliquable sur toutes les pages publiques (ex. /communaute/membre-premium). */
+        /* Bouton WhatsApp flottant (paramètres admin) */
         .whatsapp-float-btn {
             position: fixed;
-            z-index: 1090;
+            z-index: 1040;
             right: 1rem;
             bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + var(--site-mobile-bottom-nav-height, 0px));
             width: 56px;
