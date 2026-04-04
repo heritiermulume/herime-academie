@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Pivots\ContentPackageContentPivot;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -104,6 +105,7 @@ class ContentPackage extends Model
     public function contents(): BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'content_package_content', 'content_package_id', 'content_id')
+            ->using(ContentPackageContentPivot::class)
             ->withPivot('sort_order')
             ->withTimestamps()
             ->orderByPivot('sort_order');

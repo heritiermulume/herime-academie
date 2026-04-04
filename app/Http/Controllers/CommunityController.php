@@ -21,7 +21,7 @@ class CommunityController extends Controller
 
         $recurringCommunity = SubscriptionPlan::query()
             ->where('is_active', true)
-            ->where('plan_type', 'recurring')
+            ->whereIn('plan_type', ['recurring', 'premium'])
             ->with(['content', 'contents'])
             ->orderBy('price')
             ->get()
@@ -37,16 +37,7 @@ class CommunityController extends Controller
                 ], true);
             });
 
-        $premiumCatalogPlans = SubscriptionPlan::query()
-            ->where('is_active', true)
-            ->where('plan_type', 'premium')
-            ->with(['content', 'contents'])
-            ->orderBy('price')
-            ->get();
-
         $communityPlans = $recurringCommunity
-            ->merge($premiumCatalogPlans)
-            ->unique('id')
             ->sortBy(function (SubscriptionPlan $plan) {
                 return (int) data_get($plan->metadata, 'community_display_order', 99);
             })

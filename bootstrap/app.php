@@ -28,6 +28,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // Synchroniser automatiquement les paiements Moneroo en attente pour les clients
             // Quand la connexion revient après une coupure, vérifie auprès de Moneroo et finalise
             \App\Http\Middleware\SyncPendingMonerooPayments::class,
+            // Renouvellements / factures en retard : traités à la visite (GET), sans cron obligatoire
+            \App\Http\Middleware\ProcessSubscriptionRenewalsOnVisit::class,
             // Capturer le contexte marketing (utm/funnel) et le persister
             \App\Http\Middleware\CaptureMarketingContext::class,
             // Valider le token SSO à chaque chargement de page pour les utilisateurs authentifiés

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Pivots\SubscriptionPlanContentPivot;
+use App\Services\SubscriptionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -44,6 +46,12 @@ class SubscriptionPlan extends Model
                 $plan->slug = Str::slug($plan->name);
             }
         });
+
+        static::saved(function (SubscriptionPlan $plan) {
+            if ($plan->wasChanged(['metadata', 'content_id'])) {
+                SubscriptionService::deferEntitlementSyncForPlan((int) $plan->id);
+            }
+        });
     }
 
     public function content(): BelongsTo
@@ -54,6 +62,7 @@ class SubscriptionPlan extends Model
     public function contents(): BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'subscription_plan_content', 'subscription_plan_id', 'content_id')
+            ->using(SubscriptionPlanContentPivot::class)
             ->withTimestamps();
     }
 
@@ -92,14 +101,6 @@ class SubscriptionPlan extends Model
     }
 
     /**
-     * Plan « Premium » : accès automatique à toutes les formations publiées, non téléchargeables, avec au moins une leçon.
-     */
-    public function isPremiumCatalogPlan(): bool
-    {
-        return $this->plan_type === 'premium';
-    }
-
-    /**
      * Facturation par période (mensuel / semestriel / annuel), essais et renouvellements automatiques.
      */
     public function usesRecurringBilling(): bool
@@ -108,7 +109,8 @@ class SubscriptionPlan extends Model
     }
 
     /**
-     * Plans visibles sur l’accueil et dans « Mes abonnements » (hors offres réservées à /communaute/membre-premium).
+     * Exclut uniquement les offres « Membre Herime / communauté » des listes générales (accueil, Mes abonnements).
+     * Ces offres sont listées seulement sur /communaute/membre-premium.
      *
      * @param  \Illuminate\Support\Collection<int, \App\Models\SubscriptionPlan>  $plans
      * @return \Illuminate\Support\Collection<int, \App\Models\SubscriptionPlan>
@@ -116,14 +118,7 @@ class SubscriptionPlan extends Model
     public static function filterOutCommunityPremium($plans)
     {
         return $plans->filter(function (self $plan) {
-            if ($plan->isCommunityPremiumPlan()) {
-                return false;
-            }
-            if ($plan->isPremiumCatalogPlan()) {
-                return false;
-            }
-
-            return true;
+            return ! $plan->isCommunityPremiumPlan();
         })->values();
     }
 }

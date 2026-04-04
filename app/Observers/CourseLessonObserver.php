@@ -74,15 +74,15 @@ class CourseLessonObserver
 
     public function created(CourseLesson $lesson): void
     {
-        $this->syncPremiumAccessForParentCourse($lesson);
+        $this->syncCommunityAccessForParentCourse($lesson);
     }
 
     public function restored(CourseLesson $lesson): void
     {
-        $this->syncPremiumAccessForParentCourse($lesson);
+        $this->syncCommunityAccessForParentCourse($lesson);
     }
 
-    protected function syncPremiumAccessForParentCourse(CourseLesson $lesson): void
+    protected function syncCommunityAccessForParentCourse(CourseLesson $lesson): void
     {
         if (! $lesson->content_id) {
             return;
@@ -94,9 +94,9 @@ class CourseLessonObserver
         }
 
         try {
-            app(SubscriptionService::class)->grantPremiumSubscribersAccessToCourse($course);
+            app(SubscriptionService::class)->grantCommunityMembersAccessToCourse($course);
         } catch (\Throwable $e) {
-            Log::warning('grantPremiumSubscribersAccessToCourse (lesson observer): ' . $e->getMessage(), [
+            Log::warning('grantCommunityMembersAccessToCourse (lesson observer): ' . $e->getMessage(), [
                 'content_id' => $course->id,
                 'lesson_id' => $lesson->id,
             ]);

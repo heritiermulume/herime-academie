@@ -93,16 +93,6 @@ class AppServiceProvider extends ServiceProvider
                     'content_id' => $course->id,
                 ]);
             }
-
-            if ($course->lessons()->exists()) {
-                try {
-                    app(SubscriptionService::class)->grantPremiumSubscribersAccessToCourse($course);
-                } catch (\Throwable $e) {
-                    Log::warning('grantPremiumSubscribersAccessToCourse: ' . $e->getMessage(), [
-                        'content_id' => $course->id,
-                    ]);
-                }
-            }
         });
     }
 }

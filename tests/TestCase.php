@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -27,5 +28,7 @@ abstract class TestCase extends BaseTestCase
         config()->set('services.sso.enabled', false);
         config()->set('services.sso.force_local_logout', true);
         config()->set('app.url', 'https://academie.test');
+
+        $this->withoutMiddleware(ValidateCsrfToken::class);
     }
 }

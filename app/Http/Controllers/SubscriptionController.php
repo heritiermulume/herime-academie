@@ -45,7 +45,7 @@ class SubscriptionController extends Controller
             ->whereIn('id', $includedPackageIds)
             ->get()
             ->keyBy('id');
-        $subscriptions = auth()->user()->subscriptions()->with('plan')->latest()->get();
+        $subscriptions = auth()->user()->subscriptions()->with(['plan', 'invoices'])->latest()->get();
         $invoices = SubscriptionInvoice::query()
             ->where('user_id', auth()->id())
             ->latest()
@@ -80,34 +80,38 @@ class SubscriptionController extends Controller
             ->latest()
             ->first();
 
-        try {
-            auth()->user()->notify(new SubscriptionActivated($subscription, $invoice, (bool) $existingCurrent));
-        } catch (\Throwable $e) {
-            Log::error('SubscriptionController: echec notification utilisateur abonnement', [
-                'user_id' => auth()->id(),
-                'subscription_id' => $subscription->id,
-                'invoice_id' => $invoice?->id,
-                'is_renewal' => (bool) $existingCurrent,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $deferActivationNotifications = $subscription->status === 'pending_payment';
 
-        $admins = User::admins()
-            ->whereNotNull('email')
-            ->where('is_active', true)
-            ->get();
-        foreach ($admins as $admin) {
+        if (! $deferActivationNotifications) {
             try {
-                Notification::sendNow($admin, new AdminSubscriptionActivated($subscription, $invoice, (bool) $existingCurrent));
+                auth()->user()->notify(new SubscriptionActivated($subscription, $invoice, (bool) $existingCurrent));
             } catch (\Throwable $e) {
-                Log::error('SubscriptionController: echec notification admin abonnement', [
-                    'admin_id' => $admin->id,
-                    'admin_email' => $admin->email,
+                Log::error('SubscriptionController: echec notification utilisateur abonnement', [
+                    'user_id' => auth()->id(),
                     'subscription_id' => $subscription->id,
                     'invoice_id' => $invoice?->id,
                     'is_renewal' => (bool) $existingCurrent,
                     'error' => $e->getMessage(),
                 ]);
+            }
+
+            $admins = User::admins()
+                ->whereNotNull('email')
+                ->where('is_active', true)
+                ->get();
+            foreach ($admins as $admin) {
+                try {
+                    Notification::sendNow($admin, new AdminSubscriptionActivated($subscription, $invoice, (bool) $existingCurrent));
+                } catch (\Throwable $e) {
+                    Log::error('SubscriptionController: echec notification admin abonnement', [
+                        'admin_id' => $admin->id,
+                        'admin_email' => $admin->email,
+                        'subscription_id' => $subscription->id,
+                        'invoice_id' => $invoice?->id,
+                        'is_renewal' => (bool) $existingCurrent,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
         }
 

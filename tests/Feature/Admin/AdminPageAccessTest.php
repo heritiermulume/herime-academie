@@ -34,7 +34,7 @@ class AdminPageAccessTest extends TestCase
     public function test_admin_can_access_user_edit_form(): void
     {
         $user = User::factory()->create([
-            'role' => 'student',
+            'role' => 'customer',
             'is_active' => true,
         ]);
 
@@ -46,7 +46,7 @@ class AdminPageAccessTest extends TestCase
     public function test_admin_can_access_user_profile_page(): void
     {
         $user = User::factory()->create([
-            'role' => 'instructor',
+            'role' => 'provider',
             'is_active' => true,
         ]);
 
@@ -58,7 +58,7 @@ class AdminPageAccessTest extends TestCase
     public function test_admin_can_access_order_detail_page(): void
     {
         $customer = User::factory()->create([
-            'role' => 'student',
+            'role' => 'customer',
             'is_active' => true,
         ]);
 

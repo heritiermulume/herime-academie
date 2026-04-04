@@ -44,9 +44,10 @@ class AdminSubscriptionActivated extends Notification
             ->action('Voir les abonnements admin', route('admin.subscriptions.index'));
 
         if ($this->invoice) {
+            $invoiceStatusLabel = $this->invoice->status === 'paid' ? 'Payée' : 'En attente de paiement';
             $mail->line('Facture : ' . $this->invoice->invoice_number)
                 ->line('Montant : ' . CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-                ->line('Statut : En attente de paiement');
+                ->line('Statut : ' . $invoiceStatusLabel);
         }
         if (!empty($includedContentTitles)) {
             $mail->line('Formations incluses : ' . collect($includedContentTitles)->take(3)->join(', ')

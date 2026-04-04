@@ -12,6 +12,7 @@ use App\Models\Ambassador;
 use App\Models\AmbassadorCommission;
 use App\Models\SentEmail;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\OrderEnrollmentService;
 use App\Mail\InvoiceMail;
 use App\Mail\PaymentFailedMail;
@@ -21,7 +22,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Mail;
+use App\Notifications\AdminSubscriptionActivated;
 use App\Notifications\PaymentReceived;
+use App\Notifications\SubscriptionActivated;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Notification;
 
@@ -1264,6 +1267,9 @@ class MonerooController extends Controller
             default => 'pending',
         };
 
+        $subscription = $invoice->subscription;
+        $wasPendingPayment = $subscription && $subscription->status === 'pending_payment';
+
         $invoice->update([
             'status' => $mappedStatus,
             'paid_at' => $mappedStatus === 'paid' ? now() : null,
@@ -1274,10 +1280,49 @@ class MonerooController extends Controller
             ]),
         ]);
 
-        if ($mappedStatus === 'paid' && $invoice->subscription) {
-            $invoice->subscription->update(['status' => 'active']);
-            app(\App\Services\SubscriptionService::class)->grantLinkedContentAccess($invoice->subscription);
+        if ($mappedStatus === 'paid' && $subscription) {
+            $subscription->update(['status' => 'active']);
+            $subscription = $subscription->fresh();
+            app(\App\Services\SubscriptionService::class)->grantLinkedContentAccess($subscription);
+
+            if ($wasPendingPayment && $invoice->user) {
+                $invoice->refresh();
+                try {
+                    $invoice->user->notify(new SubscriptionActivated($subscription, $invoice, false));
+                } catch (\Throwable $e) {
+                    \Log::error('Moneroo: echec notification abonnement active apres paiement', [
+                        'user_id' => $invoice->user_id,
+                        'subscription_id' => $subscription->id,
+                        'invoice_id' => $invoice->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                $admins = User::admins()
+                    ->whereNotNull('email')
+                    ->where('is_active', true)
+                    ->get();
+                foreach ($admins as $admin) {
+                    try {
+                        Notification::sendNow($admin, new AdminSubscriptionActivated($subscription, $invoice, false));
+                    } catch (\Throwable $e) {
+                        \Log::error('Moneroo: echec notification admin abonnement apres paiement', [
+                            'admin_id' => $admin->id,
+                            'subscription_id' => $subscription->id,
+                            'invoice_id' => $invoice->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+        } elseif ($mappedStatus === 'failed' && $wasPendingPayment && $subscription) {
+            $subscription->update([
+                'status' => 'expired',
+                'ended_at' => now(),
+                'auto_renew' => false,
+            ]);
         }
+
         if ($invoice->user) {
             if ($mappedStatus === 'paid') {
                 $invoice->user->notify(new \App\Notifications\SubscriptionInvoicePaid($invoice));

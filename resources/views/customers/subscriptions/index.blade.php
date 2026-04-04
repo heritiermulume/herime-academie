@@ -22,6 +22,7 @@
     $subscriptionStatusLabels = [
         'trialing' => 'Essai en cours',
         'active' => 'Actif',
+        'pending_payment' => 'En attente de paiement',
         'past_due' => 'En retard de paiement',
         'cancelled' => 'Annulé',
         'expired' => 'Expiré',
@@ -41,7 +42,7 @@
 @php
     $currentSubscriptionsByPlan = $subscriptions
         ->filter(function ($subscription) {
-            return in_array($subscription->status, ['trialing', 'active', 'past_due', 'cancelled'], true)
+            return in_array($subscription->status, ['trialing', 'active', 'pending_payment', 'past_due', 'cancelled'], true)
                 && (!$subscription->ended_at || $subscription->ended_at->isFuture());
         })
         ->sortByDesc('created_at')
@@ -68,9 +69,15 @@
                             <h5 class="fw-bold mb-1">{{ $plan->name }}</h5>
                             <p class="text-muted small mb-2">{{ $plan->description }}</p>
                             @if($currentPlanSubscription)
-                                <span class="subscription-state-label mb-2">
-                                    <i class="fas fa-rotate me-1"></i>Déjà abonné - renouvellement auto
-                                </span>
+                                @if($currentPlanSubscription->status === 'pending_payment')
+                                    <span class="subscription-state-label mb-2" style="color:#92400e;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);">
+                                        <i class="fas fa-clock me-1"></i>Paiement en attente — finalisez depuis vos factures ci-dessous
+                                    </span>
+                                @else
+                                    <span class="subscription-state-label mb-2">
+                                        <i class="fas fa-rotate me-1"></i>Déjà abonné - renouvellement auto
+                                    </span>
+                                @endif
                             @endif
                             <div class="mb-2 d-flex flex-wrap gap-1">
                                 <span class="admin-badge">{{ $planTypeLabels[$plan->plan_type] ?? ucfirst((string) $plan->plan_type) }}</span>
@@ -83,7 +90,7 @@
                             <p class="small text-muted mb-2">Devise du site: {{ $preferredCurrency }}</p>
                             @if($plan->plan_type === 'premium')
                                 <p class="small text-muted mb-1">
-                                    Accès à toutes les formations en ligne du catalogue (non téléchargeables, avec leçons).
+                                    Abonnement récurrent : accès selon les formations et packs rattachés à ce plan (pas d’ouverture automatique de tout le catalogue).
                                 </p>
                             @elseif($plan->contents->isNotEmpty())
                                 <p class="small text-muted mb-1">
@@ -127,7 +134,15 @@
                             <td>{{ $subscriptionStatusLabels[$subscription->status] ?? $subscription->status }}</td>
                             <td>{{ optional($subscription->current_period_ends_at)->format('d/m/Y') ?: '-' }}</td>
                             <td class="d-flex gap-1">
-                                @if(in_array($subscription->status, ['active','trialing']))
+                                @if($subscription->status === 'pending_payment')
+                                    @php($pendingSubInvoice = $subscription->invoices->where('status', 'pending')->sortByDesc('id')->first())
+                                    @if($pendingSubInvoice)
+                                        <form method="POST" action="{{ route('subscriptions.invoices.pay', $pendingSubInvoice) }}">
+                                            @csrf
+                                            <button class="btn btn-sm btn-primary">Payer</button>
+                                        </form>
+                                    @endif
+                                @elseif(in_array($subscription->status, ['active','trialing']))
                                     <form method="POST" action="{{ route('subscriptions.cancel', $subscription) }}">
                                         @csrf
                                         <button class="btn btn-sm btn-outline-danger">Annuler</button>

@@ -40,9 +40,12 @@ class SubscriptionActivated extends Notification
             ->action('Voir mes abonnements', route('customer.subscriptions'));
 
         if ($this->invoice) {
+            $invoiceStatusLabel = $this->invoice->status === 'paid'
+                ? 'Payée'
+                : 'En attente de paiement';
             $mail->line('Facture associée : ' . $this->invoice->invoice_number)
                 ->line('Montant : ' . CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-                ->line('Statut facture : En attente de paiement');
+                ->line('Statut facture : ' . $invoiceStatusLabel);
         } else {
             $mail->line('Aucune facture immédiate n\'est requise pour ce plan.');
         }

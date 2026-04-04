@@ -17,12 +17,12 @@
                 $selectedType = old('plan_type', $plan->plan_type ?? 'recurring');
             @endphp
             <option value="recurring" @selected($selectedType === 'recurring')>Abonnement récurrent</option>
-            <option value="premium" @selected($selectedType === 'premium')>Premium (catalogue en ligne)</option>
+            <option value="premium" @selected($selectedType === 'premium')>Premium (récurrent, sans accès catalogue auto)</option>
             <option value="one_time" @selected($selectedType === 'one_time')>Achat unique (formation)</option>
             <option value="freemium" @selected($selectedType === 'freemium')>Freemium</option>
         </select>
         <small id="subscription-plan-premium-help" class="text-muted d-block mt-1 {{ $selectedType === 'premium' ? '' : 'd-none' }}">
-            <strong>Premium</strong> : accès automatique à toutes les formations <strong>publiées</strong>, <strong>non téléchargeables</strong>, avec <strong>au moins une leçon</strong>. Même logique de facturation qu’un abonnement récurrent (période, essai, renouvellement).
+            <strong>Premium</strong> : même logique de facturation qu’un abonnement récurrent (période, essai, renouvellement). Les accès aux formations viennent uniquement des contenus / packs rattachés au plan — pas d’ouverture automatique de tout le catalogue. L’accès « toutes les formations non téléchargeables » est réservé au plan <strong>communauté</strong> (page Membre Herime).
         </small>
     </div>
     <div>

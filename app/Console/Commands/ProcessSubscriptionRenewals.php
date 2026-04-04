@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 class ProcessSubscriptionRenewals extends Command
 {
     protected $signature = 'subscriptions:process-renewals';
-    protected $description = 'Process recurring subscription renewals and invoices';
+    protected $description = 'Traite tous les renouvellements (tous utilisateurs). En prod, les clients sont aussi mis à jour à la visite (middleware web).';
 
     public function handle(SubscriptionService $subscriptionService): int
     {
