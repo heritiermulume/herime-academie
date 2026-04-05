@@ -55,7 +55,7 @@ class UserSubscription extends Model
 
     public function isCurrentlyActive(): bool
     {
-        if (!in_array($this->status, ['trialing', 'active'], true)) {
+        if (! in_array($this->status, ['trialing', 'active'], true)) {
             return false;
         }
 
@@ -63,7 +63,18 @@ class UserSubscription extends Model
             return false;
         }
 
-        return true;
+        if ($this->relationLoaded('invoices')) {
+            $blocking = $this->invoices->contains(
+                fn ($inv) => $inv->status === 'pending' && (float) $inv->amount > 0
+            );
+        } else {
+            $blocking = $this->invoices()
+                ->where('status', 'pending')
+                ->where('amount', '>', 0)
+                ->exists();
+        }
+
+        return ! $blocking;
     }
 
     public function markCancelled(?Carbon $endAt = null): void
@@ -75,5 +86,49 @@ class UserSubscription extends Model
             'ended_at' => $endAt ?? $this->current_period_ends_at ?? now(),
         ]);
     }
-}
 
+    /**
+     * Abonnement encore pertinent pour la page communauté (accès ou période non terminée).
+     */
+    public function isActiveMembershipPeriod(): bool
+    {
+        if (! in_array($this->status, ['trialing', 'active', 'pending_payment', 'past_due', 'cancelled'], true)) {
+            return false;
+        }
+
+        if ($this->ended_at && $this->ended_at->isPast()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Données pour la carte /communaute/membre-premium (JSON + boutons).
+     */
+    public function asCommunityPremiumCardSubscription(): ?array
+    {
+        if (! $this->isActiveMembershipPeriod()) {
+            return null;
+        }
+
+        $this->loadMissing('invoices');
+
+        $pendingInvoice = $this->invoices->where('status', 'pending')->sortByDesc('id')->first();
+        $payUrl = $pendingInvoice ? route('subscriptions.invoices.pay', $pendingInvoice) : null;
+        $needsPay = $payUrl !== null
+            && (float) ($pendingInvoice->amount ?? 0) > 0
+            && in_array($this->status, ['pending_payment', 'past_due', 'active', 'trialing'], true);
+
+        return [
+            'id' => $this->id,
+            'status' => $this->status,
+            'cancel_url' => route('subscriptions.cancel', $this),
+            'resume_url' => route('subscriptions.resume', $this),
+            'pay_url' => $payUrl,
+            'show_cancel' => in_array($this->status, ['active', 'trialing', 'past_due', 'pending_payment'], true),
+            'show_resume' => $this->status === 'cancelled',
+            'show_pay' => $needsPay,
+        ];
+    }
+}

@@ -53,6 +53,7 @@ return [
     ],
 
     // Optimisation streaming : moov atom au début (faststart). Requiert FFmpeg — désactivé par défaut (mutualisé).
+    // Appliqué à tout upload MP4/M4V (leçons, previews, packs, média communauté, etc.) via FileUploadService.
     'optimize_faststart' => env('VIDEO_OPTIMIZE_FASTSTART', false),
 
     /*
@@ -64,8 +65,8 @@ return [
     'player_preload' => env('VIDEO_PLAYER_PRELOAD', 'metadata'),
 
     /*
-    | Taille des blocs lus côté PHP lors du streaming (octets).
-    | Défaut 256 Ko : un peu plus léger en mémoire sur mutualisé ; sur VPS rapide : 524288 ou 2097152.
+    | Historique : le streaming vidéo passe par BinaryFileResponse (Range natif). Clé conservée pour
+    | ne pas casser les .env existants ; ignorée par le code.
     */
     'stream_chunk_bytes' => (int) env('VIDEO_STREAM_CHUNK_BYTES', 262144),
 
@@ -84,4 +85,3 @@ return [
         ],
     ],
 ];
-

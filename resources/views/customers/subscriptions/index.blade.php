@@ -1,13 +1,14 @@
 @extends('customers.admin.layout')
 
 @section('admin-title', 'Mes abonnements')
-@section('admin-subtitle', 'Gérez vos formules, essais gratuits, renouvellements et factures.')
+@section('admin-subtitle', 'Adhésion Membre Herime : formules, renouvellements et factures.')
 
 @section('admin-content')
 @php
     $planTypeLabels = [
         'recurring' => 'Récurrent',
         'premium' => 'Premium',
+        'membre' => 'Membre réseau',
         'one_time' => 'Achat unique',
         'freemium' => 'Freemium',
     ];
@@ -49,7 +50,7 @@
         ->keyBy('subscription_plan_id');
 @endphp
 <section class="admin-panel">
-    <div class="admin-panel__header"><h3>Plans disponibles</h3></div>
+    <div class="admin-panel__header"><h3>Formules Membre Herime</h3></div>
     <div class="admin-panel__body">
         <div class="row g-3 subscription-plans-grid">
             @forelse($plans as $plan)
@@ -71,16 +72,28 @@
                             @if($currentPlanSubscription)
                                 @if($currentPlanSubscription->status === 'pending_payment')
                                     <span class="subscription-state-label mb-2" style="color:#92400e;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);">
-                                        <i class="fas fa-clock me-1"></i>Paiement en attente — finalisez depuis vos factures ci-dessous
+                                        <i class="fas fa-clock me-1"></i>Paiement en attente — utilisez « Payer » ci-dessous ou dans la facturation
+                                    </span>
+                                @elseif($currentPlanSubscription->status === 'past_due')
+                                    <span class="subscription-state-label mb-2" style="color:#991b1b;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Paiement en retard — utilisez « Payer » ci-dessous ou dans la facturation
+                                    </span>
+                                @elseif($currentPlanSubscription->status === 'cancelled')
+                                    <span class="subscription-state-label mb-2" style="color:#475569;background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.35);">
+                                        <i class="fas fa-ban me-1"></i>Annulé — accès jusqu’à la date d’échéance
+                                    </span>
+                                @elseif(in_array($currentPlanSubscription->status, ['active', 'trialing'], true))
+                                    <span class="subscription-state-label mb-2">
+                                        <i class="fas fa-rotate me-1"></i>Déjà abonné — renouvellement auto
                                     </span>
                                 @else
-                                    <span class="subscription-state-label mb-2">
-                                        <i class="fas fa-rotate me-1"></i>Déjà abonné - renouvellement auto
+                                    <span class="subscription-state-label mb-2 text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>{{ $subscriptionStatusLabels[$currentPlanSubscription->status] ?? $currentPlanSubscription->status }}
                                     </span>
                                 @endif
                             @endif
                             <div class="mb-2 d-flex flex-wrap gap-1">
-                                <span class="admin-badge">{{ $planTypeLabels[$plan->plan_type] ?? ucfirst((string) $plan->plan_type) }}</span>
+                                <span class="admin-badge">{{ $planTypeLabels[($plan->plan_type === 'membre' || \App\Models\SubscriptionPlan::allowsAdminMemberBundleManagement($plan)) ? 'membre' : $plan->plan_type] ?? ucfirst((string) $plan->plan_type) }}</span>
                                 @if($plan->billing_period)
                                     <span class="admin-badge">{{ $billingPeriodLabels[$plan->billing_period] ?? ucfirst((string) $plan->billing_period) }}</span>
                                 @endif
@@ -88,7 +101,9 @@
                             @php($localizedAmount = $plan->effectivePriceForCurrency($preferredCurrency))
                             <p class="h4 mb-2">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($localizedAmount, $preferredCurrency) }}</p>
                             <p class="small text-muted mb-2">Devise du site: {{ $preferredCurrency }}</p>
-                            @if($plan->plan_type === 'premium')
+                            @if($plan->isCommunityPremiumPlan())
+                                <p class="small text-muted mb-1">Adhésion au réseau Membre Herime : accès communauté et formations non téléchargeables selon les règles du site.</p>
+                            @elseif($plan->plan_type === 'premium')
                                 <p class="small text-muted mb-1">
                                     Abonnement récurrent : accès selon les formations et packs rattachés à ce plan (pas d’ouverture automatique de tout le catalogue).
                                 </p>
@@ -107,6 +122,7 @@
                             @endif
                             <form method="POST" action="{{ route('subscriptions.subscribe', $plan) }}">
                                 @csrf
+                                <input type="hidden" name="redirect_after_subscribe" value="customer.subscriptions">
                                 <button class="btn {{ $currentPlanSubscription ? 'btn-outline-primary' : 'btn-primary' }} w-100">
                                     {{ $currentPlanSubscription ? 'Réabonnement' : 'S\'abonner' }}
                                 </button>
@@ -133,8 +149,8 @@
                             <td>{{ $subscription->plan->name ?? 'Plan supprimé' }}</td>
                             <td>{{ $subscriptionStatusLabels[$subscription->status] ?? $subscription->status }}</td>
                             <td>{{ optional($subscription->current_period_ends_at)->format('d/m/Y') ?: '-' }}</td>
-                            <td class="d-flex gap-1">
-                                @if($subscription->status === 'pending_payment')
+                            <td class="d-flex flex-wrap gap-1">
+                                @if(in_array($subscription->status, ['pending_payment', 'past_due'], true))
                                     @php($pendingSubInvoice = $subscription->invoices->where('status', 'pending')->sortByDesc('id')->first())
                                     @if($pendingSubInvoice)
                                         <form method="POST" action="{{ route('subscriptions.invoices.pay', $pendingSubInvoice) }}">
@@ -142,7 +158,8 @@
                                             <button class="btn btn-sm btn-primary">Payer</button>
                                         </form>
                                     @endif
-                                @elseif(in_array($subscription->status, ['active','trialing']))
+                                @endif
+                                @if(in_array($subscription->status, ['active', 'trialing', 'past_due', 'pending_payment'], true))
                                     <form method="POST" action="{{ route('subscriptions.cancel', $subscription) }}">
                                         @csrf
                                         <button class="btn btn-sm btn-outline-danger">Annuler</button>

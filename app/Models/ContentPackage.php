@@ -23,6 +23,8 @@ class ContentPackage extends Model
         'description',
         'thumbnail',
         'cover_video',
+        'cover_video_hls_manifest_path',
+        'cover_video_hls_status',
         'cover_video_youtube_id',
         'cover_video_is_unlisted',
         'price',
@@ -138,7 +140,7 @@ class ContentPackage extends Model
 
     public function getIsSaleActiveAttribute(): bool
     {
-        if (!$this->is_sale_enabled) {
+        if (! $this->is_sale_enabled) {
             return false;
         }
 
@@ -217,6 +219,23 @@ class ContentPackage extends Model
         return ! empty($this->cover_video_youtube_id);
     }
 
+    public function hasCoverVideoHlsStreamReady(): bool
+    {
+        return ($this->cover_video_hls_status ?? null) === 'ready'
+            && ! empty($this->cover_video_hls_manifest_path);
+    }
+
+    public function getCoverVideoHlsManifestUrlAttribute(): string
+    {
+        if (! $this->hasCoverVideoHlsStreamReady()) {
+            return '';
+        }
+
+        $p = ltrim((string) $this->cover_video_hls_manifest_path, '/');
+
+        return route('files.serve', ['type' => 'package-covers', 'path' => $p]);
+    }
+
     public function getCoverVideoUrlAttribute(): ?string
     {
         try {
@@ -229,7 +248,7 @@ class ContentPackage extends Model
                     'origin' => config('video.youtube.embed_domain', request()->getHost()),
                 ];
 
-                return "https://www.youtube.com/embed/{$videoId}?" . http_build_query($params);
+                return "https://www.youtube.com/embed/{$videoId}?".http_build_query($params);
             }
             if (! $this->cover_video) {
                 return '';

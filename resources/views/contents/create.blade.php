@@ -1,7 +1,7 @@
 @extends('providers.admin.layout')
 
 @section('admin-title', 'Créer un contenu')
-@section('admin-subtitle', 'Ajoutez un nouveau contenu pédagogique à votre catalogue')
+@section('admin-subtitle', 'Créez un contenu téléchargeable : déposez le fichier principal pour vos acheteurs.')
 @section('admin-actions')
     <a href="{{ route('provider.contents.index') }}" class="admin-btn outline" data-temp-upload-cancel>
         <i class="fas fa-arrow-left me-2"></i>Retour à mes contenus
@@ -261,93 +261,81 @@
                                         Contenu gratuit
                                     </label>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="is_downloadable" name="is_downloadable" value="1" 
-                                           {{ old('is_downloadable') ? 'checked' : '' }}
-                                           onchange="toggleDownloadFileFields()">
-                                    <label class="form-check-label" for="is_downloadable">
-                                        <strong>Contenu téléchargeable</strong>
-                                    </label>
-                                </div>
                             </div>
                         </div>
 
-                        <!-- Fichier de téléchargement spécifique -->
-                        <div id="download-file-fields" style="display: {{ old('is_downloadable') ? 'block' : 'none' }};" class="mt-4">
-                            <div class="row">
-                                <div class="col-12 mb-3">
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        <strong>Option de téléchargement :</strong> Vous pouvez définir un fichier spécifique à télécharger (ZIP, PDF, etc.) au lieu de télécharger toutes les sections et leçons du contenu. Laissez vide pour télécharger le contenu complet de la formation.
-                                    </div>
+                    </div>
+                </div>
+
+                <!-- Fichier téléchargeable (obligatoire) — upload fractionné comme en admin -->
+                <input type="hidden" name="is_downloadable" value="1">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-download me-2"></i>Fichier à télécharger</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>Obligatoire :</strong> déposez ici le fichier que les acheteurs recevront (ZIP, PDF, etc.), ou indiquez une URL complète. Le téléversement est découpé en morceaux (chunks) pour les gros fichiers.
+                        </div>
+                        <div class="mb-3">
+                            <label for="download_file_path" class="form-label fw-bold">
+                                Fichier principal <span class="text-danger">*</span>
+                            </label>
+                            <div class="upload-zone upload-zone--droppable" id="downloadFileUploadZone">
+                                <input type="file"
+                                       class="form-control d-none @error('download_file_path') is-invalid @enderror"
+                                       id="download_file_path"
+                                       name="download_file_path"
+                                       accept=".zip,.pdf,.doc,.docx,.rar,.7z,.tar,.gz"
+                                       onchange="handleDownloadFileUpload(this)">
+                                <input type="hidden" id="download_file_chunk_path" name="download_file_chunk_path" value="{{ old('download_file_chunk_path') }}">
+                                <input type="hidden" id="download_file_chunk_name" name="download_file_chunk_name" value="{{ old('download_file_chunk_name') }}">
+                                <input type="hidden" id="download_file_chunk_size" name="download_file_chunk_size" value="{{ old('download_file_chunk_size') }}">
+                                <div class="upload-placeholder text-center p-4" data-download-placeholder onclick="document.getElementById('download_file_path').click()">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                    <p class="mb-2"><strong>Glissez-déposez un fichier ou cliquez pour parcourir</strong></p>
+                                    <p class="text-muted small mb-0">Formats : ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR, GZ</p>
+                                    <p class="text-muted small">Maximum : 1&nbsp;Go — envoi par fragments automatique</p>
                                 </div>
-                                <div class="col-md-12 mb-3">
-                                    <label for="download_file_path" class="form-label fw-bold">
-                                        Fichier de téléchargement spécifique <span class="text-muted">(Optionnel)</span>
-                                    </label>
-                                    
-                                    <div class="upload-zone" id="downloadFileUploadZone">
-                                        <input type="file" 
-                                               class="form-control d-none @error('download_file_path') is-invalid @enderror" 
-                                               id="download_file_path" 
-                                               name="download_file_path" 
-                                               accept=".zip,.pdf,.doc,.docx,.rar,.7z,.tar,.gz"
-                                               onchange="handleDownloadFileUpload(this)">
-                                        <input type="hidden" id="download_file_chunk_path" name="download_file_chunk_path" value="{{ old('download_file_chunk_path') }}">
-                                        <input type="hidden" id="download_file_chunk_name" name="download_file_chunk_name" value="{{ old('download_file_chunk_name') }}">
-                                        <input type="hidden" id="download_file_chunk_size" name="download_file_chunk_size" value="{{ old('download_file_chunk_size') }}">
-                                        <div class="upload-placeholder text-center p-4" onclick="document.getElementById('download_file_path').click()">
-                                            <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
-                                            <p class="mb-2"><strong>Cliquez pour sélectionner un fichier</strong></p>
-                                            <p class="text-muted small mb-0">Formats : ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR, GZ</p>
-                                            <p class="text-muted small">Maximum : 1&nbsp;Go</p>
-                                        </div>
-                                        <div class="upload-preview d-none download-upload-preview">
-                                            <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 p-3 w-100 download-preview-item">
-                                                <i class="fas fa-file-archive fa-3x text-primary"></i>
-                                                <div class="flex-grow-1">
-                                                    <div class="upload-info">
-                                                        <span class="badge bg-primary file-name"></span>
-                                                        <span class="badge bg-info file-size ms-2"></span>
-                                                    </div>
-                                                    <div class="upload-info mt-2">
-                                                        <button type="button" class="btn btn-sm btn-danger" onclick="clearDownloadFile()">
-                                                            <i class="fas fa-trash me-1"></i>Supprimer
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                <div class="upload-preview d-none download-upload-preview">
+                                    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-3 p-3 w-100 download-preview-item">
+                                        <i class="fas fa-file-archive fa-3x text-primary"></i>
+                                        <div class="flex-grow-1">
+                                            <div class="upload-info">
+                                                <span class="badge bg-primary file-name"></span>
+                                                <span class="badge bg-info file-size ms-2"></span>
+                                            </div>
+                                            <div class="upload-info mt-2">
+                                                <button type="button" class="btn btn-sm btn-danger" onclick="clearDownloadFile()">
+                                                    <i class="fas fa-trash me-1"></i>Supprimer
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
-                                    <small class="text-muted d-block mt-2">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        Pour les fichiers plus volumineux, utilisez une URL externe dans le champ ci-dessous.
-                                    </small>
-                                    <div class="invalid-feedback d-block" id="downloadFileError"></div>
-                                    @error('download_file_path')
-                                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                
-                                <div class="col-md-12 mb-3">
-                                    <label for="download_file_url" class="form-label">OU URL externe du fichier</label>
-                                    <input type="text" 
-                                           class="form-control @error('download_file_url') is-invalid @enderror" 
-                                           id="download_file_url" 
-                                           name="download_file_url" 
-                                           value="{{ old('download_file_url') }}"
-                                           placeholder="https://example.com/course.zip">
-                                    <small class="text-muted">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        Si vous avez le fichier hébergé ailleurs, entrez son URL complète ici.
-                                    </small>
-                                    @error('download_file_url')
-                                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                                    @enderror
                                 </div>
                             </div>
+                            <div class="invalid-feedback d-block" id="downloadFileError"></div>
+                            @error('download_file_path')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
                         </div>
-
+                        <div class="mb-0">
+                            <label for="download_file_url" class="form-label">OU URL externe du fichier</label>
+                            <input type="text"
+                                   class="form-control @error('download_file_url') is-invalid @enderror"
+                                   id="download_file_url"
+                                   name="download_file_url"
+                                   value="{{ old('download_file_url') }}"
+                                   placeholder="https://example.com/course.zip">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Si le fichier est déjà hébergé ailleurs, entrez son URL complète (à la place du téléversement).
+                            </small>
+                            @error('download_file_url')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
 
@@ -433,22 +421,6 @@
                     </div>
                 </div>
 
-                <!-- Contenu du cours (Sections et leçons) -->
-                <div class="card shadow-sm mb-4 course-content-card">
-                    <div class="card-header bg-gradient-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contenus</h5>
-                    </div>
-                    <div class="card-body course-content-card__body p-0">
-                        <div id="sections-container">
-                            <!-- Les sections seront ajoutées dynamiquement -->
-                        </div>
-
-                        <button type="button" class="btn btn-primary" onclick="addSection()">
-                            <i class="fas fa-plus me-1"></i>Ajouter une section
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Actions -->
                 <div class="card shadow-sm mb-4 form-actions-card">
                     <div class="card-body">
@@ -478,20 +450,6 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
 const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const VALID_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
-const LESSON_ALLOWED_TYPES = [
-    'video/mp4',
-    'video/webm',
-    'application/pdf',
-    'application/zip',
-    'application/x-zip-compressed',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-];
-const LESSON_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 const CHUNK_SIZE_BYTES = 1 * 1024 * 1024; // 1MB pour upload fractionné (garder petit pour limiter post size)
 const DOWNLOAD_ALLOWED_EXTENSIONS = ['.zip', '.pdf', '.doc', '.docx', '.rar', '.7z', '.tar', '.gz'];
 const MAX_DOWNLOAD_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1GB
@@ -688,7 +646,6 @@ let thumbnailUploadResumable = null;
 let thumbnailUploadTaskId = null;
 let previewUploadResumable = null;
 let previewUploadTaskId = null;
-const lessonUploadControllers = new Map();
 let downloadUploadResumable = null;
 let downloadUploadTaskId = null;
 let downloadUploadSuppressError = false;
@@ -778,8 +735,6 @@ function errorUploadTask(taskId, message = 'Erreur lors du téléversement') {
     }
 }
 
-let sectionCount = 0;
-let lessonCount = 0;
 let cachedPriceValue = null;
 let cachedSalePriceValue = null;
 let cachedSaleStartValue = null;
@@ -1183,35 +1138,12 @@ function showError(errorDiv, message) {
     errorDiv.style.display = 'block';
 }
 
-// Gestion des champs de fichier de téléchargement
-function toggleDownloadFileFields() {
-    const checkbox = document.getElementById('is_downloadable');
-    const fields = document.getElementById('download-file-fields');
-    
-    if (checkbox && fields) {
-        if (checkbox.checked) {
-            fields.style.display = 'block';
-        } else {
-            fields.style.display = 'none';
-            const downloadInput = document.getElementById('download_file_path');
-            if (downloadInput) {
-                clearDownloadFile();
-            }
-            const urlInput = document.getElementById('download_file_url');
-            if (urlInput) {
-                urlInput.value = '';
-            }
-        }
-    }
-}
-
-
-function handleDownloadFileUpload(input) {
+function handleDownloadFileUpload(input, droppedFile = null) {
     const zone = document.getElementById('downloadFileUploadZone');
     const errorDiv = document.getElementById('downloadFileError');
-    const file = input.files[0];
-    
-    if (!zone) {
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
+
+    if (!zone || !input) {
         return;
     }
     
@@ -1490,11 +1422,35 @@ document.addEventListener('DOMContentLoaded', function() {
     if (urlInput) {
         urlInput.addEventListener('input', function() {
             if (this.value.trim() !== '') {
-                // Si une URL est saisie, effacer le fichier uploadé
-                const fileInput = document.getElementById('download_file_path');
-                if (fileInput && fileInput.files.length > 0) {
-                    clearDownloadFile();
-                }
+                clearDownloadFile();
+            }
+        });
+    }
+
+    const downloadZone = document.getElementById('downloadFileUploadZone');
+    const downloadInput = document.getElementById('download_file_path');
+    if (downloadZone && downloadInput) {
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            downloadZone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                downloadZone.classList.add('upload-zone--drag-over');
+            });
+        });
+        downloadZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!downloadZone.contains(e.relatedTarget)) {
+                downloadZone.classList.remove('upload-zone--drag-over');
+            }
+        });
+        downloadZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            downloadZone.classList.remove('upload-zone--drag-over');
+            const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f) {
+                handleDownloadFileUpload(downloadInput, f);
             }
         });
     }
@@ -1542,536 +1498,6 @@ function addLearning() {
 
 function removeLearning(button) {
     button.parentElement.remove();
-}
-
-// Gestion des sections
-function addSection() {
-    sectionCount++;
-    const container = document.getElementById('sections-container');
-    const sectionDiv = document.createElement('div');
-    sectionDiv.className = 'card border-0 shadow-sm mb-3 course-section-card';
-    sectionDiv.id = `section-${sectionCount}`;
-    sectionDiv.innerHTML = `
-        <div class="card-header bg-gradient-primary text-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 text-white">Section ${sectionCount}</h6>
-                <i class="fas fa-times course-section-remove-icon text-white" role="button" onclick="removeSection(${sectionCount})" aria-label="Supprimer la section"></i>
-            </div>
-        </div>
-        <div class="card-body course-section-card__body">
-            <div class="row mb-3">
-                <div class="col-md-8">
-                    <label class="form-label">Titre de la section</label>
-                    <input type="text" class="form-control" name="sections[${sectionCount}][title]" placeholder="Titre de la section" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-control" name="sections[${sectionCount}][description]" placeholder="Description (optionnel)">
-                </div>
-            </div>
-            <div id="lessons-${sectionCount}">
-                <!-- Les leçons seront ajoutées ici -->
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addLesson(${sectionCount})">
-                <i class="fas fa-plus me-1"></i>Ajouter une leçon
-            </button>
-        </div>
-    `;
-    container.appendChild(sectionDiv);
-}
-
-function removeSection(sectionId) {
-    document.getElementById(`section-${sectionId}`).remove();
-}
-
-// Gestion des leçons
-function addLesson(sectionId) {
-    lessonCount++;
-    const container = document.getElementById(`lessons-${sectionId}`);
-    const lessonDiv = document.createElement('div');
-    lessonDiv.className = 'card border-0 shadow-sm mb-2 course-lesson-card';
-    const lessonUniqueId = `${sectionId}-${lessonCount}`;
-    lessonDiv.innerHTML = `
-        <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center course-lesson-card__header">
-            <h6 class="mb-0 text-white"><i class="fas fa-play-circle me-2 text-white-50"></i>Leçon ${lessonCount}</h6>
-            <i class="fas fa-times course-lesson-remove-icon text-white" role="button" onclick="removeLesson(this)" aria-label="Supprimer la leçon"></i>
-        </div>
-        <div class="card-body course-lesson-card__body">
-            <div class="row gy-3">
-                <div class="col-md-4">
-                    <label class="form-label">Titre de la leçon</label>
-                    <input type="text" class="form-control" name="sections[${sectionId}][lessons][${lessonCount}][title]" placeholder="Titre de la leçon" required>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Type</label>
-                    <select class="form-select" name="sections[${sectionId}][lessons][${lessonCount}][type]" required>
-                        <option value="">Sélectionner</option>
-                        <option value="video">Vidéo</option>
-                        <option value="text">Texte</option>
-                        <option value="quiz">Quiz</option>
-                        <option value="assignment">Devoir</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Durée (min)</label>
-                    <input type="number" class="form-control" name="sections[${sectionId}][lessons][${lessonCount}][duration]" min="0" placeholder="0">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Aperçu</label>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="sections[${sectionId}][lessons][${lessonCount}][is_preview]" value="1">
-                        <label class="form-check-label">Gratuit</label>
-                    </div>
-                </div>
-            </div>
-            <div class="row mt-2">
-                <div class="col-md-6">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-control" name="sections[${sectionId}][lessons][${lessonCount}][description]" rows="2" placeholder="Description de la leçon"></textarea>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Fichier ou média de la leçon</label>
-                    <div class="upload-zone lesson-upload-zone" id="lessonUploadZone-${lessonUniqueId}" data-lesson-unique="${lessonUniqueId}" data-lesson-section="${sectionId}" data-lesson-index="${lessonCount}" onclick="triggerLessonFile('${lessonUniqueId}', event)">
-                        <input type="file"
-                               class="form-control d-none lesson-file-input"
-                               id="lesson_file_${lessonUniqueId}"
-                               name="sections[${sectionId}][lessons][${lessonCount}][content_file]"
-                               accept="video/mp4,video/webm,video/ogg,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,video/x-matroska,.mp4,.webm,.ogg,.avi,.mov,.wmv,.mkv,.pdf,.zip,.rar,.7z,.tar,.gz,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv"
-                               onchange="handleLessonFileUpload('${lessonUniqueId}', this)">
-                        <input type="hidden"
-                               name="sections[${sectionId}][lessons][${lessonCount}][content_file_path]"
-                               value=""
-                               data-lesson-path="${lessonUniqueId}">
-                        <input type="hidden"
-                               name="sections[${sectionId}][lessons][${lessonCount}][content_file_name]"
-                               value=""
-                               data-lesson-name="${lessonUniqueId}">
-                        <input type="hidden"
-                               name="sections[${sectionId}][lessons][${lessonCount}][content_file_size]"
-                               value=""
-                               data-lesson-size="${lessonUniqueId}">
-                        <div class="upload-placeholder text-center p-3">
-                            <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
-                            <p class="mb-1"><strong>Cliquez pour sélectionner un fichier</strong></p>
-                            <p class="text-muted small mb-0">Formats acceptés : MP4, WEBM, PDF, ZIP, DOCX...</p>
-                            <p class="text-muted small">Taille max&nbsp;: 500&nbsp;Mo</p>
-                        </div>
-                        <div class="upload-preview d-none text-center">
-                            <div class="lesson-file-visual mb-3"></div>
-                            <div class="upload-info mb-2 d-inline-flex flex-column gap-1">
-                                <span class="badge bg-primary file-name"></span>
-                                <span class="badge bg-info file-size"></span>
-                            </div>
-                            <div>
-                                <button type="button" class="btn btn-sm btn-danger lesson-remove-btn" onclick="clearLessonFile('${lessonUniqueId}')">
-                                    <i class="fas fa-trash me-1"></i>Supprimer
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="invalid-feedback d-block lesson-file-error" id="lessonFileError-${lessonUniqueId}"></div>
-                </div>
-            </div>
-            <div class="row mt-2">
-                <div class="col-12">
-                    <label class="form-label">Contenu texte</label>
-                    <textarea class="form-control lesson-content-text-editor" name="sections[${sectionId}][lessons][${lessonCount}][content_text]" rows="3" placeholder="Contenu texte de la leçon"></textarea>
-                </div>
-            </div>
-        </div>
-    `;
-    container.appendChild(lessonDiv);
-    
-    // Initialiser TinyMCE sur le nouveau textarea
-    const contentTextarea = lessonDiv.querySelector('.lesson-content-text-editor');
-    if (contentTextarea && typeof window.initTinyMCEOnTextarea === 'function') {
-        setTimeout(() => {
-            window.initTinyMCEOnTextarea(contentTextarea);
-        }, 100);
-    }
-}
-
-function removeLesson(button) {
-    button.closest('.card').remove();
-}
-
-function handleLessonFileUpload(uniqueId, input) {
-    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
-    if (!zone) return;
-
-    const placeholder = zone.querySelector('.upload-placeholder');
-    const preview = zone.querySelector('.upload-preview');
-    const fileNameBadge = preview?.querySelector('.file-name');
-    const fileSizeBadge = preview?.querySelector('.file-size');
-    const visualContainer = preview?.querySelector('.lesson-file-visual');
-    const errorDiv = document.getElementById(`lessonFileError-${uniqueId}`);
-
-    if (errorDiv) {
-        errorDiv.textContent = '';
-        errorDiv.style.display = 'none';
-    }
-
-    cancelLessonUpload(uniqueId, true);
-
-    if (!input.files || !input.files[0]) {
-        clearLessonFile(uniqueId);
-        return;
-    }
-
-    if (input.files.length > 1) {
-        showLessonFileError(uniqueId, 'Veuillez sélectionner un seul fichier à la fois.');
-        resetFileInput(input);
-        return;
-    }
-
-    const file = input.files[0];
-
-    if (!isLessonFileTypeAllowed(file)) {
-        showLessonFileError(uniqueId, '❌ Format non supporté. Utilisez une vidéo (MP4/WEBM) ou un document (PDF, ZIP, DOCX, etc.).');
-        resetFileInput(input);
-        return;
-    }
-
-    if (file.size > LESSON_MAX_FILE_SIZE) {
-        showLessonFileError(uniqueId, `❌ Fichier trop volumineux (${formatFileSize(file.size)}). Maximum : ${formatFileSize(LESSON_MAX_FILE_SIZE)}.`);
-        resetFileInput(input);
-        return;
-    }
-
-    if (placeholder && preview) {
-        placeholder.classList.add('d-none');
-        preview.classList.remove('d-none');
-        if (fileNameBadge) fileNameBadge.textContent = file.name;
-        if (fileSizeBadge) fileSizeBadge.textContent = formatFileSize(file.size);
-        if (visualContainer) {
-            renderLessonFilePreview(zone, visualContainer, file);
-        }
-    }
-
-    zone.style.borderColor = '#28a745';
-
-    startLessonChunkUpload(uniqueId, file, input);
-}
-
-function getLessonHiddenInputs(uniqueId) {
-    return {
-        zone: document.getElementById(`lessonUploadZone-${uniqueId}`),
-        path: document.querySelector(`[data-lesson-path="${uniqueId}"]`),
-        name: document.querySelector(`[data-lesson-name="${uniqueId}"]`),
-        size: document.querySelector(`[data-lesson-size="${uniqueId}"]`),
-        existingPath: document.querySelector(`[data-lesson-existing-path="${uniqueId}"]`),
-        removeFlag: document.querySelector(`[data-lesson-remove-flag="${uniqueId}"]`),
-        existingContainer: document.getElementById(`lessonExistingFile-${uniqueId}`)
-    };
-}
-
-function cancelLessonUpload(uniqueId, options = {}) {
-    const controller = lessonUploadControllers.get(uniqueId);
-    if (!controller || !controller.resumable) {
-        return;
-    }
-    let silent = false;
-    let skipModalCancel = false;
-
-    if (typeof options === 'boolean') {
-        silent = options;
-    } else if (options && typeof options === 'object') {
-        silent = options.silent ?? false;
-        skipModalCancel = options.skipModalCancel ?? false;
-    }
-
-    controller.silent = silent;
-    controller.skipModalCancel = skipModalCancel;
-    try {
-        controller.resumable.cancel();
-    } catch (error) {
-        // ignore cancellation errors
-    }
-}
-
-function startLessonChunkUpload(uniqueId, file, input) {
-    const hidden = getLessonHiddenInputs(uniqueId);
-    const zone = hidden.zone;
-    if (!zone) {
-        return;
-    }
-
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (!token) {
-        clearLessonFile(uniqueId);
-        showLessonFileError(uniqueId, 'Impossible de récupérer le jeton CSRF pour l’upload.');
-        return;
-    }
-
-    const existingPath = hidden.path?.value || hidden.existingPath?.value || '';
-
-    const taskId = createUploadTask(file.name, file.size, 'Téléversement du fichier de la leçon', {
-        onCancel: () => clearLessonFile(uniqueId, { skipModalCancel: true, restoreExisting: false }),
-        cancelLabel: 'Annuler'
-    });
-    const resumable = new Resumable({
-        target: CHUNK_UPLOAD_ENDPOINT,
-        chunkSize: CHUNK_SIZE_BYTES,
-        simultaneousUploads: 3,
-        testChunks: false,
-        throttleProgressCallbacks: 1,
-        fileParameterName: 'file',
-        fileType: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'wmv', 'mkv', 'pdf', 'zip', 'rar', '7z', 'tar', 'gz', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'],
-        withCredentials: true,
-        headers: {
-            'X-CSRF-TOKEN': token,
-            'X-Requested-With': 'XMLHttpRequest',
-            Accept: 'application/json',
-        },
-        query: () => ({
-            upload_type: 'lesson',
-            original_name: file.name,
-            section_index: zone.dataset.lessonSection ?? '',
-            lesson_index: zone.dataset.lessonIndex ?? '',
-            replace_path: existingPath || '',
-        }),
-    });
-
-
-    const controller = { resumable, taskId, input, zone, silent: false };
-    lessonUploadControllers.set(uniqueId, controller);
-    zone.dataset.uploadTaskId = taskId;
-    zone.style.borderColor = '#0d6efd';
-
-    const handleError = (message, options = {}) => {
-        const current = lessonUploadControllers.get(uniqueId);
-        const silent = options.silent ?? current?.silent ?? false;
-        const skipModalCancel = options.skipModalCancel ?? current?.skipModalCancel ?? false;
-        if (!silent) {
-            showLessonFileError(uniqueId, message || 'Erreur lors du téléversement du fichier de leçon.');
-            errorUploadTask(taskId, message || 'Erreur lors du téléversement du fichier de leçon.');
-            if (hidden.path) hidden.path.value = '';
-            if (hidden.name) hidden.name.value = '';
-            if (hidden.size) hidden.size.value = '';
-        } else if (!skipModalCancel && window.UploadProgressModal && typeof window.UploadProgressModal.cancelTask === 'function') {
-            window.UploadProgressModal.cancelTask(taskId);
-        } else if (!skipModalCancel) {
-            errorUploadTask(taskId, message || 'Téléversement annulé.');
-        }
-
-        lessonUploadControllers.delete(uniqueId);
-        delete zone.dataset.uploadTaskId;
-        if (!silent) {
-            zone.style.borderColor = '#dc3545';
-        } else {
-            zone.style.borderColor = '#dee2e6';
-        }
-    };
-
-    resumable.on('fileProgress', function(resumableFile) {
-        const percent = Math.max(0, Math.min(100, Math.round(resumableFile.progress() * 100)));
-        updateUploadTask(taskId, percent, 'Téléversement en cours…');
-    });
-
-    resumable.on('fileSuccess', function(resumableFile, response) {
-        let payload = response;
-        if (typeof response === 'string') {
-            try {
-                payload = JSON.parse(response);
-            } catch (error) {
-                payload = null;
-            }
-        }
-
-        if (!payload || !payload.path) {
-            handleError('Réponse invalide du serveur.');
-            return;
-        }
-
-        const previousPath = hidden.path ? hidden.path.value : '';
-        if (hidden.path) hidden.path.value = payload.path;
-        if (hidden.name) hidden.name.value = payload.filename || file.name;
-        if (hidden.size) hidden.size.value = payload.size || file.size;
-        if (previousPath && previousPath !== payload.path) {
-            queueTemporaryDeletion(previousPath);
-        }
-        registerTemporaryPath(payload.path);
-
-
-        completeUploadTask(taskId, 'Fichier importé avec succès');
-        lessonUploadControllers.delete(uniqueId);
-        delete zone.dataset.uploadTaskId;
-        zone.style.borderColor = '#28a745';
-
-        if (input) {
-            resetFileInput(input);
-        }
-    });
-
-    resumable.on('fileError', function(resumableFile, message) {
-        const displayMessage = typeof message === 'string'
-            ? message
-            : (message?.message ?? 'Erreur lors du téléversement du fichier de leçon.');
-        handleError(displayMessage);
-    });
-
-    resumable.on('error', function(message) {
-        const displayMessage = typeof message === 'string'
-            ? message
-            : 'Erreur réseau lors du téléversement.';
-        handleError(displayMessage);
-    });
-
-    resumable.on('cancel', function() {
-        handleError('Téléversement annulé.', { silent: true });
-    });
-
-    resumable.on('chunkingComplete', function(resumableFile) {
-        if (!resumable.isUploading()) {
-            resumable.upload();
-        }
-    });
-
-    resumable.addFile(file);
-}
-
-function triggerLessonFile(uniqueId, event) {
-    if (event) {
-        const target = event.target;
-        if (target.closest('button') || target.tagName === 'INPUT' || target.closest('a')) {
-            return;
-        }
-    }
-    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
-    if (!zone) return;
-
-    const input = zone.querySelector('input[type="file"]');
-    if (input) {
-        input.click();
-    }
-}
-
-function renderLessonFilePreview(zone, container, file) {
-    if (!container) return;
-
-    // Nettoyer une éventuelle URL précédente
-    if (zone.dataset.previewUrl) {
-        URL.revokeObjectURL(zone.dataset.previewUrl);
-        delete zone.dataset.previewUrl;
-    }
-
-    const type = file.type || '';
-    const extension = file.name?.split('.').pop()?.toLowerCase() || '';
-
-    if (type.startsWith('video/')) {
-        const videoUrl = URL.createObjectURL(file);
-        zone.dataset.previewUrl = videoUrl;
-        container.innerHTML = `
-            <video controls class="rounded" style="max-width: 240px; max-height: 180px; border: 3px solid #28a745;">
-                <source src="${videoUrl}" type="${file.type}">
-                Votre navigateur ne supporte pas la lecture de cette vidéo.
-            </video>
-        `;
-        return;
-    }
-
-    let iconClass = 'fas fa-file text-secondary';
-    if (type === 'application/pdf' || extension === 'pdf') {
-        iconClass = 'fas fa-file-pdf text-danger';
-    } else if (type.includes('zip') || ['zip', 'rar', '7z'].includes(extension)) {
-        iconClass = 'fas fa-file-archive text-warning';
-    } else if (type.includes('word') || ['doc', 'docx'].includes(extension)) {
-        iconClass = 'fas fa-file-word text-primary';
-    } else if (type.includes('presentation') || ['ppt', 'pptx'].includes(extension)) {
-        iconClass = 'fas fa-file-powerpoint text-warning';
-    } else if (type.includes('excel') || ['xls', 'xlsx', 'csv'].includes(extension)) {
-        iconClass = 'fas fa-file-excel text-success';
-    }
-
-    container.innerHTML = `<i class="${iconClass} fa-3x"></i>`;
-}
-
-function clearLessonFile(uniqueId, options = {}) {
-    let restoreExisting = false;
-    let skipModalCancel = false;
-
-    if (typeof options === 'boolean') {
-        restoreExisting = options;
-    } else if (options && typeof options === 'object') {
-        restoreExisting = options.restoreExisting ?? false;
-        skipModalCancel = options.skipModalCancel ?? false;
-    }
-
-    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
-    if (!zone) return;
-
-    const hidden = getLessonHiddenInputs(uniqueId);
-    const previousPath = hidden.path ? hidden.path.value : '';
-
-    cancelLessonUpload(uniqueId, { silent: true, skipModalCancel });
-
-    const input = zone.querySelector('input[type="file"]');
-    const placeholder = zone.querySelector('.upload-placeholder');
-    const preview = zone.querySelector('.upload-preview');
-    const errorDiv = document.getElementById(`lessonFileError-${uniqueId}`);
-
-    if (zone.dataset.previewUrl) {
-        URL.revokeObjectURL(zone.dataset.previewUrl);
-        delete zone.dataset.previewUrl;
-    }
-
-    resetFileInput(input);
-
-    if (preview) {
-        preview.classList.add('d-none');
-        const fileNameBadge = preview.querySelector('.file-name');
-        const fileSizeBadge = preview.querySelector('.file-size');
-        const visualContainer = preview.querySelector('.lesson-file-visual');
-        if (fileNameBadge) fileNameBadge.textContent = '';
-        if (fileSizeBadge) fileSizeBadge.textContent = '';
-        if (visualContainer) visualContainer.innerHTML = '';
-    }
-
-    if (placeholder) {
-        placeholder.classList.remove('d-none');
-    }
-
-    if (errorDiv) {
-        errorDiv.textContent = '';
-        errorDiv.style.display = 'none';
-    }
-
-    zone.style.borderColor = '#dee2e6';
-    delete zone.dataset.uploadTaskId;
-
-    if (hidden.path) {
-        if (previousPath && isTemporaryPath(previousPath)) {
-            queueTemporaryDeletion(previousPath);
-        }
-        hidden.path.value = '';
-    }
-    if (hidden.name) hidden.name.value = '';
-    if (hidden.size) hidden.size.value = '';
-    lessonUploadControllers.delete(uniqueId);
-}
-
-
-function isLessonFileTypeAllowed(file) {
-    if (!file) return false;
-    if (LESSON_ALLOWED_TYPES.includes(file.type)) {
-        return true;
-    }
-
-    const extension = file.name?.split('.').pop()?.toLowerCase() || '';
-    const allowedExtensions = ['mp4', 'webm', 'pdf', 'zip', 'rar', '7z', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'];
-    return allowedExtensions.includes(extension);
-}
-
-function showLessonFileError(uniqueId, message) {
-    const errorDiv = document.getElementById(`lessonFileError-${uniqueId}`);
-    if (errorDiv) {
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-    }
-    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
-    if (zone) {
-        zone.style.borderColor = '#dc3545';
-    }
 }
 
 // Gestion du cours gratuit
@@ -2401,22 +1827,6 @@ function cancelAllUploads() {
     resetFileInput(document.getElementById('video_preview_file'));
     clearVideo({ skipModalCancel: true });
 
-    const activeLessons = Array.from(lessonUploadControllers.entries());
-    activeLessons.forEach(([uniqueId, controller]) => {
-        if (controller && controller.resumable) {
-            try {
-                controller.resumable.cancel();
-            } catch (error) {
-                // ignore
-            }
-        }
-        if (controller && controller.taskId && progressModal) {
-            progressModal.cancelTask(controller.taskId);
-        }
-        clearLessonFile(uniqueId);
-    });
-    lessonUploadControllers.clear();
-
     if (downloadUploadResumable) {
         downloadUploadSuppressError = true;
         try {
@@ -2619,6 +2029,16 @@ window.cancelAllUploads = cancelAllUploads;
 .upload-zone:hover {
     border-color: #003366;
     background-color: #e9ecef;
+}
+
+.upload-zone--droppable {
+    cursor: pointer;
+}
+
+.upload-zone.upload-zone--drag-over {
+    border-color: #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.07);
+    box-shadow: inset 0 0 0 2px rgba(13, 110, 253, 0.2);
 }
 
 .upload-placeholder {

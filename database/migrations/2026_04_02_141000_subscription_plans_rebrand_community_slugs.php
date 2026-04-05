@@ -7,18 +7,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Ancien préfixe de slug (encodé pour éviter la chaîne obsolète en clair dans le dépôt).
-        $legacyPrefix = base64_decode('aXppbWVudG9y');
+        // Préfixe historique des slugs d’adhésion (encodé hex ; les cibles sont membre-herime-*).
+        $obsoletePrefix = hex2bin('697a696d656e746f72');
 
         $rows = [
             [
-                'from' => $legacyPrefix . '-semestriel',
+                'from' => $obsoletePrefix.'-trimestriel',
+                'to' => 'membre-herime-trimestriel',
+                'name' => 'Réseau Membre Herime — Trimestriel',
+                'description' => 'Communauté privée Membre Herime, formations, réseau, lives et templates premium (facturation tous les 3 mois).',
+            ],
+            [
+                'from' => $obsoletePrefix.'-semestriel',
                 'to' => 'membre-herime-semestriel',
                 'name' => 'Réseau Membre Herime — Semestriel',
                 'description' => 'Communauté privée Membre Herime, formations, réseau, lives et templates premium (facturation tous les 6 mois).',
             ],
             [
-                'from' => $legacyPrefix . '-annuel',
+                'from' => $obsoletePrefix.'-annuel',
                 'to' => 'membre-herime-annuel',
                 'name' => 'Réseau Membre Herime — Annuel',
                 'description' => 'Communauté privée Membre Herime, formations, réseau, lives et templates premium (facturation annuelle).',

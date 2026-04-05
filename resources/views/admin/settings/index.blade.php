@@ -585,7 +585,7 @@
                     </div>
                 </div>
 
-                {{-- TAB: Communauté Membre Herime (accueil + page adhésion) --}}
+                {{-- TAB: Communauté — média page d’accueil uniquement --}}
                 <div class="tab-pane fade {{ $activeTab === 'community' ? 'show active' : '' }}" id="tab-community" role="tabpanel" aria-labelledby="tab-community-btn" tabindex="0">
                     <form id="admin-settings-community-form" method="POST" action="{{ route('admin.settings.update') }}" class="row g-4">
                         @csrf
@@ -599,68 +599,8 @@
                                         </span>
                                         Média — bloc communauté (page d’accueil)
                                     </h5>
+                                    <p class="text-muted small mb-3">Prix, textes de la page d’adhésion et sous-textes des cartes : <a href="{{ route('admin.subscriptions.plans.index') }}">Abonnements → Plans</a> (type <strong>Membre Herime</strong>).</p>
                                     @include('admin.settings.partials.community-home-media-upload', ['cs' => $cs])
-                                </div>
-                            </div>
-                            <div class="card border-0 shadow-sm admin-form-card mt-4">
-                                <div class="card-body p-4">
-                                    <h5 class="card-title mb-3 d-flex align-items-center gap-2">
-                                        <span class="admin-nav__icon" style="background: rgba(0, 51, 102, 0.12); color: #003366;">
-                                            <i class="fas fa-file-alt"></i>
-                                        </span>
-                                        Textes — <code>/communaute/membre-premium</code>
-                                    </h5>
-                                    <p class="text-muted small mb-3">Champs vides = texte par défaut sur le site. Les <strong>prix</strong> et les <strong>descriptions longues</strong> des cartes viennent des <a href="{{ route('admin.subscriptions.plans.index') }}">plans d’abonnement</a> (formules « membre communauté »).</p>
-                                    <div class="row g-3">
-                                        <div class="col-12">
-                                            <label class="form-label small">Accroche (kicker)</label>
-                                            <input type="text" name="community_premium_kicker" class="form-control" maxlength="500"
-                                                   value="{{ old('community_premium_kicker', $cs['premium_kicker'] ?? '') }}">
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label small">Titre principal</label>
-                                            <input type="text" name="community_premium_title" class="form-control" maxlength="500"
-                                                   value="{{ old('community_premium_title', $cs['premium_title'] ?? '') }}">
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label small">Paragraphe principal</label>
-                                            <textarea name="community_premium_lead" class="form-control" rows="2" maxlength="4000">{{ old('community_premium_lead', $cs['premium_lead'] ?? '') }}</textarea>
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label small">Paragraphe secondaire (optionnel)</label>
-                                            <textarea name="community_premium_second" class="form-control" rows="2" maxlength="4000">{{ old('community_premium_second', $cs['premium_second'] ?? '') }}</textarea>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small">Encadré invité — titre</label>
-                                            <input type="text" name="community_premium_guest_title" class="form-control" maxlength="500"
-                                                   value="{{ old('community_premium_guest_title', $cs['premium_guest_title'] ?? '') }}">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small">Encadré invité — texte</label>
-                                            <textarea name="community_premium_guest_text" class="form-control" rows="2" maxlength="4000">{{ old('community_premium_guest_text', $cs['premium_guest_text'] ?? '') }}</textarea>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small">Bloc formules — titre</label>
-                                            <input type="text" name="community_premium_plans_title" class="form-control" maxlength="500"
-                                                   value="{{ old('community_premium_plans_title', $cs['premium_plans_title'] ?? '') }}">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small">Bloc formules — sous-titre</label>
-                                            <textarea name="community_premium_plans_subtitle" class="form-control" rows="2" maxlength="2000">{{ old('community_premium_plans_subtitle', $cs['premium_plans_subtitle'] ?? '') }}</textarea>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Détail — trimestriel <span class="text-muted">(slug membre-herime-trimestriel)</span></label>
-                                            <textarea name="community_highlight_trimestriel" class="form-control" rows="2" maxlength="2000">{{ old('community_highlight_trimestriel', $cs['highlight_trimestriel'] ?? '') }}</textarea>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Détail — semestriel <span class="text-muted">(slug membre-herime-semestriel)</span></label>
-                                            <textarea name="community_highlight_semestriel" class="form-control" rows="2" maxlength="2000">{{ old('community_highlight_semestriel', $cs['highlight_semestriel'] ?? '') }}</textarea>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small">Détail — annuel <span class="text-muted">(slug membre-herime-annuel)</span></label>
-                                            <textarea name="community_highlight_annuel" class="form-control" rows="2" maxlength="2000">{{ old('community_highlight_annuel', $cs['highlight_annuel'] ?? '') }}</textarea>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -669,9 +609,9 @@
                                 <div class="card-body p-4">
                                     <h6 class="fw-semibold mb-2">Rappels</h6>
                                     <ul class="small text-muted ps-3 mb-4">
-                                        <li class="mb-2">Les abonnements « membre communauté » n’apparaissent pas sur l’accueil ni dans la liste générale des abonnements client.</li>
-                                        <li class="mb-2">Les membres actifs sont inscrits automatiquement à <strong>toutes les formations non téléchargeables</strong> publiées.</li>
-                                        <li>Marquer un plan : métadonnée JSON <code>community_premium: true</code> (déjà le cas pour les slugs membre-herime-*).</li>
+                                        <li class="mb-2">L’offre Membre Herime n’apparaît pas dans le catalogue général des abonnements sur l’accueil ; elle est sur <code>/communaute/membre-premium</code>.</li>
+                                        <li class="mb-2">Les abonnements actifs des membres figurent dans l’espace client, section « Mes abonnements ».</li>
+                                        <li>Les membres actifs sont inscrits automatiquement aux formations non téléchargeables publiées (règle communauté).</li>
                                     </ul>
                                     <button type="submit" class="btn btn-primary w-100 mb-2">
                                         <i class="fas fa-save me-2"></i>Enregistrer

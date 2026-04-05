@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use App\Notifications\CourseEnrolled;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Notifications\CourseEnrolled;
-use App\Models\SentEmail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 
@@ -21,6 +20,7 @@ class Enrollment extends Model
         'user_id',
         'content_id',
         'order_id',
+        'access_granted_by_subscription_id',
         'status',
         'progress',
         'completed_at',
@@ -36,7 +36,7 @@ class Enrollment extends Model
         // Envoyer automatiquement les notifications après création
         static::created(function ($enrollment) {
             // Ne pas envoyer si on utilise createAndNotify (éviter double envoi)
-            if (!static::$skipNotifications) {
+            if (! static::$skipNotifications) {
                 $enrollment->sendEnrollmentNotifications();
             }
         });
@@ -71,6 +71,11 @@ class Enrollment extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function accessGrantingSubscription(): BelongsTo
+    {
+        return $this->belongsTo(UserSubscription::class, 'access_granted_by_subscription_id');
     }
 
     public function scopeActive($query)
@@ -114,30 +119,31 @@ class Enrollment extends Model
     {
         try {
             // Charger les relations nécessaires
-            if (!$this->relationLoaded('course')) {
+            if (! $this->relationLoaded('course')) {
                 $this->load('course');
             }
-            if (!$this->relationLoaded('user')) {
+            if (! $this->relationLoaded('user')) {
                 $this->load('user');
             }
 
             $course = $this->course;
             $user = $this->user;
 
-            if (!$course || !$user) {
+            if (! $course || ! $user) {
                 \Log::warning("Impossible d'envoyer les notifications d'inscription: cours ou utilisateur manquant", [
                     'enrollment_id' => $this->id,
                     'content_id' => $this->content_id,
                     'user_id' => $this->user_id,
                 ]);
+
                 return;
             }
 
             // Charger les relations nécessaires du cours
-            if (!$course->relationLoaded('provider')) {
+            if (! $course->relationLoaded('provider')) {
                 $course->load('provider');
             }
-            if (!$course->relationLoaded('category')) {
+            if (! $course->relationLoaded('category')) {
                 $course->load('category');
             }
 
@@ -145,7 +151,7 @@ class Enrollment extends Model
             try {
                 $communicationService = app(\App\Services\CommunicationService::class);
             } catch (\Throwable $e) {
-                \Log::warning("CommunicationService non disponible, envoi direct par Mail::send()", [
+                \Log::warning('CommunicationService non disponible, envoi direct par Mail::send()', [
                     'enrollment_id' => $this->id,
                     'error' => $e->getMessage(),
                 ]);
@@ -153,7 +159,7 @@ class Enrollment extends Model
 
             // Envoyer l'email d'inscription (synchrone)
             try {
-                if (empty($user->email) || !filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
+                if (empty($user->email) || ! filter_var($user->email, FILTER_VALIDATE_EMAIL)) {
                     \Log::error("Email invalide pour l'utilisateur - impossible d'envoyer CourseEnrolledMail", [
                         'enrollment_id' => $this->id,
                         'content_id' => $course->id,
@@ -168,7 +174,7 @@ class Enrollment extends Model
                         ->where('status', 'sent')
                         ->exists();
 
-                    if (!$alreadySent) {
+                    if (! $alreadySent) {
                         $mailable = new \App\Mail\CourseEnrolledMail($course);
                         if ($communicationService) {
                             $communicationService->sendEmailAndWhatsApp($user, $mailable);
@@ -180,7 +186,7 @@ class Enrollment extends Model
                             'content_id' => $course->id,
                         ]);
                     } else {
-                        \Log::info("CourseEnrolledMail déjà envoyé (déduplication)", [
+                        \Log::info('CourseEnrolledMail déjà envoyé (déduplication)', [
                             'enrollment_id' => $this->id,
                             'content_id' => $course->id,
                             'user_id' => $user->id,
@@ -188,7 +194,7 @@ class Enrollment extends Model
                     }
                 }
             } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
-                \Log::error("Erreur SMTP CourseEnrolledMail", [
+                \Log::error('Erreur SMTP CourseEnrolledMail', [
                     'enrollment_id' => $this->id,
                     'content_id' => $course->id,
                     'user_id' => $user->id,
@@ -196,7 +202,7 @@ class Enrollment extends Model
                     'error' => $e->getMessage(),
                 ]);
             } catch (\Throwable $e) {
-                \Log::error("Erreur envoi CourseEnrolledMail", [
+                \Log::error('Erreur envoi CourseEnrolledMail', [
                     'enrollment_id' => $this->id,
                     'content_id' => $course->id,
                     'user_id' => $user->id,
@@ -208,21 +214,21 @@ class Enrollment extends Model
             // Reçu PDF : toujours tenter si conditions remplies (même si l'email d'inscription a échoué)
             $receiptPdfEnabled = \App\Models\Setting::get('receipt_pdf_enabled', true);
             $contentSendsReceipt = ($course->send_receipt_enabled ?? true) !== false;
-            $userEmailValid = !empty($user->email) && filter_var($user->email, FILTER_VALIDATE_EMAIL);
+            $userEmailValid = ! empty($user->email) && filter_var($user->email, FILTER_VALIDATE_EMAIL);
 
-            if (!$userEmailValid) {
-                \Log::info("Reçu PDF non envoyé: email utilisateur invalide ou vide", [
+            if (! $userEmailValid) {
+                \Log::info('Reçu PDF non envoyé: email utilisateur invalide ou vide', [
                     'enrollment_id' => $this->id,
                     'content_id' => $course->id,
                     'user_id' => $user->id,
                 ]);
-            } elseif (!$receiptPdfEnabled) {
-                \Log::info("Reçu PDF non envoyé: option désactivée globalement (receipt_pdf_enabled)", [
+            } elseif (! $receiptPdfEnabled) {
+                \Log::info('Reçu PDF non envoyé: option désactivée globalement (receipt_pdf_enabled)', [
                     'enrollment_id' => $this->id,
                     'content_id' => $course->id,
                 ]);
-            } elseif (!$contentSendsReceipt) {
-                \Log::info("Reçu PDF non envoyé: option désactivée pour ce contenu (send_receipt_enabled)", [
+            } elseif (! $contentSendsReceipt) {
+                \Log::info('Reçu PDF non envoyé: option désactivée pour ce contenu (send_receipt_enabled)', [
                     'enrollment_id' => $this->id,
                     'content_id' => $course->id,
                     'send_receipt_enabled' => $course->send_receipt_enabled,
@@ -237,7 +243,7 @@ class Enrollment extends Model
                     $receiptService = app(\App\Services\EnrollmentReceiptPdfService::class);
                     $pdfContent = $receiptService->generatePdfContent($this);
                     if ($pdfContent === '' || strlen($pdfContent) < 100) {
-                        throw new \RuntimeException('Le contenu du PDF généré est vide ou invalide (taille: ' . strlen($pdfContent) . ' octets).');
+                        throw new \RuntimeException('Le contenu du PDF généré est vide ou invalide (taille: '.strlen($pdfContent).' octets).');
                     }
                     $receiptMail = new \App\Mail\EnrollmentReceiptMail($course, $pdfContent);
                     if ($communicationService) {
@@ -261,12 +267,12 @@ class Enrollment extends Model
                     ]);
                 }
             }
-            
+
             // Envoyer la notification (pour la base de données et l'affichage dans la navbar)
             // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
             try {
                 Notification::sendNow($user, new CourseEnrolled($course));
-                
+
                 \Log::info("Notification CourseEnrolled envoyée à l'utilisateur {$user->id} pour le cours {$course->id}", [
                     'enrollment_id' => $this->id,
                     'content_id' => $course->id,

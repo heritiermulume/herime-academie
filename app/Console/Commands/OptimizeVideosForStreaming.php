@@ -17,20 +17,29 @@ class OptimizeVideosForStreaming extends Command
     {
         $dryRun = $this->option('dry-run');
 
-        if (!$optimizer->isFFmpegAvailable()) {
+        if (! $optimizer->isFFmpegAvailable()) {
             $this->error('FFmpeg n\'est pas disponible. Installez FFmpeg ou désactivez VIDEO_OPTIMIZE_FASTSTART.');
 
             return self::FAILURE;
         }
 
         $disk = Storage::disk('local');
-        $folders = ['courses/lessons', 'courses/previews', 'tmp/uploads/courses/lessons', 'tmp/uploads/courses/previews'];
+        $folders = [
+            'courses/lessons',
+            'courses/previews',
+            'packages/covers',
+            'site/community-home',
+            'tmp/uploads/courses/lessons',
+            'tmp/uploads/courses/previews',
+            'tmp/uploads/packages/covers',
+            'tmp/uploads/site/community-home',
+        ];
 
         $count = 0;
         $optimized = 0;
 
         foreach ($folders as $folder) {
-            if (!$disk->exists($folder)) {
+            if (! $disk->exists($folder)) {
                 continue;
             }
 
@@ -46,6 +55,7 @@ class OptimizeVideosForStreaming extends Command
 
                 if ($dryRun) {
                     $this->line("  [dry-run] {$file}");
+
                     continue;
                 }
 

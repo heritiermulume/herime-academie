@@ -2,62 +2,62 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Course;
-use App\Models\ContentPackage;
-use App\Models\CourseLesson;
+use App\Helpers\FileHelper;
+use App\Jobs\EncodeCommunityHomeVideoToHls;
+use App\Jobs\SendEmailJob;
+use App\Jobs\SendWhatsAppJob;
+use App\Mail\CustomAnnouncementMail;
+use App\Models\Announcement;
 use App\Models\Category;
+use App\Models\Certificate;
+use App\Models\ContactMessage;
+use App\Models\ContentPackage;
+use App\Models\Course;
+use App\Models\CourseDownload;
+use App\Models\CourseLesson;
+use App\Models\DiscussionLike;
+use App\Models\Enrollment;
+use App\Models\LessonDiscussion;
+use App\Models\LessonNote;
+use App\Models\LessonProgress;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Enrollment;
-use App\Models\Announcement;
 use App\Models\Partner;
-use App\Models\Testimonial;
 use App\Models\Payment;
-use App\Models\Review;
-use App\Models\Setting;
-use App\Models\CourseDownload;
 use App\Models\ProviderApplication;
 use App\Models\ProviderPayout;
+use App\Models\Review;
+use App\Models\ScheduledEmail;
+use App\Models\SentEmail;
+use App\Models\SentWhatsAppMessage;
+use App\Models\Setting;
+use App\Models\Testimonial;
+use App\Models\User;
 use App\Models\Visitor;
-use App\Models\Certificate;
-use App\Models\LessonProgress;
-use App\Models\LessonNote;
-use App\Models\LessonDiscussion;
-use App\Models\DiscussionLike;
-use App\Traits\DatabaseCompatibility;
-use App\Traits\HandlesBulkActions;
-use App\Services\FileUploadService;
-use App\Services\PackageEnrollmentNotifier;
-use App\Helpers\FileHelper;
 use App\Notifications\AnnouncementPublished;
 use App\Notifications\CategoryCreatedNotification;
 use App\Notifications\CourseModerationNotification;
 use App\Notifications\CoursePublishedNotification;
-use App\Notifications\ProviderApplicationStatusUpdated;
-use App\Mail\CustomAnnouncementMail;
-use App\Models\SentEmail;
-use App\Models\ScheduledEmail;
-use App\Models\SentWhatsAppMessage;
-use App\Models\ContactMessage;
 use App\Notifications\EmailSentNotification;
+use App\Notifications\ProviderApplicationStatusUpdated;
+use App\Services\FileUploadService;
+use App\Services\HlsEncodingService;
+use App\Services\PackageEnrollmentNotifier;
 use App\Services\WhatsAppService;
+use App\Traits\DatabaseCompatibility;
+use App\Traits\HandlesBulkActions;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Bus\Queueable;
-use App\Jobs\SendEmailJob;
-use App\Jobs\SendWhatsAppJob;
 
 class AdminController extends Controller
 {
@@ -73,36 +73,40 @@ class AdminController extends Controller
     public function dashboard()
     {
         // Calculer les revenus des contenus internes
-        // IMPORTANT: Les revenus externes sont les revenus provenant des contenus qui appartiennent 
+        // IMPORTANT: Les revenus externes sont les revenus provenant des contenus qui appartiennent
         // à un utilisateur qui a UNIQUEMENT le rôle de "provider"
-        // Les revenus internes sont les revenus des contenus créés par des utilisateurs 
+        // Les revenus internes sont les revenus des contenus créés par des utilisateurs
         // qui ne sont PAS uniquement prestataires (admins, super_users, etc.)
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         // Les commandes avec contenus supprimés sont comptées comme revenus internes
         $internalRevenue = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
-            ->whereDoesntHave('orderItems', function($query) {
+            ->whereDoesntHave('orderItems', function ($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
                 // Un prestataire externe = utilisateur avec UNIQUEMENT le rôle "provider"
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
                         $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->get()
-            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
-        
+            ->sum(function ($o) {
+                return $o->total_amount ?? $o->total ?? 0;
+            });
+
         // Calculer les revenus externes (contenus créés par des utilisateurs avec uniquement le rôle provider)
         $externalRevenue = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', function($query) {
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
+            ->whereHas('orderItems', function ($query) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
                         $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->get()
-            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
+            ->sum(function ($o) {
+                return $o->total_amount ?? $o->total ?? 0;
+            });
 
         // Calculer les commissions retenues sur les prestataires externes
         $commissionsRevenue = ProviderPayout::withTrashed()->where('status', 'completed')
@@ -141,20 +145,21 @@ class AdminController extends Controller
         $internalRevenueByMonth = Order::withTrashed()
             ->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subMonths(6))
-            ->whereDoesntHave('orderItems', function($query) {
+            ->whereDoesntHave('orderItems', function ($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
                         $providerQuery->where('role', 'provider');
                     });
                 });
             })
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month').', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('month')
             ->orderBy('month')
             ->get()
             ->map(function ($item) {
                 $item->month = $item->month ?? '';
+
                 return $item;
             });
 
@@ -163,12 +168,13 @@ class AdminController extends Controller
         $commissionsByMonth = ProviderPayout::withTrashed()
             ->where('status', 'completed')
             ->where('created_at', '>=', now()->subMonths(6))
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month').', SUM(commission_amount) as revenue')
             ->groupBy('month')
             ->orderBy('month')
             ->get()
             ->map(function ($item) {
                 $item->month = $item->month ?? '';
+
                 return $item;
             });
 
@@ -216,17 +222,17 @@ class AdminController extends Controller
 
         $baseCurrency = Setting::getBaseCurrency();
         $currencyCode = $baseCurrency['code'] ?? 'USD';
-        
+
         return view('admin.dashboard', compact(
-            'stats', 
+            'stats',
             'revenueByMonth',
             'revenueByCategory',
             'revenueLabels',
             'revenueValues',
             'revenueByCategoryLabels',
             'revenueByCategoryValues',
-            'popularCourses', 
-            'recentEnrollments', 
+            'popularCourses',
+            'recentEnrollments',
             'recentOrders',
             'baseCurrency',
             'currencyCode'
@@ -236,36 +242,40 @@ class AdminController extends Controller
     public function analytics()
     {
         // Calculer les revenus des contenus internes
-        // IMPORTANT: Les revenus externes sont les revenus provenant des contenus qui appartiennent 
+        // IMPORTANT: Les revenus externes sont les revenus provenant des contenus qui appartiennent
         // à un utilisateur qui a UNIQUEMENT le rôle de "provider"
-        // Les revenus internes sont les revenus des contenus créés par des utilisateurs 
+        // Les revenus internes sont les revenus des contenus créés par des utilisateurs
         // qui ne sont PAS uniquement prestataires (admins, super_users, etc.)
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         // Les commandes avec contenus supprimés sont comptées comme revenus internes
         $internalRevenue = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
-            ->whereDoesntHave('orderItems', function($query) {
+            ->whereDoesntHave('orderItems', function ($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
                 // Un prestataire externe = utilisateur avec UNIQUEMENT le rôle "provider"
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
                         $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->get()
-            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
-        
+            ->sum(function ($o) {
+                return $o->total_amount ?? $o->total ?? 0;
+            });
+
         // Calculer les revenus externes (contenus créés par des utilisateurs avec uniquement le rôle provider)
         $externalRevenue = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', function($query) {
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
+            ->whereHas('orderItems', function ($query) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
                         $providerQuery->where('role', 'provider');
                     });
                 });
             })
             ->get()
-            ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; });
+            ->sum(function ($o) {
+                return $o->total_amount ?? $o->total ?? 0;
+            });
 
         // Calculer les commissions retenues sur les prestataires externes
         $commissionsRevenue = ProviderPayout::withTrashed()->where('status', 'completed')
@@ -304,32 +314,34 @@ class AdminController extends Controller
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         $internalRevenueByMonth = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subMonths(6))
-            ->whereDoesntHave('orderItems', function($query) {
+            ->whereDoesntHave('orderItems', function ($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
                         $providerQuery->where('role', 'provider');
                     });
                 });
             })
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month').', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('month')
             ->orderBy('month')
             ->get()
             ->map(function ($item) {
                 $item->month = $item->month ?? '';
+
                 return $item;
             });
 
         // Commissions par mois (6 derniers mois)
         $commissionsByMonth = ProviderPayout::withTrashed()->where('status', 'completed')
             ->where('created_at', '>=', now()->subMonths(6))
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(commission_amount) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month').', SUM(commission_amount) as revenue')
             ->groupBy('month')
             ->orderBy('month')
             ->get()
             ->map(function ($item) {
                 $item->month = $item->month ?? '';
+
                 return $item;
             });
 
@@ -342,32 +354,34 @@ class AdminController extends Controller
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         $internalRevenueByDay = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subDays(30))
-            ->whereDoesntHave('orderItems', function($query) {
+            ->whereDoesntHave('orderItems', function ($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
                         $providerQuery->where('role', 'provider');
                     });
                 });
             })
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date').', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('date')
             ->orderBy('date')
             ->get()
             ->map(function ($item) {
                 $item->date = $item->date ?? '';
+
                 return $item;
             });
 
         // Commissions par jour (30 derniers jours)
         $commissionsByDay = ProviderPayout::withTrashed()->where('status', 'completed')
             ->where('created_at', '>=', now()->subDays(30))
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(commission_amount) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date').', SUM(commission_amount) as revenue')
             ->groupBy('date')
             ->orderBy('date')
             ->get()
             ->map(function ($item) {
                 $item->date = $item->date ?? '';
+
                 return $item;
             });
 
@@ -383,10 +397,10 @@ class AdminController extends Controller
         if ($driver === 'pgsql') {
             $internalRevenueByWeek = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
                 ->where('created_at', '>=', now()->subWeeks(12))
-                ->whereDoesntHave('orderItems', function($query) {
+                ->whereDoesntHave('orderItems', function ($query) {
                     // Exclure uniquement les commandes avec des contenus existants de providers externes
-                    $query->whereHas('content', function($q) {
-                        $q->whereHas('provider', function($providerQuery) {
+                    $query->whereHas('content', function ($q) {
+                        $q->whereHas('provider', function ($providerQuery) {
                             $providerQuery->where('role', 'provider');
                         });
                     });
@@ -397,25 +411,27 @@ class AdminController extends Controller
                 ->get()
                 ->map(function ($item) {
                     $item->week = $item->week ?? '';
+
                     return $item;
                 });
         } else {
             $internalRevenueByWeek = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
                 ->where('created_at', '>=', now()->subWeeks(12))
-                ->whereDoesntHave('orderItems', function($query) {
+                ->whereDoesntHave('orderItems', function ($query) {
                     // Exclure uniquement les commandes avec des contenus existants de providers externes
-                    $query->whereHas('content', function($q) {
-                        $q->whereHas('provider', function($providerQuery) {
+                    $query->whereHas('content', function ($q) {
+                        $q->whereHas('provider', function ($providerQuery) {
                             $providerQuery->where('role', 'provider');
                         });
                     });
                 })
-                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week').', SUM(COALESCE(total_amount, total, 0)) as revenue')
                 ->groupBy('week')
                 ->orderBy('week')
                 ->get()
                 ->map(function ($item) {
                     $item->week = $item->week ?? '';
+
                     return $item;
                 });
         }
@@ -430,17 +446,19 @@ class AdminController extends Controller
                 ->get()
                 ->map(function ($item) {
                     $item->week = $item->week ?? '';
+
                     return $item;
                 });
         } else {
             $commissionsByWeek = ProviderPayout::withTrashed()->where('status', 'completed')
                 ->where('created_at', '>=', now()->subWeeks(12))
-                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(commission_amount) as revenue')
+                ->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week').', SUM(commission_amount) as revenue')
                 ->groupBy('week')
                 ->orderBy('week')
                 ->get()
                 ->map(function ($item) {
                     $item->week = $item->week ?? '';
+
                     return $item;
                 });
         }
@@ -487,31 +505,33 @@ class AdminController extends Controller
         // Revenus internes par année - Utilise le même calcul que /admin/orders
         // IMPORTANT: Inclure TOUTES les commandes, même celles avec des contenus supprimés
         $internalRevenueByYear = Order::withTrashed()->whereIn('status', ['paid', 'completed'])
-            ->whereDoesntHave('orderItems', function($query) {
+            ->whereDoesntHave('orderItems', function ($query) {
                 // Exclure uniquement les commandes avec des contenus existants de providers externes
-                $query->whereHas('content', function($q) {
-                    $q->whereHas('provider', function($providerQuery) {
+                $query->whereHas('content', function ($q) {
+                    $q->whereHas('provider', function ($providerQuery) {
                         $providerQuery->where('role', 'provider');
                     });
                 });
             })
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year').', SUM(COALESCE(total_amount, total, 0)) as revenue')
             ->groupBy('year')
             ->orderBy('year')
             ->get()
             ->map(function ($item) {
                 $item->year = $item->year ?? '';
+
                 return $item;
             });
 
         // Commissions par année
         $commissionsByYear = ProviderPayout::withTrashed()->where('status', 'completed')
-            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(commission_amount) as revenue')
+            ->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year').', SUM(commission_amount) as revenue')
             ->groupBy('year')
             ->orderBy('year')
             ->get()
             ->map(function ($item) {
                 $item->year = $item->year ?? '';
+
                 return $item;
             });
 
@@ -523,24 +543,25 @@ class AdminController extends Controller
             COUNT(*) as total_courses,
             SUM(CASE WHEN is_published = 1 THEN 1 ELSE 0 END) as published_courses
         ')->first();
-        
+
         // Calculer les statistiques dynamiquement
         $totalStudents = Enrollment::count();
         $averageRating = Review::avg('rating') ?? 0;
-        
+
         $courseStats->total_customers = $totalStudents;
         $courseStats->average_rating = $averageRating;
 
-        $userGrowth = User::selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', COUNT(*) as count')
-        ->where('created_at', '>=', now()->subMonths(12))
-        ->groupBy('month')
-        ->orderBy('month')
-        ->get()
-        ->map(function ($item) {
-            // S'assurer que le mois est au format YYYY-MM
-            $item->month = $item->month ?? '';
-            return $item;
-        });
+        $userGrowth = User::selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month').', COUNT(*) as count')
+            ->where('created_at', '>=', now()->subMonths(12))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get()
+            ->map(function ($item) {
+                // S'assurer que le mois est au format YYYY-MM
+                $item->month = $item->month ?? '';
+
+                return $item;
+            });
 
         $categoryStats = Category::withCount('courses')
             ->orderBy('courses_count', 'desc')
@@ -548,7 +569,7 @@ class AdminController extends Controller
 
         $providerStats = User::providers()
             ->withCount('contents')
-            ->withCount(['contents as total_customers' => function($query) {
+            ->withCount(['contents as total_customers' => function ($query) {
                 $query->withCount('enrollments');
             }])
             ->orderBy('contents_count', 'desc')
@@ -594,7 +615,7 @@ class AdminController extends Controller
                 ->orderByDesc('count')
                 ->limit(10)
                 ->get(),
-            'visitors_by_day' => Visitor::selectRaw($this->buildDateFormatSelect('visited_at', '%Y-%m-%d', 'date') . ', COUNT(*) as count')
+            'visitors_by_day' => Visitor::selectRaw($this->buildDateFormatSelect('visited_at', '%Y-%m-%d', 'date').', COUNT(*) as count')
                 ->where('visited_at', '>=', now()->subDays(30))
                 ->groupBy('date')
                 ->orderBy('date')
@@ -602,9 +623,10 @@ class AdminController extends Controller
                 ->map(function ($item) {
                     // S'assurer que la date est au format YYYY-MM-DD
                     $item->date = $item->date ?? '';
+
                     return $item;
                 }),
-            'unique_visitors_by_day' => Visitor::selectRaw($this->buildDateFormatSelect('visited_at', '%Y-%m-%d', 'date') . ', COUNT(DISTINCT ip_address) as count')
+            'unique_visitors_by_day' => Visitor::selectRaw($this->buildDateFormatSelect('visited_at', '%Y-%m-%d', 'date').', COUNT(DISTINCT ip_address) as count')
                 ->where('visited_at', '>=', now()->subDays(30))
                 ->groupBy('date')
                 ->orderBy('date')
@@ -612,6 +634,7 @@ class AdminController extends Controller
                 ->map(function ($item) {
                     // S'assurer que la date est au format YYYY-MM-DD
                     $item->date = $item->date ?? '';
+
                     return $item;
                 }),
             'by_country' => Visitor::select('country')
@@ -631,6 +654,7 @@ class AdminController extends Controller
         ];
 
         $baseCurrency = Setting::getBaseCurrency();
+
         return view('admin.analytics', compact(
             'stats',
             'revenueByMonth',
@@ -673,20 +697,21 @@ class AdminController extends Controller
             $query->where('created_at', '>=', $startDate);
         }
         if ($endDate) {
-            $query->where('created_at', '<=', $endDate . ' 23:59:59');
+            $query->where('created_at', '<=', $endDate.' 23:59:59');
         }
 
         $data = [];
         $labels = [];
 
-        switch($period) {
+        switch ($period) {
             case 'day':
-                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date').', SUM(COALESCE(total_amount, total, 0)) as revenue')
                     ->groupBy('date')
                     ->orderBy('date')
                     ->get()
                     ->map(function ($item) {
                         $item->date = $item->date ?? '';
+
                         return $item;
                     });
                 $data = $results->toArray();
@@ -699,34 +724,37 @@ class AdminController extends Controller
                         ->orderBy('week')
                         ->get();
                 } else {
-                    $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+                    $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%u', 'week').', SUM(COALESCE(total_amount, total, 0)) as revenue')
                         ->groupBy('week')
                         ->orderBy('week')
                         ->get();
                 }
                 $data = $results->map(function ($item) {
                     $item->week = $item->week ?? '';
+
                     return $item;
                 })->toArray();
                 break;
             case 'month':
-                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m', 'month').', SUM(COALESCE(total_amount, total, 0)) as revenue')
                     ->groupBy('month')
                     ->orderBy('month')
                     ->get()
                     ->map(function ($item) {
                         $item->month = $item->month ?? '';
+
                         return $item;
                     });
                 $data = $results->toArray();
                 break;
             case 'year':
-                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year') . ', SUM(COALESCE(total_amount, total, 0)) as revenue')
+                $results = $query->selectRaw($this->buildDateFormatSelect('created_at', '%Y', 'year').', SUM(COALESCE(total_amount, total, 0)) as revenue')
                     ->groupBy('year')
                     ->orderBy('year')
                     ->get()
                     ->map(function ($item) {
                         $item->year = $item->year ?? '';
+
                         return $item;
                     });
                 $data = $results->toArray();
@@ -739,7 +767,7 @@ class AdminController extends Controller
     public function getRevenueByCategory(Request $request)
     {
         $days = $request->input('days', 'all');
-        
+
         // Utilise le même calcul que /admin/orders pour uniformiser
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
@@ -747,7 +775,7 @@ class AdminController extends Controller
             ->whereIn('orders.status', ['paid', 'completed']);
 
         if ($days !== 'all') {
-            $query->where('orders.created_at', '>=', now()->subDays((int)$days));
+            $query->where('orders.created_at', '>=', now()->subDays((int) $days));
         }
 
         $data = $query->select('categories.id', 'categories.name')
@@ -762,14 +790,14 @@ class AdminController extends Controller
     public function getRevenueByCourse(Request $request)
     {
         $days = $request->input('days', 'all');
-        
+
         // Utilise le même calcul que /admin/orders pour uniformiser
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
             ->whereIn('orders.status', ['paid', 'completed']);
 
         if ($days !== 'all') {
-            $query->where('orders.created_at', '>=', now()->subDays((int)$days));
+            $query->where('orders.created_at', '>=', now()->subDays((int) $days));
         }
 
         $data = $query->select('contents.id', 'contents.title')
@@ -785,7 +813,7 @@ class AdminController extends Controller
     public function getRevenueByInstructor(Request $request)
     {
         $days = $request->input('days', 'all');
-        
+
         // Utilise le même calcul que /admin/orders pour uniformiser
         $query = \App\Models\OrderItem::join('orders', 'order_items.order_id', '=', 'orders.id')
             ->join('contents', 'order_items.content_id', '=', 'contents.id')
@@ -793,7 +821,7 @@ class AdminController extends Controller
             ->whereIn('orders.status', ['paid', 'completed']);
 
         if ($days !== 'all') {
-            $query->where('orders.created_at', '>=', now()->subDays((int)$days));
+            $query->where('orders.created_at', '>=', now()->subDays((int) $days));
         }
 
         $data = $query->select('users.id', 'users.name')
@@ -814,9 +842,9 @@ class AdminController extends Controller
         // Recherche par nom ou email
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -839,7 +867,7 @@ class AdminController extends Controller
         // Tri
         $sortBy = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-        
+
         if (in_array($sortBy, ['name', 'email', 'role', 'created_at', 'last_login_at'])) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
@@ -873,6 +901,7 @@ class AdminController extends Controller
 
     /**
      * Récupérer la configuration Moneroo (pays et providers) depuis le fournisseur.
+     *
      * @see https://docs.moneroo.io/payouts/available-methods
      */
     private function getMonerooConfiguration(): array
@@ -890,7 +919,7 @@ class AdminController extends Controller
         // Avec le SSO, on limite les modifications locales
         // Seuls le rôle et le statut actif peuvent être modifiés localement
         // Les autres données (nom, email, photo) viennent du SSO
-        
+
         $request->validate([
             'role' => 'required|in:customer,provider,admin,affiliate,super_user',
             'is_active' => 'boolean',
@@ -913,10 +942,10 @@ class AdminController extends Controller
             'moneroo_currency' => $request->moneroo_currency,
         ]);
 
-            return redirect()->route('admin.users')
-                ->with('success', 'Utilisateur mis à jour avec succès. Les données personnelles (nom, email, photo) sont gérées via Compte Herime et seront synchronisées lors de la prochaine connexion.');
+        return redirect()->route('admin.users')
+            ->with('success', 'Utilisateur mis à jour avec succès. Les données personnelles (nom, email, photo) sont gérées via Compte Herime et seront synchronisées lors de la prochaine connexion.');
     }
-    
+
     /**
      * Synchroniser un utilisateur avec le SSO
      * Récupère les dernières données depuis le SSO
@@ -932,9 +961,9 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('SSO User Sync Error', [
                 'user_id' => $user->id,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ]);
-            
+
             return redirect()->route('admin.users')
                 ->with('error', 'Erreur lors de la synchronisation. Les données seront mises à jour lors de la prochaine connexion.');
         }
@@ -951,14 +980,14 @@ class AdminController extends Controller
         if (config('services.sso.enabled', true)) {
             $ssoService = app(\App\Services\SSOService::class);
             $callbackUrl = route('sso.callback', [
-                'redirect' => route('admin.users')
+                'redirect' => route('admin.users'),
             ]);
             $ssoRegisterUrl = $ssoService->getRegisterUrl($callbackUrl);
-            
+
             return redirect($ssoRegisterUrl)
                 ->with('info', 'La création d\'utilisateurs se fait via Compte Herime. Vous allez être redirigé vers la page d\'inscription.');
         }
-        
+
         // Fallback si SSO désactivé (ne devrait pas arriver)
         return redirect()->route('admin.users')
             ->with('error', 'Compte Herime est requis pour créer des utilisateurs.');
@@ -984,11 +1013,11 @@ class AdminController extends Controller
             ->with(['course.provider', 'course.category', 'order'])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->filter(function($enrollment) {
+            ->filter(function ($enrollment) {
                 // Filtrer les enrollments dont le cours n'existe plus
                 return $enrollment->course !== null;
             });
-        
+
         // Récupérer les accès packs (commandes payées/complétées contenant des packs)
         $packageAccesses = Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
@@ -999,11 +1028,11 @@ class AdminController extends Controller
             ->get()
             ->flatMap(function ($order) {
                 return $order->orderItems
-                    ->filter(function ($item) use ($order) {
-                        return !empty($item->content_package_id) && $item->contentPackage !== null;
+                    ->filter(function ($item) {
+                        return ! empty($item->content_package_id) && $item->contentPackage !== null;
                     })
                     ->map(function ($item) use ($order) {
-                        $marker = '[PACK_REVOKED:' . (int) $item->content_package_id . ']';
+                        $marker = '[PACK_REVOKED:'.(int) $item->content_package_id.']';
                         $isRevoked = str_contains((string) ($order->notes ?? ''), $marker);
 
                         return (object) [
@@ -1022,13 +1051,13 @@ class AdminController extends Controller
                     });
             })
             ->unique(function ($row) {
-                return ($row->order_id ?? 'no-order') . ':' . ($row->package->id ?? 'no-package');
+                return ($row->order_id ?? 'no-order').':'.($row->package->id ?? 'no-package');
             })
             ->values();
 
         $activePackageOrderIds = $packageAccesses
             ->filter(function ($row) {
-                return !(bool) ($row->is_revoked_purchase ?? false);
+                return ! (bool) ($row->is_revoked_purchase ?? false);
             })
             ->pluck('order_id')
             ->filter()
@@ -1039,31 +1068,31 @@ class AdminController extends Controller
         $purchasedCourseIds = $enrollments->pluck('content_id')->filter()->all();
         $purchasedCourses = \App\Models\Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', function($query) use ($purchasedCourseIds) {
+            ->whereHas('orderItems', function ($query) use ($purchasedCourseIds) {
                 $query->whereNotIn('content_id', $purchasedCourseIds ?: [0])
                     ->whereNull('content_package_id')
                     ->whereNotNull('content_id')
-                    ->whereHas('content', function($q) {
+                    ->whereHas('content', function ($q) {
                         $q->where('is_published', true);
                     });
             })
             ->with(['orderItems.course.provider', 'orderItems.course.category'])
             ->get()
-            ->flatMap(function($order) use ($purchasedCourseIds) {
-                if (!$order->orderItems) {
+            ->flatMap(function ($order) use ($purchasedCourseIds) {
+                if (! $order->orderItems) {
                     return collect();
                 }
-                
+
                 return $order->orderItems
-                    ->filter(function($item) use ($purchasedCourseIds, $order) {
+                    ->filter(function ($item) use ($purchasedCourseIds, $order) {
                         // Vérifier que le cours existe et est publié
-                        if (!$item->content_id || !$item->course) {
+                        if (! $item->content_id || ! $item->course) {
                             return false;
                         }
-                        
+
                         try {
-                            return $item->course->is_published && 
-                                   !in_array($item->content_id, $purchasedCourseIds);
+                            return $item->course->is_published &&
+                                   ! in_array($item->content_id, $purchasedCourseIds);
                         } catch (\Exception $e) {
                             \Log::warning('Erreur lors du filtrage des cours achetés', [
                                 'order_id' => $order->id ?? null,
@@ -1071,20 +1100,21 @@ class AdminController extends Controller
                                 'content_id' => $item->content_id ?? null,
                                 'error' => $e->getMessage(),
                             ]);
+
                             return false;
                         }
                     })
-                    ->map(function($item) use ($order) {
+                    ->map(function ($item) use ($order) {
                         // Vérifier à nouveau que le cours existe avant de créer l'objet
-                        if (!$item->course) {
+                        if (! $item->course) {
                             return null;
                         }
 
-                        $revocationMarker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
+                        $revocationMarker = '[COURSE_REVOKED:'.(int) $item->content_id.']';
                         $isRevoked = str_contains((string) ($order->notes ?? ''), $revocationMarker);
-                        
+
                         // Créer un objet similaire à un enrollment pour la compatibilité avec la vue
-                        return (object)[
+                        return (object) [
                             'id' => null,
                             'content_id' => $item->content_id,
                             'course' => $item->course,
@@ -1099,10 +1129,10 @@ class AdminController extends Controller
                     })
                     ->filter(); // Filtrer les valeurs null
             });
-        
+
         // Récupérer les cours téléchargeables gratuits téléchargés au moins une fois
         $activePurchasedCourses = $purchasedCourses->filter(function ($row) {
-            return !(bool) ($row->is_revoked_purchase ?? false);
+            return ! (bool) ($row->is_revoked_purchase ?? false);
         });
 
         $allAccessCourseIds = $enrollments->pluck('content_id')
@@ -1110,40 +1140,40 @@ class AdminController extends Controller
             ->filter()
             ->unique()
             ->all();
-        
+
         $downloadedFreeCourseIds = \App\Models\CourseDownload::where('user_id', $user->id)
             ->whereNotNull('content_id')
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_downloadable', true)
-                  ->where('is_free', true)
-                  ->where('is_published', true);
+                    ->where('is_free', true)
+                    ->where('is_published', true);
             })
             ->pluck('content_id')
             ->unique()
-            ->filter(function($contentId) use ($allAccessCourseIds) {
+            ->filter(function ($contentId) use ($allAccessCourseIds) {
                 // Exclure ceux déjà dans les enrollments ou les cours achetés
-                return $contentId && !in_array($contentId, $allAccessCourseIds);
+                return $contentId && ! in_array($contentId, $allAccessCourseIds);
             })
             ->all();
-        
+
         $downloadedFreeCourses = collect();
-        if (!empty($downloadedFreeCourseIds)) {
+        if (! empty($downloadedFreeCourseIds)) {
             $downloadedFreeCourses = \App\Models\Course::whereIn('id', $downloadedFreeCourseIds)
                 ->where('is_published', true) // S'assurer que le cours est toujours publié
                 ->with(['provider', 'category'])
                 ->get()
-                ->filter(function($course) {
+                ->filter(function ($course) {
                     // Filtrer les cours qui n'existent plus ou ne sont plus publiés
                     return $course !== null;
                 })
-                ->map(function($course) use ($user) {
+                ->map(function ($course) use ($user) {
                     try {
                         $downloadDate = \App\Models\CourseDownload::where('user_id', $user->id)
                             ->where('content_id', $course->id)
                             ->orderBy('created_at', 'desc')
                             ->first()?->created_at ?? now();
-                        
-                        return (object)[
+
+                        return (object) [
                             'id' => null,
                             'content_id' => $course->id,
                             'course' => $course,
@@ -1160,19 +1190,20 @@ class AdminController extends Controller
                             'content_id' => $course->id ?? null,
                             'error' => $e->getMessage(),
                         ]);
+
                         return null;
                     }
                 })
                 ->filter(); // Filtrer les valeurs null
         }
-        
+
         // Masquer les lignes de cours issues d'une commande pack (on affichera le pack)
         $enrollments = $enrollments->filter(function ($enrollment) use ($activePackageOrderIds) {
             if (empty($enrollment->order_id)) {
                 return true;
             }
 
-            return !in_array($enrollment->order_id, $activePackageOrderIds);
+            return ! in_array($enrollment->order_id, $activePackageOrderIds);
         });
 
         // Combiner toutes les sources d'accès
@@ -1182,7 +1213,7 @@ class AdminController extends Controller
             ->concat($packageAccesses)
             ->sortByDesc('created_at')
             ->values();
-        
+
         // Charger tous les cours disponibles pour le modal d'ajout
         $allCourses = Course::published()
             ->with(['provider', 'category'])
@@ -1210,27 +1241,27 @@ class AdminController extends Controller
     public function showUserExport(Request $request, User $user)
     {
         $format = $request->get('format', 'csv');
-        
+
         // Préparer les données de l'utilisateur
         $user->loadCount(['courses', 'enrollments']);
-        
+
         // Formater les valeurs pour l'export
         $roleLabels = [
             'admin' => 'Administrateur',
             'provider' => 'Prestataire',
             'customer' => 'Client',
             'affiliate' => 'Affilié',
-            'super_user' => 'Super Administrateur'
+            'super_user' => 'Super Administrateur',
         ];
-        
+
         $genderLabels = [
             'male' => 'Homme',
             'female' => 'Femme',
-            'other' => 'Autre'
+            'other' => 'Autre',
         ];
-        
+
         // Créer un objet formaté pour l'export
-        $formattedUser = (object)[
+        $formattedUser = (object) [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
@@ -1243,9 +1274,9 @@ class AdminController extends Controller
             'courses_count' => $user->courses_count ?? 0,
             'enrollments_count' => $user->enrollments_count ?? 0,
             'created_at' => $user->created_at->format('d/m/Y à H:i'),
-            'last_login_at' => $user->last_login_at ? $user->last_login_at->format('d/m/Y à H:i') : 'Jamais'
+            'last_login_at' => $user->last_login_at ? $user->last_login_at->format('d/m/Y à H:i') : 'Jamais',
         ];
-        
+
         $columns = [
             'id' => 'ID',
             'name' => 'Nom',
@@ -1259,24 +1290,25 @@ class AdminController extends Controller
             'courses_count' => 'Nombre de cours',
             'enrollments_count' => 'Nombre d\'inscriptions',
             'created_at' => 'Date d\'inscription',
-            'last_login_at' => 'Dernière connexion'
+            'last_login_at' => 'Dernière connexion',
         ];
-        
+
         // Créer une collection avec un seul élément formaté
         $data = collect([$formattedUser]);
-        
+
         if ($format === 'excel') {
-            return $this->exportToExcel($data, $columns, 'utilisateur-' . $user->id);
+            return $this->exportToExcel($data, $columns, 'utilisateur-'.$user->id);
         } elseif ($format === 'pdf') {
-            return $this->exportToPdf($data, $columns, 'utilisateur-' . $user->id);
+            return $this->exportToPdf($data, $columns, 'utilisateur-'.$user->id);
         } else {
-            return $this->exportToCsv($data, $columns, 'utilisateur-' . $user->id);
+            return $this->exportToCsv($data, $columns, 'utilisateur-'.$user->id);
         }
     }
 
     public function destroyUser(User $user)
     {
         $user->delete();
+
         return redirect()->route('admin.users')
             ->with('success', 'Utilisateur supprimé avec succès.');
     }
@@ -1333,7 +1365,7 @@ class AdminController extends Controller
 
         // Créer une commande gratuite "admin_grant" pour tracer l'accès pack dans l'historique admin
         $freeOrder = Order::create([
-            'order_number' => 'ADM-PACK-' . strtoupper(Str::random(8)) . '-' . time(),
+            'order_number' => 'ADM-PACK-'.strtoupper(Str::random(8)).'-'.time(),
             'user_id' => $user->id,
             'subtotal' => 0,
             'discount' => 0,
@@ -1423,7 +1455,7 @@ class AdminController extends Controller
      */
     public function revokeCourseAccess(User $user, Course $course)
     {
-        $revocationMarker = '[COURSE_REVOKED:' . (int) $course->id . ']';
+        $revocationMarker = '[COURSE_REVOKED:'.(int) $course->id.']';
 
         // Vérifier qu'il existe au moins une inscription OU une commande payée pour ce contenu
         $hasEnrollment = Enrollment::where('user_id', $user->id)
@@ -1432,12 +1464,12 @@ class AdminController extends Controller
 
         $hasPaidOrder = Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', function($query) use ($course) {
+            ->whereHas('orderItems', function ($query) use ($course) {
                 $query->where('content_id', $course->id);
             })
             ->where(function ($q) use ($revocationMarker) {
                 $q->whereNull('notes')
-                    ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+                    ->orWhere('notes', 'not like', '%'.$revocationMarker.'%');
             })
             ->exists();
 
@@ -1457,16 +1489,16 @@ class AdminController extends Controller
                 \Log::info("Email CourseAccessRevokedMail envoyé directement à {$user->email} pour le contenu {$course->id}");
             } catch (\Exception $emailException) {
                 \Log::error("Erreur lors de l'envoi de l'email CourseAccessRevokedMail", [
-                    'user_id'   => $user->id,
-                    'content_id'=> $course->id,
-                    'error'     => $emailException->getMessage(),
+                    'user_id' => $user->id,
+                    'content_id' => $course->id,
+                    'error' => $emailException->getMessage(),
                 ]);
             }
 
             // Envoyer la notification en base de données (sans email car déjà envoyé)
             Notification::sendNow($user, new \App\Notifications\CourseAccessRevoked($course));
         } catch (\Exception $e) {
-            \Log::error("Erreur lors de l'envoi de la notification de retrait d'accès: " . $e->getMessage());
+            \Log::error("Erreur lors de l'envoi de la notification de retrait d'accès: ".$e->getMessage());
         }
 
         // Supprimer toutes les données de liaison utilisateur <-> contenu
@@ -1547,7 +1579,7 @@ class AdminController extends Controller
 
                 $currentNotes = trim((string) ($order->notes ?? ''));
                 $order->update([
-                    'notes' => $currentNotes === '' ? $extraNote : ($currentNotes . "\n" . $extraNote),
+                    'notes' => $currentNotes === '' ? $extraNote : ($currentNotes."\n".$extraNote),
                 ]);
             }
         });
@@ -1574,7 +1606,7 @@ class AdminController extends Controller
         $orderId = (int) $request->query('order_id', 0);
         unset($orderId);
 
-        $revocationMarker = '[PACK_REVOKED:' . (int) $package->id . ']';
+        $revocationMarker = '[PACK_REVOKED:'.(int) $package->id.']';
 
         // Toutes les commandes payées/complétées qui contiennent ce pack
         $packOrders = Order::where('user_id', $user->id)
@@ -1591,7 +1623,7 @@ class AdminController extends Controller
 
         $packOrderIds = $packOrders->pluck('id')->values();
         $packOrdersMissingMarker = $packOrders->filter(function ($order) use ($revocationMarker) {
-            return !str_contains((string) ($order->notes ?? ''), $revocationMarker);
+            return ! str_contains((string) ($order->notes ?? ''), $revocationMarker);
         })->values();
 
         if ($packOrdersMissingMarker->isEmpty()) {
@@ -1629,14 +1661,14 @@ class AdminController extends Controller
                 })
                 ->exists();
 
-            return !($hasOtherEnrollment || $hasOtherPaidOrder);
+            return ! ($hasOtherEnrollment || $hasOtherPaidOrder);
         })->values();
 
         // Envoyer notifications/mails/messages pour chaque contenu révoqué sans bloquer la suite
         $revocableCourses = Course::whereIn('id', $revocableContentIds)->get()->keyBy('id');
         foreach ($revocableContentIds as $contentId) {
             $course = $revocableCourses->get($contentId);
-            if (!$course) {
+            if (! $course) {
                 continue;
             }
 
@@ -1645,7 +1677,7 @@ class AdminController extends Controller
                 $communicationService = app(\App\Services\CommunicationService::class);
                 $communicationService->sendEmailAndWhatsApp($user, $mailable);
             } catch (\Throwable $e) {
-                \Log::error("Erreur envoi email/WhatsApp révocation pack", [
+                \Log::error('Erreur envoi email/WhatsApp révocation pack', [
                     'user_id' => $user->id,
                     'package_id' => $package->id,
                     'content_id' => $contentId,
@@ -1656,7 +1688,7 @@ class AdminController extends Controller
             try {
                 Notification::sendNow($user, new \App\Notifications\CourseAccessRevoked($course));
             } catch (\Throwable $e) {
-                \Log::error("Erreur envoi notification DB révocation pack", [
+                \Log::error('Erreur envoi notification DB révocation pack', [
                     'user_id' => $user->id,
                     'package_id' => $package->id,
                     'content_id' => $contentId,
@@ -1722,7 +1754,7 @@ class AdminController extends Controller
             foreach ($packOrdersMissingMarker as $order) {
                 $currentNotes = trim((string) ($order->notes ?? ''));
                 $order->update([
-                    'notes' => $currentNotes === '' ? $extraNote : ($currentNotes . "\n" . $extraNote),
+                    'notes' => $currentNotes === '' ? $extraNote : ($currentNotes."\n".$extraNote),
                 ]);
             }
 
@@ -1750,9 +1782,9 @@ class AdminController extends Controller
         // Recherche par titre ou description
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -1782,7 +1814,7 @@ class AdminController extends Controller
         // Tri
         $sortBy = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-        
+
         if (in_array($sortBy, ['title', 'price', 'created_at', 'updated_at'])) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
@@ -1803,8 +1835,9 @@ class AdminController extends Controller
             'free' => Course::where('is_free', true)->count(),
             'paid' => Course::where('is_free', false)->count(),
         ];
-        
+
         $baseCurrency = Setting::getBaseCurrency();
+
         return view('admin.contents.index', compact('courses', 'categories', 'providers', 'stats', 'baseCurrency'));
     }
 
@@ -1816,6 +1849,7 @@ class AdminController extends Controller
             ->orderBy('name')
             ->get();
         $baseCurrency = Setting::getBaseCurrency();
+
         return view('admin.contents.create', compact('categories', 'providers', 'baseCurrency'));
     }
 
@@ -1930,26 +1964,26 @@ class AdminController extends Controller
                     1920 // Max 1920px width
                 );
                 $courseData['thumbnail'] = $result['path'];
-        } elseif ($request->filled('thumbnail_chunk_path')) {
-            $chunkPath = $this->sanitizeUploadedPath($request->input('thumbnail_chunk_path'));
-            if ($chunkPath) {
-                $courseData['thumbnail'] = $this->fileUploadService->promoteTemporaryFile(
-                    $chunkPath,
-                    'courses/thumbnails'
-                );
-            }
+            } elseif ($request->filled('thumbnail_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('thumbnail_chunk_path'));
+                if ($chunkPath) {
+                    $courseData['thumbnail'] = $this->fileUploadService->promoteTemporaryFile(
+                        $chunkPath,
+                        'courses/thumbnails'
+                    );
+                }
             }
 
             // Gérer YouTube ou upload de la vidéo de prévisualisation
             $videoPreviewYoutubeId = $request->video_preview_youtube_id;
             $isUnlisted = $request->boolean('video_preview_is_unlisted', false);
-            
+
             // Si YouTube vidéo ID fourni, extraire et valider
             if ($videoPreviewYoutubeId) {
                 $courseData['video_preview_youtube_id'] = $this->extractYouTubeVideoId($videoPreviewYoutubeId);
                 $courseData['video_preview_is_unlisted'] = $isUnlisted;
             }
-            
+
             // Gérer upload fichier si fourni
             if ($request->hasFile('video_preview_file')) {
                 $result = $this->fileUploadService->uploadVideo(
@@ -1979,14 +2013,15 @@ class AdminController extends Controller
                     $courseData['download_file_path'] = $result['path'];
                 } catch (\Exception $e) {
                     DB::rollback();
-                    \Log::error('Erreur upload download_file_path: ' . $e->getMessage(), [
+                    \Log::error('Erreur upload download_file_path: '.$e->getMessage(), [
                         'file' => $request->file('download_file_path')->getClientOriginalName(),
                         'size' => $request->file('download_file_path')->getSize(),
-                        'error' => $e->getTraceAsString()
+                        'error' => $e->getTraceAsString(),
                     ]);
+
                     return redirect()->back()
                         ->withInput()
-                        ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()]);
+                        ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : '.$e->getMessage()]);
                 }
             } elseif ($request->filled('download_file_chunk_path')) {
                 $chunkPath = $this->sanitizeUploadedPath($request->input('download_file_chunk_path'));
@@ -2025,7 +2060,7 @@ class AdminController extends Controller
             $courseData['receipt_custom_title'] = $request->filled('receipt_custom_title') ? $request->input('receipt_custom_title') : null;
             $courseData['receipt_custom_body'] = $request->filled('receipt_custom_body') ? $request->input('receipt_custom_body') : null;
 
-            if (!$courseData['is_in_person_program']) {
+            if (! $courseData['is_in_person_program']) {
                 $courseData['whatsapp_number'] = null;
             }
 
@@ -2041,7 +2076,7 @@ class AdminController extends Controller
                     ]);
                 }
 
-                if (!is_null($courseData['sale_price']) && $courseData['sale_price'] > $courseData['price']) {
+                if (! is_null($courseData['sale_price']) && $courseData['sale_price'] > $courseData['price']) {
                     throw ValidationException::withMessages([
                         'sale_price' => 'Le prix promotionnel doit être inférieur ou égal au prix standard.',
                     ]);
@@ -2053,7 +2088,7 @@ class AdminController extends Controller
                 }
             }
 
-            if (!$courseData['requires_subscription']) {
+            if (! $courseData['requires_subscription']) {
                 $courseData['required_subscription_tier'] = null;
             } elseif (empty($courseData['required_subscription_tier'])) {
                 $courseData['required_subscription_tier'] = 'starter';
@@ -2130,14 +2165,16 @@ class AdminController extends Controller
             }
 
             $lessonsCount = $course->lessons()->count();
+
             return redirect()->route('admin.contents')
-                ->with('success', 'Cours créé avec succès avec ' . $lessonsCount . ' leçons.');
+                ->with('success', 'Cours créé avec succès avec '.$lessonsCount.' leçons.');
 
         } catch (\Exception $e) {
             DB::rollback();
+
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['error' => 'Erreur lors de la création du cours: ' . $e->getMessage()]);
+                ->withErrors(['error' => 'Erreur lors de la création du cours: '.$e->getMessage()]);
         }
     }
 
@@ -2149,6 +2186,7 @@ class AdminController extends Controller
             ->orderBy('name')
             ->get();
         $baseCurrency = Setting::getBaseCurrency();
+
         return view('admin.contents.edit', compact('course', 'categories', 'providers', 'baseCurrency'));
     }
 
@@ -2251,18 +2289,18 @@ class AdminController extends Controller
                     1920 // Max 1920px width
                 );
                 $data['thumbnail'] = $result['path'];
-        } elseif ($request->filled('thumbnail_chunk_path')) {
-            $chunkPath = $this->sanitizeUploadedPath($request->input('thumbnail_chunk_path'));
-            if ($chunkPath) {
-                $newThumbnailPath = $this->fileUploadService->promoteTemporaryFile(
-                    $chunkPath,
-                    'courses/thumbnails'
-                );
-                if ($course->thumbnail && $course->thumbnail !== $newThumbnailPath) {
-                    $this->fileUploadService->deleteFile($course->thumbnail);
+            } elseif ($request->filled('thumbnail_chunk_path')) {
+                $chunkPath = $this->sanitizeUploadedPath($request->input('thumbnail_chunk_path'));
+                if ($chunkPath) {
+                    $newThumbnailPath = $this->fileUploadService->promoteTemporaryFile(
+                        $chunkPath,
+                        'courses/thumbnails'
+                    );
+                    if ($course->thumbnail && $course->thumbnail !== $newThumbnailPath) {
+                        $this->fileUploadService->deleteFile($course->thumbnail);
+                    }
+                    $data['thumbnail'] = $newThumbnailPath;
                 }
-                $data['thumbnail'] = $newThumbnailPath;
-            }
             }
 
             // Gérer YouTube ou upload de la vidéo de prévisualisation
@@ -2278,13 +2316,13 @@ class AdminController extends Controller
                 $result = $this->fileUploadService->uploadVideo(
                     $request->file('video_preview_file'),
                     'courses/previews',
-                    $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
+                    $course->video_preview && ! filter_var($course->video_preview, FILTER_VALIDATE_URL) ? $course->video_preview : null
                 );
                 $data['video_preview'] = $result['path'];
             } elseif ($request->filled('video_preview_path')) {
                 $sanitizedPath = $this->sanitizeUploadedPath($request->input('video_preview_path'));
                 if ($sanitizedPath) {
-                    $currentPath = $course->video_preview && !filter_var($course->video_preview, FILTER_VALIDATE_URL)
+                    $currentPath = $course->video_preview && ! filter_var($course->video_preview, FILTER_VALIDATE_URL)
                         ? $this->sanitizeUploadedPath($course->video_preview)
                         : null;
                     $finalPath = $this->fileUploadService->promoteTemporaryFile(
@@ -2300,13 +2338,13 @@ class AdminController extends Controller
 
             // Gérer le fichier de téléchargement spécifique
             if ($request->has('remove_download_file') && $request->remove_download_file) {
-                if ($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+                if ($course->download_file_path && ! filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
                     $this->fileUploadService->deleteFile($course->download_file_path);
                 }
                 $data['download_file_path'] = null;
             } elseif ($request->hasFile('download_file_path')) {
                 $oldPath = null;
-                if ($course->download_file_path && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+                if ($course->download_file_path && ! filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
                     $oldPath = $course->download_file_path;
                 }
                 try {
@@ -2318,14 +2356,15 @@ class AdminController extends Controller
                     $data['download_file_path'] = $result['path'];
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    \Log::error('Erreur upload download_file_path (update): ' . $e->getMessage(), [
+                    \Log::error('Erreur upload download_file_path (update): '.$e->getMessage(), [
                         'file' => $request->file('download_file_path')->getClientOriginalName(),
                         'size' => $request->file('download_file_path')->getSize(),
-                        'error' => $e->getTraceAsString()
+                        'error' => $e->getTraceAsString(),
                     ]);
+
                     return redirect()->back()
                         ->withInput()
-                        ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()]);
+                        ->withErrors(['download_file_path' => 'Erreur lors de l\'upload du fichier : '.$e->getMessage()]);
                 }
             } elseif ($request->filled('download_file_chunk_path')) {
                 $chunkPath = $this->sanitizeUploadedPath($request->input('download_file_chunk_path'));
@@ -2335,7 +2374,7 @@ class AdminController extends Controller
                         'courses/downloads'
                     );
                     if ($course->download_file_path
-                        && !filter_var($course->download_file_path, FILTER_VALIDATE_URL)
+                        && ! filter_var($course->download_file_path, FILTER_VALIDATE_URL)
                         && $course->download_file_path !== $finalPath) {
                         $this->fileUploadService->deleteFile($course->download_file_path);
                     }
@@ -2368,7 +2407,7 @@ class AdminController extends Controller
             $data['receipt_custom_title'] = $request->filled('receipt_custom_title') ? $request->input('receipt_custom_title') : null;
             $data['receipt_custom_body'] = $request->filled('receipt_custom_body') ? $request->input('receipt_custom_body') : null;
 
-            if (!$data['is_in_person_program']) {
+            if (! $data['is_in_person_program']) {
                 $data['whatsapp_number'] = null;
             }
 
@@ -2384,7 +2423,7 @@ class AdminController extends Controller
                     ]);
                 }
 
-                if (!is_null($data['sale_price']) && $data['sale_price'] > $data['price']) {
+                if (! is_null($data['sale_price']) && $data['sale_price'] > $data['price']) {
                     throw ValidationException::withMessages([
                         'sale_price' => 'Le prix promotionnel doit être inférieur ou égal au prix standard.',
                     ]);
@@ -2396,7 +2435,7 @@ class AdminController extends Controller
                 }
             }
 
-            if (!$data['requires_subscription']) {
+            if (! $data['requires_subscription']) {
                 $data['required_subscription_tier'] = null;
             } elseif (empty($data['required_subscription_tier'])) {
                 $data['required_subscription_tier'] = 'starter';
@@ -2409,7 +2448,7 @@ class AdminController extends Controller
 
             if (is_array($sectionsPayload)) {
                 foreach ($sectionsPayload as $sectionIndex => $sectionData) {
-                    if (!is_array($sectionData)) {
+                    if (! is_array($sectionData)) {
                         continue;
                     }
 
@@ -2426,7 +2465,7 @@ class AdminController extends Controller
                     ];
 
                     $section = null;
-                    if (!empty($sectionData['id'])) {
+                    if (! empty($sectionData['id'])) {
                         $section = $course->sections()->where('id', $sectionData['id'])->first();
                     }
 
@@ -2439,14 +2478,14 @@ class AdminController extends Controller
                     $sectionsToKeep[] = $section->id;
 
                     $lessonsPayload = $sectionData['lessons'] ?? [];
-                    if (!is_array($lessonsPayload)) {
+                    if (! is_array($lessonsPayload)) {
                         $lessonsPayload = [];
                     }
 
                     $lessonIdsToKeep = [];
 
                     foreach ($lessonsPayload as $lessonIndex => $lessonData) {
-                        if (!is_array($lessonData)) {
+                        if (! is_array($lessonData)) {
                             continue;
                         }
 
@@ -2458,7 +2497,7 @@ class AdminController extends Controller
                         }
 
                         $lesson = null;
-                        if (!empty($lessonData['id'])) {
+                        if (! empty($lessonData['id'])) {
                             $lesson = $section->lessons()->where('id', $lessonData['id'])->first();
                         }
 
@@ -2482,7 +2521,7 @@ class AdminController extends Controller
                         $contentUrl = $lessonData['content_url'] ?? null;
 
                         $currentFilePath = null;
-                        if ($lesson && $lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                        if ($lesson && $lesson->content_url && ! filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
                             $currentFilePath = $lesson->content_url;
                         }
 
@@ -2496,17 +2535,18 @@ class AdminController extends Controller
                                 }
                             } catch (\Exception $e) {
                                 DB::rollBack();
-                                \Log::error('Erreur upload content_file (update): ' . $e->getMessage(), [
+                                \Log::error('Erreur upload content_file (update): '.$e->getMessage(), [
                                     'content_id' => $course->id,
                                     'lesson_id' => $lesson?->id,
                                     'file' => $uploaded->getClientOriginalName(),
                                     'size' => $uploaded->getSize(),
-                                    'error' => $e->getTraceAsString()
+                                    'error' => $e->getTraceAsString(),
                                 ]);
+
                                 return redirect()->back()
                                     ->withInput()
                                     ->withErrors([
-                                        "sections.$sectionIndex.lessons.$lessonIndex.content_file" => 'Erreur lors de l\'upload du fichier : ' . $e->getMessage()
+                                        "sections.$sectionIndex.lessons.$lessonIndex.content_file" => 'Erreur lors de l\'upload du fichier : '.$e->getMessage(),
                                     ]);
                             }
 
@@ -2536,12 +2576,12 @@ class AdminController extends Controller
                                 $this->fileUploadService->deleteFile($currentFilePath);
                             }
                             $currentFilePath = null;
-                            if (!$contentUrl) {
+                            if (! $contentUrl) {
                                 $contentUrl = null;
                             }
                         } elseif ($existingHiddenPath) {
                             $contentUrl = $existingHiddenPath;
-                        } elseif ($currentFilePath && !$contentUrl) {
+                        } elseif ($currentFilePath && ! $contentUrl) {
                             $contentUrl = $currentFilePath;
                         }
 
@@ -2561,7 +2601,7 @@ class AdminController extends Controller
                         ->whereNotIn('id', $lessonIdsToKeep)
                         ->get()
                         ->each(function (CourseLesson $lesson) {
-                            if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                            if ($lesson->content_url && ! filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
                                 $this->fileUploadService->deleteFile($lesson->content_url);
                             }
                             $lesson->delete();
@@ -2574,7 +2614,7 @@ class AdminController extends Controller
                 ->get()
                 ->each(function ($section) {
                     foreach ($section->lessons as $lesson) {
-                        if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+                        if ($lesson->content_url && ! filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
                             $this->fileUploadService->deleteFile($lesson->content_url);
                         }
                         $lesson->delete();
@@ -2586,22 +2626,22 @@ class AdminController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Erreur lors de la mise à jour du cours: ' . $e->getMessage(), [
+            \Log::error('Erreur lors de la mise à jour du cours: '.$e->getMessage(), [
                 'content_id' => $course->id,
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['error' => 'Erreur lors de la mise à jour du cours: ' . $e->getMessage()]);
+                ->withErrors(['error' => 'Erreur lors de la mise à jour du cours: '.$e->getMessage()]);
         }
 
         $course->refresh();
 
-        if (!$wasPublished && $course->is_published) {
+        if (! $wasPublished && $course->is_published) {
             $course->notifyCustomersOfNewCourse();
             $this->notifyInstructorCourseModeration($course, 'approved');
-        } elseif ($wasPublished && !$course->is_published) {
+        } elseif ($wasPublished && ! $course->is_published) {
             $this->notifyInstructorCourseModeration($course, 'rejected');
         } else {
             $this->notifyInstructorCourseModeration($course, $course->is_published ? 'approved' : 'pending');
@@ -2645,9 +2685,9 @@ class AdminController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->whereHas('user', function($q) use ($search) {
+            $query->whereHas('user', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -2676,15 +2716,15 @@ class AdminController extends Controller
 
         $query = OrderItem::with(['order.user', 'order'])
             ->where('content_id', $course->id)
-            ->whereHas('order', function($q) {
+            ->whereHas('order', function ($q) {
                 $q->whereIn('status', ['paid', 'completed']);
             });
 
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->whereHas('order.user', function($q) use ($search) {
+            $query->whereHas('order.user', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -2713,9 +2753,9 @@ class AdminController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->whereHas('user', function($q) use ($search) {
+            $query->whereHas('user', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -2735,6 +2775,7 @@ class AdminController extends Controller
     public function destroyCourse(Course $course)
     {
         $course->delete();
+
         return redirect()->route('admin.contents')
             ->with('success', 'Cours supprimé avec succès.');
     }
@@ -2747,10 +2788,10 @@ class AdminController extends Controller
         // Filtre par recherche
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%");
             });
         }
 
@@ -2766,7 +2807,7 @@ class AdminController extends Controller
         // Tri
         $sortBy = $request->get('sort', 'sort_order');
         $sortDirection = $request->get('direction', 'asc');
-        
+
         if (in_array($sortBy, ['name', 'created_at', 'courses_count'])) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
@@ -2826,7 +2867,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'slug' => 'required|string|unique:categories,slug,' . $category->id,
+            'slug' => 'required|string|unique:categories,slug,'.$category->id,
             'description' => 'nullable|string',
             'color' => 'required|string|max:7',
             'icon' => 'nullable|string',
@@ -2855,6 +2896,7 @@ class AdminController extends Controller
     public function destroyCategory(Category $category)
     {
         $category->delete();
+
         return redirect()->route('admin.categories')
             ->with('success', 'Catégorie supprimée avec succès.');
     }
@@ -2864,19 +2906,19 @@ class AdminController extends Controller
     {
         // Filtres pour les annonces
         $announcementsQuery = Announcement::query();
-        
+
         if ($request->filled('announcement_search')) {
             $search = $request->announcement_search;
-            $announcementsQuery->where(function($q) use ($search) {
+            $announcementsQuery->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('content', 'like', "%{$search}%");
+                    ->orWhere('content', 'like', "%{$search}%");
             });
         }
-        
+
         if ($request->filled('announcement_type')) {
             $announcementsQuery->where('type', $request->announcement_type);
         }
-        
+
         if ($request->filled('announcement_status')) {
             if ($request->announcement_status === 'active') {
                 $announcementsQuery->where('is_active', true);
@@ -2884,61 +2926,62 @@ class AdminController extends Controller
                 $announcementsQuery->where('is_active', false);
             }
         }
-        
+
         $announcements = $announcementsQuery->latest()->paginate(15)->withQueryString();
-        
+
         // Filtres pour les emails envoyés
         $sentEmailsQuery = SentEmail::with('user');
-        
+
         if ($request->filled('email_search')) {
             $search = $request->email_search;
-            $sentEmailsQuery->where(function($q) use ($search) {
+            $sentEmailsQuery->where(function ($q) use ($search) {
                 $q->where('subject', 'like', "%{$search}%")
-                  ->orWhere('recipient_email', 'like', "%{$search}%")
-                  ->orWhere('recipient_name', 'like', "%{$search}%");
+                    ->orWhere('recipient_email', 'like', "%{$search}%")
+                    ->orWhere('recipient_name', 'like', "%{$search}%");
             });
         }
-        
+
         if ($request->filled('email_status')) {
             $sentEmailsQuery->where('status', $request->email_status);
         }
-        
+
         if ($request->filled('email_type')) {
             $sentEmailsQuery->where('type', $request->email_type);
         }
-        
+
         $recentSentEmails = $sentEmailsQuery->latest()
             ->paginate(15, ['*'], 'emails_page')
             ->withQueryString();
-        
+
         // Charger les utilisateurs destinataires pour afficher les avatars
         $recipientEmails = $recentSentEmails->pluck('recipient_email')->unique()->filter();
         $recipientUsers = User::whereIn('email', $recipientEmails)
             ->get()
             ->keyBy('email');
-        
+
         // Ajouter les utilisateurs aux emails
         $recentSentEmails->getCollection()->transform(function ($email) use ($recipientUsers) {
             $email->recipient_user = $recipientUsers->get($email->recipient_email);
+
             return $email;
         });
-        
+
         // Filtres pour les emails programmés
         $scheduledEmailsQuery = ScheduledEmail::with('creator')
             ->where('status', 'pending')
             ->where('scheduled_at', '>=', now());
-        
+
         if ($request->filled('scheduled_search')) {
             $search = $request->scheduled_search;
-            $scheduledEmailsQuery->where(function($q) use ($search) {
+            $scheduledEmailsQuery->where(function ($q) use ($search) {
                 $q->where('subject', 'like', "%{$search}%");
             });
         }
-        
+
         $pendingScheduledEmails = $scheduledEmailsQuery->orderBy('scheduled_at')
             ->paginate(15, ['*'], 'scheduled_page')
             ->withQueryString();
-        
+
         // Statistiques des emails
         $emailStats = [
             'total_sent' => SentEmail::count(),
@@ -2946,71 +2989,72 @@ class AdminController extends Controller
             'failed_today' => SentEmail::whereDate('created_at', today())->where('status', 'failed')->count(),
             'pending_scheduled' => ScheduledEmail::where('status', 'pending')->count(),
         ];
-        
+
         // Filtres pour les messages WhatsApp
         $whatsappQuery = SentWhatsAppMessage::with('user');
-        
+
         if ($request->filled('whatsapp_search')) {
             $search = $request->whatsapp_search;
-            $whatsappQuery->where(function($q) use ($search) {
+            $whatsappQuery->where(function ($q) use ($search) {
                 $q->where('message', 'like', "%{$search}%")
-                  ->orWhere('recipient_phone', 'like', "%{$search}%")
-                  ->orWhere('recipient_name', 'like', "%{$search}%");
+                    ->orWhere('recipient_phone', 'like', "%{$search}%")
+                    ->orWhere('recipient_name', 'like', "%{$search}%");
             });
         }
-        
+
         if ($request->filled('whatsapp_status')) {
             $whatsappQuery->where('status', $request->whatsapp_status);
         }
-        
+
         if ($request->filled('whatsapp_type')) {
             $whatsappQuery->where('type', $request->whatsapp_type);
         }
-        
+
         $recentSentWhatsApp = $whatsappQuery->latest()
             ->paginate(15, ['*'], 'whatsapp_page')
             ->withQueryString();
-        
+
         // Charger les utilisateurs destinataires pour afficher les avatars
         $recipientPhones = $recentSentWhatsApp->pluck('recipient_phone')->unique()->filter();
         $recipientUsers = User::whereIn('phone', $recipientPhones)
             ->get()
             ->keyBy('phone');
-        
+
         // Ajouter les utilisateurs aux messages
         $recentSentWhatsApp->getCollection()->transform(function ($message) use ($recipientUsers) {
             $message->recipient_user = $recipientUsers->get($message->recipient_phone);
+
             return $message;
         });
-        
+
         // Statistiques des messages WhatsApp
         $whatsappStats = [
             'total_sent' => SentWhatsAppMessage::count(),
             'sent_today' => SentWhatsAppMessage::whereDate('sent_at', today())->count(),
             'failed_today' => SentWhatsAppMessage::whereDate('created_at', today())->where('status', 'failed')->count(),
         ];
-        
+
         // Filtres pour les messages de contact
         $contactMessagesQuery = ContactMessage::query();
-        
+
         if ($request->filled('contact_search')) {
             $search = $request->contact_search;
-            $contactMessagesQuery->where(function($q) use ($search) {
+            $contactMessagesQuery->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('subject', 'like', "%{$search}%")
-                  ->orWhere('message', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('subject', 'like', "%{$search}%")
+                    ->orWhere('message', 'like', "%{$search}%");
             });
         }
-        
+
         if ($request->filled('contact_status')) {
             $contactMessagesQuery->where('status', $request->contact_status);
         }
-        
+
         $contactMessages = $contactMessagesQuery->latest()
             ->paginate(15, ['*'], 'contact_page')
             ->withQueryString();
-        
+
         // Statistiques des messages de contact
         $contactStats = [
             'total' => ContactMessage::count(),
@@ -3018,7 +3062,7 @@ class AdminController extends Controller
             'read' => ContactMessage::where('status', 'read')->count(),
             'today' => ContactMessage::whereDate('created_at', today())->count(),
         ];
-        
+
         return view('admin.announcements.index', compact('announcements', 'recentSentEmails', 'pendingScheduledEmails', 'emailStats', 'recentSentWhatsApp', 'whatsappStats', 'contactMessages', 'contactStats'));
     }
 
@@ -3064,6 +3108,7 @@ class AdminController extends Controller
     public function destroyAnnouncement(Announcement $announcement)
     {
         $announcement->delete();
+
         return redirect()->route('admin.announcements')
             ->with('success', 'Annonce supprimée avec succès.');
     }
@@ -3074,15 +3119,15 @@ class AdminController extends Controller
     public function bulkActionAnnouncements(Request $request)
     {
         $actions = [
-            'delete' => function($ids) {
+            'delete' => function ($ids) {
                 return $this->bulkDelete($ids, Announcement::class);
             },
-            'activate' => function($ids) {
+            'activate' => function ($ids) {
                 return $this->bulkUpdate($ids, Announcement::class, ['is_active' => true]);
             },
-            'deactivate' => function($ids) {
+            'deactivate' => function ($ids) {
                 return $this->bulkUpdate($ids, Announcement::class, ['is_active' => false]);
-            }
+            },
         ];
 
         return $this->handleBulkAction($request, Announcement::class, $actions);
@@ -3101,7 +3146,7 @@ class AdminController extends Controller
             'is_active' => 'Statut',
             'starts_at' => 'Date de début',
             'expires_at' => 'Date de fin',
-            'created_at' => 'Date de création'
+            'created_at' => 'Date de création',
         ];
 
         $query = Announcement::query();
@@ -3115,9 +3160,9 @@ class AdminController extends Controller
     public function bulkActionSentEmails(Request $request)
     {
         $actions = [
-            'delete' => function($ids) {
+            'delete' => function ($ids) {
                 return $this->bulkDelete($ids, SentEmail::class);
-            }
+            },
         ];
 
         return $this->handleBulkAction($request, SentEmail::class, $actions);
@@ -3136,7 +3181,7 @@ class AdminController extends Controller
             'type' => 'Type',
             'status' => 'Statut',
             'sent_at' => 'Date d\'envoi',
-            'created_at' => 'Date de création'
+            'created_at' => 'Date de création',
         ];
 
         $query = SentEmail::query();
@@ -3150,19 +3195,19 @@ class AdminController extends Controller
     public function bulkActionScheduledEmails(Request $request)
     {
         $actions = [
-            'delete' => function($ids) {
+            'delete' => function ($ids) {
                 return $this->bulkDelete($ids, ScheduledEmail::class);
             },
-            'cancel' => function($ids) {
+            'cancel' => function ($ids) {
                 $count = ScheduledEmail::whereIn('id', $ids)
                     ->where('status', 'pending')
                     ->update(['status' => 'cancelled']);
-                
+
                 return [
                     'message' => "{$count} email(s) programmé(s) annulé(s) avec succès.",
-                    'count' => $count
+                    'count' => $count,
                 ];
-            }
+            },
         ];
 
         return $this->handleBulkAction($request, ScheduledEmail::class, $actions);
@@ -3180,7 +3225,7 @@ class AdminController extends Controller
             'total_recipients' => 'Nombre de destinataires',
             'status' => 'Statut',
             'scheduled_at' => 'Programmé pour',
-            'created_at' => 'Date de création'
+            'created_at' => 'Date de création',
         ];
 
         $query = ScheduledEmail::query();
@@ -3194,9 +3239,9 @@ class AdminController extends Controller
     public function bulkActionWhatsAppMessages(Request $request)
     {
         $actions = [
-            'delete' => function($ids) {
+            'delete' => function ($ids) {
                 return $this->bulkDelete($ids, SentWhatsAppMessage::class);
-            }
+            },
         ];
 
         return $this->handleBulkAction($request, SentWhatsAppMessage::class, $actions);
@@ -3215,7 +3260,7 @@ class AdminController extends Controller
             'type' => 'Type',
             'status' => 'Statut',
             'sent_at' => 'Date d\'envoi',
-            'created_at' => 'Date de création'
+            'created_at' => 'Date de création',
         ];
 
         $query = SentWhatsAppMessage::query();
@@ -3238,11 +3283,11 @@ class AdminController extends Controller
 
         $data['is_active'] = $request->boolean('is_active', false);
 
-        $data['starts_at'] = !empty($data['starts_at'])
+        $data['starts_at'] = ! empty($data['starts_at'])
             ? Carbon::createFromFormat('Y-m-d\TH:i', $data['starts_at'], config('app.timezone'))
             : null;
 
-        $data['expires_at'] = !empty($data['expires_at'])
+        $data['expires_at'] = ! empty($data['expires_at'])
             ? Carbon::createFromFormat('Y-m-d\TH:i', $data['expires_at'], config('app.timezone'))
             : null;
 
@@ -3254,7 +3299,7 @@ class AdminController extends Controller
 
     protected function notifyUsersOfAnnouncement(Announcement $announcement): void
     {
-        if (!$announcement->is_active) {
+        if (! $announcement->is_active) {
             return;
         }
 
@@ -3277,11 +3322,11 @@ class AdminController extends Controller
         $mailerConfig = config("mail.mailers.{$mailer}");
         $mailerTransport = $mailerConfig['transport'] ?? 'unknown';
         $isTestMode = in_array($mailerTransport, ['log', 'array']);
-        
+
         return view('admin.announcements.send-email', [
             'mailerTransport' => $mailerTransport,
             'isTestMode' => $isTestMode,
-            'mailerConfig' => $mailerConfig
+            'mailerConfig' => $mailerConfig,
         ]);
     }
 
@@ -3291,15 +3336,15 @@ class AdminController extends Controller
     public function searchUsers(Request $request)
     {
         $query = $request->get('q', '');
-        
+
         if (strlen($query) < 2) {
             return response()->json([]);
         }
 
         $users = User::where('is_active', true)
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%");
+                    ->orWhere('email', 'like', "%{$query}%");
             })
             ->select('id', 'name', 'email')
             ->limit(20)
@@ -3314,7 +3359,7 @@ class AdminController extends Controller
     public function countUsers(Request $request)
     {
         $type = $request->get('type', 'all');
-        
+
         $query = User::where('is_active', true)->whereNotNull('email');
 
         if ($type === 'purchased_content') {
@@ -3369,22 +3414,22 @@ class AdminController extends Controller
             }
         } elseif ($type === 'role') {
             $roles = explode(',', $request->get('roles', ''));
-            if (!empty($roles)) {
+            if (! empty($roles)) {
                 // Séparer les rôles normaux des ambassadeurs
-                $normalRoles = array_filter($roles, function($role) {
+                $normalRoles = array_filter($roles, function ($role) {
                     return $role !== 'ambassador';
                 });
                 $hasAmbassador = in_array('ambassador', $roles);
-                
-                if (!empty($normalRoles) && $hasAmbassador) {
+
+                if (! empty($normalRoles) && $hasAmbassador) {
                     // Si on a des rôles normaux ET des ambassadeurs
-                    $query->where(function($q) use ($normalRoles, $hasAmbassador) {
+                    $query->where(function ($q) use ($normalRoles, $hasAmbassador) {
                         $q->whereIn('role', $normalRoles);
                         if ($hasAmbassador) {
                             $q->orWhereHas('ambassador');
                         }
                     });
-                } elseif (!empty($normalRoles)) {
+                } elseif (! empty($normalRoles)) {
                     // Seulement des rôles normaux
                     $query->whereIn('role', $normalRoles);
                 } elseif ($hasAmbassador) {
@@ -3396,33 +3441,33 @@ class AdminController extends Controller
             $contentId = $request->get('content_id');
             if ($contentId) {
                 // Récupérer les utilisateurs inscrits à ce cours
-                $query->whereHas('enrollments', function($q) use ($contentId) {
+                $query->whereHas('enrollments', function ($q) use ($contentId) {
                     $q->where('content_id', $contentId)
-                      ->where('status', 'active');
+                        ->where('status', 'active');
                 });
             }
         } elseif ($type === 'category') {
             $categoryId = $request->get('category_id');
             if ($categoryId) {
                 // Récupérer les utilisateurs inscrits à des cours de cette catégorie
-                $query->whereHas('enrollments', function($q) use ($categoryId) {
+                $query->whereHas('enrollments', function ($q) use ($categoryId) {
                     $q->where('status', 'active')
-                      ->whereHas('content', function($courseQuery) use ($categoryId) {
-                          $courseQuery->where('category_id', $categoryId)
-                                     ->where('is_published', true);
-                      });
+                        ->whereHas('content', function ($courseQuery) use ($categoryId) {
+                            $courseQuery->where('category_id', $categoryId)
+                                ->where('is_published', true);
+                        });
                 });
             }
         } elseif ($type === 'provider') {
             $providerId = $request->input('provider_id');
             if ($providerId) {
                 // Récupérer les utilisateurs inscrits à des cours de ce prestataire
-                $query->whereHas('enrollments', function($q) use ($providerId) {
+                $query->whereHas('enrollments', function ($q) use ($providerId) {
                     $q->where('status', 'active')
-                      ->whereHas('content', function($courseQuery) use ($providerId) {
-                          $courseQuery->where('provider_id', $providerId)
-                                     ->where('is_published', true);
-                      });
+                        ->whereHas('content', function ($courseQuery) use ($providerId) {
+                            $courseQuery->where('provider_id', $providerId)
+                                ->where('is_published', true);
+                        });
                 });
             }
         } elseif ($type === 'registration_date') {
@@ -3450,15 +3495,15 @@ class AdminController extends Controller
                         $query->where('last_login_at', '>=', now()->subMonths(3));
                         break;
                     case 'inactive_30days':
-                        $query->where(function($q) {
+                        $query->where(function ($q) {
                             $q->where('last_login_at', '<', now()->subDays(30))
-                              ->orWhereNull('last_login_at');
+                                ->orWhereNull('last_login_at');
                         });
                         break;
                     case 'inactive_90days':
-                        $query->where(function($q) {
+                        $query->where(function ($q) {
                             $q->where('last_login_at', '<', now()->subDays(90))
-                              ->orWhereNull('last_login_at');
+                                ->orWhereNull('last_login_at');
                         });
                         break;
                     case 'never_logged':
@@ -3486,11 +3531,11 @@ class AdminController extends Controller
             $file = $request->file('file');
             $service = app(FileUploadService::class);
             $uploadResult = $service->upload($file, 'email-images');
-            
+
             // FileUploadService retourne un tableau avec 'path' et 'url'
             $url = is_array($uploadResult) ? ($uploadResult['url'] ?? null) : $uploadResult;
-            
-            if (!$url) {
+
+            if (! $url) {
                 // Si pas d'URL dans le résultat, générer l'URL à partir du path
                 $path = is_array($uploadResult) ? ($uploadResult['path'] ?? null) : $uploadResult;
                 if ($path) {
@@ -3501,16 +3546,17 @@ class AdminController extends Controller
             }
 
             return response()->json([
-                'location' => $url
+                'location' => $url,
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'error' => 'Erreur de validation: ' . implode(', ', $e->validator->errors()->all())
+                'error' => 'Erreur de validation: '.implode(', ', $e->validator->errors()->all()),
             ], 422);
         } catch (\Exception $e) {
-            Log::error("Erreur lors de l'upload d'image: " . $e->getMessage());
+            Log::error("Erreur lors de l'upload d'image: ".$e->getMessage());
+
             return response()->json([
-                'error' => 'Erreur lors de l\'upload de l\'image: ' . $e->getMessage()
+                'error' => 'Erreur lors de l\'upload de l\'image: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -3527,112 +3573,133 @@ class AdminController extends Controller
                 'email_content' => 'required|string',
                 'send_type' => 'required|in:now,scheduled',
                 'scheduled_at' => 'nullable|required_if:send_type,scheduled|date|after:now',
-            'roles' => 'nullable|required_if:recipient_type,role|array',
-            'roles.*' => 'in:customer,provider,admin,affiliate,ambassador',
-            'content_id' => 'nullable|required_if:recipient_type,course|exists:contents,id',
-            'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
-            'provider_id' => 'nullable|required_if:recipient_type,provider|exists:users,id',
-            'downloaded_content_id' => 'nullable|exists:contents,id',
-            'purchased_content_id' => 'nullable|required_if:recipient_type,purchased_content|exists:contents,id',
-            'purchase_type' => 'nullable|required_if:recipient_type,purchased|in:any,paid,completed,specific_content',
-            'purchased_content_id' => 'nullable|required_if:purchase_type,specific_content|exists:contents,id',
-            'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
-            'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
-            'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
-            'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
-            'user_ids' => 'nullable|required_if:recipient_type,selected|string',
-            'attachments' => 'nullable|array',
-            'attachments.*' => 'file|max:10240', // 10MB max par fichier
-        ]);
+                'roles' => 'nullable|required_if:recipient_type,role|array',
+                'roles.*' => 'in:customer,provider,admin,affiliate,ambassador',
+                'content_id' => 'nullable|required_if:recipient_type,course|exists:contents,id',
+                'category_id' => 'nullable|required_if:recipient_type,category|exists:categories,id',
+                'provider_id' => 'nullable|required_if:recipient_type,provider|exists:users,id',
+                'downloaded_content_id' => 'nullable|exists:contents,id',
+                'purchased_content_id' => 'nullable|required_if:recipient_type,purchased_content|exists:contents,id',
+                'purchase_type' => 'nullable|required_if:recipient_type,purchased|in:any,paid,completed,specific_content',
+                'purchased_content_id' => 'nullable|required_if:purchase_type,specific_content|exists:contents,id',
+                'registration_date_from' => 'nullable|required_if:recipient_type,registration_date|date',
+                'registration_date_to' => 'nullable|required_if:recipient_type,registration_date|date|after_or_equal:registration_date_from',
+                'activity_type' => 'nullable|required_if:recipient_type,activity|in:active_recent,active_month,active_3months,inactive_30days,inactive_90days,never_logged',
+                'single_user_id' => 'nullable|required_if:recipient_type,single|exists:users,id',
+                'user_ids' => 'nullable|required_if:recipient_type,selected|string',
+                'attachments' => 'nullable|array',
+                'attachments.*' => 'file|max:10240', // 10MB max par fichier
+            ]);
 
-        $recipientType = $request->recipient_type;
-        $subject = $request->subject;
-        $content = $request->email_content;
+            $recipientType = $request->recipient_type;
+            $subject = $request->subject;
+            $content = $request->email_content;
 
-        // Gérer les pièces jointes
-        $attachmentPaths = [];
-        if ($request->hasFile('attachments')) {
-            $service = app(FileUploadService::class);
-            foreach ($request->file('attachments') as $file) {
-                try {
-                    $uploadResult = $service->upload($file, 'email-attachments');
-                    // FileUploadService retourne un tableau avec 'path' et 'url', on a besoin du 'path'
-                    $attachmentPaths[] = is_array($uploadResult) ? $uploadResult['path'] : $uploadResult;
-                } catch (\Exception $e) {
-                    Log::error("Erreur lors de l'upload de la pièce jointe: " . $e->getMessage());
-                    // Continuer avec les autres fichiers même si un échoue
+            // Gérer les pièces jointes
+            $attachmentPaths = [];
+            if ($request->hasFile('attachments')) {
+                $service = app(FileUploadService::class);
+                foreach ($request->file('attachments') as $file) {
+                    try {
+                        $uploadResult = $service->upload($file, 'email-attachments');
+                        // FileUploadService retourne un tableau avec 'path' et 'url', on a besoin du 'path'
+                        $attachmentPaths[] = is_array($uploadResult) ? $uploadResult['path'] : $uploadResult;
+                    } catch (\Exception $e) {
+                        Log::error("Erreur lors de l'upload de la pièce jointe: ".$e->getMessage());
+                        // Continuer avec les autres fichiers même si un échoue
+                    }
                 }
             }
-        }
 
-        // Obtenir les destinataires
-        $users = $this->getEmailRecipients($request);
+            // Obtenir les destinataires
+            $users = $this->getEmailRecipients($request);
 
-        if ($users->isEmpty()) {
-            return redirect()->back()
-                ->with('error', 'Aucun destinataire trouvé pour cet envoi.')
-                ->withInput();
-        }
-
-        // Envoi immédiat ou programmé
-        if ($request->send_type === 'now') {
-            // S'assurer que $users est une Collection
-            if (!$users instanceof \Illuminate\Support\Collection) {
-                $users = collect($users);
+            if ($users->isEmpty()) {
+                return redirect()->back()
+                    ->with('error', 'Aucun destinataire trouvé pour cet envoi.')
+                    ->withInput();
             }
-            
-            $sentCount = 0;
-            $failedCount = 0;
-            
-            // Envoyer immédiatement en lots
-            $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, $recipientType) {
-                foreach ($userChunk as $user) {
-                    // Éviter les doublons : ne pas renvoyer le même sujet au même user dans les 5 dernières minutes
-                    $recentSent = SentEmail::where('user_id', $user->id)
-                        ->where('subject', $subject)
-                        ->where('status', 'sent')
-                        ->where('created_at', '>=', now()->subMinutes(5))
-                        ->exists();
-                    if ($recentSent) {
-                        continue;
-                    }
-                    try {
-                        // Envoyer l'email de manière synchrone (immédiate)
-                        // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
-                        $mailable = new CustomAnnouncementMail($subject, $content, $attachmentPaths);
-                        $communicationService = app(\App\Services\CommunicationService::class);
-                        $results = $communicationService->sendEmailAndWhatsApp($user, $mailable, null, false);
-                        
-                        // Vérifier si l'envoi a réussi
-                        if ($results['email']['success']) {
-                            // Enregistrer l'email envoyé avec succès
-                            SentEmail::create([
-                                'user_id' => $user->id,
-                                'recipient_email' => $user->email,
-                                'recipient_name' => $user->name,
-                                'subject' => $subject,
-                                'content' => $content,
-                                'attachments' => $attachmentPaths ?: null,
-                                'type' => 'custom',
-                                'status' => 'sent',
-                                'sent_at' => now(),
-                                'metadata' => [
-                                    'recipient_type' => $recipientType,
-                                ],
-                            ]);
-                            
-                            // Notifier l'utilisateur qu'un email lui a été envoyé
-                            // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-                            try {
-                                Notification::sendNow($user, new EmailSentNotification($subject, now()));
-                            } catch (\Exception $notifException) {
-                                Log::warning("Impossible d'envoyer la notification email à {$user->email}: " . $notifException->getMessage());
+
+            // Envoi immédiat ou programmé
+            if ($request->send_type === 'now') {
+                // S'assurer que $users est une Collection
+                if (! $users instanceof \Illuminate\Support\Collection) {
+                    $users = collect($users);
+                }
+
+                $sentCount = 0;
+                $failedCount = 0;
+
+                // Envoyer immédiatement en lots
+                $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, $recipientType) {
+                    foreach ($userChunk as $user) {
+                        // Éviter les doublons : ne pas renvoyer le même sujet au même user dans les 5 dernières minutes
+                        $recentSent = SentEmail::where('user_id', $user->id)
+                            ->where('subject', $subject)
+                            ->where('status', 'sent')
+                            ->where('created_at', '>=', now()->subMinutes(5))
+                            ->exists();
+                        if ($recentSent) {
+                            continue;
+                        }
+                        try {
+                            // Envoyer l'email de manière synchrone (immédiate)
+                            // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
+                            $mailable = new CustomAnnouncementMail($subject, $content, $attachmentPaths);
+                            $communicationService = app(\App\Services\CommunicationService::class);
+                            $results = $communicationService->sendEmailAndWhatsApp($user, $mailable, null, false);
+
+                            // Vérifier si l'envoi a réussi
+                            if ($results['email']['success']) {
+                                // Enregistrer l'email envoyé avec succès
+                                SentEmail::create([
+                                    'user_id' => $user->id,
+                                    'recipient_email' => $user->email,
+                                    'recipient_name' => $user->name,
+                                    'subject' => $subject,
+                                    'content' => $content,
+                                    'attachments' => $attachmentPaths ?: null,
+                                    'type' => 'custom',
+                                    'status' => 'sent',
+                                    'sent_at' => now(),
+                                    'metadata' => [
+                                        'recipient_type' => $recipientType,
+                                    ],
+                                ]);
+
+                                // Notifier l'utilisateur qu'un email lui a été envoyé
+                                // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
+                                try {
+                                    Notification::sendNow($user, new EmailSentNotification($subject, now()));
+                                } catch (\Exception $notifException) {
+                                    Log::warning("Impossible d'envoyer la notification email à {$user->email}: ".$notifException->getMessage());
+                                }
+
+                                $sentCount++;
+                            } else {
+                                // Enregistrer l'échec
+                                $errorMessage = $results['email']['error'] ?? 'Erreur inconnue lors de l\'envoi de l\'email';
+                                SentEmail::create([
+                                    'user_id' => $user->id,
+                                    'recipient_email' => $user->email,
+                                    'recipient_name' => $user->name,
+                                    'subject' => $subject,
+                                    'content' => $content,
+                                    'attachments' => $attachmentPaths ?: null,
+                                    'type' => 'custom',
+                                    'status' => 'failed',
+                                    'error_message' => $errorMessage,
+                                    'metadata' => [
+                                        'recipient_type' => $recipientType,
+                                    ],
+                                ]);
+                                $failedCount++;
+                                Log::error("Échec de l'envoi d'email à {$user->email}: {$errorMessage}");
                             }
-                            
-                            $sentCount++;
-                        } else {
+                        } catch (\Exception $e) {
+                            \Log::error("Erreur lors de l'envoi d'email à {$user->email}: ".$e->getMessage());
+
                             // Enregistrer l'échec
-                            $errorMessage = $results['email']['error'] ?? 'Erreur inconnue lors de l\'envoi de l\'email';
                             SentEmail::create([
                                 'user_id' => $user->id,
                                 'recipient_email' => $user->email,
@@ -3642,100 +3709,80 @@ class AdminController extends Controller
                                 'attachments' => $attachmentPaths ?: null,
                                 'type' => 'custom',
                                 'status' => 'failed',
-                                'error_message' => $errorMessage,
+                                'error_message' => $e->getMessage(),
                                 'metadata' => [
                                     'recipient_type' => $recipientType,
                                 ],
                             ]);
+
                             $failedCount++;
-                            Log::error("Échec de l'envoi d'email à {$user->email}: {$errorMessage}");
                         }
-                    } catch (\Exception $e) {
-                        \Log::error("Erreur lors de l'envoi d'email à {$user->email}: " . $e->getMessage());
-                        
-                        // Enregistrer l'échec
-                        SentEmail::create([
-                            'user_id' => $user->id,
-                            'recipient_email' => $user->email,
-                            'recipient_name' => $user->name,
-                            'subject' => $subject,
-                            'content' => $content,
-                            'attachments' => $attachmentPaths ?: null,
-                            'type' => 'custom',
-                            'status' => 'failed',
-                            'error_message' => $e->getMessage(),
-                            'metadata' => [
-                                'recipient_type' => $recipientType,
-                            ],
-                        ]);
-                        
-                        $failedCount++;
                     }
-                }
-            });
-
-            $message = "Email envoyé avec succès à {$sentCount} destinataire(s).";
-            if ($failedCount > 0) {
-                $message .= " {$failedCount} envoi(s) ont échoué.";
-            }
-        } else {
-            // Envoi programmé
-            $scheduledAt = Carbon::parse($request->scheduled_at);
-            
-            // Préparer la configuration des destinataires
-            $recipientConfig = [];
-            if ($recipientType === 'role') {
-                $recipientConfig['roles'] = $request->input('roles', []);
-            } elseif ($recipientType === 'selected') {
-                $userIdsString = $request->input('user_ids', '');
-                $recipientConfig['user_ids'] = array_filter(explode(',', $userIdsString), function($id) {
-                    return !empty(trim($id)) && is_numeric(trim($id));
                 });
-            } elseif ($recipientType === 'single') {
-                $recipientConfig['user_id'] = $request->input('single_user_id');
-            }
-            
-            // Créer l'email programmé
-            $scheduledEmail = ScheduledEmail::create([
-                'created_by' => Auth::id(),
-                'recipient_type' => $recipientType,
-                'recipient_config' => $recipientConfig,
-                'subject' => $subject,
-                'content' => $content,
-                'attachments' => $attachmentPaths ?: null,
-                'status' => 'pending',
-                'scheduled_at' => $scheduledAt,
-                'total_recipients' => $users->count(),
-            ]);
-            
-            $message = "Email programmé pour être envoyé le " . $scheduledAt->format('d/m/Y à H:i') . " à {$users->count()} destinataire(s).";
-        }
 
-        // Si c'est une requête AJAX, retourner JSON
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => $message,
-                'redirect' => route('admin.announcements')
-            ]);
-        }
-        
-        return redirect()->route('admin.announcements')
-            ->with('success', $message);
+                $message = "Email envoyé avec succès à {$sentCount} destinataire(s).";
+                if ($failedCount > 0) {
+                    $message .= " {$failedCount} envoi(s) ont échoué.";
+                }
+            } else {
+                // Envoi programmé
+                $scheduledAt = Carbon::parse($request->scheduled_at);
+
+                // Préparer la configuration des destinataires
+                $recipientConfig = [];
+                if ($recipientType === 'role') {
+                    $recipientConfig['roles'] = $request->input('roles', []);
+                } elseif ($recipientType === 'selected') {
+                    $userIdsString = $request->input('user_ids', '');
+                    $recipientConfig['user_ids'] = array_filter(explode(',', $userIdsString), function ($id) {
+                        return ! empty(trim($id)) && is_numeric(trim($id));
+                    });
+                } elseif ($recipientType === 'single') {
+                    $recipientConfig['user_id'] = $request->input('single_user_id');
+                }
+
+                // Créer l'email programmé
+                $scheduledEmail = ScheduledEmail::create([
+                    'created_by' => Auth::id(),
+                    'recipient_type' => $recipientType,
+                    'recipient_config' => $recipientConfig,
+                    'subject' => $subject,
+                    'content' => $content,
+                    'attachments' => $attachmentPaths ?: null,
+                    'status' => 'pending',
+                    'scheduled_at' => $scheduledAt,
+                    'total_recipients' => $users->count(),
+                ]);
+
+                $message = 'Email programmé pour être envoyé le '.$scheduledAt->format('d/m/Y à H:i')." à {$users->count()} destinataire(s).";
+            }
+
+            // Si c'est une requête AJAX, retourner JSON
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'redirect' => route('admin.announcements'),
+                ]);
+            }
+
+            return redirect()->route('admin.announcements')
+                ->with('success', $message);
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Erreur de validation
             Log::error("Erreur de validation lors de l'envoi d'email", [
                 'errors' => $e->errors(),
-                'request_data' => $request->except(['attachments', 'email_content'])
+                'request_data' => $request->except(['attachments', 'email_content']),
             ]);
-            
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Erreur de validation',
-                    'errors' => $e->errors()
+                    'errors' => $e->errors(),
                 ], 422);
             }
+
             return redirect()->back()
                 ->withErrors($e->errors())
                 ->withInput();
@@ -3746,18 +3793,18 @@ class AdminController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'request_data' => $request->except(['attachments', 'email_content'])
+                'request_data' => $request->except(['attachments', 'email_content']),
             ]);
-            
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Une erreur est survenue lors de l\'envoi: ' . $e->getMessage()
+                    'error' => 'Une erreur est survenue lors de l\'envoi: '.$e->getMessage(),
                 ], 500);
             }
-            
+
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de l\'envoi: ' . $e->getMessage())
+                ->with('error', 'Une erreur est survenue lors de l\'envoi: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -3778,22 +3825,22 @@ class AdminController extends Controller
 
             case 'role':
                 $roles = $request->input('roles', []);
-                if (!empty($roles)) {
+                if (! empty($roles)) {
                     // Séparer les rôles normaux des ambassadeurs
-                    $normalRoles = array_filter($roles, function($role) {
+                    $normalRoles = array_filter($roles, function ($role) {
                         return $role !== 'ambassador';
                     });
                     $hasAmbassador = in_array('ambassador', $roles);
-                    
-                    if (!empty($normalRoles) && $hasAmbassador) {
+
+                    if (! empty($normalRoles) && $hasAmbassador) {
                         // Si on a des rôles normaux ET des ambassadeurs
-                        $query->where(function($q) use ($normalRoles, $hasAmbassador) {
+                        $query->where(function ($q) use ($normalRoles, $hasAmbassador) {
                             $q->whereIn('role', $normalRoles);
                             if ($hasAmbassador) {
                                 $q->orWhereHas('ambassador');
                             }
                         });
-                    } elseif (!empty($normalRoles)) {
+                    } elseif (! empty($normalRoles)) {
                         // Seulement des rôles normaux
                         $query->whereIn('role', $normalRoles);
                     } elseif ($hasAmbassador) {
@@ -3807,9 +3854,9 @@ class AdminController extends Controller
                 $contentId = $request->input('content_id');
                 if ($contentId) {
                     // Récupérer les utilisateurs inscrits à ce cours
-                    $query->whereHas('enrollments', function($q) use ($contentId) {
+                    $query->whereHas('enrollments', function ($q) use ($contentId) {
                         $q->where('content_id', $contentId)
-                          ->where('status', 'active');
+                            ->where('status', 'active');
                     });
                 } else {
                     return collect();
@@ -3820,12 +3867,12 @@ class AdminController extends Controller
                 $categoryId = $request->input('category_id');
                 if ($categoryId) {
                     // Récupérer les utilisateurs inscrits à des cours de cette catégorie
-                    $query->whereHas('enrollments', function($q) use ($categoryId) {
+                    $query->whereHas('enrollments', function ($q) use ($categoryId) {
                         $q->where('status', 'active')
-                          ->whereHas('content', function($courseQuery) use ($categoryId) {
-                              $courseQuery->where('category_id', $categoryId)
-                                         ->where('is_published', true);
-                          });
+                            ->whereHas('content', function ($courseQuery) use ($categoryId) {
+                                $courseQuery->where('category_id', $categoryId)
+                                    ->where('is_published', true);
+                            });
                     });
                 } else {
                     return collect();
@@ -3836,12 +3883,12 @@ class AdminController extends Controller
                 $providerId = $request->input('provider_id');
                 if ($providerId) {
                     // Récupérer les utilisateurs inscrits à des cours de ce prestataire
-                    $query->whereHas('enrollments', function($q) use ($providerId) {
+                    $query->whereHas('enrollments', function ($q) use ($providerId) {
                         $q->where('status', 'active')
-                          ->whereHas('content', function($courseQuery) use ($providerId) {
-                              $courseQuery->where('provider_id', $providerId)
-                                         ->where('is_published', true);
-                          });
+                            ->whereHas('content', function ($courseQuery) use ($providerId) {
+                                $courseQuery->where('provider_id', $providerId)
+                                    ->where('is_published', true);
+                            });
                     });
                 } else {
                     return collect();
@@ -3877,15 +3924,15 @@ class AdminController extends Controller
                             $query->where('last_login_at', '>=', now()->subMonths(3));
                             break;
                         case 'inactive_30days':
-                            $query->where(function($q) {
+                            $query->where(function ($q) {
                                 $q->where('last_login_at', '<', now()->subDays(30))
-                                  ->orWhereNull('last_login_at');
+                                    ->orWhereNull('last_login_at');
                             });
                             break;
                         case 'inactive_90days':
-                            $query->where(function($q) {
+                            $query->where(function ($q) {
                                 $q->where('last_login_at', '<', now()->subDays(90))
-                                  ->orWhereNull('last_login_at');
+                                    ->orWhereNull('last_login_at');
                             });
                             break;
                         case 'never_logged':
@@ -3900,11 +3947,11 @@ class AdminController extends Controller
             case 'downloaded_free':
                 $downloadedContentId = $request->input('downloaded_content_id');
                 // Utilisateurs ayant téléchargé au moins une fois un contenu téléchargeable gratuit
-                $query->whereHas('downloads', function($q) use ($downloadedContentId) {
-                    $q->whereHas('content', function($contentQuery) use ($downloadedContentId) {
+                $query->whereHas('downloads', function ($q) use ($downloadedContentId) {
+                    $q->whereHas('content', function ($contentQuery) use ($downloadedContentId) {
                         $contentQuery->where('is_downloadable', true)
-                                    ->where('is_free', true)
-                                    ->where('is_published', true);
+                            ->where('is_free', true)
+                            ->where('is_published', true);
                         if ($downloadedContentId) {
                             $contentQuery->where('id', $downloadedContentId);
                         }
@@ -3939,18 +3986,18 @@ class AdminController extends Controller
             case 'purchased':
                 $purchaseType = $request->input('purchase_type', 'any');
                 $purchasedContentId = $request->input('purchased_content_id');
-                
+
                 if ($purchaseType === 'specific_content' && $purchasedContentId) {
                     // Utilisateurs ayant acheté un contenu spécifique
-                    $query->whereHas('orders', function($orderQuery) use ($purchasedContentId) {
+                    $query->whereHas('orders', function ($orderQuery) use ($purchasedContentId) {
                         $orderQuery->whereIn('status', ['paid', 'completed'])
-                                   ->whereHas('orderItems', function($itemQuery) use ($purchasedContentId) {
-                                       $itemQuery->where('content_id', $purchasedContentId);
-                                   });
+                            ->whereHas('orderItems', function ($itemQuery) use ($purchasedContentId) {
+                                $itemQuery->where('content_id', $purchasedContentId);
+                            });
                     });
                 } else {
                     // Utilisateurs ayant effectué des achats selon le type
-                    $query->whereHas('orders', function($orderQuery) use ($purchaseType) {
+                    $query->whereHas('orders', function ($orderQuery) use ($purchaseType) {
                         if ($purchaseType === 'paid') {
                             $orderQuery->where('status', 'paid');
                         } elseif ($purchaseType === 'completed') {
@@ -3968,10 +4015,10 @@ class AdminController extends Controller
                 if (empty($userIdsString)) {
                     return collect();
                 }
-                $userIds = array_filter(explode(',', $userIdsString), function($id) {
-                    return !empty(trim($id)) && is_numeric(trim($id));
+                $userIds = array_filter(explode(',', $userIdsString), function ($id) {
+                    return ! empty(trim($id)) && is_numeric(trim($id));
                 });
-                if (!empty($userIds)) {
+                if (! empty($userIds)) {
                     $query->whereIn('id', array_map('intval', $userIds));
                 } else {
                     return collect();
@@ -4001,10 +4048,10 @@ class AdminController extends Controller
         // Recherche
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('subject', 'like', "%{$search}%")
-                  ->orWhere('recipient_email', 'like', "%{$search}%")
-                  ->orWhere('recipient_name', 'like', "%{$search}%");
+                    ->orWhere('recipient_email', 'like', "%{$search}%")
+                    ->orWhere('recipient_name', 'like', "%{$search}%");
             });
         }
 
@@ -4048,7 +4095,7 @@ class AdminController extends Controller
         // Recherche
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('subject', 'like', "%{$search}%");
             });
         }
@@ -4081,7 +4128,7 @@ class AdminController extends Controller
         if ($sentEmail->recipient_email) {
             $recipientUser = User::where('email', $sentEmail->recipient_email)->first();
         }
-        
+
         return view('admin.emails.sent-show', compact('sentEmail', 'recipientUser'));
     }
 
@@ -4099,7 +4146,7 @@ class AdminController extends Controller
     public function destroySentEmail(SentEmail $sentEmail)
     {
         $sentEmail->delete();
-        
+
         return redirect()->back()
             ->with('success', 'Email supprimé avec succès.');
     }
@@ -4107,7 +4154,7 @@ class AdminController extends Controller
     public function destroyScheduledEmail(ScheduledEmail $scheduledEmail)
     {
         $scheduledEmail->delete();
-        
+
         return redirect()->back()
             ->with('success', 'Email programmé supprimé avec succès.');
     }
@@ -4133,10 +4180,10 @@ class AdminController extends Controller
 
         while (
             Course::where('slug', $slug)
-                ->when($ignoreCourse, fn($query) => $query->where('id', '!=', $ignoreCourse->id))
+                ->when($ignoreCourse, fn ($query) => $query->where('id', '!=', $ignoreCourse->id))
                 ->exists()
         ) {
-            $slug = $baseSlug . '-' . $counter++;
+            $slug = $baseSlug.'-'.$counter++;
         }
 
         return $slug;
@@ -4164,7 +4211,7 @@ class AdminController extends Controller
     protected function notifyInstructorCourseModeration(Course $course, string $status): void
     {
         $provider = $course->provider;
-        if (!$provider) {
+        if (! $provider) {
             return;
         }
 
@@ -4176,6 +4223,7 @@ class AdminController extends Controller
     public function partners()
     {
         $partners = Partner::ordered()->paginate(20);
+
         return view('admin.partners.index', compact('partners'));
     }
 
@@ -4224,6 +4272,7 @@ class AdminController extends Controller
     public function destroyPartner(Partner $partner)
     {
         $partner->delete();
+
         return redirect()->route('admin.partners')
             ->with('success', 'Partenaire supprimé avec succès.');
     }
@@ -4274,6 +4323,7 @@ class AdminController extends Controller
     public function testimonials()
     {
         $testimonials = Testimonial::ordered()->paginate(15)->withQueryString();
+
         return view('admin.testimonials.index', compact('testimonials'));
     }
 
@@ -4401,6 +4451,7 @@ class AdminController extends Controller
     public function destroyTestimonial(Testimonial $testimonial)
     {
         $testimonial->delete();
+
         return redirect()->route('admin.testimonials')
             ->with('success', 'Témoignage supprimé avec succès.');
     }
@@ -4430,29 +4481,30 @@ class AdminController extends Controller
                 ->orderBy('downloads_count', 'desc')
                 ->limit(20)
                 ->get(),
-            
+
             // Par utilisateur
             'by_user' => User::withCount('downloads')
                 ->having('downloads_count', '>', 0)
                 ->orderBy('downloads_count', 'desc')
                 ->limit(20)
                 ->get(),
-            
+
             // Par catégorie
-            'by_category' => Category::withCount(['courses' => function($query) {
-                    $query->where('is_downloadable', true);
-                }])
-                ->with(['courses' => function($query) {
+            'by_category' => Category::withCount(['courses' => function ($query) {
+                $query->where('is_downloadable', true);
+            }])
+                ->with(['courses' => function ($query) {
                     $query->where('is_downloadable', true)->withCount('downloads');
                 }])
                 ->get()
-                ->map(function($category) {
+                ->map(function ($category) {
                     $category->total_downloads = $category->courses->sum('downloads_count');
+
                     return $category;
                 })
                 ->sortByDesc('total_downloads')
                 ->take(10),
-            
+
             // Par pays
             'by_country' => CourseDownload::select('country', 'country_name')
                 ->selectRaw('COUNT(*) as downloads_count')
@@ -4461,7 +4513,7 @@ class AdminController extends Controller
                 ->orderBy('downloads_count', 'desc')
                 ->limit(20)
                 ->get(),
-            
+
             // Par ville
             'by_city' => CourseDownload::select('city', 'country_name')
                 ->selectRaw('COUNT(*) as downloads_count')
@@ -4470,9 +4522,9 @@ class AdminController extends Controller
                 ->orderBy('downloads_count', 'desc')
                 ->limit(20)
                 ->get(),
-            
+
             // Téléchargements par jour (30 derniers jours)
-            'daily' => CourseDownload::selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date') . ', COUNT(*) as downloads_count')
+            'daily' => CourseDownload::selectRaw($this->buildDateFormatSelect('created_at', '%Y-%m-%d', 'date').', COUNT(*) as downloads_count')
                 ->where('created_at', '>=', now()->subDays(30))
                 ->groupBy('date')
                 ->orderBy('date')
@@ -4507,16 +4559,16 @@ class AdminController extends Controller
         try {
             // Forcer le recalcul des statistiques
             $stats = $course->getCourseStats();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Statistiques recalculées avec succès',
-                'stats' => $stats
+                'stats' => $stats,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du recalcul: ' . $e->getMessage()
+                'message' => 'Erreur lors du recalcul: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -4529,22 +4581,22 @@ class AdminController extends Controller
         try {
             $courses = Course::with(['enrollments', 'reviews', 'sections.lessons'])->get();
             $processed = 0;
-            
+
             foreach ($courses as $course) {
                 // Forcer le recalcul des statistiques
                 $course->getCourseStats();
                 $processed++;
             }
-            
+
             return response()->json([
                 'success' => true,
                 'message' => "Statistiques recalculées pour {$processed} cours",
-                'processed' => $processed
+                'processed' => $processed,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du recalcul: ' . $e->getMessage()
+                'message' => 'Erreur lors du recalcul: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -4567,7 +4619,7 @@ class AdminController extends Controller
             $search = $request->string('search')->toString();
             $query->whereHas('order.user', function ($q) use ($search) {
                 $q->where('name', 'like', "%$search%")
-                  ->orWhere('email', 'like', "%$search%");
+                    ->orWhere('email', 'like', "%$search%");
             });
         }
         if ($request->filled('date_from')) {
@@ -4592,14 +4644,14 @@ class AdminController extends Controller
         $baseCurrency = Setting::getBaseCurrency();
         $commissionPercentage = Setting::get('external_provider_commission_percentage', 20);
         $metaTrackingEnabled = Setting::get('meta_tracking_enabled', false);
-        
+
         // Paramètres Wallet
         $walletSettings = [
             'holding_period_days' => Setting::get('wallet_holding_period_days', 7),
             'minimum_payout_amount' => Setting::get('wallet_minimum_payout_amount', 5),
             'auto_release_enabled' => Setting::get('wallet_auto_release_enabled', true),
         ];
-        
+
         // Liste des devises courantes
         $currencies = [
             'USD' => 'USD - Dollar américain',
@@ -4615,7 +4667,7 @@ class AdminController extends Controller
             'NGN' => 'NGN - Naira nigérian',
             'ZAR' => 'ZAR - Rand sud-africain',
         ];
-        
+
         $metaPixels = \App\Models\MetaPixel::query()
             ->orderByDesc('priority')
             ->orderByDesc('id')
@@ -4634,7 +4686,7 @@ class AdminController extends Controller
                     $methods = $r->methods();
                     $uri = ltrim((string) $r->uri(), '/');
 
-                    if (!in_array('GET', $methods, true)) {
+                    if (! in_array('GET', $methods, true)) {
                         return false;
                     }
                     if ($uri !== '' && (str_starts_with($uri, 'admin') || str_starts_with($uri, 'api'))) {
@@ -4652,11 +4704,11 @@ class AdminController extends Controller
             ->map(function ($r) {
                 $name = $r->getName();
                 $rawUri = (string) $r->uri();
-                $path = '/' . ltrim($rawUri, '/');
+                $path = '/'.ltrim($rawUri, '/');
                 if ($path === '/') {
-                    $label = $name ? ($name . ' — /') : '/';
+                    $label = $name ? ($name.' — /') : '/';
                 } else {
-                    $label = $name ? ($name . ' — ' . $path) : $path;
+                    $label = $name ? ($name.' — '.$path) : $path;
                 }
 
                 return [
@@ -4708,29 +4760,10 @@ class AdminController extends Controller
             'Donate',
         ];
 
-        $premiumPageTexts = Setting::get('community_premium_page_texts', []);
-        if (! is_array($premiumPageTexts)) {
-            $premiumPageTexts = [];
-        }
-        $planHighlights = Setting::get('community_premium_plan_highlights', []);
-        if (! is_array($planHighlights)) {
-            $planHighlights = [];
-        }
         $communitySettings = [
             'home_media_type' => Setting::get('community_home_media_type', 'image'),
             'home_media_url' => Setting::get('community_home_media_url', ''),
             'home_media_poster_url' => Setting::get('community_home_media_poster_url', ''),
-            'premium_kicker' => $premiumPageTexts['kicker'] ?? '',
-            'premium_title' => $premiumPageTexts['title'] ?? '',
-            'premium_lead' => $premiumPageTexts['lead'] ?? '',
-            'premium_second' => $premiumPageTexts['second'] ?? '',
-            'premium_guest_title' => $premiumPageTexts['guest_box_title'] ?? '',
-            'premium_guest_text' => $premiumPageTexts['guest_box_text'] ?? '',
-            'premium_plans_title' => $premiumPageTexts['plans_intro_title'] ?? '',
-            'premium_plans_subtitle' => $premiumPageTexts['plans_intro_subtitle'] ?? '',
-            'highlight_trimestriel' => $planHighlights['membre-herime-trimestriel'] ?? '',
-            'highlight_semestriel' => $planHighlights['membre-herime-semestriel'] ?? '',
-            'highlight_annuel' => $planHighlights['membre-herime-annuel'] ?? '',
         ];
 
         return view('admin.settings.index', compact(
@@ -4764,17 +4797,6 @@ class AdminController extends Controller
                 'community_home_media_poster_external_url' => 'nullable|string|max:2048',
                 'community_home_media_reset' => 'nullable|boolean',
                 'community_home_poster_reset' => 'nullable|boolean',
-                'community_premium_kicker' => 'nullable|string|max:500',
-                'community_premium_title' => 'nullable|string|max:500',
-                'community_premium_lead' => 'nullable|string|max:4000',
-                'community_premium_second' => 'nullable|string|max:4000',
-                'community_premium_guest_title' => 'nullable|string|max:500',
-                'community_premium_guest_text' => 'nullable|string|max:4000',
-                'community_premium_plans_title' => 'nullable|string|max:500',
-                'community_premium_plans_subtitle' => 'nullable|string|max:2000',
-                'community_highlight_trimestriel' => 'nullable|string|max:2000',
-                'community_highlight_semestriel' => 'nullable|string|max:2000',
-                'community_highlight_annuel' => 'nullable|string|max:2000',
             ]);
 
             Setting::set('community_home_media_type', $request->input('community_home_media_type', 'image'), 'string', 'Bloc accueil communauté : type média');
@@ -4846,42 +4868,10 @@ class AdminController extends Controller
                 }
             }
 
-            $pageTexts = [];
-            foreach ([
-                'kicker' => $request->input('community_premium_kicker'),
-                'title' => $request->input('community_premium_title'),
-                'lead' => $request->input('community_premium_lead'),
-                'second' => $request->input('community_premium_second'),
-                'guest_box_title' => $request->input('community_premium_guest_title'),
-                'guest_box_text' => $request->input('community_premium_guest_text'),
-                'plans_intro_title' => $request->input('community_premium_plans_title'),
-                'plans_intro_subtitle' => $request->input('community_premium_plans_subtitle'),
-            ] as $key => $val) {
-                if (is_string($val) && trim($val) !== '') {
-                    $pageTexts[$key] = trim($val);
-                }
-            }
-            Setting::set('community_premium_page_texts', $pageTexts, 'json', 'Textes page /communaute/membre-premium');
-
-            $highlights = Setting::get('community_premium_plan_highlights', []);
-            if (! is_array($highlights)) {
-                $highlights = [];
-            }
-            foreach ([
-                'membre-herime-trimestriel' => trim((string) $request->input('community_highlight_trimestriel', '')),
-                'membre-herime-semestriel' => trim((string) $request->input('community_highlight_semestriel', '')),
-                'membre-herime-annuel' => trim((string) $request->input('community_highlight_annuel', '')),
-            ] as $slug => $text) {
-                if ($text !== '') {
-                    $highlights[$slug] = $text;
-                } else {
-                    unset($highlights[$slug]);
-                }
-            }
-            Setting::set('community_premium_plan_highlights', $highlights, 'json', 'Détails affichés sous les options (par slug de plan)');
+            $this->refreshCommunityHomeHlsQueue($currentMain);
 
             return redirect()->route('admin.settings', ['tab' => 'community'])
-                ->with('success', 'Paramètres Communauté Membre Herime enregistrés. Les prix des formules se modifient dans Abonnements → Plans (plans avec métadonnée membre communauté).');
+                ->with('success', 'Média du bloc communauté (page d’accueil) enregistré. Les textes et prix de la page d’adhésion se gèrent dans Abonnements → Plans (type Membre Herime).');
         }
 
         // Gestion Meta (Pixel + Events) via /admin/settings (sans dépendre des autres settings)
@@ -4914,34 +4904,45 @@ class AdminController extends Controller
                     return '';
                 }
                 $lower = strtolower($raw);
+
                 return $metaStandardEventNamesLowerMap[$lower] ?? $raw;
             };
 
             $isValidCustomEventName = function (string $name): bool {
-                if ($name === '') return false;
-                if (strlen($name) > 64) return false;
+                if ($name === '') {
+                    return false;
+                }
+                if (strlen($name) > 64) {
+                    return false;
+                }
                 // Pas d'espaces ni virgules: c'est une valeur unique, pas une liste.
-                if (preg_match('/[,\s]/', $name)) return false;
+                if (preg_match('/[,\s]/', $name)) {
+                    return false;
+                }
+
                 // Autoriser lettres, chiffres, ".", "_", "-"
                 return (bool) preg_match('/^[A-Za-z0-9._-]+$/', $name);
             };
 
             $parseCsv = function ($raw): array {
-                if (!is_string($raw)) {
+                if (! is_string($raw)) {
                     return [];
                 }
                 $parts = preg_split('/[,\n\r]+/', $raw) ?: [];
                 $out = [];
                 foreach ($parts as $p) {
                     $p = trim($p);
-                    if ($p === '') continue;
+                    if ($p === '') {
+                        continue;
+                    }
                     $out[] = $p;
                 }
+
                 return array_values(array_unique($out));
             };
 
             $parseJson = function ($raw): ?array {
-                if (!is_string($raw)) {
+                if (! is_string($raw)) {
                     return null;
                 }
                 $raw = trim($raw);
@@ -4949,6 +4950,7 @@ class AdminController extends Controller
                     return null;
                 }
                 $decoded = json_decode($raw, true);
+
                 return is_array($decoded) ? $decoded : null;
             };
 
@@ -5026,6 +5028,7 @@ class AdminController extends Controller
             if ($action === 'meta_pixel_delete') {
                 $request->validate(['meta_pixel_id' => 'required|integer']);
                 \App\Models\MetaPixel::query()->whereKey((int) $request->input('meta_pixel_id'))->delete();
+
                 return redirect()->route('admin.settings')->with('success', 'Pixel Meta supprimé.');
             }
 
@@ -5040,11 +5043,11 @@ class AdminController extends Controller
 
                 // Validation stricte: standard => whitelist, custom => format strict
                 if ($isStandard) {
-                    if (!in_array($eventName, $metaStandardEventNames, true)) {
+                    if (! in_array($eventName, $metaStandardEventNames, true)) {
                         return redirect()->route('admin.settings')->with('error', "Nom d'événement standard invalide. Utilisez un événement Meta officiel (ex: Purchase, Lead...).");
                     }
                 } else {
-                    if (!$isValidCustomEventName($eventName)) {
+                    if (! $isValidCustomEventName($eventName)) {
                         return redirect()->route('admin.settings')->with('error', "Nom d'événement custom invalide. Caractères autorisés: lettres/chiffres/._- (sans espaces).");
                     }
                     // Éviter de créer un "custom" avec un nom de standard (typo/erreur d'intention)
@@ -5077,11 +5080,11 @@ class AdminController extends Controller
                 $isStandard = $request->input('event_is_standard') === 'on';
 
                 if ($isStandard) {
-                    if (!in_array($eventName, $metaStandardEventNames, true)) {
+                    if (! in_array($eventName, $metaStandardEventNames, true)) {
                         return redirect()->route('admin.settings')->with('error', "Nom d'événement standard invalide. Utilisez un événement Meta officiel (ex: Purchase, Lead...).");
                     }
                 } else {
-                    if (!$isValidCustomEventName($eventName)) {
+                    if (! $isValidCustomEventName($eventName)) {
                         return redirect()->route('admin.settings')->with('error', "Nom d'événement custom invalide. Caractères autorisés: lettres/chiffres/._- (sans espaces).");
                     }
                     if (in_array($eventName, $metaStandardEventNames, true)) {
@@ -5105,6 +5108,7 @@ class AdminController extends Controller
             if ($action === 'meta_event_delete') {
                 $request->validate(['meta_event_id' => 'required|integer']);
                 \App\Models\MetaEvent::query()->whereKey((int) $request->input('meta_event_id'))->delete();
+
                 return redirect()->route('admin.settings')->with('success', 'Événement Meta supprimé.');
             }
 
@@ -5124,8 +5128,8 @@ class AdminController extends Controller
                 }
 
                 // Normalize to a path-like pattern (leading "/")
-                if ($v !== '' && $v !== '/' && !str_starts_with($v, '/')) {
-                    $v = '/' . $v;
+                if ($v !== '' && $v !== '/' && ! str_starts_with($v, '/')) {
+                    $v = '/'.$v;
                 }
 
                 return $v;
@@ -5141,10 +5145,10 @@ class AdminController extends Controller
                 ]);
 
                 $triggerType = $request->input('trigger_type');
-                if ($triggerType === 'page_load' && !$request->filled('match_path_pattern')) {
+                if ($triggerType === 'page_load' && ! $request->filled('match_path_pattern')) {
                     return redirect()->route('admin.settings')->with('error', 'Pour page_load, la sélection de page est obligatoire (choisissez une page ou “Toutes les pages”).');
                 }
-                if (in_array($triggerType, ['click', 'form_submit'], true) && !$request->filled('css_selector')) {
+                if (in_array($triggerType, ['click', 'form_submit'], true) && ! $request->filled('css_selector')) {
                     return redirect()->route('admin.settings')->with('error', 'Le sélecteur CSS est obligatoire pour click/form_submit.');
                 }
 
@@ -5155,7 +5159,7 @@ class AdminController extends Controller
                 $matchPathPattern = $normalizeMatchPathPattern($matchPathPattern);
 
                 $metaEventId = $request->input('meta_event_id');
-                if (!$metaEventId) {
+                if (! $metaEventId) {
                     $eventName = $normalizeEventName($request->input('event_name'));
                     if ($eventName === '') {
                         return redirect()->route('admin.settings')->with('error', 'Veuillez sélectionner un événement.');
@@ -5163,7 +5167,7 @@ class AdminController extends Controller
 
                     // Triggers: uniquement des événements existants en BDD (créés via section "Événements")
                     $existing = \App\Models\MetaEvent::query()->where('event_name', $eventName)->first();
-                    if (!$existing) {
+                    if (! $existing) {
                         return redirect()->route('admin.settings')->with('error', "Événement inconnu. Créez d'abord l'événement dans la section “Événements”, puis sélectionnez-le.");
                     }
                     $metaEventId = $existing->id;
@@ -5194,10 +5198,10 @@ class AdminController extends Controller
                 ]);
 
                 $triggerType = $request->input('trigger_type');
-                if ($triggerType === 'page_load' && !$request->filled('match_path_pattern')) {
+                if ($triggerType === 'page_load' && ! $request->filled('match_path_pattern')) {
                     return redirect()->route('admin.settings')->with('error', 'Pour page_load, la sélection de page est obligatoire (choisissez une page ou “Toutes les pages”).');
                 }
-                if (in_array($triggerType, ['click', 'form_submit'], true) && !$request->filled('css_selector')) {
+                if (in_array($triggerType, ['click', 'form_submit'], true) && ! $request->filled('css_selector')) {
                     return redirect()->route('admin.settings')->with('error', 'Le sélecteur CSS est obligatoire pour click/form_submit.');
                 }
 
@@ -5210,14 +5214,14 @@ class AdminController extends Controller
                 $matchPathPattern = $normalizeMatchPathPattern($matchPathPattern);
 
                 $metaEventId = $request->input('meta_event_id');
-                if (!$metaEventId) {
+                if (! $metaEventId) {
                     $eventName = $normalizeEventName($request->input('event_name'));
                     if ($eventName === '') {
                         return redirect()->route('admin.settings')->with('error', 'Veuillez sélectionner un événement.');
                     }
 
                     $existing = \App\Models\MetaEvent::query()->where('event_name', $eventName)->first();
-                    if (!$existing) {
+                    if (! $existing) {
                         return redirect()->route('admin.settings')->with('error', "Événement inconnu. Créez d'abord l'événement dans la section “Événements”, puis sélectionnez-le.");
                     }
                     $metaEventId = $existing->id;
@@ -5241,6 +5245,7 @@ class AdminController extends Controller
             if ($action === 'meta_trigger_delete') {
                 $request->validate(['meta_trigger_id' => 'required|integer']);
                 \App\Models\MetaEventTrigger::query()->whereKey((int) $request->input('meta_trigger_id'))->delete();
+
                 return redirect()->route('admin.settings')->with('success', 'Trigger Meta supprimé.');
             }
 
@@ -5264,7 +5269,7 @@ class AdminController extends Controller
         ]);
 
         Setting::set('base_currency', strtoupper($request->base_currency), 'string', 'Devise de base du site');
-        
+
         if ($request->has('external_provider_commission_percentage')) {
             Setting::set('external_provider_commission_percentage', $request->external_provider_commission_percentage, 'number', 'Pourcentage de commission retenu sur les paiements aux prestataires externes');
         }
@@ -5275,24 +5280,24 @@ class AdminController extends Controller
 
         // Paramètres Wallet - Toujours sauvegarder, même avec des valeurs par défaut
         Setting::set(
-            'wallet_holding_period_days', 
-            $request->input('wallet_holding_period_days', 7), 
-            'number', 
+            'wallet_holding_period_days',
+            $request->input('wallet_holding_period_days', 7),
+            'number',
             'Nombre de jours pendant lesquels les fonds sont bloqués avant d\'être disponibles au retrait'
         );
 
         Setting::set(
-            'wallet_minimum_payout_amount', 
-            $request->input('wallet_minimum_payout_amount', 5), 
-            'number', 
+            'wallet_minimum_payout_amount',
+            $request->input('wallet_minimum_payout_amount', 5),
+            'number',
             'Montant minimum pour effectuer un retrait'
         );
 
         // Le checkbox renvoie 'on' quand coché, null quand décoché
         Setting::set(
-            'wallet_auto_release_enabled', 
-            $request->input('wallet_auto_release_enabled') === 'on' ? 1 : 0, 
-            'boolean', 
+            'wallet_auto_release_enabled',
+            $request->input('wallet_auto_release_enabled') === 'on' ? 1 : 0,
+            'boolean',
             'Activer la libération automatique des fonds bloqués'
         );
 
@@ -5359,18 +5364,18 @@ class AdminController extends Controller
         // Recherche par payout_id ou order_number
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('payout_id', 'like', "%{$search}%")
-                  ->orWhereHas('order', function($orderQuery) use ($search) {
-                      $orderQuery->where('order_number', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('order', function ($orderQuery) use ($search) {
+                        $orderQuery->where('order_number', 'like', "%{$search}%");
+                    });
             });
         }
 
         // Tri
         $sortBy = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-        
+
         if (in_array($sortBy, ['amount', 'status', 'created_at', 'processed_at'])) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
@@ -5449,9 +5454,9 @@ class AdminController extends Controller
             // Recherche par nom ou email
             if ($request->filled('search')) {
                 $search = $request->get('search');
-                $providersQuery->where(function($q) use ($search) {
+                $providersQuery->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
 
@@ -5466,8 +5471,8 @@ class AdminController extends Controller
                     $combinedApplications->push($provider->providerApplication);
                 } else {
                     // Prestataire nommé directement par admin - créer un objet virtuel
-                    $virtualApplication = new ProviderApplication();
-                    $virtualApplication->id = 'virtual_' . $provider->id;
+                    $virtualApplication = new ProviderApplication;
+                    $virtualApplication->id = 'virtual_'.$provider->id;
                     $virtualApplication->user_id = $provider->id;
                     $virtualApplication->user = $provider;
                     $virtualApplication->status = 'approved'; // Les prestataires nommés sont considérés comme approuvés
@@ -5483,7 +5488,7 @@ class AdminController extends Controller
             // Filtre par statut
             if ($request->filled('status')) {
                 $status = $request->get('status');
-                $combinedApplications = $combinedApplications->filter(function($app) use ($status) {
+                $combinedApplications = $combinedApplications->filter(function ($app) use ($status) {
                     return $app->status === $status;
                 });
             }
@@ -5491,22 +5496,22 @@ class AdminController extends Controller
             // Tri
             $sortBy = $request->get('sort', 'created_at');
             $sortDirection = $request->get('direction', 'desc');
-            
-            $combinedApplications = $combinedApplications->sort(function($a, $b) use ($sortBy, $sortDirection) {
-                $valueA = match($sortBy) {
+
+            $combinedApplications = $combinedApplications->sort(function ($a, $b) use ($sortBy, $sortDirection) {
+                $valueA = match ($sortBy) {
                     'created_at' => $a->created_at?->timestamp ?? 0,
                     'status' => $a->status ?? '',
                     'reviewed_at' => $a->reviewed_at?->timestamp ?? 0,
                     default => $a->created_at?->timestamp ?? 0,
                 };
-                
-                $valueB = match($sortBy) {
+
+                $valueB = match ($sortBy) {
                     'created_at' => $b->created_at?->timestamp ?? 0,
                     'status' => $b->status ?? '',
                     'reviewed_at' => $b->reviewed_at?->timestamp ?? 0,
                     default => $b->created_at?->timestamp ?? 0,
                 };
-                
+
                 if ($sortDirection === 'asc') {
                     return $valueA <=> $valueB;
                 } else {
@@ -5519,7 +5524,7 @@ class AdminController extends Controller
             $perPage = 20;
             $total = $combinedApplications->count();
             $items = $combinedApplications->slice(($page - 1) * $perPage, $perPage)->values();
-            
+
             $applications = new \Illuminate\Pagination\LengthAwarePaginator(
                 $items,
                 $total,
@@ -5557,18 +5562,18 @@ class AdminController extends Controller
             // Recherche par payout_id ou order_number
             if ($request->filled('search')) {
                 $search = $request->get('search');
-                $payoutQuery->where(function($q) use ($search) {
+                $payoutQuery->where(function ($q) use ($search) {
                     $q->where('payout_id', 'like', "%{$search}%")
-                      ->orWhereHas('order', function($orderQuery) use ($search) {
-                          $orderQuery->where('order_number', 'like', "%{$search}%");
-                      });
+                        ->orWhereHas('order', function ($orderQuery) use ($search) {
+                            $orderQuery->where('order_number', 'like', "%{$search}%");
+                        });
                 });
             }
 
             // Tri
             $sortBy = $request->get('sort', 'created_at');
             $sortDirection = $request->get('direction', 'desc');
-            
+
             if (in_array($sortBy, ['amount', 'status', 'created_at', 'processed_at'])) {
                 $payoutQuery->orderBy($sortBy, $sortDirection);
             } else {
@@ -5603,9 +5608,9 @@ class AdminController extends Controller
             // Recherche par nom ou email
             if ($request->filled('search')) {
                 $search = $request->get('search');
-                $applicationsQuery->whereHas('user', function($q) use ($search) {
+                $applicationsQuery->whereHas('user', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
 
@@ -5617,7 +5622,7 @@ class AdminController extends Controller
             // Tri
             $sortBy = $request->get('sort', 'created_at');
             $sortDirection = $request->get('direction', 'desc');
-            
+
             if (in_array($sortBy, ['created_at', 'status', 'reviewed_at'])) {
                 $applicationsQuery->orderBy($sortBy, $sortDirection);
             } else {
@@ -5648,7 +5653,8 @@ class AdminController extends Controller
     public function showProviderApplication(ProviderApplication $application)
     {
         $application->load(['user', 'reviewer']);
-            return view('admin.provider-applications.show', compact('application'));
+
+        return view('admin.provider-applications.show', compact('application'));
     }
 
     /**
@@ -5671,7 +5677,7 @@ class AdminController extends Controller
         // Si approuvée, changer le rôle de l'utilisateur
         if ($request->status === 'approved') {
             $application->user->update([
-                'role' => 'provider'
+                'role' => 'provider',
             ]);
         }
 
@@ -5694,25 +5700,26 @@ class AdminController extends Controller
     public function bulkActionProviderApplications(Request $request)
     {
         $actions = [
-            'delete' => function($ids) {
+            'delete' => function ($ids) {
                 $count = 0;
                 foreach ($ids as $id) {
                     // Ignorer les candidatures virtuelles (prestataires nommés directement)
                     if (str_starts_with($id, 'virtual_')) {
                         continue;
                     }
-                    
+
                     $application = ProviderApplication::find($id);
                     if ($application) {
                         $application->delete();
                         $count++;
                     }
                 }
+
                 return [
                     'message' => "{$count} candidature(s) supprimée(s) avec succès.",
-                    'count' => $count
+                    'count' => $count,
                 ];
-            }
+            },
         ];
 
         return $this->handleBulkAction($request, ProviderApplication::class, $actions);
@@ -5720,7 +5727,7 @@ class AdminController extends Controller
 
     private function normalizeStringArray($values): array
     {
-        if (!is_array($values)) {
+        if (! is_array($values)) {
             return [];
         }
 
@@ -5728,8 +5735,10 @@ class AdminController extends Controller
             ->map(function ($value) {
                 if (is_string($value) || is_numeric($value)) {
                     $trimmed = trim((string) $value);
+
                     return $trimmed === '' ? null : $trimmed;
                 }
+
                 return null;
             })
             ->filter()
@@ -5746,6 +5755,7 @@ class AdminController extends Controller
 
         if (is_string($tags)) {
             $chunks = preg_split('/[,;]+/', $tags) ?: [];
+
             return $this->normalizeStringArray($chunks);
         }
 
@@ -5790,9 +5800,56 @@ class AdminController extends Controller
         return str_starts_with($v, 'site/community-home/');
     }
 
+    /**
+     * Après mise à jour du média d’accueil communauté : HLS adaptatif (queue) ou nettoyage.
+     */
+    private function refreshCommunityHomeHlsQueue(string $previousMainUrl): void
+    {
+        if (! config('video.hls.enabled')) {
+            return;
+        }
+
+        $type = strtolower(trim((string) Setting::get('community_home_media_type', 'image')));
+        $main = trim((string) Setting::get('community_home_media_url', ''));
+        $prev = ltrim(trim($previousMainUrl), '/');
+
+        if ($type !== 'video' || $main === '' || filter_var($main, FILTER_VALIDATE_URL)) {
+            if ($prev !== '' && ! filter_var($prev, FILTER_VALIDATE_URL)) {
+                try {
+                    app(HlsEncodingService::class)->deleteHlsOutputForVideo($prev);
+                } catch (\Throwable $e) {
+                    \Log::warning('refreshCommunityHomeHlsQueue: delete HLS', ['message' => $e->getMessage()]);
+                }
+            }
+            Setting::set('community_home_hls_manifest_path', '', 'string', 'Bloc accueil : chemin manifeste HLS (relatif)');
+            Setting::set('community_home_hls_status', '', 'string', 'Bloc accueil : statut encodage HLS');
+
+            return;
+        }
+
+        $mainPath = ltrim($main, '/');
+        if ($mainPath === $prev
+            && trim((string) Setting::get('community_home_hls_status', '')) === 'ready'
+            && trim((string) Setting::get('community_home_hls_manifest_path', '')) !== '') {
+            return;
+        }
+
+        if ($prev !== '' && $prev !== $mainPath && ! filter_var($prev, FILTER_VALIDATE_URL)) {
+            try {
+                app(HlsEncodingService::class)->deleteHlsOutputForVideo($prev);
+            } catch (\Throwable $e) {
+                \Log::warning('refreshCommunityHomeHlsQueue: delete ancien HLS', ['message' => $e->getMessage()]);
+            }
+        }
+
+        Setting::set('community_home_hls_manifest_path', '', 'string', 'Bloc accueil : chemin manifeste HLS (relatif)');
+        Setting::set('community_home_hls_status', 'queued', 'string', 'Bloc accueil : statut encodage HLS');
+        EncodeCommunityHomeVideoToHls::dispatch();
+    }
+
     private function sanitizeUploadedPath(?string $path): ?string
     {
-        if (!$path) {
+        if (! $path) {
             return null;
         }
 
@@ -5820,7 +5877,7 @@ class AdminController extends Controller
 
         foreach ($allowedPrefixes as $prefix) {
             $normalized = rtrim($prefix, '/');
-            if ($clean === $normalized || str_starts_with($clean, $normalized . '/')) {
+            if ($clean === $normalized || str_starts_with($clean, $normalized.'/')) {
                 return $clean;
             }
         }
@@ -5838,15 +5895,15 @@ class AdminController extends Controller
         // Recherche par nom d'utilisateur, titre de cours ou commentaire
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('comment', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('course', function ($courseQuery) use ($search) {
-                      $courseQuery->where('title', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('course', function ($courseQuery) use ($search) {
+                        $courseQuery->where('title', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -5948,7 +6005,7 @@ class AdminController extends Controller
     private function recalculateCourseRating($contentId)
     {
         $course = Course::find($contentId);
-        if (!$course) {
+        if (! $course) {
             return;
         }
 
@@ -5968,16 +6025,16 @@ class AdminController extends Controller
         // Recherche par nom d'utilisateur, titre de cours, numéro de certificat
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('certificate_number', 'like', "%{$search}%")
-                  ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('course', function ($courseQuery) use ($search) {
-                      $courseQuery->where('title', 'like', "%{$search}%");
-                  });
+                    ->orWhere('title', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('course', function ($courseQuery) use ($search) {
+                        $courseQuery->where('title', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -5994,7 +6051,7 @@ class AdminController extends Controller
         // Tri
         $sortBy = $request->get('sort', 'issued_at');
         $sortDirection = $request->get('direction', 'desc');
-        
+
         if (in_array($sortBy, ['certificate_number', 'title', 'issued_at', 'created_at'])) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
@@ -6034,16 +6091,16 @@ class AdminController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('certificate_number', 'like', "%{$search}%")
-                  ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('course', function ($courseQuery) use ($search) {
-                      $courseQuery->where('title', 'like', "%{$search}%");
-                  });
+                    ->orWhere('title', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('course', function ($courseQuery) use ($search) {
+                        $courseQuery->where('title', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -6067,20 +6124,20 @@ class AdminController extends Controller
 
         $filtersApplied = [];
         if ($request->filled('search')) {
-            $filtersApplied[] = 'Recherche : "' . $request->search . '"';
+            $filtersApplied[] = 'Recherche : "'.$request->search.'"';
         }
         if ($request->filled('content_id')) {
             $course = Course::find($request->content_id);
-            $filtersApplied[] = 'Contenu : ' . ($course ? $course->title : $request->content_id);
+            $filtersApplied[] = 'Contenu : '.($course ? $course->title : $request->content_id);
         }
         if ($request->filled('user_id')) {
             $user = User::find($request->user_id);
-            $filtersApplied[] = 'Client : ' . ($user ? $user->name : $request->user_id);
+            $filtersApplied[] = 'Client : '.($user ? $user->name : $request->user_id);
         }
         $filtersLine = empty($filtersApplied) ? 'Aucun filtre' : implode(' ; ', $filtersApplied);
 
-        $thisMonth = $data->filter(fn($c) => $c->issued_at && $c->issued_at->isCurrentMonth())->count();
-        $thisYear = $data->filter(fn($c) => $c->issued_at && $c->issued_at->isCurrentYear())->count();
+        $thisMonth = $data->filter(fn ($c) => $c->issued_at && $c->issued_at->isCurrentMonth())->count();
+        $thisYear = $data->filter(fn ($c) => $c->issued_at && $c->issued_at->isCurrentYear())->count();
         $summaryRows = [
             ['Nombre total de certificats', $data->count()],
             ['Délivrés ce mois', $thisMonth],
@@ -6115,6 +6172,7 @@ class AdminController extends Controller
     public function showCertificate(Certificate $certificate)
     {
         $certificate->load(['user', 'course.provider', 'course.category']);
+
         return view('admin.certificates.show', compact('certificate'));
     }
 
@@ -6126,21 +6184,21 @@ class AdminController extends Controller
         try {
             $certificateService = app(\App\Services\CertificateService::class);
             $pdfContent = $certificateService->getCertificatePdfContent($certificate);
-            
-            $filename = $certificate->certificate_number . '.pdf';
-            
+
+            $filename = $certificate->certificate_number.'.pdf';
+
             return response($pdfContent, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             ]);
         } catch (\Exception $e) {
             \Log::error('Erreur lors du téléchargement du certificat', [
                 'certificate_id' => $certificate->id,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return redirect()->route('admin.certificates')
-                ->with('error', 'Erreur lors du téléchargement du certificat: ' . $e->getMessage());
+                ->with('error', 'Erreur lors du téléchargement du certificat: '.$e->getMessage());
         }
     }
 
@@ -6152,7 +6210,7 @@ class AdminController extends Controller
         try {
             $certificateService = app(\App\Services\CertificateService::class);
             $certificate = $certificateService->regenerateCertificate($certificate);
-            
+
             return redirect()->route('admin.certificates.show', $certificate)
                 ->with('success', "Le certificat {$certificate->certificate_number} a été régénéré avec succès.");
         } catch (\Exception $e) {
@@ -6160,9 +6218,9 @@ class AdminController extends Controller
                 'certificate_id' => $certificate->id,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return redirect()->route('admin.certificates.show', $certificate)
-                ->with('error', 'Erreur lors de la régénération du certificat: ' . $e->getMessage());
+                ->with('error', 'Erreur lors de la régénération du certificat: '.$e->getMessage());
         }
     }
 
@@ -6176,10 +6234,10 @@ class AdminController extends Controller
             if ($certificate->file_path) {
                 Storage::disk('public')->delete($certificate->file_path);
             }
-            
+
             $certificateNumber = $certificate->certificate_number;
             $certificate->delete();
-            
+
             return redirect()->route('admin.certificates')
                 ->with('success', "Le certificat {$certificateNumber} a été supprimé avec succès.");
         } catch (\Exception $e) {
@@ -6187,9 +6245,9 @@ class AdminController extends Controller
                 'certificate_id' => $certificate->id,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return redirect()->route('admin.certificates')
-                ->with('error', 'Erreur lors de la suppression du certificat: ' . $e->getMessage());
+                ->with('error', 'Erreur lors de la suppression du certificat: '.$e->getMessage());
         }
     }
 
@@ -6200,7 +6258,7 @@ class AdminController extends Controller
     {
         $whatsappService = app(WhatsAppService::class);
         $connectionStatus = $whatsappService->checkConnection();
-        
+
         return view('admin.announcements.send-whatsapp', compact('connectionStatus'));
     }
 
@@ -6210,16 +6268,16 @@ class AdminController extends Controller
     public function searchUsersForWhatsApp(Request $request)
     {
         $query = $request->get('q', '');
-        
+
         if (strlen($query) < 2) {
             return response()->json([]);
         }
 
         $users = User::where('is_active', true)
-            ->where(function($q) use ($query) {
+            ->where(function ($q) use ($query) {
                 $q->where('name', 'like', "%{$query}%")
-                  ->orWhere('email', 'like', "%{$query}%")
-                  ->orWhere('phone', 'like', "%{$query}%");
+                    ->orWhere('email', 'like', "%{$query}%")
+                    ->orWhere('phone', 'like', "%{$query}%");
             })
             ->whereNotNull('phone')
             ->select('id', 'name', 'email', 'phone')
@@ -6235,7 +6293,7 @@ class AdminController extends Controller
     public function countUsersForWhatsApp(Request $request)
     {
         $type = $request->get('type', 'all');
-        
+
         $query = User::where('is_active', true)->whereNotNull('phone');
 
         if ($type === 'purchased_content') {
@@ -6290,22 +6348,22 @@ class AdminController extends Controller
             }
         } elseif ($type === 'role') {
             $roles = explode(',', $request->get('roles', ''));
-            if (!empty($roles)) {
+            if (! empty($roles)) {
                 // Séparer les rôles normaux des ambassadeurs
-                $normalRoles = array_filter($roles, function($role) {
+                $normalRoles = array_filter($roles, function ($role) {
                     return $role !== 'ambassador';
                 });
                 $hasAmbassador = in_array('ambassador', $roles);
-                
-                if (!empty($normalRoles) && $hasAmbassador) {
+
+                if (! empty($normalRoles) && $hasAmbassador) {
                     // Si on a des rôles normaux ET des ambassadeurs
-                    $query->where(function($q) use ($normalRoles, $hasAmbassador) {
+                    $query->where(function ($q) use ($normalRoles, $hasAmbassador) {
                         $q->whereIn('role', $normalRoles);
                         if ($hasAmbassador) {
                             $q->orWhereHas('ambassador');
                         }
                     });
-                } elseif (!empty($normalRoles)) {
+                } elseif (! empty($normalRoles)) {
                     // Seulement des rôles normaux
                     $query->whereIn('role', $normalRoles);
                 } elseif ($hasAmbassador) {
@@ -6317,33 +6375,33 @@ class AdminController extends Controller
             $contentId = $request->get('content_id');
             if ($contentId) {
                 // Récupérer les utilisateurs inscrits à ce cours
-                $query->whereHas('enrollments', function($q) use ($contentId) {
+                $query->whereHas('enrollments', function ($q) use ($contentId) {
                     $q->where('content_id', $contentId)
-                      ->where('status', 'active');
+                        ->where('status', 'active');
                 });
             }
         } elseif ($type === 'category') {
             $categoryId = $request->get('category_id');
             if ($categoryId) {
                 // Récupérer les utilisateurs inscrits à des cours de cette catégorie
-                $query->whereHas('enrollments', function($q) use ($categoryId) {
+                $query->whereHas('enrollments', function ($q) use ($categoryId) {
                     $q->where('status', 'active')
-                      ->whereHas('content', function($courseQuery) use ($categoryId) {
-                          $courseQuery->where('category_id', $categoryId)
-                                     ->where('is_published', true);
-                      });
+                        ->whereHas('content', function ($courseQuery) use ($categoryId) {
+                            $courseQuery->where('category_id', $categoryId)
+                                ->where('is_published', true);
+                        });
                 });
             }
         } elseif ($type === 'provider') {
             $providerId = $request->input('provider_id');
             if ($providerId) {
                 // Récupérer les utilisateurs inscrits à des cours de ce prestataire
-                $query->whereHas('enrollments', function($q) use ($providerId) {
+                $query->whereHas('enrollments', function ($q) use ($providerId) {
                     $q->where('status', 'active')
-                      ->whereHas('content', function($courseQuery) use ($providerId) {
-                          $courseQuery->where('provider_id', $providerId)
-                                     ->where('is_published', true);
-                      });
+                        ->whereHas('content', function ($courseQuery) use ($providerId) {
+                            $courseQuery->where('provider_id', $providerId)
+                                ->where('is_published', true);
+                        });
                 });
             }
         } elseif ($type === 'registration_date') {
@@ -6371,15 +6429,15 @@ class AdminController extends Controller
                         $query->where('last_login_at', '>=', now()->subMonths(3));
                         break;
                     case 'inactive_30days':
-                        $query->where(function($q) {
+                        $query->where(function ($q) {
                             $q->where('last_login_at', '<', now()->subDays(30))
-                              ->orWhereNull('last_login_at');
+                                ->orWhereNull('last_login_at');
                         });
                         break;
                     case 'inactive_90days':
-                        $query->where(function($q) {
+                        $query->where(function ($q) {
                             $q->where('last_login_at', '<', now()->subDays(90))
-                              ->orWhereNull('last_login_at');
+                                ->orWhereNull('last_login_at');
                         });
                         break;
                     case 'never_logged':
@@ -6451,7 +6509,7 @@ class AdminController extends Controller
                 try {
                     // Envoyer le message WhatsApp
                     $result = $whatsappService->sendMessage($user->phone, $message);
-                    
+
                     // Enregistrer le message
                     SentWhatsAppMessage::create([
                         'user_id' => $user->id,
@@ -6467,15 +6525,15 @@ class AdminController extends Controller
                             'recipient_type' => $recipientType,
                         ],
                     ]);
-                    
+
                     if ($result['success']) {
                         $sentCount++;
                     } else {
                         $failedCount++;
                     }
                 } catch (\Exception $e) {
-                    \Log::error("Erreur lors de l'envoi WhatsApp à {$user->phone}: " . $e->getMessage());
-                    
+                    \Log::error("Erreur lors de l'envoi WhatsApp à {$user->phone}: ".$e->getMessage());
+
                     // Enregistrer l'échec
                     SentWhatsAppMessage::create([
                         'user_id' => $user->id,
@@ -6489,7 +6547,7 @@ class AdminController extends Controller
                             'recipient_type' => $recipientType,
                         ],
                     ]);
-                    
+
                     $failedCount++;
                 }
             }
@@ -6505,7 +6563,7 @@ class AdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $messageResult,
-                'redirect' => route('admin.announcements')
+                'redirect' => route('admin.announcements'),
             ]);
         }
 
@@ -6529,22 +6587,22 @@ class AdminController extends Controller
 
             case 'role':
                 $roles = $request->input('roles', []);
-                if (!empty($roles)) {
+                if (! empty($roles)) {
                     // Séparer les rôles normaux des ambassadeurs
-                    $normalRoles = array_filter($roles, function($role) {
+                    $normalRoles = array_filter($roles, function ($role) {
                         return $role !== 'ambassador';
                     });
                     $hasAmbassador = in_array('ambassador', $roles);
-                    
-                    if (!empty($normalRoles) && $hasAmbassador) {
+
+                    if (! empty($normalRoles) && $hasAmbassador) {
                         // Si on a des rôles normaux ET des ambassadeurs
-                        $query->where(function($q) use ($normalRoles, $hasAmbassador) {
+                        $query->where(function ($q) use ($normalRoles, $hasAmbassador) {
                             $q->whereIn('role', $normalRoles);
                             if ($hasAmbassador) {
                                 $q->orWhereHas('ambassador');
                             }
                         });
-                    } elseif (!empty($normalRoles)) {
+                    } elseif (! empty($normalRoles)) {
                         // Seulement des rôles normaux
                         $query->whereIn('role', $normalRoles);
                     } elseif ($hasAmbassador) {
@@ -6557,7 +6615,7 @@ class AdminController extends Controller
             case 'course':
                 $contentId = $request->input('content_id');
                 if ($contentId) {
-                    $query->whereHas('enrollments', function($q) use ($contentId) {
+                    $query->whereHas('enrollments', function ($q) use ($contentId) {
                         $q->where('content_id', $contentId)->where('status', 'active');
                     });
                 } else {
@@ -6568,11 +6626,11 @@ class AdminController extends Controller
             case 'category':
                 $categoryId = $request->input('category_id');
                 if ($categoryId) {
-                    $query->whereHas('enrollments', function($q) use ($categoryId) {
+                    $query->whereHas('enrollments', function ($q) use ($categoryId) {
                         $q->where('status', 'active')
-                          ->whereHas('content', function($courseQuery) use ($categoryId) {
-                              $courseQuery->where('category_id', $categoryId)->where('is_published', true);
-                          });
+                            ->whereHas('content', function ($courseQuery) use ($categoryId) {
+                                $courseQuery->where('category_id', $categoryId)->where('is_published', true);
+                            });
                     });
                 } else {
                     return collect();
@@ -6582,11 +6640,11 @@ class AdminController extends Controller
             case 'provider':
                 $providerId = $request->input('provider_id');
                 if ($providerId) {
-                    $query->whereHas('enrollments', function($q) use ($providerId) {
+                    $query->whereHas('enrollments', function ($q) use ($providerId) {
                         $q->where('status', 'active')
-                          ->whereHas('content', function($courseQuery) use ($providerId) {
-                              $courseQuery->where('provider_id', $providerId)->where('is_published', true);
-                          });
+                            ->whereHas('content', function ($courseQuery) use ($providerId) {
+                                $courseQuery->where('provider_id', $providerId)->where('is_published', true);
+                            });
                     });
                 } else {
                     return collect();
@@ -6597,8 +6655,12 @@ class AdminController extends Controller
                 $dateFrom = $request->input('registration_date_from');
                 $dateTo = $request->input('registration_date_to');
                 if ($dateFrom || $dateTo) {
-                    if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
-                    if ($dateTo) $query->whereDate('created_at', '<=', $dateTo);
+                    if ($dateFrom) {
+                        $query->whereDate('created_at', '>=', $dateFrom);
+                    }
+                    if ($dateTo) {
+                        $query->whereDate('created_at', '<=', $dateTo);
+                    }
                 } else {
                     return collect();
                 }
@@ -6608,16 +6670,22 @@ class AdminController extends Controller
                 $activityType = $request->input('activity_type');
                 if ($activityType) {
                     switch ($activityType) {
-                        case 'active_recent': $query->where('last_login_at', '>=', now()->subDays(7)); break;
-                        case 'active_month': $query->where('last_login_at', '>=', now()->startOfMonth()); break;
-                        case 'active_3months': $query->where('last_login_at', '>=', now()->subMonths(3)); break;
-                        case 'inactive_30days': $query->where(function($q) {
+                        case 'active_recent': $query->where('last_login_at', '>=', now()->subDays(7));
+                            break;
+                        case 'active_month': $query->where('last_login_at', '>=', now()->startOfMonth());
+                            break;
+                        case 'active_3months': $query->where('last_login_at', '>=', now()->subMonths(3));
+                            break;
+                        case 'inactive_30days': $query->where(function ($q) {
                             $q->where('last_login_at', '<', now()->subDays(30))->orWhereNull('last_login_at');
-                        }); break;
-                        case 'inactive_90days': $query->where(function($q) {
+                        });
+                            break;
+                        case 'inactive_90days': $query->where(function ($q) {
                             $q->where('last_login_at', '<', now()->subDays(90))->orWhereNull('last_login_at');
-                        }); break;
-                        case 'never_logged': $query->whereNull('last_login_at'); break;
+                        });
+                            break;
+                        case 'never_logged': $query->whereNull('last_login_at');
+                            break;
                     }
                 } else {
                     return collect();
@@ -6627,11 +6695,11 @@ class AdminController extends Controller
             case 'downloaded_free':
                 $downloadedContentId = $request->input('downloaded_content_id');
                 // Utilisateurs ayant téléchargé au moins une fois un contenu téléchargeable gratuit
-                $query->whereHas('downloads', function($q) use ($downloadedContentId) {
-                    $q->whereHas('content', function($contentQuery) use ($downloadedContentId) {
+                $query->whereHas('downloads', function ($q) use ($downloadedContentId) {
+                    $q->whereHas('content', function ($contentQuery) use ($downloadedContentId) {
                         $contentQuery->where('is_downloadable', true)
-                                    ->where('is_free', true)
-                                    ->where('is_published', true);
+                            ->where('is_free', true)
+                            ->where('is_published', true);
                         if ($downloadedContentId) {
                             $contentQuery->where('id', $downloadedContentId);
                         }
@@ -6666,18 +6734,18 @@ class AdminController extends Controller
             case 'purchased':
                 $purchaseType = $request->input('purchase_type', 'any');
                 $purchasedContentId = $request->input('purchased_content_id');
-                
+
                 if ($purchaseType === 'specific_content' && $purchasedContentId) {
                     // Utilisateurs ayant acheté un contenu spécifique
-                    $query->whereHas('orders', function($orderQuery) use ($purchasedContentId) {
+                    $query->whereHas('orders', function ($orderQuery) use ($purchasedContentId) {
                         $orderQuery->whereIn('status', ['paid', 'completed'])
-                                   ->whereHas('orderItems', function($itemQuery) use ($purchasedContentId) {
-                                       $itemQuery->where('content_id', $purchasedContentId);
-                                   });
+                            ->whereHas('orderItems', function ($itemQuery) use ($purchasedContentId) {
+                                $itemQuery->where('content_id', $purchasedContentId);
+                            });
                     });
                 } else {
                     // Utilisateurs ayant effectué des achats selon le type
-                    $query->whereHas('orders', function($orderQuery) use ($purchaseType) {
+                    $query->whereHas('orders', function ($orderQuery) use ($purchaseType) {
                         if ($purchaseType === 'paid') {
                             $orderQuery->where('status', 'paid');
                         } elseif ($purchaseType === 'completed') {
@@ -6695,10 +6763,10 @@ class AdminController extends Controller
                 if (empty($userIdsString)) {
                     return collect();
                 }
-                $userIds = array_filter(explode(',', $userIdsString), function($id) {
-                    return !empty(trim($id)) && is_numeric(trim($id));
+                $userIds = array_filter(explode(',', $userIdsString), function ($id) {
+                    return ! empty(trim($id)) && is_numeric(trim($id));
                 });
-                if (!empty($userIds)) {
+                if (! empty($userIds)) {
                     $query->whereIn('id', array_map('intval', $userIds));
                 } else {
                     return collect();
@@ -6724,18 +6792,18 @@ class AdminController extends Controller
     public function showWhatsAppMessage(SentWhatsAppMessage $sentWhatsAppMessage)
     {
         $sentWhatsAppMessage->load('user');
-        
+
         // Charger l'utilisateur destinataire si le numéro de téléphone correspond
         if ($sentWhatsAppMessage->recipient_phone) {
             $recipientUser = User::where('phone', $sentWhatsAppMessage->recipient_phone)->first();
             $sentWhatsAppMessage->recipient_user = $recipientUser;
         }
-        
+
         // Traduire le message d'erreur en français si présent
         if ($sentWhatsAppMessage->error_message) {
             $sentWhatsAppMessage->translated_error = $this->translateWhatsAppError($sentWhatsAppMessage->error_message);
         }
-        
+
         return view('admin.whatsapp.show', compact('sentWhatsAppMessage'));
     }
 
@@ -6747,7 +6815,7 @@ class AdminController extends Controller
         // Nettoyer le message d'erreur (enlever "Erreur :" au début si présent)
         $errorMessage = preg_replace('/^Erreur\s*:\s*/i', '', trim($errorMessage));
         $errorLower = strtolower($errorMessage);
-        
+
         // Traductions des messages d'erreur courants (par ordre de priorité)
         $translations = [
             // Messages HTTP courants (priorité haute)
@@ -6762,7 +6830,7 @@ class AdminController extends Controller
             'bad gateway' => 'Mauvaise passerelle',
             'service unavailable' => 'Service indisponible',
             'gateway timeout' => 'Délai d\'attente de la passerelle dépassé',
-            
+
             // Erreurs de connexion
             'not connected' => 'Instance WhatsApp non connectée',
             'instance not found' => 'Instance WhatsApp introuvable',
@@ -6770,57 +6838,57 @@ class AdminController extends Controller
             'connection timeout' => 'Délai de connexion dépassé',
             'timeout' => 'Délai d\'attente dépassé',
             'connection' => 'Erreur de connexion',
-            
+
             // Erreurs de numéro
             'invalid phone' => 'Numéro de téléphone invalide',
             'invalid number' => 'Numéro de téléphone invalide',
             'phone number' => 'Numéro de téléphone invalide',
             'number not found' => 'Numéro de téléphone introuvable',
-            
+
             // Erreurs d'API
             'api error' => 'Erreur de l\'API WhatsApp',
             'api key' => 'Clé API invalide',
             'server error' => 'Erreur du serveur WhatsApp',
-            
+
             // Erreurs de message
             'message failed' => 'Échec de l\'envoi du message',
             'send failed' => 'Échec de l\'envoi',
             'failed to send' => 'Échec de l\'envoi',
             'unable to send' => 'Impossible d\'envoyer le message',
-            
+
             // Erreurs réseau
             'network error' => 'Erreur réseau',
             'connection refused' => 'Connexion refusée',
             'could not connect' => 'Impossible de se connecter',
             'connection error' => 'Erreur de connexion',
-            
+
             // Erreurs spécifiques Evolution API
             'qr code' => 'Code QR requis - Veuillez scanner le code QR',
             'qr' => 'Code QR requis',
             'authentication' => 'Erreur d\'authentification WhatsApp',
             'session' => 'Session WhatsApp expirée',
-            
+
             // Erreurs génériques
             'unknown error' => 'Erreur inconnue',
             'error occurred' => 'Une erreur s\'est produite',
             'something went wrong' => 'Une erreur s\'est produite',
         ];
-        
+
         // Chercher une correspondance exacte d'abord
         if (isset($translations[$errorLower])) {
             return $translations[$errorLower];
         }
-        
+
         // Chercher une correspondance partielle dans les traductions
         foreach ($translations as $key => $translation) {
             if (stripos($errorLower, $key) !== false) {
                 return $translation;
             }
         }
-        
+
         // Si c'est un message d'erreur HTTP avec code numérique, le traduire
         if (preg_match('/\b(\d{3})\b/', $errorMessage, $matches)) {
-            $httpCode = (int)$matches[1];
+            $httpCode = (int) $matches[1];
             $httpMessages = [
                 400 => 'Requête invalide - Vérifiez les paramètres de la requête',
                 401 => 'Non autorisé - Vérifiez votre clé API',
@@ -6834,12 +6902,12 @@ class AdminController extends Controller
                 503 => 'Service indisponible',
                 504 => 'Délai d\'attente de la passerelle dépassé',
             ];
-            
+
             if (isset($httpMessages[$httpCode])) {
                 return $httpMessages[$httpCode];
             }
         }
-        
+
         // Retourner le message original si aucune traduction n'est trouvée
         return $errorMessage;
     }
@@ -6850,6 +6918,7 @@ class AdminController extends Controller
     public function showSendCombined()
     {
         $whatsappConnectionStatus = app(WhatsAppService::class)->checkConnection();
+
         return view('admin.announcements.send-combined', compact('whatsappConnectionStatus'));
     }
 
@@ -6894,7 +6963,7 @@ class AdminController extends Controller
         ]);
 
         // Vérifier qu'au moins un canal est sélectionné
-        if (!$request->has('send_email') && !$request->has('send_whatsapp')) {
+        if (! $request->has('send_email') && ! $request->has('send_whatsapp')) {
             return redirect()->back()
                 ->with('error', 'Veuillez sélectionner au moins un canal d\'envoi (Email ou WhatsApp).')
                 ->withInput();
@@ -6917,7 +6986,7 @@ class AdminController extends Controller
                     // FileUploadService retourne un tableau avec 'path' et 'url', on a besoin du 'path'
                     $attachmentPaths[] = is_array($uploadResult) ? $uploadResult['path'] : $uploadResult;
                 } catch (\Exception $e) {
-                    Log::error("Erreur lors de l'upload de la pièce jointe: " . $e->getMessage());
+                    Log::error("Erreur lors de l'upload de la pièce jointe: ".$e->getMessage());
                     // Continuer avec les autres fichiers même si un échoue
                 }
             }
@@ -6961,7 +7030,7 @@ class AdminController extends Controller
 
         // Exécuter directement les envois sans passer par la queue/worker
         // Les erreurs sont gérées individuellement pour ne pas bloquer les autres envois
-        
+
         // Envoyer les emails directement
         if ($sendEmail && $emailUsers->isNotEmpty()) {
             foreach ($emailUsers as $user) {
@@ -6981,7 +7050,7 @@ class AdminController extends Controller
                         $job->handle();
                         $emailSentCount++;
                     } catch (\Exception $e) {
-                        Log::error("Erreur lors de l'envoi d'email à {$user->email}: " . $e->getMessage());
+                        Log::error("Erreur lors de l'envoi d'email à {$user->email}: ".$e->getMessage());
                         $emailFailedCount++;
                     }
                 }
@@ -6998,28 +7067,28 @@ class AdminController extends Controller
                         $job->handle();
                         $whatsappSentCount++;
                     } catch (\Exception $e) {
-                        Log::error("Erreur lors de l'envoi WhatsApp à {$user->phone}: " . $e->getMessage());
+                        Log::error("Erreur lors de l'envoi WhatsApp à {$user->phone}: ".$e->getMessage());
                         $whatsappFailedCount++;
                     }
                 }
             }
         }
-        
+
         // Construire le message de résultat
-        $message = "Envoi combiné terminé ! ";
+        $message = 'Envoi combiné terminé ! ';
         if ($sendEmail) {
             $message .= "{$emailSentCount} email(s) envoyé(s)";
             if ($emailFailedCount > 0) {
                 $message .= ", {$emailFailedCount} échec(s)";
             }
-            $message .= ". ";
+            $message .= '. ';
         }
         if ($sendWhatsApp) {
             $message .= "{$whatsappSentCount} message(s) WhatsApp envoyé(s)";
             if ($whatsappFailedCount > 0) {
                 $message .= ", {$whatsappFailedCount} échec(s)";
             }
-            $message .= ". ";
+            $message .= '. ';
         }
 
         // Si c'est une requête AJAX, retourner JSON
@@ -7027,10 +7096,10 @@ class AdminController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'redirect' => route('admin.announcements')
+                'redirect' => route('admin.announcements'),
             ]);
         }
-        
+
         return redirect()->route('admin.announcements')
             ->with('success', $message);
     }
@@ -7048,7 +7117,7 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur lors de la suppression du message WhatsApp', [
                 'message_id' => $sentWhatsAppMessage->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return redirect()->route('admin.announcements')
@@ -7062,39 +7131,42 @@ class AdminController extends Controller
     public function bulkActionUsers(Request $request)
     {
         $actions = [
-            'delete' => function($ids) {
+            'delete' => function ($ids) {
                 $count = 0;
                 foreach ($ids as $id) {
                     $user = User::find($id);
-                    if ($user && !$user->isAdmin()) {
+                    if ($user && ! $user->isAdmin()) {
                         $user->delete();
                         $count++;
                     }
                 }
+
                 return [
                     'message' => "{$count} utilisateur(s) supprimé(s) avec succès.",
-                    'count' => $count
+                    'count' => $count,
                 ];
             },
-            'activate' => function($ids) {
+            'activate' => function ($ids) {
                 $count = User::whereIn('id', $ids)
                     ->where('is_active', false)
                     ->update(['is_active' => true]);
+
                 return [
                     'message' => "{$count} utilisateur(s) activé(s) avec succès.",
-                    'count' => $count
+                    'count' => $count,
                 ];
             },
-            'deactivate' => function($ids) {
+            'deactivate' => function ($ids) {
                 $count = User::whereIn('id', $ids)
                     ->where('is_active', true)
                     ->whereNotIn('role', ['admin', 'super_user'])
                     ->update(['is_active' => false]);
+
                 return [
                     'message' => "{$count} utilisateur(s) désactivé(s) avec succès.",
-                    'count' => $count
+                    'count' => $count,
                 ];
-            }
+            },
         ];
 
         return $this->handleBulkAction($request, User::class, $actions);
@@ -7109,9 +7181,9 @@ class AdminController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -7130,7 +7202,7 @@ class AdminController extends Controller
         if ($request->filled('ids')) {
             $idsArray = is_array($request->ids) ? $request->ids : explode(',', $request->ids);
             $idsArray = array_filter(array_map('trim', $idsArray));
-            if (!empty($idsArray)) {
+            if (! empty($idsArray)) {
                 $query->whereIn('id', $idsArray);
             }
         }
@@ -7139,14 +7211,14 @@ class AdminController extends Controller
 
         $filtersApplied = [];
         if ($request->filled('search')) {
-            $filtersApplied[] = 'Recherche : "' . $request->search . '"';
+            $filtersApplied[] = 'Recherche : "'.$request->search.'"';
         }
         if ($request->filled('role')) {
             $roleLabelsFilter = ['admin' => 'Administrateur', 'provider' => 'Prestataire', 'customer' => 'Client', 'affiliate' => 'Affilié'];
-            $filtersApplied[] = 'Rôle : ' . ($roleLabelsFilter[$request->role] ?? $request->role);
+            $filtersApplied[] = 'Rôle : '.($roleLabelsFilter[$request->role] ?? $request->role);
         }
         if ($request->filled('status')) {
-            $filtersApplied[] = 'Statut : ' . ($request->status === 'active' ? 'Actif' : 'Inactif');
+            $filtersApplied[] = 'Statut : '.($request->status === 'active' ? 'Actif' : 'Inactif');
         }
         if ($request->filled('ids')) {
             $filtersApplied[] = 'Export sélectif (IDs fournis)';
@@ -7161,7 +7233,7 @@ class AdminController extends Controller
             ['Inactifs', $data->where('is_active', false)->count()],
         ];
         foreach ($byRole as $role => $count) {
-            $summaryRows[] = ['Rôle ' . ($roleLabels[$role] ?? $role), $count];
+            $summaryRows[] = ['Rôle '.($roleLabels[$role] ?? $role), $count];
         }
 
         $columns = [
@@ -7174,13 +7246,14 @@ class AdminController extends Controller
             'courses_count' => 'Nombre de cours',
             'enrollments_count' => 'Nombre d\'inscriptions',
             'created_at' => 'Date d\'inscription',
-            'last_login_at' => 'Dernière connexion'
+            'last_login_at' => 'Dernière connexion',
         ];
 
         $format = $request->get('format', 'csv');
         if ($format === 'excel') {
             return $this->exportToExcel($data, $columns, 'utilisateurs');
         }
+
         return $this->exportToCsvWithHeaderAndSummary(
             $data,
             $columns,
@@ -7197,15 +7270,15 @@ class AdminController extends Controller
     public function bulkActionContents(Request $request)
     {
         $actions = [
-            'delete' => function($ids) {
+            'delete' => function ($ids) {
                 return $this->bulkDelete($ids, Course::class);
             },
-            'publish' => function($ids) {
+            'publish' => function ($ids) {
                 return $this->bulkUpdate($ids, Course::class, ['is_published' => true]);
             },
-            'unpublish' => function($ids) {
+            'unpublish' => function ($ids) {
                 return $this->bulkUpdate($ids, Course::class, ['is_published' => false]);
-            }
+            },
         ];
 
         return $this->handleBulkAction($request, Course::class, $actions);
@@ -7223,9 +7296,9 @@ class AdminController extends Controller
 
             if ($request->filled('search')) {
                 $search = $request->get('search');
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
-                      ->orWhere('subtitle', 'like', "%{$search}%");
+                        ->orWhere('subtitle', 'like', "%{$search}%");
                 });
             }
 
@@ -7248,7 +7321,7 @@ class AdminController extends Controller
             if ($request->filled('ids')) {
                 $idsArray = is_array($request->ids) ? $request->ids : explode(',', $request->ids);
                 $idsArray = array_filter(array_map('trim', $idsArray));
-                if (!empty($idsArray)) {
+                if (! empty($idsArray)) {
                     $query->whereIn('id', $idsArray);
                 }
             }
@@ -7257,18 +7330,18 @@ class AdminController extends Controller
 
             $filtersApplied = [];
             if ($request->filled('search')) {
-                $filtersApplied[] = 'Recherche : "' . $request->search . '"';
+                $filtersApplied[] = 'Recherche : "'.$request->search.'"';
             }
             if ($request->filled('category')) {
                 $cat = Category::find($request->category);
-                $filtersApplied[] = 'Catégorie : ' . ($cat ? $cat->name : $request->category);
+                $filtersApplied[] = 'Catégorie : '.($cat ? $cat->name : $request->category);
             }
             if ($request->filled('status')) {
-                $filtersApplied[] = 'Statut : ' . ($request->status === 'published' ? 'Publié' : 'Brouillon');
+                $filtersApplied[] = 'Statut : '.($request->status === 'published' ? 'Publié' : 'Brouillon');
             }
             if ($request->filled('provider')) {
                 $prov = User::find($request->provider);
-                $filtersApplied[] = 'Prestataire : ' . ($prov ? $prov->name : $request->provider);
+                $filtersApplied[] = 'Prestataire : '.($prov ? $prov->name : $request->provider);
             }
             if ($request->filled('ids')) {
                 $filtersApplied[] = 'Export sélectif (IDs fournis)';
@@ -7294,13 +7367,14 @@ class AdminController extends Controller
                 'is_published' => 'Publié',
                 'enrollments_count' => 'Inscriptions',
                 'reviews_avg_rating' => 'Note moyenne',
-                'created_at' => 'Date de création'
+                'created_at' => 'Date de création',
             ];
 
             $format = $request->get('format', 'csv');
             if ($format === 'excel') {
                 return $this->exportToExcel($data, $columns, 'contenus');
             }
+
             return $this->exportToCsvWithHeaderAndSummary(
                 $data,
                 $columns,
@@ -7312,56 +7386,57 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur exportContents', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json(['error' => 'Erreur lors de l\'export: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Erreur lors de l\'export: '.$e->getMessage()], 500);
         }
     }
 
     /**
      * Combine internal revenue and commissions by period
-     * 
-     * @param \Illuminate\Support\Collection $internalRevenue Collection with period key and revenue value
-     * @param \Illuminate\Support\Collection $commissions Collection with period key and revenue value
-     * @param string $periodKey The key name for the period (month, date, week, year)
+     *
+     * @param  \Illuminate\Support\Collection  $internalRevenue  Collection with period key and revenue value
+     * @param  \Illuminate\Support\Collection  $commissions  Collection with period key and revenue value
+     * @param  string  $periodKey  The key name for the period (month, date, week, year)
      * @return \Illuminate\Support\Collection Combined revenue by period
      */
     private function combineRevenueByPeriod($internalRevenue, $commissions, $periodKey)
     {
         // Create a map of all periods from both collections
         $allPeriods = collect();
-        
+
         // Add all periods from internal revenue
         $internalRevenue->each(function ($item) use ($allPeriods, $periodKey) {
             $period = $item->{$periodKey} ?? '';
-            if ($period && !$allPeriods->contains($period)) {
+            if ($period && ! $allPeriods->contains($period)) {
                 $allPeriods->push($period);
             }
         });
-        
+
         // Add all periods from commissions
         $commissions->each(function ($item) use ($allPeriods, $periodKey) {
             $period = $item->{$periodKey} ?? '';
-            if ($period && !$allPeriods->contains($period)) {
+            if ($period && ! $allPeriods->contains($period)) {
                 $allPeriods->push($period);
             }
         });
-        
+
         // Create a map for quick lookup
         $internalMap = $internalRevenue->keyBy($periodKey);
         $commissionsMap = $commissions->keyBy($periodKey);
-        
+
         // Combine revenues for each period
         return $allPeriods->map(function ($period) use ($internalMap, $commissionsMap, $periodKey) {
             $internal = $internalMap->get($period);
             $commission = $commissionsMap->get($period);
-            
-            $internalRevenue = $internal ? (float)($internal->revenue ?? 0) : 0;
-            $commissionRevenue = $commission ? (float)($commission->revenue ?? 0) : 0;
-            
+
+            $internalRevenue = $internal ? (float) ($internal->revenue ?? 0) : 0;
+            $commissionRevenue = $commission ? (float) ($commission->revenue ?? 0) : 0;
+
             return (object) [
                 $periodKey => $period,
-                'revenue' => $internalRevenue + $commissionRevenue
+                'revenue' => $internalRevenue + $commissionRevenue,
             ];
         })->sortBy($periodKey)->values();
     }
@@ -7379,9 +7454,9 @@ class AdminController extends Controller
             'partenariat' => 'Partenariat',
             'autre' => 'Autre',
         ];
-        
+
         $contactMessage->subject_label = $subjectLabels[$contactMessage->subject] ?? ucfirst($contactMessage->subject);
-        
+
         return view('admin.contact.show', compact('contactMessage'));
     }
 
@@ -7391,7 +7466,7 @@ class AdminController extends Controller
     public function markContactMessageAsRead(ContactMessage $contactMessage)
     {
         $contactMessage->markAsRead();
-        
+
         return redirect()->route('admin.announcements')
             ->with('success', 'Message marqué comme lu.');
     }
@@ -7402,7 +7477,7 @@ class AdminController extends Controller
     public function destroyContactMessage(ContactMessage $contactMessage)
     {
         $contactMessage->delete();
-        
+
         return redirect()->route('admin.announcements')
             ->with('success', 'Message supprimé avec succès.');
     }

@@ -50,6 +50,21 @@ class EncodeLessonVideoToHls implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        $source = ltrim((string) $source, '/');
+        $ext = strtolower(pathinfo($source, PATHINFO_EXTENSION));
+        if (! in_array($ext, ['mp4', 'm4v', 'mov'], true)) {
+            CourseLesson::query()->whereKey($lesson->id)->update([
+                'hls_manifest_path' => null,
+                'hls_status' => null,
+            ]);
+
+            return;
+        }
+
+        if (! str_starts_with($source, 'courses/lessons/')) {
+            $source = 'courses/lessons/'.$source;
+        }
+
         CourseLesson::query()->whereKey($lesson->id)->update([
             'hls_status' => 'processing',
         ]);

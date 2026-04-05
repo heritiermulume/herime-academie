@@ -52,54 +52,43 @@ class CommunitySettingsService
             'type' => $type,
             'url' => $url,
             'poster' => $poster,
+            'hls_url' => self::communityHomeHlsManifestUrl(),
         ];
     }
 
     /**
-     * Textes page /communaute/membre-premium (chaîne vide = la vue garde le texte par défaut codé en dur).
+     * URL du master HLS pour la vidéo d’accueil (fichier hébergé), si encodage prêt.
+     */
+    public static function communityHomeHlsManifestUrl(): string
+    {
+        if (! config('video.hls.enabled')) {
+            return '';
+        }
+
+        $st = trim((string) Setting::get('community_home_hls_status', ''));
+        $rel = trim((string) Setting::get('community_home_hls_manifest_path', ''));
+        if ($st !== 'ready' || $rel === '') {
+            return '';
+        }
+
+        return route('files.serve', ['type' => 'community-home', 'path' => ltrim($rel, '/')]);
+    }
+
+    /**
+     * Textes page /communaute/membre-premium : défauts dans la vue (plus de saisie dans Paramètres).
      *
      * @return array<string, string|null>
      */
     public static function premiumPageTexts(): array
     {
-        $defaults = [
+        return [
             'kicker' => null,
             'title' => null,
             'lead' => null,
             'second' => null,
             'plans_intro_title' => null,
             'plans_intro_subtitle' => null,
-            'guest_box_title' => null,
-            'guest_box_text' => null,
+            'premium_guest_card_hint' => null,
         ];
-
-        $stored = Setting::get('community_premium_page_texts', []);
-        if (! is_array($stored)) {
-            return $defaults;
-        }
-
-        return array_merge($defaults, array_intersect_key($stored, $defaults));
-    }
-
-    /**
-     * Sous-textes optionnels par slug de plan (affichés sous le prix).
-     *
-     * @return array<string, string>
-     */
-    public static function premiumPlanHighlights(): array
-    {
-        $stored = Setting::get('community_premium_plan_highlights', []);
-        if (! is_array($stored)) {
-            return [];
-        }
-
-        $out = [];
-        foreach ($stored as $slug => $text) {
-            if (is_string($slug) && is_string($text) && $text !== '') {
-                $out[$slug] = $text;
-            }
-        }
-
-        return $out;
     }
 }

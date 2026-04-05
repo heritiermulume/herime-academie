@@ -2,62 +2,66 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
-use App\Models\User;
 use App\Services\FileUploadService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FileController extends Controller
 {
     /**
      * Servir un fichier de manière sécurisée
      * Route: /files/{type}/{path}
-     * 
-     * @param Request $request
-     * @param string $type Le type de fichier (thumbnails, previews, lessons, downloads, avatars, banners, package-thumbnails, package-covers, etc.)
-     * @param string $path Le chemin relatif du fichier
-     * @return StreamedResponse|\Illuminate\Http\RedirectResponse
+     *
+     * @param  string  $type  Le type de fichier (thumbnails, previews, lessons, downloads, avatars, banners, package-thumbnails, package-covers, etc.)
+     * @param  string  $path  Le chemin relatif du fichier
+     * @return BinaryFileResponse|\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
     public function serve(Request $request, string $type, string $path)
     {
         // Décoder le chemin si nécessaire
         $path = urldecode($path);
-        
+
         // Construire le chemin complet
         $fullPath = $this->getFullPath($type, $path);
-        
+
         $disk = Storage::disk('local');
 
-        if (!$disk->exists($fullPath)) {
+        if (! $disk->exists($fullPath)) {
             $cleanPath = ltrim(preg_replace('#^storage/#', '', $path), '/');
 
             if ($disk->exists($cleanPath)) {
                 $fullPath = $cleanPath;
             } else {
-                \Log::error("File not found", [
+                \Log::error('File not found', [
                     'type' => $type,
                     'path' => $path,
                     'fullPath' => $fullPath,
-                    'cleanPath' => $cleanPath
+                    'cleanPath' => $cleanPath,
                 ]);
-                abort(404, 'Fichier non trouvé: ' . $fullPath);
+                abort(404, 'Fichier non trouvé: '.$fullPath);
             }
         }
-        
+
         // Vérifier les permissions selon le type
-        if (!$this->hasAccess($type, $fullPath)) {
+        if (! $this->hasAccess($type, $fullPath)) {
             abort(403, 'Accès refusé');
         }
-        
-        // Types HLS / segments (mime parfois mal détecté sur le disque privé)
+
         $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+
+        // Playlists HLS (fichiers courts)
         if ($ext === 'm3u8') {
-            $mimeType = 'application/vnd.apple.mpegurl';
-        } elseif ($ext === 'ts') {
+            return response()->file($disk->path($fullPath), [
+                'Content-Type' => 'application/vnd.apple.mpegurl',
+                'Content-Disposition' => 'inline',
+                'Cache-Control' => 'public, max-age=86400, no-transform',
+            ]);
+        }
+
+        // Types HLS / vidéo : mime parfois « application/octet-stream » sur disque privé
+        if ($ext === 'ts') {
             $mimeType = 'video/mp2t';
         } else {
             $mimeType = $disk->mimeType($fullPath);
@@ -66,18 +70,11 @@ class FileController extends Controller
             }
         }
 
-        // Pour les vidéos et segments TS, lecture avec support Range
-        if (strpos($mimeType, 'video/') === 0) {
-            return $this->streamVideo($disk, $fullPath, $mimeType);
-        }
+        $mimeType = $this->resolveStreamableVideoMime($ext, $mimeType);
 
-        // Playlists HLS (fichiers courts, pas besoin de Range)
-        if ($ext === 'm3u8') {
-            return response()->file($disk->path($fullPath), [
-                'Content-Type' => $mimeType,
-                'Content-Disposition' => 'inline',
-                'Cache-Control' => 'public, max-age=86400',
-            ]);
+        // Vidéo : lecture progressive (Range / 206) — BinaryFileResponse gère les plages correctement
+        if (str_starts_with($mimeType, 'video/')) {
+            return $this->streamVideo($disk, $fullPath, $mimeType);
         }
 
         return response()->file($disk->path($fullPath), [
@@ -87,12 +84,37 @@ class FileController extends Controller
     }
 
     /**
+     * Corrige le Content-Type quand finfo renvoie octet-stream pour un .mp4 / .webm, etc.
+     * Sans video/* + Range fiables, le navigateur peut se comporter comme s’il devait tout charger.
+     */
+    protected function resolveStreamableVideoMime(string $extension, string $detectedMime): string
+    {
+        if (str_starts_with($detectedMime, 'video/')) {
+            return $detectedMime;
+        }
+
+        $map = [
+            'mp4' => 'video/mp4',
+            'm4v' => 'video/x-m4v',
+            'webm' => 'video/webm',
+            'ogv' => 'video/ogg',
+            'ogg' => 'video/ogg',
+            'mov' => 'video/quicktime',
+            'mkv' => 'video/x-matroska',
+            'avi' => 'video/x-msvideo',
+            'ts' => 'video/mp2t',
+        ];
+
+        return $map[$extension] ?? $detectedMime;
+    }
+
+    /**
      * Obtenir le chemin complet selon le type
      */
     protected function getFullPath(string $type, string $path): string
     {
         $basePath = '';
-        
+
         switch ($type) {
             case 'thumbnails':
                 $basePath = 'courses/thumbnails';
@@ -133,12 +155,12 @@ class FileController extends Controller
             default:
                 abort(400, 'Type de fichier non valide');
         }
-        
+
         // Sécuriser le chemin pour éviter les traversées de répertoire
         $path = str_replace('..', '', $path);
         $path = ltrim($path, '/');
-        
-        return $basePath . '/' . $path;
+
+        return $basePath.'/'.$path;
     }
 
     /**
@@ -154,7 +176,7 @@ class FileController extends Controller
         if ($type === 'temporary') {
             return Auth::check();
         }
-        
+
         // Les thumbnails de cours sont publics (pour l'affichage des listes)
         if ($type === 'thumbnails') {
             return true;
@@ -164,7 +186,7 @@ class FileController extends Controller
         if (in_array($type, ['package-thumbnails', 'package-covers'], true)) {
             return true;
         }
-        
+
         // Les vidéos de prévisualisation doivent être accessibles publiquement
         if ($type === 'previews') {
             return true;
@@ -174,70 +196,37 @@ class FileController extends Controller
         if ($type === 'lessons') {
             return Auth::check();
         }
-        
+
         // Pour les téléchargements, vérifier l'inscription au cours
         if ($type === 'downloads') {
             return Auth::check();
         }
-        
+
         return true;
     }
 
     /**
-     * Streamer une vidéo avec support Range pour la lecture
-     * - Taille des lectures fichier : config video.stream_chunk_bytes (défaut 512 Ko)
-     * - Cache navigateur pour éviter re-téléchargements
+     * Sert une vidéo avec support HTTP Range (lecture progressive, seek, HLS .ts).
+     * Utilise BinaryFileResponse : implémentation éprouvée (If-Range, 206, plages invalides).
      */
-    protected function streamVideo($disk, string $path, string $mimeType): StreamedResponse
+    protected function streamVideo($disk, string $path, string $mimeType): BinaryFileResponse
     {
         $filePath = $disk->path($path);
-        $fileSize = filesize($filePath);
-        $start = 0;
-        $end = $fileSize - 1;
 
-        // Taille de lecture configurable (défaut config/video.php, mutualisé ~256 Ko)
-        $chunkSize = (int) config('video.stream_chunk_bytes', 262144);
-        $chunkSize = max(65536, min($chunkSize, 8 * 1024 * 1024));
-
-        $isRangeRequest = false;
-        if (isset($_SERVER['HTTP_RANGE']) && preg_match('/bytes=(\d+)-(\d*)/', $_SERVER['HTTP_RANGE'], $matches)) {
-            $isRangeRequest = true;
-            $start = (int) $matches[1];
-            if (!empty($matches[2])) {
-                $end = (int) $matches[2];
-            }
+        if (! is_file($filePath) || ! is_readable($filePath)) {
+            abort(404, 'Fichier non trouvé');
         }
 
-        $length = $end - $start + 1;
-        $statusCode = $isRangeRequest ? 206 : 200;
+        $response = response()->file($filePath, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline',
+            'Accept-Ranges' => 'bytes',
+            'Cache-Control' => 'public, max-age=86400, no-transform',
+        ]);
 
-        $response = new StreamedResponse(function () use ($filePath, $start, $length, $chunkSize) {
-            $file = fopen($filePath, 'rb');
-            fseek($file, $start);
-            $remaining = $length;
+        $response->setPublic();
+        $response->setMaxAge(86400);
 
-            while ($remaining > 0) {
-                $readSize = min($chunkSize, $remaining);
-                echo fread($file, $readSize);
-                $remaining -= $readSize;
-                flush();
-            }
-
-            fclose($file);
-        }, $statusCode);
-
-        $response->headers->set('Content-Type', $mimeType);
-        $response->headers->set('Content-Length', (string) $length);
-        $response->headers->set('Accept-Ranges', 'bytes');
-        if ($isRangeRequest) {
-            $response->headers->set('Content-Range', "bytes $start-$end/$fileSize");
-        }
-
-        // Cache agressif pour vidéos (contenu stable)
-        // public + max-age permet au navigateur de garder les segments en cache
-        $response->headers->set('Cache-Control', 'public, max-age=86400');
-        $response->headers->set('Expires', gmdate('D, d M Y H:i:s', time() + 86400) . ' GMT');
         return $response;
     }
 }
-

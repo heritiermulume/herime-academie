@@ -20,6 +20,41 @@ window.adjustVideoPreloadForConnection = adjustVideoPreloadForConnection;
 window.herimeGetNetworkPlaybackProfile = getNetworkPlaybackProfile;
 window.herimeAttachHlsToVideo = attachHlsToVideo;
 
+/**
+ * Vidéos HTML5 « simples » (hors Plyr) : HLS adaptatif (data-hls-url) ou MP4 + preload selon la connexion.
+ */
+async function initHerimeStreamVideos(root = document) {
+    const raw = document.body?.dataset?.herimeVideoPreload || 'metadata';
+    const allowed = ['none', 'metadata', 'auto'];
+    const base = allowed.includes(raw) ? raw : 'metadata';
+    const videos = Array.from(root.querySelectorAll('video.herime-stream-video'));
+    for (const videoEl of videos) {
+        const hls = videoEl.getAttribute('data-hls-url');
+        const fb = videoEl.getAttribute('data-fallback-src');
+        if (hls && hls.trim() !== '' && typeof window.herimeAttachHlsToVideo === 'function') {
+            await window.herimeAttachHlsToVideo(
+                videoEl,
+                hls.trim(),
+                fb || '',
+                'video/mp4',
+            );
+        } else {
+            adjustVideoPreloadForConnection(videoEl, base);
+            try {
+                videoEl.load();
+            } catch (e) {
+                /* ignore */
+            }
+        }
+    }
+}
+
+window.initHerimeStreamVideos = initHerimeStreamVideos;
+
+document.addEventListener('DOMContentLoaded', () => {
+    void initHerimeStreamVideos();
+});
+
 function herimeClosestElement(target, selector) {
     if (!target) {
         return null;

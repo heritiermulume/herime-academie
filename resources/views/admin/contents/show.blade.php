@@ -978,7 +978,7 @@
                                     title="Prévisualisation du contenu" 
                                     allowfullscreen></iframe>
                         @elseif($isDirectVideo)
-                            <video controls class="w-100 h-100" style="object-fit: contain;">
+                            <video controls playsinline preload="metadata" class="w-100 h-100 herime-stream-video" style="object-fit: contain;">
                                 <source src="{{ $videoPreviewUrl }}" type="video/mp4">
                                 <source src="{{ $videoPreviewUrl }}" type="video/webm">
                                 <source src="{{ $videoPreviewUrl }}" type="video/ogg">
@@ -1578,7 +1578,7 @@
                 } else if (contentFileUrl) {
                     contentHtml = `
                         <div class="lesson-video-container">
-                            <video controls class="w-100 h-100" style="object-fit: contain;">
+                            <video controls playsinline preload="metadata" class="w-100 h-100 herime-stream-video" style="object-fit: contain;">
                                 <source src="${contentFileUrl}" type="video/mp4">
                                 Votre navigateur ne supporte pas la lecture vidéo.
                             </video>
@@ -1588,7 +1588,7 @@
             } else if (contentFileUrl) {
                 contentHtml = `
                     <div class="lesson-video-container">
-                        <video controls class="w-100 h-100" style="object-fit: contain;">
+                        <video controls playsinline preload="metadata" class="w-100 h-100 herime-stream-video" style="object-fit: contain;">
                             <source src="${contentFileUrl}" type="video/mp4">
                             Votre navigateur ne supporte pas la lecture vidéo.
                         </video>

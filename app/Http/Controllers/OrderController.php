@@ -2,16 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Order;
-use App\Services\OrderEnrollmentService;
-use App\Mail\InvoiceMail;
 use App\Mail\CourseAccessRevokedMail;
-use App\Notifications\PaymentReceived;
+use App\Mail\InvoiceMail;
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\SubscriptionInvoice;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
+use App\Models\UserSubscription;
 use App\Notifications\CourseAccessRevoked;
+use App\Notifications\PaymentReceived;
+use App\Services\OrderEnrollmentService;
+use App\Services\SubscriptionCheckoutOrderService;
+use App\Services\SubscriptionService;
 use App\Traits\HandlesBulkActions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 
@@ -83,10 +89,10 @@ class OrderController extends Controller
             $ordersQuery->where('status', $status);
         }
 
-        if (!empty($search)) {
+        if (! empty($search)) {
             $ordersQuery->where(function ($query) use ($search) {
-                $query->where('order_number', 'like', '%' . $search . '%')
-                    ->orWhere('payment_reference', 'like', '%' . $search . '%');
+                $query->where('order_number', 'like', '%'.$search.'%')
+                    ->orWhere('payment_reference', 'like', '%'.$search.'%');
             });
         }
 
@@ -129,7 +135,7 @@ class OrderController extends Controller
         }
 
         $order->load($this->withCustomerOrderDetailRelations());
-        
+
         // Si c'est une requête AJAX, retourner le statut en JSON
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -142,7 +148,7 @@ class OrderController extends Controller
                 'updated_at' => $order->updated_at,
             ]);
         }
-        
+
         return view('orders.show', compact('order'));
     }
 
@@ -157,26 +163,26 @@ class OrderController extends Controller
         if ($request->filled('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
         }
-        
+
         if ($request->filled('payment_method') && $request->payment_method !== 'all') {
             $query->where('payment_method', $request->payment_method);
         }
-        
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
-        
+
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
-        
+
         if ($request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date_to);
         }
@@ -196,7 +202,9 @@ class OrderController extends Controller
             'total_revenue' => (clone $statsBase)
                 ->whereIn('status', ['paid', 'completed'])
                 ->get()
-                ->sum(function ($o) { return $o->total_amount ?? $o->total ?? 0; }),
+                ->sum(function ($o) {
+                    return $o->total_amount ?? $o->total ?? 0;
+                }),
         ];
 
         return view('admin.orders.index', compact('orders', 'stats'));
@@ -214,8 +222,11 @@ class OrderController extends Controller
             'orderItems.course.category',
             'orderItems.contentPackage',
         ]);
-        
-        return view('admin.orders.show', compact('order'));
+
+        $orderSubscriptionPlan = $this->resolveSubscriptionPlanForAdminOrder($order);
+        $orderLinkedUserSubscription = $this->resolveUserSubscriptionLinkedToAdminOrder($order);
+
+        return view('admin.orders.show', compact('order', 'orderSubscriptionPlan', 'orderLinkedUserSubscription'));
     }
 
     /**
@@ -225,7 +236,7 @@ class OrderController extends Controller
     {
         try {
             // Vérifier que l'utilisateur est admin ou super_user
-            if (!auth()->check() || !auth()->user()->isAdmin()) {
+            if (! auth()->check() || ! auth()->user()->isAdmin()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Accès non autorisé. Vous devez être administrateur ou super utilisateur.',
@@ -250,7 +261,7 @@ class OrderController extends Controller
 
             // Créer une inscription pour TOUS les contenus de la commande (téléchargeable, présentiel, en ligne)
             // pour envoyer le reçu par mail et permettre le téléchargement du reçu.
-            if (!$order->relationLoaded('orderItems')) {
+            if (! $order->relationLoaded('orderItems')) {
                 $order->load(['orderItems.course', 'orderItems.contentPackage']);
             }
 
@@ -262,10 +273,11 @@ class OrderController extends Controller
                 'message' => 'Commande confirmée avec succès. L\'utilisateur a maintenant accès aux cours.',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la confirmation de la commande: ' . $e->getMessage());
+            \Log::error('Erreur lors de la confirmation de la commande: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la confirmation: ' . $e->getMessage(),
+                'message' => 'Erreur lors de la confirmation: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -280,12 +292,23 @@ class OrderController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        $isSubscriptionCheckout = $this->isSubscriptionCheckoutOrder($order);
+
         $order->update([
             'status' => 'paid',
             'payment_reference' => $request->payment_reference ?? $order->payment_reference,
             'notes' => $request->notes ?? $order->notes,
             'paid_at' => now(),
         ]);
+
+        if ($isSubscriptionCheckout) {
+            $this->finalizeSubscriptionOrderAfterAdminMarkPaid($order->fresh());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Commande d’abonnement marquée comme payée. Facture, abonnement et accès ont été alignés.',
+            ]);
+        }
 
         // Charger les relations nécessaires pour les emails et notifications
         $order->load(array_merge(
@@ -305,7 +328,7 @@ class OrderController extends Controller
                     ->where('data->order_id', $order->id)
                     ->exists();
 
-                if (!$alreadyNotified) {
+                if (! $alreadyNotified) {
                     // Envoyer l'email et WhatsApp en parallèle
                     try {
                         $mailable = new \App\Mail\PaymentReceivedMail($order);
@@ -320,7 +343,7 @@ class OrderController extends Controller
                             'trace' => $emailException->getTraceAsString(),
                         ]);
                     }
-                    
+
                     // Envoyer la notification en base de données (sans email car déjà envoyé)
                     // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
                     Notification::sendNow($order->user, new PaymentReceived($order));
@@ -328,7 +351,7 @@ class OrderController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            \Log::error("Erreur lors de l'envoi de la notification de confirmation de paiement pour la commande {$order->id}: " . $e->getMessage());
+            \Log::error("Erreur lors de l'envoi de la notification de confirmation de paiement pour la commande {$order->id}: ".$e->getMessage());
         }
 
         // Envoyer la facture par email et WhatsApp
@@ -340,14 +363,14 @@ class OrderController extends Controller
                 \Log::info("Facture envoyée par email et WhatsApp pour la commande {$order->order_number}");
             }
         } catch (\Exception $e) {
-            \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: " . $e->getMessage());
+            \Log::error("Erreur lors de l'envoi de la facture pour la commande {$order->id}: ".$e->getMessage());
         }
 
         // Notifier les admins du paiement reçu
         try {
             app(\App\Services\AdminPaymentNotifier::class)->notify($order);
         } catch (\Exception $e) {
-            \Log::error("Erreur lors de la notification admin (markAsPaid) pour la commande {$order->id}: " . $e->getMessage());
+            \Log::error("Erreur lors de la notification admin (markAsPaid) pour la commande {$order->id}: ".$e->getMessage());
         }
 
         return response()->json([
@@ -379,7 +402,7 @@ class OrderController extends Controller
     {
         try {
             // Vérifier que l'utilisateur est admin ou super_user
-            if (!auth()->check() || !auth()->user()->isAdmin()) {
+            if (! auth()->check() || ! auth()->user()->isAdmin()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Accès non autorisé. Vous devez être administrateur ou super utilisateur.',
@@ -406,10 +429,11 @@ class OrderController extends Controller
                 'message' => 'Commande annulée.',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de l\'annulation de la commande: ' . $e->getMessage());
+            \Log::error('Erreur lors de l\'annulation de la commande: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'annulation: ' . $e->getMessage(),
+                'message' => 'Erreur lors de l\'annulation: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -422,7 +446,7 @@ class OrderController extends Controller
     {
         try {
             // Vérifier que l'utilisateur est admin ou super_user
-            if (!auth()->check() || !auth()->user()->isAdmin()) {
+            if (! auth()->check() || ! auth()->user()->isAdmin()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Accès non autorisé. Vous devez être administrateur ou super utilisateur.',
@@ -475,9 +499,9 @@ class OrderController extends Controller
                         Notification::sendNow($enrollment->user, new CourseAccessRevoked($enrollment->course));
                     }
                 } catch (\Exception $e) {
-                    \Log::error("Erreur lors de l'envoi de notification de suppression d'inscription: " . $e->getMessage());
+                    \Log::error("Erreur lors de l'envoi de notification de suppression d'inscription: ".$e->getMessage());
                 }
-                
+
                 $enrollment->delete();
             }
 
@@ -501,13 +525,14 @@ class OrderController extends Controller
                 'message' => 'Commande supprimée avec succès. Toutes les inscriptions associées ont été retirées.',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la suppression de la commande: ' . $e->getMessage(), [
+            \Log::error('Erreur lors de la suppression de la commande: '.$e->getMessage(), [
                 'order_id' => $order->id,
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la suppression: ' . $e->getMessage(),
+                'message' => 'Erreur lors de la suppression: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -538,12 +563,12 @@ class OrderController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('user', function($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -582,13 +607,13 @@ class OrderController extends Controller
 
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('order_number', 'like', "%{$search}%")
-                      ->orWhere('payment_reference', 'like', "%{$search}%")
-                      ->orWhereHas('user', function($userQuery) use ($search) {
-                          $userQuery->where('name', 'like', "%{$search}%")
-                                   ->orWhere('email', 'like', "%{$search}%");
-                      });
+                        ->orWhere('payment_reference', 'like', "%{$search}%")
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
                 });
             }
 
@@ -603,19 +628,19 @@ class OrderController extends Controller
             // Infos pour l'en-tête (filtres appliqués)
             $filtersApplied = [];
             if ($request->filled('status')) {
-                $filtersApplied[] = 'Statut : ' . $this->getStatusLabel($request->status);
+                $filtersApplied[] = 'Statut : '.$this->getStatusLabel($request->status);
             }
             if ($request->filled('payment_method')) {
-                $filtersApplied[] = 'Mode de paiement : ' . $this->getPaymentMethodLabel($request->payment_method);
+                $filtersApplied[] = 'Mode de paiement : '.$this->getPaymentMethodLabel($request->payment_method);
             }
             if ($request->filled('date_from')) {
-                $filtersApplied[] = 'À partir du : ' . \Carbon\Carbon::parse($request->date_from)->format('d/m/Y');
+                $filtersApplied[] = 'À partir du : '.\Carbon\Carbon::parse($request->date_from)->format('d/m/Y');
             }
             if ($request->filled('date_to')) {
-                $filtersApplied[] = 'Jusqu\'au : ' . \Carbon\Carbon::parse($request->date_to)->format('d/m/Y');
+                $filtersApplied[] = 'Jusqu\'au : '.\Carbon\Carbon::parse($request->date_to)->format('d/m/Y');
             }
             if ($request->filled('search')) {
-                $filtersApplied[] = 'Recherche : "' . $request->search . '"';
+                $filtersApplied[] = 'Recherche : "'.$request->search.'"';
             }
             if ($request->filled('ids')) {
                 $filtersApplied[] = 'Export sélectif (IDs fournis)';
@@ -623,19 +648,19 @@ class OrderController extends Controller
             $filtersLine = empty($filtersApplied) ? 'Aucun filtre' : implode(' ; ', $filtersApplied);
 
             // Générer le CSV
-            $filename = 'commandes_' . now()->format('Y-m-d_H-i-s') . '.csv';
-            
+            $filename = 'commandes_'.now()->format('Y-m-d_H-i-s').'.csv';
+
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             ];
 
-            $callback = function() use ($orders, $request, $filtersLine) {
+            $callback = function () use ($orders, $filtersLine) {
                 $file = fopen('php://output', 'w');
-                
+
                 // BOM pour UTF-8
                 fwrite($file, "\xEF\xBB\xBF");
-                
+
                 // --- En-tête : titre et informations ---
                 fputcsv($file, ['Export des commandes - Herime Académie']);
                 fputcsv($file, ['Date d\'export', now()->format('d/m/Y à H:i')]);
@@ -655,7 +680,7 @@ class OrderController extends Controller
                     'Date de confirmation',
                     'Date de paiement',
                     'Date de finalisation',
-                    'Notes'
+                    'Notes',
                 ]);
 
                 // Données
@@ -679,7 +704,7 @@ class OrderController extends Controller
                         $order->confirmed_at?->format('d/m/Y H:i') ?? '',
                         $order->paid_at?->format('d/m/Y H:i') ?? '',
                         $order->completed_at?->format('d/m/Y H:i') ?? '',
-                        $order->notes ?? ''
+                        $order->notes ?? '',
                     ]);
                 }
 
@@ -689,7 +714,7 @@ class OrderController extends Controller
                 fputcsv($file, ['Nombre total de commandes', $orders->count()]);
 
                 foreach ($totalsByCurrency as $currency => $sum) {
-                    fputcsv($file, ['Montant total (' . $currency . ')', \App\Helpers\CurrencyHelper::formatWithSymbol($sum, $currency)]);
+                    fputcsv($file, ['Montant total ('.$currency.')', \App\Helpers\CurrencyHelper::formatWithSymbol($sum, $currency)]);
                 }
 
                 fputcsv($file, []);
@@ -704,8 +729,58 @@ class OrderController extends Controller
             return response()->stream($callback, 200, $headers);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de l\'exportation des commandes: ' . $e->getMessage());
+            \Log::error('Erreur lors de l\'exportation des commandes: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Erreur lors de l\'exportation des commandes.');
+        }
+    }
+
+    private function isSubscriptionCheckoutOrder(Order $order): bool
+    {
+        return filled(data_get($order->billing_info, 'subscription_invoice_id'));
+    }
+
+    /**
+     * Finalisation commande checkout abonnement / réabonnement (billing_info.subscription_invoice_id) :
+     * aligner Payment Moneroo, panier / wallets / emails comme après webhook, puis facture + abonnement
+     * (même logique que « Vérifier le paiement » Moneroo).
+     */
+    private function finalizeSubscriptionOrderAfterAdminMarkPaid(Order $order): void
+    {
+        $order->refresh();
+
+        $payment = Payment::query()
+            ->where('order_id', $order->id)
+            ->where('payment_method', 'moneroo')
+            ->whereIn('status', ['pending', 'processing'])
+            ->latest('id')
+            ->first();
+
+        if ($payment) {
+            $payment->update([
+                'status' => 'completed',
+                'processed_at' => now(),
+                'payment_data' => array_merge($payment->payment_data ?? [], [
+                    'admin_marked_order_paid_at' => now()->toIso8601String(),
+                    'admin_marked_order_id' => $order->id,
+                ]),
+            ]);
+        }
+
+        app(MonerooController::class)->finalizeOrderAfterSuccessfulPayment($order->fresh());
+
+        app(SubscriptionService::class)->applyPaidStateFromVerifiedSubscriptionOrder($order->fresh());
+
+        $invoiceId = data_get($order->fresh()->billing_info, 'subscription_invoice_id');
+        if (! $invoiceId) {
+            return;
+        }
+
+        $invoice = SubscriptionInvoice::query()->find($invoiceId);
+        $user = $order->user ?? User::query()->find($order->user_id);
+        if ($invoice && $user) {
+            app(SubscriptionCheckoutOrderService::class)
+                ->cancelOtherPendingSubscriptionCheckoutsForInvoice($invoice, $user, $order->id);
         }
     }
 
@@ -714,7 +789,7 @@ class OrderController extends Controller
      */
     private function getStatusLabel($status)
     {
-        return match($status) {
+        return match ($status) {
             'pending' => 'En attente',
             'confirmed' => 'Confirmée',
             'paid' => 'Payée',
@@ -731,7 +806,7 @@ class OrderController extends Controller
      */
     private function getPaymentMethodLabel($method)
     {
-        return match($method) {
+        return match ($method) {
             'card' => 'Carte bancaire',
             'paypal' => 'PayPal',
             'mobile' => 'Mobile Money',
@@ -746,45 +821,58 @@ class OrderController extends Controller
     public function bulkAction(Request $request)
     {
         $actions = [
-            'delete' => function($ids) {
+            'delete' => function ($ids) {
                 $count = 0;
                 foreach ($ids as $id) {
                     $order = Order::find($id);
                     if ($order) {
-                        $this->destroy(new Request(), $order);
+                        $this->destroy(new Request, $order);
                         $count++;
                     }
                 }
+
                 return [
                     'message' => "{$count} commande(s) supprimée(s) avec succès.",
-                    'count' => $count
+                    'count' => $count,
                 ];
             },
-            'mark-paid' => function($ids) {
-                $count = Order::whereIn('id', $ids)
-                    ->where('status', '!=', 'paid')
-                    ->update([
+            'mark-paid' => function ($ids) {
+                $count = 0;
+                foreach ($ids as $id) {
+                    $order = Order::query()->find($id);
+                    if (! $order || in_array($order->status, ['paid', 'completed'], true)) {
+                        continue;
+                    }
+                    $isSubscriptionCheckout = $this->isSubscriptionCheckoutOrder($order);
+                    $order->update([
                         'status' => 'paid',
-                        'paid_at' => now()
+                        'paid_at' => now(),
                     ]);
+                    if ($isSubscriptionCheckout) {
+                        $this->finalizeSubscriptionOrderAfterAdminMarkPaid($order->fresh());
+                    }
+                    $count++;
+                }
+
                 return [
                     'message' => "{$count} commande(s) marquée(s) comme payée(s).",
-                    'count' => $count
+                    'count' => $count,
                 ];
             },
-            'mark-completed' => function($ids) {
+            'mark-completed' => function ($ids) {
                 $count = Order::whereIn('id', $ids)
                     ->where('status', '!=', 'completed')
                     ->update([
                         'status' => 'completed',
-                        'completed_at' => now()
+                        'completed_at' => now(),
                     ]);
+
                 return [
                     'message' => "{$count} commande(s) marquée(s) comme terminée(s).",
-                    'count' => $count
+                    'count' => $count,
                 ];
             },
-            'cancel' => function($ids) {
+            'cancel' => function ($ids) {
                 $count = 0;
                 foreach ($ids as $id) {
                     $order = Order::find($id);
@@ -793,13 +881,66 @@ class OrderController extends Controller
                         $count++;
                     }
                 }
+
                 return [
                     'message' => "{$count} commande(s) annulée(s) avec succès.",
-                    'count' => $count
+                    'count' => $count,
                 ];
-            }
+            },
         ];
 
         return $this->handleBulkAction($request, Order::class, $actions);
+    }
+
+    /**
+     * Plan d’abonnement associé à une commande Moneroo abonnement (billing_info).
+     */
+    private function resolveSubscriptionPlanForAdminOrder(Order $order): ?SubscriptionPlan
+    {
+        $billing = $order->billing_info ?? [];
+        $planId = (int) ($billing['subscription_plan_id'] ?? 0);
+        if ($planId > 0) {
+            $plan = SubscriptionPlan::query()->find($planId);
+            if ($plan) {
+                return $plan;
+            }
+        }
+
+        $invoiceId = (int) ($billing['subscription_invoice_id'] ?? 0);
+        if ($invoiceId <= 0) {
+            return null;
+        }
+
+        $invoice = SubscriptionInvoice::query()
+            ->with('subscription.plan')
+            ->find($invoiceId);
+
+        return $invoice?->subscription?->plan;
+    }
+
+    /**
+     * Abonnement utilisateur lié à cette commande (billing_info), pour actions admin (ex. annulation).
+     */
+    private function resolveUserSubscriptionLinkedToAdminOrder(Order $order): ?UserSubscription
+    {
+        $billing = $order->billing_info ?? [];
+        $subId = (int) ($billing['user_subscription_id'] ?? 0);
+        if ($subId <= 0) {
+            $invoiceId = (int) ($billing['subscription_invoice_id'] ?? 0);
+            if ($invoiceId > 0) {
+                $inv = SubscriptionInvoice::query()->find($invoiceId);
+                $subId = (int) ($inv?->user_subscription_id ?? 0);
+            }
+        }
+        if ($subId <= 0) {
+            return null;
+        }
+
+        $sub = UserSubscription::query()->with('plan')->find($subId);
+        if (! $sub || (int) $sub->user_id !== (int) $order->user_id) {
+            return null;
+        }
+
+        return $sub;
     }
 }

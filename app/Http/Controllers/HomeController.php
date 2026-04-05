@@ -2,24 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
-use App\Models\Category;
 use App\Models\Announcement;
 use App\Models\Banner;
+use App\Models\Category;
+use App\Models\ContentPackage;
+use App\Models\Course;
 use App\Models\Partner;
 use App\Models\Testimonial;
 use App\Models\User;
-use App\Models\ContentPackage;
-use App\Models\SubscriptionPlan;
 use App\Services\CommunitySettingsService;
 use App\Services\TemporaryUploadCleaner;
 use App\Traits\CourseStatistics;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
 {
     use CourseStatistics;
+
     public function index(TemporaryUploadCleaner $temporaryUploadCleaner)
     {
         $cacheKey = 'temporary_uploads_last_cleanup_at';
@@ -27,7 +26,7 @@ class HomeController extends Controller
         $interval = max(1, (int) config('uploads.temporary.home_cleanup_interval_minutes', 60));
         $lastCleanup = Cache::get($cacheKey);
 
-        if ((!$lastCleanup || now()->diffInMinutes($lastCleanup) >= $interval)
+        if ((! $lastCleanup || now()->diffInMinutes($lastCleanup) >= $interval)
             && Cache::add($lockKey, true, 60)) {
             try {
                 $temporaryUploadCleaner->clean();
@@ -68,14 +67,14 @@ class HomeController extends Controller
 
         // Récupérer les catégories les plus populaires basées sur les inscriptions récentes
         $categories = Category::active()
-            ->withCount(['contents' => function($query) {
+            ->withCount(['contents' => function ($query) {
                 $query->where('is_published', true);
             }])
-            ->withCount(['contents as recent_enrollments_count' => function($query) {
+            ->withCount(['contents as recent_enrollments_count' => function ($query) {
                 $query->where('is_published', true)
-                      ->whereHas('enrollments', function($subQuery) {
-                          $subQuery->where('created_at', '>=', now()->subMonth());
-                      });
+                    ->whereHas('enrollments', function ($subQuery) {
+                        $subQuery->where('created_at', '>=', now()->subMonth());
+                    });
             }])
             ->orderBy('recent_enrollments_count', 'desc')
             ->orderBy('contents_count', 'desc')
@@ -91,13 +90,13 @@ class HomeController extends Controller
             ->get();
 
         $announcements = Announcement::where('is_active', true)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->whereNull('starts_at')
-                      ->orWhere('starts_at', '<=', now());
+                    ->orWhere('starts_at', '<=', now());
             })
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->whereNull('expires_at')
-                      ->orWhere('expires_at', '>=', now());
+                    ->orWhere('expires_at', '>=', now());
             })
             ->latest()
             ->limit(3)
@@ -115,7 +114,7 @@ class HomeController extends Controller
         // Cours tendance (cours avec le plus d'inscriptions récentes)
         $trendingCourses = Course::published()
             ->with(['provider', 'category'])
-            ->whereHas('enrollments', function($query) {
+            ->whereHas('enrollments', function ($query) {
                 $query->where('created_at', '>=', now()->subWeek());
             })
             ->withCount('enrollments')
@@ -129,13 +128,6 @@ class HomeController extends Controller
             ->withCount('contents')
             ->ordered()
             ->get();
-
-        $homeSubscriptionPlans = SubscriptionPlan::filterOutCommunityPremium(
-            SubscriptionPlan::query()
-                ->where('is_active', true)
-                ->orderBy('price')
-                ->get()
-        )->take(3);
 
         $communityHomeMedia = CommunitySettingsService::homeMedia();
 
@@ -163,7 +155,6 @@ class HomeController extends Controller
             'trendingCourses',
             'featuredPackages',
             'homePackagesAsideFeatured',
-            'homeSubscriptionPlans',
             'communityHomeMedia',
             'categories',
             'providers',
@@ -172,5 +163,4 @@ class HomeController extends Controller
             'testimonials'
         ));
     }
-
 }

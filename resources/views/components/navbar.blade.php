@@ -200,6 +200,7 @@
             <div class="navbar-nav me-auto">
                 <a class="nav-link" href="{{ route('contents.index') }}">Contenus</a>
                 <a class="nav-link" href="{{ route('categories.index') }}">Catégories</a>
+                <a class="nav-link" href="{{ route('community.premium') }}">Membre</a>
                 <a class="nav-link" href="{{ route('providers.index') }}">Prestataires</a>
                 <a class="nav-link" href="{{ route('ambassador-application.index') }}">Ambassadeurs</a>
                 <a class="nav-link" href="{{ route('about') }}">À propos</a>
@@ -396,6 +397,11 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('categories.index') }}">
                         <i class="fas fa-th-large me-2"></i>Catégories
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('community.premium') }}">
+                        <i class="fas fa-user-tag me-2"></i>Membre
                     </a>
                 </li>
                 <li class="nav-item">

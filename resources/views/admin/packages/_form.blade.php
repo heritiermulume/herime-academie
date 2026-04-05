@@ -121,7 +121,12 @@
                 @if($p && $p->cover_video && ! $p->isYoutubeCoverVideo() && ! filter_var($p->cover_video, FILTER_VALIDATE_URL))
                     <div class="current-package-cover-video mb-2">
                         <p class="small text-success mb-1"><i class="fas fa-check-circle me-1"></i>Vidéo fichier actuelle</p>
-                        <video src="{{ $p->cover_video_url }}" controls playsinline class="w-100 rounded" style="max-height:180px;background:#000;"></video>
+                        <x-hls-native-video
+                            class="w-100 rounded"
+                            style="max-height:180px;background:#000;"
+                            :fallback-src="$p->cover_video_url"
+                            :hls-url="$p->hasCoverVideoHlsStreamReady() ? $p->cover_video_hls_manifest_url : ''"
+                        />
                     </div>
                 @endif
                 <div class="upload-zone package-upload-zone" id="packageCoverVideoUploadZone">
@@ -141,7 +146,7 @@
                     </div>
                     <div class="upload-preview d-none">
                         <p class="small text-info text-center mb-2"><i class="fas fa-eye me-1"></i>Nouvelle vidéo</p>
-                        <video controls playsinline class="w-100 rounded" style="max-height:200px;background:#000;"></video>
+                        <video controls playsinline preload="metadata" class="w-100 rounded herime-stream-video" style="max-height:200px;background:#000;"></video>
                         <div class="upload-info mt-2 text-center">
                             <span class="badge bg-primary file-name"></span>
                             <span class="badge bg-info file-size"></span>

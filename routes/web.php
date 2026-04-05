@@ -1,39 +1,37 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\CourseController;
-use App\Http\Controllers\ChunkUploadController;
-use App\Http\Controllers\ProviderController;
-use App\Http\Controllers\ProviderApplicationController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\ContentPackageController as AdminContentPackageController;
-use App\Http\Controllers\ContentPackageController;
-use App\Http\Controllers\AffiliateController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\BlogController;
-use App\Http\Controllers\NewsletterController;
-use App\Http\Controllers\DownloadController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\LearningController;
-use App\Http\Controllers\YouTubeAccessController;
-use App\Http\Controllers\FilterController;
-use App\Http\Controllers\MonerooController;
-use App\Http\Controllers\MonerooPayoutController;
-use App\Http\Controllers\FileController;
-use App\Http\Controllers\TemporaryUploadController;
-use App\Http\Controllers\Auth\SSOController;
-use App\Http\Controllers\SSOCallbackController;
-use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\MetaConversionsController;
-use App\Http\Controllers\SubscriptionController;
-use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Admin\SubscriptionPlanController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AffiliateController;
+use App\Http\Controllers\BlogController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\ChunkUploadController;
+use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\ContentPackageController;
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DownloadController;
+use App\Http\Controllers\FileController;
+use App\Http\Controllers\FilterController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LearningController;
+use App\Http\Controllers\MetaConversionsController;
+use App\Http\Controllers\MonerooController;
+use App\Http\Controllers\MonerooPayoutController;
+use App\Http\Controllers\NewsletterController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProviderApplicationController;
+use App\Http\Controllers\ProviderController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SSOCallbackController;
+use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\TemporaryUploadController;
+use App\Http\Controllers\YouTubeAccessController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // File serving routes (sécurisées)
 Route::get('/files/{type}/{path}', [FileController::class, 'serve'])
@@ -42,10 +40,10 @@ Route::get('/files/{type}/{path}', [FileController::class, 'serve'])
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/about', function() {
+Route::get('/about', function () {
     return view('about');
 })->name('about');
-Route::get('/contact', function() {
+Route::get('/contact', function () {
     return view('contact');
 })->name('contact');
 
@@ -59,14 +57,15 @@ Route::post('/meta/capi', [MetaConversionsController::class, 'track'])
     ->name('meta.capi');
 
 // Legal pages
-Route::get('/conditions-generales-de-vente', function() {
+Route::get('/conditions-generales-de-vente', function () {
     return view('legal.terms');
 })->name('legal.terms');
-Route::get('/politique-de-confidentialite', function() {
+Route::get('/politique-de-confidentialite', function () {
     return view('legal.privacy');
 })->name('legal.privacy');
-Route::get('/categories', function() {
+Route::get('/categories', function () {
     $categories = App\Models\Category::active()->ordered()->withCount('courses')->get();
+
     return view('categories.index', compact('categories'));
 })->name('categories.index');
 
@@ -76,25 +75,27 @@ Route::get('/contents/filter-options', [FilterController::class, 'getFilterOptio
 Route::get('/contents/search', [FilterController::class, 'searchCourses'])->name('contents.search');
 
 // Test route for categories
-Route::get('/test-categories', function() {
+Route::get('/test-categories', function () {
     $categories = App\Models\Category::withCount('courses')->ordered()->get();
+
     return response()->json([
         'categories_count' => $categories->count(),
-        'categories' => $categories->map(function($category) {
+        'categories' => $categories->map(function ($category) {
             return [
                 'id' => $category->id,
                 'name' => $category->name,
                 'slug' => $category->slug,
                 'courses_count' => $category->courses_count,
-                'is_active' => $category->is_active
+                'is_active' => $category->is_active,
             ];
-        })
+        }),
     ]);
 });
 
 // Test route for categories view
-Route::get('/test-categories-view', function() {
+Route::get('/test-categories-view', function () {
     $categories = App\Models\Category::withCount('courses')->ordered()->paginate(20);
+
     return view('admin.categories.index', compact('categories'));
 });
 Route::get('/contents', [CourseController::class, 'index'])->name('contents.index');
@@ -121,8 +122,6 @@ Route::get('/blog/search', [BlogController::class, 'search'])->name('blog.search
 Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
 Route::post('/newsletter/unsubscribe', [NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');
 Route::get('/newsletter/confirm/{token}', [NewsletterController::class, 'confirm'])->name('newsletter.confirm');
-
-
 
 // Order management routes - avec validation SSO pour les actions de modification
 Route::middleware('auth')->group(function () {
@@ -155,71 +154,77 @@ Route::middleware('sync.cart')->group(function () {
 // Routes de fallback pour éviter les erreurs 500 sur /me et /logout
 // Ces routes sont appelées par certains scripts mais n'existent pas
 // Note: Pas de middleware 'auth' pour permettre de retourner 401 au lieu de rediriger
-Route::get('/me', function() {
+Route::get('/me', function () {
     try {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
+
         return response()->json([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-            ]
+            ],
         ]);
     } catch (\Throwable $e) {
         \Log::debug('Error in /me route', [
             'error' => $e->getMessage(),
             'type' => get_class($e),
         ]);
+
         return response()->json(['error' => 'Unauthorized'], 401);
     }
 });
 
-Route::get('/api/me', function() {
+Route::get('/api/me', function () {
     try {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
         $user = auth()->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
+
         return response()->json([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-            ]
+            ],
         ]);
     } catch (\Throwable $e) {
         \Log::debug('Error in /api/me route', [
             'error' => $e->getMessage(),
             'type' => get_class($e),
         ]);
+
         return response()->json(['error' => 'Unauthorized'], 401);
     }
 });
 
 // Route GET pour /logout (fallback pour les appels AJAX qui utilisent GET)
 // Note: La route POST logout est définie dans routes/auth.php
-Route::get('/logout', function(Request $request) {
+Route::get('/logout', function (Request $request) {
     try {
         // Pour les requêtes AJAX GET, retourner une réponse JSON
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'message' => 'Utilisez POST pour la déconnexion',
-                'redirect' => route('logout')
+                'redirect' => route('logout'),
             ], 405);
         }
+
         // Pour les requêtes normales GET, rediriger vers la page d'accueil
         return redirect()->route('home');
     } catch (\Throwable $e) {
         \Log::debug('Error in GET /logout route', ['error' => $e->getMessage()]);
+
         return redirect()->route('home');
     }
 })->middleware('auth');
@@ -228,7 +233,7 @@ Route::get('/logout', function(Request $request) {
 Route::middleware(['auth', 'verified'])->group(function () {
     // Route pour valider SSO avant redirection vers le profil
     Route::get('/profile/redirect', [App\Http\Controllers\ProfileRedirectController::class, 'redirect'])->name('profile.redirect');
-    
+
     // Dashboard based on user role
     Route::get('/dashboard', function () {
         $user = auth()->user();
@@ -236,7 +241,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         if ($user->isAdmin()) {
             return redirect()->route('admin.dashboard');
         }
-        return match($user->role) {
+
+        return match ($user->role) {
             'provider' => redirect()->route('provider.dashboard'),
             'affiliate' => redirect()->route('affiliate.dashboard'),
             default => redirect()->route('customer.dashboard'),
@@ -267,12 +273,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('sso.validate')
         ->name('subscriptions.invoices.pay');
     Route::get('/subscriptions/invoices/{invoice}/return', [SubscriptionController::class, 'invoiceReturn'])->name('subscriptions.invoices.return');
-    
+
     // Certificate download route (accessible to authenticated users who own the certificate)
     Route::get('/certificates/{certificate}/download', [CustomerController::class, 'downloadCertificate'])
         ->middleware('auth')
         ->name('certificates.download');
-    
+
     // Enrollment route (accessible to all authenticated users) - avec validation SSO
     Route::post('/customer/courses/{course:slug}/enroll', [CustomerController::class, 'enroll'])
         ->middleware(['sso.validate', 'subscription.access'])
@@ -303,9 +309,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/provider-application/{application}/status', [App\Http\Controllers\ProviderApplicationController::class, 'status'])->name('provider-application.status');
         Route::get('/provider-application/{application}/cv', [App\Http\Controllers\ProviderApplicationController::class, 'downloadCv'])->name('provider-application.download-cv');
         Route::get('/provider-application/{application}/motivation-letter', [App\Http\Controllers\ProviderApplicationController::class, 'downloadMotivationLetter'])->name('provider-application.download-motivation-letter');
-    Route::delete('/provider-application/{application}', [App\Http\Controllers\ProviderApplicationController::class, 'abandon'])
-        ->middleware('sso.validate')
-        ->name('provider-application.abandon');
+        Route::delete('/provider-application/{application}', [App\Http\Controllers\ProviderApplicationController::class, 'abandon'])
+            ->middleware('sso.validate')
+            ->name('provider-application.abandon');
     });
 
     // Ambassador Application routes (accessible to authenticated users) - avec validation SSO pour les POST
@@ -327,11 +333,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/ambassador-application/{application}', [App\Http\Controllers\AmbassadorApplicationController::class, 'abandon'])
             ->middleware('sso.validate')
             ->name('ambassador-application.abandon');
-        
+
         // Dashboard ambassadeur
         Route::get('/ambassador/dashboard', [App\Http\Controllers\AmbassadorApplicationController::class, 'dashboard'])->name('ambassador.dashboard');
         Route::get('/ambassador/analytics', [App\Http\Controllers\AmbassadorApplicationController::class, 'analytics'])->name('ambassador.analytics');
-        
+
         // 🔒 Routes Wallet - Protégées pour les ambassadeurs uniquement
         // GET routes (lecture seule, pas de modification de données)
         Route::get('/ambassador/payment-settings', [App\Http\Controllers\WalletController::class, 'index'])
@@ -352,7 +358,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/wallet/payout/{payout}', [App\Http\Controllers\WalletController::class, 'showPayout'])
             ->middleware('role:ambassador')
             ->name('wallet.show-payout');
-            
+
         // POST/DELETE routes (modifications de données) - Protection SSO en plus
         Route::post('/wallet/payout', [App\Http\Controllers\WalletController::class, 'storePayout'])
             ->middleware(['role:ambassador', 'sso.validate', 'throttle:5,1'])
@@ -384,7 +390,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/payment-settings', [ProviderController::class, 'updatePaymentSettings'])
             ->middleware('sso.validate')
             ->name('payment-settings.update');
-        
+
         // Lesson Resources management
         Route::post('/lessons/{lesson}/resources', [App\Http\Controllers\LessonResourceController::class, 'store'])
             ->middleware('sso.validate')
@@ -412,7 +418,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/statistics/recalculate-all', [AdminController::class, 'recalculateAllStats'])
             ->middleware('sso.validate')
             ->name('statistics.recalculate-all');
-        
+
         // Users management (export avant {user} pour que /users/export ne soit pas capté par {user})
         Route::get('/users', [AdminController::class, 'users'])->name('users');
         Route::get('/users/create', [AdminController::class, 'createUser'])->name('users.create');
@@ -433,7 +439,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('users.destroy');
         Route::post('/users/bulk-action', [AdminController::class, 'bulkActionUsers'])->middleware('sso.validate')->name('users.bulk-action');
-        
+
         // Gestion des accès aux cours
         Route::post('/users/{user}/grant-course-access', [AdminController::class, 'grantCourseAccess'])
             ->middleware('sso.validate')
@@ -447,7 +453,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/users/{user}/contents/{course}/unenroll', [AdminController::class, 'unenrollUser'])
             ->middleware('sso.validate')
             ->name('users.unenroll');
-        
+
         // Provider Applications management
         Route::get('/provider-applications', [AdminController::class, 'providerApplications'])->name('provider-applications');
         Route::get('/provider-applications/{application}', [AdminController::class, 'showProviderApplication'])->name('provider-applications.show');
@@ -457,7 +463,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/provider-applications/bulk-action', [AdminController::class, 'bulkActionProviderApplications'])
             ->middleware('sso.validate')
             ->name('provider-applications.bulk-action');
-        
+
         // Ambassador Applications management
         Route::get('/ambassadors/applications', [App\Http\Controllers\Admin\AmbassadorController::class, 'applications'])->name('ambassadors.applications');
         Route::get('/ambassadors/applications/{application}', [App\Http\Controllers\Admin\AmbassadorController::class, 'showApplication'])->name('ambassadors.applications.show');
@@ -467,7 +473,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/ambassadors/applications/{application}', [App\Http\Controllers\Admin\AmbassadorController::class, 'destroyApplication'])
             ->middleware('sso.validate')
             ->name('ambassadors.applications.destroy');
-        
+
         // Ambassadors management
         Route::get('/ambassadors', [App\Http\Controllers\Admin\AmbassadorController::class, 'index'])->name('ambassadors.index');
         Route::get('/ambassadors/{ambassador}', [App\Http\Controllers\Admin\AmbassadorController::class, 'show'])->name('ambassadors.show');
@@ -486,7 +492,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/ambassadors/{ambassador}', [App\Http\Controllers\Admin\AmbassadorController::class, 'destroy'])
             ->middleware('sso.validate')
             ->name('ambassadors.destroy');
-        
+
         // Ambassador Commissions management
         Route::get('/ambassadors/commissions', [App\Http\Controllers\Admin\AmbassadorController::class, 'commissions'])->name('ambassadors.commissions');
         Route::get('/ambassadors/{ambassador}/commissions', [App\Http\Controllers\Admin\AmbassadorController::class, 'commissions'])->name('ambassadors.commissions.ambassador');
@@ -502,7 +508,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/ambassadors/applications/export', [App\Http\Controllers\Admin\AmbassadorController::class, 'exportApplications'])->name('ambassadors.applications.export');
         Route::post('/ambassadors/commissions/bulk-action', [App\Http\Controllers\Admin\AmbassadorController::class, 'bulkActionCommissions'])->middleware('sso.validate')->name('ambassadors.commissions.bulk-action');
         Route::get('/ambassadors/commissions/export', [App\Http\Controllers\Admin\AmbassadorController::class, 'exportCommissions'])->name('ambassadors.commissions.export');
-        
+
         // Categories management
         Route::get('/categories', [AdminController::class, 'categories'])->name('categories');
         Route::post('/categories', [AdminController::class, 'storeCategory'])
@@ -515,7 +521,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/categories/{category}', [AdminController::class, 'destroyCategory'])
             ->middleware('sso.validate')
             ->name('categories.destroy');
-        
+
         // Courses management (export avant {course} pour que /contents/export ne soit pas capté par {course})
         Route::get('/contents', [AdminController::class, 'courses'])->name('contents');
         Route::get('/contents/create', [AdminController::class, 'createCourse'])->name('contents.create');
@@ -535,9 +541,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('contents.destroy');
         Route::post('/contents/bulk-action', [AdminController::class, 'bulkActionContents'])->middleware('sso.validate')->name('contents.bulk-action');
-        
+
         // Course lessons management (disabled - legacy routes removed)
-        
+
         // Announcements management
         Route::get('/announcements', [AdminController::class, 'announcements'])->name('announcements');
         Route::post('/announcements', [AdminController::class, 'storeAnnouncement'])
@@ -555,7 +561,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('announcements.bulk-action');
         Route::get('/announcements/export', [AdminController::class, 'exportAnnouncements'])->name('announcements.export');
-        
+
         // Email sending from announcements
         Route::get('/announcements/send-email', [AdminController::class, 'showSendEmail'])
             ->name('announcements.send-email');
@@ -569,7 +575,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/announcements/upload-image', [AdminController::class, 'uploadImage'])
             ->middleware('sso.validate')
             ->name('announcements.upload-image');
-        
+
         // WhatsApp sending from announcements
         Route::get('/announcements/send-whatsapp', [AdminController::class, 'showSendWhatsApp'])
             ->name('announcements.send-whatsapp');
@@ -580,7 +586,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('announcements.search-users-whatsapp');
         Route::get('/announcements/count-users-whatsapp', [AdminController::class, 'countUsersForWhatsApp'])
             ->name('announcements.count-users-whatsapp');
-        
+
         // Combined sending (Email + WhatsApp) from announcements
         Route::get('/announcements/send-combined', [AdminController::class, 'showSendCombined'])
             ->name('announcements.send-combined');
@@ -596,7 +602,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('whatsapp-messages.bulk-action');
         Route::get('/whatsapp-messages/export', [AdminController::class, 'exportWhatsAppMessages'])->name('whatsapp-messages.export');
-        
+
         // Contact messages management
         Route::get('/contact-messages/{contactMessage}', [AdminController::class, 'showContactMessage'])
             ->name('contact-messages.show');
@@ -606,7 +612,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/contact-messages/{contactMessage}', [AdminController::class, 'destroyContactMessage'])
             ->middleware('sso.validate')
             ->name('contact-messages.destroy');
-        
+
         // Email management
         Route::get('/emails/sent', [AdminController::class, 'sentEmails'])->name('emails.sent');
         Route::get('/emails/sent/{sentEmail}', [AdminController::class, 'showSentEmail'])->name('emails.sent.show');
@@ -629,7 +635,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('emails.scheduled.bulk-action');
         Route::get('/emails/scheduled/export', [AdminController::class, 'exportScheduledEmails'])->name('emails.scheduled.export');
-        
+
         // Partners management
         Route::get('/partners', [AdminController::class, 'partners'])->name('partners');
         Route::post('/partners', [AdminController::class, 'storePartner'])
@@ -642,7 +648,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/partners/{partner}', [AdminController::class, 'destroyPartner'])
             ->middleware('sso.validate')
             ->name('partners.destroy');
-        
+
         // Testimonials management
         Route::get('/testimonials', [AdminController::class, 'testimonials'])->name('testimonials');
         Route::post('/testimonials', [AdminController::class, 'storeTestimonial'])
@@ -655,7 +661,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/testimonials/{testimonial}', [AdminController::class, 'destroyTestimonial'])
             ->middleware('sso.validate')
             ->name('testimonials.destroy');
-        
+
         // Reviews management
         Route::get('/reviews', [AdminController::class, 'reviews'])->name('reviews');
         Route::post('/reviews/{review}/approve', [AdminController::class, 'approveReview'])
@@ -667,7 +673,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/reviews/{review}', [AdminController::class, 'deleteReview'])
             ->middleware('sso.validate')
             ->name('reviews.delete');
-        
+
         // Certificates management (export avant {certificate})
         Route::get('/certificates', [AdminController::class, 'certificates'])->name('certificates');
         Route::get('/certificates/export', [AdminController::class, 'exportCertificates'])->name('certificates.export');
@@ -679,7 +685,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/certificates/{certificate}', [AdminController::class, 'destroyCertificate'])
             ->middleware('sso.validate')
             ->name('certificates.destroy');
-        
+
         // Banners management
         Route::resource('banners', BannerController::class)->middleware('sso.validate');
         Route::post('/banners/{banner}/toggle-active', [BannerController::class, 'toggleActive'])
@@ -687,7 +693,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('banners.toggle-active');
 
         Route::resource('packages', AdminContentPackageController::class)->middleware('sso.validate');
-        
+
         // Orders management (export avant {order} pour que /orders/export ne soit pas capté par {order})
         Route::get('/orders', [App\Http\Controllers\OrderController::class, 'adminIndex'])->name('orders.index');
         Route::get('/orders/export', [App\Http\Controllers\OrderController::class, 'export'])->name('orders.export');
@@ -718,11 +724,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/subscriptions/invoices/{invoice}/mark-paid', [AdminSubscriptionController::class, 'markInvoicePaid'])
             ->middleware('sso.validate')
             ->name('subscriptions.invoices.mark-paid');
+        Route::post('/subscriptions/invoices/{invoice}/cancel', [AdminSubscriptionController::class, 'cancelInvoice'])
+            ->middleware('sso.validate')
+            ->name('subscriptions.invoices.cancel');
+        Route::post('/subscriptions/memberships/{userSubscription}/cancel', [AdminSubscriptionController::class, 'cancelUserSubscription'])
+            ->middleware('sso.validate')
+            ->name('subscriptions.memberships.cancel');
         Route::get('/subscriptions/plans', [SubscriptionPlanController::class, 'index'])->name('subscriptions.plans.index');
         Route::get('/subscriptions/plans/create', [SubscriptionPlanController::class, 'create'])->name('subscriptions.plans.create');
         Route::post('/subscriptions/plans', [SubscriptionPlanController::class, 'store'])
             ->middleware('sso.validate')
             ->name('subscriptions.plans.store');
+        // Bundle Membre : une seule URL (évite les écarts liste / formulaire selon l’id dans l’URL).
+        Route::get('/subscriptions/plans/membre-herime/edit', [SubscriptionPlanController::class, 'editMembreHerime'])
+            ->name('subscriptions.plans.membre.edit');
+        Route::put('/subscriptions/plans/membre-herime', [SubscriptionPlanController::class, 'updateMembreHerime'])
+            ->middleware('sso.validate')
+            ->name('subscriptions.plans.membre.update');
         Route::get('/subscriptions/plans/{plan}/edit', [SubscriptionPlanController::class, 'edit'])->name('subscriptions.plans.edit');
         Route::put('/subscriptions/plans/{plan}', [SubscriptionPlanController::class, 'update'])
             ->middleware('sso.validate')
@@ -761,13 +779,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('sso.validate')
             ->name('wallet.config.update');
         Route::get('/wallet/moneroo-methods', [App\Http\Controllers\Admin\WalletController::class, 'monerooMethods'])->name('wallet.moneroo-methods');
-        
+
         // Settings management - avec validation SSO pour la modification
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
         Route::post('/settings', [AdminController::class, 'updateSettings'])
             ->middleware('sso.validate')
             ->name('settings.update');
-        
+
         // Provider payouts management
         Route::get('/provider-payouts', [AdminController::class, 'providerPayouts'])->name('provider-payouts');
     });
@@ -884,7 +902,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/contents/{course:slug}/download', [DownloadController::class, 'course'])->name('contents.download');
     Route::get('/courses/{course:slug}/lesson/{lesson}/download', [DownloadController::class, 'lesson'])->name('lessons.download');
 
-
     // Notification routes - avec validation SSO pour les actions de modification
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
@@ -905,14 +922,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Notifications – routes POST/DELETE protégées par auth
-        Route::post('/notifications/{id}/mark-read', [NotificationController::class, 'markAsRead'])
-            ->name('notifications.mark-read');
-        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
-            ->name('notifications.mark-all-read');
-        Route::delete('/notifications/{id}', [NotificationController::class, 'delete'])
-            ->name('notifications.delete');
-        Route::delete('/notifications', [NotificationController::class, 'deleteAll'])
-            ->name('notifications.delete-all');
+    Route::post('/notifications/{id}/mark-read', [NotificationController::class, 'markAsRead'])
+        ->name('notifications.mark-read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+        ->name('notifications.mark-all-read');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'delete'])
+        ->name('notifications.delete');
+    Route::delete('/notifications', [NotificationController::class, 'deleteAll'])
+        ->name('notifications.delete-all');
 });
 
 // Notifications – routes GET publiques (gèrent gracieusement les utilisateurs non authentifiés)
@@ -946,13 +963,11 @@ Route::post('/admin/uploads/chunk', [ChunkUploadController::class, 'handle'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('admin.uploads.chunk');
 
-
-
 // Moneroo routes
 Route::prefix('moneroo')->name('moneroo.')->group(function () {
     // Méthodes de paiement disponibles (publiques pour permettre le chargement avant connexion)
     Route::get('/methods', [MonerooController::class, 'availableMethods'])->name('methods');
-    
+
     // Endpoints nécessitant l'auth (depuis le checkout)
     Route::middleware('auth')->group(function () {
         Route::post('/initiate', [MonerooController::class, 'initiate'])->name('initiate');
@@ -971,7 +986,7 @@ Route::prefix('moneroo')->name('moneroo.')->group(function () {
     Route::post('/webhook', [MonerooController::class, 'webhook'])
         ->name('webhook')
         ->withoutMiddleware(['web']);
-    
+
     // Webhook callback for wallet payouts from Moneroo (no CSRF)
     Route::post('/webhook/payout', [App\Http\Controllers\WalletController::class, 'webhookPayout'])
         ->name('webhook.payout')
@@ -991,4 +1006,3 @@ Route::prefix('api/moneroo/payout')->name('moneroo.payout.')->group(function () 
             ->name('status');
     });
 });
-

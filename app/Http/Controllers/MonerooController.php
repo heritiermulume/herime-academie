@@ -2,54 +2,54 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\InvoiceMail;
+use App\Mail\PaymentFailedMail;
+use App\Models\AmbassadorCommission;
+use App\Models\AmbassadorPromoCode;
+use App\Models\CartItem;
+use App\Models\CartPackage;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
-use App\Models\CartItem;
-use App\Models\CartPackage;
-use App\Models\AmbassadorPromoCode;
-use App\Models\Ambassador;
-use App\Models\AmbassadorCommission;
 use App\Models\SentEmail;
 use App\Models\Setting;
-use App\Models\User;
-use App\Services\OrderEnrollmentService;
-use App\Mail\InvoiceMail;
-use App\Mail\PaymentFailedMail;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Mail;
-use App\Notifications\AdminSubscriptionActivated;
+use App\Notifications\AdminSubscriptionInvoiceFailed;
 use App\Notifications\PaymentReceived;
-use App\Notifications\SubscriptionActivated;
-use Illuminate\Support\Facades\Validator;
+use App\Notifications\SubscriptionInvoiceFailed;
+use App\Services\OrderEnrollmentService;
+use App\Services\SubscriptionNotificationDispatcher;
+use App\Services\SubscriptionService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 /**
  * Controller pour gérer les paiements Moneroo
- * 
+ *
  * Gestion conforme à la documentation Moneroo:
  * - https://docs.moneroo.io/fr/payments/initialiser-un-paiement
- * 
+ *
  * Statuts gérés:
  * - pending: Paiement en attente
  * - processing: En cours de traitement
  * - completed: Paiement réussi
  * - failed: Paiement échoué
- * 
+ *
  * PRINCIPES IMPORTANTS (selon la documentation officielle):
- * 
+ *
  * 1. Le webhook est la source de vérité pour le statut final
  *    - Ne PAS poller pour le statut final côté frontend
  *    - S'appuyer uniquement sur le webhook pour les mises à jour
- * 
+ *
  * 2. Les redirections (successful/failed URLs) servent uniquement à vérifier le statut
  *    - Utilisées uniquement pour afficher le bon message à l'utilisateur
  *    - Le webhook reste la source de vérité
- * 
+ *
  * 3. Format de réponse Moneroo: { "success": true, "message": "...", "data": {} }
  */
 class MonerooController extends Controller
@@ -62,7 +62,7 @@ class MonerooController extends Controller
     private function authHeaders(): array
     {
         return [
-            'Authorization' => 'Bearer ' . config('services.moneroo.api_key'),
+            'Authorization' => 'Bearer '.config('services.moneroo.api_key'),
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
         ];
@@ -74,6 +74,7 @@ class MonerooController extends Controller
     private function extractFirstName(string $fullName): string
     {
         $parts = explode(' ', trim($fullName));
+
         return $parts[0] ?? $fullName;
     }
 
@@ -86,6 +87,7 @@ class MonerooController extends Controller
         if (count($parts) > 1) {
             return implode(' ', array_slice($parts, 1));
         }
+
         return ''; // Si un seul mot, retourner une chaîne vide
     }
 
@@ -107,10 +109,10 @@ class MonerooController extends Controller
             }
             $pkgId = (int) ($item->content_package_id ?? 0);
             if ($pkgId > 0) {
-                if (str_contains($notes, '[PACK_REVOKED:' . $pkgId . ']')) {
+                if (str_contains($notes, '[PACK_REVOKED:'.$pkgId.']')) {
                     return false;
                 }
-            } elseif (str_contains($notes, '[COURSE_REVOKED:' . $cid . ']')) {
+            } elseif (str_contains($notes, '[COURSE_REVOKED:'.$cid.']')) {
                 return false;
             }
         }
@@ -127,19 +129,19 @@ class MonerooController extends Controller
     {
         // Devises sans sous-unité (comme XOF, JPY, etc.)
         $noSubunitCurrencies = ['XOF', 'XAF', 'JPY', 'KRW', 'CLP', 'VND'];
-        
+
         if (in_array(strtoupper($currency), $noSubunitCurrencies)) {
             // Arrondir à l'entier le plus proche
             return (int) round($amount);
         }
-        
+
         // Pour les autres devises (USD, EUR, etc.), multiplier par 100 pour obtenir les centimes
         return (int) round($amount * 100);
     }
 
     /**
      * Valider la signature d'un webhook Moneroo
-     * 
+     *
      * Selon la documentation Moneroo, les webhooks peuvent inclure une signature
      * pour validation de sécurité
      */
@@ -147,11 +149,12 @@ class MonerooController extends Controller
     {
         // Si pas de signature dans la config, ne pas valider (sandbox/local dev)
         $webhookSecret = config('services.moneroo.webhook_secret');
-        if (!$webhookSecret || !$signature) {
+        if (! $webhookSecret || ! $signature) {
             \Log::warning('Moneroo webhook: No webhook secret or signature configured', [
                 'has_secret' => (bool) $webhookSecret,
                 'has_signature' => (bool) $signature,
             ]);
+
             return true; // Autoriser en développement
         }
 
@@ -180,10 +183,10 @@ class MonerooController extends Controller
         }
 
         $response = Http::withHeaders($this->authHeaders())
-            ->get($this->baseUrl() . '/payments/methods', $query);
+            ->get($this->baseUrl().'/payments/methods', $query);
 
         $responseData = $response->json();
-        
+
         // Adapter le format de réponse Moneroo au format attendu par le frontend
         if (isset($responseData['success']) && $responseData['success'] && isset($responseData['data'])) {
             return response()->json($responseData['data'], $response->status());
@@ -194,10 +197,10 @@ class MonerooController extends Controller
 
     public function initiate(Request $request)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Vous devez être connecté pour procéder au paiement.'
+                'message' => 'Vous devez être connecté pour procéder au paiement.',
             ], 401);
         }
 
@@ -214,14 +217,15 @@ class MonerooController extends Controller
                     if ($ambassador && $ambassador->is_active) {
                         return response()->json([
                             'valid' => true,
-                            'message' => 'Code promo valide'
+                            'message' => 'Code promo valide',
                         ]);
                     }
                 }
             }
+
             return response()->json([
                 'valid' => false,
-                'message' => 'Code promo invalide ou expiré'
+                'message' => 'Code promo invalide ou expiré',
             ]);
         }
 
@@ -241,7 +245,7 @@ class MonerooController extends Controller
         }
 
         $data = $validator->validated();
-        
+
         // Pour l'intégration standard Moneroo, ces champs sont optionnels
         // Initialiser avec des valeurs par défaut si elles ne sont pas présentes
         $data['phoneNumber'] = $data['phoneNumber'] ?? null;
@@ -291,10 +295,10 @@ class MonerooController extends Controller
         $recentPaidOrder = Order::where('user_id', $user->id)
             ->whereIn('status', ['paid', 'completed'])
             ->where('created_at', '>=', now()->subHours(24))
-            ->whereHas('orderItems', function($query) use ($contentIds) {
+            ->whereHas('orderItems', function ($query) use ($contentIds) {
                 $query->whereIn('content_id', $contentIds);
             })
-            ->with(['orderItems' => function($query) use ($contentIds) {
+            ->with(['orderItems' => function ($query) use ($contentIds) {
                 $query->whereIn('content_id', $contentIds);
             }])
             ->get()
@@ -315,7 +319,7 @@ class MonerooController extends Controller
                 'existing_order_number' => $recentPaidOrder->order_number,
                 'content_ids' => $contentIds,
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Vous avez déjà une commande payée pour ces cours. Veuillez vérifier vos commandes.',
@@ -330,15 +334,16 @@ class MonerooController extends Controller
         $recentPendingOrder = Order::where('user_id', $user->id)
             ->where('status', 'pending')
             ->where('created_at', '>=', now()->subMinutes(5))
-            ->whereHas('orderItems', function($query) use ($contentIds) {
+            ->whereHas('orderItems', function ($query) use ($contentIds) {
                 $query->whereIn('content_id', $contentIds);
             })
-            ->with(['orderItems' => function($query) use ($contentIds) {
+            ->with(['orderItems' => function ($query) use ($contentIds) {
                 $query->whereIn('content_id', $contentIds);
             }, 'payments'])
             ->get()
-            ->filter(function($order) use ($contentIds) {
+            ->filter(function ($order) use ($contentIds) {
                 $orderCourseIds = $order->orderItems->pluck('content_id')->sort()->values()->toArray();
+
                 return $orderCourseIds === $contentIds;
             })
             ->first();
@@ -363,20 +368,20 @@ class MonerooController extends Controller
                     'failure_reason' => 'pending_timeout',
                 ]);
             }
-            
+
             // IMPORTANT: Si la commande existe mais que tous les paiements ont échoué,
             // annuler l'ancienne commande et créer une nouvelle pour permettre une nouvelle tentative
             // Vérifier qu'il n'y a pas de paiement complété (sécurité)
             $hasCompletedPayment = $recentPendingOrder->payments()
                 ->where('status', 'completed')
                 ->exists();
-            
+
             // Vérifier si tous les paiements ont échoué (pas de pending, pas de completed)
-            $allPaymentsFailed = !$hasCompletedPayment 
+            $allPaymentsFailed = ! $hasCompletedPayment
                 && $recentPendingOrder->payments()
                     ->where('status', 'failed')
-                    ->exists() 
-                && !$recentPendingOrder->payments()
+                    ->exists()
+                && ! $recentPendingOrder->payments()
                     ->where('status', 'pending')
                     ->exists();
 
@@ -388,7 +393,7 @@ class MonerooController extends Controller
                     'user_id' => $user->id,
                     'order_id' => $recentPendingOrder->id,
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Cette commande a déjà un paiement complété. Veuillez vérifier vos commandes.',
@@ -405,9 +410,9 @@ class MonerooController extends Controller
 
                 // Annuler l'ancienne commande
                 $recentPendingOrder->update(['status' => 'cancelled']);
-                
+
                 // Continuer pour créer une nouvelle commande (le code continue après ce bloc)
-            } elseif (!$existingPayment) {
+            } elseif (! $existingPayment) {
                 // Si pas de paiement en cours et pas tous échoués, vérifier l'âge de la commande
                 // Si elle est trop ancienne (>5 min), l'annuler pour créer une nouvelle
                 $orderAge = now()->diffInMinutes($recentPendingOrder->created_at);
@@ -417,7 +422,7 @@ class MonerooController extends Controller
                         'old_order_id' => $recentPendingOrder->id,
                         'order_age_minutes' => $orderAge,
                     ]);
-                    
+
                     $recentPendingOrder->update(['status' => 'cancelled']);
                 }
             }
@@ -425,7 +430,7 @@ class MonerooController extends Controller
 
         // Récupérer la devise de base du site
         $baseCurrency = \App\Models\Setting::getBaseCurrency();
-        
+
         // Calculer le total réel depuis le panier (dans la devise de base du site)
         $subtotal = $cartItems->sum(function ($item) {
             return optional($item->course)->current_price ?? optional($item->course)->price ?? 0;
@@ -433,11 +438,11 @@ class MonerooController extends Controller
         $subtotal += $cartPackages->sum(function ($row) {
             return (float) ($row->contentPackage->effective_price ?? 0);
         });
-        
+
         // Valider et appliquer le code promo d'ambassadeur si fourni (requête ou session)
         $ambassadorPromoCode = null;
         $ambassador = null;
-        
+
         // Vérifier d'abord dans la requête, puis dans la session
         $promoCodeData = null;
         if ($request->filled('ambassador_promo_code')) {
@@ -445,7 +450,7 @@ class MonerooController extends Controller
         } elseif (Session::has('applied_promo_code')) {
             $promoCodeData = Session::get('applied_promo_code');
         }
-        
+
         if ($promoCodeData) {
             $promoCode = AmbassadorPromoCode::where('code', $promoCodeData['code'] ?? null)
                 ->where('is_active', true)
@@ -455,7 +460,7 @@ class MonerooController extends Controller
             if ($promoCode && $promoCode->isValid()) {
                 $ambassadorPromoCode = $promoCode;
                 $ambassador = $promoCode->ambassador;
-                
+
                 // Vérifier que l'ambassadeur est actif
                 if ($ambassador && $ambassador->is_active) {
                     // Le code promo est valide, on l'associera à la commande
@@ -472,35 +477,35 @@ class MonerooController extends Controller
                 }
             }
         }
-        
+
         // IMPORTANT: Utiliser le montant converti et la devise envoyés par le frontend
         $paymentAmount = (float) $data['amount']; // Montant converti dans la devise sélectionnée
         $paymentCurrency = $data['currency'] ?? config('services.moneroo.default_currency', 'USD'); // Devise sélectionnée
 
-		// Calculer un taux de conversion approximatif (si possible)
-		$exchangeRate = $subtotal > 0 ? round($paymentAmount / (float) $subtotal, 8) : null;
+        // Calculer un taux de conversion approximatif (si possible)
+        $exchangeRate = $subtotal > 0 ? round($paymentAmount / (float) $subtotal, 8) : null;
 
-		// Créer l'Order (montants dans la devise de base du site) et conserver les métadonnées de paiement
-		$order = Order::create([
-            'order_number' => 'MON-' . strtoupper(Str::random(8)) . '-' . time(),
+        // Créer l'Order (montants dans la devise de base du site) et conserver les métadonnées de paiement
+        $order = Order::create([
+            'order_number' => 'MON-'.strtoupper(Str::random(8)).'-'.time(),
             'user_id' => $user->id,
             'ambassador_id' => $ambassador?->id,
             'ambassador_promo_code_id' => $ambassadorPromoCode?->id,
             'subtotal' => $subtotal,
             'discount' => 0,
-			'total' => $subtotal, // Total dans la devise de base du site
-			'total_amount' => $subtotal, // Assurer l'affichage admin qui s'appuie sur total_amount
+            'total' => $subtotal, // Total dans la devise de base du site
+            'total_amount' => $subtotal, // Assurer l'affichage admin qui s'appuie sur total_amount
             'currency' => $baseCurrency, // Devise de la commande (devise de base du site)
-			'payment_currency' => $paymentCurrency,
-			'payment_amount' => $paymentAmount,
-			'exchange_rate' => $exchangeRate,
+            'payment_currency' => $paymentCurrency,
+            'payment_amount' => $paymentAmount,
+            'exchange_rate' => $exchangeRate,
             'status' => 'pending',
             'payment_method' => 'moneroo',
             'payment_provider' => $data['provider'], // Peut être null pour intégration standard
-			'payer_phone' => $data['phoneNumber'], // Optionnel - Moneroo collectera sur leur page
-			'payer_country' => $data['country'] ?? config('services.moneroo.default_country', 'SN'),
-			'customer_ip' => $request->ip(),
-			'user_agent' => $request->userAgent(),
+            'payer_phone' => $data['phoneNumber'], // Optionnel - Moneroo collectera sur leur page
+            'payer_country' => $data['country'] ?? config('services.moneroo.default_country', 'SN'),
+            'customer_ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
             'billing_address' => [
                 'phone' => $data['phoneNumber'], // Optionnel - Moneroo collectera sur leur page
                 'country' => $data['country'] ?? config('services.moneroo.default_country', 'SN'),
@@ -546,13 +551,13 @@ class MonerooController extends Controller
             }
         }
 
-		$paymentId = 'pay_' . strtoupper(Str::random(16)) . '_' . time();
+        $paymentId = 'pay_'.strtoupper(Str::random(16)).'_'.time();
 
-		// Sauvegarder la référence fournisseur sur la commande pour suivi centralisé
-		$order->update([
-			'payment_reference' => $paymentId,
-		]);
-        
+        // Sauvegarder la référence fournisseur sur la commande pour suivi centralisé
+        $order->update([
+            'payment_reference' => $paymentId,
+        ]);
+
         // Intégration standard Moneroo selon la documentation: https://docs.moneroo.io/fr/payments/integration-standard
         // Endpoint: POST /v1/payments/initialize
         // Format requis: amount (integer), currency, description, return_url, customer.email, customer.first_name, customer.last_name
@@ -568,7 +573,7 @@ class MonerooController extends Controller
         $lastName = (string) $this->extractLastName((string) $rawName);
 
         // Si le nom complet est vide, dériver un fallback depuis l'email ou utiliser un défaut
-        if ($firstName === '' && !empty($user->email)) {
+        if ($firstName === '' && ! empty($user->email)) {
             $emailLocal = strstr($user->email, '@', true) ?: $user->email;
             $firstName = ucfirst($emailLocal);
         }
@@ -585,8 +590,8 @@ class MonerooController extends Controller
         $payload = [
             'amount' => $amountInSmallestUnit, // Montant en unité de la devise (integer requis par Moneroo)
             'currency' => $paymentCurrency,
-            'description' => config('services.moneroo.company_name', 'Herime Académie') . ' - Paiement commande ' . $order->order_number,
-            'return_url' => config('services.moneroo.successful_url', route('moneroo.success')) . '?payment_id=' . $paymentId,
+            'description' => config('services.moneroo.company_name', 'Herime Académie').' - Paiement commande '.$order->order_number,
+            'return_url' => config('services.moneroo.successful_url', route('moneroo.success')).'?payment_id='.$paymentId,
             'customer' => [
                 'email' => $user->email,
                 'first_name' => $firstName,
@@ -598,12 +603,12 @@ class MonerooController extends Controller
                 'user_id' => (string) $user->id,
             ],
         ];
-        
+
         // Ajouter customer.phone et country si disponibles (optionnels)
-        if (!empty($data['phoneNumber'])) {
+        if (! empty($data['phoneNumber'])) {
             $payload['customer']['phone'] = $data['phoneNumber'];
         }
-        if (!empty($data['country'])) {
+        if (! empty($data['country'])) {
             $payload['customer']['country'] = $data['country'];
         }
 
@@ -611,26 +616,26 @@ class MonerooController extends Controller
             // Appel API Moneroo pour initialiser le paiement (intégration standard)
             // Endpoint selon la documentation: POST /v1/payments/initialize
             $response = Http::withHeaders($this->authHeaders())
-                ->post($this->baseUrl() . '/payments/initialize', $payload);
+                ->post($this->baseUrl().'/payments/initialize', $payload);
 
             $responseData = $response->json();
-            
-            // Format de réponse Moneroo: 
+
+            // Format de réponse Moneroo:
             // - Succès standard: HTTP 201 avec { "success": true, "data": { "id": "...", "checkout_url": "..." } }
             // - Succès alternatif: HTTP 201 avec { "success": false, "error": { "data": { "id": "...", "checkout_url": "..." } } }
             // - Échec: HTTP 400+ avec message d'erreur
             // Vérifier d'abord le statut HTTP, puis la présence des données nécessaires
-            $hasCheckoutUrl = isset($responseData['data']['checkout_url']) || 
+            $hasCheckoutUrl = isset($responseData['data']['checkout_url']) ||
                              isset($responseData['error']['data']['checkout_url']);
-            
+
             $isSuccess = $response->successful() && (
                 // Cas 1: Réponse standard avec success: true
                 (isset($responseData['success']) && $responseData['success'] === true) ||
                 // Cas 2: Statut 201 avec checkout_url présent (même si success: false dans la structure)
                 ($response->status() === 201 && $hasCheckoutUrl)
             );
-            
-            if (!$isSuccess) {
+
+            if (! $isSuccess) {
                 // Réponse d'échec: annuler la commande et marquer paiement failed
                 $error = $responseData;
                 \Log::error('Moneroo: Échec de l\'initialisation du paiement', [
@@ -642,11 +647,11 @@ class MonerooController extends Controller
                     'response_status' => $response->status(),
                     'response_body' => $response->body(),
                 ]);
-                
+
                 // Traduire les erreurs courantes en messages plus compréhensibles
                 $errorMessage = $error['message'] ?? 'Échec de l\'initialisation du paiement';
                 if (str_contains($errorMessage, 'No payment methods enabled for this currency')) {
-                    $failureReason = 'Aucune méthode de paiement activée pour la devise ' . $paymentCurrency . '. Veuillez contacter le support ou activer les méthodes de paiement pour cette devise dans votre compte Moneroo.';
+                    $failureReason = 'Aucune méthode de paiement activée pour la devise '.$paymentCurrency.'. Veuillez contacter le support ou activer les méthodes de paiement pour cette devise dans votre compte Moneroo.';
                 } else {
                     $failureReason = $errorMessage;
                 }
@@ -665,10 +670,10 @@ class MonerooController extends Controller
                     ],
                 ]);
                 $order->update(['status' => 'cancelled']);
-                
+
                 // Envoyer email ET notification d'échec
                 $this->sendPaymentFailureNotifications($order, $failureReason);
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Échec de l\'initialisation du paiement.',
@@ -682,28 +687,28 @@ class MonerooController extends Controller
             $paymentData = $responseData['data'] ?? $responseData['error']['data'] ?? $responseData;
             $actualPaymentId = $paymentData['id'] ?? $paymentId;
             $status = $paymentData['status'] ?? 'pending';
-            
+
             // Pour l'intégration standard, Moneroo retourne checkout_url dans data
             // Selon la documentation: data.checkout_url
             // Mais parfois dans error.data.checkout_url (format alternatif)
-            $redirectUrl = $paymentData['checkout_url'] 
+            $redirectUrl = $paymentData['checkout_url']
                         ?? $paymentData['checkoutUrl']
                         ?? ($responseData['error']['data']['checkout_url'] ?? null)
-                        ?? $paymentData['redirect_url'] 
-                        ?? $paymentData['authorizationUrl'] 
+                        ?? $paymentData['redirect_url']
+                        ?? $paymentData['authorizationUrl']
                         ?? $paymentData['authorization_url']
                         ?? $paymentData['url']
                         ?? null;
-            
+
             \Log::info('Moneroo: Réponse de l\'API', [
                 'response_data' => $responseData,
                 'payment_data' => $paymentData,
                 'redirect_url' => $redirectUrl,
                 'actual_payment_id' => $actualPaymentId,
             ]);
-            
+
             // Si pas d'URL de redirection, c'est une erreur pour l'intégration standard
-            if (!$redirectUrl) {
+            if (! $redirectUrl) {
                 \Log::error('Moneroo: Pas d\'URL checkout_url dans la réponse', [
                     'response' => $responseData,
                     'payment_data' => $paymentData,
@@ -772,10 +777,10 @@ class MonerooController extends Controller
                 ],
             ]);
             $order->update(['status' => 'cancelled']);
-            
+
             // Envoyer email ET notification d'échec
             $this->sendPaymentFailureNotifications($order, $failureReason);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de communication avec le fournisseur. La commande a été annulée.',
@@ -788,23 +793,23 @@ class MonerooController extends Controller
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
-        
+
         // Utiliser l'endpoint /verify selon la documentation Moneroo
         $response = Http::withHeaders($this->authHeaders())
-            ->get($this->baseUrl() . "/payments/{$paymentId}/verify");
+            ->get($this->baseUrl()."/payments/{$paymentId}/verify");
 
         $responseData = $response->json();
-        
+
         // Format de réponse Moneroo: { "success": true, "message": "...", "data": {} }
         $paymentData = $responseData['data'] ?? $responseData;
         $status = $paymentData['status'] ?? null;
-        
+
         \Log::info('Moneroo status check', [
             'payment_id' => $paymentId,
             'status' => $status,
             'full_response' => $responseData,
         ]);
-        
+
         // Synchroniser l'état local si le statut est terminal (échec/annulation)
         try {
             if (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
@@ -819,7 +824,7 @@ class MonerooController extends Controller
                             'failure_reason' => $paymentData['failure_reason'] ?? ($paymentData['message'] ?? 'Paiement échoué'),
                         ]);
                     }
-                    if ($payment->order && !in_array($payment->order->status, ['paid', 'completed'])) {
+                    if ($payment->order && ! in_array($payment->order->status, ['paid', 'completed'])) {
                         $payment->order->update(['status' => 'cancelled']);
                     }
                 }
@@ -830,7 +835,7 @@ class MonerooController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
-        
+
         return response()->json($paymentData, $response->status());
     }
 
@@ -868,6 +873,7 @@ class MonerooController extends Controller
 
         if ($payments->isEmpty()) {
             \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
+
             return;
         }
 
@@ -905,6 +911,7 @@ class MonerooController extends Controller
 
         if ($payments->isEmpty()) {
             \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
+
             return;
         }
 
@@ -934,9 +941,9 @@ class MonerooController extends Controller
             ?? $payment->payment_id;
 
         $response = Http::withHeaders($this->authHeaders())
-            ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
+            ->get($this->baseUrl()."/payments/{$monerooPaymentId}/verify");
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             return;
         }
 
@@ -960,13 +967,14 @@ class MonerooController extends Controller
                 'order_id' => $payment->order->id,
                 'payment_id' => $payment->payment_id,
             ]);
+
             return;
         }
 
         if (in_array($status, ['failed', 'cancelled', 'expired', 'rejected']) && $payment->order) {
             $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
             $payment->update(['status' => 'failed', 'failure_reason' => $failureReason]);
-            if (!in_array($payment->order->status, ['paid', 'completed'])) {
+            if (! in_array($payment->order->status, ['paid', 'completed'])) {
                 $payment->order->update(['status' => 'cancelled']);
             }
             $this->sendPaymentFailureNotifications($payment->order, $failureReason);
@@ -997,7 +1005,7 @@ class MonerooController extends Controller
             ->latest()
             ->first();
 
-        if (!$payment) {
+        if (! $payment) {
             return redirect()->route('orders.index')->with('error',
                 'Aucun paiement en attente trouvé pour cette commande.'
             );
@@ -1009,14 +1017,15 @@ class MonerooController extends Controller
                          ?? $payment->payment_id;
 
         $statusResponse = Http::withHeaders($this->authHeaders())
-            ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
+            ->get($this->baseUrl()."/payments/{$monerooPaymentId}/verify");
 
-        if (!$statusResponse->successful()) {
+        if (! $statusResponse->successful()) {
             \Log::warning('Moneroo verifyOrderPayment: API verification failed', [
                 'order_id' => $order->id,
                 'payment_id' => $payment->payment_id,
                 'response_status' => $statusResponse->status(),
             ]);
+
             return redirect()->route('orders.show', $order)->with('error',
                 'Impossible de vérifier le paiement. Veuillez réessayer ou contacter le support.'
             );
@@ -1039,6 +1048,11 @@ class MonerooController extends Controller
             ]);
             $this->finalizeOrderAfterPayment($payment->order);
 
+            if (data_get($payment->order->billing_info, 'subscription_invoice_id')) {
+                app(\App\Services\SubscriptionService::class)
+                    ->applyPaidStateFromVerifiedSubscriptionOrder($payment->order->fresh());
+            }
+
             \Log::info('Moneroo: Order finalized after manual verification', [
                 'order_id' => $order->id,
                 'payment_id' => $payment->payment_id,
@@ -1055,12 +1069,13 @@ class MonerooController extends Controller
                 'status' => 'failed',
                 'failure_reason' => $failureReason,
             ]);
-            if (!in_array($order->status, ['paid', 'completed'])) {
+            if (! in_array($order->status, ['paid', 'completed'])) {
                 $order->update(['status' => 'cancelled']);
             }
             $this->sendPaymentFailureNotifications($order, $failureReason);
+
             return redirect()->route('orders.show', $order)->with('error',
-                'Le paiement n\'a pas abouti : ' . $failureReason
+                'Le paiement n\'a pas abouti : '.$failureReason
             );
         }
 
@@ -1073,16 +1088,17 @@ class MonerooController extends Controller
     {
         // IMPORTANT: Toujours retourner 200 OK si le webhook est reçu avec succès
         // Selon la documentation Moneroo, on doit retourner 200 OK pour confirmer la réception
-        
+
         // IMPORTANT: Valider la signature du webhook pour sécurité
         $signature = $request->header('X-Moneroo-Signature') ?? $request->header('X-Signature');
         $payloadContent = $request->getContent();
-        
-        if ($signature && !$this->validateWebhookSignature($payloadContent, $signature)) {
+
+        if ($signature && ! $this->validateWebhookSignature($payloadContent, $signature)) {
             \Log::error('Moneroo webhook: Invalid signature - potential security threat', [
                 'payment_id' => $request->input('data.id') ?? $request->input('id'),
                 'ip' => $request->ip(),
             ]);
+
             // CRITIQUE: Retourner 200 pour éviter les retry, mais logger comme erreur
             return response()->json(['received' => false, 'error' => 'Invalid signature'], 200);
         }
@@ -1093,10 +1109,27 @@ class MonerooController extends Controller
         $paymentId = $paymentData['id'] ?? null;
         $status = $paymentData['status'] ?? null;
 
-        if (!$paymentId) {
+        if (! $paymentId) {
             \Log::warning('Moneroo webhook: payment_id missing', ['payload' => $payload]);
+
             // Retourner 200 OK même si payment_id manquant (éviter retry)
             return response()->json(['received' => false, 'message' => 'payment_id missing'], 200);
+        }
+
+        // Abonnements : toujours traiter en premier pour activer la facture / l’abonnement et synchroniser Order/Payment,
+        // même si un enregistrement Payment existe (sinon le flux commande court-circuiterait l’activation).
+        $metaKind = data_get($paymentData, 'metadata.kind') ?? data_get($payload, 'metadata.kind');
+        if ($metaKind === 'subscription_invoice') {
+            $subscriptionHandled = $this->handleSubscriptionInvoiceWebhook($payload, $paymentData, $paymentId, $status);
+            if ($subscriptionHandled) {
+                return response()->json(['received' => true], 200);
+            }
+            \Log::warning('Moneroo webhook: subscription_invoice not handled', [
+                'payment_id' => $paymentId,
+                'payload' => $payload,
+            ]);
+
+            return response()->json(['received' => false, 'message' => 'subscription invoice not handled'], 200);
         }
 
         // Moneroo envoie généralement son ID (py_xxx), pas notre référence locale
@@ -1112,13 +1145,9 @@ class MonerooController extends Controller
             ->latest()
             ->first();
 
-        if (!$payment) {
-            $subscriptionHandled = $this->handleSubscriptionInvoiceWebhook($payload, $paymentData, $paymentId, $status);
-            if ($subscriptionHandled) {
-                return response()->json(['received' => true], 200);
-            }
-
+        if (! $payment) {
             \Log::warning('Moneroo webhook: Payment not found', ['payment_id' => $paymentId, 'searched_by_moneroo_id' => true]);
+
             // Retourner 200 OK même si payment non trouvé (éviter retry sur transaction inexistante)
             return response()->json(['received' => false, 'message' => 'Payment not found'], 200);
         }
@@ -1157,32 +1186,32 @@ class MonerooController extends Controller
                 'status' => $mapped,
                 'payment_data' => $paymentData,
                 'processed_at' => in_array($status, ['completed', 'success'])
-                    ? ($processedAt ? \Carbon\Carbon::parse($processedAt) : now()) 
+                    ? ($processedAt ? \Carbon\Carbon::parse($processedAt) : now())
                     : null,
             ]);
 
             // Traiter selon le statut final
             // Un paiement est réussi si status est "success" ou "completed" ET is_processed est true
-			if (in_array($status, ['completed', 'success']) && $payment->order) {
-				// Mettre à jour la commande avec la référence et les frais si fournis
-				$feeAmount = $paymentData['fee'] ?? ($paymentData['fees']['amount'] ?? null);
-				$feeCurrency = $paymentData['fee_currency'] ?? ($paymentData['fees']['currency'] ?? null);
-				$updates = [
-					'payment_reference' => $payment->order->payment_reference ?: ($paymentData['id'] ?? $paymentId),
-				];
-				if ($feeAmount !== null) {
-					$updates['provider_fee'] = (float) $feeAmount; // interprété dans la devise de paiement
-					$updates['net_total'] = $payment->order->payment_amount !== null
-						? (float) $payment->order->payment_amount - (float) $feeAmount
-						: null; // même unité que payment_amount
-					if ($feeCurrency !== null) {
-						$updates['provider_fee_currency'] = (string) $feeCurrency;
-					}
-				}
-				$payment->order->update(array_merge($updates, [
-					'status' => 'paid',
-					'paid_at' => $payment->order->paid_at ?: now(),
-				]));
+            if (in_array($status, ['completed', 'success']) && $payment->order) {
+                // Mettre à jour la commande avec la référence et les frais si fournis
+                $feeAmount = $paymentData['fee'] ?? ($paymentData['fees']['amount'] ?? null);
+                $feeCurrency = $paymentData['fee_currency'] ?? ($paymentData['fees']['currency'] ?? null);
+                $updates = [
+                    'payment_reference' => $payment->order->payment_reference ?: ($paymentData['id'] ?? $paymentId),
+                ];
+                if ($feeAmount !== null) {
+                    $updates['provider_fee'] = (float) $feeAmount; // interprété dans la devise de paiement
+                    $updates['net_total'] = $payment->order->payment_amount !== null
+                        ? (float) $payment->order->payment_amount - (float) $feeAmount
+                        : null; // même unité que payment_amount
+                    if ($feeCurrency !== null) {
+                        $updates['provider_fee_currency'] = (string) $feeCurrency;
+                    }
+                }
+                $payment->order->update(array_merge($updates, [
+                    'status' => 'paid',
+                    'paid_at' => $payment->order->paid_at ?: now(),
+                ]));
                 // Paiement réussi : finaliser la commande et créer les inscriptions
                 $this->finalizeOrderAfterPayment($payment->order);
                 \Log::info('Moneroo: Order finalized after successful payment', [
@@ -1193,17 +1222,17 @@ class MonerooController extends Controller
                 // Échec : enregistrer la raison détaillée et annuler la commande
                 // Extraire la raison d'échec de plusieurs sources possibles selon la structure Moneroo
                 $failureReason = $this->extractFailureReason($paymentData, $payload, $status);
-                
+
                 $payment->update(['failure_reason' => $failureReason]);
-                
+
                 // Annuler la commande seulement si elle n'est pas déjà payée (éviter doublon)
-                if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                if (! in_array($payment->order->status, ['paid', 'completed'])) {
                     $payment->order->update(['status' => 'cancelled']);
                 }
-                
+
                 // Envoyer email ET notification d'échec
                 $this->sendPaymentFailureNotifications($payment->order, $failureReason);
-                
+
                 \Log::info('Moneroo: Order cancelled after failed payment', [
                     'order_id' => $payment->order->id,
                     'payment_id' => $paymentId,
@@ -1221,7 +1250,7 @@ class MonerooController extends Controller
             }
 
             return response()->json(['received' => true]);
-            
+
         } catch (\Throwable $e) {
             // CRITIQUE: Logger l'erreur mais retourner 200 OK
             // Moneroo ne réessaiera pas si on retourne 200
@@ -1231,10 +1260,10 @@ class MonerooController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             // Retourner 200 OK avec indication d'erreur dans la réponse
             return response()->json([
-                'received' => true, 
+                'received' => true,
                 'error' => 'Error processing callback (logged)',
             ], 200);
         }
@@ -1252,12 +1281,12 @@ class MonerooController extends Controller
         $invoiceId = data_get($paymentData, 'metadata.invoice_id')
             ?? data_get($payload, 'metadata.invoice_id');
 
-        if (!$invoiceId) {
+        if (! $invoiceId) {
             return false;
         }
 
         $invoice = \App\Models\SubscriptionInvoice::query()->find($invoiceId);
-        if (!$invoice) {
+        if (! $invoice) {
             return false;
         }
 
@@ -1269,6 +1298,7 @@ class MonerooController extends Controller
 
         $subscription = $invoice->subscription;
         $wasPendingPayment = $subscription && $subscription->status === 'pending_payment';
+        $previousInvoiceStatus = $invoice->status;
 
         $invoice->update([
             'status' => $mappedStatus,
@@ -1281,39 +1311,22 @@ class MonerooController extends Controller
         ]);
 
         if ($mappedStatus === 'paid' && $subscription) {
+            $previousPeriodEnd = $subscription->current_period_ends_at?->copy();
             $subscription->update(['status' => 'active']);
             $subscription = $subscription->fresh();
-            app(\App\Services\SubscriptionService::class)->grantLinkedContentAccess($subscription);
+            $subscriptionService = app(SubscriptionService::class);
+            $subscriptionService->syncSubscriptionPeriodAfterInvoicePaid($subscription, $wasPendingPayment, $previousPeriodEnd);
+            $subscription = $subscription->fresh();
+            $subscriptionService->grantLinkedContentAccess($subscription);
+            $subscriptionService->expireOtherMemberBundleSubscriptions($subscription);
 
-            if ($wasPendingPayment && $invoice->user) {
+            if ($invoice->user) {
                 $invoice->refresh();
-                try {
-                    $invoice->user->notify(new SubscriptionActivated($subscription, $invoice, false));
-                } catch (\Throwable $e) {
-                    \Log::error('Moneroo: echec notification abonnement active apres paiement', [
-                        'user_id' => $invoice->user_id,
-                        'subscription_id' => $subscription->id,
-                        'invoice_id' => $invoice->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-
-                $admins = User::admins()
-                    ->whereNotNull('email')
-                    ->where('is_active', true)
-                    ->get();
-                foreach ($admins as $admin) {
-                    try {
-                        Notification::sendNow($admin, new AdminSubscriptionActivated($subscription, $invoice, false));
-                    } catch (\Throwable $e) {
-                        \Log::error('Moneroo: echec notification admin abonnement apres paiement', [
-                            'admin_id' => $admin->id,
-                            'subscription_id' => $subscription->id,
-                            'invoice_id' => $invoice->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
+                $subscriptionService->dispatchSubscriptionPaidLifecycleNotifications(
+                    $invoice,
+                    $subscription,
+                    $wasPendingPayment,
+                );
             }
         } elseif ($mappedStatus === 'failed' && $wasPendingPayment && $subscription) {
             $subscription->update([
@@ -1323,44 +1336,194 @@ class MonerooController extends Controller
             ]);
         }
 
-        if ($invoice->user) {
-            if ($mappedStatus === 'paid') {
-                $invoice->user->notify(new \App\Notifications\SubscriptionInvoicePaid($invoice));
-            } elseif ($mappedStatus === 'failed') {
-                $invoice->user->notify(new \App\Notifications\SubscriptionInvoiceFailed($invoice));
-            }
+        $invoice->refresh();
+        $this->syncSubscriptionLinkedOrderAfterInvoiceWebhook($invoice, $payload, $paymentData, $paymentId, $status);
+
+        if ($mappedStatus === 'paid' && $previousInvoiceStatus !== 'paid' && $invoice->user) {
+            app(SubscriptionService::class)->notifySubscriptionInvoicePaidUser($invoice, 'moneroo_webhook_subscription_invoice_paid');
+        } elseif ($mappedStatus === 'failed' && $previousInvoiceStatus !== 'failed') {
+            SubscriptionNotificationDispatcher::notifyUser(
+                $invoice->user,
+                new SubscriptionInvoiceFailed($invoice),
+                'moneroo_webhook_subscription_invoice_failed',
+                ['invoice_id' => $invoice->id],
+            );
+            SubscriptionNotificationDispatcher::notifyAdmins(
+                new AdminSubscriptionInvoiceFailed($invoice),
+                'moneroo_webhook_subscription_invoice_failed_admin',
+                ['invoice_id' => $invoice->id],
+            );
         }
 
         return true;
     }
 
     /**
+     * Met à jour Payment + Order liés à une facture d’abonnement (créés à l’init Moneroo), comme pour le panier.
+     */
+    private function syncSubscriptionLinkedOrderAfterInvoiceWebhook(
+        \App\Models\SubscriptionInvoice $invoice,
+        array $payload,
+        array $paymentData,
+        ?string $paymentId,
+        ?string $status,
+    ): void {
+        // Toujours préférer l’order_id renvoyé par Moneroo (métadonnées du paiement), pas la dernière valeur
+        // enregistrée sur la facture — sinon un paiement sur un ancien onglet mettrait à jour la mauvaise commande.
+        $orderIdFromCallback = data_get($paymentData, 'metadata.order_id')
+            ?? data_get($payload, 'metadata.order_id');
+        $orderId = $orderIdFromCallback ?: data_get($invoice->metadata, 'order_id');
+        if (! $orderId) {
+            return;
+        }
+
+        $order = Order::query()->find((int) $orderId);
+        if (! $order || (int) $order->user_id !== (int) $invoice->user_id) {
+            \Log::warning('Moneroo: subscription order sync skipped', [
+                'invoice_id' => $invoice->id,
+                'order_id' => $orderId,
+                'order_user' => $order?->user_id,
+                'invoice_user' => $invoice->user_id,
+            ]);
+
+            return;
+        }
+
+        if ((int) data_get($order->billing_info, 'subscription_invoice_id') !== (int) $invoice->id) {
+            \Log::warning('Moneroo: subscription order sync skipped — billing_info invoice mismatch', [
+                'invoice_id' => $invoice->id,
+                'order_id' => $order->id,
+            ]);
+
+            return;
+        }
+
+        $monerooId = $paymentData['id'] ?? $paymentId;
+        $paymentRef = data_get($paymentData, 'metadata.payment_ref')
+            ?? data_get($payload, 'metadata.payment_ref');
+
+        $payment = null;
+        if ($monerooId || $paymentRef) {
+            $payment = Payment::query()
+                ->where('order_id', $order->id)
+                ->where('payment_method', 'moneroo')
+                ->where(function ($q) use ($monerooId, $paymentRef) {
+                    if ($monerooId) {
+                        $q->where('payment_data->moneroo_id', $monerooId)
+                            ->orWhere('payment_id', $monerooId);
+                    }
+                    if ($paymentRef) {
+                        $q->orWhere('payment_id', $paymentRef);
+                    }
+                })
+                ->latest('id')
+                ->first();
+        }
+
+        if (! $payment) {
+            $payment = Payment::query()
+                ->where('order_id', $order->id)
+                ->where('payment_method', 'moneroo')
+                ->latest('id')
+                ->first();
+        }
+
+        if (! $payment) {
+            return;
+        }
+
+        $rawStatus = is_string($status) ? $status : '';
+        $mappedPayment = match ($rawStatus) {
+            'success', 'completed' => 'completed',
+            'failed', 'cancelled', 'expired', 'rejected' => 'failed',
+            'pending', 'processing' => 'pending',
+            default => 'pending',
+        };
+
+        $mergedData = array_merge($payment->payment_data ?? [], [
+            'callback' => $payload,
+            'moneroo_id' => $paymentData['id'] ?? $paymentId ?? data_get($payment->payment_data, 'moneroo_id'),
+            'last_callback_at' => now()->toIso8601String(),
+        ]);
+
+        $processedAt = $paymentData['processed_at'] ?? null;
+        $failureReason = null;
+        if (in_array($rawStatus, ['failed', 'cancelled', 'expired', 'rejected'], true)) {
+            $failureReason = $this->extractFailureReason(
+                $paymentData,
+                $payload,
+                $rawStatus !== '' ? $rawStatus : 'failed',
+            );
+        }
+
+        $payment->update([
+            'status' => $mappedPayment,
+            'payment_data' => $mergedData,
+            'failure_reason' => $failureReason ?? $payment->failure_reason,
+            'processed_at' => in_array($rawStatus, ['completed', 'success'], true)
+                ? ($processedAt ? \Carbon\Carbon::parse($processedAt) : now())
+                : null,
+        ]);
+
+        if (in_array($rawStatus, ['completed', 'success'], true)) {
+            $feeAmount = $paymentData['fee'] ?? ($paymentData['fees']['amount'] ?? null);
+            $feeCurrency = $paymentData['fee_currency'] ?? ($paymentData['fees']['currency'] ?? null);
+            $updates = [
+                'payment_reference' => $order->payment_reference ?: ($paymentData['id'] ?? $paymentId),
+            ];
+            if ($feeAmount !== null) {
+                $updates['provider_fee'] = (float) $feeAmount;
+                $updates['net_total'] = $order->payment_amount !== null
+                    ? (float) $order->payment_amount - (float) $feeAmount
+                    : null;
+                if ($feeCurrency !== null) {
+                    $updates['provider_fee_currency'] = (string) $feeCurrency;
+                }
+            }
+            $order->update(array_merge($updates, [
+                'status' => 'paid',
+                'paid_at' => $order->paid_at ?: now(),
+            ]));
+            $this->finalizeOrderAfterPayment($order->fresh());
+            if ($invoice->user) {
+                app(\App\Services\SubscriptionCheckoutOrderService::class)
+                    ->cancelOtherPendingSubscriptionCheckoutsForInvoice($invoice, $invoice->user, $order->id);
+            }
+        } elseif (in_array($rawStatus, ['failed', 'cancelled', 'expired', 'rejected'], true)) {
+            if (! in_array($order->status, ['paid', 'completed'], true)) {
+                $order->update(['status' => 'cancelled']);
+            }
+            $this->sendPaymentFailureNotifications($order->fresh(), $failureReason);
+        }
+    }
+
+    /**
      * Extraire la raison d'échec du paiement depuis les données Moneroo
-     * 
+     *
      * Cette méthode cherche la raison d'échec dans plusieurs champs possibles
      * pour capturer tous les cas d'erreur (solde insuffisant, transaction rejetée, etc.)
-     * 
-     * @param array $paymentData Les données du paiement
-     * @param array $payload Le payload complet du webhook
-     * @param string $status Le statut du paiement
+     *
+     * @param  array  $paymentData  Les données du paiement
+     * @param  array  $payload  Le payload complet du webhook
+     * @param  string  $status  Le statut du paiement
      * @return string La raison d'échec formatée
      */
     private function extractFailureReason(array $paymentData, array $payload, string $status): string
     {
         // Chercher la raison d'échec dans plusieurs champs possibles
-        $reason = $paymentData['failure_reason'] 
-               ?? $paymentData['error_message'] 
-               ?? $paymentData['error'] 
-               ?? $paymentData['message'] 
-               ?? $payload['message'] 
+        $reason = $paymentData['failure_reason']
+               ?? $paymentData['error_message']
+               ?? $paymentData['error']
+               ?? $paymentData['message']
+               ?? $payload['message']
                ?? $payload['error_message']
                ?? null;
-        
+
         // Si une raison spécifique est trouvée, la retourner
         if ($reason && is_string($reason)) {
             return $reason;
         }
-        
+
         // Sinon, mapper le statut vers un message compréhensible
         return match ($status) {
             'failed' => 'Le paiement a échoué. Veuillez vérifier vos informations de paiement et réessayer.',
@@ -1373,7 +1536,7 @@ class MonerooController extends Controller
 
     /**
      * Annuler une commande par payment_id (annulation manuelle uniquement)
-     * 
+     *
      * Selon la documentation Moneroo, cette fonction est uniquement pour les annulations explicites par l'utilisateur.
      */
     public function cancel(string $paymentId)
@@ -1382,7 +1545,7 @@ class MonerooController extends Controller
             ->where('payment_id', $paymentId)
             ->with('order')
             ->first();
-        if (!$payment) {
+        if (! $payment) {
             return response()->json(['success' => false, 'message' => 'Transaction introuvable'], 404);
         }
 
@@ -1393,9 +1556,9 @@ class MonerooController extends Controller
                 'payment_status' => $payment->status,
                 'order_status' => $payment->order?->status,
             ]);
-            
+
             return response()->json([
-                'success' => false, 
+                'success' => false,
                 'message' => 'Impossible d\'annuler : le paiement est déjà complété',
             ], 422);
         }
@@ -1410,11 +1573,11 @@ class MonerooController extends Controller
 
             if ($payment->order) {
                 $payment->order->update(['status' => 'cancelled']);
-                
+
                 // Envoyer email ET notification d'échec
                 $this->sendPaymentFailureNotifications($payment->order, $failureReason);
             }
-            
+
             \Log::info('Moneroo: Payment cancelled by user', [
                 'payment_id' => $paymentId,
                 'payment_db_id' => $payment->id,
@@ -1429,28 +1592,45 @@ class MonerooController extends Controller
      */
     public function cancelLatestPending(Request $request)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
         }
         $userId = auth()->id();
+        // Ne pas toucher aux commandes d’abonnement (SUB-*) : le flux panier ne doit pas annuler un checkout Membre en cours.
         $order = Order::where('user_id', $userId)
             ->where('status', 'pending')
+            ->where('order_number', 'not like', 'SUB-%')
             ->latest()
             ->first();
-        if (!$order) {
+        if (! $order) {
             return response()->json(['success' => false, 'message' => 'Aucune commande en attente'], 404);
         }
         // Optionnel: ne pas annuler des commandes trop anciennes (>10 min)
         if ($order->created_at->lt(now()->subMinutes(10))) {
             return response()->json(['success' => false, 'message' => 'Commande trop ancienne pour annulation automatique'], 422);
         }
+        Payment::where('order_id', $order->id)
+            ->whereIn('status', ['pending', 'processing'])
+            ->update([
+                'status' => 'failed',
+                'failure_reason' => 'Annulation commande panier (reprise paiement)',
+            ]);
         $order->update(['status' => 'cancelled']);
+
         return response()->json(['success' => true]);
     }
 
     /**
+     * Finalisation post-paiement (commande panier ou abonnement) — exposée pour le marquage payé admin.
+     */
+    public function finalizeOrderAfterSuccessfulPayment(Order $order): void
+    {
+        $this->finalizeOrderAfterPayment($order);
+    }
+
+    /**
      * Finaliser la commande après paiement réussi
-     * 
+     *
      * Cette méthode est idempotente : elle peut être appelée plusieurs fois sans problème
      */
     private function finalizeOrderAfterPayment(Order $order): void
@@ -1459,7 +1639,7 @@ class MonerooController extends Controller
             // Rafraîchir l'order pour avoir les dernières données + charger les relations
             $order->refresh();
             $order->load('orderItems', 'user');
-            
+
             \Log::info('Moneroo: Starting finalization', [
                 'order_id' => $order->id,
                 'current_status' => $order->status,
@@ -1467,7 +1647,7 @@ class MonerooController extends Controller
                 'order_currency' => $order->currency,
                 'user_id' => $order->user_id,
             ]);
-            
+
             // Vérifier si déjà finalisée (idempotence)
             // "paid" peut exister sans finalisation complète (enrollments/panier),
             // on ne court-circuite donc que si la commande est "completed".
@@ -1476,12 +1656,13 @@ class MonerooController extends Controller
                     'order_id' => $order->id,
                     'status' => $order->status,
                 ]);
+
                 return;
             }
 
             // CRITIQUE: Charger les OrderItems directement depuis la DB si la relation est vide
             $orderItems = $order->orderItems;
-            
+
             // Si la collection est vide, charger directement depuis la DB
             if ($orderItems->isEmpty()) {
                 $orderItems = OrderItem::where('order_id', $order->id)->get();
@@ -1490,7 +1671,7 @@ class MonerooController extends Controller
                     'items_count' => $orderItems->count(),
                 ]);
             }
-            
+
             \Log::info('Moneroo: OrderItems loaded', [
                 'order_id' => $order->id,
                 'order_items_count' => $orderItems->count(),
@@ -1501,20 +1682,20 @@ class MonerooController extends Controller
                     'price' => $item->price,
                 ])->toArray(),
             ]);
-            
+
             if ($orderItems->isEmpty()) {
                 \Log::warning('Moneroo: No order items found for enrollment - proceeding to mark order paid', [
                     'order_id' => $order->id,
                 ]);
             }
 
-			// Mettre à jour l'Order : payé après confirmation du paiement
-			$updated = $order->update([
-				'status' => 'paid',
-				'paid_at' => $order->paid_at ?: now(),
-			]);
+            // Mettre à jour l'Order : payé après confirmation du paiement
+            $updated = $order->update([
+                'status' => 'paid',
+                'paid_at' => $order->paid_at ?: now(),
+            ]);
 
-			\Log::info('Moneroo: Order marked as paid', [
+            \Log::info('Moneroo: Order marked as paid', [
                 'order_id' => $order->id,
                 'update_successful' => $updated,
                 'new_status' => $order->fresh()->status,
@@ -1530,23 +1711,23 @@ class MonerooController extends Controller
                 'total_order_items' => $orderItems->count(),
             ]);
 
-			// Vider le panier de l'utilisateur (DB + session par sécurité)
-			$cartItemsBeforeDelete = CartItem::where('user_id', $order->user_id)->count()
-				+ CartPackage::where('user_id', $order->user_id)->count();
-			CartPackage::where('user_id', $order->user_id)->delete();
-			$cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
-			Session::forget('cart');
-			
-			// Retirer le code promo de la session après utilisation
-			Session::forget('applied_promo_code');
-			
-			\Log::info('Moneroo: Cart and promo code cleared', [
-				'user_id' => $order->user_id,
-				'cart_items_before' => $cartItemsBeforeDelete,
-				'cart_items_deleted' => $cartItemsDeleted,
-				'session_cart_cleared' => true,
-				'promo_code_cleared' => true,
-			]);
+            // Vider le panier de l'utilisateur (DB + session par sécurité)
+            $cartItemsBeforeDelete = CartItem::where('user_id', $order->user_id)->count()
+                + CartPackage::where('user_id', $order->user_id)->count();
+            CartPackage::where('user_id', $order->user_id)->delete();
+            $cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
+            Session::forget('cart');
+
+            // Retirer le code promo de la session après utilisation
+            Session::forget('applied_promo_code');
+
+            \Log::info('Moneroo: Cart and promo code cleared', [
+                'user_id' => $order->user_id,
+                'cart_items_before' => $cartItemsBeforeDelete,
+                'cart_items_deleted' => $cartItemsDeleted,
+                'session_cart_cleared' => true,
+                'promo_code_cleared' => true,
+            ]);
 
             $commission = null;
             // Créer la commission d'ambassadeur si un code promo a été utilisé
@@ -1563,7 +1744,7 @@ class MonerooController extends Controller
                             $communicationService->sendEmailAndWhatsApp($order->ambassador->user, $mailable);
                         }
                     } catch (\Exception $e) {
-                        \Log::error('Error sending ambassador commission email: ' . $e->getMessage());
+                        \Log::error('Error sending ambassador commission email: '.$e->getMessage());
                     }
                 }
             }
@@ -1610,66 +1791,67 @@ class MonerooController extends Controller
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
-        
+
         // Moneroo peut envoyer payment_id (notre référence) ou paymentId (ID Moneroo) dans les paramètres
         // Selon la documentation: https://docs.moneroo.io/payments/standard-integration
         // Moneroo redirige avec paymentId et paymentStatus dans les query parameters
-        $paymentId = $request->query('payment_id') 
-                  ?? $request->query('paymentId') 
+        $paymentId = $request->query('payment_id')
+                  ?? $request->query('paymentId')
                   ?? $request->input('payment_id')
                   ?? $request->input('paymentId');
-        
+
         // Récupérer le paymentStatus depuis les paramètres de redirection Moneroo
-        $paymentStatus = $request->query('paymentStatus') 
+        $paymentStatus = $request->query('paymentStatus')
                       ?? $request->input('paymentStatus');
-        
+
         \Log::info('Moneroo: successfulRedirect appelé', [
             'payment_id' => $request->query('payment_id'),
             'paymentId' => $request->query('paymentId'),
             'paymentStatus' => $paymentStatus,
             'all_params' => $request->all(),
         ]);
-        
+
         // Si paymentStatus indique un échec, rediriger vers la page failed
         if ($paymentStatus && in_array(strtolower($paymentStatus), ['failed', 'cancelled', 'expired', 'rejected'])) {
             \Log::warning('Moneroo: paymentStatus indicates failure, redirecting to failed page', [
                 'payment_id' => $paymentId,
                 'paymentStatus' => $paymentStatus,
             ]);
-            
+
             if ($paymentId) {
                 return redirect()->route('moneroo.failed', ['payment_id' => $paymentId, 'paymentStatus' => $paymentStatus]);
             }
+
             return redirect()->route('moneroo.failed');
         }
-        
+
         if ($paymentId) {
             // Chercher le paiement par payment_id (notre référence) ou par l'ID Moneroo
             // Moneroo peut rediriger avec notre référence locale OU avec son propre ID
             $payment = Payment::where('payment_method', 'moneroo')
-                ->where(function($query) use ($paymentId) {
+                ->where(function ($query) use ($paymentId) {
                     $query->where('payment_id', $paymentId) // Notre référence locale
-                          ->orWhereJsonContains('payment_data->moneroo_id', $paymentId) // ID Moneroo stocké
-                          ->orWhereJsonContains('payment_data->response->data->id', $paymentId) // Format alternatif
-                          ->orWhereJsonContains('payment_data->data->id', $paymentId); // Format alternatif
+                        ->orWhereJsonContains('payment_data->moneroo_id', $paymentId) // ID Moneroo stocké
+                        ->orWhereJsonContains('payment_data->response->data->id', $paymentId) // Format alternatif
+                        ->orWhereJsonContains('payment_data->data->id', $paymentId); // Format alternatif
                 })
                 ->with('order')
                 ->first();
-            
+
             // Si pas trouvé, essayer de chercher directement par l'ID Moneroo dans tous les paiements récents
-            if (!$payment) {
+            if (! $payment) {
                 \Log::warning('Moneroo: Payment not found with initial search in successfulRedirect, trying alternative methods', [
                     'payment_id' => $paymentId,
                 ]);
-                
+
                 // Chercher dans les paiements récents (dernières 24h) par l'ID Moneroo
                 $payment = Payment::where('payment_method', 'moneroo')
                     ->where('created_at', '>=', now()->subHours(24))
-                    ->where(function($query) use ($paymentId) {
+                    ->where(function ($query) use ($paymentId) {
                         $query->whereJsonContains('payment_data->moneroo_id', $paymentId)
-                              ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
-                              ->orWhereJsonContains('payment_data->data->id', $paymentId)
-                              ->orWhere('payment_id', $paymentId);
+                            ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
+                            ->orWhereJsonContains('payment_data->data->id', $paymentId)
+                            ->orWhere('payment_id', $paymentId);
                     })
                     ->with('order')
                     ->latest()
@@ -1687,25 +1869,25 @@ class MonerooController extends Controller
                         'current_user_id' => auth()->id(),
                         'ip' => $request->ip(),
                     ]);
-                    
-                    return redirect()->route('moneroo.failed')->with('error', 
+
+                    return redirect()->route('moneroo.failed')->with('error',
                         'Accès non autorisé. Veuillez vérifier votre paiement.'
                     );
                 }
-                
+
                 // VALIDATION RECOMMANDÉE : Vérifier le statut auprès de Moneroo
                 // comme recommandé dans la documentation pour garantir la cohérence
                 // Utiliser l'ID Moneroo (py_xxx) si disponible, sinon notre payment_id
                 // IMPORTANT: Utiliser l'endpoint /verify selon la documentation Moneroo
                 // https://docs.moneroo.io/payments/transaction-verification
                 // Récupérer l'ID Moneroo depuis payment_data (stocké lors de la création)
-                $monerooPaymentId = $payment->payment_data['moneroo_id'] 
-                                 ?? $payment->payment_data['response']['data']['id'] 
-                                 ?? $payment->payment_data['data']['id'] 
+                $monerooPaymentId = $payment->payment_data['moneroo_id']
+                                 ?? $payment->payment_data['response']['data']['id']
+                                 ?? $payment->payment_data['data']['id']
                                  ?? $paymentId; // Fallback: utiliser le paymentId de la redirection
-                
+
                 $statusResponse = Http::withHeaders($this->authHeaders())
-                    ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
+                    ->get($this->baseUrl()."/payments/{$monerooPaymentId}/verify");
 
                 if ($statusResponse->successful()) {
                     $responseData = $statusResponse->json();
@@ -1728,7 +1910,7 @@ class MonerooController extends Controller
                     ]);
 
                     // Si localement le paiement est déjà complété, forcer la mise à jour de la commande
-                    if ($payment->status === 'completed' && !in_array($payment->order->status, ['paid', 'completed'])) {
+                    if ($payment->status === 'completed' && ! in_array($payment->order->status, ['paid', 'completed'])) {
                         $payment->order->update([
                             'status' => 'paid',
                             'paid_at' => $payment->order->paid_at ?: now(),
@@ -1742,7 +1924,7 @@ class MonerooController extends Controller
                     // Vérifier aussi le paymentStatus de la redirection si disponible
                     $redirectStatus = strtolower($paymentStatus ?? '');
                     $isSuccessFromRedirect = in_array($redirectStatus, ['success', 'completed']);
-                    
+
                     if (in_array($status, ['success', 'completed']) || $isSuccessFromRedirect) {
                         $orderWasAlreadyPaid = in_array($payment->order->status, ['paid', 'completed']);
 
@@ -1758,7 +1940,7 @@ class MonerooController extends Controller
                         }
 
                         // Marquer immédiatement la commande comme payée si besoin
-                        if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                        if (! in_array($payment->order->status, ['paid', 'completed'])) {
                             $payment->order->update([
                                 'status' => 'paid',
                                 'paid_at' => $payment->order->paid_at ?: now(),
@@ -1768,22 +1950,22 @@ class MonerooController extends Controller
                         // Sauvegarder référence et frais si fournis
                         $feeAmount = $statusData['fee'] ?? ($statusData['fees']['amount'] ?? null);
                         $feeCurrency = $statusData['fee_currency'] ?? ($statusData['fees']['currency'] ?? null);
-						$updates = [
-							'payment_reference' => $payment->order->payment_reference ?: ($paymentId ?? null),
-						];
-						if ($feeAmount !== null) {
-							$updates['provider_fee'] = (float) $feeAmount;
-							$updates['net_total'] = $payment->order->payment_amount !== null
-								? (float) $payment->order->payment_amount - (float) $feeAmount
-								: null;
-							if ($feeCurrency !== null) {
-								$updates['provider_fee_currency'] = (string) $feeCurrency;
-							}
-						}
-						$payment->order->update($updates);
-                        
+                        $updates = [
+                            'payment_reference' => $payment->order->payment_reference ?: ($paymentId ?? null),
+                        ];
+                        if ($feeAmount !== null) {
+                            $updates['provider_fee'] = (float) $feeAmount;
+                            $updates['net_total'] = $payment->order->payment_amount !== null
+                                ? (float) $payment->order->payment_amount - (float) $feeAmount
+                                : null;
+                            if ($feeCurrency !== null) {
+                                $updates['provider_fee_currency'] = (string) $feeCurrency;
+                            }
+                        }
+                        $payment->order->update($updates);
+
                         // Finaliser la commande si pas déjà fait
-                        if (!$orderWasAlreadyPaid) {
+                        if (! $orderWasAlreadyPaid) {
                             $this->finalizeOrderAfterPayment($payment->order);
                         }
 
@@ -1793,10 +1975,11 @@ class MonerooController extends Controller
                                 // Supprimer éventuels reliquats (même si déjà vidé par webhook)
                                 auth()->user()->cartItems()->delete();
                                 auth()->user()->cartPackages()->delete();
-                            } catch (\Throwable $e) {}
+                            } catch (\Throwable $e) {
+                            }
                             \Session::forget('cart');
                         }
-                        
+
                         // TOUJOURS assurer l'envoi des emails en contexte redirection (même si commande déjà payée)
                         // Car le webhook peut ne pas avoir envoyé les emails ou avoir échoué
                         // Utiliser la même logique que Enrollment::sendEnrollmentNotifications
@@ -1804,7 +1987,7 @@ class MonerooController extends Controller
                         $this->sendPaymentEmails($orderFresh);
 
                         $order = $payment->order->fresh();
-                        
+
                         // PROTECTION CONTRE LES ACTUALISATIONS : Utiliser un flag pour éviter les traitements multiples
                         // Si la commande est déjà payée et finalisée, on peut afficher directement
                         if (in_array($order->status, ['paid', 'completed'])) {
@@ -1814,13 +1997,13 @@ class MonerooController extends Controller
                                 'payment_id' => $paymentId,
                             ]);
                         }
-                        
+
                         return view('payments.moneroo.success', compact('order'));
-                        
+
                     } elseif (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
                         // Échec : extraire la raison détaillée et rediriger vers la page d'échec
                         $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
-                        
+
                         $payment->update([
                             'status' => 'failed',
                             'failure_reason' => $failureReason,
@@ -1828,30 +2011,30 @@ class MonerooController extends Controller
                                 'redirect_check' => $statusData,
                             ]),
                         ]);
-                        
-                        if (!in_array($payment->order->status, ['paid', 'completed'])) {
+
+                        if (! in_array($payment->order->status, ['paid', 'completed'])) {
                             $payment->order->update(['status' => 'cancelled']);
                         }
-                        
+
                         // Envoyer email ET notification d'échec
                         $this->sendPaymentFailureNotifications($payment->order, $failureReason);
-                        
+
                         \Log::warning('Moneroo: Redirected to failed page', [
                             'payment_id' => $paymentId,
                             'status' => $status,
                             'reason' => $failureReason,
                             'full_status_data' => $statusData, // Logger les données complètes pour analyse
                         ]);
-                        
+
                         return redirect()->route('moneroo.failed');
-                        
+
                     } elseif ($status === 'pending' || $status === 'processing') {
                         // En cours de traitement : informer l'utilisateur
                         \Log::info('Moneroo: Payment still processing on redirect', [
                             'payment_id' => $paymentId,
                             'status' => $status,
                         ]);
-                        
+
                         return view('payments.moneroo.success', [
                             'order' => null,
                             'processing_warning' => true,
@@ -1863,8 +2046,9 @@ class MonerooController extends Controller
                             'payment_id' => $paymentId,
                             'status' => $status,
                         ]);
-                        
+
                         $order = $payment->order->fresh();
+
                         return view('payments.moneroo.success', compact('order'));
                     }
                 } else {
@@ -1873,10 +2057,11 @@ class MonerooController extends Controller
                         'payment_id' => $paymentId,
                         'response_status' => $statusResponse->status(),
                     ]);
-                    
+
                     // Si le paiement local est déjà complété, afficher la page de succès
                     if ($payment->status === 'completed' && in_array($payment->order->status, ['paid', 'completed'])) {
                         $order = $payment->order->fresh();
+
                         return view('payments.moneroo.success', compact('order'));
                     }
                 }
@@ -1893,39 +2078,39 @@ class MonerooController extends Controller
                 'payment_id' => $paymentId,
                 'paymentStatus' => $paymentStatus,
             ]);
-            
+
             // Vérifier le statut directement via l'API même si le paiement n'est pas trouvé localement
             if ($paymentId) {
                 try {
                     $statusResponse = Http::withHeaders($this->authHeaders())
-                        ->get($this->baseUrl() . "/payments/{$paymentId}/verify");
-                    
+                        ->get($this->baseUrl()."/payments/{$paymentId}/verify");
+
                     if ($statusResponse->successful()) {
                         $responseData = $statusResponse->json();
                         $statusData = $responseData['data'] ?? $responseData;
                         $status = $statusData['status'] ?? null;
                         $isProcessed = $statusData['is_processed'] ?? false;
-                        
+
                         \Log::info('Moneroo: Direct API verification result', [
                             'payment_id' => $paymentId,
                             'status' => $status,
                             'is_processed' => $isProcessed,
                             'paymentStatus' => $paymentStatus,
                         ]);
-                        
+
                         // Si le paiement est réussi selon l'API, chercher la commande par order_id dans metadata
                         if (($status === 'success' && $isProcessed) || ($paymentStatus && in_array(strtolower($paymentStatus), ['success', 'completed']))) {
                             // Essayer de trouver la commande via les metadata
                             $orderId = $statusData['metadata']['order_id'] ?? null;
-                            
+
                             if ($orderId) {
                                 $order = Order::find($orderId);
-                                if ($order && (!$order->user_id || !auth()->check() || $order->user_id === auth()->id())) {
+                                if ($order && (! $order->user_id || ! auth()->check() || $order->user_id === auth()->id())) {
                                     \Log::info('Moneroo: Order found via metadata, finalizing payment', [
                                         'order_id' => $order->id,
                                         'payment_id' => $paymentId,
                                     ]);
-                                    
+
                                     // Créer ou mettre à jour le paiement
                                     $payment = Payment::firstOrCreate(
                                         [
@@ -1945,22 +2130,22 @@ class MonerooController extends Controller
                                             ],
                                         ]
                                     );
-                                    
+
                                     if ($payment->status !== 'completed') {
                                         $payment->update([
                                             'status' => 'completed',
                                             'processed_at' => $statusData['processed_at'] ? \Carbon\Carbon::parse($statusData['processed_at']) : now(),
                                         ]);
                                     }
-                                    
-                                    if (!in_array($order->status, ['paid', 'completed'])) {
+
+                                    if (! in_array($order->status, ['paid', 'completed'])) {
                                         $order->update([
                                             'status' => 'paid',
                                             'paid_at' => $order->paid_at ?: now(),
                                         ]);
                                         $this->finalizeOrderAfterPayment($order);
                                     }
-                                    
+
                                     return view('payments.moneroo.success', compact('order'));
                                 }
                             }
@@ -1986,7 +2171,7 @@ class MonerooController extends Controller
         ]);
 
         // Rediriger vers la page d'échec pour que l'utilisateur puisse réessayer
-        return redirect()->route('moneroo.failed')->with('error', 
+        return redirect()->route('moneroo.failed')->with('error',
             'Impossible de retrouver les détails de votre paiement. Veuillez réessayer.'
         );
     }
@@ -1996,45 +2181,46 @@ class MonerooController extends Controller
         if (auth()->check()) {
             $this->autoCancelStale(auth()->id());
         }
-        
+
         // Si Moneroo redirige avec un payment_id, synchroniser l'état local
         // Selon la documentation: https://docs.moneroo.io/payments/standard-integration
         // Moneroo redirige avec paymentId et paymentStatus dans les query parameters
-        $paymentId = $request->query('payment_id') 
+        $paymentId = $request->query('payment_id')
                   ?? $request->query('paymentId')
                   ?? $request->input('payment_id')
                   ?? $request->input('paymentId');
-        
+
         // Récupérer le paymentStatus depuis les paramètres de redirection Moneroo
-        $paymentStatus = $request->query('paymentStatus') 
+        $paymentStatus = $request->query('paymentStatus')
                       ?? $request->input('paymentStatus');
-        
+
         \Log::info('Moneroo: failedRedirect appelé', [
             'payment_id' => $paymentId,
             'paymentStatus' => $paymentStatus,
             'all_params' => $request->all(),
         ]);
-        
+
         // Si paymentStatus indique un succès, rediriger vers la page success
         if ($paymentStatus && in_array(strtolower($paymentStatus), ['success', 'completed'])) {
             \Log::warning('Moneroo: paymentStatus indicates success but redirected to failed page', [
                 'payment_id' => $paymentId,
                 'paymentStatus' => $paymentStatus,
             ]);
-            
+
             if ($paymentId) {
                 return redirect()->route('moneroo.success', ['payment_id' => $paymentId, 'paymentStatus' => $paymentStatus]);
             }
+
             return redirect()->route('moneroo.success');
         }
-        
+
         if ($paymentId) {
             // Chercher le paiement par payment_id (notre référence) ou par le payment_id de Moneroo
             $payment = Payment::where('payment_method', 'moneroo')
-                ->where(function($query) use ($paymentId) {
+                ->where(function ($query) use ($paymentId) {
                     $query->where('payment_id', $paymentId)
-                          ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
-                          ->orWhereJsonContains('payment_data->data->id', $paymentId);
+                        ->orWhereJsonContains('payment_data->response->data->id', $paymentId)
+                        ->orWhereJsonContains('payment_data->data->id', $paymentId);
                 })
                 ->with('order')
                 ->first();
@@ -2045,14 +2231,14 @@ class MonerooController extends Controller
                 // IMPORTANT: Utiliser l'endpoint /verify selon la documentation Moneroo
                 // https://docs.moneroo.io/payments/transaction-verification
                 // Récupérer l'ID Moneroo depuis payment_data (stocké lors de la création)
-                $monerooPaymentId = $payment->payment_data['moneroo_id'] 
-                                 ?? $payment->payment_data['response']['data']['id'] 
-                                 ?? $payment->payment_data['data']['id'] 
+                $monerooPaymentId = $payment->payment_data['moneroo_id']
+                                 ?? $payment->payment_data['response']['data']['id']
+                                 ?? $payment->payment_data['data']['id']
                                  ?? $paymentId; // Fallback: utiliser le paymentId de la redirection
-                
+
                 try {
                     $statusResponse = Http::withHeaders($this->authHeaders())
-                        ->get($this->baseUrl() . "/payments/{$monerooPaymentId}/verify");
+                        ->get($this->baseUrl()."/payments/{$monerooPaymentId}/verify");
 
                     if ($statusResponse->successful()) {
                         $responseData = $statusResponse->json();
@@ -2060,15 +2246,15 @@ class MonerooController extends Controller
                         $status = $statusData['status'] ?? 'failed';
                         $isProcessed = $statusData['is_processed'] ?? false;
                         $processedAt = $statusData['processed_at'] ?? null;
-                        
-                        // CRITIQUE: Si le statut est "success" et is_processed=true, 
+
+                        // CRITIQUE: Si le statut est "success" et is_processed=true,
                         // le paiement a réussi même si on est sur la page failed
                         // Cela peut arriver si Moneroo redirige vers failed par erreur
                         // Vérifier aussi le paymentStatus de la redirection
                         $redirectStatus = strtolower($paymentStatus ?? '');
                         $isSuccessFromRedirect = in_array($redirectStatus, ['success', 'completed']);
                         $isSuccessFromApi = ($status === 'success' || ($status === 'completed' && $isProcessed));
-                        
+
                         if ($isSuccessFromApi || ($isSuccessFromRedirect && $isProcessed)) {
                             \Log::warning('Moneroo: Payment actually succeeded but redirected to failed page', [
                                 'payment_id' => $paymentId,
@@ -2080,7 +2266,7 @@ class MonerooController extends Controller
                                 'is_success_from_api' => $isSuccessFromApi,
                                 'is_success_from_redirect' => $isSuccessFromRedirect,
                             ]);
-                            
+
                             // Traiter comme un succès
                             if ($payment->status !== 'completed') {
                                 $payment->update([
@@ -2093,22 +2279,22 @@ class MonerooController extends Controller
                                     ]),
                                 ]);
                             }
-                            
-                            if (!in_array($payment->order->status, ['paid', 'completed'])) {
+
+                            if (! in_array($payment->order->status, ['paid', 'completed'])) {
                                 $payment->order->update([
                                     'status' => 'paid',
                                     'paid_at' => $payment->order->paid_at ?: now(),
                                 ]);
                                 $this->finalizeOrderAfterPayment($payment->order);
                             }
-                            
+
                             // Rediriger vers la page de succès
                             return redirect()->route('moneroo.success', ['payment_id' => $paymentId, 'paymentStatus' => 'success']);
                         }
-                        
+
                         // Extraire la raison d'échec détaillée depuis l'API
                         $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
-                        
+
                         \Log::info('Moneroo: Status check on failed redirect', [
                             'payment_id' => $paymentId,
                             'moneroo_payment_id' => $monerooPaymentId,
@@ -2133,7 +2319,7 @@ class MonerooController extends Controller
                         'error' => $e->getMessage(),
                     ]);
                 }
-                
+
                 // Marquer le paiement comme échoué si encore en attente
                 if ($payment->status === 'pending') {
                     $payment->update([
@@ -2143,7 +2329,7 @@ class MonerooController extends Controller
                 }
 
                 // Annuler la commande si elle n'est pas déjà payée/terminée
-                if (!in_array($payment->order->status, ['paid', 'completed'])) {
+                if (! in_array($payment->order->status, ['paid', 'completed'])) {
                     $payment->order->update(['status' => 'cancelled']);
                 }
 
@@ -2164,26 +2350,26 @@ class MonerooController extends Controller
                     'payment_id' => $paymentId,
                     'paymentStatus' => $paymentStatus,
                 ]);
-                
+
                 // Si paymentStatus indique un succès, vérifier via l'API
                 if ($paymentStatus && in_array(strtolower($paymentStatus), ['success', 'completed'])) {
                     try {
                         $statusResponse = Http::withHeaders($this->authHeaders())
-                            ->get($this->baseUrl() . "/payments/{$paymentId}/verify");
-                        
+                            ->get($this->baseUrl()."/payments/{$paymentId}/verify");
+
                         if ($statusResponse->successful()) {
                             $responseData = $statusResponse->json();
                             $statusData = $responseData['data'] ?? $responseData;
                             $status = $statusData['status'] ?? null;
                             $isProcessed = $statusData['is_processed'] ?? false;
-                            
+
                             if ($status === 'success' && $isProcessed) {
                                 \Log::warning('Moneroo: Payment verified as success via API but not found locally', [
                                     'payment_id' => $paymentId,
                                     'status' => $status,
                                     'is_processed' => $isProcessed,
                                 ]);
-                                
+
                                 // Rediriger vers success même si le paiement n'est pas trouvé localement
                                 return redirect()->route('moneroo.success', ['payment_id' => $paymentId, 'paymentStatus' => 'success']);
                             }
@@ -2195,7 +2381,7 @@ class MonerooController extends Controller
                         ]);
                     }
                 }
-                
+
                 \Log::warning('Moneroo: Failed redirect with unknown payment_id', [
                     'payment_id' => $paymentId,
                     'paymentStatus' => $paymentStatus,
@@ -2217,11 +2403,10 @@ class MonerooController extends Controller
 
     /**
      * Endpoint pour signaler un échec de paiement détecté côté client
-     * 
+     *
      * Utilisé quand Moneroo affiche un message d'erreur (ex: solde insuffisant)
      * avant même que l'utilisateur ne soit redirigé
-     * 
-     * @param Request $request
+     *
      * @return \Illuminate\Http\JsonResponse
      */
     public function reportClientSideFailure(Request $request)
@@ -2230,14 +2415,14 @@ class MonerooController extends Controller
             $paymentId = $request->input('payment_id');
             $failureMessage = $request->input('failure_message');
             $failureType = $request->input('failure_type', 'unknown');
-            
-            if (!$paymentId) {
+
+            if (! $paymentId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'payment_id requis',
                 ], 400);
             }
-            
+
             \Log::info('Moneroo: Client-side failure reported', [
                 'payment_id' => $paymentId,
                 'failure_message' => $failureMessage,
@@ -2245,26 +2430,27 @@ class MonerooController extends Controller
                 'user_agent' => $request->userAgent(),
                 'ip' => $request->ip(),
             ]);
-            
+
             // Chercher le paiement
             $payment = Payment::where('payment_method', 'moneroo')
                 ->where('payment_id', $paymentId)
                 ->with('order')
                 ->first();
-            
-            if (!$payment || !$payment->order) {
+
+            if (! $payment || ! $payment->order) {
                 \Log::warning('Moneroo: Payment not found for client-side failure', [
                     'payment_id' => $paymentId,
                 ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Paiement introuvable',
                 ], 404);
             }
-            
+
             // Mapper le type d'échec vers une raison compréhensible
             $failureReason = $this->mapClientFailureToReason($failureType, $failureMessage);
-            
+
             // Marquer comme échoué si encore en attente
             if ($payment->status === 'pending') {
                 $payment->update([
@@ -2279,39 +2465,39 @@ class MonerooController extends Controller
                     ]),
                 ]);
             }
-            
+
             // Annuler la commande si pas déjà payée
-            if (!in_array($payment->order->status, ['paid', 'completed'])) {
+            if (! in_array($payment->order->status, ['paid', 'completed'])) {
                 $payment->order->update(['status' => 'cancelled']);
             }
-            
+
             // Envoyer les notifications immédiatement
             $this->sendPaymentFailureNotifications($payment->order, $failureReason);
-            
+
             \Log::info('Moneroo: Client-side failure processed and notifications sent', [
                 'payment_id' => $paymentId,
                 'order_id' => $payment->order->id,
                 'failure_reason' => $failureReason,
             ]);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Échec signalé et notifications envoyées',
             ]);
-            
+
         } catch (\Exception $e) {
             \Log::error('Moneroo: Error processing client-side failure', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du traitement',
             ], 500);
         }
     }
-    
+
     /**
      * Mapper le type d'échec client vers une raison compréhensible
      */
@@ -2321,9 +2507,9 @@ class MonerooController extends Controller
         if ($message && strlen($message) > 10) {
             return $message;
         }
-        
+
         // Sinon, mapper selon le type
-        return match($type) {
+        return match ($type) {
             'insufficient_funds' => 'Solde insuffisant. Veuillez recharger votre compte et réessayer.',
             'invalid_card' => 'Carte invalide ou expirée. Veuillez vérifier vos informations.',
             'transaction_declined' => 'Transaction refusée par votre banque. Veuillez contacter votre banque.',
@@ -2342,29 +2528,30 @@ class MonerooController extends Controller
     {
         try {
             // Charger les relations nécessaires
-            if (!$order->relationLoaded('user')) {
+            if (! $order->relationLoaded('user')) {
                 $order->load('user');
             }
             if (! $order->relationLoaded('orderItems')) {
                 $order->load(Order::eagerLoadOrderItemsWithPackages());
             }
-            if (!$order->relationLoaded('coupon')) {
+            if (! $order->relationLoaded('coupon')) {
                 $order->load('coupon');
             }
-            if (!$order->relationLoaded('affiliate')) {
+            if (! $order->relationLoaded('affiliate')) {
                 $order->load('affiliate');
             }
-            if (!$order->relationLoaded('payments')) {
+            if (! $order->relationLoaded('payments')) {
                 $order->load('payments');
             }
 
             $user = $order->user;
 
-            if (!$user || !$user->email) {
+            if (! $user || ! $user->email) {
                 \Log::warning("Impossible d'envoyer les emails de paiement: utilisateur ou email manquant", [
                     'order_id' => $order->id,
                     'user_id' => $order->user_id,
                 ]);
+
                 return;
             }
 
@@ -2379,7 +2566,7 @@ class MonerooController extends Controller
 
             // Envoyer l'email et WhatsApp en parallèle
             try {
-                if (!$paymentAlreadySent) {
+                if (! $paymentAlreadySent) {
                     $mailable = new \App\Mail\PaymentReceivedMail($order);
                     $communicationService = app(\App\Services\CommunicationService::class);
                     $communicationService->sendEmailAndWhatsApp($user, $mailable);
@@ -2405,12 +2592,12 @@ class MonerooController extends Controller
                 ]);
                 // Ne pas relancer l'exception pour ne pas bloquer le processus
             }
-            
+
             // Envoyer la notification (pour la base de données et l'affichage dans la navbar)
             // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
             try {
                 Notification::sendNow($user, new PaymentReceived($order));
-                
+
                 \Log::info("Notification PaymentReceived envoyée à l'utilisateur {$user->id} pour la commande {$order->id}", [
                     'order_id' => $order->id,
                     'user_id' => $user->id,
@@ -2430,7 +2617,7 @@ class MonerooController extends Controller
             try {
                 app(\App\Services\AdminPaymentNotifier::class)->notify($order);
             } catch (\Throwable $e) {
-                \Log::error("Erreur lors de la notification admin (paiement confirmé)", [
+                \Log::error('Erreur lors de la notification admin (paiement confirmé)', [
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
                 ]);
@@ -2445,7 +2632,7 @@ class MonerooController extends Controller
                     ->where('status', 'sent')
                     ->exists();
 
-                if (!$invoiceAlreadySent) {
+                if (! $invoiceAlreadySent) {
                     $mailable = new InvoiceMail($order);
                     $communicationService = app(\App\Services\CommunicationService::class);
                     $communicationService->sendEmailAndWhatsApp($user, $mailable);
@@ -2483,7 +2670,7 @@ class MonerooController extends Controller
 
     /**
      * Envoyer les notifications d'échec de paiement (Email + Notification in-app)
-     * 
+     *
      * Cette méthode centralise l'envoi des emails et notifications pour tous les cas d'échec:
      * - Échec d'initialisation
      * - Solde insuffisant
@@ -2492,32 +2679,32 @@ class MonerooController extends Controller
      * - Délai expiré
      * - Erreur technique
      * - Annulation automatique
-     * 
-     * @param Order $order La commande concernée
-     * @param string|null $failureReason La raison de l'échec
-     * @return void
+     *
+     * @param  Order  $order  La commande concernée
+     * @param  string|null  $failureReason  La raison de l'échec
      */
     private function sendPaymentFailureNotifications(Order $order, ?string $failureReason = null): void
     {
         try {
             // Charger les relations nécessaires si pas déjà chargées
-            if (!$order->relationLoaded('user')) {
+            if (! $order->relationLoaded('user')) {
                 $order->load('user');
             }
             if (! $order->relationLoaded('orderItems')) {
                 $order->load(Order::eagerLoadOrderItemsWithPackages());
             }
-            if (!$order->relationLoaded('payments')) {
+            if (! $order->relationLoaded('payments')) {
                 $order->load('payments');
             }
 
             $user = $order->user;
 
-            if (!$user || !$user->email) {
+            if (! $user || ! $user->email) {
                 \Log::warning("Impossible d'envoyer les notifications d'échec: utilisateur ou email manquant", [
                     'order_id' => $order->id,
                     'user_id' => $order->user_id,
                 ]);
+
                 return;
             }
 
@@ -2550,7 +2737,7 @@ class MonerooController extends Controller
             // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
             try {
                 Notification::sendNow($user, new \App\Notifications\PaymentFailed($order, $failureReason));
-                
+
                 \Log::info("Notification PaymentFailed envoyée à l'utilisateur {$user->id} pour la commande {$order->id}", [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
@@ -2594,7 +2781,7 @@ class MonerooController extends Controller
                     'status' => 'failed',
                     'failure_reason' => 'Annulation automatique après délai',
                 ]);
-            
+
             // Envoyer email ET notification d'annulation automatique
             $failureReason = 'Annulation automatique après délai d\'attente';
             $this->sendPaymentFailureNotifications($order, $failureReason);
@@ -2609,18 +2796,19 @@ class MonerooController extends Controller
         try {
             // Charger les relations nécessaires
             $order->load(['ambassador', 'ambassadorPromoCode']);
-            
-            if (!$order->ambassador || !$order->ambassador->is_active) {
+
+            if (! $order->ambassador || ! $order->ambassador->is_active) {
                 \Log::warning('Moneroo: Cannot create ambassador commission - ambassador not found or inactive', [
                     'order_id' => $order->id,
                     'ambassador_id' => $order->ambassador_id,
                 ]);
+
                 return;
             }
 
             // Récupérer le pourcentage de commission depuis les settings
             $commissionRate = Setting::get('ambassador_commission_rate', 10.0); // 10% par défaut
-            
+
             // Calculer le montant de la commission
             $orderTotal = $order->total ?? $order->total_amount ?? 0;
             $commissionAmount = ($orderTotal * $commissionRate) / 100;
@@ -2632,6 +2820,7 @@ class MonerooController extends Controller
                     'order_id' => $order->id,
                     'commission_id' => $existingCommission->id,
                 ]);
+
                 return;
             }
 
@@ -2671,9 +2860,8 @@ class MonerooController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return null;
         }
     }
 }
-
-

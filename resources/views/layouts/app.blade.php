@@ -3583,7 +3583,7 @@
     {{-- Meta (Facebook) Pixel + Events (dynamique via BDD) --}}
     @include('partials.meta-tracking')
     </head>
-<body data-cart-add-url="{{ route('cart.add') }}">
+<body data-cart-add-url="{{ route('cart.add') }}" data-herime-video-preload="{{ in_array($__hp = config('video.player_preload', 'metadata'), ['none', 'metadata', 'auto'], true) ? $__hp : 'metadata' }}">
     @php
         if (isset($globalAnnouncement) && $globalAnnouncement) {
             $now = \Illuminate\Support\Carbon::now();
@@ -3666,6 +3666,10 @@
         <a href="{{ route('categories.index') }}" class="mobile-bottom-nav-item" data-page="categories">
             <i class="fas fa-th-large"></i>
             <span>Catégories</span>
+        </a>
+        <a href="{{ route('community.premium') }}" class="mobile-bottom-nav-item" data-page="member">
+            <i class="fas fa-user-tag"></i>
+            <span>Membre</span>
         </a>
         <button class="mobile-bottom-nav-item" type="button" data-bs-toggle="modal" data-bs-target="#moreModal">
             <i class="fas fa-ellipsis-h"></i>

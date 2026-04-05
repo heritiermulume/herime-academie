@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use App\Models\SubscriptionPlan;
+use App\Models\User;
+use App\Models\UserSubscription;
 use App\Services\CommunitySettingsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class CommunityController extends Controller
@@ -19,43 +22,61 @@ class CommunityController extends Controller
             ? (Setting::getBaseCurrency()['code'] ?? 'USD')
             : (Setting::getBaseCurrency() ?: 'USD')));
 
-        $recurringCommunity = SubscriptionPlan::query()
-            ->where('is_active', true)
-            ->whereIn('plan_type', ['recurring', 'premium'])
-            ->with(['content', 'contents'])
-            ->orderBy('price')
-            ->get()
-            ->filter(function (SubscriptionPlan $plan) {
-                if (filter_var(data_get($plan->metadata, 'community_premium'), FILTER_VALIDATE_BOOLEAN)) {
-                    return true;
-                }
+        $communityPlansOrdered = SubscriptionPlan::activeMemberCommunityPlans();
+        $communityPlans = $communityPlansOrdered;
 
-                return in_array($plan->slug, [
-                    'membre-herime-semestriel',
-                    'membre-herime-trimestriel',
-                    'membre-herime-annuel',
-                ], true);
-            });
+        $premiumPlanHighlights = [];
+        foreach ($communityPlansOrdered as $p) {
+            $h = trim((string) data_get($p->metadata, 'community_card_highlight', ''));
+            if ($h !== '') {
+                $premiumPlanHighlights[$p->slug] = $h;
+            }
+        }
 
-        $communityPlans = $recurringCommunity
-            ->sortBy(function (SubscriptionPlan $plan) {
-                return (int) data_get($plan->metadata, 'community_display_order', 99);
-            })
-            ->values();
+        $defaultPlan = $communityPlansOrdered->first(fn (SubscriptionPlan $p) => $p->isCommunityCardPopular())
+            ?? $communityPlansOrdered->firstWhere('billing_period', 'yearly')
+            ?? $communityPlansOrdered->first();
 
-        // Une seule offre sur la page : cycle court (mensuel > trimestriel > semestriel) + annuel — bascule dans la même carte.
-        $planShort = $communityPlans->firstWhere('billing_period', 'monthly')
-            ?? $communityPlans->firstWhere('billing_period', 'quarterly')
-            ?? $communityPlans->firstWhere('billing_period', 'semiannual');
-        $planAnnual = $communityPlans->firstWhere('billing_period', 'yearly');
+        $showPremiumCard = $communityPlansOrdered->isNotEmpty();
+
+        $premiumSubscriptionsByPlanId = $this->premiumMemberSubscriptionsKeyedByPlanId(auth()->user());
 
         return view('community.premium', [
             'communityPlans' => $communityPlans,
-            'communityPremiumPlanShort' => $planShort,
-            'communityPremiumPlanAnnual' => $planAnnual,
+            'communityPlansOrdered' => $communityPlansOrdered,
+            'communityPremiumDefaultPlan' => $defaultPlan,
+            'showPremiumCard' => $showPremiumCard,
             'preferredCurrency' => $preferredCurrency,
             'premiumPageTexts' => CommunitySettingsService::premiumPageTexts(),
-            'premiumPlanHighlights' => CommunitySettingsService::premiumPlanHighlights(),
+            'premiumPlanHighlights' => $premiumPlanHighlights,
+            'premiumSubscriptionsByPlanId' => $premiumSubscriptionsByPlanId,
         ]);
+    }
+
+    /**
+     * Dernier abonnement « en cours » par plan Membre Herime (slugs fixes).
+     *
+     * @return Collection<int, UserSubscription>
+     */
+    private function premiumMemberSubscriptionsKeyedByPlanId(?User $user): Collection
+    {
+        if (! $user) {
+            return collect();
+        }
+
+        $memberPlanIds = SubscriptionPlan::memberBundlePlanIds();
+
+        if ($memberPlanIds === []) {
+            return collect();
+        }
+
+        return $user->subscriptions()
+            ->whereIn('subscription_plan_id', $memberPlanIds)
+            ->with('invoices')
+            ->get()
+            ->filter(fn (UserSubscription $s) => $s->isActiveMembershipPeriod())
+            ->sortByDesc('id')
+            ->unique('subscription_plan_id')
+            ->keyBy('subscription_plan_id');
     }
 }

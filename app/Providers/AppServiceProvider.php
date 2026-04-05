@@ -2,17 +2,20 @@
 
 namespace App\Providers;
 
-use App\Models\Announcement;
-use App\Models\Course;
-use App\Models\CourseLesson;
-use App\Services\SubscriptionService;
-use App\Observers\CourseLessonObserver;
 use App\Events\CourseCompleted;
 use App\Listeners\GenerateCertificateOnCourseCompletion;
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\View;
+use App\Models\Announcement;
+use App\Models\ContentPackage;
+use App\Models\Course;
+use App\Models\CourseLesson;
+use App\Observers\ContentPackageCoverVideoHlsObserver;
+use App\Observers\CourseLessonObserver;
+use App\Observers\CourseVideoPreviewHlsObserver;
+use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,19 +34,19 @@ class AppServiceProvider extends ServiceProvider
     {
         $uploadLimits = config('app.upload_limits', []);
 
-        if (!empty($uploadLimits['upload_max_filesize'])) {
+        if (! empty($uploadLimits['upload_max_filesize'])) {
             @ini_set('upload_max_filesize', (string) $uploadLimits['upload_max_filesize']);
         }
 
-        if (!empty($uploadLimits['post_max_size'])) {
+        if (! empty($uploadLimits['post_max_size'])) {
             @ini_set('post_max_size', (string) $uploadLimits['post_max_size']);
         }
 
-        if (!empty($uploadLimits['max_execution_time'])) {
+        if (! empty($uploadLimits['max_execution_time'])) {
             @ini_set('max_execution_time', (string) $uploadLimits['max_execution_time']);
         }
 
-        if (!empty($uploadLimits['max_input_time'])) {
+        if (! empty($uploadLimits['max_input_time'])) {
             @ini_set('max_input_time', (string) $uploadLimits['max_input_time']);
         }
 
@@ -58,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.app', function ($view) {
             if (request()->is('admin') || request()->is('admin/*')) {
                 $view->with('globalAnnouncement', null);
+
                 return;
             }
 
@@ -70,7 +74,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Rien à faire - FileHelper est accessible directement dans les vues via \App\Helpers\FileHelper
-        
+
         // Enregistrer les événements
         Event::listen(
             CourseCompleted::class,
@@ -78,6 +82,8 @@ class AppServiceProvider extends ServiceProvider
         );
 
         CourseLesson::observe(CourseLessonObserver::class);
+        Course::observe(CourseVideoPreviewHlsObserver::class);
+        ContentPackage::observe(ContentPackageCoverVideoHlsObserver::class);
 
         Course::saved(function (Course $course) {
             if (! $course->is_published || $course->is_downloadable) {
@@ -89,7 +95,7 @@ class AppServiceProvider extends ServiceProvider
             try {
                 app(SubscriptionService::class)->grantCommunityMembersAccessToCourse($course);
             } catch (\Throwable $e) {
-                Log::warning('grantCommunityMembersAccessToCourse: ' . $e->getMessage(), [
+                Log::warning('grantCommunityMembersAccessToCourse: '.$e->getMessage(), [
                     'content_id' => $course->id,
                 ]);
             }

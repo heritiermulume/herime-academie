@@ -61,16 +61,17 @@ class User extends Authenticatable
      */
     public function getAvatarUrlAttribute()
     {
-        if (!$this->avatar) {
-            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&background=003366&color=fff&size=300';
+        if (! $this->avatar) {
+            return 'https://ui-avatars.com/api/?name='.urlencode($this->name).'&background=003366&color=fff&size=300';
         }
-        
+
         // Si c'est déjà une URL complète, la retourner telle quelle
         if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
             return $this->avatar;
         }
-        
+
         $service = app(\App\Services\FileUploadService::class);
+
         return $service->getUrl($this->avatar, 'avatars');
     }
 
@@ -237,7 +238,7 @@ class User extends Authenticatable
         // Les rôles "admin" et "super_user" ont accès à l'administration
         return $this->role === 'admin' || $this->role === 'super_user';
     }
-    
+
     /**
      * Vérifier si l'utilisateur peut accéder à l'administration
      * (Admin ou Super User)
@@ -267,8 +268,8 @@ class User extends Authenticatable
 
     /**
      * Vérifier si l'utilisateur a un rôle spécifique
-     * 
-     * @param string|array $role Le(s) rôle(s) à vérifier
+     *
+     * @param  string|array  $role  Le(s) rôle(s) à vérifier
      * @return bool
      */
     public function hasRole($role)
@@ -276,7 +277,7 @@ class User extends Authenticatable
         if (is_array($role)) {
             return in_array($this->role, $role);
         }
-        
+
         return $this->role === $role;
     }
 
@@ -290,14 +291,21 @@ class User extends Authenticatable
         return $this->hasMany(UserSubscription::class);
     }
 
+    /**
+     * Abonnements donnant droit à l’accès : actif ou en essai, sans facture d’abonnement impayée (> 0).
+     */
     public function activeSubscriptions()
     {
-        return $this->subscriptions()->whereIn('status', ['trialing', 'active']);
+        return $this->subscriptions()
+            ->whereIn('status', ['trialing', 'active'])
+            ->whereDoesntHave('invoices', function ($q) {
+                $q->where('status', 'pending')->where('amount', '>', 0);
+            });
     }
 
     public function hasPurchasedContentPackage(ContentPackage $package): bool
     {
-        $revocationMarker = '[PACK_REVOKED:' . (int) $package->id . ']';
+        $revocationMarker = '[PACK_REVOKED:'.(int) $package->id.']';
 
         return Order::query()
             ->where('user_id', $this->id)
@@ -306,7 +314,7 @@ class User extends Authenticatable
             ->where(function ($q) use ($revocationMarker) {
                 // Si le pack a été révoqué, on considère que l'utilisateur ne l'a plus acheté côté applicatif.
                 $q->whereNull('notes')
-                    ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+                    ->orWhere('notes', 'not like', '%'.$revocationMarker.'%');
             })
             ->exists();
     }
@@ -336,13 +344,13 @@ class User extends Authenticatable
         foreach ($orders as $order) {
             foreach ($order->orderItems as $item) {
                 if ($item->content_package_id) {
-                    $marker = '[PACK_REVOKED:' . (int) $item->content_package_id . ']';
+                    $marker = '[PACK_REVOKED:'.(int) $item->content_package_id.']';
                     if (str_contains((string) ($order->notes ?? ''), $marker)) {
                         continue;
                     }
                     $packageIds->push((int) $item->content_package_id);
                 } elseif ($item->content_id) {
-                    $marker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
+                    $marker = '[COURSE_REVOKED:'.(int) $item->content_id.']';
                     if (str_contains((string) ($order->notes ?? ''), $marker)) {
                         continue;
                     }

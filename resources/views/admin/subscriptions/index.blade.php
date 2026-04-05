@@ -90,10 +90,24 @@
                         <td>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($invoice->amount, $invoice->currency) }}</td>
                         <td>{{ $invoiceStatusLabels[$invoice->status] ?? $invoice->status }}</td>
                         <td>
-                            @if($invoice->status !== 'paid')
-                                <form method="POST" action="{{ route('admin.subscriptions.invoices.mark-paid', $invoice) }}">
+                            @if($invoice->status === 'pending')
+                                <div class="d-flex flex-wrap gap-1 align-items-center">
+                                    <form method="POST" action="{{ route('admin.subscriptions.invoices.mark-paid', $invoice) }}" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-success">Marquer payée</button>
+                                    </form>
+                                    <form method="POST"
+                                          action="{{ route('admin.subscriptions.invoices.cancel', $invoice) }}"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Annuler cette facture ? Les commandes Moneroo en attente liées à cette facture seront fermées.');">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Annuler la facture</button>
+                                    </form>
+                                </div>
+                            @elseif($invoice->status === 'failed')
+                                <form method="POST" action="{{ route('admin.subscriptions.invoices.mark-paid', $invoice) }}" class="d-inline">
                                     @csrf
-                                    <button class="btn btn-sm btn-success">Marquer payée</button>
+                                    <button type="submit" class="btn btn-sm btn-success">Marquer payée</button>
                                 </form>
                             @endif
                         </td>

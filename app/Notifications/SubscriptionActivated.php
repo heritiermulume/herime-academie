@@ -17,9 +17,9 @@ class SubscriptionActivated extends Notification
     public function __construct(
         private readonly UserSubscription $subscription,
         private readonly ?SubscriptionInvoice $invoice = null,
-        private readonly bool $isRenewal = false
-    ) {
-    }
+        private readonly bool $isRenewal = false,
+        private readonly bool $isPaidCycleRenewal = false,
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -30,12 +30,29 @@ class SubscriptionActivated extends Notification
     {
         [$includedContentTitles, $includedPackageTitles] = $this->resolveIncludedItems();
         $planName = $this->subscription->plan->name ?? 'Plan';
+        $periodEnd = $this->subscription->current_period_ends_at;
+
+        if ($this->isPaidCycleRenewal) {
+            $subject = 'Renouvellement payé — '.config('app.name');
+            $intro = "Nous avons bien reçu votre paiement pour le plan « {$planName} ». Votre période d’abonnement est prolongée.";
+            $periodLine = $periodEnd
+                ? 'Prochaine échéance de période : '.$periodEnd->format('d/m/Y').'.'
+                : null;
+        } elseif ($this->isRenewal) {
+            $subject = 'Réabonnement confirmé — '.config('app.name');
+            $intro = "Votre réabonnement au plan « {$planName} » est bien enregistré.";
+            $periodLine = null;
+        } else {
+            $subject = 'Abonnement confirmé — '.config('app.name');
+            $intro = "Votre abonnement au plan « {$planName} » est bien activé.";
+            $periodLine = null;
+        }
+
         $mail = (new MailMessage)
-            ->subject($this->isRenewal ? 'Réabonnement confirmé - ' . config('app.name') : 'Abonnement confirmé - ' . config('app.name'))
-            ->greeting('Bonjour ' . ($notifiable->name ?? ''))
-            ->line($this->isRenewal
-                ? "Votre réabonnement au plan \"{$planName}\" est bien enregistré."
-                : "Votre abonnement au plan \"{$planName}\" est bien activé.")
+            ->subject($subject)
+            ->greeting('Bonjour '.($notifiable->name ?? ''))
+            ->line($intro)
+            ->when($periodLine, fn (MailMessage $m) => $m->line($periodLine))
             ->line('Vous pouvez suivre votre abonnement depuis votre espace client.')
             ->action('Voir mes abonnements', route('customer.subscriptions'));
 
@@ -43,20 +60,20 @@ class SubscriptionActivated extends Notification
             $invoiceStatusLabel = $this->invoice->status === 'paid'
                 ? 'Payée'
                 : 'En attente de paiement';
-            $mail->line('Facture associée : ' . $this->invoice->invoice_number)
-                ->line('Montant : ' . CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-                ->line('Statut facture : ' . $invoiceStatusLabel);
+            $mail->line('Facture associée : '.$this->invoice->invoice_number)
+                ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
+                ->line('Statut facture : '.$invoiceStatusLabel);
         } else {
             $mail->line('Aucune facture immédiate n\'est requise pour ce plan.');
         }
 
-        if (!empty($includedContentTitles)) {
-            $mail->line('Formations incluses : ' . collect($includedContentTitles)->take(3)->join(', ')
-                . (count($includedContentTitles) > 3 ? ' +' . (count($includedContentTitles) - 3) : ''));
+        if (! empty($includedContentTitles)) {
+            $mail->line('Formations incluses : '.collect($includedContentTitles)->take(3)->join(', ')
+                .(count($includedContentTitles) > 3 ? ' +'.(count($includedContentTitles) - 3) : ''));
         }
-        if (!empty($includedPackageTitles)) {
-            $mail->line('Packs inclus : ' . collect($includedPackageTitles)->take(3)->join(', ')
-                . (count($includedPackageTitles) > 3 ? ' +' . (count($includedPackageTitles) - 3) : ''));
+        if (! empty($includedPackageTitles)) {
+            $mail->line('Packs inclus : '.collect($includedPackageTitles)->take(3)->join(', ')
+                .(count($includedPackageTitles) > 3 ? ' +'.(count($includedPackageTitles) - 3) : ''));
         }
 
         return $mail->line('Merci de votre confiance.');
@@ -67,16 +84,20 @@ class SubscriptionActivated extends Notification
         [$includedContentTitles, $includedPackageTitles] = $this->resolveIncludedItems();
 
         return [
-            'type' => $this->isRenewal ? 'subscription_renewal_scheduled' : 'subscription_activated',
+            'type' => $this->isPaidCycleRenewal
+                ? 'subscription_paid_renewal'
+                : ($this->isRenewal ? 'subscription_renewal_scheduled' : 'subscription_activated'),
             'subscription_id' => $this->subscription->id,
             'plan_name' => $this->subscription->plan->name ?? 'Plan',
             'invoice_id' => $this->invoice?->id,
             'invoice_number' => $this->invoice?->invoice_number,
             'included_contents' => $includedContentTitles,
             'included_packages' => $includedPackageTitles,
-            'message' => $this->isRenewal
-                ? 'Votre réabonnement est programmé pour la prochaine période.'
-                : 'Votre abonnement est confirmé.',
+            'message' => $this->isPaidCycleRenewal
+                ? 'Paiement de renouvellement confirmé — période prolongée.'
+                : ($this->isRenewal
+                    ? 'Votre réabonnement est programmé pour la prochaine période.'
+                    : 'Votre abonnement est confirmé.'),
             'action_url' => route('customer.subscriptions'),
             'action_text' => 'Voir mes abonnements',
         ];
@@ -86,7 +107,7 @@ class SubscriptionActivated extends Notification
     {
         $this->subscription->loadMissing('plan.contents');
         $plan = $this->subscription->plan;
-        if (!$plan) {
+        if (! $plan) {
             return [[], []];
         }
 
@@ -115,4 +136,3 @@ class SubscriptionActivated extends Notification
         return [$includedContentTitles, $includedPackageTitles];
     }
 }
-

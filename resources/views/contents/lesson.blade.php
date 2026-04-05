@@ -93,61 +93,34 @@
                     <!-- Contenu de la leçon -->
                     <div class="lesson-content">
                         @if($lesson->type === 'video')
-                            <div class="ratio ratio-16x9 mb-4">
-                                @if($lesson->content_url)
-                                    @if(str_contains($lesson->content_url, 'youtube.com') || str_contains($lesson->content_url, 'youtu.be'))
-                                        @php
-                                            $videoId = '';
-                                            if (str_contains($lesson->content_url, 'youtube.com/watch')) {
-                                                parse_str(parse_url($lesson->content_url, PHP_URL_QUERY), $query);
-                                                $videoId = $query['v'] ?? '';
-                                            } elseif (str_contains($lesson->content_url, 'youtu.be/')) {
-                                                $videoId = basename(parse_url($lesson->content_url, PHP_URL_PATH));
-                                            }
-                                        @endphp
-                                        @if($videoId)
-                                            <iframe src="https://www.youtube.com/embed/{{ $videoId }}" 
-                                                    title="{{ $lesson->title }}" 
-                                                    allowfullscreen></iframe>
-                                        @else
-                                            <div class="d-flex align-items-center justify-content-center bg-dark text-white">
-                                                <div class="text-center">
-                                                    <i class="fas fa-video fa-3x mb-3"></i>
-                                                    <p>URL vidéo invalide</p>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    @elseif(str_contains($lesson->content_url, 'vimeo.com'))
-                                        @php
-                                            $videoId = basename(parse_url($lesson->content_url, PHP_URL_PATH));
-                                        @endphp
-                                        @if($videoId)
-                                            <iframe src="https://player.vimeo.com/video/{{ $videoId }}" 
-                                                    title="{{ $lesson->title }}" 
-                                                    allowfullscreen></iframe>
-                                        @else
-                                            <div class="d-flex align-items-center justify-content-center bg-dark text-white">
-                                                <div class="text-center">
-                                                    <i class="fas fa-video fa-3x mb-3"></i>
-                                                    <p>URL vidéo invalide</p>
-                                                </div>
-                                            </div>
-                                        @endif
+                            @php
+                                $rawContentUrl = $lesson->getRawOriginal('content_url') ?? $lesson->content_url ?? '';
+                                $isVimeo = is_string($rawContentUrl) && str_contains($rawContentUrl, 'vimeo.com');
+                            @endphp
+                            @if($isVimeo)
+                                <div class="ratio ratio-16x9 mb-4">
+                                    @php
+                                        $videoId = basename(parse_url($rawContentUrl, PHP_URL_PATH));
+                                    @endphp
+                                    @if($videoId)
+                                        <iframe src="https://player.vimeo.com/video/{{ $videoId }}"
+                                                title="{{ $lesson->title }}"
+                                                allowfullscreen></iframe>
                                     @else
-                                        <video controls class="w-100 h-100" style="object-fit: cover;">
-                                            <source src="{{ $lesson->content_file_url }}" type="video/mp4">
-                                            Votre navigateur ne supporte pas la lecture vidéo.
-                                        </video>
-                                    @endif
-                                @else
-                                    <div class="d-flex align-items-center justify-content-center bg-dark text-white">
-                                        <div class="text-center">
-                                            <i class="fas fa-video fa-3x mb-3"></i>
-                                            <p>Aucune vidéo disponible</p>
+                                        <div class="d-flex align-items-center justify-content-center bg-dark text-white">
+                                            <div class="text-center">
+                                                <i class="fas fa-video fa-3x mb-3"></i>
+                                                <p>URL vidéo invalide</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                @endif
-                            </div>
+                                    @endif
+                                </div>
+                            @else
+                                {{-- Même lecteur que l’espace apprentissage : Plyr + HLS si prêt + MP4 faststart en secours --}}
+                                <div class="ratio ratio-16x9 mb-4">
+                                    <x-plyr-player :lesson="$lesson" :course="$course" :lesson-progress="null" :is-mobile="false" />
+                                </div>
+                            @endif
                         @elseif($lesson->type === 'text')
                             <div class="content-text">
                                 @if($lesson->content_text)

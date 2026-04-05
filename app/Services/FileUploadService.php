@@ -13,14 +13,15 @@ class FileUploadService
     ) {
         $this->videoOptimization ??= app()->make(VideoOptimizationService::class);
     }
+
     public const TEMPORARY_BASE_PATH = 'tmp/uploads';
 
     /**
      * Upload un fichier de manière optimisée
-     * 
-     * @param UploadedFile $file Le fichier à uploader
-     * @param string $folder Le dossier de destination (ex: 'courses/thumbnails')
-     * @param string|null $oldPath Le chemin de l'ancien fichier à supprimer (optionnel)
+     *
+     * @param  UploadedFile  $file  Le fichier à uploader
+     * @param  string  $folder  Le dossier de destination (ex: 'courses/thumbnails')
+     * @param  string|null  $oldPath  Le chemin de l'ancien fichier à supprimer (optionnel)
      * @return array ['path' => string, 'url' => string]
      */
     public function upload(UploadedFile $file, string $folder, ?string $oldPath = null): array
@@ -38,9 +39,11 @@ class FileUploadService
 
         $storedPath = $file->storeAs($folder, $filename, ['disk' => 'local']);
 
-        if (!$storedPath) {
+        if (! $storedPath) {
             throw new \Exception('Impossible d\'écrire le fichier sur le disque. Vérifiez les permissions du dossier de stockage.');
         }
+
+        $this->maybeOptimizeStreamingMp4($disk, $storedPath);
 
         return [
             'path' => $storedPath,
@@ -51,8 +54,7 @@ class FileUploadService
     /**
      * Upload un fichier dans le dossier temporaire
      *
-     * @param UploadedFile $file
-     * @param string $folder Dossier cible final (ex: courses/lessons)
+     * @param  string  $folder  Dossier cible final (ex: courses/lessons)
      * @return array ['path' => string, 'url' => string]
      */
     public function uploadTemporary(UploadedFile $file, string $folder): array
@@ -67,7 +69,7 @@ class FileUploadService
 
         $storedPath = $file->storeAs($temporaryFolder, $filename, ['disk' => 'local']);
 
-        if (!$storedPath) {
+        if (! $storedPath) {
             throw new \Exception('Impossible d\'écrire le fichier temporaire sur le disque.');
         }
 
@@ -80,8 +82,8 @@ class FileUploadService
     /**
      * Promouvoir un fichier temporaire vers son dossier final
      *
-     * @param string $path Chemin du fichier temporaire ou final
-     * @param string $finalFolder Dossier final (ex: courses/lessons)
+     * @param  string  $path  Chemin du fichier temporaire ou final
+     * @param  string  $finalFolder  Dossier final (ex: courses/lessons)
      * @return string Chemin final du fichier
      */
     public function promoteTemporaryFile(string $path, string $finalFolder): string
@@ -89,12 +91,12 @@ class FileUploadService
         $disk = Storage::disk('local');
         $cleanPath = $this->sanitizePath($path);
 
-        if (!$this->isTemporaryPath($cleanPath)) {
+        if (! $this->isTemporaryPath($cleanPath)) {
             // Le fichier est déjà dans un dossier final
             return $cleanPath;
         }
 
-        if (!$disk->exists($cleanPath)) {
+        if (! $disk->exists($cleanPath)) {
             throw new \RuntimeException("Fichier temporaire introuvable: {$cleanPath}");
         }
 
@@ -102,7 +104,7 @@ class FileUploadService
         $this->ensureDirectoryExists($disk, $finalFolder);
 
         $filename = basename($cleanPath);
-        $destinationPath = $finalFolder . '/' . $filename;
+        $destinationPath = $finalFolder.'/'.$filename;
 
         // En cas de collision improbable, générer un nouveau nom
         if ($disk->exists($destinationPath)) {
@@ -110,31 +112,21 @@ class FileUploadService
             $extension = pathinfo($filename, PATHINFO_EXTENSION);
 
             do {
-                $candidate = $name . '_' . Str::random(6);
+                $candidate = $name.'_'.Str::random(6);
                 if ($extension) {
-                    $candidate .= '.' . $extension;
+                    $candidate .= '.'.$extension;
                 }
-                $destinationPath = $finalFolder . '/' . $candidate;
+                $destinationPath = $finalFolder.'/'.$candidate;
             } while ($disk->exists($destinationPath));
         }
 
         $moved = $disk->move($cleanPath, $destinationPath);
 
-        if (!$moved) {
+        if (! $moved) {
             throw new \RuntimeException("Impossible de déplacer le fichier vers {$destinationPath}");
         }
 
-        // Optimiser les MP4 pour streaming progressif (moov atom au début)
-        $ext = strtolower(pathinfo($destinationPath, PATHINFO_EXTENSION));
-        if (in_array($ext, ['mp4', 'm4v'])) {
-            try {
-                $optimizer = app(VideoOptimizationService::class);
-                $fullPath = $disk->path($destinationPath);
-                $optimizer->optimizeForStreaming($fullPath);
-            } catch (\Throwable $e) {
-                \Log::warning('Optimisation vidéo non effectuée', ['path' => $destinationPath, 'error' => $e->getMessage()]);
-            }
-        }
+        $this->maybeOptimizeStreamingMp4($disk, $destinationPath);
 
         // Nettoyer les dossiers temporaires vides
         $this->cleanupEmptyTemporaryDirectories(dirname($cleanPath));
@@ -148,7 +140,8 @@ class FileUploadService
     public function isTemporaryPath(string $path): bool
     {
         $clean = ltrim($path, '/');
-        return str_starts_with($clean, self::TEMPORARY_BASE_PATH . '/');
+
+        return str_starts_with($clean, self::TEMPORARY_BASE_PATH.'/');
     }
 
     /**
@@ -158,7 +151,7 @@ class FileUploadService
     {
         $clean = $this->sanitizePath($path);
 
-        if (!$this->isTemporaryPath($clean)) {
+        if (! $this->isTemporaryPath($clean)) {
             return false;
         }
 
@@ -178,43 +171,43 @@ class FileUploadService
     {
         $folder = trim($folder, '/');
 
-        return self::TEMPORARY_BASE_PATH . '/' . $folder;
+        return self::TEMPORARY_BASE_PATH.'/'.$folder;
     }
 
     /**
      * Upload une image avec optimisation automatique
-     * 
-     * @param UploadedFile $file L'image à uploader
-     * @param string $folder Le dossier de destination
-     * @param string|null $oldPath Le chemin de l'ancien fichier à supprimer
-     * @param int|null $maxWidth Largeur maximale (null = pas de redimensionnement)
-     * @param int $quality Qualité JPEG (1-100)
+     *
+     * @param  UploadedFile  $file  L'image à uploader
+     * @param  string  $folder  Le dossier de destination
+     * @param  string|null  $oldPath  Le chemin de l'ancien fichier à supprimer
+     * @param  int|null  $maxWidth  Largeur maximale (null = pas de redimensionnement)
+     * @param  int  $quality  Qualité JPEG (1-100)
      * @return array ['path' => string, 'url' => string]
      */
     public function uploadImage(
-        UploadedFile $file, 
-        string $folder, 
+        UploadedFile $file,
+        string $folder,
         ?string $oldPath = null,
         ?int $maxWidth = null,
         int $quality = 85
     ): array {
         $disk = Storage::disk('local'); // Utiliser le disque privé
-        
+
         // Supprimer l'ancien fichier si fourni
         if ($oldPath) {
             $this->deleteFile($oldPath);
         }
-        
+
         // Générer un nom de fichier unique
         $filename = $this->generateUniqueFilename($file);
-        
+
         // Construire le chemin complet
-        $path = rtrim($folder, '/') . '/' . $filename;
+        $path = rtrim($folder, '/').'/'.$filename;
         $fullPath = $disk->path($path);
-        
+
         // S'assurer que le dossier existe
         $this->ensureDirectoryExists($disk, $folder);
-        
+
         try {
             // Si redimensionnement requis, utiliser Intervention Image
             if (
@@ -235,19 +228,19 @@ class FileUploadService
             } else {
                 // Sinon, stocker directement via le disque (supporte les gros fichiers)
                 $storedPath = $file->storeAs($folder, $filename, ['disk' => 'local']);
-                if (!$storedPath) {
+                if (! $storedPath) {
                     throw new \Exception("Impossible d'enregistrer le fichier dans {$folder}");
                 }
             }
         } catch (\Exception $e) {
             // En cas d'erreur avec Intervention Image, fallback vers upload normal
-            \Log::warning("Erreur lors de l'optimisation de l'image: " . $e->getMessage());
+            \Log::warning("Erreur lors de l'optimisation de l'image: ".$e->getMessage());
             $storedPath = $file->storeAs($folder, $filename, ['disk' => 'local']);
-            if (!$storedPath) {
+            if (! $storedPath) {
                 throw new \Exception("Impossible d'enregistrer le fichier dans {$folder}");
             }
         }
-        
+
         return [
             'path' => $path,
             'url' => $this->getSecureUrl($path, $folder),
@@ -256,10 +249,10 @@ class FileUploadService
 
     /**
      * Upload une vidéo
-     * 
-     * @param UploadedFile $file La vidéo à uploader
-     * @param string $folder Le dossier de destination
-     * @param string|null $oldPath Le chemin de l'ancien fichier à supprimer
+     *
+     * @param  UploadedFile  $file  La vidéo à uploader
+     * @param  string  $folder  Le dossier de destination
+     * @param  string|null  $oldPath  Le chemin de l'ancien fichier à supprimer
      * @return array ['path' => string, 'url' => string]
      */
     public function uploadVideo(UploadedFile $file, string $folder, ?string $oldPath = null): array
@@ -269,10 +262,10 @@ class FileUploadService
 
     /**
      * Upload un document
-     * 
-     * @param UploadedFile $file Le document à uploader
-     * @param string $folder Le dossier de destination
-     * @param string|null $oldPath Le chemin de l'ancien fichier à supprimer
+     *
+     * @param  UploadedFile  $file  Le document à uploader
+     * @param  string  $folder  Le dossier de destination
+     * @param  string|null  $oldPath  Le chemin de l'ancien fichier à supprimer
      * @return array ['path' => string, 'url' => string]
      */
     public function uploadDocument(UploadedFile $file, string $folder, ?string $oldPath = null): array
@@ -282,9 +275,8 @@ class FileUploadService
 
     /**
      * Supprimer un fichier
-     * 
-     * @param string $path Le chemin du fichier à supprimer
-     * @return bool
+     *
+     * @param  string  $path  Le chemin du fichier à supprimer
      */
     public function deleteFile(string $path): bool
     {
@@ -306,41 +298,36 @@ class FileUploadService
 
     /**
      * Générer un nom de fichier unique
-     * 
-     * @param UploadedFile $file
-     * @return string
      */
     protected function generateUniqueFilename(UploadedFile $file): string
     {
         $extension = $file->getClientOriginalExtension();
         $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $sanitizedName = Str::slug($originalName);
-        
+
         // Nom unique: timestamp_hash_sanitizedname.extension
         $hash = Str::random(8);
         $timestamp = now()->format('YmdHis');
-        
+
         return sprintf('%s_%s_%s.%s', $timestamp, $hash, $sanitizedName, $extension);
     }
 
     /**
      * S'assurer que le dossier existe
-     * 
-     * @param \Illuminate\Contracts\Filesystem\Filesystem $disk
-     * @param string $folder
-     * @return void
+     *
+     * @param  \Illuminate\Contracts\Filesystem\Filesystem  $disk
      */
     protected function ensureDirectoryExists($disk, string $folder): void
     {
-        if (!$disk->exists($folder)) {
+        if (! $disk->exists($folder)) {
             try {
                 $created = $disk->makeDirectory($folder, 0755, true);
-                if (!$created) {
+                if (! $created) {
                     $fullPath = $disk->path($folder);
                     throw new \RuntimeException(
-                        "Impossible de créer le dossier de stockage : {$folder}. " .
-                        "Chemin complet : {$fullPath}. " .
-                        "Vérifiez les permissions du dossier parent."
+                        "Impossible de créer le dossier de stockage : {$folder}. ".
+                        "Chemin complet : {$fullPath}. ".
+                        'Vérifiez les permissions du dossier parent.'
                     );
                 }
             } catch (\Exception $e) {
@@ -351,28 +338,25 @@ class FileUploadService
                     'error' => $e->getMessage(),
                 ]);
                 throw new \RuntimeException(
-                    "Erreur lors de la création du dossier : {$folder}. " .
-                    "Vérifiez les permissions. Détails : " . $e->getMessage()
+                    "Erreur lors de la création du dossier : {$folder}. ".
+                    'Vérifiez les permissions. Détails : '.$e->getMessage()
                 );
             }
         }
 
         // Vérifier que le dossier est accessible en écriture
         $fullPath = $disk->path($folder);
-        if (!is_writable($fullPath)) {
+        if (! is_writable($fullPath)) {
             throw new \RuntimeException(
-                "Le dossier de stockage n'est pas accessible en écriture : {$folder}. " .
-                "Chemin complet : {$fullPath}. " .
-                "Vérifiez les permissions (doit être 755 ou 775)."
+                "Le dossier de stockage n'est pas accessible en écriture : {$folder}. ".
+                "Chemin complet : {$fullPath}. ".
+                'Vérifiez les permissions (doit être 755 ou 775).'
             );
         }
     }
 
     /**
      * Vérifier si le fichier est une image
-     * 
-     * @param UploadedFile $file
-     * @return bool
      */
     protected function isImage(UploadedFile $file): bool
     {
@@ -381,10 +365,9 @@ class FileUploadService
 
     /**
      * Obtenir l'URL d'un fichier (sécurisée via FileController)
-     * 
-     * @param string $path Le chemin relatif du fichier
-     * @param string|null $folder Le dossier (optionnel, déduit depuis le chemin si non fourni)
-     * @return string
+     *
+     * @param  string  $path  Le chemin relatif du fichier
+     * @param  string|null  $folder  Le dossier (optionnel, déduit depuis le chemin si non fourni)
      */
     public function getUrl(string $path, ?string $folder = null): string
     {
@@ -392,24 +375,23 @@ class FileUploadService
         if (filter_var($path, FILTER_VALIDATE_URL)) {
             return $path;
         }
-        
+
         return $this->getSecureUrl($path, $folder);
     }
 
     /**
      * Obtenir l'URL sécurisée via le FileController
-     * 
-     * @param string $path Le chemin du fichier
-     * @param string|null $folder Le dossier (déduit si non fourni)
-     * @return string
+     *
+     * @param  string  $path  Le chemin du fichier
+     * @param  string|null  $folder  Le dossier (déduit si non fourni)
      */
     protected function getSecureUrl(string $path, ?string $folder = null): string
     {
         // Nettoyer le chemin
         $cleanPath = ltrim($path, '/');
-        
+
         // Déterminer le type de fichier depuis le dossier
-        if (!$folder) {
+        if (! $folder) {
             // Essayer de déduire depuis le chemin
             if (strpos($cleanPath, 'courses/thumbnails') === 0) {
                 $type = 'thumbnails';
@@ -440,7 +422,7 @@ class FileUploadService
             // Déterminer le type depuis le folder
             $type = $this->getTypeFromFolder($folder);
         }
-        
+
         $baseDir = $this->getBaseDirectoryForType($type);
         $relativePath = $cleanPath;
 
@@ -483,7 +465,7 @@ class FileUploadService
         } elseif (strpos($folder, self::TEMPORARY_BASE_PATH) !== false) {
             return 'temporary';
         }
-        
+
         return 'files';
     }
 
@@ -513,11 +495,11 @@ class FileUploadService
     {
         $relativePath = ltrim($path, '/');
 
-        if (!$this->isTemporaryPath($relativePath)) {
+        if (! $this->isTemporaryPath($relativePath)) {
             return $this->getSecureUrl($relativePath);
         }
 
-        $temporaryRoot = self::TEMPORARY_BASE_PATH . '/';
+        $temporaryRoot = self::TEMPORARY_BASE_PATH.'/';
         $trimmed = str_starts_with($relativePath, $temporaryRoot)
             ? substr($relativePath, strlen($temporaryRoot))
             : $relativePath;
@@ -544,6 +526,26 @@ class FileUploadService
     }
 
     /**
+     * MP4/M4V : moov en tête (faststart) si VIDEO_OPTIMIZE_FASTSTART + FFmpeg — tous dossiers (leçons, previews, packs, etc.).
+     *
+     * @param  \Illuminate\Contracts\Filesystem\Filesystem  $disk
+     */
+    protected function maybeOptimizeStreamingMp4($disk, string $relativePath): void
+    {
+        $ext = strtolower(pathinfo($relativePath, PATHINFO_EXTENSION));
+        if (! in_array($ext, ['mp4', 'm4v'], true)) {
+            return;
+        }
+
+        try {
+            $fullPath = $disk->path($relativePath);
+            $this->videoOptimization->optimizeForStreaming($fullPath);
+        } catch (\Throwable $e) {
+            \Log::warning('Optimisation vidéo non effectuée', ['path' => $relativePath, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * Nettoyer un chemin donné
      */
     public function sanitizePath(string $path): string
@@ -558,4 +560,3 @@ class FileUploadService
         return $clean;
     }
 }
-

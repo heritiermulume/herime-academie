@@ -5,13 +5,25 @@ namespace App\Services;
 use App\Models\ContentPackage;
 use App\Models\Course;
 use App\Models\Enrollment;
+use App\Models\Order;
 use App\Models\Setting;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\UserSubscription;
+use App\Notifications\AdminSubscriptionAccessEnded;
+use App\Notifications\AdminSubscriptionActivated;
+use App\Notifications\AdminSubscriptionCancelled;
+use App\Notifications\AdminSubscriptionInvoiceFailed;
+use App\Notifications\AdminSubscriptionInvoiceIssued;
+use App\Notifications\SubscriptionAccessEnded;
+use App\Notifications\SubscriptionActivated;
+use App\Notifications\SubscriptionCancelled;
+use App\Notifications\SubscriptionInvoiceCancelled;
 use App\Notifications\SubscriptionInvoiceFailed;
 use App\Notifications\SubscriptionInvoiceIssued;
+use App\Notifications\SubscriptionInvoicePaid;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 class SubscriptionService
@@ -30,30 +42,80 @@ class SubscriptionService
 
         if ($existingCurrent) {
             if ($existingCurrent->status === 'pending_payment') {
-                if (!$existingCurrent->payment_method && $paymentMethod) {
+                if (! $existingCurrent->payment_method && $paymentMethod) {
                     $existingCurrent->update(['payment_method' => $paymentMethod]);
                 }
 
                 return $existingCurrent->fresh();
             }
 
+            $currency = strtoupper((string) ($user->moneroo_currency ?: (is_array(Setting::getBaseCurrency())
+                ? (Setting::getBaseCurrency()['code'] ?? 'USD')
+                : (Setting::getBaseCurrency() ?: 'USD'))));
+            $amount = $plan->effectivePriceForCurrency($currency);
+
+            if ($existingCurrent->status === 'cancelled' && $amount > 0) {
+                $now = now();
+                $periodStart = $now->copy();
+                $periodEnd = $this->calculatePeriodEnd($plan, $periodStart);
+
+                $pendingInvoiceIds = $existingCurrent->invoices()->where('status', 'pending')->pluck('id')->all();
+                $existingCurrent->invoices()->where('status', 'pending')->update(['status' => 'cancelled']);
+                if ($pendingInvoiceIds !== []) {
+                    app(SubscriptionCheckoutOrderService::class)->cancelPendingOrdersForInvoicesClosed(
+                        $pendingInvoiceIds,
+                        'Facture annulée (nouveau réabonnement)',
+                    );
+                }
+
+                $meta = is_array($existingCurrent->metadata) ? $existingCurrent->metadata : [];
+                $meta['currency'] = $currency;
+                $meta['amount'] = $amount;
+
+                $existingCurrent->update([
+                    'status' => 'pending_payment',
+                    'cancelled_at' => null,
+                    'trial_ends_at' => null,
+                    'starts_at' => $now,
+                    'current_period_starts_at' => $periodStart,
+                    'current_period_ends_at' => $periodEnd,
+                    'ended_at' => null,
+                    'auto_renew' => $plan->auto_renew_default,
+                    'payment_method' => $paymentMethod,
+                    'metadata' => $meta,
+                ]);
+
+                $subscription = $existingCurrent->fresh();
+                $this->createInvoice($subscription, $amount, $currency, $paymentMethod);
+
+                return $subscription->fresh();
+            }
+
             $payload = [
                 'auto_renew' => true,
             ];
 
-            if ($existingCurrent->status === 'cancelled') {
+            $wasCancelled = $existingCurrent->status === 'cancelled';
+
+            if ($wasCancelled) {
                 $payload['status'] = 'active';
                 $payload['cancelled_at'] = null;
                 $payload['ended_at'] = null;
             }
 
-            if (!$existingCurrent->payment_method && $paymentMethod) {
+            if (! $existingCurrent->payment_method && $paymentMethod) {
                 $payload['payment_method'] = $paymentMethod;
             }
 
             $existingCurrent->update($payload);
 
-            return $existingCurrent->fresh();
+            $subscription = $existingCurrent->fresh();
+
+            if ($wasCancelled && $subscription->status === 'active') {
+                $this->grantLinkedContentAccess($subscription);
+            }
+
+            return $subscription;
         }
 
         $currency = strtoupper((string) ($user->moneroo_currency ?: (is_array(Setting::getBaseCurrency())
@@ -96,6 +158,149 @@ class SubscriptionService
         return $subscription;
     }
 
+    /**
+     * Après paiement réussi sur une période du bundle Membre : expire les autres lignes Membre du même utilisateur
+     * (changement de cycle traité comme un nouvel abonnement unique actif).
+     *
+     * @return int Nombre d’abonnements passés en « expired »
+     */
+    public function expireOtherMemberBundleSubscriptions(UserSubscription $keep): int
+    {
+        $bundleIds = SubscriptionPlan::memberBundlePlanIds();
+        if ($bundleIds === [] || ! in_array((int) $keep->subscription_plan_id, $bundleIds, true)) {
+            return 0;
+        }
+
+        $others = UserSubscription::query()
+            ->where('user_id', $keep->user_id)
+            ->whereKeyNot($keep->getKey())
+            ->whereIn('subscription_plan_id', $bundleIds)
+            ->where(function ($q) {
+                $q->whereNull('ended_at')->orWhere('ended_at', '>', now());
+            })
+            ->whereIn('status', ['trialing', 'active', 'past_due', 'pending_payment', 'cancelled'])
+            ->get();
+
+        $closed = 0;
+
+        foreach ($others as $sub) {
+            $pendingInvoiceIds = $sub->invoices()->where('status', 'pending')->pluck('id')->all();
+            $sub->invoices()->where('status', 'pending')->update(['status' => 'cancelled']);
+            if ($pendingInvoiceIds !== []) {
+                app(SubscriptionCheckoutOrderService::class)->cancelPendingOrdersForInvoicesClosed(
+                    $pendingInvoiceIds,
+                    'Facture annulée (changement de formule Membre)',
+                );
+            }
+
+            $meta = is_array($sub->metadata) ? $sub->metadata : [];
+            $meta['member_bundle_replaced_by_subscription_id'] = $keep->id;
+            $meta['member_bundle_replaced_at'] = now()->toIso8601String();
+
+            $sub->update([
+                'status' => 'expired',
+                'auto_renew' => false,
+                'ended_at' => now(),
+                'cancelled_at' => $sub->cancelled_at ?? now(),
+                'metadata' => $meta,
+            ]);
+            $this->revokeEntitlementsGrantedBySubscription($sub);
+            $closed++;
+        }
+
+        return $closed;
+    }
+
+    /**
+     * Recalcule current_period_starts_at / current_period_ends_at après paiement d’une facture,
+     * sur le même principe que advanceSubscriptionsPastPeriodEnd() (renouvellement = enchaîner depuis la fin de période).
+     *
+     * @param  \Carbon\Carbon|null  $previousPeriodEnd  Fin de période avant activation (capturée avant update status).
+     */
+    public function syncSubscriptionPeriodAfterInvoicePaid(
+        UserSubscription $subscription,
+        bool $wasPendingPayment,
+        ?Carbon $previousPeriodEnd = null,
+    ): void {
+        $subscription->loadMissing('plan');
+        $plan = $subscription->plan;
+        if (! $plan || ! $plan->usesRecurringBilling()) {
+            return;
+        }
+
+        if ($wasPendingPayment) {
+            if ($subscription->current_period_starts_at === null || $subscription->current_period_ends_at === null) {
+                $start = now();
+                $subscription->update([
+                    'current_period_starts_at' => $start,
+                    'current_period_ends_at' => $this->calculatePeriodEnd($plan, $start),
+                ]);
+            }
+
+            return;
+        }
+
+        $start = $previousPeriodEnd ?? $subscription->current_period_ends_at?->copy() ?? now();
+        $subscription->update([
+            'current_period_starts_at' => $start,
+            'current_period_ends_at' => $this->calculatePeriodEnd($plan, $start),
+        ]);
+    }
+
+    /**
+     * Après paiement réussi d’une facture : activation (1er paiement) ou confirmation de renouvellement payé (sinon).
+     * Chaque envoi est isolé : un échec ne bloque pas les autres.
+     */
+    public function dispatchSubscriptionPaidLifecycleNotifications(
+        SubscriptionInvoice $invoice,
+        UserSubscription $subscription,
+        bool $wasPendingPayment,
+    ): void {
+        $invoice->loadMissing('user');
+        if (! $invoice->user) {
+            return;
+        }
+
+        $subscription = $subscription->fresh(['plan']);
+        $invoice->refresh();
+
+        if ($wasPendingPayment) {
+            SubscriptionNotificationDispatcher::notifyUser(
+                $invoice->user,
+                new SubscriptionActivated($subscription, $invoice, false, false),
+                'subscription_activated_first_payment',
+                ['subscription_id' => $subscription->id, 'invoice_id' => $invoice->id],
+            );
+            SubscriptionNotificationDispatcher::notifyAdmins(
+                new AdminSubscriptionActivated($subscription, $invoice, false, false),
+                'subscription_activated_first_payment_admin',
+                ['subscription_id' => $subscription->id, 'invoice_id' => $invoice->id],
+            );
+        } else {
+            SubscriptionNotificationDispatcher::notifyUser(
+                $invoice->user,
+                new SubscriptionActivated($subscription, $invoice, false, true),
+                'subscription_paid_cycle_renewal',
+                ['subscription_id' => $subscription->id, 'invoice_id' => $invoice->id],
+            );
+            SubscriptionNotificationDispatcher::notifyAdmins(
+                new AdminSubscriptionActivated($subscription, $invoice, false, true),
+                'subscription_paid_cycle_renewal_admin',
+                ['subscription_id' => $subscription->id, 'invoice_id' => $invoice->id],
+            );
+        }
+    }
+
+    public function notifySubscriptionInvoicePaidUser(SubscriptionInvoice $invoice, string $logLabel = 'subscription_invoice_paid'): void
+    {
+        SubscriptionNotificationDispatcher::notifyUser(
+            $invoice->user,
+            new SubscriptionInvoicePaid($invoice),
+            $logLabel,
+            ['invoice_id' => $invoice->id],
+        );
+    }
+
     public function grantLinkedContentAccess(UserSubscription $subscription): int
     {
         $subscription->loadMissing('plan');
@@ -128,6 +333,8 @@ class SubscriptionService
             } elseif ($enrollment->status !== 'active') {
                 $enrollment->update(['status' => 'active']);
             }
+
+            $this->applySubscriptionGrantToEnrollment($enrollment, $subscription);
         }
 
         $created += $this->grantEnrollmentsForIncludedPackages($subscription, $plan);
@@ -140,7 +347,31 @@ class SubscriptionService
     }
 
     /**
-     * Abonnements à réaligner quand le plan ou les packs inclus changent (hors expiré / attente paiement).
+     * Supprime les inscriptions créées uniquement via cet abonnement (sans commande d’achat liée).
+     * L’achat individuel conserve l’inscription car access_granted_by_subscription_id est effacé à la commande payée.
+     */
+    public function revokeEntitlementsGrantedBySubscription(UserSubscription $subscription): int
+    {
+        return Enrollment::query()
+            ->where('access_granted_by_subscription_id', $subscription->id)
+            ->delete();
+    }
+
+    private function applySubscriptionGrantToEnrollment(Enrollment $enrollment, UserSubscription $subscription): void
+    {
+        $enrollment->refresh();
+        if ($enrollment->order_id !== null) {
+            return;
+        }
+        if ((int) ($enrollment->access_granted_by_subscription_id ?? 0) === (int) $subscription->id) {
+            return;
+        }
+        $enrollment->update(['access_granted_by_subscription_id' => $subscription->id]);
+    }
+
+    /**
+     * Abonnements à réaligner quand le plan ou les packs inclus changent.
+     * Hors expiré, attente premier paiement et impayé (past_due) : pas de nouveaux droits tant que la facture n’est pas réglée.
      *
      * @return \Illuminate\Database\Eloquent\Collection<int, UserSubscription>
      */
@@ -148,7 +379,7 @@ class SubscriptionService
     {
         return UserSubscription::query()
             ->where('subscription_plan_id', $plan->id)
-            ->whereNotIn('status', ['expired', 'pending_payment'])
+            ->whereNotIn('status', ['expired', 'pending_payment', 'past_due'])
             ->where(function ($q) {
                 $q->whereNull('ended_at')->orWhere('ended_at', '>', now());
             })
@@ -302,6 +533,8 @@ class SubscriptionService
                 } elseif ($enrollment->status !== 'active') {
                     $enrollment->update(['status' => 'active']);
                 }
+
+                $this->applySubscriptionGrantToEnrollment($enrollment, $subscription);
             }
         }
 
@@ -341,6 +574,8 @@ class SubscriptionService
             } elseif ($enrollment->status !== 'active') {
                 $enrollment->update(['status' => 'active']);
             }
+
+            $this->applySubscriptionGrantToEnrollment($enrollment, $subscription);
         }
 
         return $created;
@@ -391,6 +626,8 @@ class SubscriptionService
                 $enrollment->update(['status' => 'active']);
                 $touched++;
             }
+
+            $this->applySubscriptionGrantToEnrollment($enrollment, $sub);
         }
 
         return $touched;
@@ -401,14 +638,13 @@ class SubscriptionService
         float $amount,
         ?string $currency = null,
         ?string $paymentMethod = null
-    ): SubscriptionInvoice
-    {
+    ): SubscriptionInvoice {
         $currency = $currency ?: (is_array(Setting::getBaseCurrency())
             ? (Setting::getBaseCurrency()['code'] ?? 'USD')
             : (Setting::getBaseCurrency() ?: 'USD'));
 
         $invoice = SubscriptionInvoice::create([
-            'invoice_number' => 'SUB-' . strtoupper(Str::random(10)),
+            'invoice_number' => 'SUB-'.strtoupper(Str::random(10)),
             'user_subscription_id' => $subscription->id,
             'user_id' => $subscription->user_id,
             'amount' => $amount,
@@ -419,10 +655,203 @@ class SubscriptionService
         ]);
 
         if ($subscription->user && $subscription->status !== 'pending_payment') {
-            $subscription->user->notify(new SubscriptionInvoiceIssued($invoice));
+            SubscriptionNotificationDispatcher::notifyUser(
+                $subscription->user,
+                new SubscriptionInvoiceIssued($invoice),
+                'subscription_invoice_issued_user',
+                ['invoice_id' => $invoice->id],
+            );
+            SubscriptionNotificationDispatcher::notifyAdmins(
+                new AdminSubscriptionInvoiceIssued($invoice),
+                'subscription_invoice_issued_admin',
+                ['invoice_id' => $invoice->id],
+            );
         }
 
         return $invoice;
+    }
+
+    /**
+     * Annule l’abonnement (fin de période, pas de renouvellement) puis factures / commandes en attente,
+     * et notifie le client + les administrateurs.
+     */
+    public function cancelSubscriptionWithFullNotifications(UserSubscription $subscription, bool $initiatedByAdmin = false): void
+    {
+        $subscription->markCancelled();
+        $this->cancelPendingInvoicesAfterCustomerCancellation($subscription);
+        $subscription->loadMissing(['user', 'plan']);
+        $fresh = $subscription->fresh(['plan', 'user']);
+
+        if ($fresh->user) {
+            SubscriptionNotificationDispatcher::notifyUser(
+                $fresh->user,
+                new SubscriptionCancelled($fresh),
+                $initiatedByAdmin ? 'subscription_cancelled_by_admin' : 'subscription_cancelled_by_customer',
+                ['subscription_id' => $fresh->id],
+            );
+        }
+        SubscriptionNotificationDispatcher::notifyAdmins(
+            new AdminSubscriptionCancelled($fresh, $initiatedByAdmin),
+            $initiatedByAdmin ? 'subscription_cancelled_by_admin_staff' : 'subscription_cancelled_by_customer_admin',
+            ['subscription_id' => $fresh->id],
+        );
+    }
+
+    /**
+     * Résiliation par le client : annule les factures encore en attente et ferme les commandes Moneroo liées,
+     * pour éviter des relances de paiement sur un abonnement qu’il a annulé.
+     */
+    public function cancelPendingInvoicesAfterCustomerCancellation(UserSubscription $subscription): void
+    {
+        $subscription->loadMissing('user');
+
+        $pending = SubscriptionInvoice::query()
+            ->where('user_subscription_id', $subscription->id)
+            ->where('status', 'pending')
+            ->orderBy('id')
+            ->get();
+
+        if ($pending->isEmpty()) {
+            return;
+        }
+
+        $ids = $pending->pluck('id')->all();
+
+        app(SubscriptionCheckoutOrderService::class)->cancelPendingOrdersForInvoicesClosed(
+            $ids,
+            'Résiliation de l’abonnement — facture annulée',
+        );
+
+        foreach ($pending as $invoice) {
+            $invoice->update([
+                'status' => 'cancelled',
+                'paid_at' => null,
+                'metadata' => array_merge($invoice->metadata ?? [], [
+                    'cancelled_due_to_customer_subscription_cancellation_at' => now()->toIso8601String(),
+                ]),
+            ]);
+        }
+
+        $user = $subscription->user;
+        if (! $user) {
+            return;
+        }
+
+        foreach ($ids as $invoiceId) {
+            $inv = SubscriptionInvoice::query()->find($invoiceId);
+            if ($inv) {
+                SubscriptionNotificationDispatcher::notifyUser(
+                    $user,
+                    new SubscriptionInvoiceCancelled($inv),
+                    'subscription_invoice_cancelled_customer_resiliation',
+                    ['invoice_id' => $inv->id],
+                );
+            }
+        }
+    }
+
+    /**
+     * Marquage payé par l’admin : même effet métier qu’un webhook Moneroo « success » (abonnement actif,
+     * accès, bundle Membre, notifications, commande Order/Payment si présente).
+     */
+    public function applySubscriptionInvoicePaidFromAdmin(SubscriptionInvoice $invoice, ?int $adminUserId = null): void
+    {
+        $invoice->loadMissing('subscription.plan', 'user');
+
+        $previousInvoiceStatus = $invoice->status;
+        if ($previousInvoiceStatus === 'paid') {
+            return;
+        }
+
+        $subscription = $invoice->subscription;
+        $wasPendingPayment = $subscription && $subscription->status === 'pending_payment';
+
+        $meta = array_merge($invoice->metadata ?? [], [
+            'marked_paid_by_admin_at' => now()->toIso8601String(),
+        ]);
+        if ($adminUserId !== null) {
+            $meta['marked_paid_by_admin_user_id'] = $adminUserId;
+        }
+
+        $invoice->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+            'metadata' => $meta,
+        ]);
+
+        if ($subscription) {
+            $previousPeriodEnd = $subscription->current_period_ends_at?->copy();
+            $subscription->update(['status' => 'active']);
+            $subscription = $subscription->fresh();
+            $this->syncSubscriptionPeriodAfterInvoicePaid($subscription, $wasPendingPayment, $previousPeriodEnd);
+            $subscription = $subscription->fresh();
+            $this->grantLinkedContentAccess($subscription);
+            $this->expireOtherMemberBundleSubscriptions($subscription);
+
+            if ($invoice->user) {
+                $invoice->refresh();
+                $this->dispatchSubscriptionPaidLifecycleNotifications($invoice, $subscription, $wasPendingPayment);
+            }
+        }
+
+        $invoice->refresh();
+        app(SubscriptionCheckoutOrderService::class)->finalizeLinkedMonerooOrderWhenInvoiceMarkedPaidByAdmin($invoice);
+
+        if ($invoice->user && $previousInvoiceStatus !== 'paid') {
+            $this->notifySubscriptionInvoicePaidUser($invoice, 'subscription_invoice_paid_admin_mark');
+        }
+    }
+
+    /**
+     * Quand le webhook Moneroo n’a pas été reçu mais que la commande d’abonnement est confirmée via
+     * « Vérifier le paiement », aligner facture + abonnement comme après webhook.
+     */
+    public function applyPaidStateFromVerifiedSubscriptionOrder(Order $order): void
+    {
+        $invoiceId = data_get($order->billing_info, 'subscription_invoice_id');
+        if (! $invoiceId) {
+            return;
+        }
+
+        $invoice = SubscriptionInvoice::query()->find($invoiceId);
+        if (! $invoice || (int) $invoice->user_id !== (int) $order->user_id) {
+            return;
+        }
+
+        if ($invoice->status === 'paid') {
+            return;
+        }
+
+        $subscription = $invoice->subscription;
+        $wasPendingPayment = $subscription && $subscription->status === 'pending_payment';
+
+        $invoice->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+            'metadata' => array_merge($invoice->metadata ?? [], [
+                'confirmed_via' => 'order_manual_verify',
+                'confirmed_order_id' => $order->id,
+                'confirmed_at' => now()->toIso8601String(),
+            ]),
+        ]);
+
+        if ($subscription) {
+            $previousPeriodEnd = $subscription->current_period_ends_at?->copy();
+            $subscription->update(['status' => 'active']);
+            $subscription = $subscription->fresh();
+            $this->syncSubscriptionPeriodAfterInvoicePaid($subscription, $wasPendingPayment, $previousPeriodEnd);
+            $subscription = $subscription->fresh();
+            $this->grantLinkedContentAccess($subscription);
+            $this->expireOtherMemberBundleSubscriptions($subscription);
+
+            if ($invoice->user) {
+                $this->dispatchSubscriptionPaidLifecycleNotifications($invoice, $subscription, $wasPendingPayment);
+            }
+        }
+
+        if ($invoice->user) {
+            $this->notifySubscriptionInvoicePaidUser($invoice, 'subscription_invoice_paid_order_verify');
+        }
     }
 
     /**
@@ -483,19 +912,35 @@ class SubscriptionService
 
         $query->chunkById(100, function ($invoices) {
             foreach ($invoices as $invoice) {
+                app(SubscriptionCheckoutOrderService::class)->cancelPendingOrdersForInvoicesClosed(
+                    [$invoice->id],
+                    'Facture en retard : commande de paiement annulée',
+                );
                 $invoice->update(['status' => 'failed']);
                 if ($invoice->subscription && in_array($invoice->subscription->status, ['active', 'trialing'], true)) {
                     $invoice->subscription->update(['status' => 'past_due']);
+                    $this->revokeEntitlementsGrantedBySubscription($invoice->subscription->fresh());
                 } elseif ($invoice->subscription && $invoice->subscription->status === 'pending_payment') {
                     $invoice->subscription->update([
                         'status' => 'expired',
                         'ended_at' => now(),
                         'auto_renew' => false,
                     ]);
+                    $this->revokeEntitlementsGrantedBySubscription($invoice->subscription->fresh());
                 }
                 if ($invoice->user) {
-                    $invoice->user->notify(new SubscriptionInvoiceFailed($invoice));
+                    SubscriptionNotificationDispatcher::notifyUser(
+                        $invoice->user,
+                        new SubscriptionInvoiceFailed($invoice),
+                        'subscription_invoice_failed_overdue',
+                        ['invoice_id' => $invoice->id],
+                    );
                 }
+                SubscriptionNotificationDispatcher::notifyAdmins(
+                    new AdminSubscriptionInvoiceFailed($invoice),
+                    'subscription_invoice_failed_overdue_admin',
+                    ['invoice_id' => $invoice->id],
+                );
             }
         });
     }
@@ -516,6 +961,7 @@ class SubscriptionService
                         'ended_at' => now(),
                         'auto_renew' => false,
                     ]);
+                    $this->revokeEntitlementsGrantedBySubscription($subscription);
 
                     continue;
                 }
@@ -532,11 +978,21 @@ class SubscriptionService
                 }
 
                 $start = $subscription->current_period_ends_at->copy();
+                $subscription->refresh();
+                $hasUnpaidInvoice = $subscription->invoices()
+                    ->where('status', 'pending')
+                    ->where('amount', '>', 0)
+                    ->exists();
+
                 $subscription->update([
-                    'status' => $existingPendingInvoice ? 'past_due' : 'active',
+                    'status' => $hasUnpaidInvoice ? 'past_due' : 'active',
                     'current_period_starts_at' => $start,
                     'current_period_ends_at' => $this->calculatePeriodEnd($plan, $start),
                 ]);
+
+                if ($hasUnpaidInvoice) {
+                    $this->revokeEntitlementsGrantedBySubscription($subscription->fresh());
+                }
 
                 $processed++;
             }
@@ -548,6 +1004,7 @@ class SubscriptionService
     private function expireSubscriptionsPastEndDate(?int $userId): void
     {
         $query = UserSubscription::query()
+            ->with(['user', 'plan'])
             ->whereIn('status', ['trialing', 'active', 'cancelled'])
             ->whereNotNull('ended_at')
             ->where('ended_at', '<=', now());
@@ -556,7 +1013,26 @@ class SubscriptionService
             $query->where('user_id', $userId);
         }
 
-        $query->update(['status' => 'expired']);
+        $query->chunkById(100, function ($subscriptions) {
+            foreach ($subscriptions as $subscription) {
+                $subscription->update(['status' => 'expired']);
+                $this->revokeEntitlementsGrantedBySubscription($subscription);
+                $fresh = $subscription->fresh(['plan', 'user']);
+                if ($fresh->user) {
+                    SubscriptionNotificationDispatcher::notifyUser(
+                        $fresh->user,
+                        new SubscriptionAccessEnded($fresh),
+                        'subscription_access_ended',
+                        ['subscription_id' => $fresh->id],
+                    );
+                }
+                SubscriptionNotificationDispatcher::notifyAdmins(
+                    new AdminSubscriptionAccessEnded($fresh),
+                    'subscription_access_ended_admin',
+                    ['subscription_id' => $fresh->id],
+                );
+            }
+        });
     }
 
     private function calculatePeriodEnd(SubscriptionPlan $plan, $from)
@@ -573,4 +1049,3 @@ class SubscriptionService
         };
     }
 }
-

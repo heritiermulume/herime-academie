@@ -4719,8 +4719,14 @@ button.mobile-price-slider__btn--download i,
                                     <div class="preview-player-wrapper active" data-preview-id="0">
                                         <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-plyr-player-0">
                                             {{-- Préchargement config (défaut metadata) pour limiter data + laisser le streaming par plages --}}
-                                            <video id="plyr-player-0" class="plyr-player-video" playsinline preload="{{ in_array($p = config('video.player_preload', 'metadata'), ['none', 'metadata', 'auto'], true) ? $p : 'metadata' }}">
+                                            <video id="plyr-player-0" class="plyr-player-video" playsinline preload="{{ in_array($p = config('video.player_preload', 'metadata'), ['none', 'metadata', 'auto'], true) ? $p : 'metadata' }}"
+                                                @if($course->hasVideoPreviewHlsStreamReady())
+                                                    data-hls-url="{{ $course->video_preview_hls_manifest_url }}"
+                                                    data-fallback-src="{{ $course->video_preview_url }}"
+                                                @endif>
+                                                @unless($course->hasVideoPreviewHlsStreamReady())
                                                 <source src="{{ $course->video_preview_url }}" type="video/mp4">
+                                                @endunless
                                             </video>
                                         </div>
                                     </div>

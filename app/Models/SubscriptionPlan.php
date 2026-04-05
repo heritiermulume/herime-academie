@@ -6,12 +6,30 @@ use App\Models\Pivots\SubscriptionPlanContentPivot;
 use App\Services\SubscriptionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class SubscriptionPlan extends Model
 {
+    /**
+     * Offre « Membre Herime » : trois plans distincts (facturation), édités ensemble dans l’admin.
+     *
+     * @var array<string, string> période interne => slug
+     */
+    public const MEMBER_COMMUNITY_SLUGS = [
+        'quarterly' => 'membre-herime-trimestriel',
+        'semiannual' => 'membre-herime-semestriel',
+        'yearly' => 'membre-herime-annuel',
+    ];
+
+    /** @var array<string, string> */
+    public const MEMBER_COMMUNITY_PERIOD_LABELS = [
+        'quarterly' => 'Trimestriel',
+        'semiannual' => 'Semestriel',
+        'yearly' => 'Annuel',
+    ];
+
     protected $fillable = [
         'name',
         'slug',
@@ -101,26 +119,213 @@ class SubscriptionPlan extends Model
     }
 
     /**
+     * Pastille « populaire » sur la page adhésion communauté (une seule période à la fois, réglée en admin).
+     */
+    public function isCommunityCardPopular(): bool
+    {
+        return filter_var(data_get($this->metadata, 'community_card_popular'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
      * Facturation par période (mensuel / semestriel / annuel), essais et renouvellements automatiques.
      */
     public function usesRecurringBilling(): bool
     {
-        return in_array($this->plan_type, ['recurring', 'premium'], true);
+        if (in_array($this->plan_type, ['recurring', 'premium', 'membre'], true)) {
+            return true;
+        }
+
+        if (! $this->isCommunityPremiumPlan()) {
+            return false;
+        }
+
+        if (self::isMemberCommunitySlug((string) $this->slug)) {
+            return true;
+        }
+
+        return in_array($this->billing_period, ['quarterly', 'semiannual', 'yearly'], true);
     }
 
     /**
-     * Exclut uniquement les offres « Membre Herime / communauté » des listes générales (accueil, Mes abonnements).
-     * Ces offres sont listées seulement sur /communaute/membre-premium.
-     *
-     * @param  \Illuminate\Support\Collection<int, \App\Models\SubscriptionPlan>  $plans
-     * @return \Illuminate\Support\Collection<int, \App\Models\SubscriptionPlan>
+     * @return array<int, string>
      */
-    public static function filterOutCommunityPremium($plans)
+    public static function memberCommunitySlugList(): array
     {
-        return $plans->filter(function (self $plan) {
-            return ! $plan->isCommunityPremiumPlan();
-        })->values();
+        return array_values(self::MEMBER_COMMUNITY_SLUGS);
+    }
+
+    public static function isMemberCommunitySlug(string $slug): bool
+    {
+        return in_array($slug, self::memberCommunitySlugList(), true);
+    }
+
+    /**
+     * Préfixe « nom de l’offre » sans le suffixe période (ex. « — Trimestriel »), aligné sur le champ du formulaire bundle admin.
+     */
+    public function memberOfferBaseName(): string
+    {
+        if (! self::isMemberCommunitySlug((string) $this->slug)) {
+            return (string) $this->name;
+        }
+
+        $stripped = preg_replace('/\s—\s.+$/u', '', (string) $this->name);
+
+        return $stripped !== '' ? $stripped : $this->name;
+    }
+
+    /**
+     * Résout la ligne en base pour une période du bundle : slug canonique d’abord, sinon plan communauté premium
+     * avec la même billing_period (utile si les slugs n’ont pas encore été normalisés).
+     */
+    public static function resolveMemberBundlePlanForPeriod(string $period): ?self
+    {
+        $canonical = self::MEMBER_COMMUNITY_SLUGS[$period] ?? null;
+        if ($canonical === null) {
+            return null;
+        }
+
+        $bySlug = self::query()->where('slug', $canonical)->orderBy('id')->first();
+        if ($bySlug) {
+            return $bySlug;
+        }
+
+        $billing = match ($period) {
+            'quarterly' => 'quarterly',
+            'semiannual' => 'semiannual',
+            'yearly' => 'yearly',
+            default => null,
+        };
+        if ($billing === null) {
+            return null;
+        }
+
+        $candidates = self::query()
+            ->where('billing_period', $billing)
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (self $p) => $p->isCommunityPremiumPlan())
+            ->values();
+
+        if ($candidates->isEmpty()) {
+            return null;
+        }
+
+        $expectedOrder = match ($period) {
+            'quarterly' => 0,
+            'semiannual' => 1,
+            'yearly' => 2,
+            default => 99,
+        };
+
+        $byOrder = $candidates->first(
+            fn (self $p) => (int) data_get($p->metadata, 'community_display_order', 99) === $expectedOrder
+        );
+
+        return $byOrder ?? $candidates->first();
+    }
+
+    /**
+     * La ligne peut être modifiée via l’écran bundle (slug canonique ou plan communauté reconnu pour une période).
+     */
+    public static function allowsAdminMemberBundleManagement(self $plan): bool
+    {
+        foreach (array_keys(self::MEMBER_COMMUNITY_SLUGS) as $period) {
+            $resolved = self::resolveMemberBundlePlanForPeriod($period);
+            if ($resolved && (int) $resolved->id === (int) $plan->id) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function memberBundlePlanIds(): array
+    {
+        $ids = [];
+        foreach (array_keys(self::MEMBER_COMMUNITY_SLUGS) as $period) {
+            $p = self::resolveMemberBundlePlanForPeriod($period);
+            if ($p) {
+                $ids[] = (int) $p->id;
+            }
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * Même jeu de lignes (rechargé depuis la DB) pour la liste admin et l’édition bundle — évite un décalage
+     * entre les deux écrans (ordre, attributs, relations).
+     *
+     * @return array{
+     *     slots: \Illuminate\Support\Collection<string, ?self>,
+     *     plansOrdered: \Illuminate\Support\Collection<int, self>,
+     *     listRows: \Illuminate\Support\Collection<int, array{period: string, period_label: string, plan: ?self}>
+     * }
+     */
+    public static function adminMemberBundleContext(): array
+    {
+        $periods = ['quarterly', 'semiannual', 'yearly'];
+
+        $rowsBySlug = self::query()
+            ->whereIn('slug', self::memberCommunitySlugList())
+            ->with(['content', 'contents'])
+            ->get()
+            ->keyBy(fn (self $p) => (string) $p->slug);
+
+        $slots = collect();
+        foreach (self::MEMBER_COMMUNITY_SLUGS as $period => $slug) {
+            $plan = $rowsBySlug->get($slug);
+            if (! $plan) {
+                $plan = self::resolveMemberBundlePlanForPeriod($period);
+            }
+            $slots->put($period, $plan);
+        }
+
+        $plansOrdered = collect($periods)
+            ->map(fn (string $period) => $slots->get($period))
+            ->filter()
+            ->values();
+
+        $listRows = collect($periods)->map(fn (string $period) => [
+            'period' => $period,
+            'period_label' => self::MEMBER_COMMUNITY_PERIOD_LABELS[$period] ?? $period,
+            'plan' => $slots->get($period),
+        ])->values();
+
+        return [
+            'slots' => $slots,
+            'plansOrdered' => $plansOrdered,
+            'listRows' => $listRows,
+        ];
+    }
+
+    /**
+     * Plans actifs « Membre Herime » (slugs fixes), triés pour l’affichage communauté / espace client.
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public static function activeMemberCommunityPlans(): \Illuminate\Support\Collection
+    {
+        $ids = [];
+        foreach (array_keys(self::MEMBER_COMMUNITY_SLUGS) as $period) {
+            $p = self::resolveMemberBundlePlanForPeriod($period);
+            if ($p && $p->is_active) {
+                $ids[] = (int) $p->id;
+            }
+        }
+
+        if ($ids === []) {
+            return collect();
+        }
+
+        return self::query()
+            ->whereIn('id', $ids)
+            ->with(['content', 'contents'])
+            ->get()
+            ->sortBy(fn (self $plan) => (int) data_get($plan->metadata, 'community_display_order', 99))
+            ->values();
     }
 }
-
-

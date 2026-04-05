@@ -47,11 +47,16 @@ class OrderEnrollmentService
                     'user_id' => $userId,
                     'content_id' => $orderItem->content_id,
                     'order_id' => $order->id,
+                    'access_granted_by_subscription_id' => null,
                     'status' => 'active',
                 ], ! $fromPack);
                 $created++;
             } else {
-                $existing->update(['order_id' => $order->id, 'status' => 'active']);
+                $existing->update([
+                    'order_id' => $order->id,
+                    'status' => 'active',
+                    'access_granted_by_subscription_id' => null,
+                ]);
             }
         }
 

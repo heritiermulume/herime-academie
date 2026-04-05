@@ -17,9 +17,9 @@ class AdminSubscriptionActivated extends Notification
     public function __construct(
         private readonly UserSubscription $subscription,
         private readonly ?SubscriptionInvoice $invoice = null,
-        private readonly bool $isRenewal = false
-    ) {
-    }
+        private readonly bool $isRenewal = false,
+        private readonly bool $isPaidCycleRenewal = false,
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -32,30 +32,37 @@ class AdminSubscriptionActivated extends Notification
         $user = $this->subscription->user;
         $planName = $this->subscription->plan->name ?? 'Plan';
 
-        $mail = (new MailMessage)
-            ->subject($this->isRenewal ? 'Réabonnement client - ' . config('app.name') : 'Nouvel abonnement client - ' . config('app.name'))
-            ->greeting('Bonjour ' . ($notifiable->name ?? 'Admin'))
-            ->line($this->isRenewal
+        $subject = $this->isPaidCycleRenewal
+            ? 'Renouvellement payé (client) — '.config('app.name')
+            : ($this->isRenewal ? 'Réabonnement client — '.config('app.name') : 'Nouvel abonnement client — '.config('app.name'));
+        $lead = $this->isPaidCycleRenewal
+            ? 'Un client a payé une facture de renouvellement ; la période d’abonnement a été prolongée.'
+            : ($this->isRenewal
                 ? 'Un client a programmé un réabonnement.'
-                : 'Un client vient de souscrire un abonnement.')
-            ->line('Client : ' . ($user->name ?? 'N/A') . ($user?->email ? ' (' . $user->email . ')' : ''))
-            ->line('Plan : ' . $planName)
-            ->line('Période en cours : ' . optional($this->subscription->current_period_starts_at)->format('d/m/Y') . ' - ' . optional($this->subscription->current_period_ends_at)->format('d/m/Y'))
+                : 'Un client vient de souscrire un abonnement.');
+
+        $mail = (new MailMessage)
+            ->subject($subject)
+            ->greeting('Bonjour '.($notifiable->name ?? 'Admin'))
+            ->line($lead)
+            ->line('Client : '.($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : ''))
+            ->line('Plan : '.$planName)
+            ->line('Période en cours : '.optional($this->subscription->current_period_starts_at)->format('d/m/Y').' - '.optional($this->subscription->current_period_ends_at)->format('d/m/Y'))
             ->action('Voir les abonnements admin', route('admin.subscriptions.index'));
 
         if ($this->invoice) {
             $invoiceStatusLabel = $this->invoice->status === 'paid' ? 'Payée' : 'En attente de paiement';
-            $mail->line('Facture : ' . $this->invoice->invoice_number)
-                ->line('Montant : ' . CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-                ->line('Statut : ' . $invoiceStatusLabel);
+            $mail->line('Facture : '.$this->invoice->invoice_number)
+                ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
+                ->line('Statut : '.$invoiceStatusLabel);
         }
-        if (!empty($includedContentTitles)) {
-            $mail->line('Formations incluses : ' . collect($includedContentTitles)->take(3)->join(', ')
-                . (count($includedContentTitles) > 3 ? ' +' . (count($includedContentTitles) - 3) : ''));
+        if (! empty($includedContentTitles)) {
+            $mail->line('Formations incluses : '.collect($includedContentTitles)->take(3)->join(', ')
+                .(count($includedContentTitles) > 3 ? ' +'.(count($includedContentTitles) - 3) : ''));
         }
-        if (!empty($includedPackageTitles)) {
-            $mail->line('Packs inclus : ' . collect($includedPackageTitles)->take(3)->join(', ')
-                . (count($includedPackageTitles) > 3 ? ' +' . (count($includedPackageTitles) - 3) : ''));
+        if (! empty($includedPackageTitles)) {
+            $mail->line('Packs inclus : '.collect($includedPackageTitles)->take(3)->join(', ')
+                .(count($includedPackageTitles) > 3 ? ' +'.(count($includedPackageTitles) - 3) : ''));
         }
 
         return $mail;
@@ -67,7 +74,9 @@ class AdminSubscriptionActivated extends Notification
         $user = $this->subscription->user;
 
         return [
-            'type' => $this->isRenewal ? 'admin_subscription_renewal_scheduled' : 'admin_subscription_created',
+            'type' => $this->isPaidCycleRenewal
+                ? 'admin_subscription_paid_renewal'
+                : ($this->isRenewal ? 'admin_subscription_renewal_scheduled' : 'admin_subscription_created'),
             'subscription_id' => $this->subscription->id,
             'invoice_id' => $this->invoice?->id,
             'invoice_number' => $this->invoice?->invoice_number,
@@ -76,9 +85,11 @@ class AdminSubscriptionActivated extends Notification
             'plan_name' => $this->subscription->plan->name ?? 'Plan',
             'included_contents' => $includedContentTitles,
             'included_packages' => $includedPackageTitles,
-            'message' => $this->isRenewal
-                ? 'Réabonnement programmé par ' . ($user->name ?? 'un client') . '.'
-                : 'Nouvel abonnement créé par ' . ($user->name ?? 'un client') . '.',
+            'message' => $this->isPaidCycleRenewal
+                ? 'Renouvellement payé : '.($user->name ?? 'un client').'.'
+                : ($this->isRenewal
+                    ? 'Réabonnement programmé par '.($user->name ?? 'un client').'.'
+                    : 'Nouvel abonnement créé par '.($user->name ?? 'un client').'.'),
             'button_text' => 'Voir les abonnements',
             'button_url' => route('admin.subscriptions.index'),
             'url' => route('admin.subscriptions.index'),
@@ -89,7 +100,7 @@ class AdminSubscriptionActivated extends Notification
     {
         $this->subscription->loadMissing('plan.contents');
         $plan = $this->subscription->plan;
-        if (!$plan) {
+        if (! $plan) {
             return [[], []];
         }
 
@@ -118,4 +129,3 @@ class AdminSubscriptionActivated extends Notification
         return [$includedContentTitles, $includedPackageTitles];
     }
 }
-

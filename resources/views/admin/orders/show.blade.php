@@ -194,6 +194,7 @@
                 </div>
                 <div class="admin-panel__body">
                     @php
+                        $orderSubscriptionPlan = $orderSubscriptionPlan ?? null;
                         $relItems = $order->orderItems ?? collect();
                         $orderItemsSorted = $relItems->sortBy('id')->values();
                         $renderedPackIds = [];
@@ -213,8 +214,18 @@
                                 $adminOrderLineBlocks[] = ['type' => 'course', 'item' => $item];
                             }
                         }
+                        $subscriptionBillingPeriodLabels = [
+                            'monthly' => 'Mensuel',
+                            'quarterly' => 'Trimestriel',
+                            'semiannual' => 'Semestriel',
+                            'yearly' => 'Annuel',
+                        ];
+                        $hasOrderLines = $relItems->count() > 0 || $orderSubscriptionPlan;
+                        $orderLinkedUserSubscription = $orderLinkedUserSubscription ?? null;
+                        $canAdminCancelOrderSubscription = $orderLinkedUserSubscription
+                            && in_array($orderLinkedUserSubscription->status, ['active', 'trialing', 'past_due', 'pending_payment'], true);
                     @endphp
-                    @if($relItems->count() > 0)
+                    @if($hasOrderLines)
                         <div class="admin-table">
                             <div class="table-responsive">
                                 <table class="table align-middle admin-order-items-table">
@@ -228,6 +239,61 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        @if($orderSubscriptionPlan)
+                                            <tr class="admin-order-subscription-row admin-order-pack-row--head">
+                                                <td style="min-width: 280px;">
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <div class="rounded d-flex align-items-center justify-content-center admin-order-subscription-icon">
+                                                            <i class="fas fa-repeat text-success"></i>
+                                                        </div>
+                                                        <div>
+                                                            <a href="{{ route('admin.subscriptions.plans.edit', $orderSubscriptionPlan) }}" class="fw-bold text-decoration-none text-dark">
+                                                                {{ $orderSubscriptionPlan->name }}
+                                                            </a>
+                                                            <div class="text-muted small">
+                                                                Abonnement
+                                                                @if(! empty($order->billing_info['subscription_invoice_number']))
+                                                                    · Facture {{ $order->billing_info['subscription_invoice_number'] }}
+                                                                @endif
+                                                                @if($orderSubscriptionPlan->billing_period)
+                                                                    · {{ $subscriptionBillingPeriodLabels[$orderSubscriptionPlan->billing_period] ?? ucfirst((string) $orderSubscriptionPlan->billing_period) }}
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td><span class="text-muted">—</span></td>
+                                                <td>
+                                                    <span class="admin-chip admin-chip--success">
+                                                        <i class="fas fa-crown"></i> Abonnement
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-bold text-success">
+                                                        {{ \App\Helpers\CurrencyHelper::formatWithSymbol($order->total_amount ?? $order->total ?? 0, $order->currency) }}
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                                        <a href="{{ route('admin.subscriptions.index') }}" class="btn btn-info btn-sm" title="Abonnements">
+                                                            <i class="fas fa-list"></i>
+                                                        </a>
+                                                        @if($canAdminCancelOrderSubscription)
+                                                            <form method="POST"
+                                                                  action="{{ route('admin.subscriptions.memberships.cancel', $orderLinkedUserSubscription) }}"
+                                                                  class="d-inline js-admin-order-cancel-subscription-form"
+                                                                  data-confirm-title="Annuler l’abonnement"
+                                                                  data-confirm-message="Annuler l’abonnement de ce client ? Le renouvellement automatique sera désactivé et les factures en attente seront fermées.">
+                                                                @csrf
+                                                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Annuler l’abonnement">
+                                                                    <i class="fas fa-user-slash"></i>
+                                                                </button>
+                                                            </form>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endif
                                         @foreach($adminOrderLineBlocks as $block)
                                             @if($block['type'] === 'pack')
                                                 @php
@@ -524,6 +590,16 @@
     background: rgba(13, 110, 253, 0.12);
 }
 
+.admin-order-items-table .admin-order-subscription-row {
+    background: linear-gradient(90deg, rgba(25, 135, 84, 0.1), rgba(248, 250, 252, 0.98));
+    border-left: 4px solid rgba(25, 135, 84, 0.45);
+}
+.admin-order-subscription-icon {
+    width: 64px;
+    height: 48px;
+    background: rgba(25, 135, 84, 0.14);
+}
+
 /* Styles identiques à analytics */
 .admin-card {
     background: #ffffff;
@@ -744,4 +820,33 @@
     }
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.js-admin-order-cancel-subscription-form').forEach(function (form) {
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var message = form.getAttribute('data-confirm-message') || 'Confirmer l’annulation ?';
+            var title = form.getAttribute('data-confirm-title') || 'Confirmation';
+            if (typeof showModernConfirmModal !== 'function') {
+                if (confirm(message)) {
+                    form.submit();
+                }
+                return;
+            }
+            var confirmed = await showModernConfirmModal(message, {
+                title: title,
+                confirmButtonText: 'Annuler l’abonnement',
+                confirmButtonClass: 'btn-danger',
+                icon: 'fa-user-slash'
+            });
+            if (confirmed) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
 @endpush

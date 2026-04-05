@@ -43,7 +43,7 @@
         <div class="small text-muted mb-1">Média actuellement enregistré</div>
         @if(!$mainIsExternal)
             @if($storedHomeType === 'video')
-                <video src="{{ $mainPreviewUrl }}" controls class="w-100 rounded" style="max-height:220px;background:#000;"></video>
+                <video src="{{ $mainPreviewUrl }}" controls playsinline preload="metadata" class="w-100 rounded herime-stream-video" style="max-height:220px;background:#000;"></video>
             @else
                 <img src="{{ $mainPreviewUrl }}" alt="" class="w-100 rounded object-fit-cover" style="max-height:220px">
             @endif

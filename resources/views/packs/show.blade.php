@@ -102,7 +102,11 @@
                         @if($package->isYoutubeCoverVideo())
                             <iframe src="{{ $package->cover_video_url }}" title="Vidéo du pack" allowfullscreen class="border-0"></iframe>
                         @elseif($package->cover_video_url)
-                            <video src="{{ $package->cover_video_url }}" controls playsinline preload="{{ in_array($p = config('video.player_preload', 'metadata'), ['none', 'metadata', 'auto'], true) ? $p : 'metadata' }}" class="w-100 h-100 object-fit-cover"></video>
+                            <x-hls-native-video
+                                :fallback-src="$package->cover_video_url"
+                                :hls-url="$package->hasCoverVideoHlsStreamReady() ? $package->cover_video_hls_manifest_url : ''"
+                                class="w-100 h-100 object-fit-cover"
+                            />
                         @elseif($package->thumbnail_url)
                             <img src="{{ $package->thumbnail_url }}" alt="" class="w-100 h-100 object-fit-cover">
                         @else
