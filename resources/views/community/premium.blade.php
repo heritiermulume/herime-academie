@@ -550,7 +550,7 @@
                                         @csrf
                                         <input type="hidden" name="redirect_after_subscribe" value="community.premium">
                                         <button type="submit" id="community-premium-submit-btn" class="mp-cta w-100">
-                                            <i class="fas fa-shield-alt me-2" aria-hidden="true"></i><span id="community-premium-submit-label">Procéder au paiement sécurisé</span>
+                                            <i class="fas fa-shield-alt me-2" aria-hidden="true"></i><span id="community-premium-submit-label">Procéder au paiement</span>
                                         </button>
                                     </form>
                                     <p class="mp-pay-hint mb-0 mt-2">
@@ -632,7 +632,7 @@
                         if (!us) {
                             hideAllTools();
                             if (toolsEl) toolsEl.classList.add('d-none');
-                            if (submitLabel) submitLabel.textContent = 'Procéder au paiement sécurisé';
+                            if (submitLabel) submitLabel.textContent = 'Procéder au paiement';
                             return;
                         }
 

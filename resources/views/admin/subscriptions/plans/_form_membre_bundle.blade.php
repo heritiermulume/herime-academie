@@ -12,6 +12,8 @@
 @endif
 
 @php
+    $bc = $baseCurrency ?? \App\Models\Setting::getBaseCurrency();
+    $siteCurrencyDisplay = strtoupper((string) (is_array($bc) ? ($bc['code'] ?? 'USD') : (($bc !== null && $bc !== '') ? $bc : 'USD')));
     $memberBundlePlans = $memberBundlePlans ?? collect();
     $membreBaseName = '';
     if ($memberBundlePlans->isNotEmpty()) {
@@ -74,6 +76,7 @@
 </div>
 
 <h6 class="fw-bold mb-3 border-bottom pb-2">Périodes et tarifs</h6>
+<p class="small text-muted mb-3">Les montants ci-dessous sont dans la devise du site : <strong>{{ $siteCurrencyDisplay }}</strong>.</p>
 
 <div class="row g-3 mb-4">
     @foreach(\App\Models\SubscriptionPlan::MEMBER_COMMUNITY_SLUGS as $period => $slug)
@@ -104,10 +107,11 @@
                         <p class="small text-muted mb-0">{{ $periodHint }}</p>
                     </div>
                 </div>
-                <label class="form-label fw-semibold small mb-1" for="{{ $priceKey }}">Prix</label>
+                <label class="form-label fw-semibold small mb-1" for="{{ $priceKey }}">Prix ({{ $siteCurrencyDisplay }})</label>
                 <div class="input-group input-group-sm mb-2">
                     <input type="number" step="0.01" min="0" name="{{ $priceKey }}" id="{{ $priceKey }}" class="form-control"
                            value="{{ old($priceKey, $defPrice) }}" required>
+                    <span class="input-group-text">{{ $siteCurrencyDisplay }}</span>
                 </div>
                 <label class="form-label fw-semibold small mb-1" for="membre-trial-{{ $period }}">Essai gratuit (jours)</label>
                 <input type="number" min="0" max="365" name="membre_trial_days[{{ $period }}]" id="membre-trial-{{ $period }}"
