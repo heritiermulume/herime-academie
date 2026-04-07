@@ -912,6 +912,23 @@ class SubscriptionService
 
         $query->chunkById(100, function ($invoices) {
             foreach ($invoices as $invoice) {
+                $metadata = is_array($invoice->metadata) ? $invoice->metadata : [];
+                $markedFailed = SubscriptionInvoice::query()
+                    ->whereKey($invoice->id)
+                    ->where('status', 'pending')
+                    ->update([
+                        'status' => 'failed',
+                        'metadata' => array_merge($metadata, [
+                            'failed_reason' => 'overdue',
+                            'failed_at' => now()->toIso8601String(),
+                        ]),
+                    ]);
+
+                // Un autre process a déjà traité cette facture: ne pas rejouer annulation/notifications.
+                if ($markedFailed === 0) {
+                    continue;
+                }
+
                 $invoice->loadMissing('subscription');
                 $firstPaymentDeadlineExpired = $invoice->subscription
                     && $invoice->subscription->status === 'pending_payment';
@@ -920,22 +937,22 @@ class SubscriptionService
                     [$invoice->id],
                     'Facture en retard : commande de paiement annulée',
                 );
-                $invoice->update([
-                    'status' => 'failed',
-                    'metadata' => array_merge($invoice->metadata ?? [], [
-                        'failed_reason' => 'overdue',
-                        'failed_at' => now()->toIso8601String(),
-                    ]),
-                ]);
+
                 if ($invoice->subscription && in_array($invoice->subscription->status, ['active', 'trialing'], true)) {
-                    $invoice->subscription->update(['status' => 'past_due']);
+                    UserSubscription::query()
+                        ->whereKey($invoice->subscription->id)
+                        ->whereIn('status', ['active', 'trialing'])
+                        ->update(['status' => 'past_due']);
                     $this->revokeEntitlementsGrantedBySubscription($invoice->subscription->fresh());
                 } elseif ($invoice->subscription && $invoice->subscription->status === 'pending_payment') {
-                    $invoice->subscription->update([
-                        'status' => 'expired',
-                        'ended_at' => now(),
-                        'auto_renew' => false,
-                    ]);
+                    UserSubscription::query()
+                        ->whereKey($invoice->subscription->id)
+                        ->where('status', 'pending_payment')
+                        ->update([
+                            'status' => 'expired',
+                            'ended_at' => now(),
+                            'auto_renew' => false,
+                        ]);
                     $this->revokeEntitlementsGrantedBySubscription($invoice->subscription->fresh());
                 }
 
@@ -1028,7 +1045,18 @@ class SubscriptionService
 
         $query->chunkById(100, function ($subscriptions) {
             foreach ($subscriptions as $subscription) {
-                $subscription->update(['status' => 'expired']);
+                $markedExpired = UserSubscription::query()
+                    ->whereKey($subscription->id)
+                    ->whereIn('status', ['trialing', 'active', 'cancelled'])
+                    ->whereNotNull('ended_at')
+                    ->where('ended_at', '<=', now())
+                    ->update(['status' => 'expired']);
+
+                // Déjà expiré par un autre process: ne pas renvoyer les notifications.
+                if ($markedExpired === 0) {
+                    continue;
+                }
+
                 $this->revokeEntitlementsGrantedBySubscription($subscription);
                 $fresh = $subscription->fresh(['plan', 'user']);
                 if ($fresh->user) {

@@ -1668,6 +1668,51 @@ class SubscriptionSystemTest extends TestCase
         Notification::assertSentTo($user, SubscriptionInvoiceFailed::class);
     }
 
+    public function test_overdue_invoice_notifications_are_not_sent_twice_on_reprocessing(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['role' => 'customer']);
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Premier paiement idempotent',
+            'slug' => 'premier-idempotent-'.uniqid(),
+            'plan_type' => 'recurring',
+            'billing_period' => 'monthly',
+            'price' => 11,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => true,
+        ]);
+
+        $subscription = UserSubscription::create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'pending_payment',
+            'starts_at' => now(),
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'auto_renew' => true,
+            'payment_method' => 'moneroo',
+        ]);
+
+        SubscriptionInvoice::create([
+            'invoice_number' => 'SUB-OVERDUE-IDEMPOTENT',
+            'user_subscription_id' => $subscription->id,
+            'user_id' => $user->id,
+            'amount' => 11,
+            'currency' => 'USD',
+            'status' => 'pending',
+            'due_at' => now()->subMinute(),
+        ]);
+
+        $service = app(SubscriptionService::class);
+        $service->processRenewalsForUser($user->id);
+        $service->processRenewalsForUser($user->id);
+
+        Notification::assertSentToTimes($user, SubscriptionInvoiceFailed::class, 1);
+    }
+
     public function test_cancelled_member_plan_http_subscribe_redirects_to_moneroo_checkout(): void
     {
         Notification::fake();

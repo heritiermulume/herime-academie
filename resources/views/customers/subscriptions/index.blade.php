@@ -215,11 +215,11 @@
                             $canResumeSubscription = $subscription->status === 'cancelled';
                         @endphp
                         <tr>
-                            <td class="plan-col">{{ $subscription->plan->name ?? 'Plan supprimé' }}</td>
-                            <td>{{ $subscriptionStatusLabels[$subscription->status] ?? $subscription->status }}</td>
-                            <td>{{ optional($subscription->starts_at)->format('d/m/Y') ?: optional($subscription->created_at)->format('d/m/Y') ?: '-' }}</td>
-                            <td>{{ optional($subscription->ended_at)->format('d/m/Y') ?: optional($subscription->current_period_ends_at)->format('d/m/Y') ?: '-' }}</td>
-                            <td class="d-flex flex-wrap gap-1">
+                            <td class="plan-col" data-label="Plan">{{ $subscription->plan->name ?? 'Plan supprimé' }}</td>
+                            <td data-label="Statut">{{ $subscriptionStatusLabels[$subscription->status] ?? $subscription->status }}</td>
+                            <td data-label="Date d'abonnement">{{ optional($subscription->starts_at)->format('d/m/Y') ?: optional($subscription->created_at)->format('d/m/Y') ?: '-' }}</td>
+                            <td data-label="Date d'expiration">{{ optional($subscription->ended_at)->format('d/m/Y') ?: optional($subscription->current_period_ends_at)->format('d/m/Y') ?: '-' }}</td>
+                            <td class="d-flex flex-wrap gap-1" data-label="Actions">
                                 @if($canPayCurrentSubscriptionInvoice)
                                     <form method="POST" action="{{ route('subscriptions.invoices.pay', $pendingSubInvoice) }}">
                                         @csrf
@@ -263,12 +263,12 @@
                             $canPayInvoice = $invoice->status === 'pending' && (float) $invoice->amount > 0;
                         @endphp
                         <tr>
-                            <td>{{ $invoice->invoice_number }}</td>
-                            <td>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($invoice->amount, $invoice->currency) }}</td>
-                            <td>{{ optional($invoice->due_at)->format('d/m/Y H:i') ?: '-' }}</td>
-                            <td>{{ $invoiceStatusLabels[$invoice->status] ?? $invoice->status }}</td>
-                            <td>{{ $invoice->payment_method ? ($paymentMethodLabels[$invoice->payment_method] ?? strtoupper((string) $invoice->payment_method)) : '-' }}</td>
-                            <td>
+                            <td data-label="Facture">{{ $invoice->invoice_number }}</td>
+                            <td data-label="Montant">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($invoice->amount, $invoice->currency) }}</td>
+                            <td data-label="Échéance">{{ optional($invoice->due_at)->format('d/m/Y H:i') ?: '-' }}</td>
+                            <td data-label="Statut">{{ $invoiceStatusLabels[$invoice->status] ?? $invoice->status }}</td>
+                            <td data-label="Moyen">{{ $invoice->payment_method ? ($paymentMethodLabels[$invoice->payment_method] ?? strtoupper((string) $invoice->payment_method)) : '-' }}</td>
+                            <td data-label="Action">
                                 @if($canPayInvoice)
                                     <form method="POST" action="{{ route('subscriptions.invoices.pay', $invoice) }}">
                                         @csrf
@@ -312,6 +312,97 @@
 .admin-table .table th,
 .admin-table .table td { padding-left: .9rem; padding-right: .9rem; }
 .subscriptions-current-table .plan-col { min-width: 260px; width: 34%; }
+
+@media (max-width: 576px) {
+    .mp-subscribe-zone { max-width: 100%; }
+    .mp-card__inner { padding: 1rem; }
+    .mp-card__title { font-size: 1.2rem; }
+    .mp-card__subtitle { font-size: .92rem; margin-bottom: .8rem; }
+    .mp-period { gap: .25rem; padding: .25rem; }
+    .mp-period__btn { padding: .5rem .2rem; }
+    .mp-period__label { font-size: .84rem; line-height: 1.1; }
+    .mp-period__hint { font-size: .68rem; line-height: 1.1; }
+    .mp-price { font-size: 1.55rem; }
+    .mp-price-suffix { font-size: .8rem; }
+    .mp-plan-meta h4 { font-size: 1rem; }
+    .mp-plan-meta p { font-size: .88rem; }
+    .mp-cta {
+        white-space: normal;
+        text-align: center;
+        line-height: 1.25;
+        min-height: 46px;
+    }
+
+    .admin-table .table {
+        min-width: 0 !important;
+    }
+
+    .admin-table .table thead {
+        display: none;
+    }
+
+    .admin-table .table tbody tr {
+        display: block;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: .8rem;
+        padding: .55rem .7rem;
+        margin-bottom: .6rem;
+        background: #fff;
+    }
+
+    .admin-table .table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: .75rem;
+        border: 0;
+        padding: .35rem 0;
+        white-space: normal;
+        text-align: right;
+    }
+
+    .admin-table .table tbody td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        color: #334155;
+        text-align: left;
+        flex: 0 0 48%;
+    }
+
+    .admin-table .table tbody td[data-label="Actions"],
+    .admin-table .table tbody td[data-label="Action"] {
+        display: block;
+        text-align: left;
+        padding-top: .55rem;
+    }
+
+    .admin-table .table tbody td[data-label="Actions"]::before,
+    .admin-table .table tbody td[data-label="Action"]::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: .4rem;
+    }
+
+    .admin-table .table tbody td[data-label="Actions"] form,
+    .admin-table .table tbody td[data-label="Action"] form {
+        width: 100%;
+    }
+
+    .admin-table .table tbody td[data-label="Actions"] .btn,
+    .admin-table .table tbody td[data-label="Action"] .btn {
+        width: 100%;
+    }
+
+    .admin-table .table tbody tr td[colspan] {
+        display: block;
+        text-align: center;
+        padding: .35rem 0;
+    }
+
+    .admin-table .table tbody tr td[colspan]::before {
+        content: none;
+    }
+}
 </style>
 @endpush
 
