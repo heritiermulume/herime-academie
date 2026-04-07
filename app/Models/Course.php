@@ -83,6 +83,8 @@ class Course extends Model
         'sale_price',
         'sale_start_at',
         'sale_end_at',
+        'use_fake_promo_countdown',
+        'fake_promo_duration_days',
         'is_free',
         'requires_subscription',
         'required_subscription_tier',
@@ -123,6 +125,7 @@ class Course extends Model
             'sale_price' => 'decimal:2',
             'sale_start_at' => 'datetime',
             'sale_end_at' => 'datetime',
+            'use_fake_promo_countdown' => 'boolean',
             'is_free' => 'boolean',
             'requires_subscription' => 'boolean',
             'use_external_payment' => 'boolean',
@@ -468,7 +471,7 @@ class Course extends Model
             return false;
         }
 
-        if ($saleEnd instanceof Carbon && $now->greaterThan($saleEnd)) {
+        if (! ($this->use_fake_promo_countdown ?? false) && $saleEnd instanceof Carbon && $now->greaterThan($saleEnd)) {
             return false;
         }
 

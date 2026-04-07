@@ -314,6 +314,26 @@
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
+                            <div class="col-md-4">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="use_fake_promo_countdown" name="use_fake_promo_countdown" value="1"
+                                           onchange="toggleFakePromoDurationVisibility()"
+                                           {{ old('use_fake_promo_countdown', false) ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-bold" for="use_fake_promo_countdown">
+                                        Compteur promo dynamique
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted">Le compteur redémarre à chaque chargement de page.</small>
+                            </div>
+                            <div class="col-md-2" id="fakePromoDurationWrapper" style="display: {{ old('use_fake_promo_countdown', false) ? 'block' : 'none' }};">
+                                <label for="fake_promo_duration_days" class="form-label fw-bold">Durée (jours)</label>
+                                <input type="number" class="form-control @error('fake_promo_duration_days') is-invalid @enderror"
+                                       id="fake_promo_duration_days" name="fake_promo_duration_days"
+                                       value="{{ old('fake_promo_duration_days', 3) }}" min="1" max="365">
+                                @error('fake_promo_duration_days')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
 
                             <div class="col-12">
                                 <div class="form-check mt-4">
@@ -2819,6 +2839,18 @@ if (!window.__tempUploadUnloadHook) {
 }
 
 window.cancelAllUploads = cancelAllUploads;
+</script>
+<script>
+function toggleFakePromoDurationVisibility() {
+    const checkbox = document.getElementById('use_fake_promo_countdown');
+    const wrapper = document.getElementById('fakePromoDurationWrapper');
+    if (!checkbox || !wrapper) return;
+    wrapper.style.display = checkbox.checked ? 'block' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    toggleFakePromoDurationVisibility();
+});
 </script>
 @endpush
 

@@ -10,6 +10,21 @@
     --accent-color: #ffcc33;
 }
 
+.promotion-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(220, 53, 69, 0.25);
+    background: rgba(220, 53, 69, 0.08);
+    padding: 0.35rem 0.7rem;
+}
+
+.promotion-countdown .countdown-text {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+}
+
 .breadcrumb-modern {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(10px);
@@ -208,6 +223,23 @@
                                 @if($package->is_sale_active)
                                     <span class="text-muted text-decoration-line-through d-block">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->price) }}</span>
                                     <span class="display-6 fw-bold text-success pack-show-price-current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($effective) }}</span>
+                                    @if(($package->use_fake_promo_countdown ?? false) || $package->sale_end_at)
+                                        <div class="promotion-countdown mt-3"
+                                             @if($package->use_fake_promo_countdown ?? false)
+                                                 data-promo-duration-days="{{ max(1, (int) ($package->fake_promo_duration_days ?? 3)) }}"
+                                             @else
+                                                 data-sale-end="{{ $package->sale_end_at->toIso8601String() }}"
+                                             @endif>
+                                            <i class="fas fa-fire text-danger"></i>
+                                            <span class="countdown-text text-danger fw-bold">
+                                                <span class="countdown-years">0</span><span>a</span>
+                                                <span class="countdown-months">0</span><span>m</span>
+                                                <span class="countdown-days">0</span>j
+                                                <span class="countdown-hours">00</span>h
+                                                <span class="countdown-minutes">00</span>min
+                                            </span>
+                                        </div>
+                                    @endif
                                 @else
                                     <span class="display-6 fw-bold text-primary pack-show-price-current">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($effective) }}</span>
                                 @endif

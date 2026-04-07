@@ -4056,8 +4056,13 @@ button.mobile-price-slider__btn--download i,
                                         -{{ $course->sale_discount_percentage }}% de réduction
                                     </div>
                                     @endif
-                                    @if($course->is_sale_active && $course->sale_end_at)
-                                    <div class="promotion-countdown mt-3" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                                    @if($course->is_sale_active && (($course->use_fake_promo_countdown ?? false) || $course->sale_end_at))
+                                    <div class="promotion-countdown mt-3"
+                                         @if($course->use_fake_promo_countdown ?? false)
+                                             data-promo-duration-days="{{ max(1, (int) ($course->fake_promo_duration_days ?? 3)) }}"
+                                         @else
+                                             data-sale-end="{{ $course->sale_end_at->toIso8601String() }}"
+                                         @endif>
                                         <div class="countdown-label text-muted small mb-1">
                                             <i class="fas fa-clock me-1"></i>Se termine dans :  
                                         </div>
@@ -4327,8 +4332,13 @@ button.mobile-price-slider__btn--download i,
                             <span class="mobile-price-slider__original">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
                         </div>
                     </div>
-                    @if($course->is_sale_active && $course->sale_end_at)
-                        <div class="mobile-price-slider__countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
+                    @if($course->is_sale_active && (($course->use_fake_promo_countdown ?? false) || $course->sale_end_at))
+                        <div class="mobile-price-slider__countdown"
+                             @if($course->use_fake_promo_countdown ?? false)
+                                 data-promo-duration-days="{{ max(1, (int) ($course->fake_promo_duration_days ?? 3)) }}"
+                             @else
+                                 data-sale-end="{{ $course->sale_end_at->toIso8601String() }}"
+                             @endif>
                             <i class="fas fa-fire"></i>
                             <span class="countdown-text">
                                 <span class="countdown-days">0</span>j 

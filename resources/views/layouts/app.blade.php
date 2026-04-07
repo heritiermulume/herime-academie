@@ -4865,7 +4865,9 @@
         /* Compteur à rebours pour les promotions */
         function initPromotionCountdowns() {
             // Sélectionner à la fois les compteurs desktop et mobile
-            const countdowns = document.querySelectorAll('.promotion-countdown[data-sale-end], .mobile-price-slider__countdown[data-sale-end]');
+            const countdowns = document.querySelectorAll(
+                '.promotion-countdown[data-sale-end], .mobile-price-slider__countdown[data-sale-end], .promotion-countdown[data-promo-duration-days], .mobile-price-slider__countdown[data-promo-duration-days]'
+            );
             
             countdowns.forEach((countdown, index) => {
                 // Ne pas initialiser plusieurs fois le même compteur
@@ -4874,18 +4876,27 @@
                 }
                 countdown.dataset.initialized = 'true';
                 
-                const saleEndString = countdown.getAttribute('data-sale-end');
-                if (!saleEndString) {
-                    return;
-                }
-                
-                const saleEndDate = new Date(saleEndString);
-                
-                // Vérifier que la date est valide
-                if (isNaN(saleEndDate.getTime())) {
-                    console.error('Date de fin de promotion invalide:', saleEndString);
-                    countdown.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i><span>Date invalide</span>';
-                    return;
+                const durationDaysRaw = countdown.getAttribute('data-promo-duration-days');
+                const durationDays = Number.parseInt(durationDaysRaw || '', 10);
+                const hasDynamicDuration = Number.isFinite(durationDays) && durationDays > 0;
+                let saleEndDate = null;
+
+                if (hasDynamicDuration) {
+                    saleEndDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+                } else {
+                    const saleEndString = countdown.getAttribute('data-sale-end');
+                    if (!saleEndString) {
+                        return;
+                    }
+
+                    saleEndDate = new Date(saleEndString);
+
+                    // Vérifier que la date est valide
+                    if (isNaN(saleEndDate.getTime())) {
+                        console.error('Date de fin de promotion invalide:', saleEndString);
+                        countdown.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i><span>Date invalide</span>';
+                        return;
+                    }
                 }
                 
                 // Mise à jour immédiate
@@ -4893,6 +4904,10 @@
                 
                 // Mettre à jour toutes les secondes
                 const intervalId = setInterval(() => {
+                    if (hasDynamicDuration && saleEndDate <= new Date()) {
+                        // Compteur psychologique: recommence en boucle sans fin.
+                        saleEndDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+                    }
                     updateCountdown(countdown, saleEndDate);
                 }, 1000);
                 

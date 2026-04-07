@@ -931,7 +931,11 @@ function createCourseElement(course) {
     })();
     
     const hasActiveSale = Boolean(course.is_sale_active) && course.active_sale_price !== null;
-    const hasCountdown = hasActiveSale && course.sale_end_at;
+    const dynamicCountdown = Boolean(course.use_fake_promo_countdown) && Number.parseInt(course.fake_promo_duration_days, 10) > 0;
+    const hasCountdown = hasActiveSale && (dynamicCountdown || course.sale_end_at);
+    const countdownDataAttr = dynamicCountdown
+        ? `data-promo-duration-days="${Math.max(1, Number.parseInt(course.fake_promo_duration_days, 10) || 3)}"`
+        : `data-sale-end="${course.sale_end_at}"`;
     const priceHtml = course.is_free ? 
         '<span class="text-success fw-bold">Gratuit</span>' :
         hasActiveSale ?
@@ -944,7 +948,7 @@ function createCourseElement(course) {
                 </div>
                 ${hasCountdown ? `
                 <div class="course-price-row">
-                    <div class="promotion-countdown" data-sale-end="${course.sale_end_at}">
+                    <div class="promotion-countdown" ${countdownDataAttr}>
                         <i class="fas fa-fire me-1 text-danger"></i>
                         <span class="countdown-text">
                             <span class="countdown-years">0</span><span>a</span> 

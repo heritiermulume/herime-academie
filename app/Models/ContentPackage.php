@@ -31,6 +31,8 @@ class ContentPackage extends Model
         'sale_price',
         'sale_start_at',
         'sale_end_at',
+        'use_fake_promo_countdown',
+        'fake_promo_duration_days',
         'is_sale_enabled',
         'is_published',
         'is_featured',
@@ -58,6 +60,7 @@ class ContentPackage extends Model
             'sale_price' => 'decimal:2',
             'sale_start_at' => 'datetime',
             'sale_end_at' => 'datetime',
+            'use_fake_promo_countdown' => 'boolean',
             'is_sale_enabled' => 'boolean',
             'is_published' => 'boolean',
             'is_featured' => 'boolean',
@@ -153,7 +156,7 @@ class ContentPackage extends Model
         if ($this->sale_start_at instanceof Carbon && $now->lt($this->sale_start_at)) {
             return false;
         }
-        if ($this->sale_end_at instanceof Carbon && $now->greaterThan($this->sale_end_at)) {
+        if (! ($this->use_fake_promo_countdown ?? false) && $this->sale_end_at instanceof Carbon && $now->greaterThan($this->sale_end_at)) {
             return false;
         }
 

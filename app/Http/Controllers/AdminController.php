@@ -1867,6 +1867,8 @@ class AdminController extends Controller
             'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
             'sale_start_at' => 'nullable|date',
             'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
+            'use_fake_promo_countdown' => 'boolean',
+            'fake_promo_duration_days' => 'nullable|integer|min:1|max:365',
             'is_free' => 'boolean',
             'requires_subscription' => 'boolean',
             'required_subscription_tier' => 'nullable|in:starter,pro,enterprise',
@@ -1937,6 +1939,7 @@ class AdminController extends Controller
             $courseData = $request->only([
                 'title', 'short_description', 'description', 'provider_id', 'category_id', 'price', 'sale_price',
                 'sale_start_at', 'sale_end_at',
+                'use_fake_promo_countdown', 'fake_promo_duration_days',
                 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
                 'video_preview_youtube_id', 'video_preview_is_unlisted', 'use_external_payment',
@@ -2043,6 +2046,10 @@ class AdminController extends Controller
             $courseData['sale_price'] = $request->filled('sale_price') ? (float) $request->input('sale_price') : null;
             $courseData['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
             $courseData['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
+            $courseData['use_fake_promo_countdown'] = $request->boolean('use_fake_promo_countdown', false);
+            $courseData['fake_promo_duration_days'] = $request->filled('fake_promo_duration_days')
+                ? (int) $request->input('fake_promo_duration_days')
+                : null;
 
             $courseData['is_free'] = $request->boolean('is_free', false);
             $courseData['requires_subscription'] = $request->boolean('requires_subscription', false);
@@ -2086,6 +2093,10 @@ class AdminController extends Controller
                     $courseData['sale_start_at'] = null;
                     $courseData['sale_end_at'] = null;
                 }
+            }
+
+            if (! $courseData['use_fake_promo_countdown']) {
+                $courseData['fake_promo_duration_days'] = null;
             }
 
             if (! $courseData['requires_subscription']) {
@@ -2200,6 +2211,10 @@ class AdminController extends Controller
             'category_id' => 'required|exists:categories,id',
             'price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
+            'sale_start_at' => 'nullable|date',
+            'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
+            'use_fake_promo_countdown' => 'boolean',
+            'fake_promo_duration_days' => 'nullable|integer|min:1|max:365',
             'is_free' => 'boolean',
             'requires_subscription' => 'boolean',
             'required_subscription_tier' => 'nullable|in:starter,pro,enterprise',
@@ -2262,6 +2277,7 @@ class AdminController extends Controller
             $data = $request->only([
                 'title', 'short_description', 'description', 'provider_id', 'category_id', 'price', 'sale_price',
                 'sale_start_at', 'sale_end_at',
+                'use_fake_promo_countdown', 'fake_promo_duration_days',
                 'use_external_payment', 'external_payment_url', 'external_payment_text',
                 'level', 'language',
                 'video_preview', 'meta_description', 'meta_keywords', 'tags',
@@ -2390,6 +2406,10 @@ class AdminController extends Controller
             $data['sale_price'] = $request->filled('sale_price') ? (float) $request->input('sale_price') : null;
             $data['sale_start_at'] = $request->filled('sale_start_at') ? Carbon::parse($request->input('sale_start_at')) : null;
             $data['sale_end_at'] = $request->filled('sale_end_at') ? Carbon::parse($request->input('sale_end_at')) : null;
+            $data['use_fake_promo_countdown'] = $request->boolean('use_fake_promo_countdown', false);
+            $data['fake_promo_duration_days'] = $request->filled('fake_promo_duration_days')
+                ? (int) $request->input('fake_promo_duration_days')
+                : null;
 
             $data['is_free'] = $request->boolean('is_free', false);
             $data['requires_subscription'] = $request->boolean('requires_subscription', false);
@@ -2433,6 +2453,10 @@ class AdminController extends Controller
                     $data['sale_start_at'] = null;
                     $data['sale_end_at'] = null;
                 }
+            }
+
+            if (! $data['use_fake_promo_countdown']) {
+                $data['fake_promo_duration_days'] = null;
             }
 
             if (! $data['requires_subscription']) {

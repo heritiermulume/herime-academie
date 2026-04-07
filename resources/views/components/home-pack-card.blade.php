@@ -41,9 +41,14 @@
                                 <div class="course-price-row">
                                     <small class="text-muted text-decoration-line-through">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->price) }}</small>
                                 </div>
-                                @if($package->sale_end_at)
+                                @if(($package->use_fake_promo_countdown ?? false) || $package->sale_end_at)
                                     <div class="course-price-row">
-                                        <div class="promotion-countdown" data-sale-end="{{ $package->sale_end_at->toIso8601String() }}">
+                                        <div class="promotion-countdown"
+                                             @if($package->use_fake_promo_countdown ?? false)
+                                                 data-promo-duration-days="{{ max(1, (int) ($package->fake_promo_duration_days ?? 3)) }}"
+                                             @else
+                                                 data-sale-end="{{ $package->sale_end_at->toIso8601String() }}"
+                                             @endif>
                                             <i class="fas fa-fire me-1 text-danger"></i>
                                             <span class="countdown-text">
                                                 <span class="countdown-years">0</span><span>a</span>

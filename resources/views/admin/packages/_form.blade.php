@@ -207,6 +207,21 @@
                 <input type="datetime-local" name="sale_end_at" class="form-control"
                        value="{{ old('sale_end_at', $p && $p->sale_end_at ? $p->sale_end_at->format('Y-m-d\TH:i') : '') }}">
             </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch mt-2">
+                    <input class="form-check-input" type="checkbox" name="use_fake_promo_countdown" value="1" id="use_fake_promo_countdown"
+                        onchange="togglePackageFakePromoDurationVisibility()"
+                        @checked(old('use_fake_promo_countdown', $p->use_fake_promo_countdown ?? false))>
+                    <label class="form-check-label" for="use_fake_promo_countdown">Compteur promo dynamique</label>
+                </div>
+                <small class="text-muted">Remplace le compteur normal et redémarre à chaque chargement de page.</small>
+            </div>
+            <div class="col-md-4" id="packageFakePromoDurationWrapper" style="display: {{ old('use_fake_promo_countdown', $p->use_fake_promo_countdown ?? false) ? 'block' : 'none' }};">
+                <label class="form-label fw-bold">Durée compteur (jours)</label>
+                <input type="number" min="1" max="365" name="fake_promo_duration_days" class="form-control @error('fake_promo_duration_days') is-invalid @enderror"
+                       value="{{ old('fake_promo_duration_days', $p->fake_promo_duration_days ?? 3) }}">
+                @error('fake_promo_duration_days')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
             <div class="col-12 d-flex flex-wrap gap-3">
                 <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" name="is_sale_enabled" value="1" id="is_sale_enabled"
@@ -261,3 +276,16 @@
         </div>
     </div>
 </div>
+
+<script>
+function togglePackageFakePromoDurationVisibility() {
+    const checkbox = document.getElementById('use_fake_promo_countdown');
+    const wrapper = document.getElementById('packageFakePromoDurationWrapper');
+    if (!checkbox || !wrapper) return;
+    wrapper.style.display = checkbox.checked ? 'block' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    togglePackageFakePromoDurationVisibility();
+});
+</script>

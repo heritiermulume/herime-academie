@@ -135,6 +135,8 @@ class ContentPackageController extends Controller
             'sale_price' => 'nullable|numeric|min:0|lt:price',
             'sale_start_at' => 'nullable|date',
             'sale_end_at' => 'nullable|date|after_or_equal:sale_start_at',
+            'use_fake_promo_countdown' => 'nullable|boolean',
+            'fake_promo_duration_days' => 'nullable|integer|min:1|max:365',
             'is_sale_enabled' => 'nullable|boolean',
             'is_published' => 'nullable|boolean',
             'is_featured' => 'nullable|boolean',
@@ -157,6 +159,10 @@ class ContentPackageController extends Controller
         ]);
 
         $validated['is_sale_enabled'] = $request->boolean('is_sale_enabled', true);
+        $validated['use_fake_promo_countdown'] = $request->boolean('use_fake_promo_countdown', false);
+        $validated['fake_promo_duration_days'] = $request->filled('fake_promo_duration_days')
+            ? (int) $request->input('fake_promo_duration_days')
+            : null;
         $validated['is_published'] = $request->boolean('is_published', false);
         $validated['is_featured'] = $request->boolean('is_featured', false);
         $validated['cover_video_is_unlisted'] = $request->boolean('cover_video_is_unlisted', false);
@@ -164,6 +170,10 @@ class ContentPackageController extends Controller
 
         $validated['marketing_highlights'] = $this->filterLines($request->input('marketing_highlights', []));
         $validated['marketing_benefits'] = $this->filterLines($request->input('marketing_benefits', []));
+
+        if (! $validated['use_fake_promo_countdown']) {
+            $validated['fake_promo_duration_days'] = null;
+        }
 
         if (! empty($validated['cover_video_youtube_id'])) {
             $validated['cover_video_youtube_id'] = $this->extractYouTubeVideoId($validated['cover_video_youtube_id']);
