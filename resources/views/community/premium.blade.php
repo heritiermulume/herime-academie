@@ -606,6 +606,7 @@
                     var btnPay = document.getElementById('mp-btn-pay');
                     var hintResiliate = document.getElementById('mp-subscriber-hint-resiliate');
                     var submitLabel = document.getElementById('community-premium-submit-label');
+                    var subscribeForm = document.getElementById('community-premium-subscribe-form');
 
                     function trialDaysLabel(n) {
                         var td = parseInt(n, 10);
@@ -645,6 +646,7 @@
                             hideAllTools();
                             if (toolsEl) toolsEl.classList.add('d-none');
                             if (submitLabel) submitLabel.textContent = 'Procéder au paiement';
+                            if (subscribeForm) subscribeForm.classList.remove('d-none');
                             return;
                         }
 
@@ -661,6 +663,7 @@
                             if (submitLabel) {
                                 submitLabel.textContent = wantsResubscribePrimaryLabel(us) ? 'Réabonnement' : 'Procéder au paiement';
                             }
+                            if (subscribeForm) subscribeForm.classList.toggle('d-none', !!us.show_pay);
                             return;
                         }
 
@@ -674,6 +677,7 @@
                             if (submitLabel) {
                                 submitLabel.textContent = wantsResubscribePrimaryLabel(us) ? 'Réabonnement' : 'Procéder au paiement';
                             }
+                            if (subscribeForm) subscribeForm.classList.remove('d-none');
                             return;
                         }
 
@@ -685,12 +689,19 @@
                             }
                             if (us.show_pay && btnPay) btnPay.classList.remove('d-none');
                             if (submitLabel) submitLabel.textContent = 'Réabonner';
+                            if (subscribeForm) subscribeForm.classList.toggle('d-none', !!us.show_pay);
                             return;
                         }
 
                         if (statusEl) {
-                            statusEl.textContent = 'Tu es déjà abonné à cette période.';
-                            statusEl.classList.add('text-success');
+                            statusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-secondary');
+                            if (us.show_pay) {
+                                statusEl.textContent = 'Facture en attente pour cette période — finalise avec « Finaliser le paiement » ou Mes abonnements.';
+                                statusEl.classList.add('text-warning');
+                            } else {
+                                statusEl.textContent = 'Tu es déjà abonné à cette période.';
+                                statusEl.classList.add('text-success');
+                            }
                             statusEl.classList.remove('d-none');
                         }
                         if (us.show_cancel && btnCancel) {
@@ -699,6 +710,12 @@
                         }
                         if (submitLabel) {
                             submitLabel.textContent = wantsResubscribePrimaryLabel(us) ? 'Réabonnement' : 'Procéder au paiement';
+                        }
+                        if (us.show_pay && btnPay) {
+                            btnPay.classList.remove('d-none');
+                        }
+                        if (subscribeForm) {
+                            subscribeForm.classList.toggle('d-none', !!us.show_pay);
                         }
                     }
 

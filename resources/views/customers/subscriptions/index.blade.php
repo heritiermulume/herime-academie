@@ -133,14 +133,23 @@
                                         $planSubscribeBtnClass = 'btn-primary';
                                     }
                                 }
+                                $planCardSubPayload = $currentPlanSubscription?->asCommunityPremiumCardSubscription();
+                                $hideSubscribeForPendingInvoice = (bool) ($planCardSubPayload['show_pay'] ?? false);
                             @endphp
-                            <form method="POST" action="{{ route('subscriptions.subscribe', $plan) }}">
-                                @csrf
-                                <input type="hidden" name="redirect_after_subscribe" value="customer.subscriptions">
-                                <button class="btn {{ $planSubscribeBtnClass }} w-100">
-                                    {{ $planSubscribeBtnLabel }}
-                                </button>
-                            </form>
+                            @if($hideSubscribeForPendingInvoice)
+                                <p class="small text-warning mb-0">
+                                    <i class="fas fa-file-invoice-dollar me-1"></i>
+                                    Facture en attente pour cette formule — finalisez avec « Payer » dans « Mes abonnements en cours » ou « Facturation récurrente ».
+                                </p>
+                            @else
+                                <form method="POST" action="{{ route('subscriptions.subscribe', $plan) }}">
+                                    @csrf
+                                    <input type="hidden" name="redirect_after_subscribe" value="customer.subscriptions">
+                                    <button class="btn {{ $planSubscribeBtnClass }} w-100">
+                                        {{ $planSubscribeBtnLabel }}
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
                 </div>
