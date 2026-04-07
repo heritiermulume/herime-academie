@@ -255,7 +255,7 @@
     <div class="admin-panel__header"><h3>Facturation récurrente</h3></div>
     <div class="admin-panel__body">
         <div class="table-responsive admin-table">
-            <table class="table align-middle mb-0">
+            <table class="table align-middle mb-0 subscriptions-invoices-table">
                 <thead><tr><th>Facture</th><th>Montant</th><th>Échéance</th><th>Statut</th><th>Moyen</th><th>Action</th></tr></thead>
                 <tbody>
                     @forelse($invoices as $invoice)
@@ -313,7 +313,7 @@
 .admin-table .table td { padding-left: .9rem; padding-right: .9rem; }
 .subscriptions-current-table .plan-col { min-width: 260px; width: 34%; }
 
-@media (max-width: 576px) {
+@media (max-width: 768px) {
     .mp-subscribe-zone { max-width: 100%; }
     .mp-card__inner { padding: 1rem; }
     .mp-card__title { font-size: 1.2rem; }
@@ -343,11 +343,23 @@
 
     .admin-table .table tbody tr {
         display: block;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: .8rem;
-        padding: .55rem .7rem;
-        margin-bottom: .6rem;
-        background: #fff;
+        position: relative;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 1rem;
+        padding: .7rem .85rem;
+        margin-bottom: .75rem;
+        background: linear-gradient(165deg, #ffffff, #f8fafc);
+        box-shadow: 0 14px 30px -22px rgba(15, 23, 42, .45), 0 0 0 1px rgba(255, 255, 255, .7) inset;
+        overflow: hidden;
+    }
+
+    .admin-table .table tbody tr::after {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        border-radius: 1rem 0 0 1rem;
+        background: linear-gradient(180deg, #0b5ed7, #003366);
     }
 
     .admin-table .table tbody td {
@@ -356,15 +368,18 @@
         align-items: flex-start;
         gap: .75rem;
         border: 0;
-        padding: .35rem 0;
+        padding: .42rem 0;
         white-space: normal;
         text-align: right;
     }
 
     .admin-table .table tbody td::before {
         content: attr(data-label);
-        font-weight: 700;
-        color: #334155;
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .02em;
+        text-transform: uppercase;
+        color: #64748b;
         text-align: left;
         flex: 0 0 48%;
     }
@@ -401,6 +416,19 @@
 
     .admin-table .table tbody tr td[colspan]::before {
         content: none;
+    }
+
+    .admin-table .table tbody .btn {
+        border-radius: .72rem;
+        font-weight: 700;
+        padding-top: .48rem;
+        padding-bottom: .48rem;
+    }
+
+    .subscriptions-current-table tbody tr td[data-label="Statut"],
+    .subscriptions-invoices-table tbody tr td[data-label="Statut"] {
+        font-weight: 700;
+        color: #0f172a;
     }
 }
 </style>
