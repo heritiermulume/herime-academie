@@ -814,6 +814,22 @@
             font-weight: 700;
             color: #dc2626;
         }
+
+        .promotion-countdown .countdown-seconds {
+            font-weight: 800;
+            color: #b91c1c;
+            text-shadow: 0 0 0.35rem rgba(220, 38, 38, 0.25);
+            animation: countdownSecondsBlink 1s steps(2, end) infinite;
+        }
+
+        @keyframes countdownSecondsBlink {
+            0%, 49% {
+                opacity: 1;
+            }
+            50%, 100% {
+                opacity: 0.55;
+            }
+        }
         
         /* Sur mobile : format compact du compteur */
         @media (max-width: 991.98px) {
@@ -4882,7 +4898,19 @@
                 let saleEndDate = null;
 
                 if (hasDynamicDuration) {
-                    saleEndDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+                    const durationMs = durationDays * 24 * 60 * 60 * 1000;
+                    const dynamicCountdownKey = getDynamicCountdownStorageKey(countdown, index);
+                    const storedEndTs = Number.parseInt(localStorage.getItem(dynamicCountdownKey) || '', 10);
+                    const nowTs = Date.now();
+
+                    if (Number.isFinite(storedEndTs) && storedEndTs > nowTs) {
+                        // Reprise du compteur en cours (après refresh/changement de page).
+                        saleEndDate = new Date(storedEndTs);
+                    } else {
+                        // Nouveau cycle uniquement si aucun cycle actif n'existe.
+                        saleEndDate = new Date(nowTs + durationMs);
+                        localStorage.setItem(dynamicCountdownKey, String(saleEndDate.getTime()));
+                    }
                 } else {
                     const saleEndString = countdown.getAttribute('data-sale-end');
                     if (!saleEndString) {
@@ -4905,8 +4933,11 @@
                 // Mettre à jour toutes les secondes
                 const intervalId = setInterval(() => {
                     if (hasDynamicDuration && saleEndDate <= new Date()) {
-                        // Compteur psychologique: recommence en boucle sans fin.
+                        const durationMs = durationDays * 24 * 60 * 60 * 1000;
+                        const dynamicCountdownKey = getDynamicCountdownStorageKey(countdown, index);
+                        // Compteur psychologique: recommence en boucle sans fin, mais seulement après fin du cycle.
                         saleEndDate = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+                        localStorage.setItem(dynamicCountdownKey, String(saleEndDate.getTime()));
                     }
                     updateCountdown(countdown, saleEndDate);
                 }, 1000);
@@ -4914,6 +4945,20 @@
                 // Stocker l'ID de l'intervalle pour pouvoir le nettoyer si nécessaire
                 countdown.dataset.intervalId = intervalId;
             });
+        }
+
+        function getDynamicCountdownStorageKey(countdownElement, fallbackIndex) {
+            const explicitKey = countdownElement.getAttribute('data-promo-key');
+            if (explicitKey && explicitKey.trim() !== '') {
+                return `promo_dynamic_end:${explicitKey.trim()}`;
+            }
+
+            const card = countdownElement.closest('.course-card[data-course-url]');
+            const cardUrl = card ? card.getAttribute('data-course-url') : '';
+            const pagePath = window.location.pathname || '';
+            const rawKey = `${pagePath}|${cardUrl || 'inline'}|${fallbackIndex}`;
+
+            return `promo_dynamic_end:${rawKey}`;
         }
         
         function updateCountdown(element, endDate) {
@@ -4963,12 +5008,24 @@
             const daysEl = element.querySelector('.countdown-days');
             const hoursEl = element.querySelector('.countdown-hours');
             const minutesEl = element.querySelector('.countdown-minutes');
+            let secondsEl = element.querySelector('.countdown-seconds');
+
+            const countdownText = element.querySelector('.countdown-text');
+            if (!secondsEl && countdownText) {
+                countdownText.append(' ');
+                secondsEl = document.createElement('span');
+                secondsEl.className = 'countdown-seconds';
+                secondsEl.textContent = '00';
+                countdownText.appendChild(secondsEl);
+                countdownText.append('s');
+            }
             
             if (yearsEl) yearsEl.textContent = years;
             if (monthsEl) monthsEl.textContent = months;
             if (daysEl) daysEl.textContent = days;
             if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
             if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
+            if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, '0');
             
             // Masquer les années si zéro (masquer l'élément et son unité "a")
             if (yearsEl) {
@@ -5002,9 +5059,8 @@
             }
             
             // S'assurer que le parent countdown-text reste toujours visible si on a du temps restant
-            const countdownText = element.querySelector('.countdown-text');
             if (countdownText) {
-                const hasTimeRemaining = minutes > 0 || hours > 0 || days > 0 || months > 0 || years > 0;
+                const hasTimeRemaining = seconds >= 0 || minutes > 0 || hours > 0 || days > 0 || months > 0 || years > 0;
                 countdownText.style.display = hasTimeRemaining ? '' : 'none';
             }
         }

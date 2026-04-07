@@ -6,7 +6,7 @@
 @endphp
 
 <div class="course-card" data-course-url="{{ $courseUrl }}" style="cursor: pointer;">
-    <div class="card" style="position: relative;">
+    <div class="card course-card-inner" style="position: relative;">
         <div class="position-relative">
             <x-package-card-media :package="$package" />
             <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
