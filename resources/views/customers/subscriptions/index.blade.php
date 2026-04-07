@@ -5,21 +5,12 @@
 
 @section('admin-content')
 @php
-    $planTypeLabels = [
-        'recurring' => 'Récurrent',
-        'premium' => 'Premium',
-        'membre' => 'Membre réseau',
-        'one_time' => 'Achat unique',
-        'freemium' => 'Freemium',
-    ];
-
     $billingPeriodLabels = [
         'monthly' => 'Mensuel',
         'quarterly' => 'Trimestriel',
         'semiannual' => 'Semestriel',
         'yearly' => 'Annuel',
     ];
-
     $subscriptionStatusLabels = [
         'trialing' => 'Essai en cours',
         'active' => 'Actif',
@@ -28,135 +19,182 @@
         'cancelled' => 'Annulé',
         'expired' => 'Expiré',
     ];
-
     $invoiceStatusLabels = [
         'pending' => 'En attente',
         'paid' => 'Payée',
         'failed' => 'Échouée',
         'cancelled' => 'Annulée',
     ];
+    $paymentMethodLabels = ['moneroo' => 'Moneroo'];
 
-    $paymentMethodLabels = [
-        'moneroo' => 'Moneroo',
-    ];
-@endphp
-@php
     $currentSubscriptionsByPlan = $subscriptions
-        ->filter(function ($subscription) {
-            return in_array($subscription->status, ['trialing', 'active', 'pending_payment', 'past_due', 'cancelled'], true)
-                && (!$subscription->ended_at || $subscription->ended_at->isFuture());
-        })
+        ->filter(fn ($s) => in_array($s->status, ['trialing', 'active', 'pending_payment', 'past_due', 'cancelled'], true)
+            && (!$s->ended_at || $s->ended_at->isFuture()))
         ->sortByDesc('created_at')
         ->keyBy('subscription_plan_id');
+
+    $plansByPeriod = $plans->keyBy('billing_period');
+    $defaultPremiumPlan = $plansByPeriod->get('yearly') ?? $plans->first();
+    $periodUiOrder = [
+        'quarterly' => ['label' => 'Trimestre', 'hint' => '3 mois'],
+        'semiannual' => ['label' => 'Semestre', 'hint' => '6 mois'],
+        'yearly' => ['label' => 'Annuel', 'hint' => '12 mois'],
+    ];
+    $premiumPlansPayload = ['plans' => [], 'defaultSlug' => $defaultPremiumPlan?->slug];
+    foreach ($plans as $plan) {
+        $planSub = $currentSubscriptionsByPlan->get($plan->id);
+        $premiumPlansPayload['plans'][$plan->slug] = [
+            'subscribe_url' => route('subscriptions.subscribe', $plan),
+            'price_formatted' => \App\Helpers\CurrencyHelper::formatWithSymbol($plan->effectivePriceForCurrency($preferredCurrency), $preferredCurrency),
+            'renewal_caption' => match ($plan->billing_period) {
+                'quarterly' => 'Renouvellement tous les 3 mois',
+                'semiannual' => 'Renouvellement tous les 6 mois',
+                'yearly' => 'Renouvellement annuel',
+                default => 'Facturation '.mb_strtolower($billingPeriodLabels[$plan->billing_period] ?? (string) $plan->billing_period),
+            },
+            'name' => $plan->name,
+            'description' => $plan->description,
+            'trial_days' => (int) ($plan->trial_days ?? 0),
+            'user_subscription' => $planSub?->asCommunityPremiumCardSubscription(),
+        ];
+    }
 @endphp
+
 <section class="admin-panel">
     <div class="admin-panel__header"><h3>Formules Membre Herime</h3></div>
     <div class="admin-panel__body">
-        <div class="row g-3 subscription-plans-grid">
-            @forelse($plans as $plan)
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="admin-card h-100 subscription-plan-card">
-                        <div class="admin-card__body">
-                            @php
-                                $includedPackageIds = collect(data_get($plan->metadata, 'included_package_ids', []))
-                                    ->map(fn ($id) => (int) $id)
-                                    ->filter()
-                                    ->values();
-                                $includedPackages = $includedPackageIds
-                                    ->map(fn ($id) => $includedPackagesById[$id] ?? null)
-                                    ->filter();
-                            @endphp
-                            @php($currentPlanSubscription = $currentSubscriptionsByPlan->get($plan->id))
-                            <h5 class="fw-bold mb-1">{{ $plan->name }}</h5>
-                            <p class="text-muted small mb-2">{{ $plan->description }}</p>
-                            @if($currentPlanSubscription)
-                                @if($currentPlanSubscription->status === 'pending_payment')
-                                    <span class="subscription-state-label mb-2" style="color:#92400e;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);">
-                                        <i class="fas fa-clock me-1"></i>Paiement en attente — utilisez « Payer » ci-dessous ou dans la facturation
-                                    </span>
-                                @elseif($currentPlanSubscription->status === 'past_due')
-                                    <span class="subscription-state-label mb-2" style="color:#991b1b;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);">
-                                        <i class="fas fa-exclamation-circle me-1"></i>Paiement en retard — utilisez « Payer » ci-dessous ou dans la facturation
-                                    </span>
-                                @elseif($currentPlanSubscription->status === 'cancelled')
-                                    <span class="subscription-state-label mb-2" style="color:#475569;background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.35);">
-                                        <i class="fas fa-ban me-1"></i>Annulé — accès jusqu’à la date d’échéance
-                                    </span>
-                                @elseif(in_array($currentPlanSubscription->status, ['active', 'trialing'], true))
-                                    <span class="subscription-state-label mb-2">
-                                        <i class="fas fa-rotate me-1"></i>Déjà abonné — renouvellement auto
-                                    </span>
-                                @else
-                                    <span class="subscription-state-label mb-2 text-muted">
-                                        <i class="fas fa-info-circle me-1"></i>{{ $subscriptionStatusLabels[$currentPlanSubscription->status] ?? $currentPlanSubscription->status }}
-                                    </span>
-                                @endif
-                            @endif
-                            <div class="mb-2 d-flex flex-wrap gap-1">
-                                <span class="admin-badge">{{ $planTypeLabels[($plan->plan_type === 'membre' || \App\Models\SubscriptionPlan::allowsAdminMemberBundleManagement($plan)) ? 'membre' : $plan->plan_type] ?? ucfirst((string) $plan->plan_type) }}</span>
-                                @if($plan->billing_period)
-                                    <span class="admin-badge">{{ $billingPeriodLabels[$plan->billing_period] ?? ucfirst((string) $plan->billing_period) }}</span>
-                                @endif
-                            </div>
-                            @php($localizedAmount = $plan->effectivePriceForCurrency($preferredCurrency))
-                            <p class="h4 mb-2">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($localizedAmount, $preferredCurrency) }}</p>
-                            <p class="small text-muted mb-2">Devise du site: {{ $preferredCurrency }}</p>
-                            @if($plan->isCommunityPremiumPlan())
-                                <p class="small text-muted mb-1">Adhésion au réseau Membre Herime : accès communauté et formations non téléchargeables selon les règles du site.</p>
-                            @elseif($plan->plan_type === 'premium')
-                                <p class="small text-muted mb-1">
-                                    Abonnement récurrent : accès selon les formations et packs rattachés à ce plan (pas d’ouverture automatique de tout le catalogue).
-                                </p>
-                            @elseif($plan->contents->isNotEmpty())
-                                <p class="small text-muted mb-1">
-                                    Formations incluses: {{ $plan->contents->pluck('title')->take(2)->join(', ') }}@if($plan->contents->count() > 2) +{{ $plan->contents->count() - 2 }}@endif
-                                </p>
-                            @endif
-                            @if($includedPackages->isNotEmpty())
-                                <p class="small text-muted mb-2">
-                                    Packs inclus: {{ $includedPackages->pluck('title')->take(2)->join(', ') }}@if($includedPackages->count() > 2) +{{ $includedPackages->count() - 2 }}@endif
-                                </p>
-                            @endif
-                            @if($plan->trial_days > 0)
-                                <p class="small text-success mb-2">{{ $plan->trial_days }} jours d'essai gratuit</p>
-                            @endif
-                            @php
-                                // Même règle que /communaute/membre-premium : « Réabonnement » seulement si déjà une facture payée sur ce plan.
-                                $planSubscribeBtnLabel = 'S\'abonner';
-                                $planSubscribeBtnClass = 'btn-primary';
-                                if ($currentPlanSubscription) {
-                                    if ($currentPlanSubscription->shouldUseResubscribePrimaryLabel()) {
-                                        $planSubscribeBtnLabel = 'Réabonnement';
-                                        $planSubscribeBtnClass = 'btn-outline-primary';
-                                    } else {
-                                        $planSubscribeBtnLabel = 'Procéder au paiement';
-                                        $planSubscribeBtnClass = 'btn-primary';
-                                    }
-                                }
-                                $planCardSubPayload = $currentPlanSubscription?->asCommunityPremiumCardSubscription();
-                                $hideSubscribeForPendingInvoice = (bool) ($planCardSubPayload['show_pay'] ?? false);
-                            @endphp
-                            @if($hideSubscribeForPendingInvoice)
-                                <p class="small text-warning mb-0">
-                                    <i class="fas fa-file-invoice-dollar me-1"></i>
-                                    Facture en attente pour cette formule — finalisez avec « Payer » dans « Mes abonnements en cours » ou « Facturation récurrente ».
-                                </p>
-                            @else
-                                <form method="POST" action="{{ route('subscriptions.subscribe', $plan) }}">
-                                    @csrf
-                                    <input type="hidden" name="redirect_after_subscribe" value="customer.subscriptions">
-                                    <button class="btn {{ $planSubscribeBtnClass }} w-100">
-                                        {{ $planSubscribeBtnLabel }}
+        @if($defaultPremiumPlan)
+            <div class="mp-subscribe-zone">
+                <article class="mp-card">
+                    <div class="mp-card__inner">
+                        <span class="mp-card__badge"><i class="fas fa-gem me-1"></i>Adhésion premium</span>
+                        <h3 class="mp-card__title">Membre Herime</h3>
+                        <p class="mp-card__subtitle">Communauté privée, formations, réseau, lives et ressources premium.</p>
+
+                        <div class="mp-period mt-3">
+                            @foreach($periodUiOrder as $periodKey => $meta)
+                                @php
+                                    $segPlan = $plansByPeriod->get($periodKey);
+                                @endphp
+                                @if($segPlan)
+                                    <button type="button" class="mp-period__btn" data-premium-slug="{{ $segPlan->slug }}" aria-selected="false">
+                                        <span class="mp-period__label">{{ $meta['label'] }}</span>
+                                        <span class="mp-period__hint">{{ $meta['hint'] }}</span>
                                     </button>
-                                </form>
-                            @endif
+                                @else
+                                    <button type="button" class="mp-period__btn" disabled aria-selected="false">
+                                        <span class="mp-period__label">{{ $meta['label'] }}</span>
+                                        <span class="mp-period__hint">Bientôt</span>
+                                    </button>
+                                @endif
+                            @endforeach
                         </div>
+
+                        <div class="mp-price-block">
+                            <div id="customer-premium-price" class="mp-price">
+                                {{ \App\Helpers\CurrencyHelper::formatWithSymbol($defaultPremiumPlan->effectivePriceForCurrency($preferredCurrency), $preferredCurrency) }}
+                            </div>
+                            <p id="customer-premium-billing-line" class="mp-price-suffix mb-0">
+                                {{ data_get($premiumPlansPayload, 'plans.'.$defaultPremiumPlan->slug.'.renewal_caption', '') }}
+                            </p>
+                        </div>
+
+                        <div class="mp-plan-meta text-center">
+                            <h4 id="customer-premium-plan-name">{{ $defaultPremiumPlan->name }}</h4>
+                            <p id="customer-premium-desc" class="{{ $defaultPremiumPlan->description ? '' : 'd-none' }}">{{ $defaultPremiumPlan->description }}</p>
+                            @php
+                                $defaultTrialDays = (int) ($defaultPremiumPlan->trial_days ?? 0);
+                            @endphp
+                            <p id="customer-premium-trial" class="small text-success mb-0 mt-2 fw-semibold {{ $defaultTrialDays > 0 ? '' : 'd-none' }}">
+                                @if($defaultTrialDays === 1)
+                                    1 jour d'essai gratuit
+                                @elseif($defaultTrialDays > 1)
+                                    {{ $defaultTrialDays }} jours d'essai gratuit
+                                @endif
+                            </p>
+                        </div>
+
+                        <form id="customer-premium-subscribe-form" method="POST" action="{{ route('subscriptions.subscribe', $defaultPremiumPlan) }}">
+                            @csrf
+                            <input type="hidden" name="redirect_after_subscribe" value="customer.subscriptions">
+                            <button type="submit" class="mp-cta w-100">
+                                <i class="fas fa-shield-alt me-2"></i><span id="customer-premium-submit-label">Procéder au paiement</span>
+                            </button>
+                        </form>
                     </div>
-                </div>
-            @empty
-                <p class="text-muted">Aucun plan actif pour le moment.</p>
-            @endforelse
-        </div>
+                </article>
+            </div>
+            <script type="application/json" id="customer-premium-plans-json">{!! json_encode($premiumPlansPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+            <script>
+                (function () {
+                    var root = document.getElementById('customer-premium-plans-json');
+                    if (!root) return;
+                    var payload;
+                    try { payload = JSON.parse(root.textContent || '{}'); } catch (e) { return; }
+                    var plans = payload.plans || {};
+                    var buttons = document.querySelectorAll('.mp-period__btn');
+                    var form = document.getElementById('customer-premium-subscribe-form');
+                    var nameEl = document.getElementById('customer-premium-plan-name');
+                    var descEl = document.getElementById('customer-premium-desc');
+                    var trialEl = document.getElementById('customer-premium-trial');
+                    var priceEl = document.getElementById('customer-premium-price');
+                    var billEl = document.getElementById('customer-premium-billing-line');
+                    var submitLabel = document.getElementById('customer-premium-submit-label');
+
+                    function trialDaysLabel(n) {
+                        var td = parseInt(n, 10);
+                        if (!td || td < 1) return '';
+                        return td === 1 ? "1 jour d'essai gratuit" : td + " jours d'essai gratuit";
+                    }
+
+                    function wantsResubscribePrimaryLabel(us) {
+                        if (!us) return false;
+                        if (typeof us.use_resubscribe_primary_label === 'boolean') return us.use_resubscribe_primary_label;
+                        return us.status !== 'pending_payment' && us.status !== 'cancelled';
+                    }
+
+                    function applyPlan(slug) {
+                        var data = plans[slug];
+                        if (!data) return;
+                        if (form && data.subscribe_url) form.action = data.subscribe_url;
+                        if (priceEl) priceEl.textContent = data.price_formatted || '';
+                        if (billEl) billEl.textContent = data.renewal_caption || '';
+                        if (nameEl) nameEl.textContent = data.name || '';
+                        if (descEl) {
+                            descEl.textContent = data.description || '';
+                            descEl.classList.toggle('d-none', !data.description);
+                        }
+                        var trialLabel = trialDaysLabel(data.trial_days || 0);
+                        if (trialEl) {
+                            trialEl.textContent = trialLabel;
+                            trialEl.classList.toggle('d-none', !trialLabel);
+                        }
+                        if (submitLabel) {
+                            submitLabel.textContent = wantsResubscribePrimaryLabel(data.user_subscription || null)
+                                ? 'Réabonnement'
+                                : 'Procéder au paiement';
+                        }
+                        buttons.forEach(function (btn) {
+                            var active = btn.getAttribute('data-premium-slug') === slug;
+                            btn.classList.toggle('is-active', active);
+                            btn.setAttribute('aria-selected', active ? 'true' : 'false');
+                        });
+                    }
+
+                    buttons.forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            var slug = btn.getAttribute('data-premium-slug');
+                            if (slug) applyPlan(slug);
+                        });
+                    });
+
+                    var defaultSlug = payload.defaultSlug || Object.keys(plans)[0];
+                    if (defaultSlug) applyPlan(defaultSlug);
+                })();
+            </script>
+        @else
+            <p class="text-muted mb-0">Aucun plan actif pour le moment.</p>
+        @endif
     </div>
 </section>
 
@@ -164,39 +202,48 @@
     <div class="admin-panel__header"><h3>Mes abonnements en cours</h3></div>
     <div class="admin-panel__body">
         <div class="table-responsive admin-table">
-            <table class="table align-middle mb-0">
-                <thead><tr><th>Plan</th><th>Statut</th><th>Renouvellement</th><th>Actions</th></tr></thead>
+            <table class="table align-middle mb-0 subscriptions-current-table">
+                <thead><tr><th class="plan-col">Plan</th><th>Statut</th><th>Date d'abonnement</th><th>Date d'expiration</th><th>Actions</th></tr></thead>
                 <tbody>
                     @forelse($subscriptions as $subscription)
+                        @php
+                            $pendingSubInvoice = $subscription->invoices->where('status', 'pending')->sortByDesc('id')->first();
+                            $canPayCurrentSubscriptionInvoice = in_array($subscription->status, ['pending_payment', 'past_due'], true)
+                                && $pendingSubInvoice
+                                && (float) $pendingSubInvoice->amount > 0;
+                            $canCancelSubscription = in_array($subscription->status, ['active', 'trialing', 'past_due', 'pending_payment'], true);
+                            $canResumeSubscription = $subscription->status === 'cancelled';
+                        @endphp
                         <tr>
-                            <td>{{ $subscription->plan->name ?? 'Plan supprimé' }}</td>
+                            <td class="plan-col">{{ $subscription->plan->name ?? 'Plan supprimé' }}</td>
                             <td>{{ $subscriptionStatusLabels[$subscription->status] ?? $subscription->status }}</td>
-                            <td>{{ optional($subscription->current_period_ends_at)->format('d/m/Y') ?: '-' }}</td>
+                            <td>{{ optional($subscription->starts_at)->format('d/m/Y') ?: optional($subscription->created_at)->format('d/m/Y') ?: '-' }}</td>
+                            <td>{{ optional($subscription->ended_at)->format('d/m/Y') ?: optional($subscription->current_period_ends_at)->format('d/m/Y') ?: '-' }}</td>
                             <td class="d-flex flex-wrap gap-1">
-                                @if(in_array($subscription->status, ['pending_payment', 'past_due'], true))
-                                    @php($pendingSubInvoice = $subscription->invoices->where('status', 'pending')->sortByDesc('id')->first())
-                                    @if($pendingSubInvoice)
-                                        <form method="POST" action="{{ route('subscriptions.invoices.pay', $pendingSubInvoice) }}">
-                                            @csrf
-                                            <button class="btn btn-sm btn-primary">Payer</button>
-                                        </form>
-                                    @endif
+                                @if($canPayCurrentSubscriptionInvoice)
+                                    <form method="POST" action="{{ route('subscriptions.invoices.pay', $pendingSubInvoice) }}">
+                                        @csrf
+                                        <button class="btn btn-sm btn-primary">Procéder au paiement</button>
+                                    </form>
                                 @endif
-                                @if(in_array($subscription->status, ['active', 'trialing', 'past_due', 'pending_payment'], true))
+                                @if($canCancelSubscription)
                                     <form method="POST" action="{{ route('subscriptions.cancel', $subscription) }}">
                                         @csrf
-                                        <button class="btn btn-sm btn-outline-danger">Annuler</button>
+                                        <button class="btn btn-sm btn-outline-danger">Résilier l'abonnement</button>
                                     </form>
-                                @elseif($subscription->status === 'cancelled')
+                                @elseif($canResumeSubscription)
                                     <form method="POST" action="{{ route('subscriptions.resume', $subscription) }}">
                                         @csrf
-                                        <button class="btn btn-sm btn-outline-success">Réactiver</button>
+                                        <button class="btn btn-sm btn-outline-success">Réactiver le renouvellement auto</button>
                                     </form>
+                                @endif
+                                @if(! $canPayCurrentSubscriptionInvoice && ! $canCancelSubscription && ! $canResumeSubscription)
+                                    <span class="text-muted small fw-semibold">Aucune action</span>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="text-center text-muted py-3">Aucun abonnement.</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted py-3">Aucun abonnement.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -212,6 +259,9 @@
                 <thead><tr><th>Facture</th><th>Montant</th><th>Échéance</th><th>Statut</th><th>Moyen</th><th>Action</th></tr></thead>
                 <tbody>
                     @forelse($invoices as $invoice)
+                        @php
+                            $canPayInvoice = $invoice->status === 'pending' && (float) $invoice->amount > 0;
+                        @endphp
                         <tr>
                             <td>{{ $invoice->invoice_number }}</td>
                             <td>{{ \App\Helpers\CurrencyHelper::formatWithSymbol($invoice->amount, $invoice->currency) }}</td>
@@ -219,13 +269,13 @@
                             <td>{{ $invoiceStatusLabels[$invoice->status] ?? $invoice->status }}</td>
                             <td>{{ $invoice->payment_method ? ($paymentMethodLabels[$invoice->payment_method] ?? strtoupper((string) $invoice->payment_method)) : '-' }}</td>
                             <td>
-                                @if($invoice->status !== 'paid')
+                                @if($canPayInvoice)
                                     <form method="POST" action="{{ route('subscriptions.invoices.pay', $invoice) }}">
                                         @csrf
                                         <button class="btn btn-sm btn-primary">Payer</button>
                                     </form>
                                 @else
-                                    <span class="text-success small fw-semibold">Reglee</span>
+                                    <span class="text-muted small fw-semibold">Aucune action</span>
                                 @endif
                             </td>
                         </tr>
@@ -241,151 +291,27 @@
 
 @push('styles')
 <style>
-.admin-panel .admin-card {
-    border-radius: 14px;
-}
-
-.admin-panel,
-.admin-panel__body {
-    max-width: 100%;
-}
-
-.subscription-plans-grid .col-12 {
-    display: flex;
-}
-
-.subscription-plans-grid {
-    width: 100%;
-    margin-left: 0;
-    margin-right: 0;
-}
-
-.admin-panel .admin-card__body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    width: 100%;
-}
-
-.admin-panel .admin-card__body form {
-    margin-top: auto;
-}
-
-.subscription-state-label {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    max-width: 100%;
-    font-size: 0.76rem;
-    font-weight: 600;
-    color: #1d4ed8;
-    background: rgba(59, 130, 246, 0.12);
-    border: 1px solid rgba(59, 130, 246, 0.25);
-    border-radius: 999px;
-    padding: 0.28rem 0.62rem;
-    line-height: 1.2;
-    white-space: normal;
-}
-
-.subscription-plan-card .admin-card__body h5,
-.subscription-plan-card .admin-card__body p {
-    word-break: break-word;
-    overflow-wrap: anywhere;
-}
-
-.admin-table .table td,
-.admin-table .table th {
-    vertical-align: middle;
-}
-
-@media (max-width: 991.98px) {
-    .admin-panel .admin-panel__header h3 {
-        font-size: 1rem;
-    }
-
-    .admin-panel .admin-card__body h5 {
-        font-size: 1rem;
-    }
-
-    .admin-panel .admin-card__body .h4 {
-        font-size: 1.15rem;
-    }
-}
-
-@media (max-width: 767.98px) {
-    .admin-panel__body {
-        overflow-x: hidden;
-    }
-
-    .subscription-plans-grid {
-        --bs-gutter-x: 0;
-        margin-left: 0;
-        margin-right: 0;
-    }
-
-    .subscription-plans-grid > [class*="col-"] {
-        padding-left: 0;
-        padding-right: 0;
-    }
-
-    .admin-panel {
-        margin-bottom: 0.85rem;
-    }
-
-    .subscription-plans-grid .col-12 {
-        padding-left: 0;
-        padding-right: 0;
-    }
-
-    .subscription-plan-card {
-        border-radius: 12px;
-        width: 100%;
-    }
-
-    .subscription-plan-card .admin-card__body {
-        padding: 0.8rem;
-        gap: 0.3rem;
-    }
-
-    .subscription-plan-card .admin-card__body h5 {
-        font-size: 0.98rem;
-        line-height: 1.35;
-    }
-
-    .subscription-plan-card .admin-card__body .h4 {
-        font-size: 1.05rem !important;
-        margin-bottom: 0.35rem !important;
-    }
-
-    .subscription-plan-card .admin-badge {
-        font-size: 0.68rem;
-        padding: 0.28rem 0.5rem;
-        border-radius: 999px;
-    }
-
-    .subscription-state-label {
-        font-size: 0.7rem;
-        padding: 0.24rem 0.5rem;
-    }
-
-    .subscription-plan-card .btn {
-        min-height: 40px;
-        font-size: 0.9rem;
-    }
-
-    .admin-panel .row.g-3 {
-        --bs-gutter-x: 0.75rem;
-        --bs-gutter-y: 0.75rem;
-    }
-
-    .admin-table table {
-        min-width: 640px;
-    }
-
-    .admin-table .btn {
-        white-space: nowrap;
-    }
-}
+.mp-subscribe-zone { max-width: 560px; margin: 0 auto; }
+.mp-card { border-radius: 1.25rem; background: linear-gradient(145deg, #fff, #f8fafc); box-shadow: 0 0 0 1px rgba(15,23,42,.06), 0 20px 45px -14px rgba(0,51,102,.2); }
+.mp-card__inner { padding: 1.5rem; }
+.mp-card__badge { display: inline-flex; align-items: center; font-size: .72rem; font-weight: 700; color: #003366; background: rgba(0,51,102,.08); border: 1px solid rgba(0,51,102,.15); border-radius: 999px; padding: .3rem .6rem; margin-bottom: .7rem; }
+.mp-card__title { font-size: 1.4rem; font-weight: 800; margin: 0 0 .25rem; }
+.mp-card__subtitle { color: #64748b; margin-bottom: 1rem; }
+.mp-period { display: grid; grid-template-columns: repeat(3,1fr); gap: .35rem; background: #0f172a; border-radius: .8rem; padding: .35rem; margin-bottom: 1rem; }
+.mp-period__btn { border: none; border-radius: .6rem; padding: .55rem .3rem; background: transparent; color: rgba(255,255,255,.65); display: flex; flex-direction: column; align-items: center; gap: .08rem; }
+.mp-period__btn.is-active { background: #fff; color: #0f172a; }
+.mp-period__label { font-weight: 800; }
+.mp-period__hint { font-size: .7rem; opacity: .85; }
+.mp-price-block { text-align: center; margin-bottom: .8rem; }
+.mp-price { font-size: 1.9rem; font-weight: 800; color: #003366; line-height: 1.1; }
+.mp-price-suffix { color: #64748b; font-size: .85rem; }
+.mp-plan-meta h4 { margin-bottom: .2rem; }
+.mp-plan-meta p { color: #64748b; }
+.mp-cta { border: none; border-radius: .75rem; background: linear-gradient(90deg,#003366,#0b5ed7); color: #fff; font-weight: 700; padding: .78rem 1rem; display: inline-flex; justify-content: center; align-items: center; }
+.admin-table .table td, .admin-table .table th { vertical-align: middle; }
+.admin-table .table th,
+.admin-table .table td { padding-left: .9rem; padding-right: .9rem; }
+.subscriptions-current-table .plan-col { min-width: 260px; width: 34%; }
 </style>
 @endpush
 

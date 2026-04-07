@@ -628,6 +628,18 @@
                         return us.status !== 'pending_payment' && us.status !== 'cancelled';
                     }
 
+                    function expiryLabel(us) {
+                        if (!us) return null;
+                        if (us.period_end_label) return us.period_end_label;
+                        if (us.period_end_at) {
+                            var d = new Date(us.period_end_at);
+                            if (!isNaN(d.getTime())) {
+                                return d.toLocaleDateString('fr-FR');
+                            }
+                        }
+                        return null;
+                    }
+
                     function updateCtaArea(data) {
                         var us = data.user_subscription || null;
                         window.__mpCurrentPlanUserSub = us;
@@ -655,7 +667,10 @@
 
                         if (us.status === 'pending_payment') {
                             if (statusEl) {
-                                statusEl.textContent = 'Paiement en attente — utilise « Payer » ou finalise depuis Mes abonnements.';
+                                var pendingExpiry = expiryLabel(us);
+                                statusEl.textContent = pendingExpiry
+                                    ? 'Paiement en attente — échéance le ' + pendingExpiry + '. Utilise « Payer » ou finalise depuis Mes abonnements.'
+                                    : 'Paiement en attente — échéance: date non disponible. Utilise « Payer » ou finalise depuis Mes abonnements.';
                                 statusEl.classList.add('text-warning');
                                 statusEl.classList.remove('d-none');
                             }
@@ -669,7 +684,10 @@
 
                         if (us.status === 'cancelled') {
                             if (statusEl) {
-                                statusEl.textContent = 'Abonnement annulé — accès maintenu jusqu’à la date d’échéance.';
+                                var cancelledExpiry = expiryLabel(us);
+                                statusEl.textContent = cancelledExpiry
+                                    ? 'Abonnement annulé — accès maintenu jusqu\'au ' + cancelledExpiry + '.'
+                                    : 'Abonnement annulé — échéance: date non disponible.';
                                 statusEl.classList.add('text-secondary');
                                 statusEl.classList.remove('d-none');
                             }
@@ -683,7 +701,10 @@
 
                         if (us.status === 'past_due') {
                             if (statusEl) {
-                                statusEl.textContent = 'Paiement en retard — utilise « Payer » ou « Réabonner » ci-dessous.';
+                                var pastDueExpiry = expiryLabel(us);
+                                statusEl.textContent = pastDueExpiry
+                                    ? 'Paiement en retard — échéance le ' + pastDueExpiry + '. Utilise « Payer » ou « Réabonner » ci-dessous.'
+                                    : 'Paiement en retard — échéance: date non disponible. Utilise « Payer » ou « Réabonner » ci-dessous.';
                                 statusEl.classList.add('text-danger');
                                 statusEl.classList.remove('d-none');
                             }
@@ -696,10 +717,16 @@
                         if (statusEl) {
                             statusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-secondary');
                             if (us.show_pay) {
-                                statusEl.textContent = 'Facture en attente pour cette période — finalise avec « Finaliser le paiement » ou Mes abonnements.';
+                                var activeExpiry = expiryLabel(us);
+                                statusEl.textContent = activeExpiry
+                                    ? 'Facture en attente — échéance le ' + activeExpiry + '. Finalise avec « Finaliser le paiement » ou Mes abonnements.'
+                                    : 'Facture en attente — échéance: date non disponible. Finalise avec « Finaliser le paiement » ou Mes abonnements.';
                                 statusEl.classList.add('text-warning');
                             } else {
-                                statusEl.textContent = 'Tu es déjà abonné à cette période.';
+                                var subscribedExpiry = expiryLabel(us);
+                                statusEl.textContent = subscribedExpiry
+                                    ? 'Tu es déjà abonné. Prochaine échéance le ' + subscribedExpiry + '.'
+                                    : 'Tu es déjà abonné. Échéance: date non disponible.';
                                 statusEl.classList.add('text-success');
                             }
                             statusEl.classList.remove('d-none');

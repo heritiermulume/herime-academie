@@ -153,10 +153,13 @@ class UserSubscription extends Model
         $needsPay = $payUrl !== null
             && (float) ($pendingInvoice->amount ?? 0) > 0
             && in_array($this->status, ['pending_payment', 'past_due', 'active', 'trialing'], true);
+        $periodEndAt = $this->ended_at ?? $this->current_period_ends_at;
 
         return [
             'id' => $this->id,
             'status' => $this->status,
+            'period_end_at' => $periodEndAt?->toIso8601String(),
+            'period_end_label' => $periodEndAt?->format('d/m/Y'),
             'cancel_url' => route('subscriptions.cancel', $this),
             'resume_url' => route('subscriptions.resume', $this),
             'pay_url' => $payUrl,
