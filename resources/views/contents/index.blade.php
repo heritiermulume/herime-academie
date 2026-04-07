@@ -115,7 +115,16 @@
                     </x-admin.search-panel>
 
                     <!-- Filtres actifs -->
-                    @if(request()->hasAny(['search', 'category', 'level', 'price', 'sort']))
+                    @if(!empty($contentsIndexSectionRelaxed))
+                        <div class="alert alert-warning d-flex align-items-start gap-2 mt-3 mb-0">
+                            <i class="fas fa-info-circle mt-1"></i>
+                            <div>
+                                <strong>Aucun résultat pour ce filtre (contenus et packs).</strong>
+                                Voici d’autres contenus et packs correspondant au reste de vos critères (recherche, catégorie, etc.).
+                            </div>
+                        </div>
+                    @endif
+                    @if(request()->hasAny(['search', 'category', 'level', 'price', 'sort', 'featured', 'popular', 'trending']))
                         <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
                             <div>
                                 <i class="fas fa-filter me-2"></i><strong>Filtres actifs :</strong>
@@ -131,6 +140,15 @@
                                 @if(request('price'))
                                     <span class="badge bg-success ms-2">Prix: {{ request('price') == 'free' ? 'Gratuit' : 'Payant' }}</span>
                                 @endif
+                                @if(request('featured'))
+                                    <span class="badge bg-warning text-dark ms-2">En vedette</span>
+                                @endif
+                                @if(request('popular'))
+                                    <span class="badge bg-danger ms-2">Populaire</span>
+                                @endif
+                                @if(request('trending'))
+                                    <span class="badge bg-danger ms-2">Tendance</span>
+                                @endif
                                 @if(request('sort'))
                                     <span class="badge bg-secondary ms-2">Tri: {{ ucfirst(str_replace('_', ' ', request('sort'))) }}</span>
                                 @endif
@@ -145,43 +163,9 @@
                 <!-- Results -->
                 <div class="row">
                     <div class="col-12">
-                        @if($courses->count() > 0 || (isset($packages) && $packages->isNotEmpty()))
-                        @php
-                            $mixCourses = collect($courses->items());
-                            $mixPackages = collect($packages ?? []);
-                            $mixedItems = collect();
-
-                            // Mélange simple : 3 contenus puis 1 pack (quand disponible).
-                            while ($mixCourses->isNotEmpty() || $mixPackages->isNotEmpty()) {
-                                for ($i = 0; $i < 3; $i++) {
-                                    if ($mixCourses->isNotEmpty()) {
-                                        $mixedItems->push([
-                                            'type' => 'course',
-                                            'item' => $mixCourses->shift(),
-                                        ]);
-                                    }
-                                }
-
-                                if ($mixPackages->isNotEmpty()) {
-                                    $mixedItems->push([
-                                        'type' => 'package',
-                                        'item' => $mixPackages->shift(),
-                                    ]);
-                                }
-
-                                if ($mixCourses->isEmpty() && $mixPackages->isNotEmpty()) {
-                                    $mixPackages->each(function ($package) use ($mixedItems) {
-                                        $mixedItems->push([
-                                            'type' => 'package',
-                                            'item' => $package,
-                                        ]);
-                                    });
-                                    $mixPackages = collect();
-                                }
-                            }
-                        @endphp
+                        @if($contentsFeed->count() > 0)
                         <div id="courses-container" class="row g-3">
-                            @foreach($mixedItems as $mixedItem)
+                            @foreach($contentsFeed as $mixedItem)
                             @if($mixedItem['type'] === 'package')
                             @php $package = $mixedItem['item']; @endphp
                             <div class="col-lg-4 col-md-6 col-sm-6 course-item">
@@ -189,144 +173,26 @@
                             </div>
                             @else
                             @php $course = $mixedItem['item']; @endphp
-                            <div class="col-lg-4 col-md-6 col-sm-6 course-item">
-                                <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
-                                    <div class="card course-card-inner" style="position: relative;">
-                                        
-                                        <div class="position-relative">
-                                            <img src="{{ $course->thumbnail_url ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&h=250&fit=crop' }}" 
-                                                 class="card-img-top" alt="{{ $course->title }}">
-                                    <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
-                                        @if($course->is_featured)
-                                        <span class="badge bg-warning">En vedette</span>
-                                        @endif
-                                        @if($course->is_free)
-                                        <span class="badge bg-success">Gratuit</span>
-                                        @endif
-                                        @if($course->requires_subscription)
-                                        <a href="{{ auth()->check() ? route('customer.subscriptions') : route('login') }}"
-                                           class="badge bg-dark text-decoration-none"
-                                           onclick="event.stopPropagation();">
-                                            <i class="fas fa-lock me-1"></i>{{ strtoupper($course->required_subscription_tier ?? 'starter') }}
-                                        </a>
-                                        @endif
-                                        @if($course->sale_discount_percentage)
-                                        <span class="badge bg-danger">
-                                            -{{ $course->sale_discount_percentage }}%
-                                        </span>
-                                        @endif
-                                    </div>
-                                        </div>
-                                        <div class="card-body">
-                                            <h6 class="card-title">
-                                                {{ Str::limit($course->title, 50) }}
-                                            </h6>
-                                            <p class="card-text">{{ Str::limit($course->short_description, 100) }}</p>
-                                            
-                                            <div class="instructor-info">
-                                                <small class="instructor-name">
-                                                    <i class="fas fa-user me-1"></i>{{ Str::limit($course->provider->name, 20) }}
-                                                </small>
-                                                <div class="rating">
-                                                    <i class="fas fa-star"></i>
-                                                    <span>{{ number_format($course->stats['average_rating'] ?? 0, 1) }}</span>
-                                                    <span class="text-muted">({{ $course->stats['total_reviews'] ?? 0 }})</span>
-                                                </div>
-                                            </div>
-                                            
-                                            @if($course->show_customers_count)
-                                            @php
-                                                $count = 0;
-                                                $label = '';
-                                                $icon = '';
-                                                
-                                                if ($course->is_downloadable) {
-                                                    // Cours téléchargeable
-                                                    if ($course->is_free) {
-                                                        // Téléchargeable gratuit : total des inscrits (car l'utilisateur s'inscrit d'abord avec "Intéresser")
-                                                        $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
-                                                        $label = $count > 1 ? 'bénéficiaires' : 'bénéficiaire';
-                                                        $icon = 'fa-users';
-                                                    } else {
-                                                        // Téléchargeable payant : nombre d'achats
-                                                        $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);
-                                                        $label = $count > 1 ? 'achats' : 'achat';
-                                                        $icon = 'fa-shopping-cart';
-                                                    }
-                                                } else {
-                                                    // Cours non téléchargeable
-                                                    if ($course->is_free) {
-                                                        // Non téléchargeable gratuit : inscriptions
-                                                        $count = (int) ($course->stats['total_customers'] ?? $course->total_customers ?? 0);
-                                                        $label = $count > 1 ? 'inscriptions' : 'inscription';
-                                                        $icon = 'fa-user-plus';
-                                                    } else {
-                                                        // Non téléchargeable payant : nombre d'achats
-                                                        $count = (int) ($course->stats['purchases_count'] ?? $course->purchases_count ?? 0);
-                                                        $label = $count > 1 ? 'achats' : 'achat';
-                                                        $icon = 'fa-shopping-cart';
-                                                    }
-                                                }
-                                            @endphp
-                                            <div class="customers-count mb-2">
-                                                <small class="text-muted">
-                                                    <i class="fas {{ $icon }} me-1"></i>
-                                                    {{ number_format($count, 0, ',', ' ') }} 
-                                                    {{ $label }}
-                                                </small>
-                                            </div>
-                                            @endif
-                                            
-                                            <div class="price-duration">
-                                                <div class="price">
-                                                    @if($course->is_free)
-                                                        <span class="text-success fw-bold">Gratuit</span>
-                                                    @else
-                                                        @if($course->is_sale_active && $course->active_sale_price !== null)
-                                                            <div class="course-price-container">
-                                                                <div class="course-price-row">
-                                                                    <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->active_sale_price) }}</span>
-                                                                </div>
-                                                                <div class="course-price-row">
-                                                                    <small class="text-muted text-decoration-line-through">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</small>
-                                                                </div>
-                                                                @if($course->is_sale_active && $course->sale_end_at)
-                                                                <div class="course-price-row">
-                                                                    <div class="promotion-countdown" data-sale-end="{{ $course->sale_end_at->toIso8601String() }}">
-                                                                        <i class="fas fa-fire me-1 text-danger"></i>
-                                                                        <span class="countdown-text">
-                                                                            <span class="countdown-years">0</span><span>a</span> 
-                                                                            <span class="countdown-months">0</span><span>m</span> 
-                                                                            <span class="countdown-days">0</span>j 
-                                                                            <span class="countdown-hours">0</span>h 
-                                                                            <span class="countdown-minutes">0</span>min
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                                @endif
-                                                            </div>
-                                                        @else
-                                                            <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($course->price) }}</span>
-                                                        @endif
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="card-actions mt-2" onclick="event.stopPropagation(); event.preventDefault();">
-                                                <x-contenu-button :course="$course" size="small" :show-cart="false" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            @include('contents.partials.infinite-scroll-course-card', ['course' => $course])
                             @endif
                             @endforeach
                         </div>
 
-                        <!-- Pagination -->
-                        @if($courses->hasPages())
-                            <div class="mt-5 d-flex justify-content-center">
-                                {{ $courses->appends(request()->query())->links('pagination.bootstrap-5') }}
+                        @if($contentsFeed->hasPages())
+                            <div id="contents-infinite-sentinel" class="contents-infinite-sentinel py-4 text-center d-none" aria-hidden="true">
+                                <div class="contents-infinite-sentinel__spinner text-muted small">
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    Chargement…
+                                </div>
+                                <div class="contents-infinite-sentinel__end text-muted small d-none">Vous avez vu tous les contenus.</div>
+                                <div class="contents-infinite-sentinel__error text-danger small d-none"></div>
+                            </div>
+                        @endif
+
+                        <!-- Pagination (visible si JS désactivé ; masquée quand le scroll infini est actif) -->
+                        @if($contentsFeed->hasPages())
+                            <div class="mt-5 d-flex justify-content-center contents-index-pagination">
+                                {{ $contentsFeed->appends(request()->query())->links('pagination.bootstrap-5') }}
                             </div>
                         @endif
                     @else
@@ -1174,6 +1040,132 @@ document.addEventListener('DOMContentLoaded', function() {
             updateCartCount();
         }
     }, 100);
+
+    @if($contentsFeed->hasPages())
+    (function initContentsInfiniteScroll() {
+        const container = document.getElementById('courses-container');
+        const sentinel = document.getElementById('contents-infinite-sentinel');
+        const pagination = document.querySelector('.contents-index-pagination');
+        if (!container || !sentinel) {
+            return;
+        }
+
+        let nextPage = {{ (int) $contentsFeed->currentPage() + 1 }};
+        let hasMore = {{ $contentsFeed->hasMorePages() ? 'true' : 'false' }};
+        let loading = false;
+        let observer = null;
+
+        const elSpinner = sentinel.querySelector('.contents-infinite-sentinel__spinner');
+        const elEnd = sentinel.querySelector('.contents-infinite-sentinel__end');
+        const elError = sentinel.querySelector('.contents-infinite-sentinel__error');
+
+        function setLoadingState(on) {
+            loading = on;
+            if (elSpinner) {
+                elSpinner.classList.toggle('d-none', !on && hasMore);
+            }
+        }
+
+        function finishNoMore() {
+            hasMore = false;
+            if (observer) {
+                observer.disconnect();
+                observer = null;
+            }
+            setLoadingState(false);
+            if (elSpinner) {
+                elSpinner.classList.add('d-none');
+            }
+            if (elEnd) {
+                elEnd.classList.remove('d-none');
+            }
+        }
+
+        async function loadMore() {
+            if (!hasMore || loading) {
+                return;
+            }
+            setLoadingState(true);
+            if (elError) {
+                elError.classList.add('d-none');
+                elError.textContent = '';
+            }
+
+            const url = new URL(window.location.href);
+            url.searchParams.set('infinite_scroll', '1');
+            url.searchParams.set('page', String(nextPage));
+
+            try {
+                const res = await fetch(url.toString(), {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        Accept: 'application/json',
+                    },
+                    credentials: 'same-origin',
+                });
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                const data = await res.json();
+                const fragments = data.fragments || [];
+                fragments.forEach((html) => {
+                    const wrap = document.createElement('div');
+                    wrap.innerHTML = html.trim();
+                    const node = wrap.firstElementChild;
+                    if (node) {
+                        container.appendChild(node);
+                    }
+                });
+
+                if (typeof window.initPromotionCountdowns === 'function') {
+                    window.initPromotionCountdowns();
+                }
+                if (typeof updateCartCount === 'function') {
+                    updateCartCount();
+                }
+
+                hasMore = Boolean(data.hasMore);
+                nextPage = data.nextPage != null ? data.nextPage : nextPage + 1;
+
+                if (!hasMore) {
+                    finishNoMore();
+                } else {
+                    setLoadingState(false);
+                }
+            } catch (err) {
+                setLoadingState(false);
+                if (elError) {
+                    elError.textContent = 'Impossible de charger la suite. Faites défiler à nouveau ou utilisez la pagination ci-dessous.';
+                    elError.classList.remove('d-none');
+                }
+                if (pagination) {
+                    pagination.classList.remove('d-none');
+                }
+            }
+        }
+
+        if (pagination) {
+            pagination.classList.add('d-none');
+        }
+        sentinel.classList.remove('d-none');
+
+        observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        loadMore();
+                    }
+                });
+            },
+            {
+                root: null,
+                rootMargin: '320px 0px 640px 0px',
+                threshold: 0,
+            },
+        );
+        observer.observe(sentinel);
+    })();
+    @endif
 });
 
 // La fonction addToCart est maintenant définie globalement dans app.blade.php

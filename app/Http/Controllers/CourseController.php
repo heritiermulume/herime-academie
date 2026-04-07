@@ -10,8 +10,12 @@ use App\Models\Order;
 use App\Services\ContentPackageRecommendationService;
 use App\Services\FileUploadService;
 use App\Traits\CourseStatistics;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -30,24 +34,204 @@ class CourseController extends Controller
 
     public function index(Request $request)
     {
+        $paidOrderStatuses = ['paid', 'completed'];
+        $sectionActive = $request->hasAny(['featured', 'popular', 'trending']);
+
+        $query = $this->contentsIndexBuildCourseQuery($request, $sectionActive);
+        $this->applyContentsIndexCourseSort($request, $query);
+
+        $packagesQuery = $this->contentsIndexBuildPackagesQuery($request, $sectionActive, $paidOrderStatuses);
+
+        $contentsIndexSectionRelaxed = false;
+        if ($sectionActive) {
+            $coursesStrictEmpty = ! $query->clone()->exists();
+            $packagesStrictEmpty = $this->contentsIndexPackagesStrictEmpty($request, $packagesQuery);
+            if ($coursesStrictEmpty && $packagesStrictEmpty) {
+                $query = $this->contentsIndexBuildCourseQuery($request, false);
+                $this->applyContentsIndexCourseSort($request, $query);
+                $packagesQuery = $this->contentsIndexBuildPackagesQuery($request, false, $paidOrderStatuses);
+                $contentsIndexSectionRelaxed = true;
+            }
+        }
+
+        $categories = Category::active()->ordered()->get();
+
+        $perPage = 12;
+        $packagesForMix = $this->contentsIndexFinalizePackagesForDisplay(
+            $request,
+            $packagesQuery->get(),
+            $contentsIndexSectionRelaxed
+        );
+        $courseIds = $query->clone()->pluck('id')->unique()->values()->all();
+        $packageIds = $packagesForMix->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        $mixedOrder = $this->contentsIndexBuildMixedFeedOrder($courseIds, $packageIds);
+        $mixedTotal = count($mixedOrder);
+
+        // Scroll infini (fetch + Accept: application/json) — même mélange que la page
+        if (($request->ajax() || $request->wantsJson()) && $request->filled('infinite_scroll')) {
+            $page = max(1, (int) $request->get('page', 1));
+            $offset = ($page - 1) * $perPage;
+
+            $items = $this->contentsIndexHydrateMixedSlice($mixedOrder, $offset, $perPage);
+            $this->contentsIndexAddStatsToMixedCourses($items);
+
+            $fragments = $items->map(function (array $row) {
+                if ($row['type'] === 'package') {
+                    return view('contents.partials.infinite-scroll-package-card', [
+                        'package' => $row['item'],
+                    ])->render();
+                }
+
+                return view('contents.partials.infinite-scroll-course-card', [
+                    'course' => $row['item'],
+                ])->render();
+            })->values()->all();
+
+            $hasMore = ($offset + $perPage) < $mixedTotal;
+
+            return response()->json([
+                'fragments' => $fragments,
+                'hasMore' => $hasMore,
+                'nextPage' => $hasMore ? $page + 1 : null,
+            ]);
+        }
+
+        $currentPage = max(1, (int) $request->get('page', 1));
+        $offset = ($currentPage - 1) * $perPage;
+        $pageItems = $this->contentsIndexHydrateMixedSlice($mixedOrder, $offset, $perPage);
+        $this->contentsIndexAddStatsToMixedCourses($pageItems);
+
+        $contentsFeed = new LengthAwarePaginator(
+            $pageItems,
+            $mixedTotal,
+            $perPage,
+            $currentPage,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'page']
+        );
+        $contentsFeed->withQueryString();
+
+        return view('contents.index', compact(
+            'contentsFeed',
+            'categories',
+            'contentsIndexSectionRelaxed'
+        ));
+    }
+
+    /**
+     * Ordre d’affichage : 3 contenus puis 1 pack ; s’il ne reste que des packs, tous les empiler (même logique que la vue).
+     *
+     * @param  array<int, int>  $courseIds
+     * @param  array<int, int>  $packageIds
+     * @return array<int, array{0: 'c'|'p', 1: int}>
+     */
+    private function contentsIndexBuildMixedFeedOrder(array $courseIds, array $packageIds): array
+    {
+        $mixed = [];
+        $ci = 0;
+        $pi = 0;
+        $nC = count($courseIds);
+        $nP = count($packageIds);
+
+        while ($ci < $nC || $pi < $nP) {
+            for ($k = 0; $k < 3 && $ci < $nC; $k++) {
+                $mixed[] = ['c', (int) $courseIds[$ci]];
+                $ci++;
+            }
+            if ($pi < $nP) {
+                $mixed[] = ['p', (int) $packageIds[$pi]];
+                $pi++;
+            }
+            if ($ci >= $nC && $pi < $nP) {
+                while ($pi < $nP) {
+                    $mixed[] = ['p', (int) $packageIds[$pi]];
+                    $pi++;
+                }
+            }
+        }
+
+        return $mixed;
+    }
+
+    /**
+     * @param  array<int, array{0: 'c'|'p', 1: int}>  $mixedOrder
+     */
+    private function contentsIndexHydrateMixedSlice(array $mixedOrder, int $offset, int $perPage): Collection
+    {
+        $slice = array_slice($mixedOrder, $offset, $perPage);
+        $courseIds = [];
+        $packageIds = [];
+        foreach ($slice as $pair) {
+            [$t, $id] = $pair;
+            if ($t === 'c') {
+                $courseIds[] = $id;
+            } else {
+                $packageIds[] = $id;
+            }
+        }
+
+        $courseIds = array_values(array_unique($courseIds));
+        $packageIds = array_values(array_unique($packageIds));
+
+        $coursesMap = collect();
+        if ($courseIds !== []) {
+            $coursesMap = Course::query()
+                ->whereIn('id', $courseIds)
+                ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
+                ->get()
+                ->keyBy('id');
+        }
+
+        $packagesMap = collect();
+        if ($packageIds !== []) {
+            $packagesMap = ContentPackage::query()
+                ->whereIn('id', $packageIds)
+                ->withCount('contents')
+                ->get()
+                ->keyBy('id');
+        }
+
+        $items = collect();
+        foreach ($slice as [$t, $id]) {
+            if ($t === 'c' && $coursesMap->has($id)) {
+                $items->push(['type' => 'course', 'item' => $coursesMap->get($id)]);
+            } elseif ($t === 'p' && $packagesMap->has($id)) {
+                $items->push(['type' => 'package', 'item' => $packagesMap->get($id)]);
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param  Collection<int, array{type: string, item: Course|ContentPackage}>  $items
+     */
+    private function contentsIndexAddStatsToMixedCourses(Collection $items): void
+    {
+        $courses = $items->where('type', 'course')->pluck('item')->values();
+        if ($courses->isEmpty()) {
+            return;
+        }
+        $this->addCourseStatistics($courses);
+    }
+
+    private function contentsIndexBuildCourseQuery(Request $request, bool $withSection): Builder
+    {
         $query = Course::published()->with(['provider', 'category']);
 
-        // Filtres spéciaux pour les sections de la page d'accueil
-        if ($request->filled('featured')) {
-            $query->where('is_featured', true);
+        if ($withSection) {
+            if ($request->filled('featured')) {
+                $query->where('is_featured', true);
+            }
+            if ($request->filled('popular')) {
+                $query->popular();
+            }
+            if ($request->filled('trending')) {
+                $query->whereHas('enrollments', function ($q) {
+                    $q->where('created_at', '>=', now()->subWeek());
+                })->withCount('enrollments')->orderBy('enrollments_count', 'desc');
+            }
         }
 
-        if ($request->filled('popular')) {
-            $query->popular();
-        }
-
-        if ($request->filled('trending')) {
-            $query->whereHas('enrollments', function ($q) {
-                $q->where('created_at', '>=', now()->subWeek());
-            })->withCount('enrollments')->orderBy('enrollments_count', 'desc');
-        }
-
-        // Filtres normaux
         if ($request->filled('category')) {
             $query->where('category_id', $request->category);
         }
@@ -64,7 +248,6 @@ class CourseController extends Controller
             }
         }
 
-        // Recherche globale (comme dans l'admin)
         if ($request->filled('search')) {
             $searchTerm = $request->search;
             $query->where(function ($q) use ($searchTerm) {
@@ -80,8 +263,16 @@ class CourseController extends Controller
             });
         }
 
-        // Tri - Par défaut, afficher les cours les plus populaires en premier
+        return $query;
+    }
+
+    private function applyContentsIndexCourseSort(Request $request, Builder $query): void
+    {
         $sort = $request->get('sort', 'popular');
+        if ($sort === 'popular' && ($request->filled('trending') || $request->filled('popular'))) {
+            return;
+        }
+
         switch ($sort) {
             case 'popular':
                 $query->popular();
@@ -113,87 +304,52 @@ class CourseController extends Controller
                 );
                 break;
             default:
-                $query->popular(); // Par défaut, cours les plus populaires
+                $query->popular();
         }
+    }
 
-        // Gestion du scroll infini
-        if ($request->ajax() && $request->filled('infinite_scroll')) {
-            $page = $request->get('page', 1);
-            $perPage = 12;
-
-            $courses = $query->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
-                ->skip(($page - 1) * $perPage)
-                ->take($perPage)
-                ->get();
-
-            // Ajouter les statistiques
-            $courses = $this->addCourseStatistics($courses);
-
-            $hasMore = $courses->count() === $perPage;
-
-            // Formater les cours pour JSON avec la date de fin de promotion
-            $coursesArray = $courses->map(function ($course) {
-                $courseArray = $course->toArray();
-                // S'assurer que sale_end_at est au format ISO 8601
-                if ($course->sale_end_at) {
-                    $courseArray['sale_end_at'] = $course->sale_end_at->toIso8601String();
-                }
-                if ($course->sale_start_at) {
-                    $courseArray['sale_start_at'] = $course->sale_start_at->toIso8601String();
-                }
-                $courseArray['is_sale_active'] = $course->is_sale_active;
-                $courseArray['active_sale_price'] = $course->active_sale_price;
-                $courseArray['sale_discount_percentage'] = $course->sale_discount_percentage;
-                if (! $course->is_sale_active) {
-                    $courseArray['sale_price'] = null;
-                } else {
-                    $courseArray['sale_price'] = $course->active_sale_price;
-                }
-
-                return $courseArray;
-            });
-
-            return response()->json([
-                'courses' => $coursesArray,
-                'hasMore' => $hasMore,
-                'nextPage' => $hasMore ? $page + 1 : null,
-            ]);
-        }
-
-        $courses = $query->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
-            ->paginate(12)
-            ->withQueryString();
-
-        // Ajouter les statistiques à chaque cours
-        $courses->getCollection()->transform(function ($course) {
-            $course->stats = [
-                'total_lessons' => $course->sections->sum(function ($section) {
-                    return $section->lessons->count();
-                }),
-                'total_duration' => $course->sections->sum(function ($section) {
-                    return $section->lessons->sum('duration');
-                }),
-                'total_customers' => $course->total_customers, // Nombre d'inscriptions
-                'purchases_count' => $course->purchases_count, // Nombre d'achats (pour tous les cours)
-                // Statistiques supplémentaires pour les produits téléchargeables
-                'total_downloads' => $course->is_downloadable ? $course->total_downloads_count : null,
-                'unique_downloads' => $course->is_downloadable ? $course->unique_downloads_count : null,
-                'total_revenue' => $course->is_downloadable ? $course->total_purchases_revenue : null,
-                'average_rating' => $course->reviews->avg('rating') ?? 0,
-                'total_reviews' => $course->reviews->count(),
-            ];
-
-            return $course;
-        });
-
-        $categories = Category::active()->ordered()->get();
-
+    /**
+     * @param  array<int, string>  $paidOrderStatuses
+     */
+    private function contentsIndexBuildPackagesQuery(Request $request, bool $withSection, array $paidOrderStatuses): Builder
+    {
         $packagesQuery = ContentPackage::query()
             ->published()
-            ->withCount('contents')
-            ->ordered();
+            ->withCount('contents');
 
-        // Appliquer la même recherche texte pour les packs.
+        if ($withSection) {
+            if ($request->filled('featured')) {
+                $packagesQuery->where('is_featured', true);
+            }
+            if ($request->filled('popular')) {
+                $packagesQuery->withCount([
+                    'orderItems as purchases_count' => function ($q) use ($paidOrderStatuses) {
+                        $q->whereHas('order', fn ($oq) => $oq->whereIn('status', $paidOrderStatuses));
+                    },
+                ]);
+            }
+            if ($request->filled('trending')) {
+                $packagesQuery->withCount([
+                    'orderItems as recent_pack_orders_count' => function ($q) use ($paidOrderStatuses) {
+                        $q->where('order_items.created_at', '>=', now()->subWeek())
+                            ->whereHas('order', fn ($oq) => $oq->whereIn('status', $paidOrderStatuses));
+                    },
+                ]);
+            }
+        }
+
+        if ($withSection && $request->filled('trending')) {
+            $packagesQuery->orderByDesc('recent_pack_orders_count')
+                ->orderBy('sort_order')
+                ->orderByDesc('created_at');
+        } elseif ($withSection && $request->filled('popular')) {
+            $packagesQuery->orderByDesc('purchases_count')
+                ->orderBy('sort_order')
+                ->orderByDesc('created_at');
+        } else {
+            $packagesQuery->ordered();
+        }
+
         if ($request->filled('search')) {
             $searchTerm = $request->search;
             $packagesQuery->where(function ($q) use ($searchTerm) {
@@ -213,12 +369,35 @@ class CourseController extends Controller
             });
         }
 
-        // Éviter de répéter les packs à chaque page de pagination.
-        $packages = (int) $request->get('page', 1) === 1
-            ? $packagesQuery->get()
-            : collect();
+        return $packagesQuery;
+    }
 
-        return view('contents.index', compact('courses', 'categories', 'packages'));
+    private function contentsIndexPackagesStrictEmpty(Request $request, Builder $packagesQuery): bool
+    {
+        $rows = $packagesQuery->clone()->limit(100)->get();
+        if ($request->filled('trending')) {
+            return ! $rows->contains(fn (ContentPackage $p) => ($p->recent_pack_orders_count ?? 0) > 0);
+        }
+        if ($request->filled('popular')) {
+            return ! $rows->contains(fn (ContentPackage $p) => ($p->purchases_count ?? 0) > 0);
+        }
+
+        return $rows->isEmpty();
+    }
+
+    private function contentsIndexFinalizePackagesForDisplay(Request $request, Collection $packages, bool $relaxed): Collection
+    {
+        if ($relaxed) {
+            return $packages->values();
+        }
+        if ($request->filled('trending')) {
+            return $packages->filter(fn (ContentPackage $p) => ($p->recent_pack_orders_count ?? 0) > 0)->values();
+        }
+        if ($request->filled('popular')) {
+            return $packages->filter(fn (ContentPackage $p) => ($p->purchases_count ?? 0) > 0)->values();
+        }
+
+        return $packages->values();
     }
 
     public function show(Course $course)

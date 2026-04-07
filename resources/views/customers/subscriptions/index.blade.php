@@ -120,11 +120,25 @@
                             @if($plan->trial_days > 0)
                                 <p class="small text-success mb-2">{{ $plan->trial_days }} jours d'essai gratuit</p>
                             @endif
+                            @php
+                                // Même règle que /communaute/membre-premium : « Réabonnement » seulement si déjà une facture payée sur ce plan.
+                                $planSubscribeBtnLabel = 'S\'abonner';
+                                $planSubscribeBtnClass = 'btn-primary';
+                                if ($currentPlanSubscription) {
+                                    if ($currentPlanSubscription->shouldUseResubscribePrimaryLabel()) {
+                                        $planSubscribeBtnLabel = 'Réabonnement';
+                                        $planSubscribeBtnClass = 'btn-outline-primary';
+                                    } else {
+                                        $planSubscribeBtnLabel = 'Procéder au paiement';
+                                        $planSubscribeBtnClass = 'btn-primary';
+                                    }
+                                }
+                            @endphp
                             <form method="POST" action="{{ route('subscriptions.subscribe', $plan) }}">
                                 @csrf
                                 <input type="hidden" name="redirect_after_subscribe" value="customer.subscriptions">
-                                <button class="btn {{ $currentPlanSubscription ? 'btn-outline-primary' : 'btn-primary' }} w-100">
-                                    {{ $currentPlanSubscription ? 'Réabonnement' : 'S\'abonner' }}
+                                <button class="btn {{ $planSubscribeBtnClass }} w-100">
+                                    {{ $planSubscribeBtnLabel }}
                                 </button>
                             </form>
                         </div>

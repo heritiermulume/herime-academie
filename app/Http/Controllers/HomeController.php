@@ -13,11 +13,108 @@ use App\Models\User;
 use App\Services\CommunitySettingsService;
 use App\Services\TemporaryUploadCleaner;
 use App\Traits\CourseStatistics;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
 {
     use CourseStatistics;
+
+    /**
+     * Mélange contenus et packs « en vedette » : tri unique par date de création (plus récent en premier).
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Course>  $featuredCourses
+     * @param  \Illuminate\Support\Collection<int, \App\Models\ContentPackage>  $featuredPackages
+     * @return Collection<int, array{type: string, course?: \App\Models\Course, package?: \App\Models\ContentPackage}>
+     */
+    private function featuredHomeFeed(Collection $featuredCourses, Collection $featuredPackages): Collection
+    {
+        $items = collect();
+        foreach ($featuredCourses as $course) {
+            $items->push([
+                'type' => 'course',
+                'course' => $course,
+                'sort_at' => $course->created_at?->getTimestamp() ?? 0,
+            ]);
+        }
+        foreach ($featuredPackages as $package) {
+            $items->push([
+                'type' => 'package',
+                'package' => $package,
+                'sort_at' => $package->created_at?->getTimestamp() ?? 0,
+            ]);
+        }
+
+        return $items->sortByDesc('sort_at')->values()->map(fn (array $row) => [
+            'type' => $row['type'],
+            'course' => $row['course'] ?? null,
+            'package' => $row['package'] ?? null,
+        ]);
+    }
+
+    /**
+     * Mélange populaires : score = inscriptions (cours) ou lignes de commande payées (packs).
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Course>  $popularCourses
+     * @param  \Illuminate\Support\Collection<int, \App\Models\ContentPackage>  $popularPackages
+     * @return Collection<int, array{type: string, course?: \App\Models\Course, package?: \App\Models\ContentPackage}>
+     */
+    private function popularHomeFeed(Collection $popularCourses, Collection $popularPackages): Collection
+    {
+        $items = collect();
+        foreach ($popularCourses as $course) {
+            $items->push([
+                'type' => 'course',
+                'course' => $course,
+                'score' => (int) ($course->enrollments_count ?? 0),
+            ]);
+        }
+        foreach ($popularPackages as $package) {
+            $items->push([
+                'type' => 'package',
+                'package' => $package,
+                'score' => (int) ($package->purchases_count ?? 0),
+            ]);
+        }
+
+        return $items->sortByDesc('score')->values()->take(22)->map(fn (array $row) => [
+            'type' => $row['type'],
+            'course' => $row['course'] ?? null,
+            'package' => $row['package'] ?? null,
+        ]);
+    }
+
+    /**
+     * Mélange tendance : activité sur la dernière semaine (inscriptions / achats pack).
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Course>  $trendingCourses
+     * @param  \Illuminate\Support\Collection<int, \App\Models\ContentPackage>  $trendingPackages
+     * @return Collection<int, array{type: string, course?: \App\Models\Course, package?: \App\Models\ContentPackage}>
+     */
+    private function trendingHomeFeed(Collection $trendingCourses, Collection $trendingPackages): Collection
+    {
+        $items = collect();
+        foreach ($trendingCourses as $course) {
+            $items->push([
+                'type' => 'course',
+                'course' => $course,
+                'score' => (int) ($course->enrollments_count ?? 0),
+            ]);
+        }
+        foreach ($trendingPackages as $package) {
+            $items->push([
+                'type' => 'package',
+                'package' => $package,
+                'score' => (int) ($package->recent_pack_orders_count ?? 0),
+            ]);
+        }
+
+        return $items->sortByDesc('score')->values()->take(18)->map(fn (array $row) => [
+            'type' => $row['type'],
+            'course' => $row['course'] ?? null,
+            'package' => $row['package'] ?? null,
+        ]);
+    }
 
     public function index(TemporaryUploadCleaner $temporaryUploadCleaner)
     {
@@ -50,7 +147,7 @@ class HomeController extends Controller
         $popularCourses = Course::published()
             ->with(['provider', 'category', 'reviews', 'enrollments'])
             ->popular()
-            ->limit(10)
+            ->limit(12)
             ->get();
 
         $latestCourses = Course::published()
@@ -119,7 +216,7 @@ class HomeController extends Controller
             })
             ->withCount('enrollments')
             ->orderBy('enrollments_count', 'desc')
-            ->limit(10)
+            ->limit(12)
             ->get();
 
         $featuredPackages = ContentPackage::query()
@@ -129,15 +226,40 @@ class HomeController extends Controller
             ->ordered()
             ->get();
 
-        $communityHomeMedia = CommunitySettingsService::homeMedia();
+        $paidOrderStatuses = ['paid', 'completed'];
 
-        $homePackagesAsideFeatured = ContentPackage::query()
+        $popularPackages = ContentPackage::query()
             ->published()
-            ->where('is_featured', false)
+            ->withCount(['orderItems as purchases_count' => function ($query) use ($paidOrderStatuses) {
+                $query->whereHas('order', function ($q) use ($paidOrderStatuses) {
+                    $q->whereIn('status', $paidOrderStatuses);
+                });
+            }])
             ->withCount('contents')
-            ->ordered()
-            ->limit(12)
-            ->get();
+            ->orderByDesc('purchases_count')
+            ->limit(24)
+            ->get()
+            ->filter(fn (ContentPackage $package) => $package->purchases_count > 0)
+            ->take(12)
+            ->values();
+
+        $trendingPackages = ContentPackage::query()
+            ->published()
+            ->withCount(['orderItems as recent_pack_orders_count' => function ($query) use ($paidOrderStatuses) {
+                $query->where('order_items.created_at', '>=', now()->subWeek())
+                    ->whereHas('order', function ($q) use ($paidOrderStatuses) {
+                        $q->whereIn('status', $paidOrderStatuses);
+                    });
+            }])
+            ->withCount('contents')
+            ->orderByDesc('recent_pack_orders_count')
+            ->limit(40)
+            ->get()
+            ->filter(fn (ContentPackage $package) => $package->recent_pack_orders_count > 0)
+            ->take(12)
+            ->values();
+
+        $communityHomeMedia = CommunitySettingsService::homeMedia();
 
         // Calculer les statistiques pour chaque cours
         $featuredCourses = $this->addCourseStatistics($featuredCourses);
@@ -146,6 +268,10 @@ class HomeController extends Controller
         $topRatedCourses = $this->addCourseStatistics($topRatedCourses);
         $trendingCourses = $this->addCourseStatistics($trendingCourses);
 
+        $featuredHomeFeed = $this->featuredHomeFeed($featuredCourses, $featuredPackages);
+        $popularHomeFeed = $this->popularHomeFeed($popularCourses, $popularPackages);
+        $trendingHomeFeed = $this->trendingHomeFeed($trendingCourses, $trendingPackages);
+
         return view('home', compact(
             'banners',
             'featuredCourses',
@@ -153,8 +279,9 @@ class HomeController extends Controller
             'latestCourses',
             'topRatedCourses',
             'trendingCourses',
-            'featuredPackages',
-            'homePackagesAsideFeatured',
+            'featuredHomeFeed',
+            'popularHomeFeed',
+            'trendingHomeFeed',
             'communityHomeMedia',
             'categories',
             'providers',

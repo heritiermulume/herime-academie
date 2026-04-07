@@ -244,7 +244,7 @@ php artisan optimize
 # Voir les logs
 tail -f storage/logs/laravel.log
 
-# Nettoyer le cache
+# Nettoyer le caches,
 php artisan cache:clear
 php artisan config:clear
 php artisan route:clear

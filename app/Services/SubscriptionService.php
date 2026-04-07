@@ -651,7 +651,7 @@ class SubscriptionService
             'currency' => $currency,
             'payment_method' => $paymentMethod ?? $subscription->payment_method,
             'status' => 'pending',
-            'due_at' => now()->addDays(2),
+            'due_at' => now()->addMinutes(max(1, (int) config('subscriptions.invoice_due_minutes', 30))),
         ]);
 
         if ($subscription->user && $subscription->status !== 'pending_payment') {
@@ -912,11 +912,21 @@ class SubscriptionService
 
         $query->chunkById(100, function ($invoices) {
             foreach ($invoices as $invoice) {
+                $invoice->loadMissing('subscription');
+                $firstPaymentDeadlineExpired = $invoice->subscription
+                    && $invoice->subscription->status === 'pending_payment';
+
                 app(SubscriptionCheckoutOrderService::class)->cancelPendingOrdersForInvoicesClosed(
                     [$invoice->id],
                     'Facture en retard : commande de paiement annulée',
                 );
-                $invoice->update(['status' => 'failed']);
+                $invoice->update([
+                    'status' => 'failed',
+                    'metadata' => array_merge($invoice->metadata ?? [], [
+                        'failed_reason' => 'overdue',
+                        'failed_at' => now()->toIso8601String(),
+                    ]),
+                ]);
                 if ($invoice->subscription && in_array($invoice->subscription->status, ['active', 'trialing'], true)) {
                     $invoice->subscription->update(['status' => 'past_due']);
                     $this->revokeEntitlementsGrantedBySubscription($invoice->subscription->fresh());
@@ -928,12 +938,15 @@ class SubscriptionService
                     ]);
                     $this->revokeEntitlementsGrantedBySubscription($invoice->subscription->fresh());
                 }
+
+                $invoice->refresh()->load(['subscription.plan', 'user']);
+
                 if ($invoice->user) {
                     SubscriptionNotificationDispatcher::notifyUser(
                         $invoice->user,
-                        new SubscriptionInvoiceFailed($invoice),
+                        new SubscriptionInvoiceFailed($invoice, $firstPaymentDeadlineExpired),
                         'subscription_invoice_failed_overdue',
-                        ['invoice_id' => $invoice->id],
+                        ['invoice_id' => $invoice->id, 'first_payment_expired' => $firstPaymentDeadlineExpired],
                     );
                 }
                 SubscriptionNotificationDispatcher::notifyAdmins(

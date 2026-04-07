@@ -19,6 +19,7 @@ use App\Notifications\OrderStatusUpdated;
 use App\Notifications\SubscriptionActivated;
 use App\Notifications\SubscriptionAutoRenewResumed;
 use App\Notifications\SubscriptionInvoiceCancelled;
+use App\Notifications\SubscriptionInvoiceFailed;
 use App\Services\OrderEnrollmentService;
 use App\Services\SubscriptionCheckoutOrderService;
 use App\Services\SubscriptionService;
@@ -1534,6 +1535,137 @@ class SubscriptionSystemTest extends TestCase
         $pendingInvoice = $returned->invoices()->where('status', 'pending')->first();
         $this->assertNotNull($pendingInvoice);
         $this->assertSame(9.0, (float) $pendingInvoice->amount);
+    }
+
+    public function test_resubscribe_primary_label_only_when_paid_history_exists(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Label CTA test',
+            'slug' => 'label-cta-'.uniqid(),
+            'plan_type' => 'recurring',
+            'billing_period' => 'monthly',
+            'price' => 10,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => true,
+        ]);
+
+        $firstAttempt = UserSubscription::create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'pending_payment',
+            'starts_at' => now(),
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'auto_renew' => true,
+            'payment_method' => 'moneroo',
+        ]);
+
+        SubscriptionInvoice::create([
+            'invoice_number' => 'SUB-LABEL-PEND-1',
+            'user_subscription_id' => $firstAttempt->id,
+            'user_id' => $user->id,
+            'amount' => 10,
+            'currency' => 'USD',
+            'status' => 'pending',
+            'due_at' => now()->addDay(),
+        ]);
+
+        $firstAttempt->load('invoices');
+        $this->assertFalse($firstAttempt->hasPaidOrPriorPaidSamePlan());
+        $this->assertFalse($firstAttempt->shouldUseResubscribePrimaryLabel());
+
+        SubscriptionInvoice::create([
+            'invoice_number' => 'SUB-LABEL-PAID-1',
+            'user_subscription_id' => $firstAttempt->id,
+            'user_id' => $user->id,
+            'amount' => 10,
+            'currency' => 'USD',
+            'status' => 'paid',
+            'due_at' => now()->subDay(),
+            'paid_at' => now(),
+        ]);
+
+        $firstAttempt->refresh()->load('invoices');
+        $this->assertTrue($firstAttempt->hasPaidOrPriorPaidSamePlan());
+        $this->assertTrue($firstAttempt->shouldUseResubscribePrimaryLabel());
+
+        $secondSub = UserSubscription::create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'pending_payment',
+            'starts_at' => now(),
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'auto_renew' => true,
+            'payment_method' => 'moneroo',
+        ]);
+
+        SubscriptionInvoice::create([
+            'invoice_number' => 'SUB-LABEL-PEND-2',
+            'user_subscription_id' => $secondSub->id,
+            'user_id' => $user->id,
+            'amount' => 10,
+            'currency' => 'USD',
+            'status' => 'pending',
+            'due_at' => now()->addDay(),
+        ]);
+
+        $secondSub->refresh()->load('invoices');
+        $this->assertTrue($secondSub->hasPaidOrPriorPaidSamePlan());
+        $this->assertTrue($secondSub->shouldUseResubscribePrimaryLabel());
+    }
+
+    public function test_overdue_first_payment_invoice_expires_subscription_and_emails_user(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['role' => 'customer']);
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Premier paiement délai',
+            'slug' => 'premier-delai-'.uniqid(),
+            'plan_type' => 'recurring',
+            'billing_period' => 'monthly',
+            'price' => 11,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => true,
+        ]);
+
+        $subscription = UserSubscription::create([
+            'user_id' => $user->id,
+            'subscription_plan_id' => $plan->id,
+            'status' => 'pending_payment',
+            'starts_at' => now(),
+            'current_period_starts_at' => now(),
+            'current_period_ends_at' => now()->addMonth(),
+            'auto_renew' => true,
+            'payment_method' => 'moneroo',
+        ]);
+
+        SubscriptionInvoice::create([
+            'invoice_number' => 'SUB-OVERDUE-FIRST',
+            'user_subscription_id' => $subscription->id,
+            'user_id' => $user->id,
+            'amount' => 11,
+            'currency' => 'USD',
+            'status' => 'pending',
+            'due_at' => now()->subMinute(),
+        ]);
+
+        app(SubscriptionService::class)->processRenewalsForUser($user->id);
+
+        $subscription->refresh();
+        $this->assertSame('expired', $subscription->status);
+
+        $invoice = SubscriptionInvoice::query()->where('user_subscription_id', $subscription->id)->firstOrFail();
+        $this->assertSame('failed', $invoice->status);
+        $this->assertSame('overdue', $invoice->metadata['failed_reason'] ?? null);
+
+        Notification::assertSentTo($user, SubscriptionInvoiceFailed::class);
     }
 
     public function test_cancelled_member_plan_http_subscribe_redirects_to_moneroo_checkout(): void

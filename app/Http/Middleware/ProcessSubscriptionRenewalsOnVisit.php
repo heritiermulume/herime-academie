@@ -10,13 +10,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Fait avancer les renouvellements d’abonnement pour l’utilisateur connecté sans dépendre du cron Laravel.
- * S’exécute sur les GET « navigateur » (pas AJAX/API), avec un délai minimal entre deux passages (cache).
+ * S’exécute sur les GET « navigateur » (pas AJAX/API), avec un cache (défaut 10 min, config/subscriptions.php).
  */
 class ProcessSubscriptionRenewalsOnVisit
 {
-    /** Délai entre deux traitements complets pour un même utilisateur (évite du travail à chaque clic). */
-    private const CACHE_TTL_SECONDS = 600;
-
     private const CACHE_PREFIX = 'subscription_renewals_visit:';
 
     public function handle(Request $request, Closure $next): Response
@@ -32,13 +29,16 @@ class ProcessSubscriptionRenewalsOnVisit
         $userId = (int) auth()->id();
         $cacheKey = self::CACHE_PREFIX.$userId;
 
-        if (Cache::has($cacheKey)) {
+        $ttl = (int) config('subscriptions.process_renewals_visit_cache_seconds', 600);
+        if ($ttl > 0 && Cache::has($cacheKey)) {
             return $next($request);
         }
 
         try {
             app(SubscriptionService::class)->processRenewalsForUser($userId);
-            Cache::put($cacheKey, true, now()->addSeconds(self::CACHE_TTL_SECONDS));
+            if ($ttl > 0) {
+                Cache::put($cacheKey, true, now()->addSeconds($ttl));
+            }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('ProcessSubscriptionRenewalsOnVisit: erreur', [
                 'user_id' => $userId,

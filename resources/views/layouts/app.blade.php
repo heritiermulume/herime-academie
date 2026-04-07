@@ -5004,38 +5004,33 @@
     </script>
 
     <script>
-        // Rendre les cartes de cours entièrement cliquables
-        document.addEventListener('DOMContentLoaded', function() {
-            const courseCards = document.querySelectorAll('.course-card[data-course-url]');
-            
-            courseCards.forEach(function(card) {
-                card.addEventListener('click', function(e) {
-                    // Ne pas rediriger si on clique sur un bouton, un lien ou dans la zone d'actions
-                    const clickedElement = e.target;
-                    const el =
-                        clickedElement && clickedElement.nodeType === Node.ELEMENT_NODE
-                            ? clickedElement
-                            : clickedElement?.parentElement;
-                    const isButton = el?.closest?.('.card-actions, .btn, button, a.btn, form');
-                    const isBadge =
-                        el?.classList?.contains('badge') || el?.closest?.('.badge');
-                    
-                    // Si on clique sur un badge ou un bouton, ne pas rediriger
-                    if (isButton || isBadge) {
-                        return;
-                    }
-                    
-                    // Si on clique directement sur un lien (autre que le lien de la carte), ne pas rediriger
-                    if (el && el.tagName === 'A' && !el.classList.contains('course-card-link')) {
-                        return;
-                    }
-                    
-                    const courseUrl = card.getAttribute('data-course-url');
-                    if (courseUrl) {
-                        window.location.href = courseUrl;
-                    }
-                });
-            });
+        // Cartes entièrement cliquables (délégation : compatible scroll infini / cartes injectées)
+        document.addEventListener('click', function (e) {
+            const card = e.target.closest('.course-card[data-course-url]');
+            if (! card) {
+                return;
+            }
+            const clickedElement = e.target;
+            const el =
+                clickedElement && clickedElement.nodeType === Node.ELEMENT_NODE
+                    ? clickedElement
+                    : clickedElement?.parentElement;
+            const isButton = el?.closest?.('.card-actions, .btn, button, a.btn, form');
+            const isBadge =
+                el?.classList?.contains('badge') || el?.closest?.('.badge');
+
+            if (isButton || isBadge) {
+                return;
+            }
+
+            if (el && el.tagName === 'A' && ! el.classList.contains('course-card-link')) {
+                return;
+            }
+
+            const courseUrl = card.getAttribute('data-course-url');
+            if (courseUrl) {
+                window.location.href = courseUrl;
+            }
         });
     </script>
 

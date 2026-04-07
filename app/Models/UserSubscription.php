@@ -88,6 +88,40 @@ class UserSubscription extends Model
     }
 
     /**
+     * Au moins une facture payée sur cet abonnement, ou sur un autre abonnement du même plan pour ce client.
+     * Permet de distinguer une simple tentative de paiement (jamais payé) d’un vrai réabonnement.
+     */
+    public function hasPaidOrPriorPaidSamePlan(): bool
+    {
+        if ($this->relationLoaded('invoices')) {
+            if ($this->invoices->contains(fn ($inv) => $inv->status === 'paid')) {
+                return true;
+            }
+        } elseif ($this->invoices()->where('status', 'paid')->exists()) {
+            return true;
+        }
+
+        return static::query()
+            ->where('user_id', $this->user_id)
+            ->where('subscription_plan_id', $this->subscription_plan_id)
+            ->whereKeyNot($this->getKey())
+            ->whereHas('invoices', fn ($q) => $q->where('status', 'paid'))
+            ->exists();
+    }
+
+    /**
+     * Libellé type « Réabonnement » sur le bouton principal (vs première souscription / finaliser paiement).
+     */
+    public function shouldUseResubscribePrimaryLabel(): bool
+    {
+        return match ($this->status) {
+            'active', 'trialing', 'past_due' => true,
+            'pending_payment', 'cancelled' => $this->hasPaidOrPriorPaidSamePlan(),
+            default => true,
+        };
+    }
+
+    /**
      * Abonnement encore pertinent pour la page communauté (accès ou période non terminée).
      */
     public function isActiveMembershipPeriod(): bool
@@ -129,6 +163,7 @@ class UserSubscription extends Model
             'show_cancel' => in_array($this->status, ['active', 'trialing', 'past_due', 'pending_payment'], true),
             'show_resume' => $this->status === 'cancelled',
             'show_pay' => $needsPay,
+            'use_resubscribe_primary_label' => $this->shouldUseResubscribePrimaryLabel(),
         ];
     }
 }

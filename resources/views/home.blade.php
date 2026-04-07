@@ -605,7 +605,7 @@ body {
 </section>
 
 <!-- Featured Courses Section -->
-@if($featuredCourses->count() > 0 || $featuredPackages->count() > 0)
+@if($featuredHomeFeed->count() > 0)
 <section class="featured-courses py-5 bg-light">
     <div class="container">
         <div class="row mb-5">
@@ -621,10 +621,11 @@ body {
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="course-scroll-wrapper" id="featuredCoursesScroll" data-scroll-amount="320">
-                @foreach($featuredPackages as $package)
-                    <x-home-pack-card :package="$package" />
-                @endforeach
-                @foreach($featuredCourses as $course)
+                @foreach($featuredHomeFeed as $item)
+                @if($item['type'] === 'package')
+                    <x-home-pack-card :package="$item['package']" />
+                @else
+                @php $course = $item['course']; @endphp
                 <div class="course-scroll-item">
                     <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
                         <div class="card" style="position: relative;">
@@ -747,6 +748,7 @@ body {
                         </div>
                     </div>
                 </div>
+                @endif
                 @endforeach
             </div>
             <button class="course-scroll-btn course-scroll-btn-right" type="button" data-scroll-target="featuredCoursesScroll" data-scroll-direction="right" aria-label="Faire défiler les cours en vedette vers la droite">
@@ -763,7 +765,7 @@ body {
 @endif
 
 <!-- Popular Courses Section -->
-@if($popularCourses->count() > 0 || $homePackagesAsideFeatured->count() > 0)
+@if($popularHomeFeed->count() > 0)
 <section class="popular-courses py-5">
     <div class="container">
         <div class="row mb-5">
@@ -779,10 +781,11 @@ body {
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="course-scroll-wrapper" id="popularCoursesScroll" data-scroll-amount="300">
-                @foreach($homePackagesAsideFeatured as $package)
-                    <x-home-pack-card :package="$package" />
-                @endforeach
-                @foreach($popularCourses as $course)
+                @foreach($popularHomeFeed as $item)
+                @if($item['type'] === 'package')
+                    <x-home-pack-card :package="$item['package']" />
+                @else
+                @php $course = $item['course']; @endphp
                 <div class="course-scroll-item">
                     <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
                         <div class="card" style="position: relative;">
@@ -905,6 +908,7 @@ body {
                         </div>
                     </div>
                 </div>
+                @endif
                 @endforeach
             </div>
             <button class="course-scroll-btn course-scroll-btn-right" type="button" data-scroll-target="popularCoursesScroll" data-scroll-direction="right" aria-label="Faire défiler les cours populaires vers la droite">
@@ -1090,14 +1094,14 @@ body {
 </section>
 
 <!-- Trending Courses Section -->
-@if($trendingCourses->count() > 0)
+@if($trendingHomeFeed->count() > 0)
 <section class="trending-courses py-5 bg-light">
     <div class="container">
         <div class="row mb-5">
             <div class="col-12 col-lg-8 mx-auto text-center">
-                <h2 class="display-5 fw-bold mb-3">Contenus tendance</h2>
+                <h2 class="display-5 fw-bold mb-3">Contenus et packs tendance</h2>
                 <p class="lead text-muted">
-                    Les contenus les plus suivis cette semaine
+                    Les contenus et packs les plus suivis cette semaine
                 </p>
             </div>
         </div>
@@ -1106,7 +1110,11 @@ body {
                 <i class="fas fa-chevron-left"></i>
             </button>
             <div class="course-scroll-wrapper" id="trendingCoursesScroll" data-scroll-amount="300">
-                @foreach($trendingCourses as $course)
+                @foreach($trendingHomeFeed as $item)
+                @if($item['type'] === 'package')
+                    <x-home-pack-card :package="$item['package']" :show-trending-badge="true" />
+                @else
+                @php $course = $item['course']; @endphp
                 <div class="course-scroll-item">
                     <div class="course-card" data-course-url="{{ route('contents.show', $course->slug) }}" style="cursor: pointer;">
                         <div class="card" style="position: relative;">
@@ -1226,6 +1234,7 @@ body {
                         </div>
                     </div>
                 </div>
+                @endif
                 @endforeach
             </div>
             <button class="course-scroll-btn course-scroll-btn-right" type="button" data-scroll-target="trendingCoursesScroll" data-scroll-direction="right" aria-label="Faire défiler les cours tendance vers la droite">

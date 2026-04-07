@@ -95,6 +95,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Navigation GET : sync Moneroo + annulation commandes pending trop anciennes
+    |--------------------------------------------------------------------------
+    |
+    | Délai minimal entre deux traitements lourds pour le même utilisateur (ou admin « tout sync »),
+    | afin de ne pas surcharger le serveur à chaque chargement de page.
+    |
+    */
+    'visit_processing_cache_seconds' => (int) env('PAYMENTS_VISIT_PROCESSING_CACHE_SECONDS', 600),
+
+    /*
+    |--------------------------------------------------------------------------
     | Payment Security
     |--------------------------------------------------------------------------
     |

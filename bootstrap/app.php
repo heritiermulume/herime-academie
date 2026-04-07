@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'subscription.renewals.admin_visit' => \App\Http\Middleware\ProcessSubscriptionRenewalsOnAdminVisit::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'security' => \App\Http\Middleware\SecurityMiddleware::class,
             'upload.errors' => \App\Http\Middleware\HandleUploadErrors::class,
@@ -21,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'sso.page.load' => \App\Http\Middleware\ValidateSSOOnPageLoad::class,
             'subscription.access' => \App\Http\Middleware\EnsureSubscriptionAccess::class,
         ]);
-        
+
         // Appliquer les middlewares globalement sur les routes web
         $middleware->web(append: [
             \App\Http\Middleware\HandleUploadErrors::class,
@@ -40,8 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Faire confiance aux proxies pour que HTTPS soit correctement détecté (cookies secure)
-        $middleware->trustProxies(at: '*', headers: 
-            Request::HEADER_X_FORWARDED_FOR
+        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
             | Request::HEADER_X_FORWARDED_HOST
             | Request::HEADER_X_FORWARDED_PORT
             | Request::HEADER_X_FORWARDED_PROTO
@@ -64,12 +64,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Pour les requêtes JSON/AJAX, retourner des erreurs JSON détaillées même en production
         $exceptions->render(function (\Throwable $e, Request $request) {
             if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
-                $statusCode = method_exists($e, 'getStatusCode') 
-                    ? $e->getStatusCode() 
+                $statusCode = method_exists($e, 'getStatusCode')
+                    ? $e->getStatusCode()
                     : 500;
 
                 $message = $e->getMessage();
-                
+
                 // En production, ne pas exposer les détails techniques sauf pour certaines erreurs
                 if (config('app.env') === 'production' && $statusCode === 500) {
                     // Logger l'erreur complète

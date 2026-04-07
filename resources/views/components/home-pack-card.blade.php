@@ -1,4 +1,4 @@
-@props(['package'])
+@props(['package', 'showTrendingBadge' => false])
 
 @php
     $hasAccess = auth()->check() && auth()->user()->hasPurchasedContentPackage($package);
@@ -12,6 +12,9 @@
                 <x-package-card-media :package="$package" />
                 <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
                     <span class="badge bg-primary">Pack</span>
+                    @if($showTrendingBadge)
+                        <span class="badge bg-danger">Tendance</span>
+                    @endif
                     @if($package->is_featured)
                         <span class="badge bg-warning text-dark">À la une</span>
                     @endif

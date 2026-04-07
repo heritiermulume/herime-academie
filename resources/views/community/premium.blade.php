@@ -219,6 +219,11 @@
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
         transform: scale(1.02);
     }
+    /* :hover:not(:disabled) a une spécificité plus forte que .is-active seul — sans ceci le libellé redevient blanc sur fond blanc */
+    .mp-period__btn.is-active:hover:not(:disabled),
+    .mp-period__btn.is-active:focus-visible:not(:disabled) {
+        color: #0f172a;
+    }
     .mp-period__btn.is-active .mp-period__hint {
         color: #64748b;
         opacity: 1;
@@ -615,6 +620,13 @@
                         f.submit();
                     }
 
+                    function wantsResubscribePrimaryLabel(us) {
+                        if (typeof us.use_resubscribe_primary_label === 'boolean') {
+                            return us.use_resubscribe_primary_label;
+                        }
+                        return us.status !== 'pending_payment' && us.status !== 'cancelled';
+                    }
+
                     function updateCtaArea(data) {
                         var us = data.user_subscription || null;
                         window.__mpCurrentPlanUserSub = us;
@@ -646,7 +658,9 @@
                                 statusEl.classList.remove('d-none');
                             }
                             if (us.show_pay && btnPay) btnPay.classList.remove('d-none');
-                            if (submitLabel) submitLabel.textContent = 'Réabonnement';
+                            if (submitLabel) {
+                                submitLabel.textContent = wantsResubscribePrimaryLabel(us) ? 'Réabonnement' : 'Procéder au paiement';
+                            }
                             return;
                         }
 
@@ -657,7 +671,9 @@
                                 statusEl.classList.remove('d-none');
                             }
                             if (us.show_resume && btnResume) btnResume.classList.remove('d-none');
-                            if (submitLabel) submitLabel.textContent = 'Réabonnement';
+                            if (submitLabel) {
+                                submitLabel.textContent = wantsResubscribePrimaryLabel(us) ? 'Réabonnement' : 'Procéder au paiement';
+                            }
                             return;
                         }
 
@@ -681,7 +697,9 @@
                             btnCancel.classList.remove('d-none');
                             if (hintResiliate) hintResiliate.classList.remove('d-none');
                         }
-                        if (submitLabel) submitLabel.textContent = 'Réabonnement';
+                        if (submitLabel) {
+                            submitLabel.textContent = wantsResubscribePrimaryLabel(us) ? 'Réabonnement' : 'Procéder au paiement';
+                        }
                     }
 
                     if (btnCancel) {

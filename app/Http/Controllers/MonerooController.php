@@ -20,6 +20,7 @@ use App\Services\OrderEnrollmentService;
 use App\Services\SubscriptionNotificationDispatcher;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -173,7 +174,7 @@ class MonerooController extends Controller
     {
         // Annuler côté backend les commandes trop anciennes sans cron/queue (si connecté)
         if (auth()->check()) {
-            $this->autoCancelStale(auth()->id());
+            $this->maybeAutoCancelStaleOrdersForUser((int) auth()->id());
         }
 
         $query = [];
@@ -791,7 +792,7 @@ class MonerooController extends Controller
     public function status(string $paymentId)
     {
         if (auth()->check()) {
-            $this->autoCancelStale(auth()->id());
+            $this->maybeAutoCancelStaleOrdersForUser((int) auth()->id());
         }
 
         // Utiliser l'endpoint /verify selon la documentation Moneroo
@@ -840,8 +841,55 @@ class MonerooController extends Controller
     }
 
     /**
+     * Sync Moneroo + annulation des commandes pending trop anciennes, au plus une fois par fenêtre
+     * (défaut 10 min, config payments.visit_processing_cache_seconds). Utilisé par le middleware web GET.
+     */
+    public function runThrottledVisitPaymentMaintenance(int $userId): void
+    {
+        $ttl = max(0, (int) config('payments.visit_processing_cache_seconds', 600));
+        $key = 'payments:web_visit_maintenance:'.$userId;
+
+        if ($ttl > 0 && Cache::has($key)) {
+            return;
+        }
+
+        $this->syncPendingPaymentsForUser($userId);
+        $this->autoCancelStale($userId);
+
+        if ($ttl > 0) {
+            Cache::put($key, true, now()->addSeconds($ttl));
+        }
+    }
+
+    /**
+     * Annulation des commandes pending trop anciennes, avec le même délai minimal qu’en navigation (10 min par défaut).
+     * Évite de répéter le travail si runThrottledVisitPaymentMaintenance vient d’être exécuté (même fenêtre).
+     */
+    public function maybeAutoCancelStaleOrdersForUser(int $userId): void
+    {
+        $ttl = max(0, (int) config('payments.visit_processing_cache_seconds', 600));
+        $maintenanceKey = 'payments:web_visit_maintenance:'.$userId;
+
+        if ($ttl > 0 && Cache::has($maintenanceKey)) {
+            return;
+        }
+
+        $key = 'payments:cancel_stale_orders:'.$userId;
+
+        if ($ttl > 0 && Cache::has($key)) {
+            return;
+        }
+
+        $this->autoCancelStale($userId);
+
+        if ($ttl > 0) {
+            Cache::put($key, true, now()->addSeconds($ttl));
+        }
+    }
+
+    /**
      * Synchroniser automatiquement les paiements Moneroo en attente.
-     * Appelé via middleware à chaque chargement de page.
+     * Appelé depuis runThrottledVisitPaymentMaintenance (middleware GET, cache externe).
      * - Pour les admins : synchronise TOUTES les commandes en attente (données à jour).
      * - Pour les clients : synchronise uniquement les paiements de l'utilisateur.
      */
@@ -860,22 +908,11 @@ class MonerooController extends Controller
      */
     public function syncAllPendingPayments(): void
     {
-        $cacheKey = 'moneroo_sync_admin_all';
-        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-            return;
-        }
-
         $payments = Payment::where('payment_method', 'moneroo')
             ->whereIn('status', ['pending', 'processing'])
             ->where('created_at', '>=', now()->subHours(48))
             ->with(['order.orderItems', 'order.user'])
             ->get();
-
-        if ($payments->isEmpty()) {
-            \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
-
-            return;
-        }
 
         foreach ($payments as $payment) {
             try {
@@ -888,8 +925,6 @@ class MonerooController extends Controller
                 ]);
             }
         }
-
-        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
     }
 
     /**
@@ -897,23 +932,12 @@ class MonerooController extends Controller
      */
     private function syncPendingPaymentsForUserId(int $userId): void
     {
-        $cacheKey = "moneroo_sync_user_{$userId}";
-        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-            return;
-        }
-
         $payments = Payment::where('payment_method', 'moneroo')
             ->whereIn('status', ['pending', 'processing'])
             ->whereHas('order', fn ($q) => $q->where('user_id', $userId))
             ->where('created_at', '>=', now()->subHours(48))
             ->with(['order.orderItems', 'order.user'])
             ->get();
-
-        if ($payments->isEmpty()) {
-            \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
-
-            return;
-        }
 
         foreach ($payments as $payment) {
             try {
@@ -926,8 +950,6 @@ class MonerooController extends Controller
                 ]);
             }
         }
-
-        \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
     }
 
     /**
@@ -1789,7 +1811,7 @@ class MonerooController extends Controller
     public function successfulRedirect(Request $request)
     {
         if (auth()->check()) {
-            $this->autoCancelStale(auth()->id());
+            $this->maybeAutoCancelStaleOrdersForUser((int) auth()->id());
         }
 
         // Moneroo peut envoyer payment_id (notre référence) ou paymentId (ID Moneroo) dans les paramètres
@@ -2179,7 +2201,7 @@ class MonerooController extends Controller
     public function failedRedirect(Request $request)
     {
         if (auth()->check()) {
-            $this->autoCancelStale(auth()->id());
+            $this->maybeAutoCancelStaleOrdersForUser((int) auth()->id());
         }
 
         // Si Moneroo redirige avec un payment_id, synchroniser l'état local

@@ -3627,19 +3627,30 @@ class AdminController extends Controller
                     $users = collect($users);
                 }
 
+                // Gros envois : éviter la coupure PHP/nginx avant la fin des envois
+                if ($users->count() > 25) {
+                    @set_time_limit(0);
+                }
+
                 $sentCount = 0;
                 $failedCount = 0;
+                $skippedDuplicateCount = 0;
 
                 // Envoyer immédiatement en lots
-                $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, $recipientType) {
+                $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, &$skippedDuplicateCount, $recipientType) {
                     foreach ($userChunk as $user) {
-                        // Éviter les doublons : ne pas renvoyer le même sujet au même user dans les 5 dernières minutes
+                        // Anti-doublon : même objet + même type de campagne (metadata) dans les 5 dernières minutes.
+                        // Sans le filtre recipient_type, un envoi « sélectionné » ou « un utilisateur » avec le même
+                        // objet bloquait ensuite l'envoi « tous les utilisateurs » pour ces personnes.
                         $recentSent = SentEmail::where('user_id', $user->id)
                             ->where('subject', $subject)
                             ->where('status', 'sent')
                             ->where('created_at', '>=', now()->subMinutes(5))
+                            ->where('metadata->recipient_type', $recipientType)
                             ->exists();
                         if ($recentSent) {
+                            $skippedDuplicateCount++;
+
                             continue;
                         }
                         try {
@@ -3723,6 +3734,9 @@ class AdminController extends Controller
                 $message = "Email envoyé avec succès à {$sentCount} destinataire(s).";
                 if ($failedCount > 0) {
                     $message .= " {$failedCount} envoi(s) ont échoué.";
+                }
+                if ($skippedDuplicateCount > 0) {
+                    $message .= " {$skippedDuplicateCount} destinataire(s) ignoré(s) (même objet et même type d'envoi déjà envoyé dans les 5 dernières minutes).";
                 }
             } else {
                 // Envoi programmé
@@ -7025,6 +7039,7 @@ class AdminController extends Controller
 
         $emailSentCount = 0;
         $emailFailedCount = 0;
+        $emailSkippedDuplicateCount = 0;
         $whatsappSentCount = 0;
         $whatsappFailedCount = 0;
 
@@ -7033,15 +7048,20 @@ class AdminController extends Controller
 
         // Envoyer les emails directement
         if ($sendEmail && $emailUsers->isNotEmpty()) {
+            if ($emailUsers->count() > 25) {
+                @set_time_limit(0);
+            }
             foreach ($emailUsers as $user) {
                 if ($user->email) {
-                    // Éviter les doublons : ne pas renvoyer le même sujet au même user dans les 5 dernières minutes
                     $recentSent = SentEmail::where('user_id', $user->id)
                         ->where('subject', $subject)
                         ->where('status', 'sent')
                         ->where('created_at', '>=', now()->subMinutes(5))
+                        ->where('metadata->recipient_type', $recipientType)
                         ->exists();
                     if ($recentSent) {
+                        $emailSkippedDuplicateCount++;
+
                         continue;
                     }
                     try {
@@ -7080,6 +7100,9 @@ class AdminController extends Controller
             $message .= "{$emailSentCount} email(s) envoyé(s)";
             if ($emailFailedCount > 0) {
                 $message .= ", {$emailFailedCount} échec(s)";
+            }
+            if ($emailSkippedDuplicateCount > 0) {
+                $message .= ", {$emailSkippedDuplicateCount} ignoré(s) (doublon récent, même type d'envoi)";
             }
             $message .= '. ';
         }
