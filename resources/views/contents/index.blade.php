@@ -97,8 +97,8 @@
                                 <div>
                                     <label class="form-label fw-semibold">Trier par</label>
                                     <select class="form-select" name="sort">
-                                        <option value="popular" {{ (request('sort') == 'popular' || !request('sort')) ? 'selected' : '' }}>Plus populaires</option>
-                                        <option value="latest" {{ request('sort') == 'latest' ? 'selected' : '' }}>Plus récents</option>
+                                        <option value="latest" {{ (request('sort') == 'latest' || !request('sort')) ? 'selected' : '' }}>Plus récents</option>
+                                        <option value="popular" {{ request('sort') == 'popular' ? 'selected' : '' }}>Plus populaires</option>
                                         <option value="rating" {{ request('sort') == 'rating' ? 'selected' : '' }}>Mieux notés</option>
                                         <option value="price_low" {{ request('sort') == 'price_low' ? 'selected' : '' }}>Prix croissant</option>
                                         <option value="price_high" {{ request('sort') == 'price_high' ? 'selected' : '' }}>Prix décroissant</option>
@@ -666,6 +666,25 @@
 .course-card-inner:hover {
     border-color: #ffcc33 !important;
     box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.3);
+}
+
+/* Liste /contents : colonnes à hauteur égale + margin-top:auto sur .card-actions (ne pas utiliser mt-* sur .card-actions, Bootstrap écrase auto) */
+#courses-container .course-item {
+    display: flex;
+    flex-direction: column;
+}
+
+#courses-container .course-item > .course-card {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#courses-container .course-item > .course-card > .card {
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .course-card-inner .card-body {

@@ -268,8 +268,18 @@ class CourseController extends Controller
 
     private function applyContentsIndexCourseSort(Request $request, Builder $query): void
     {
-        $sort = $request->get('sort', 'popular');
+        $sort = $request->get('sort', 'latest');
+        $explicitSort = $request->filled('sort');
+
         if ($sort === 'popular' && ($request->filled('trending') || $request->filled('popular'))) {
+            return;
+        }
+
+        if (! $explicitSort && $request->filled('trending')) {
+            return;
+        }
+
+        if (! $explicitSort && $request->filled('popular')) {
             return;
         }
 
@@ -304,7 +314,7 @@ class CourseController extends Controller
                 );
                 break;
             default:
-                $query->popular();
+                $query->latest();
         }
     }
 
@@ -347,7 +357,7 @@ class CourseController extends Controller
                 ->orderBy('sort_order')
                 ->orderByDesc('created_at');
         } else {
-            $packagesQuery->ordered();
+            $this->contentsIndexApplyPackagesCatalogSort($request, $packagesQuery, $paidOrderStatuses);
         }
 
         if ($request->filled('search')) {
@@ -370,6 +380,36 @@ class CourseController extends Controller
         }
 
         return $packagesQuery;
+    }
+
+    /**
+     * Tri des packs sur le catalogue public (hors filtres section tendance / populaire déjà traités).
+     *
+     * @param  array<int, string>  $paidOrderStatuses
+     */
+    private function contentsIndexApplyPackagesCatalogSort(Request $request, Builder $packagesQuery, array $paidOrderStatuses): void
+    {
+        $sort = $request->get('sort', 'latest');
+
+        switch ($sort) {
+            case 'popular':
+                $packagesQuery->withCount([
+                    'orderItems as purchases_count' => function ($q) use ($paidOrderStatuses) {
+                        $q->whereHas('order', fn ($oq) => $oq->whereIn('status', $paidOrderStatuses));
+                    },
+                ])->orderByDesc('purchases_count')->orderByDesc('created_at');
+                break;
+            case 'latest':
+                $packagesQuery->orderByDesc('created_at');
+                break;
+            case 'rating':
+            case 'price_low':
+            case 'price_high':
+                $packagesQuery->ordered();
+                break;
+            default:
+                $packagesQuery->orderByDesc('created_at');
+        }
     }
 
     private function contentsIndexPackagesStrictEmpty(Request $request, Builder $packagesQuery): bool
@@ -1298,6 +1338,7 @@ class CourseController extends Controller
 
         // 1. Cours de la même catégorie avec un bon rating
         $categoryCourses = Course::published()
+            ->saleEnabled()
             ->where('category_id', $course->category_id)
             ->where('id', '!=', $course->id)
             ->where('is_free', false) // Exclure les cours gratuits
@@ -1314,6 +1355,7 @@ class CourseController extends Controller
 
         // 2. Cours du même niveau de difficulté
         $levelCourses = Course::published()
+            ->saleEnabled()
             ->where('level', $course->level)
             ->where('id', '!=', $course->id)
             ->where('is_free', false) // Exclure les cours gratuits
@@ -1331,6 +1373,7 @@ class CourseController extends Controller
 
         // 3. Cours populaires récents
         $popularCourses = Course::published()
+            ->saleEnabled()
             ->where('id', '!=', $course->id)
             ->where('is_free', false) // Exclure les cours gratuits
             ->whereNotIn('id', $excludedCourseIds) // Exclure les cours déjà achetés et dans le panier
@@ -1356,6 +1399,7 @@ class CourseController extends Controller
 
             if (! empty($userEnrollments)) {
                 $userPreferenceCourses = Course::published()
+                    ->saleEnabled()
                     ->whereIn('category_id', $userEnrollments)
                     ->where('id', '!=', $course->id)
                     ->where('is_free', false) // Exclure les cours gratuits
@@ -1374,7 +1418,10 @@ class CourseController extends Controller
         }
 
         // Mélanger et limiter à 4 cours, puis ajouter les statistiques
-        $finalRecommendations = $recommendations->shuffle()->take(4);
+        $finalRecommendations = $recommendations
+            ->filter(fn (Course $c) => $c->is_sale_enabled)
+            ->shuffle()
+            ->take(4);
 
         return $finalRecommendations->map(function ($course) {
             $course->stats = $course->getCourseStats();

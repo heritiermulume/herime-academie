@@ -701,6 +701,23 @@ class Course extends Model
         return $query->where('is_free', false);
     }
 
+    /** Vente / achat activés (exclut les contenus marqués indisponibles à l’achat). */
+    public function scopeSaleEnabled($query)
+    {
+        return $query->where('is_sale_enabled', true);
+    }
+
+    /**
+     * Contenus affichables dans les listes « achetables » : gratuits, ou payants avec vente activée.
+     */
+    public function scopeCatalogVisible($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('is_free', true)
+                ->orWhere('is_sale_enabled', true);
+        });
+    }
+
     public function scopeByCategory($query, $categoryId)
     {
         return $query->where('category_id', $categoryId);

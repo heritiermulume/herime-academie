@@ -58,6 +58,7 @@ class ContentPackageController extends Controller
 
         $recommendedCourses = Course::query()
             ->published()
+            ->saleEnabled()
             ->where('is_free', false)
             ->whereNotIn('id', $excludeCourseIds ?: [0])
             ->when(! empty($packageCategoryIds), fn ($q) => $q->whereIn('category_id', $packageCategoryIds))
@@ -73,6 +74,7 @@ class ContentPackageController extends Controller
             $missing = 3 - $recommendedCourses->count();
             $fallbackCourses = Course::query()
                 ->published()
+                ->saleEnabled()
                 ->where('is_free', false)
                 ->whereNotIn('id', array_merge(
                     $excludeCourseIds,

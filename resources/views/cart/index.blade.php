@@ -41,7 +41,7 @@
                             <div class="d-flex justify-content-between align-items-start mb-0">
                                 <h6 class="flex-grow-1 mb-0">
                                     <a href="{{ route('packs.show', $pkg) }}" class="text-decoration-none">
-                                        <span class="badge bg-primary bg-opacity-15 text-primary me-2">Pack</span>{{ $pkg->title }}
+                                        <span class="badge cart-pack-line-badge me-2">Pack</span>{{ $pkg->title }}
                                     </a>
                                 </h6>
                                 <div class="cart-item-price-mobile">
@@ -606,6 +606,18 @@
 
 .cart-items-list .recommended-content h6 a:hover {
     color: #003366;
+}
+
+/* Pastille « Pack » : contraste lisible (évite bleu sur bleu avec le dégradé de ligne) */
+.cart-items-list .recommended-content h6 a .cart-pack-line-badge {
+    background-color: #003366 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.28rem 0.5rem;
+    vertical-align: middle;
 }
 
 .cart-items-list .cart-item-price-mobile .price-container {

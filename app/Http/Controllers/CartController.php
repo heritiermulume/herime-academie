@@ -434,6 +434,7 @@ class CartController extends Controller
 
         // Obtenir les cours populaires avec filtrage approprié
         $popularCourses = Course::published()
+            ->saleEnabled()
             ->where('is_free', false) // Exclure les cours gratuits
             ->whereNotIn('id', $excludedCourseIds) // Exclure les cours déjà dans le panier, achetés, etc.
             ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
@@ -447,6 +448,10 @@ class CartController extends Controller
         $popularCourses = $popularCourses->filter(function ($course) {
             // Exclure les cours gratuits (double vérification)
             if ($course->is_free) {
+                return false;
+            }
+
+            if (! $course->is_sale_enabled) {
                 return false;
             }
 
@@ -489,6 +494,7 @@ class CartController extends Controller
         if (empty($cartItems) || ! is_array($cartItems)) {
             // Si le panier est vide, recommander des cours populaires
             $courses = Course::published()
+                ->saleEnabled()
                 ->where('is_free', false) // Force l'exclusion des cours gratuits
                 ->whereNotIn('id', $excludedCourseIds)
                 ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons'])
@@ -499,6 +505,10 @@ class CartController extends Controller
             // Double vérification : filtrer manuellement les cours gratuits et déjà accessibles
             $courses = $courses->filter(function ($course) {
                 if ($course->is_free) {
+                    return false;
+                }
+
+                if (! $course->is_sale_enabled) {
                     return false;
                 }
 
@@ -538,6 +548,7 @@ class CartController extends Controller
         $categoryRecommendations = collect();
         if ($cartCategories !== []) {
             $categoryRecommendations = Course::published()
+                ->saleEnabled()
                 ->where('is_free', false)
                 ->whereIn('category_id', $cartCategories)
                 ->whereNotIn('id', $excludedCourseIds)
@@ -547,7 +558,7 @@ class CartController extends Controller
                 ->get();
 
             $categoryRecommendations = $categoryRecommendations->filter(function ($course) {
-                return ! $course->is_free && ! $this->isCoursePurchased($course);
+                return ! $course->is_free && $course->is_sale_enabled && ! $this->isCoursePurchased($course);
             });
         }
 
@@ -557,6 +568,7 @@ class CartController extends Controller
         $levelRecommendations = collect();
         if ($cartLevels !== []) {
             $levelRecommendations = Course::published()
+                ->saleEnabled()
                 ->where('is_free', false)
                 ->whereIn('level', $cartLevels)
                 ->whereNotIn('id', $excludedCourseIds)
@@ -567,7 +579,7 @@ class CartController extends Controller
                 ->get();
 
             $levelRecommendations = $levelRecommendations->filter(function ($course) {
-                return ! $course->is_free && ! $this->isCoursePurchased($course);
+                return ! $course->is_free && $course->is_sale_enabled && ! $this->isCoursePurchased($course);
             });
         }
 
@@ -577,6 +589,7 @@ class CartController extends Controller
         $providerRecommendations = collect();
         if ($cartInstructors !== []) {
             $providerRecommendations = Course::published()
+                ->saleEnabled()
                 ->where('is_free', false)
                 ->whereIn('provider_id', $cartInstructors)
                 ->whereNotIn('id', $excludedCourseIds)
@@ -587,7 +600,7 @@ class CartController extends Controller
                 ->get();
 
             $providerRecommendations = $providerRecommendations->filter(function ($course) {
-                return ! $course->is_free && ! $this->isCoursePurchased($course);
+                return ! $course->is_free && $course->is_sale_enabled && ! $this->isCoursePurchased($course);
             });
         }
 
@@ -595,6 +608,7 @@ class CartController extends Controller
 
         // 4. Cours populaires récents (tendance)
         $trendingRecommendations = Course::published()
+            ->saleEnabled()
             ->where('is_free', false)
             ->whereNotIn('id', $excludedCourseIds)
             ->whereNotIn('id', $recommendations->pluck('id'))
@@ -606,7 +620,7 @@ class CartController extends Controller
 
         // Filtrer manuellement les cours gratuits et achetés
         $trendingRecommendations = $trendingRecommendations->filter(function ($course) {
-            return ! $course->is_free && ! $this->isCoursePurchased($course);
+            return ! $course->is_free && $course->is_sale_enabled && ! $this->isCoursePurchased($course);
         });
 
         $recommendations = $recommendations->merge($trendingRecommendations);
@@ -624,6 +638,7 @@ class CartController extends Controller
 
             if ($userEnrollments !== []) {
                 $userPreferenceRecommendations = Course::published()
+                    ->saleEnabled()
                     ->where('is_free', false)
                     ->whereIn('category_id', $userEnrollments)
                     ->whereNotIn('id', $excludedCourseIds)
@@ -635,7 +650,7 @@ class CartController extends Controller
 
                 // Filtrer manuellement les cours gratuits et achetés
                 $userPreferenceRecommendations = $userPreferenceRecommendations->filter(function ($course) {
-                    return ! $course->is_free && ! $this->isCoursePurchased($course);
+                    return ! $course->is_free && $course->is_sale_enabled && ! $this->isCoursePurchased($course);
                 });
 
                 $recommendations = $recommendations->merge($userPreferenceRecommendations);
@@ -645,6 +660,7 @@ class CartController extends Controller
         // 6. Si on n'a pas assez de recommandations, ajouter des cours populaires
         if ($recommendations->count() < 4) {
             $popularRecommendations = Course::published()
+                ->saleEnabled()
                 ->where('is_free', false)
                 ->whereNotIn('id', $excludedCourseIds)
                 ->whereNotIn('id', $recommendations->pluck('id'))
@@ -655,7 +671,7 @@ class CartController extends Controller
 
             // Filtrer manuellement les cours gratuits et achetés
             $popularRecommendations = $popularRecommendations->filter(function ($course) {
-                return ! $course->is_free && ! $this->isCoursePurchased($course);
+                return ! $course->is_free && $course->is_sale_enabled && ! $this->isCoursePurchased($course);
             });
 
             $recommendations = $recommendations->merge($popularRecommendations);
@@ -664,6 +680,10 @@ class CartController extends Controller
         // Filtrage final : pas de gratuit ni de contenu déjà accessible (achat / inscription)
         $finalRecommendations = $recommendations->filter(function ($course) {
             if ($course->is_free) {
+                return false;
+            }
+
+            if (! $course->is_sale_enabled) {
                 return false;
             }
 

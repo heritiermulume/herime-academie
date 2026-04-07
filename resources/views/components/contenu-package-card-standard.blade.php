@@ -37,6 +37,20 @@
                             <div class="course-price-row">
                                 <small class="text-muted text-decoration-line-through">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->price) }}</small>
                             </div>
+                            @if($package->sale_end_at)
+                                <div class="course-price-row">
+                                    <div class="promotion-countdown" data-sale-end="{{ $package->sale_end_at->toIso8601String() }}">
+                                        <i class="fas fa-fire me-1 text-danger"></i>
+                                        <span class="countdown-text">
+                                            <span class="countdown-years">0</span><span>a</span>
+                                            <span class="countdown-months">0</span><span>m</span>
+                                            <span class="countdown-days">0</span>j
+                                            <span class="countdown-hours">0</span>h
+                                            <span class="countdown-minutes">0</span>min
+                                        </span>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     @else
                         <span class="text-primary fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($package->effective_price) }}</span>
@@ -44,7 +58,7 @@
                 </div>
             </div>
             {{-- Même logique que <x-contenu-button> (état achat) : panier + paiement ; la fiche pack s’ouvre au clic sur la carte (data-course-url). --}}
-            <div class="card-actions">
+            <div class="card-actions pt-2">
                 <div class="d-grid gap-2">
                     @if($hasAccess)
                         <a href="{{ route('customer.pack', $package) }}"

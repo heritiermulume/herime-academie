@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
 use App\Models\Category;
+use App\Models\Course;
 use App\Models\User;
 use App\Traits\CourseStatistics;
 use Illuminate\Http\Request;
@@ -19,6 +19,7 @@ class FilterController extends Controller
     public function filterCourses(Request $request)
     {
         $query = Course::published()
+            ->catalogVisible()
             ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons']);
 
         // Filtres de base
@@ -45,36 +46,36 @@ class FilterController extends Controller
         // Filtres basés sur des données dynamiques
         if ($request->filled('min_rating')) {
             $query->withAvg('reviews', 'rating')
-                  ->having('reviews_avg_rating', '>=', $request->min_rating);
+                ->having('reviews_avg_rating', '>=', $request->min_rating);
         }
 
         if ($request->filled('min_customers')) {
             $query->withCount('enrollments')
-                  ->having('enrollments_count', '>=', $request->min_customers);
+                ->having('enrollments_count', '>=', $request->min_customers);
         }
 
         if ($request->filled('min_duration')) {
             // Filtre par durée minimale (calculée dynamiquement)
-            $query->whereHas('sections.lessons', function($q) use ($request) {
+            $query->whereHas('sections.lessons', function ($q) use ($request) {
                 $q->selectRaw('SUM(duration) as total_duration')
-                  ->groupBy('content_id')
-                  ->having('total_duration', '>=', $request->min_duration);
+                    ->groupBy('content_id')
+                    ->having('total_duration', '>=', $request->min_duration);
             });
         }
 
         if ($request->filled('max_duration')) {
-            $query->whereHas('sections.lessons', function($q) use ($request) {
+            $query->whereHas('sections.lessons', function ($q) use ($request) {
                 $q->selectRaw('SUM(duration) as total_duration')
-                  ->groupBy('content_id')
-                  ->having('total_duration', '<=', $request->max_duration);
+                    ->groupBy('content_id')
+                    ->having('total_duration', '<=', $request->max_duration);
             });
         }
 
         if ($request->filled('min_lessons')) {
-            $query->whereHas('sections.lessons', function($q) use ($request) {
+            $query->whereHas('sections.lessons', function ($q) use ($request) {
                 $q->selectRaw('COUNT(*) as total_lessons')
-                  ->groupBy('content_id')
-                  ->having('total_lessons', '>=', $request->min_lessons);
+                    ->groupBy('content_id')
+                    ->having('total_lessons', '>=', $request->min_lessons);
             });
         }
 
@@ -98,15 +99,15 @@ class FilterController extends Controller
                 break;
             case 'duration':
                 // Tri par durée (nécessite un calcul plus complexe)
-                $query->withCount(['sections as total_duration' => function($q) {
+                $query->withCount(['sections as total_duration' => function ($q) {
                     $q->join('content_lessons', 'content_sections.id', '=', 'content_lessons.section_id')
-                      ->selectRaw('SUM(content_lessons.duration)');
+                        ->selectRaw('SUM(content_lessons.duration)');
                 }])->orderBy('total_duration', $sortOrder);
                 break;
             case 'lessons':
-                $query->withCount(['sections as total_lessons' => function($q) {
+                $query->withCount(['sections as total_lessons' => function ($q) {
                     $q->join('content_lessons', 'content_sections.id', '=', 'content_lessons.section_id')
-                      ->selectRaw('COUNT(content_lessons.id)');
+                        ->selectRaw('COUNT(content_lessons.id)');
                 }])->orderBy('total_lessons', $sortOrder);
                 break;
             default:
@@ -126,8 +127,8 @@ class FilterController extends Controller
             'filters_applied' => $request->only([
                 'category_id', 'level', 'language', 'is_free', 'is_featured',
                 'min_rating', 'min_students', 'min_duration', 'max_duration',
-                'min_lessons', 'provider_id', 'sort_by', 'sort_order'
-            ])
+                'min_lessons', 'provider_id', 'sort_by', 'sort_order',
+            ]),
         ]);
     }
 
@@ -137,30 +138,32 @@ class FilterController extends Controller
     public function getFilterOptions()
     {
         $categories = Category::active()
-            ->withCount(['contents' => function($query) {
-                $query->where('is_published', true);
+            ->withCount(['contents' => function ($query) {
+                $query->where('is_published', true)->catalogVisible();
             }])
             ->having('contents_count', '>', 0)
             ->orderBy('name')
             ->get();
 
         $providers = User::providers()
-            ->whereHas('contents', function($query) {
-                $query->where('is_published', true);
+            ->whereHas('contents', function ($query) {
+                $query->where('is_published', true)->catalogVisible();
             })
-            ->withCount(['contents' => function($query) {
-                $query->where('is_published', true);
+            ->withCount(['contents' => function ($query) {
+                $query->where('is_published', true)->catalogVisible();
             }])
             ->orderBy('name')
             ->get();
 
         $levels = Course::published()
+            ->catalogVisible()
             ->select('level')
             ->distinct()
             ->orderBy('level')
             ->pluck('level');
 
         $languages = Course::published()
+            ->catalogVisible()
             ->select('language')
             ->distinct()
             ->orderBy('language')
@@ -168,17 +171,17 @@ class FilterController extends Controller
 
         // Statistiques pour les filtres de plage
         $stats = [
-            'min_rating' => Course::published()->withAvg('reviews', 'rating')->min('reviews_avg_rating') ?? 0,
-            'max_rating' => Course::published()->withAvg('reviews', 'rating')->max('reviews_avg_rating') ?? 5,
-            'min_customers' => Course::published()->withCount('enrollments')->min('enrollments_count') ?? 0,
-            'max_customers' => Course::published()->withCount('enrollments')->max('enrollments_count') ?? 0,
-            'min_duration' => Course::published()->withCount(['sections as total_duration' => function($q) {
+            'min_rating' => Course::published()->catalogVisible()->withAvg('reviews', 'rating')->min('reviews_avg_rating') ?? 0,
+            'max_rating' => Course::published()->catalogVisible()->withAvg('reviews', 'rating')->max('reviews_avg_rating') ?? 5,
+            'min_customers' => Course::published()->catalogVisible()->withCount('enrollments')->min('enrollments_count') ?? 0,
+            'max_customers' => Course::published()->catalogVisible()->withCount('enrollments')->max('enrollments_count') ?? 0,
+            'min_duration' => Course::published()->catalogVisible()->withCount(['sections as total_duration' => function ($q) {
                 $q->join('content_lessons', 'content_sections.id', '=', 'content_lessons.section_id')
-                  ->selectRaw('SUM(content_lessons.duration)');
+                    ->selectRaw('SUM(content_lessons.duration)');
             }])->min('total_duration') ?? 0,
-            'max_duration' => Course::published()->withCount(['sections as total_duration' => function($q) {
+            'max_duration' => Course::published()->catalogVisible()->withCount(['sections as total_duration' => function ($q) {
                 $q->join('content_lessons', 'content_sections.id', '=', 'content_lessons.section_id')
-                  ->selectRaw('SUM(content_lessons.duration)');
+                    ->selectRaw('SUM(content_lessons.duration)');
             }])->max('total_duration') ?? 0,
         ];
 
@@ -188,7 +191,7 @@ class FilterController extends Controller
             'providers' => $providers,
             'levels' => $levels,
             'languages' => $languages,
-            'stats' => $stats
+            'stats' => $stats,
         ]);
     }
 
@@ -198,20 +201,21 @@ class FilterController extends Controller
     public function searchCourses(Request $request)
     {
         $query = Course::published()
+            ->catalogVisible()
             ->with(['provider', 'category', 'reviews', 'enrollments', 'sections.lessons']);
 
         if ($request->filled('q')) {
             $searchTerm = $request->q;
-            $query->where(function($q) use ($searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
                 $q->where('title', 'like', "%{$searchTerm}%")
-                  ->orWhere('description', 'like', "%{$searchTerm}%")
-                  ->orWhere('short_description', 'like', "%{$searchTerm}%")
-                  ->orWhereHas('provider', function($q) use ($searchTerm) {
-                      $q->where('name', 'like', "%{$searchTerm}%");
-                  })
-                  ->orWhereHas('category', function($q) use ($searchTerm) {
-                      $q->where('name', 'like', "%{$searchTerm}%");
-                  });
+                    ->orWhere('description', 'like', "%{$searchTerm}%")
+                    ->orWhere('short_description', 'like', "%{$searchTerm}%")
+                    ->orWhereHas('provider', function ($q) use ($searchTerm) {
+                        $q->where('name', 'like', "%{$searchTerm}%");
+                    })
+                    ->orWhereHas('category', function ($q) use ($searchTerm) {
+                        $q->where('name', 'like', "%{$searchTerm}%");
+                    });
             });
         }
 
@@ -227,9 +231,9 @@ class FilterController extends Controller
         // Tri par pertinence (pour la recherche)
         if ($request->filled('q')) {
             $query->withCount('enrollments')
-                  ->withAvg('reviews', 'rating')
-                  ->orderBy('enrollments_count', 'desc')
-                  ->orderBy('reviews_avg_rating', 'desc');
+                ->withAvg('reviews', 'rating')
+                ->orderBy('enrollments_count', 'desc')
+                ->orderBy('reviews_avg_rating', 'desc');
         } else {
             $query->orderBy('created_at', 'desc');
         }
@@ -244,7 +248,7 @@ class FilterController extends Controller
             'success' => true,
             'courses' => $courses,
             'search_term' => $request->q,
-            'total_results' => $courses->total()
+            'total_results' => $courses->total(),
         ]);
     }
 }

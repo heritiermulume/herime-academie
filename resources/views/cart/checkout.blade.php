@@ -140,7 +140,7 @@
                         <div class="order-item">
                             <div class="item-info">
                                 @if(($item['type'] ?? 'content') === 'package' && ($pkg = $item['package'] ?? null) instanceof \App\Models\ContentPackage)
-                                    <h6 class="item-title"><span class="badge bg-primary bg-opacity-15 text-primary me-1">Pack</span>{{ $pkg->title }}</h6>
+                                    <h6 class="item-title"><span class="badge cart-pack-line-badge me-1">Pack</span>{{ $pkg->title }}</h6>
                                     <p class="item-instructor text-muted">{{ (int) ($pkg->contents_count ?? $pkg->contents->count()) }} contenus inclus</p>
                                 @else
                                     <h6 class="item-title">{{ $item['course']->title ?? 'Cours' }}</h6>
@@ -987,6 +987,17 @@ document.addEventListener('DOMContentLoaded', function() {
     font-weight: 600;
     margin: 0;
     margin-bottom: 5px;
+}
+
+.item-title .cart-pack-line-badge {
+    background-color: #003366 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.28rem 0.5rem;
+    vertical-align: middle;
 }
 
 .item-instructor {

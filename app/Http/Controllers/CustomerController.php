@@ -3,26 +3,32 @@
 namespace App\Http\Controllers;
 
 use App\Models\Certificate;
+use App\Models\ContentPackage;
 use App\Models\Course;
 use App\Models\CourseDownload;
 use App\Models\Enrollment;
 use App\Models\LessonProgress;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\ContentPackage;
 use App\Services\ContentPackageRecommendationService;
-use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 // Classe pour représenter un cours acheté mais non inscrit
 class PurchasedCourseEnrollment
 {
     public $id;
+
     public $course;
+
     public $order;
+
     public $status;
+
     public $progress;
+
     public $is_purchased_not_enrolled;
+
     public $updated_at;
 
     public function __construct($course, $order)
@@ -38,7 +44,7 @@ class PurchasedCourseEnrollment
 
     public function getKey()
     {
-        return 'purchased_' . ($this->course->id ?? '0');
+        return 'purchased_'.($this->course->id ?? '0');
     }
 
     public function getKeyName()
@@ -66,7 +72,7 @@ class CustomerController extends Controller
 
         // Liste tableau de bord : contenus hors pack + contenus inclus dans les packs (même liste)
         $dashboardRecentEnrollments = $customer->enrollments()
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_published', true);
             })
             ->where('status', '!=', 'cancelled')
@@ -76,7 +82,7 @@ class CustomerController extends Controller
             ->get();
 
         $allEnrollments = $customer->enrollments()
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_published', true);
             })
             ->where('status', '!=', 'cancelled')
@@ -86,10 +92,10 @@ class CustomerController extends Controller
         // Pour les contenus téléchargeables gratuits, ne les afficher dans l'espace client
         // que s'ils ont été téléchargés au moins une fois par l'utilisateur.
         $downloadedFreeCourseIds = CourseDownload::where('user_id', $customer->id)
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_downloadable', true)
-                  ->where('is_free', true)
-                  ->where('is_published', true);
+                    ->where('is_free', true)
+                    ->where('is_published', true);
             })
             ->pluck('content_id')
             ->unique()
@@ -126,7 +132,7 @@ class CustomerController extends Controller
         })->values();
 
         $totalCertificates = $customer->certificates()
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_published', true);
             })
             ->count();
@@ -173,7 +179,7 @@ class CustomerController extends Controller
         }
 
         $certificates = $customer->certificates()
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_published', true);
             })
             ->with(['course'])
@@ -200,6 +206,7 @@ class CustomerController extends Controller
         $excludeRecommendedCourseIds = $customer->getRecommendationExcludedContentIds();
 
         $recommendedCourses = Course::published()
+            ->saleEnabled()
             ->with(['provider', 'category'])
             ->where('is_free', false)
             ->whereNotIn('id', $excludeRecommendedCourseIds ?: [0])
@@ -213,22 +220,23 @@ class CustomerController extends Controller
         // Cours achetés hors pack (lignes de commande standalone, non révoquées)
         $purchasedStandaloneCourseIds = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', function($q) {
+            ->whereHas('orderItems', function ($q) {
                 $q->whereNull('content_package_id')
-                  ->whereHas('content', function($q2) {
-                    $q2->where('is_published', true);
-                });
+                    ->whereHas('content', function ($q2) {
+                        $q2->where('is_published', true);
+                    });
             })
             ->with(['orderItems.course'])
             ->get()
             ->flatMap(function ($order) {
-                return $order->orderItems->filter(function($item) use ($order) {
-                    if (!($item->course && $item->course->is_published)) {
+                return $order->orderItems->filter(function ($item) use ($order) {
+                    if (! ($item->course && $item->course->is_published)) {
                         return false;
                     }
 
-                    $revocationMarker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
-                    return !str_contains((string) ($order->notes ?? ''), $revocationMarker);
+                    $revocationMarker = '[COURSE_REVOKED:'.(int) $item->content_id.']';
+
+                    return ! str_contains((string) ($order->notes ?? ''), $revocationMarker);
                 })->pluck('content_id');
             })
             ->unique()
@@ -241,23 +249,24 @@ class CustomerController extends Controller
         // Téléchargeables : hors pack + contenus publiés téléchargeables inclus dans les packs actifs
         $standaloneDownloadableIds = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', function($q) {
+            ->whereHas('orderItems', function ($q) {
                 $q->whereNull('content_package_id')
-                  ->whereHas('content', function($q2) {
-                    $q2->where('is_published', true)
-                       ->where('is_downloadable', true);
-                });
+                    ->whereHas('content', function ($q2) {
+                        $q2->where('is_published', true)
+                            ->where('is_downloadable', true);
+                    });
             })
             ->with(['orderItems.course'])
             ->get()
             ->flatMap(function ($order) {
-                return $order->orderItems->filter(function($item) use ($order) {
-                    if (!($item->course && $item->course->is_published && $item->course->is_downloadable)) {
+                return $order->orderItems->filter(function ($item) use ($order) {
+                    if (! ($item->course && $item->course->is_published && $item->course->is_downloadable)) {
                         return false;
                     }
 
-                    $revocationMarker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
-                    return !str_contains((string) ($order->notes ?? ''), $revocationMarker);
+                    $revocationMarker = '[COURSE_REVOKED:'.(int) $item->content_id.']';
+
+                    return ! str_contains((string) ($order->notes ?? ''), $revocationMarker);
                 })->pluck('content_id');
             })
             ->unique()
@@ -378,20 +387,20 @@ class CustomerController extends Controller
             ])
             ->get()
             ->map(function (ContentPackage $package) use ($customer) {
-                $revocationMarker = '[PACK_REVOKED:' . (int) $package->id . ']';
+                $revocationMarker = '[PACK_REVOKED:'.(int) $package->id.']';
 
                 $order = Order::where('user_id', $customer->id)
                     ->whereIn('status', ['paid', 'completed'])
                     ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
                     ->where(function ($q) use ($revocationMarker) {
                         $q->whereNull('notes')
-                            ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+                            ->orWhere('notes', 'not like', '%'.$revocationMarker.'%');
                     })
                     ->orderByDesc('paid_at')
                     ->orderByDesc('created_at')
                     ->first();
 
-                if (!$order) {
+                if (! $order) {
                     // Toutes les commandes contenant ce pack ont été révoquées.
                     return null;
                 }
@@ -481,20 +490,20 @@ class CustomerController extends Controller
             ->get()
             ->keyBy('content_id');
 
-        $revocationMarker = '[PACK_REVOKED:' . (int) $package->id . ']';
+        $revocationMarker = '[PACK_REVOKED:'.(int) $package->id.']';
 
         $order = Order::where('user_id', $customer->id)
             ->whereIn('status', ['paid', 'completed'])
             ->whereHas('orderItems', fn ($q) => $q->where('content_package_id', $package->id))
             ->where(function ($q) use ($revocationMarker) {
                 $q->whereNull('notes')
-                    ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+                    ->orWhere('notes', 'not like', '%'.$revocationMarker.'%');
             })
             ->orderByDesc('paid_at')
             ->orderByDesc('created_at')
             ->first();
 
-        if (!$order) {
+        if (! $order) {
             // Possibilité rare: le check hasPurchasedContentPackage est passé, mais la commande la plus récente est révoquée.
             // On renvoie 403 pour rester cohérent avec l'accès applicatif.
             abort(403);
@@ -529,7 +538,7 @@ class CustomerController extends Controller
 
         // Récupérer les inscriptions existantes (seulement pour les cours publiés)
         $enrollments = $customer->enrollments()
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_published', true);
             })
             // Ne jamais remontrer les inscriptions annulées/révoquées dans l'espace client
@@ -540,10 +549,10 @@ class CustomerController extends Controller
 
         // Identifier les cours téléchargeables gratuits déjà téléchargés par l'utilisateur
         $downloadedFreeCourseIds = CourseDownload::where('user_id', $customer->id)
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_downloadable', true)
-                  ->where('is_free', true)
-                  ->where('is_published', true);
+                    ->where('is_free', true)
+                    ->where('is_published', true);
             })
             ->pluck('content_id')
             ->unique()
@@ -573,7 +582,7 @@ class CustomerController extends Controller
         // Tenir compte de toutes les inscriptions (y compris annulées) pour éviter
         // de ré-afficher un cours dont l'accès a été explicitement révoqué.
         $allEnrollmentCourseIds = $customer->enrollments()
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_published', true);
             })
             ->pluck('content_id')
@@ -587,26 +596,27 @@ class CustomerController extends Controller
                     ->whereNotIn('content_id', $activePackCourseIds->all() ?: [0])
                     // Les contenus vendus via un pack ne doivent pas réapparaître dans la liste externe.
                     ->whereNull('content_package_id')
-                    ->whereHas('content', function($q) {
+                    ->whereHas('content', function ($q) {
                         $q->where('is_published', true);
                     });
             })
-            ->with(['orderItems.course' => function($q) {
+            ->with(['orderItems.course' => function ($q) {
                 $q->where('is_published', true);
             }, 'orderItems.course.provider', 'orderItems.course.category', 'orderItems.course.downloads'])
             ->get()
             ->flatMap(function ($order) {
-                return $order->orderItems->filter(function($item) use ($order) {
-                    if (!empty($item->content_package_id)) {
+                return $order->orderItems->filter(function ($item) use ($order) {
+                    if (! empty($item->content_package_id)) {
                         return false;
                     }
 
-                    if (!($item->course && $item->course->is_published)) {
+                    if (! ($item->course && $item->course->is_published)) {
                         return false;
                     }
 
-                    $revocationMarker = '[COURSE_REVOKED:' . (int) $item->content_id . ']';
-                    return !str_contains((string) ($order->notes ?? ''), $revocationMarker);
+                    $revocationMarker = '[COURSE_REVOKED:'.(int) $item->content_id.']';
+
+                    return ! str_contains((string) ($order->notes ?? ''), $revocationMarker);
                 })->map(function ($item) use ($order) {
                     return new PurchasedCourseEnrollment($item->course, $order);
                 });
@@ -615,7 +625,7 @@ class CustomerController extends Controller
         $courseItems = collect($enrollments->all())->merge($purchasedButNotEnrolled)
             ->map(function ($item) {
                 $course = $item->course ?? null;
-                if (!$course) {
+                if (! $course) {
                     return null;
                 }
 
@@ -671,7 +681,7 @@ class CustomerController extends Controller
         // Fusionner contenus + packs dans la même liste et appliquer filtres/recherche communs.
         $allItemsBase = $courseItems->merge($packageItems)->values();
         $allItems = $allItemsBase->filter(function ($item) use ($search, $statusFilter) {
-            if (!empty($search)) {
+            if (! empty($search)) {
                 $term = mb_strtolower((string) $search);
                 if ($item->item_type === 'package') {
                     $package = $item->package;
@@ -688,14 +698,14 @@ class CustomerController extends Controller
                             break;
                         }
                     }
-                    if (!$matched) {
+                    if (! $matched) {
                         return false;
                     }
                 } else {
                     $course = $item->course;
                     $provider = $course?->provider?->name ?? '';
                     $title = $course?->title ?? '';
-                    if (!str_contains(mb_strtolower($title . ' ' . $provider), $term)) {
+                    if (! str_contains(mb_strtolower($title.' '.$provider), $term)) {
                         return false;
                     }
                 }
@@ -766,19 +776,19 @@ class CustomerController extends Controller
     public function enroll(Request $request, Course $course)
     {
         // Vérifier que le cours est publié
-        if (!$course->is_published) {
+        if (! $course->is_published) {
             return redirect()->route('contents.index')
                 ->with('error', 'Ce cours n\'est pas disponible.');
         }
 
         $customer = auth()->user();
         $redirectTo = $request->input('redirect_to', 'learn');
-        
+
         // Pour les cours téléchargeables ou en présentiel, ne pas rediriger vers learning, mais vers la page du cours
         if (($course->is_downloadable || ($course->is_in_person_program ?? false)) && $redirectTo === 'learn') {
             $redirectTo = 'course';
         }
-        
+
         // Vérifier si l'étudiant n'est pas déjà inscrit
         if ($course->isEnrolledBy($customer->id)) {
             return $this->redirectAfterEnrollment(
@@ -790,14 +800,14 @@ class CustomerController extends Controller
         }
 
         // Vérifier si la vente/inscription est activée
-        if (!$course->is_sale_enabled) {
+        if (! $course->is_sale_enabled) {
             return redirect()->route('contents.show', $course->slug)
                 ->with('error', 'Ce cours n\'est pas actuellement disponible à l\'inscription.');
         }
 
         // Pour les cours payants, vérifier que l'utilisateur a acheté le cours
-        if (!$course->is_free) {
-            $revocationMarker = '[COURSE_REVOKED:' . (int) $course->id . ']';
+        if (! $course->is_free) {
+            $revocationMarker = '[COURSE_REVOKED:'.(int) $course->id.']';
 
             $hasPurchased = Order::where('user_id', $customer->id)
                 ->whereIn('status', ['paid', 'completed'])
@@ -806,11 +816,11 @@ class CustomerController extends Controller
                 })
                 ->where(function ($q) use ($revocationMarker) {
                     $q->whereNull('notes')
-                        ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+                        ->orWhere('notes', 'not like', '%'.$revocationMarker.'%');
                 })
                 ->exists();
 
-            if (!$hasPurchased) {
+            if (! $hasPurchased) {
                 return redirect()->route('contents.show', $course->slug)
                     ->with('error', 'Veuillez acheter ce cours pour y accéder.');
             }
@@ -818,8 +828,8 @@ class CustomerController extends Controller
 
         // Récupérer l'order_id si le cours a été acheté
         $orderId = null;
-        if (!$course->is_free) {
-            $revocationMarker = '[COURSE_REVOKED:' . (int) $course->id . ']';
+        if (! $course->is_free) {
+            $revocationMarker = '[COURSE_REVOKED:'.(int) $course->id.']';
 
             $order = Order::where('user_id', $customer->id)
                 ->whereIn('status', ['paid', 'completed'])
@@ -828,10 +838,10 @@ class CustomerController extends Controller
                 })
                 ->where(function ($q) use ($revocationMarker) {
                     $q->whereNull('notes')
-                        ->orWhere('notes', 'not like', '%' . $revocationMarker . '%');
+                        ->orWhere('notes', 'not like', '%'.$revocationMarker.'%');
                 })
                 ->first();
-            
+
             if ($order) {
                 $orderId = $order->id;
             }
@@ -876,12 +886,13 @@ class CustomerController extends Controller
 
         return redirect()->route($route['name'], $route['params'])->with($flashType, $message);
     }
+
     public function certificates()
     {
         $customer = auth()->user();
 
         $certificateBase = $customer->certificates()
-            ->whereHas('content', function($q) {
+            ->whereHas('content', function ($q) {
                 $q->where('is_published', true);
             });
         $certificatesQuery = (clone $certificateBase)
@@ -911,16 +922,16 @@ class CustomerController extends Controller
             abort(403, 'Vous n\'êtes pas autorisé à télécharger ce certificat.');
         }
 
-        if (!$certificate->file_path) {
+        if (! $certificate->file_path) {
             abort(404, 'Le fichier du certificat n\'existe pas.');
         }
 
         $filePath = \Illuminate\Support\Facades\Storage::disk('public')->path($certificate->file_path);
 
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             abort(404, 'Le fichier du certificat n\'existe pas sur le serveur.');
         }
 
-        return response()->download($filePath, 'certificat-' . $certificate->certificate_number . '.pdf');
+        return response()->download($filePath, 'certificat-'.$certificate->certificate_number.'.pdf');
     }
 }

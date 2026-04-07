@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CourseCompleted;
 use App\Models\Course;
 use App\Models\CourseLesson;
 use App\Models\LessonProgress;
-use App\Models\Enrollment;
-use App\Events\CourseCompleted;
 use App\Services\ContentPackageRecommendationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class LearningController extends Controller
 {
@@ -19,19 +17,19 @@ class LearningController extends Controller
     public function learn(Course $course)
     {
         // Vérifier que le cours est publié
-        if (!$course->is_published) {
+        if (! $course->is_published) {
             abort(404, 'Ce cours n\'est pas disponible.');
         }
 
         // Vérifier que l'utilisateur est inscrit au cours
         // Les utilisateurs déjà inscrits peuvent toujours accéder, même si is_sale_enabled est maintenant false
-        if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
+        if (! auth()->check() || ! $course->isEnrolledBy(auth()->id())) {
             // Si la vente est désactivée et l'utilisateur n'est pas inscrit, bloquer
-            if (!$course->is_sale_enabled) {
+            if (! $course->is_sale_enabled) {
                 return redirect()->route('contents.show', $course)
                     ->with('error', 'Ce cours n\'est pas actuellement disponible.');
             }
-            
+
             return redirect()->route('contents.show', $course)
                 ->with('error', 'Vous devez être inscrit à ce cours pour y accéder.');
         }
@@ -49,29 +47,29 @@ class LearningController extends Controller
         }
 
         $enrollment = $course->getEnrollmentFor(auth()->id());
-        
+
         // Charger les données complètes depuis la base de données
         $course->load([
-            'sections' => function($query) {
+            'sections' => function ($query) {
                 $query->orderBy('sort_order');
             },
-            'sections.lessons' => function($query) {
+            'sections.lessons' => function ($query) {
                 $query->where('is_published', true)->orderBy('sort_order');
             },
-            'provider' => function($query) {
+            'provider' => function ($query) {
                 $query->select('id', 'name', 'email', 'bio', 'avatar', 'created_at');
             },
             'category',
-            'reviews' => function($query) {
-                $query->with(['user' => function($query) {
+            'reviews' => function ($query) {
+                $query->with(['user' => function ($query) {
                     $query->select('id', 'name', 'avatar');
                 }])->latest()->limit(10);
             },
-            'enrollments' => function($query) {
-                $query->with(['user' => function($query) {
+            'enrollments' => function ($query) {
+                $query->with(['user' => function ($query) {
                     $query->select('id', 'name', 'avatar');
                 }])->latest()->limit(5);
-            }
+            },
         ]);
 
         // Obtenir la progression de l'utilisateur
@@ -79,21 +77,21 @@ class LearningController extends Controller
 
         // Obtenir les statistiques du cours
         $courseStats = $this->getCourseStats($course);
-        
+
         // Obtenir les cours recommandés
         $recommendedCourses = $this->getRecommendedCourses($course);
         $recommendedPackages = app(ContentPackageRecommendationService::class)->forCourse($course);
 
         // Obtenir la leçon active (si une leçon est en cours de visualisation)
         $activeLessonId = session('active_lesson_id', null);
-        
+
         // Toujours vérifier s'il y a une dernière leçon consultée pour rediriger
         // (même si activeLessonId existe en session, car la session peut être expirée)
         $lastLesson = $this->getLastLessonForUser($course);
-        
+
         // Si on a trouvé une dernière leçon et qu'elle est différente de celle en session
         // OU si aucune leçon n'est en session, rediriger vers la dernière leçon
-        if ($lastLesson && (!$activeLessonId || $activeLessonId != $lastLesson->id)) {
+        if ($lastLesson && (! $activeLessonId || $activeLessonId != $lastLesson->id)) {
             // Vérifier que la leçon a vraiment une progression (time_watched > 0)
             $lastLessonProgress = $this->getLessonProgress($lastLesson);
             if ($lastLessonProgress && $lastLessonProgress->time_watched > 0) {
@@ -111,12 +109,12 @@ class LearningController extends Controller
     public function lesson(Course $course, CourseLesson $lesson)
     {
         // Vérifier que le cours est publié
-        if (!$course->is_published) {
+        if (! $course->is_published) {
             abort(404, 'Ce cours n\'est pas disponible.');
         }
 
         // Vérifier que l'utilisateur est inscrit au cours
-        if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
+        if (! auth()->check() || ! $course->isEnrolledBy(auth()->id())) {
             return redirect()->route('contents.show', $course)
                 ->with('error', 'Vous devez être inscrit à ce cours pour y accéder.');
         }
@@ -140,12 +138,12 @@ class LearningController extends Controller
 
         // Charger les données nécessaires
         $course->load([
-            'sections' => function($query) {
-            $query->orderBy('sort_order');
+            'sections' => function ($query) {
+                $query->orderBy('sort_order');
             },
-            'sections.lessons' => function($query) {
+            'sections.lessons' => function ($query) {
                 $query->where('is_published', true)->orderBy('sort_order');
-            }
+            },
         ]);
 
         // Obtenir la progression de cette leçon
@@ -158,7 +156,7 @@ class LearningController extends Controller
             ->orderBy('content_lessons.sort_order')
             ->select('content_lessons.*')
             ->get();
-        $currentIndex = $allLessons->search(function($item) use ($lesson) {
+        $currentIndex = $allLessons->search(function ($item) use ($lesson) {
             return $item->id === $lesson->id;
         });
 
@@ -173,7 +171,7 @@ class LearningController extends Controller
 
         // Obtenir les statistiques du cours
         $courseStats = $this->getCourseStats($course);
-        
+
         // Obtenir les cours recommandés
         $recommendedCourses = $this->getRecommendedCourses($course);
         $recommendedPackages = app(ContentPackageRecommendationService::class)->forCourse($course);
@@ -191,10 +189,10 @@ class LearningController extends Controller
     public function startLesson(Request $request, Course $course, CourseLesson $lesson)
     {
         $request->validate([
-            'time_watched' => 'integer|min:0'
+            'time_watched' => 'integer|min:0',
         ]);
 
-        if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
+        if (! auth()->check() || ! $course->isEnrolledBy(auth()->id())) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
@@ -214,7 +212,7 @@ class LearningController extends Controller
 
         return response()->json([
             'success' => true,
-            'progress' => $progress->progress_percentage
+            'progress' => $progress->progress_percentage,
         ]);
     }
 
@@ -225,10 +223,10 @@ class LearningController extends Controller
     {
         $request->validate([
             'time_watched' => 'required|integer|min:0',
-            'is_completed' => 'boolean'
+            'is_completed' => 'boolean',
         ]);
 
-        if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
+        if (! auth()->check() || ! $course->isEnrolledBy(auth()->id())) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
@@ -255,7 +253,7 @@ class LearningController extends Controller
         return response()->json([
             'success' => true,
             'progress' => $progress->progress_percentage,
-            'is_completed' => $progress->is_completed
+            'is_completed' => $progress->is_completed,
         ]);
     }
 
@@ -264,7 +262,7 @@ class LearningController extends Controller
      */
     public function completeLesson(Request $request, Course $course, CourseLesson $lesson)
     {
-        if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
+        if (! auth()->check() || ! $course->isEnrolledBy(auth()->id())) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
@@ -286,7 +284,7 @@ class LearningController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Leçon marquée comme terminée'
+            'message' => 'Leçon marquée comme terminée',
         ]);
     }
 
@@ -295,7 +293,7 @@ class LearningController extends Controller
      */
     public function submitQuiz(Request $request, Course $course, CourseLesson $lesson)
     {
-        if (!auth()->check() || !$course->isEnrolledBy(auth()->id())) {
+        if (! auth()->check() || ! $course->isEnrolledBy(auth()->id())) {
             return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
         }
 
@@ -305,7 +303,7 @@ class LearningController extends Controller
         }
 
         $request->validate([
-            'answers' => 'required|array'
+            'answers' => 'required|array',
         ]);
 
         // Vérifier que c'est bien un quiz
@@ -322,7 +320,7 @@ class LearningController extends Controller
         foreach ($questions as $index => $question) {
             $correctAnswer = $question['correct_answer'] ?? null;
             $userAnswer = $request->answers[$index] ?? null;
-            
+
             if ($userAnswer == $correctAnswer) {
                 $score++;
             }
@@ -347,8 +345,8 @@ class LearningController extends Controller
                 'score' => $score,
                 'total' => $totalQuestions,
                 'percentage' => round(($score / $totalQuestions) * 100, 2),
-                'passed' => $score >= ($totalQuestions * 0.7)
-            ]
+                'passed' => $score >= ($totalQuestions * 0.7),
+            ],
         ]);
     }
 
@@ -370,10 +368,10 @@ class LearningController extends Controller
         // Charger les leçons manquantes si nécessaire
         $lessonIds = $progress->pluck('lesson_id')->filter();
         $lessons = $course->lessons()->whereIn('id', $lessonIds)->get()->keyBy('id');
-        
+
         $progress->each(function ($progressItem) use ($lessons) {
             // Si la relation lesson n'est pas chargée, la charger manuellement
-            if (!$progressItem->relationLoaded('lesson') && isset($lessons[$progressItem->lesson_id])) {
+            if (! $progressItem->relationLoaded('lesson') && isset($lessons[$progressItem->lesson_id])) {
                 $progressItem->setRelation('lesson', $lessons[$progressItem->lesson_id]);
             }
         });
@@ -381,12 +379,12 @@ class LearningController extends Controller
         // Obtenir toutes les leçons du cours pour calculer la progression globale
         $totalLessons = $course->lessons()->count();
         $completedLessons = $progress->where('is_completed', true)->count();
-        
+
         // Calculer la progression globale en fonction de la progression réelle de chaque leçon
         // Au lieu de compter uniquement les leçons complétées, on somme les progressions individuelles
         $allLessons = $course->lessons()->get();
         $totalProgress = 0;
-        
+
         foreach ($allLessons as $lesson) {
             $lessonProgress = $progress->get($lesson->id);
             if ($lessonProgress) {
@@ -397,7 +395,7 @@ class LearningController extends Controller
                 $totalProgress += 0;
             }
         }
-        
+
         $overallProgress = $totalLessons > 0 ? ($totalProgress / $totalLessons) : 0;
 
         // Obtenir les IDs des leçons terminées et commencées
@@ -410,7 +408,7 @@ class LearningController extends Controller
             'total_lessons' => $totalLessons,
             'lesson_progress' => $progress,
             'completed_lessons_ids' => $completedLessonsIds,
-            'started_lessons_ids' => $startedLessonsIds
+            'started_lessons_ids' => $startedLessonsIds,
         ];
     }
 
@@ -432,7 +430,7 @@ class LearningController extends Controller
     private function getLastLessonForUser(Course $course)
     {
         $userId = auth()->id();
-        
+
         // Charger toutes les leçons du cours dans l'ordre
         $allLessons = $course->lessons()
             ->join('content_sections', 'content_lessons.section_id', '=', 'content_sections.id')
@@ -441,50 +439,50 @@ class LearningController extends Controller
             ->orderBy('content_lessons.sort_order')
             ->select('content_lessons.*')
             ->get();
-        
+
         if ($allLessons->isEmpty()) {
             return null;
         }
-        
+
         // Obtenir toutes les progressions de l'utilisateur pour ce cours
         $progresses = LessonProgress::where('user_id', $userId)
             ->where('content_id', $course->id)
             ->with('lesson')
             ->get()
             ->keyBy('lesson_id');
-        
+
         // Chercher la dernière leçon consultée (avec progression mais non complétée)
         // Utiliser updated_at car il est mis à jour à chaque progression (toutes les 10 secondes)
         $lastViewedLesson = null;
         $lastUpdatedAt = null;
-        
+
         foreach ($allLessons as $lesson) {
             $progress = $progresses->get($lesson->id);
-            
+
             // Si la leçon a une progression (time_watched > 0) mais n'est pas complétée
-            if ($progress && $progress->time_watched > 0 && !$progress->is_completed) {
+            if ($progress && $progress->time_watched > 0 && ! $progress->is_completed) {
                 // Utiliser updated_at pour trouver la dernière leçon consultée
                 $updatedAt = $progress->updated_at ? $progress->updated_at->timestamp : 0;
-                if (!$lastUpdatedAt || $updatedAt > $lastUpdatedAt) {
+                if (! $lastUpdatedAt || $updatedAt > $lastUpdatedAt) {
                     $lastUpdatedAt = $updatedAt;
                     $lastViewedLesson = $lesson;
                 }
             }
         }
-        
+
         // Si on a trouvé une leçon consultée mais non complétée, la retourner
         if ($lastViewedLesson) {
             return $lastViewedLesson;
         }
-        
+
         // Sinon, chercher la première leçon non commencée (sans progression)
         foreach ($allLessons as $lesson) {
             $progress = $progresses->get($lesson->id);
-            if (!$progress || ($progress->time_watched == 0 && !$progress->is_started)) {
+            if (! $progress || ($progress->time_watched == 0 && ! $progress->is_started)) {
                 return $lesson;
             }
         }
-        
+
         // Si toutes les leçons sont complétées, retourner la dernière leçon
         return $allLessons->last();
     }
@@ -495,7 +493,9 @@ class LearningController extends Controller
     private function updateCourseProgress(Course $course)
     {
         $enrollment = $course->getEnrollmentFor(auth()->id());
-        if (!$enrollment) return;
+        if (! $enrollment) {
+            return;
+        }
 
         $totalLessons = $course->lessons()->count();
         $completedLessons = LessonProgress::where('user_id', auth()->id())
@@ -513,7 +513,7 @@ class LearningController extends Controller
 
         $allLessons = $course->lessons()->get();
         $totalProgress = 0;
-        
+
         foreach ($allLessons as $lesson) {
             $lessonProgress = $allProgress->firstWhere('lesson_id', $lesson->id);
             if ($lessonProgress) {
@@ -524,7 +524,7 @@ class LearningController extends Controller
                 $totalProgress += 0;
             }
         }
-        
+
         $progress = $totalLessons > 0 ? ($totalProgress / $totalLessons) : 0;
 
         $wasCompleted = $enrollment->status === 'completed';
@@ -533,14 +533,14 @@ class LearningController extends Controller
         $enrollment->update([
             'progress' => $progress,
             'status' => $isNowCompleted ? 'completed' : 'active',
-            'completed_at' => $isNowCompleted ? now() : null
+            'completed_at' => $isNowCompleted ? now() : null,
         ]);
 
         // Déclencher l'événement si le cours vient d'être complété (100% de toutes les leçons)
-        if ($isNowCompleted && !$wasCompleted) {
+        if ($isNowCompleted && ! $wasCompleted) {
             // Vérifier que toutes les leçons sont complétées à 100%
             $allLessonsCompleted = $this->areAllLessonsCompleted($course, auth()->id());
-            
+
             if ($allLessonsCompleted) {
                 event(new CourseCompleted(auth()->user(), $course));
             }
@@ -553,7 +553,7 @@ class LearningController extends Controller
     private function areAllLessonsCompleted(Course $course, int $userId): bool
     {
         $allLessons = $course->lessons()->get();
-        
+
         if ($allLessons->isEmpty()) {
             return false;
         }
@@ -567,12 +567,12 @@ class LearningController extends Controller
 
         foreach ($allLessons as $lesson) {
             $lessonProgress = $allProgress->firstWhere('lesson_id', $lesson->id);
-            
+
             // Vérifier que la leçon est complétée (is_completed = true)
-            if (!$lessonProgress || !$lessonProgress->is_completed) {
+            if (! $lessonProgress || ! $lessonProgress->is_completed) {
                 return false;
             }
-            
+
             // Vérifier que la progression est à 100%
             if ($lessonProgress->progress_percentage < 100) {
                 return false;
@@ -593,14 +593,14 @@ class LearningController extends Controller
         $textLessons = $course->lessons()->where('type', 'text')->count();
         $pdfLessons = $course->lessons()->where('type', 'pdf')->count();
         $quizLessons = $course->lessons()->where('type', 'quiz')->count();
-        
+
         // Statistiques avancées
         $averageRating = $course->reviews()->avg('rating') ?? 0;
         $totalReviews = $course->reviews()->count();
         $totalStudents = $course->enrollments()->count();
         $completedStudents = $course->enrollments()->where('status', 'completed')->count();
         $completionRate = $totalStudents > 0 ? ($completedStudents / $totalStudents) * 100 : 0;
-        
+
         // Distribution des notes
         $ratingDistribution = $course->reviews()
             ->selectRaw('rating, COUNT(*) as count')
@@ -609,14 +609,14 @@ class LearningController extends Controller
             ->get()
             ->pluck('count', 'rating')
             ->toArray();
-        
+
         // Leçons récentes
         $recentLessons = $course->lessons()
             ->where('is_published', true)
             ->latest('created_at')
             ->limit(3)
             ->get();
-        
+
         // Progression moyenne des étudiants
         $averageProgress = $course->enrollments()
             ->where('status', '!=', 'cancelled')
@@ -641,16 +641,17 @@ class LearningController extends Controller
             'course_language' => $course->language,
             'is_downloadable' => $course->is_downloadable,
             'created_at' => $course->created_at,
-            'updated_at' => $course->updated_at
+            'updated_at' => $course->updated_at,
         ];
     }
-    
+
     /**
      * Base query pour les cours éligibles à l'apprentissage (non téléchargeables, avec leçons publiées)
      */
     private function learningEligibleCoursesQuery()
     {
         return Course::published()
+            ->saleEnabled()
             ->where('is_free', false)
             ->where('is_downloadable', false)
             ->where(function ($q) {
@@ -670,7 +671,7 @@ class LearningController extends Controller
     {
         // Exclure le cours actuel et les cours déjà achetés/inscrits
         $excludedCourseIds = [$course->id];
-        
+
         if (auth()->check()) {
             $excludedCourseIds = array_values(array_unique(array_merge(
                 $excludedCourseIds,
@@ -690,8 +691,8 @@ class LearningController extends Controller
             ->get();
 
         // Filtrer manuellement les cours gratuits et achetés
-        $categoryRecommendations = $categoryRecommendations->filter(function($course) {
-            return !$course->is_free && !$this->isCoursePurchased($course);
+        $categoryRecommendations = $categoryRecommendations->filter(function ($course) {
+            return ! $course->is_free && ! $this->isCoursePurchased($course);
         });
 
         $recommendations = $recommendations->merge($categoryRecommendations);
@@ -707,8 +708,8 @@ class LearningController extends Controller
             ->get();
 
         // Filtrer manuellement les cours gratuits et achetés
-        $levelRecommendations = $levelRecommendations->filter(function($course) {
-            return !$course->is_free && !$this->isCoursePurchased($course);
+        $levelRecommendations = $levelRecommendations->filter(function ($course) {
+            return ! $course->is_free && ! $this->isCoursePurchased($course);
         });
 
         $recommendations = $recommendations->merge($levelRecommendations);
@@ -724,8 +725,8 @@ class LearningController extends Controller
             ->get();
 
         // Filtrer manuellement les cours gratuits et achetés
-        $providerRecommendations = $providerRecommendations->filter(function($course) {
-            return !$course->is_free && !$this->isCoursePurchased($course);
+        $providerRecommendations = $providerRecommendations->filter(function ($course) {
+            return ! $course->is_free && ! $this->isCoursePurchased($course);
         });
 
         $recommendations = $recommendations->merge($providerRecommendations);
@@ -740,8 +741,8 @@ class LearningController extends Controller
             ->get();
 
         // Filtrer manuellement les cours gratuits et achetés
-        $trendingRecommendations = $trendingRecommendations->filter(function($course) {
-            return !$course->is_free && !$this->isCoursePurchased($course);
+        $trendingRecommendations = $trendingRecommendations->filter(function ($course) {
+            return ! $course->is_free && ! $this->isCoursePurchased($course);
         });
 
         $recommendations = $recommendations->merge($trendingRecommendations);
@@ -750,12 +751,12 @@ class LearningController extends Controller
         if (auth()->check()) {
             $userEnrollments = auth()->user()->enrollments()
                 ->with('course')
-            ->get()
+                ->get()
                 ->pluck('course.category_id')
                 ->unique()
                 ->toArray();
 
-            if (!empty($userEnrollments)) {
+            if (! empty($userEnrollments)) {
                 $userPreferenceRecommendations = $this->learningEligibleCoursesQuery()
                     ->whereIn('category_id', $userEnrollments)
                     ->whereNotIn('id', $excludedCourseIds)
@@ -766,8 +767,8 @@ class LearningController extends Controller
                     ->get();
 
                 // Filtrer manuellement les cours gratuits et achetés
-                $userPreferenceRecommendations = $userPreferenceRecommendations->filter(function($course) {
-                    return !$course->is_free && !$this->isCoursePurchased($course);
+                $userPreferenceRecommendations = $userPreferenceRecommendations->filter(function ($course) {
+                    return ! $course->is_free && ! $this->isCoursePurchased($course);
                 });
 
                 $recommendations = $recommendations->merge($userPreferenceRecommendations);
@@ -785,8 +786,8 @@ class LearningController extends Controller
                 ->get();
 
             // Filtrer manuellement les cours gratuits et achetés
-            $popularRecommendations = $popularRecommendations->filter(function($course) {
-                return !$course->is_free && !$this->isCoursePurchased($course);
+            $popularRecommendations = $popularRecommendations->filter(function ($course) {
+                return ! $course->is_free && ! $this->isCoursePurchased($course);
             });
 
             $recommendations = $recommendations->merge($popularRecommendations);
@@ -798,42 +799,46 @@ class LearningController extends Controller
                 return false;
             }
 
+            if (! $course->is_sale_enabled) {
+                return false;
+            }
+
             if (auth()->check() && $this->isCoursePurchased($course)) {
                 return false;
             }
 
             return true;
         })->shuffle()->take(4);
-        
-        return $finalRecommendations->map(function($course) {
+
+        return $finalRecommendations->map(function ($course) {
             // Charger les relations nécessaires si elles ne sont pas déjà chargées
-            if (!$course->relationLoaded('sections')) {
+            if (! $course->relationLoaded('sections')) {
                 $course->load(['sections.lessons', 'reviews', 'enrollments']);
             }
-            
+
             // S'assurer que les reviews sont bien chargées
-            if (!$course->relationLoaded('reviews')) {
+            if (! $course->relationLoaded('reviews')) {
                 $course->load('reviews');
             }
-            
+
             // Calculer la moyenne des avis en utilisant la relation directement (plus fiable)
             $averageRating = $course->reviews()->avg('rating');
             $averageRating = $averageRating !== null ? round($averageRating, 1) : 0;
             $totalReviews = $course->reviews()->count();
-            
+
             // Ajouter les statistiques calculées
             $course->stats = [
-                'total_lessons' => $course->sections ? $course->sections->sum(function($section) {
+                'total_lessons' => $course->sections ? $course->sections->sum(function ($section) {
                     return $section->lessons ? $section->lessons->count() : 0;
                 }) : 0,
-                'total_duration' => $course->sections ? $course->sections->sum(function($section) {
+                'total_duration' => $course->sections ? $course->sections->sum(function ($section) {
                     return $section->lessons ? $section->lessons->sum('duration') : 0;
                 }) : 0,
                 'total_customers' => $course->enrollments ? $course->enrollments->count() : 0,
                 'average_rating' => $averageRating,
                 'total_reviews' => $totalReviews,
             ];
-            
+
             return $course;
         });
     }
@@ -843,32 +848,32 @@ class LearningController extends Controller
      */
     private function isCoursePurchased($course)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return false;
         }
-        
+
         $userId = auth()->id();
-        
+
         // Vérifier si l'utilisateur est inscrit au cours
         $isEnrolled = $course->isEnrolledBy($userId);
         if ($isEnrolled) {
             return true;
         }
-        
+
         // Vérifier si l'utilisateur a acheté le cours (pour les cours payants)
-        if (!$course->is_free) {
+        if (! $course->is_free) {
             $hasPurchased = \App\Models\Order::where('user_id', $userId)
                 ->whereIn('status', ['paid', 'completed'])
-                ->whereHas('orderItems', function($query) use ($course) {
+                ->whereHas('orderItems', function ($query) use ($course) {
                     $query->where('content_id', $course->id);
                 })
                 ->exists();
-            
+
             if ($hasPurchased) {
                 return true;
             }
         }
-        
+
         return false;
     }
 }
