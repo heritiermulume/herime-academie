@@ -3651,10 +3651,28 @@ class AdminController extends Controller
                     $users = collect($users);
                 }
 
+                // Hygiène des destinataires pour limiter les rejets SMTP en envoi massif
+                $initialRecipientCount = $users->count();
+                $users = $users
+                    ->filter(function ($user) {
+                        return ! empty($user->email) && filter_var($user->email, FILTER_VALIDATE_EMAIL);
+                    })
+                    ->unique(function ($user) {
+                        return mb_strtolower(trim((string) $user->email));
+                    })
+                    ->values();
+                $filteredRecipientCount = $users->count();
+                $ignoredRecipientCount = max(0, $initialRecipientCount - $filteredRecipientCount);
+
                 // Gros envois : éviter la coupure PHP/nginx avant la fin des envois
                 if ($users->count() > 25) {
                     @set_time_limit(0);
                 }
+
+                // Limiter le débit pour réduire les blocages/quota SMTP sur hébergement mutualisé.
+                // Valeur fixe volontaire pour éviter de dépendre de .env.
+                $maxPerMinute = 20;
+                $delayMicroseconds = (int) floor(60000000 / $maxPerMinute);
 
                 $sentCount = 0;
                 $failedCount = 0;
@@ -3752,6 +3770,12 @@ class AdminController extends Controller
 
                             $failedCount++;
                         }
+
+                        // Ralentir légèrement l'envoi sur les campagnes volumineuses
+                        // pour éviter le throttling SMTP côté fournisseur.
+                        if ($users->count() > 10) {
+                            usleep($delayMicroseconds);
+                        }
                     }
                 });
 
@@ -3761,6 +3785,9 @@ class AdminController extends Controller
                 }
                 if ($skippedDuplicateCount > 0) {
                     $message .= " {$skippedDuplicateCount} destinataire(s) ignoré(s) (même objet et même type d'envoi déjà envoyé dans les 5 dernières minutes).";
+                }
+                if ($ignoredRecipientCount > 0) {
+                    $message .= " {$ignoredRecipientCount} destinataire(s) ignoré(s) (email invalide ou doublon).";
                 }
             } else {
                 // Envoi programmé
