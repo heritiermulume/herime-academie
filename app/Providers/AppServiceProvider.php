@@ -86,16 +86,18 @@ class AppServiceProvider extends ServiceProvider
         ContentPackage::observe(ContentPackageCoverVideoHlsObserver::class);
 
         Course::saved(function (Course $course) {
-            if (! $course->is_published || $course->is_downloadable) {
-                return;
-            }
-            if (! $course->wasRecentlyCreated && ! $course->wasChanged(['is_published', 'is_downloadable'])) {
+            if (! $course->wasRecentlyCreated && ! $course->wasChanged([
+                'is_published',
+                'is_downloadable',
+                'requires_subscription',
+                'required_subscription_tier',
+            ])) {
                 return;
             }
             try {
-                app(SubscriptionService::class)->grantCommunityMembersAccessToCourse($course);
+                app(SubscriptionService::class)->syncCommunityMembersAccessToCourse($course);
             } catch (\Throwable $e) {
-                Log::warning('grantCommunityMembersAccessToCourse: '.$e->getMessage(), [
+                Log::warning('syncCommunityMembersAccessToCourse: '.$e->getMessage(), [
                     'content_id' => $course->id,
                 ]);
             }

@@ -94,9 +94,9 @@ class CourseLessonObserver
         }
 
         try {
-            app(SubscriptionService::class)->grantCommunityMembersAccessToCourse($course);
+            app(SubscriptionService::class)->syncCommunityMembersAccessToCourse($course);
         } catch (\Throwable $e) {
-            Log::warning('grantCommunityMembersAccessToCourse (lesson observer): ' . $e->getMessage(), [
+            Log::warning('syncCommunityMembersAccessToCourse (lesson observer): '.$e->getMessage(), [
                 'content_id' => $course->id,
                 'lesson_id' => $lesson->id,
             ]);

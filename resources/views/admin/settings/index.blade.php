@@ -611,7 +611,7 @@
                                     <ul class="small text-muted ps-3 mb-4">
                                         <li class="mb-2">L’offre Membre Herime n’apparaît pas dans le catalogue général des abonnements sur l’accueil ; elle est sur <code>/communaute/membre-premium</code>.</li>
                                         <li class="mb-2">Les abonnements actifs des membres figurent dans l’espace client, section « Mes abonnements ».</li>
-                                        <li>Les membres actifs sont inscrits automatiquement aux formations non téléchargeables publiées (règle communauté).</li>
+                                        <li>Les membres actifs sont inscrits automatiquement aux formations publiées et aux contenus téléchargeables marqués « réservés aux abonnés » (règle communauté).</li>
                                     </ul>
                                     <button type="submit" class="btn btn-primary w-100 mb-2">
                                         <i class="fas fa-save me-2"></i>Enregistrer

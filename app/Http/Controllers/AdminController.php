@@ -1871,7 +1871,7 @@ class AdminController extends Controller
             'fake_promo_duration_days' => 'nullable|integer|min:1|max:365',
             'is_free' => 'boolean',
             'requires_subscription' => 'boolean',
-            'required_subscription_tier' => 'nullable|in:starter,pro,enterprise',
+            'required_subscription_tier' => 'nullable|in:quarterly,semiannual,yearly,all',
             'is_downloadable' => 'boolean',
             'is_in_person_program' => 'boolean',
             'whatsapp_number' => 'nullable|string|max:30|required_if:is_in_person_program,1',
@@ -2102,7 +2102,7 @@ class AdminController extends Controller
             if (! $courseData['requires_subscription']) {
                 $courseData['required_subscription_tier'] = null;
             } elseif (empty($courseData['required_subscription_tier'])) {
-                $courseData['required_subscription_tier'] = 'starter';
+                $courseData['required_subscription_tier'] = 'quarterly';
             }
 
             $course = Course::create($courseData);
@@ -2217,7 +2217,7 @@ class AdminController extends Controller
             'fake_promo_duration_days' => 'nullable|integer|min:1|max:365',
             'is_free' => 'boolean',
             'requires_subscription' => 'boolean',
-            'required_subscription_tier' => 'nullable|in:starter,pro,enterprise',
+            'required_subscription_tier' => 'nullable|in:quarterly,semiannual,yearly,all',
             'is_downloadable' => 'boolean',
             'is_in_person_program' => 'boolean',
             'whatsapp_number' => 'nullable|string|max:30|required_if:is_in_person_program,1',
@@ -2462,7 +2462,7 @@ class AdminController extends Controller
             if (! $data['requires_subscription']) {
                 $data['required_subscription_tier'] = null;
             } elseif (empty($data['required_subscription_tier'])) {
-                $data['required_subscription_tier'] = 'starter';
+                $data['required_subscription_tier'] = 'quarterly';
             }
 
             $course->update($data);
@@ -3677,9 +3677,10 @@ class AdminController extends Controller
                 $sentCount = 0;
                 $failedCount = 0;
                 $skippedDuplicateCount = 0;
+                $totalRecipientsForThrottle = $users->count();
 
                 // Envoyer immédiatement en lots
-                $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, &$skippedDuplicateCount, $recipientType) {
+                $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, &$skippedDuplicateCount, $recipientType, $totalRecipientsForThrottle, $delayMicroseconds) {
                     foreach ($userChunk as $user) {
                         // Anti-doublon : même objet + même type de campagne (metadata) dans les 5 dernières minutes.
                         // Sans le filtre recipient_type, un envoi « sélectionné » ou « un utilisateur » avec le même
@@ -3773,7 +3774,7 @@ class AdminController extends Controller
 
                         // Ralentir légèrement l'envoi sur les campagnes volumineuses
                         // pour éviter le throttling SMTP côté fournisseur.
-                        if ($users->count() > 10) {
+                        if ($totalRecipientsForThrottle > 10) {
                             usleep($delayMicroseconds);
                         }
                     }

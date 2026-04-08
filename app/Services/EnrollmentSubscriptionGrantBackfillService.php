@@ -15,11 +15,11 @@ class EnrollmentSubscriptionGrantBackfillService
     public static function planGrantsContent(SubscriptionPlan $plan, Course $course): bool
     {
         if ((int) $plan->content_id === (int) $course->id) {
-            return true;
+            return SubscriptionPlan::planMatchesCourseMemberPeriod($plan, $course);
         }
 
         if ($plan->contents()->where('contents.id', $course->id)->exists()) {
-            return true;
+            return SubscriptionPlan::planMatchesCourseMemberPeriod($plan, $course);
         }
 
         $packageIds = data_get($plan->metadata, 'included_package_ids', []);
@@ -29,14 +29,13 @@ class EnrollmentSubscriptionGrantBackfillService
                 ->whereIn('id', $ids)
                 ->whereHas('contents', fn ($q) => $q->where('contents.id', $course->id))
                 ->exists()) {
-                return true;
+                return SubscriptionPlan::planMatchesCourseMemberPeriod($plan, $course);
             }
         }
 
         if ($plan->isCommunityPremiumPlan()
-            && $course->is_published
-            && ! $course->is_downloadable) {
-            return true;
+            && $course->qualifiesForCommunityMemberSubscriptionCatalog()) {
+            return SubscriptionPlan::planMatchesCourseMemberPeriod($plan, $course);
         }
 
         return false;

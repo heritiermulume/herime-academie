@@ -317,6 +317,11 @@ class SubscriptionService
 
         $created = 0;
         foreach ($linkedContentIds as $contentId) {
+            $linkedCourse = Course::query()->find((int) $contentId);
+            if (! $linkedCourse || ! $this->subscriptionGrantsCourseByPeriod($subscription, $linkedCourse)) {
+                continue;
+            }
+
             $enrollment = Enrollment::firstOrCreate(
                 [
                     'user_id' => $subscription->user_id,
@@ -370,6 +375,41 @@ class SubscriptionService
     }
 
     /**
+     * La ligne d’abonnement (période de facturation du plan) autorise-t-elle ce contenu si celui-ci impose une période Membre ?
+     */
+    private function subscriptionGrantsCourseByPeriod(UserSubscription $subscription, Course $course): bool
+    {
+        $subscription->loadMissing('plan');
+
+        return SubscriptionPlan::planMatchesCourseMemberPeriod($subscription->plan, $course);
+    }
+
+    /**
+     * Abonnements Membre Herime actifs pouvant recevoir (ou perdre) des accès catalogue.
+     *
+     * @return \Illuminate\Support\Collection<int, UserSubscription>
+     */
+    private function activeCommunityMemberSubscriptions()
+    {
+        $planIds = SubscriptionPlan::query()
+            ->get()
+            ->filter(fn (SubscriptionPlan $p) => $p->isCommunityPremiumPlan())
+            ->pluck('id');
+
+        if ($planIds->isEmpty()) {
+            return collect();
+        }
+
+        return UserSubscription::query()
+            ->whereIn('subscription_plan_id', $planIds->all())
+            ->whereIn('status', ['active', 'trialing'])
+            ->where(function ($q) {
+                $q->whereNull('ended_at')->orWhere('ended_at', '>', now());
+            })
+            ->get();
+    }
+
+    /**
      * Abonnements à réaligner quand le plan ou les packs inclus changent.
      * Hors expiré, attente premier paiement et impayé (past_due) : pas de nouveaux droits tant que la facture n’est pas réglée.
      *
@@ -387,7 +427,7 @@ class SubscriptionService
     }
 
     /**
-     * Ré-applique les droits du plan (contenus liés, packs metadata, règle communauté « tout le catalogue non téléchargeable ») pour tous les abonnés éligibles.
+     * Ré-applique les droits du plan (contenus liés, packs metadata, catalogue Membre : formations + téléchargeables « réservés aux abonnés ») pour tous les abonnés éligibles.
      */
     public function syncEntitlementsForAllPlanSubscribers(SubscriptionPlan $plan): int
     {
@@ -517,6 +557,10 @@ class SubscriptionService
                     continue;
                 }
 
+                if (! $this->subscriptionGrantsCourseByPeriod($subscription, $course)) {
+                    continue;
+                }
+
                 $enrollment = Enrollment::firstOrCreate(
                     [
                         'user_id' => $subscription->user_id,
@@ -542,7 +586,8 @@ class SubscriptionService
     }
 
     /**
-     * Inscrit l’utilisateur à tous les contenus publiés non téléchargeables (abonnement Membre Herime).
+     * Inscrit l’utilisateur au catalogue Membre Herime : formations (non téléchargeables) et contenus
+     * téléchargeables explicitement marqués « réservés aux abonnés ».
      */
     public function grantAllNonDownloadableEnrollmentsForCommunityMember(UserSubscription $subscription): int
     {
@@ -551,17 +596,20 @@ class SubscriptionService
             return 0;
         }
 
-        $contentIds = Course::query()
-            ->where('is_published', true)
-            ->where('is_downloadable', false)
-            ->pluck('id');
+        $catalogCourses = Course::query()
+            ->forCommunityMemberSubscriptionCatalog()
+            ->get();
 
         $created = 0;
-        foreach ($contentIds as $contentId) {
+        foreach ($catalogCourses as $catalogCourse) {
+            if (! $this->subscriptionGrantsCourseByPeriod($subscription, $catalogCourse)) {
+                continue;
+            }
+
             $enrollment = Enrollment::firstOrCreate(
                 [
                     'user_id' => $subscription->user_id,
-                    'content_id' => (int) $contentId,
+                    'content_id' => (int) $catalogCourse->id,
                 ],
                 [
                     'status' => 'active',
@@ -582,52 +630,53 @@ class SubscriptionService
     }
 
     /**
-     * Lorsqu’un contenu non téléchargeable est publié (ou modifié en ce sens), ouvrir l’accès aux membres communauté actifs.
+     * Lorsqu’un contenu est modifié, synchroniser automatiquement les accès membres :
+     * octroi si éligible + révocation si la règle ne matche plus (catalogue/période).
      */
-    public function grantCommunityMembersAccessToCourse(Course $course): int
+    public function syncCommunityMembersAccessToCourse(Course $course): int
     {
-        if (! $course->is_published || $course->is_downloadable) {
+        $subscriptions = $this->activeCommunityMemberSubscriptions();
+        if ($subscriptions->isEmpty()) {
             return 0;
         }
-
-        $planIds = SubscriptionPlan::query()
-            ->get()
-            ->filter(fn (SubscriptionPlan $p) => $p->isCommunityPremiumPlan())
-            ->pluck('id');
-
-        if ($planIds->isEmpty()) {
-            return 0;
-        }
-
-        $subscriptions = UserSubscription::query()
-            ->whereIn('subscription_plan_id', $planIds->all())
-            ->whereIn('status', ['active', 'trialing'])
-            ->where(function ($q) {
-                $q->whereNull('ended_at')->orWhere('ended_at', '>', now());
-            })
-            ->get();
 
         $touched = 0;
         foreach ($subscriptions as $sub) {
-            $enrollment = Enrollment::firstOrCreate(
-                [
-                    'user_id' => $sub->user_id,
-                    'content_id' => (int) $course->id,
-                ],
-                [
-                    'status' => 'active',
-                    'progress' => 0,
-                ]
-            );
+            $shouldHaveAccess = $course->qualifiesForCommunityMemberSubscriptionCatalog()
+                && $this->subscriptionGrantsCourseByPeriod($sub, $course);
 
-            if ($enrollment->wasRecentlyCreated) {
-                $touched++;
-            } elseif ($enrollment->status !== 'active') {
-                $enrollment->update(['status' => 'active']);
-                $touched++;
+            if ($shouldHaveAccess) {
+                $enrollment = Enrollment::firstOrCreate(
+                    [
+                        'user_id' => $sub->user_id,
+                        'content_id' => (int) $course->id,
+                    ],
+                    [
+                        'status' => 'active',
+                        'progress' => 0,
+                    ]
+                );
+
+                if ($enrollment->wasRecentlyCreated) {
+                    $touched++;
+                } elseif ($enrollment->status !== 'active') {
+                    $enrollment->update(['status' => 'active']);
+                    $touched++;
+                }
+
+                $this->applySubscriptionGrantToEnrollment($enrollment, $sub);
+
+                continue;
             }
 
-            $this->applySubscriptionGrantToEnrollment($enrollment, $sub);
+            $deleted = Enrollment::query()
+                ->where('user_id', $sub->user_id)
+                ->where('content_id', (int) $course->id)
+                ->where('access_granted_by_subscription_id', $sub->id)
+                ->delete();
+            if ($deleted > 0) {
+                $touched += $deleted;
+            }
         }
 
         return $touched;

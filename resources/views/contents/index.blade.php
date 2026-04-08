@@ -967,7 +967,7 @@ function createCourseElement(course) {
         <div class="position-absolute top-0 end-0 m-2 d-flex flex-column gap-1">
             ${course.is_featured ? '<span class="badge bg-warning">En vedette</span>' : ''}
             ${course.is_free ? '<span class="badge bg-success">Gratuit</span>' : ''}
-            ${course.requires_subscription ? `<a href="${subscriptionUrl}" class="badge bg-dark text-decoration-none" onclick="event.stopPropagation();"><i class="fas fa-lock me-1"></i>${String(course.required_subscription_tier || 'starter').toUpperCase()}</a>` : ''}
+            ${course.requires_subscription ? (() => { const m = { quarterly: 'Trimestriel', semiannual: 'Semestriel', yearly: 'Annuel', all: 'Toutes périodes', any: 'Toutes périodes', starter: 'Trimestriel', pro: 'Semestriel', enterprise: 'Annuel' }; const k = String(course.required_subscription_tier || 'quarterly').toLowerCase(); return `<a href="${subscriptionUrl}" class="badge bg-dark text-decoration-none" onclick="event.stopPropagation();"><i class="fas fa-lock me-1"></i>${m[k] || 'Membre'}</a>`; })() : ''}
             ${course.sale_discount_percentage ? `<span class="badge bg-danger">-${course.sale_discount_percentage}%</span>` : ''}
         </div>
     `;

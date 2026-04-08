@@ -1092,6 +1092,263 @@ class SubscriptionSystemTest extends TestCase
         $this->assertSame('paid', $invoice->status);
     }
 
+    public function test_member_subscription_grants_downloadable_when_reserved_for_subscribers(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $provider = User::factory()->create(['role' => 'provider']);
+        $category = Category::create([
+            'name' => 'DL membre',
+            'slug' => 'dl-membre-'.uniqid(),
+        ]);
+
+        $downloadableForMembers = Course::create([
+            'provider_id' => $provider->id,
+            'category_id' => $category->id,
+            'title' => 'Ressource PDF membres',
+            'slug' => 'ressource-pdf-membres-'.uniqid(),
+            'description' => 'd',
+            'price' => 12,
+            'is_free' => false,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+            'is_downloadable' => true,
+            'requires_subscription' => true,
+            'required_subscription_tier' => 'quarterly',
+            'download_file_path' => 'courses/downloads/member-resource.zip',
+            'level' => 'beginner',
+            'language' => 'fr',
+        ]);
+
+        $downloadableStandaloneOnly = Course::create([
+            'provider_id' => $provider->id,
+            'category_id' => $category->id,
+            'title' => 'Guide achat seul',
+            'slug' => 'guide-achat-seul-'.uniqid(),
+            'description' => 'd',
+            'price' => 12,
+            'is_free' => false,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+            'is_downloadable' => true,
+            'requires_subscription' => false,
+            'download_file_path' => 'courses/downloads/standalone-only.zip',
+            'level' => 'beginner',
+            'language' => 'fr',
+        ]);
+
+        $plan = SubscriptionPlan::create([
+            'name' => 'Réseau Membre Herime — Annuel',
+            'slug' => SubscriptionPlan::MEMBER_COMMUNITY_SLUGS['yearly'],
+            'plan_type' => 'recurring',
+            'billing_period' => 'yearly',
+            'price' => 18,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => true,
+            'metadata' => [
+                'community_premium' => true,
+                'community_display_order' => 2,
+            ],
+        ]);
+
+        Http::fake([
+            '*' => Http::response([
+                'success' => true,
+                'data' => ['id' => 'py_dl_member_1', 'payment_url' => 'https://pay.example/dl-member'],
+            ], 200),
+        ]);
+        config(['services.moneroo.api_key' => 'test_key']);
+
+        $this->actingAs($user)
+            ->post(route('subscriptions.subscribe', $plan))
+            ->assertRedirect('https://pay.example/dl-member');
+
+        $invoice = SubscriptionInvoice::query()->where('user_id', $user->id)->first();
+        $this->assertNotNull($invoice);
+
+        $payload = [
+            'data' => [
+                'id' => 'py_dl_member_1',
+                'status' => 'success',
+                'metadata' => [
+                    'kind' => 'subscription_invoice',
+                    'invoice_id' => (string) $invoice->id,
+                ],
+            ],
+        ];
+
+        $this->postJson('/moneroo/webhook', $payload)->assertOk();
+
+        $this->assertDatabaseHas('enrollments', [
+            'user_id' => $user->id,
+            'content_id' => $downloadableForMembers->id,
+            'status' => 'active',
+        ]);
+
+        $this->assertDatabaseMissing('enrollments', [
+            'user_id' => $user->id,
+            'content_id' => $downloadableStandaloneOnly->id,
+        ]);
+    }
+
+    public function test_quarterly_member_subscription_skips_year_minimum_subscriber_content(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $provider = User::factory()->create(['role' => 'provider']);
+        $category = Category::create([
+            'name' => 'Période DL',
+            'slug' => 'periode-dl-'.uniqid(),
+        ]);
+
+        $yearlyOnlyDownloadable = Course::create([
+            'provider_id' => $provider->id,
+            'category_id' => $category->id,
+            'title' => 'Pack annuel membres seulement',
+            'slug' => 'pack-annuel-membres-'.uniqid(),
+            'description' => 'd',
+            'price' => 20,
+            'is_free' => false,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+            'is_downloadable' => true,
+            'requires_subscription' => true,
+            'required_subscription_tier' => 'yearly',
+            'download_file_path' => 'courses/downloads/yearly-only.zip',
+            'level' => 'beginner',
+            'language' => 'fr',
+        ]);
+
+        $planQuarterly = SubscriptionPlan::create([
+            'name' => 'Réseau Membre Herime — Trimestriel',
+            'slug' => SubscriptionPlan::MEMBER_COMMUNITY_SLUGS['quarterly'],
+            'plan_type' => 'recurring',
+            'billing_period' => 'quarterly',
+            'price' => 9,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => true,
+            'metadata' => [
+                'community_premium' => true,
+                'community_display_order' => 0,
+            ],
+        ]);
+
+        Http::fake([
+            '*' => Http::response([
+                'success' => true,
+                'data' => ['id' => 'py_q_dl', 'payment_url' => 'https://pay.example/q-dl'],
+            ], 200),
+        ]);
+        config(['services.moneroo.api_key' => 'test_key']);
+
+        $this->actingAs($user)
+            ->post(route('subscriptions.subscribe', $planQuarterly))
+            ->assertRedirect('https://pay.example/q-dl');
+
+        $invoice = SubscriptionInvoice::query()->where('user_id', $user->id)->first();
+        $this->assertNotNull($invoice);
+
+        $this->postJson('/moneroo/webhook', [
+            'data' => [
+                'id' => 'py_q_dl',
+                'status' => 'success',
+                'metadata' => [
+                    'kind' => 'subscription_invoice',
+                    'invoice_id' => (string) $invoice->id,
+                ],
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('enrollments', [
+            'user_id' => $user->id,
+            'content_id' => $yearlyOnlyDownloadable->id,
+        ]);
+    }
+
+    public function test_content_update_revokes_member_grant_when_period_no_longer_matches(): void
+    {
+        $user = User::factory()->create(['role' => 'customer']);
+        $provider = User::factory()->create(['role' => 'provider']);
+        $category = Category::create([
+            'name' => 'Révocation période',
+            'slug' => 'revocation-periode-'.uniqid(),
+        ]);
+
+        $downloadable = Course::create([
+            'provider_id' => $provider->id,
+            'category_id' => $category->id,
+            'title' => 'Ressource membres modifiable',
+            'slug' => 'ressource-membres-modifiable-'.uniqid(),
+            'description' => 'd',
+            'price' => 15,
+            'is_free' => false,
+            'is_published' => true,
+            'is_sale_enabled' => true,
+            'is_downloadable' => true,
+            'requires_subscription' => true,
+            'required_subscription_tier' => 'quarterly',
+            'download_file_path' => 'courses/downloads/revocation.zip',
+            'level' => 'beginner',
+            'language' => 'fr',
+        ]);
+
+        $planQuarterly = SubscriptionPlan::create([
+            'name' => 'Réseau Membre Herime — Trimestriel',
+            'slug' => SubscriptionPlan::MEMBER_COMMUNITY_SLUGS['quarterly'],
+            'plan_type' => 'recurring',
+            'billing_period' => 'quarterly',
+            'price' => 9,
+            'trial_days' => 0,
+            'is_active' => true,
+            'auto_renew_default' => true,
+            'metadata' => [
+                'community_premium' => true,
+                'community_display_order' => 0,
+            ],
+        ]);
+
+        Http::fake([
+            '*' => Http::response([
+                'success' => true,
+                'data' => ['id' => 'py_revoke_period', 'payment_url' => 'https://pay.example/revoke-period'],
+            ], 200),
+        ]);
+        config(['services.moneroo.api_key' => 'test_key']);
+
+        $this->actingAs($user)
+            ->post(route('subscriptions.subscribe', $planQuarterly))
+            ->assertRedirect('https://pay.example/revoke-period');
+
+        $invoice = SubscriptionInvoice::query()->where('user_id', $user->id)->first();
+        $this->assertNotNull($invoice);
+
+        $this->postJson('/moneroo/webhook', [
+            'data' => [
+                'id' => 'py_revoke_period',
+                'status' => 'success',
+                'metadata' => [
+                    'kind' => 'subscription_invoice',
+                    'invoice_id' => (string) $invoice->id,
+                ],
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('enrollments', [
+            'user_id' => $user->id,
+            'content_id' => $downloadable->id,
+            'status' => 'active',
+        ]);
+
+        $downloadable->update([
+            'required_subscription_tier' => 'yearly',
+        ]);
+
+        $this->assertDatabaseMissing('enrollments', [
+            'user_id' => $user->id,
+            'content_id' => $downloadable->id,
+        ]);
+    }
+
     public function test_process_renewals_creates_invoice_and_extends_billing_period(): void
     {
         $user = User::factory()->create(['role' => 'customer']);

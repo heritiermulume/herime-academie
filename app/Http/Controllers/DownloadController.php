@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
-use App\Models\CourseLesson;
 use App\Models\CourseDownload;
+use App\Models\CourseLesson;
 use App\Models\Enrollment;
+use App\Models\SubscriptionPlan;
+use App\Models\User;
 use App\Services\EnrollmentReceiptPdfService;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class DownloadController extends Controller
 {
@@ -24,12 +25,12 @@ class DownloadController extends Controller
     public function course(Course $course)
     {
         // Vérifier que le cours est publié
-        if (!$course->is_published) {
+        if (! $course->is_published) {
             abort(404, 'Ce cours n\'est pas disponible.');
         }
 
         // Vérifier si l'utilisateur est connecté
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login')->with('error', 'Vous devez être connecté pour télécharger ce cours.');
         }
 
@@ -38,21 +39,23 @@ class DownloadController extends Controller
         // Cours en présentiel : uniquement le reçu (priorité sur tout le reste)
         if ($course->is_in_person_program ?? false) {
             $enrollment = $this->getEnrollmentForReceipt($course, $userId);
-            if (!$enrollment) {
+            if (! $enrollment) {
                 return back()->with('error', 'Vous devez être inscrit à ce programme pour télécharger le reçu.');
             }
+
             return $this->downloadEnrollmentReceipt($enrollment);
         }
 
         // Cours téléchargeable : priorité au contenu (fichier ou ZIP des sections/leçons)
         if ($course->is_downloadable) {
-            if (!$this->hasAccessToCourse($course, $userId)) {
-                if (!$course->is_sale_enabled) {
+            if (! $this->hasAccessToCourse($course, $userId)) {
+                if (! $course->is_sale_enabled) {
                     return back()->with('error', 'Ce cours n\'est pas actuellement disponible.');
                 }
                 if ($course->is_free) {
                     return back()->with('error', 'Vous devez être inscrit à ce cours pour le télécharger.');
                 }
+
                 return back()->with('error', 'Vous devez acheter ce cours pour le télécharger.');
             }
 
@@ -61,6 +64,7 @@ class DownloadController extends Controller
                 $specificFileResponse = $this->tryDownloadSpecificFile($course);
                 if ($specificFileResponse) {
                     $this->recordDownload($course, 'file');
+
                     return $specificFileResponse;
                 }
                 // Fichier manquant : télécharger le reçu à la place
@@ -68,6 +72,7 @@ class DownloadController extends Controller
                 if ($enrollment) {
                     return $this->downloadEnrollmentReceipt($enrollment);
                 }
+
                 return back()->with('error', 'Le fichier de téléchargement n\'existe plus sur le serveur.');
             }
 
@@ -75,6 +80,7 @@ class DownloadController extends Controller
             $zipResponse = $this->tryDownloadCourseAsZip($course);
             if ($zipResponse) {
                 $this->recordDownload($course, 'zip');
+
                 return $zipResponse;
             }
 
@@ -108,11 +114,11 @@ class DownloadController extends Controller
     private function downloadEnrollmentReceipt(Enrollment $enrollment): Response
     {
         $pdfContent = $this->receiptPdfService->generatePdfContent($enrollment);
-        $filename = 'recu-inscription-' . \Illuminate\Support\Str::slug($enrollment->course->title) . '.pdf';
+        $filename = 'recu-inscription-'.\Illuminate\Support\Str::slug($enrollment->course->title).'.pdf';
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             'Content-Length' => strlen($pdfContent),
         ]);
     }
@@ -122,13 +128,14 @@ class DownloadController extends Controller
      */
     private function tryDownloadSpecificFile(Course $course)
     {
-        if (!filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+        if (! filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
             $disk = Storage::disk('local');
             $cleanPath = ltrim($course->download_file_path, '/');
-            if (!$disk->exists($cleanPath)) {
+            if (! $disk->exists($cleanPath)) {
                 return null;
             }
         }
+
         return $this->downloadSpecificFile($course);
     }
 
@@ -138,6 +145,7 @@ class DownloadController extends Controller
     private function tryDownloadCourseAsZip(Course $course)
     {
         $result = $this->downloadCourseAsZip($course);
+
         return $result ?: null;
     }
 
@@ -149,10 +157,10 @@ class DownloadController extends Controller
         try {
             $ipAddress = request()->ip();
             $userAgent = request()->userAgent();
-            
+
             // Obtenir les informations géographiques depuis l'IP
             $geoInfo = $this->getGeoInfoFromIp($ipAddress);
-            
+
             CourseDownload::create([
                 'content_id' => $course->id,
                 'user_id' => Auth::id(),
@@ -166,7 +174,7 @@ class DownloadController extends Controller
             ]);
         } catch (\Exception $e) {
             // Log l'erreur mais ne pas bloquer le téléchargement
-            \Log::warning('Erreur lors de l\'enregistrement du téléchargement: ' . $e->getMessage());
+            \Log::warning('Erreur lors de l\'enregistrement du téléchargement: '.$e->getMessage());
         }
     }
 
@@ -186,7 +194,7 @@ class DownloadController extends Controller
             $response = @file_get_contents("http://ip-api.com/json/{$ipAddress}?fields=status,country,countryCode,city,regionName", false, stream_context_create([
                 'http' => [
                     'timeout' => 2, // Timeout de 2 secondes
-                ]
+                ],
             ]));
 
             if ($response) {
@@ -201,7 +209,7 @@ class DownloadController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            \Log::warning('Erreur lors de la récupération des informations géographiques: ' . $e->getMessage());
+            \Log::warning('Erreur lors de la récupération des informations géographiques: '.$e->getMessage());
         }
 
         return [];
@@ -214,8 +222,8 @@ class DownloadController extends Controller
     {
         $filePath = null;
         $fileName = null;
-        
-        if (!filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
+
+        if (! filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
             $disk = Storage::disk('local');
 
             $cleanPath = ltrim($course->download_file_path, '/');
@@ -228,17 +236,17 @@ class DownloadController extends Controller
             // C'est une URL externe - rediriger vers cette URL
             return redirect($course->download_file_path);
         }
-        
-        if (!$filePath || !file_exists($filePath)) {
+
+        if (! $filePath || ! file_exists($filePath)) {
             return back()->with('error', 'Le fichier de téléchargement n\'existe plus sur le serveur.');
         }
-        
+
         // Si pas de nom de fichier spécifique, utiliser un nom par défaut
-        if (!$fileName) {
+        if (! $fileName) {
             $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-            $fileName = $this->sanitizeFileName($course->title) . '.' . ($extension ?: 'zip');
+            $fileName = $this->sanitizeFileName($course->title).'.'.($extension ?: 'zip');
         }
-        
+
         return response()->download($filePath, $fileName);
     }
 
@@ -251,25 +259,25 @@ class DownloadController extends Controller
         $course->load([
             'provider',
             'category',
-            'sections' => function($query) {
+            'sections' => function ($query) {
                 $query->orderBy('sort_order');
             },
-            'sections.lessons' => function($query) {
+            'sections.lessons' => function ($query) {
                 $query->orderBy('sort_order');
-            }
+            },
         ]);
 
         // Créer un fichier ZIP temporaire
-        $zipFileName = 'cours-' . $course->slug . '-' . now()->format('Y-m-d') . '.zip';
-        $zipPath = storage_path('app/temp/' . $zipFileName);
-        
+        $zipFileName = 'cours-'.$course->slug.'-'.now()->format('Y-m-d').'.zip';
+        $zipPath = storage_path('app/temp/'.$zipFileName);
+
         // Créer le dossier temp s'il n'existe pas
-        if (!file_exists(storage_path('app/temp'))) {
+        if (! file_exists(storage_path('app/temp'))) {
             mkdir(storage_path('app/temp'), 0755, true);
         }
 
-        $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE) !== TRUE) {
+        $zip = new \ZipArchive;
+        if ($zip->open($zipPath, \ZipArchive::CREATE) !== true) {
             return back()->with('error', 'Impossible de créer le fichier ZIP.');
         }
 
@@ -281,8 +289,8 @@ class DownloadController extends Controller
         $hasContent = false;
         foreach ($course->sections as $section) {
             if ($section->lessons->isNotEmpty()) {
-                $sectionPath = 'Section ' . $section->sort_order . ' - ' . $this->sanitizeFileName($section->title) . '/';
-                
+                $sectionPath = 'Section '.$section->sort_order.' - '.$this->sanitizeFileName($section->title).'/';
+
                 foreach ($section->lessons as $lesson) {
                     if ($this->addLessonToZip($zip, $lesson, $sectionPath)) {
                         $hasContent = true;
@@ -296,8 +304,9 @@ class DownloadController extends Controller
 
         $zip->close();
 
-        if (!$hasContent) {
+        if (! $hasContent) {
             @unlink($zipPath);
+
             return null;
         }
 
@@ -310,22 +319,22 @@ class DownloadController extends Controller
     public function lesson(Course $course, CourseLesson $lesson)
     {
         // Vérifier que le cours est publié
-        if (!$course->is_published) {
+        if (! $course->is_published) {
             abort(404, 'Ce cours n\'est pas disponible.');
         }
 
         // Vérifier si l'utilisateur est connecté
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login')->with('error', 'Vous devez être connecté pour télécharger ce fichier.');
         }
 
         // Vérifier que le cours est téléchargeable
-        if (!$course->is_downloadable) {
+        if (! $course->is_downloadable) {
             return back()->with('error', 'Ce cours n\'est pas disponible en téléchargement.');
         }
 
         // Vérifier l'accès au cours selon le type (gratuit/payant)
-        if (!$this->hasAccessToCourse($course, Auth::id())) {
+        if (! $this->hasAccessToCourse($course, Auth::id())) {
             if ($course->is_free) {
                 return back()->with('error', 'Vous devez être inscrit à ce cours pour télécharger ce fichier.');
             } else {
@@ -340,9 +349,9 @@ class DownloadController extends Controller
 
         // Chercher le fichier à télécharger (file_path ou content_url)
         $filePath = null;
-        $fileName = $lesson->downloadable_filename ?? ($this->sanitizeFileName($lesson->title) . '.zip');
+        $fileName = $lesson->downloadable_filename ?? ($this->sanitizeFileName($lesson->title).'.zip');
 
-        if ($lesson->download_file_path && !filter_var($lesson->download_file_path, FILTER_VALIDATE_URL)) {
+        if ($lesson->download_file_path && ! filter_var($lesson->download_file_path, FILTER_VALIDATE_URL)) {
             $disk = Storage::disk('local');
             $cleanPath = ltrim($lesson->download_file_path, '/');
 
@@ -355,15 +364,15 @@ class DownloadController extends Controller
             return redirect($lesson->download_file_path);
         }
 
-        if (!$filePath || !file_exists($filePath)) {
+        if (! $filePath || ! file_exists($filePath)) {
             return back()->with('error', 'Fichier non disponible sur le site.');
         }
 
-        $fileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title);
+        $fileName = 'Leçon '.$lesson->sort_order.' - '.$this->sanitizeFileName($lesson->title);
         if ($extension) {
-            $fileName .= '.' . $extension;
+            $fileName .= '.'.$extension;
         }
-        
+
         return response()->download($filePath, $fileName);
     }
 
@@ -379,23 +388,33 @@ class DownloadController extends Controller
     private function hasAccessToCourse(Course $course, $userId)
     {
         if ($course->is_downloadable) {
-            // Pour les produits téléchargeables payants : l'utilisateur doit avoir une commande payée
+            // Pour les produits téléchargeables payants : commande payée, ou inscription (ex. abonnement Membre)
+            // avec période suffisante si le contenu est réservé aux abonnés.
             if (! $course->is_free) {
                 $hasPaidOrder = \App\Models\Order::where('user_id', $userId)
                     ->whereIn('status', ['paid', 'completed'])
-                    ->whereHas('orderItems', function($query) use ($course) {
+                    ->whereHas('orderItems', function ($query) use ($course) {
                         $query->where('content_id', $course->id);
                     })
                     ->exists();
 
-                return $hasPaidOrder;
+                if ($hasPaidOrder) {
+                    return true;
+                }
+
+                $user = User::find($userId);
+                if ($user && $course->isEnrolledBy($userId)) {
+                    return SubscriptionPlan::userMeetsMemberPeriodForSubscriptionGatedContent($user, $course);
+                }
+
+                return false;
             }
 
             // Pour les produits téléchargeables gratuits : aucun achat ni inscription n'est requis,
             // le simple fait d'être connecté et que le cours soit publié suffit.
             return true;
         }
-        
+
         // Pour les cours NON téléchargeables, vérifier l'inscription normalement
         // Pour les cours gratuits, vérifier seulement l'inscription
         if ($course->is_free) {
@@ -427,7 +446,7 @@ class DownloadController extends Controller
         // Si pas d'inscription, vérifier si l'utilisateur a acheté le cours via une commande payée
         $hasPurchased = \App\Models\Order::where('user_id', $userId)
             ->whereIn('status', ['paid', 'completed'])
-            ->whereHas('orderItems', function($query) use ($course) {
+            ->whereHas('orderItems', function ($query) use ($course) {
                 $query->where('content_id', $course->id);
             })
             ->exists();
@@ -440,40 +459,40 @@ class DownloadController extends Controller
      */
     private function generateCourseReadme(Course $course)
     {
-        $content = "COURS: " . $course->title . "\n";
-        $content .= "=" . str_repeat("=", strlen($course->title)) . "\n\n";
-        
+        $content = 'COURS: '.$course->title."\n";
+        $content .= '='.str_repeat('=', strlen($course->title))."\n\n";
+
         $content .= "Description:\n";
-        $content .= $course->description . "\n\n";
-        
-        $content .= "Prestataire: " . $course->provider->name . "\n";
-        $content .= "Durée: " . $course->duration . " minutes\n";
-        $content .= "Niveau: " . ucfirst($course->level) . "\n";
-        $content .= "Catégorie: " . $course->category->name . "\n\n";
-        
+        $content .= $course->description."\n\n";
+
+        $content .= 'Prestataire: '.$course->provider->name."\n";
+        $content .= 'Durée: '.$course->duration." minutes\n";
+        $content .= 'Niveau: '.ucfirst($course->level)."\n";
+        $content .= 'Catégorie: '.$course->category->name."\n\n";
+
         $content .= "STRUCTURE DU COURS:\n";
-        $content .= str_repeat("-", 20) . "\n\n";
-        
+        $content .= str_repeat('-', 20)."\n\n";
+
         foreach ($course->sections as $section) {
-            $content .= "Section " . $section->sort_order . ": " . $section->title . "\n";
+            $content .= 'Section '.$section->sort_order.': '.$section->title."\n";
             if ($section->description) {
-                $content .= "  " . $section->description . "\n";
+                $content .= '  '.$section->description."\n";
             }
             $content .= "\n";
-            
+
             foreach ($section->lessons as $lesson) {
-                $content .= "  Leçon " . $lesson->sort_order . ": " . $lesson->title . "\n";
+                $content .= '  Leçon '.$lesson->sort_order.': '.$lesson->title."\n";
                 if ($lesson->description) {
-                    $content .= "    " . $lesson->description . "\n";
+                    $content .= '    '.$lesson->description."\n";
                 }
-                $content .= "    Type: " . ucfirst($lesson->type) . "\n";
-                $content .= "    Durée: " . $lesson->duration . " minutes\n\n";
+                $content .= '    Type: '.ucfirst($lesson->type)."\n";
+                $content .= '    Durée: '.$lesson->duration." minutes\n\n";
             }
         }
-        
-        $content .= "Téléchargé le: " . now()->format('d/m/Y à H:i') . "\n";
+
+        $content .= 'Téléchargé le: '.now()->format('d/m/Y à H:i')."\n";
         $content .= "Source: Herime Academie\n";
-        
+
         return $content;
     }
 
@@ -484,82 +503,84 @@ class DownloadController extends Controller
     {
         $added = false;
         $disk = Storage::disk('local'); // Utiliser le stockage privé
-        
+
         // Ajouter le fichier de la leçon s'il existe (file_path)
         $sourceForExtension = $lesson->file_path ?: $lesson->content_url;
         $extension = $sourceForExtension ? pathinfo($sourceForExtension, PATHINFO_EXTENSION) : 'bin';
-        $lessonFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title);
+        $lessonFileName = 'Leçon '.$lesson->sort_order.' - '.$this->sanitizeFileName($lesson->title);
         if ($extension) {
-            $lessonFileName .= '.' . $extension;
+            $lessonFileName .= '.'.$extension;
         }
 
-        if ($lesson->file_path && !filter_var($lesson->file_path, FILTER_VALIDATE_URL)) {
+        if ($lesson->file_path && ! filter_var($lesson->file_path, FILTER_VALIDATE_URL)) {
             $cleanPath = ltrim($lesson->file_path, '/');
             if ($disk->exists($cleanPath)) {
-                $zip->addFile($disk->path($cleanPath), $sectionPath . $lessonFileName);
+                $zip->addFile($disk->path($cleanPath), $sectionPath.$lessonFileName);
+
                 return true;
             }
         }
 
-        if ($lesson->content_url && !filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
+        if ($lesson->content_url && ! filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
             $cleanPath = ltrim($lesson->content_url, '/');
             if ($disk->exists($cleanPath)) {
-                $zip->addFile($disk->path($cleanPath), $sectionPath . $lessonFileName);
+                $zip->addFile($disk->path($cleanPath), $sectionPath.$lessonFileName);
+
                 return true;
             }
         }
-        
+
         // Ajouter le contenu texte s'il existe
         if ($lesson->content_text) {
-            $textFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . ' - Contenu.txt';
-            $zip->addFromString($sectionPath . $textFileName, $lesson->content_text);
+            $textFileName = 'Leçon '.$lesson->sort_order.' - '.$this->sanitizeFileName($lesson->title).' - Contenu.txt';
+            $zip->addFromString($sectionPath.$textFileName, $lesson->content_text);
             $added = true;
         }
-        
+
         // Ajouter l'URL de la vidéo s'il s'agit d'une leçon vidéo (YouTube ou autre URL externe)
         if ($lesson->type === 'video') {
-            $videoInfo = "Titre: " . $lesson->title . "\n";
-            $videoInfo .= "Description: " . ($lesson->description ?? 'Aucune description') . "\n";
-            $videoInfo .= "Durée: " . $lesson->duration . " minutes\n";
-            
+            $videoInfo = 'Titre: '.$lesson->title."\n";
+            $videoInfo .= 'Description: '.($lesson->description ?? 'Aucune description')."\n";
+            $videoInfo .= 'Durée: '.$lesson->duration." minutes\n";
+
             // Ajouter l'URL YouTube si disponible
             if ($lesson->youtube_video_id) {
-                $videoInfo .= "URL YouTube: https://www.youtube.com/watch?v=" . $lesson->youtube_video_id . "\n";
+                $videoInfo .= 'URL YouTube: https://www.youtube.com/watch?v='.$lesson->youtube_video_id."\n";
             }
-            
+
             // Ajouter l'URL de contenu si c'est une URL externe
             if ($lesson->content_url && filter_var($lesson->content_url, FILTER_VALIDATE_URL)) {
-                $videoInfo .= "URL de la vidéo: " . $lesson->content_url . "\n";
+                $videoInfo .= 'URL de la vidéo: '.$lesson->content_url."\n";
             }
-            
-            $videoFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . ' - Info Vidéo.txt';
-            $zip->addFromString($sectionPath . $videoFileName, $videoInfo);
+
+            $videoFileName = 'Leçon '.$lesson->sort_order.' - '.$this->sanitizeFileName($lesson->title).' - Info Vidéo.txt';
+            $zip->addFromString($sectionPath.$videoFileName, $videoInfo);
             $added = true;
         }
-        
+
         // Pour les leçons de type text, quiz, assignment, etc., ajouter les informations
         if (in_array($lesson->type, ['text', 'quiz', 'assignment'])) {
-            $infoFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . ' - Info.txt';
-            $infoContent = "Titre: " . $lesson->title . "\n";
-            $infoContent .= "Type: " . ucfirst($lesson->type) . "\n";
-            $infoContent .= "Description: " . ($lesson->description ?? 'Aucune description') . "\n";
+            $infoFileName = 'Leçon '.$lesson->sort_order.' - '.$this->sanitizeFileName($lesson->title).' - Info.txt';
+            $infoContent = 'Titre: '.$lesson->title."\n";
+            $infoContent .= 'Type: '.ucfirst($lesson->type)."\n";
+            $infoContent .= 'Description: '.($lesson->description ?? 'Aucune description')."\n";
             if ($lesson->duration) {
-                $infoContent .= "Durée: " . $lesson->duration . " minutes\n";
+                $infoContent .= 'Durée: '.$lesson->duration." minutes\n";
             }
-            $zip->addFromString($sectionPath . $infoFileName, $infoContent);
+            $zip->addFromString($sectionPath.$infoFileName, $infoContent);
             $added = true;
         }
-        
+
         // Si aucune ressource ajoutée mais que la leçon existe, ajouter au minimum les métadonnées
-        if (!$added) {
-            $infoFileName = 'Leçon ' . $lesson->sort_order . ' - ' . $this->sanitizeFileName($lesson->title) . ' - Info.txt';
-            $infoContent = "Titre: " . $lesson->title . "\n";
-            $infoContent .= "Type: " . ucfirst($lesson->type ?? 'texte') . "\n";
-            $infoContent .= "Description: " . ($lesson->description ?? 'Aucune description') . "\n";
-            $zip->addFromString($sectionPath . $infoFileName, $infoContent);
+        if (! $added) {
+            $infoFileName = 'Leçon '.$lesson->sort_order.' - '.$this->sanitizeFileName($lesson->title).' - Info.txt';
+            $infoContent = 'Titre: '.$lesson->title."\n";
+            $infoContent .= 'Type: '.ucfirst($lesson->type ?? 'texte')."\n";
+            $infoContent .= 'Description: '.($lesson->description ?? 'Aucune description')."\n";
+            $zip->addFromString($sectionPath.$infoFileName, $infoContent);
             $added = true;
         }
-        
+
         return $added;
     }
 
@@ -569,26 +590,26 @@ class DownloadController extends Controller
     private function addCourseResources($zip, $course)
     {
         // Ajouter l'image/thumbnail du cours si elle existe
-        if ($course->thumbnail && !filter_var($course->thumbnail, FILTER_VALIDATE_URL)) {
+        if ($course->thumbnail && ! filter_var($course->thumbnail, FILTER_VALIDATE_URL)) {
             $thumbnailPath = ltrim($course->thumbnail, '/');
             $disk = Storage::disk('local');
 
             if ($disk->exists($thumbnailPath)) {
                 $fullPath = $disk->path($thumbnailPath);
-                $zip->addFile($fullPath, 'image-cours.' . pathinfo($fullPath, PATHINFO_EXTENSION));
+                $zip->addFile($fullPath, 'image-cours.'.pathinfo($fullPath, PATHINFO_EXTENSION));
             }
         }
 
-        if ($course->image_path && $course->image_path !== $course->thumbnail && !filter_var($course->image_path, FILTER_VALIDATE_URL)) {
+        if ($course->image_path && $course->image_path !== $course->thumbnail && ! filter_var($course->image_path, FILTER_VALIDATE_URL)) {
             $imagePath = ltrim($course->image_path, '/');
             $disk = Storage::disk('local');
 
             if ($disk->exists($imagePath)) {
                 $fullPath = $disk->path($imagePath);
-                $zip->addFile($fullPath, 'image-cours-2.' . pathinfo($fullPath, PATHINFO_EXTENSION));
+                $zip->addFile($fullPath, 'image-cours-2.'.pathinfo($fullPath, PATHINFO_EXTENSION));
             }
         }
-        
+
         // Ajouter un fichier d'index HTML pour une meilleure navigation
         $indexContent = $this->generateIndexHtml($course);
         $zip->addFromString('index.html', $indexContent);
@@ -604,7 +625,7 @@ class DownloadController extends Controller
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>' . htmlspecialchars($course->title) . '</title>
+    <title>'.htmlspecialchars($course->title).'</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
         .header { border-bottom: 2px solid #007bff; padding-bottom: 20px; margin-bottom: 30px; }
@@ -615,52 +636,52 @@ class DownloadController extends Controller
 </head>
 <body>
     <div class="header">
-        <h1>' . htmlspecialchars($course->title) . '</h1>
-        <p><strong>Prestataire:</strong> ' . htmlspecialchars($course->provider->name) . '</p>
-        <p><strong>Durée:</strong> ' . $course->duration . ' minutes</p>
-        <p><strong>Niveau:</strong> ' . ucfirst($course->level) . '</p>
+        <h1>'.htmlspecialchars($course->title).'</h1>
+        <p><strong>Prestataire:</strong> '.htmlspecialchars($course->provider->name).'</p>
+        <p><strong>Durée:</strong> '.$course->duration.' minutes</p>
+        <p><strong>Niveau:</strong> '.ucfirst($course->level).'</p>
     </div>
     
     <div class="description">
         <h2>Description</h2>
-        <p>' . nl2br(htmlspecialchars($course->description)) . '</p>
+        <p>'.nl2br(htmlspecialchars($course->description)).'</p>
     </div>
     
     <div class="content">
         <h2>Structure du cours</h2>';
-        
+
         foreach ($course->sections as $section) {
             $html .= '<div class="section">
-                <h3>Section ' . $section->sort_order . ': ' . htmlspecialchars($section->title) . '</h3>';
-            
+                <h3>Section '.$section->sort_order.': '.htmlspecialchars($section->title).'</h3>';
+
             if ($section->description) {
-                $html .= '<p>' . htmlspecialchars($section->description) . '</p>';
+                $html .= '<p>'.htmlspecialchars($section->description).'</p>';
             }
-            
+
             foreach ($section->lessons as $lesson) {
                 $html .= '<div class="lesson">
-                    <h4>Leçon ' . $lesson->sort_order . ': ' . htmlspecialchars($lesson->title) . '</h4>
-                    <span class="lesson-type">' . ucfirst($lesson->type) . '</span>
-                    <span> - ' . $lesson->duration . ' minutes</span>';
-                
+                    <h4>Leçon '.$lesson->sort_order.': '.htmlspecialchars($lesson->title).'</h4>
+                    <span class="lesson-type">'.ucfirst($lesson->type).'</span>
+                    <span> - '.$lesson->duration.' minutes</span>';
+
                 if ($lesson->description) {
-                    $html .= '<p>' . htmlspecialchars($lesson->description) . '</p>';
+                    $html .= '<p>'.htmlspecialchars($lesson->description).'</p>';
                 }
-                
+
                 $html .= '</div>';
             }
-            
+
             $html .= '</div>';
         }
-        
+
         $html .= '</div>
     
     <div class="footer">
-        <p><em>Téléchargé le ' . now()->format('d/m/Y à H:i') . ' depuis Herime Academie</em></p>
+        <p><em>Téléchargé le '.now()->format('d/m/Y à H:i').' depuis Herime Academie</em></p>
     </div>
 </body>
 </html>';
-        
+
         return $html;
     }
 
@@ -671,6 +692,7 @@ class DownloadController extends Controller
     {
         // Remplacer les caractères problématiques
         $fileName = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '-', $fileName);
+
         // Limiter la longueur
         return substr($fileName, 0, 100);
     }

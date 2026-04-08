@@ -28,7 +28,103 @@ class SubscriptionPlan extends Model
         'quarterly' => 'Trimestriel',
         'semiannual' => 'Semestriel',
         'yearly' => 'Annuel',
+        'all' => 'Toutes périodes (Membre)',
     ];
+
+    /**
+     * Ordre des périodes Membre Hérimé pour une exigence « minimale » sur un contenu.
+     * Inclut les anciennes valeurs admin (starter/pro/enterprise) pour rétrocompatibilité.
+     *
+     * @return array<string, int>
+     */
+    public static function memberPeriodRequirementRanks(): array
+    {
+        return [
+            'quarterly' => 1,
+            'semiannual' => 2,
+            'yearly' => 3,
+            'all' => 1,
+            'any' => 1,
+            'starter' => 1,
+            'pro' => 2,
+            'enterprise' => 3,
+        ];
+    }
+
+    /**
+     * Rang exigé par un contenu à partir de `contents.required_subscription_tier`.
+     * `all` / `any` : toute période Membre (trimestriel, semestriel ou annuel) suffit — équivalent au rang minimal.
+     */
+    public static function requiredMemberPeriodRankFromStored(?string $stored): int
+    {
+        $key = strtolower(trim((string) $stored));
+        $ranks = self::memberPeriodRequirementRanks();
+
+        return $ranks[$key] ?? 1;
+    }
+
+    /**
+     * La période de facturation du plan suffit-elle pour un contenu avec exigence d’abonnement Membre ?
+     */
+    public static function planMatchesCourseMemberPeriod(?self $plan, Course $course): bool
+    {
+        if (! $course->requires_subscription || $course->is_free) {
+            return true;
+        }
+
+        $requiredRank = self::requiredMemberPeriodRankFromStored($course->required_subscription_tier);
+
+        return self::subscriptionAccessRankForPlan($plan) >= $requiredRank;
+    }
+
+    /**
+     * Accès au contenu réservé aux abonnés : période Membre suffisante ou achat standalone.
+     */
+    public static function userMeetsMemberPeriodForSubscriptionGatedContent(User $user, Course $course): bool
+    {
+        if (! $course->requires_subscription || $course->is_free) {
+            return true;
+        }
+
+        if ($course->userHasValidStandalonePurchase($user->id)) {
+            return true;
+        }
+
+        $requiredRank = self::requiredMemberPeriodRankFromStored($course->required_subscription_tier);
+        $activeSubscriptions = $user->activeSubscriptions()->with('plan')->get();
+
+        if ($activeSubscriptions->isEmpty()) {
+            return false;
+        }
+
+        return $activeSubscriptions->contains(function ($subscription) use ($requiredRank) {
+            return self::subscriptionAccessRankForPlan($subscription->plan) >= $requiredRank;
+        });
+    }
+
+    /**
+     * Rang d’accès fourni par le plan d’un abonnement actif (période de facturation ou ancien metadata `tier`).
+     */
+    public static function subscriptionAccessRankForPlan(?self $plan): int
+    {
+        if (! $plan) {
+            // Aligné sur l’ancienne logique (metadata tier par défaut « starter » / rang minimal).
+            return 1;
+        }
+
+        $ranks = self::memberPeriodRequirementRanks();
+        $bp = strtolower((string) $plan->billing_period);
+        if (isset($ranks[$bp])) {
+            return $ranks[$bp];
+        }
+
+        $tier = strtolower((string) data_get($plan->metadata, 'tier', ''));
+        if ($tier !== '' && isset($ranks[$tier])) {
+            return $ranks[$tier];
+        }
+
+        return 1;
+    }
 
     protected $fillable = [
         'name',

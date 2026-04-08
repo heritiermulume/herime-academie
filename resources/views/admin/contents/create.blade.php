@@ -352,11 +352,12 @@
                                     </label>
                                 </div>
                                 <div id="required_subscription_tier_group" class="mt-2" style="display: {{ old('requires_subscription') ? 'block' : 'none' }};">
-                                    <label for="required_subscription_tier" class="form-label fw-bold mb-1">Niveau minimum requis</label>
+                                    <label for="required_subscription_tier" class="form-label fw-bold mb-1">Période minimale requise (Membre Hérimé)</label>
                                     <select class="form-select @error('required_subscription_tier') is-invalid @enderror" id="required_subscription_tier" name="required_subscription_tier">
-                                        <option value="starter" {{ old('required_subscription_tier', 'starter') === 'starter' ? 'selected' : '' }}>Starter</option>
-                                        <option value="pro" {{ old('required_subscription_tier') === 'pro' ? 'selected' : '' }}>Pro</option>
-                                        <option value="enterprise" {{ old('required_subscription_tier') === 'enterprise' ? 'selected' : '' }}>Enterprise</option>
+                                        <option value="quarterly" {{ old('required_subscription_tier', 'quarterly') === 'quarterly' ? 'selected' : '' }}>Trimestriel</option>
+                                        <option value="semiannual" {{ old('required_subscription_tier') === 'semiannual' ? 'selected' : '' }}>Semestriel</option>
+                                        <option value="yearly" {{ old('required_subscription_tier') === 'yearly' ? 'selected' : '' }}>Annuel</option>
+                                        <option value="all" {{ old('required_subscription_tier') === 'all' ? 'selected' : '' }}>Toutes périodes (Membre)</option>
                                     </select>
                                     @error('required_subscription_tier')
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -2429,7 +2430,7 @@ function syncSubscriptionTierFields() {
 
     group.style.display = checkbox.checked ? 'block' : 'none';
     if (!checkbox.checked) {
-        select.value = 'starter';
+        select.value = 'quarterly';
     }
 }
 

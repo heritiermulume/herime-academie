@@ -3443,7 +3443,7 @@ button.mobile-price-slider__btn--download i,
                 @if($course->requires_subscription)
                     <a href="{{ auth()->check() ? route('customer.subscriptions') : route('login') }}"
                        class="course-badge subscription text-decoration-none">
-                        <i class="fas fa-lock me-1"></i>Abonnement requis ({{ strtoupper($course->required_subscription_tier ?? 'starter') }})
+                        <i class="fas fa-lock me-1"></i>Abonnement requis ({{ $course->requiredMemberPeriodLabel() }})
                     </a>
                 @endif
                 @if($course->category || $course->level)

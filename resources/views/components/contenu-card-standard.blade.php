@@ -16,7 +16,7 @@
                 <a href="{{ auth()->check() ? route('customer.subscriptions') : route('login') }}"
                    class="badge bg-dark text-decoration-none"
                    onclick="event.stopPropagation();">
-                    <i class="fas fa-lock me-1"></i>{{ strtoupper($course->required_subscription_tier ?? 'starter') }}
+                    <i class="fas fa-lock me-1"></i>{{ $course->requiredMemberPeriodLabel() }}
                 </a>
                 @endif
                 @if($course->sale_discount_percentage)

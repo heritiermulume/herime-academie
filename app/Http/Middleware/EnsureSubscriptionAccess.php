@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Course;
+use App\Models\SubscriptionPlan;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -25,39 +26,14 @@ class EnsureSubscriptionAccess
             return $next($request);
         }
 
-        $activeSubscriptions = $user->activeSubscriptions()->with('plan')->get();
-
-        if ($activeSubscriptions->isNotEmpty()) {
-            $requiredTier = strtolower((string) $course->required_subscription_tier);
-            if ($requiredTier !== '') {
-                $tierRank = [
-                    'starter' => 1,
-                    'pro' => 2,
-                    'enterprise' => 3,
-                ];
-                $requiredRank = $tierRank[$requiredTier] ?? 1;
-
-                $hasRequiredTier = $activeSubscriptions->contains(function ($subscription) use ($tierRank, $requiredRank) {
-                    $tier = strtolower((string) data_get($subscription->plan?->metadata, 'tier', 'starter'));
-
-                    return ($tierRank[$tier] ?? 1) >= $requiredRank;
-                });
-
-                if (! $hasRequiredTier) {
-                    if ($course->userHasValidStandalonePurchase($user->id)) {
-                        return $next($request);
-                    }
-
-                    return redirect()->route('customer.subscriptions')
-                        ->with('error', 'Votre formule actuelle ne permet pas d\'accéder à ce contenu.');
-                }
-            }
-
+        if (SubscriptionPlan::userMeetsMemberPeriodForSubscriptionGatedContent($user, $course)) {
             return $next($request);
         }
 
-        if ($course->userHasValidStandalonePurchase($user->id)) {
-            return $next($request);
+        $activeSubscriptions = $user->activeSubscriptions()->with('plan')->get();
+        if ($activeSubscriptions->isNotEmpty()) {
+            return redirect()->route('customer.subscriptions')
+                ->with('error', 'Votre formule actuelle ne permet pas d\'accéder à ce contenu.');
         }
 
         return redirect()->route('customer.subscriptions')

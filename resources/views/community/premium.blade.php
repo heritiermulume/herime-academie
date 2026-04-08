@@ -522,7 +522,7 @@
 
                                 <ul class="mp-features" aria-label="Inclus dans l’adhésion">
                                     <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>Accès à la communauté privée Membre Herime</span></li>
-                                    <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>Formations et contenus selon les règles du site (streaming, non téléchargeable)</span></li>
+                                    <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>Formations en ligne et ressources membres (dont contenus téléchargeables réservés aux abonnés)</span></li>
                                     <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>Lives, réseau et ressources réservées aux membres</span></li>
                                     <li><i class="fas fa-check-circle" aria-hidden="true"></i><span>Renouvellement automatique, résiliable depuis ton espace</span></li>
                                 </ul>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Notifications\CourseModerationNotification;
 use App\Notifications\CoursePublishedNotification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -186,6 +187,63 @@ class Course extends Model
         }
 
         return 'Formateur';
+    }
+
+    /**
+     * Période Membre Hérimé normalisée (clé interne) pour l’exigence d’abonnement sur ce contenu.
+     */
+    public function normalizedRequiredMemberPeriod(): string
+    {
+        $key = strtolower(trim((string) $this->required_subscription_tier));
+
+        return match ($key) {
+            'semiannual', 'pro' => 'semiannual',
+            'yearly', 'enterprise' => 'yearly',
+            'all', 'any' => 'all',
+            default => 'quarterly',
+        };
+    }
+
+    /**
+     * Libellé public (ex. badge « Abonnement requis »).
+     */
+    public function requiredMemberPeriodLabel(): string
+    {
+        $period = $this->normalizedRequiredMemberPeriod();
+
+        return SubscriptionPlan::MEMBER_COMMUNITY_PERIOD_LABELS[$period] ?? ucfirst($period);
+    }
+
+    /**
+     * Contenus publiés inclus automatiquement dans les droits « Membre Herime » :
+     * cours en ligne, ou téléchargeables avec l’option « réservé aux abonnés ».
+     *
+     * @param  Builder<Course>  $query
+     */
+    public function scopeForCommunityMemberSubscriptionCatalog(Builder $query): void
+    {
+        $query->where('is_published', true)
+            ->where(function (Builder $q) {
+                $q->where('is_downloadable', false)
+                    ->orWhere(function (Builder $q2) {
+                        $q2->where('is_downloadable', true)->where('requires_subscription', true);
+                    });
+            });
+    }
+
+    /**
+     * @see static::scopeForCommunityMemberSubscriptionCatalog()
+     */
+    public function qualifiesForCommunityMemberSubscriptionCatalog(): bool
+    {
+        if (! $this->is_published) {
+            return false;
+        }
+        if (! $this->is_downloadable) {
+            return true;
+        }
+
+        return (bool) $this->requires_subscription;
     }
 
     /**
