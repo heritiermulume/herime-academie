@@ -8,7 +8,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -50,18 +49,14 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping(90);
 
         $schedule->job(new ProcessSubscriptionRenewalsJob)
-            ->hourly()
+            ->everyTenMinutes()
             ->name('subscriptions-process-renewals')
-            ->withoutOverlapping(45);
+            ->withoutOverlapping(25);
 
-        $schedule->call(function () use ($runSafe): void {
-            $runSafe('moneroo-payment-maintenance', static function (): void {
-                Bus::dispatchSync(new RunMonerooPaymentMaintenanceJob);
-            });
-        })
+        $schedule->job(new RunMonerooPaymentMaintenanceJob)
             ->everyTenMinutes()
             ->name('moneroo-payment-maintenance')
-            ->withoutOverlapping(7);
+            ->withoutOverlapping(20);
 
         $schedule->job(new CleanTemporaryUploadsJob)
             ->hourly()
