@@ -1673,6 +1673,21 @@ function showMessageModal(title, message) {
     });
 }
 
+/** Jeton CSRF courant (meta), mis à jour après guest-checkout car session_regenerate() invalide le jeton Blade initial. */
+function cartPageCsrfToken() {
+    const m = document.querySelector('meta[name="csrf-token"]');
+    return m && m.getAttribute('content') ? m.getAttribute('content') : '';
+}
+function cartPageSetCsrfToken(token) {
+    if (!token) {
+        return;
+    }
+    const m = document.querySelector('meta[name="csrf-token"]');
+    if (m) {
+        m.setAttribute('content', token);
+    }
+}
+
 // Fonction pour récupérer le montant actuel du panier depuis le serveur
 async function getCurrentCartTotal() {
     try {
@@ -1762,13 +1777,13 @@ async function getCurrentCartTotal() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-CSRF-TOKEN': cartPageCsrfToken(),
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify({
                     amount: totalAmount,
                     currency: currency,
-                    _token: '{{ csrf_token() }}'
+                    _token: cartPageCsrfToken()
                 })
         });
         
@@ -2156,13 +2171,13 @@ async function proceedToCheckout(event) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-CSRF-TOKEN': cartPageCsrfToken(),
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
                 amount: totalAmount,
                 currency: currency,
-                _token: '{{ csrf_token() }}'
+                _token: cartPageCsrfToken()
             })
         });
         
@@ -2267,13 +2282,13 @@ const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) 
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-CSRF-TOKEN': cartPageCsrfToken(),
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
                 amount: totalAmount,
                 currency: currency,
-                _token: '{{ csrf_token() }}'
+                _token: cartPageCsrfToken()
             })
         });
         
@@ -3116,6 +3131,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (data.message) {
                     showNotification(data.message, 'success');
+                }
+                if (data.csrf_token) {
+                    cartPageSetCsrfToken(data.csrf_token);
                 }
                 if (typeof window.proceedToCheckoutMoneroo === 'function') {
                     await window.proceedToCheckoutMoneroo(e, btn);

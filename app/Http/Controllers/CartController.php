@@ -254,6 +254,7 @@ class CartController extends Controller
             return response()->json([
                 'success' => true,
                 'already_authenticated' => true,
+                'csrf_token' => csrf_token(),
             ]);
         }
 
@@ -329,6 +330,7 @@ class CartController extends Controller
             'message' => $result['plain_password']
                 ? 'Un compte a été créé. Consultez votre boîte e-mail pour votre mot de passe temporaire.'
                 : 'Compte reconnu. Poursuite du paiement…',
+            'csrf_token' => csrf_token(),
         ]);
     }
 
