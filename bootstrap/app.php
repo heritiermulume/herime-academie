@@ -4,12 +4,12 @@ use App\Jobs\CleanTemporaryUploadsJob;
 use App\Jobs\ProcessSubscriptionRenewalsJob;
 use App\Jobs\RunMonerooPaymentMaintenanceJob;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -68,12 +68,18 @@ return Application::configure(basePath: dirname(__DIR__))
             ->name('clean-temporary-uploads')
             ->withoutOverlapping(45);
 
+        // 3 exécutions / jour (7h, 15h, 23h) — voir ContentRatingReminder::CAMPAIGN_DAYS pour la durée de campagne.
         $schedule->call(function () use ($runSafe): void {
             $runSafe('content-rating-reminders', static fn () => app(\App\Services\ContentRatingReminderService::class)->sendDueReminders());
         })
-            ->twiceDaily(9, 21)
+            ->cron('0 7,15,23 * * *')
             ->name('content-rating-reminders')
-            ->withoutOverlapping(40);
+            ->withoutOverlapping(25);
+
+        $schedule->command('announcements:expire')
+            ->hourly()
+            ->name('announcements-expire')
+            ->withoutOverlapping(25);
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

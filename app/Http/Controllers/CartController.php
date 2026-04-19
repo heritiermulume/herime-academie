@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\GuestCheckoutPasswordMail;
 use App\Models\AmbassadorPromoCode;
 use App\Models\CartItem;
 use App\Models\CartPackage;
 use App\Models\ContentPackage;
 use App\Models\Course;
+use App\Services\CartGuestCheckoutService;
 use App\Services\ContentPackageRecommendationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 
 class CartController extends Controller
@@ -237,6 +241,76 @@ class CartController extends Controller
                 'count' => 0,
             ], 200);
         }
+    }
+
+    /**
+     * Préparer le paiement pour un invité : associer ou créer un compte, connecter, synchroniser le panier.
+     */
+    public function guestCheckoutPrepare(Request $request, CartGuestCheckoutService $guestCheckoutService)
+    {
+        if (auth()->check()) {
+            return response()->json([
+                'success' => true,
+                'already_authenticated' => true,
+            ]);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:40',
+        ]);
+
+        if (empty($this->getSessionCartItems())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Votre panier est vide.',
+            ], 422);
+        }
+
+        try {
+            $result = $guestCheckoutService->resolveUserForGuestCartCheckout(
+                $validated['name'],
+                $validated['email'],
+                $validated['phone']
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Veuillez corriger les informations saisies.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        if ($result['plain_password']) {
+            try {
+                Mail::to($result['user']->email)->send(
+                    new GuestCheckoutPasswordMail($result['user'], $result['plain_password'])
+                );
+            } catch (\Throwable $e) {
+                \Log::error('Guest checkout: échec envoi mail mot de passe', [
+                    'user_id' => $result['user']->id,
+                    'message' => $e->getMessage(),
+                ]);
+                $result['user']->delete();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossible d’envoyer l’e-mail avec votre mot de passe pour le moment. Réessayez ou contactez le support.',
+                ], 500);
+            }
+        }
+
+        Auth::login($result['user'], true);
+        $request->session()->regenerate();
+        $this->syncSessionToDatabase();
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['plain_password']
+                ? 'Un compte a été créé. Consultez votre boîte e-mail pour votre mot de passe temporaire.'
+                : 'Compte reconnu. Poursuite du paiement…',
+        ]);
     }
 
     /**

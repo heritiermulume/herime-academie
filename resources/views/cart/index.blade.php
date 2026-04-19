@@ -274,10 +274,25 @@
                                 $callbackLoginCart = route('sso.callback', ['redirect' => $finalLoginCart]);
                                 $ssoLoginUrlCart = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCart);
                             @endphp
-                            <a href="{{ $ssoLoginUrlCart }}" class="checkout-btn">
-                                <i class="fas fa-sign-in-alt"></i>
-                                Se connecter pour payer
-                            </a>
+                            <div class="guest-checkout-form">
+                                <label class="guest-checkout-label" for="guestCheckoutName">Nom complet</label>
+                                <input type="text" id="guestCheckoutName" class="guest-checkout-input" name="guest_name" autocomplete="name" required maxlength="255" placeholder="Jean Dupont">
+                                <label class="guest-checkout-label" for="guestCheckoutEmail">Adresse e-mail</label>
+                                <input type="email" id="guestCheckoutEmail" class="guest-checkout-input" name="guest_email" autocomplete="email" required maxlength="255" placeholder="vous@exemple.com">
+                                <label class="guest-checkout-label" for="guestCheckoutPhone">Téléphone</label>
+                                <input type="tel" id="guestCheckoutPhone" class="guest-checkout-input" name="guest_phone" autocomplete="tel" required maxlength="40" placeholder="+243 …">
+                                <button type="button" class="checkout-btn" id="guestCheckoutSubmitBtn" data-can-checkout="true">
+                                    <i class="fas fa-credit-card"></i>
+                                    Procéder au paiement
+                                </button>
+                                <p class="guest-checkout-sso-hint mb-0 mt-2">
+                                    <a href="{{ $ssoLoginUrlCart }}" class="text-muted small text-decoration-none">Déjà un compte Herime ? Se connecter</a>
+                                </p>
+                            </div>
+                            <small class="checkout-blocked-text" id="checkoutBlockedText" style="display: none; color: #dc3545; margin-top: 8px;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Veuillez saisir un code promo valide ou décochez la case pour continuer
+                            </small>
                         @endauth
                         
                         <!-- Security Badge -->
@@ -867,6 +882,33 @@
     box-shadow: 0 4px 12px rgba(0, 51, 102, 0.3);
 }
 
+.guest-checkout-form {
+    margin-top: 4px;
+}
+.guest-checkout-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1c1d1f;
+    margin-bottom: 4px;
+}
+.guest-checkout-input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid #d1d7dc;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+.guest-checkout-input:focus {
+    outline: none;
+    border-color: #5624d0;
+    box-shadow: 0 0 0 2px rgba(86, 36, 208, 0.15);
+}
+.guest-checkout-sso-hint {
+    text-align: center;
+}
 .checkout-btn:disabled,
 .checkout-btn[data-can-checkout="false"] {
     background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
@@ -1653,7 +1695,7 @@ async function getCurrentCartTotal() {
     // Fonction Moneroo pour la page cart
     let isProcessingPayment = false; // Flag pour empêcher les soumissions multiples
     
-    async function proceedToCheckoutMoneroo(event) {
+    async function proceedToCheckoutMoneroo(event, buttonElement) {
         // Empêcher tout comportement par défaut
         if (event) {
             event.preventDefault();
@@ -1676,7 +1718,7 @@ async function getCurrentCartTotal() {
         isProcessingPayment = true;
         
         // Désactiver le bouton pour éviter les doubles clics
-        const checkoutBtn = document.getElementById('proceedToCheckoutBtn') || document.querySelector('.checkout-btn');
+        const checkoutBtn = buttonElement || document.getElementById('proceedToCheckoutBtn') || document.querySelector('.checkout-btn');
         const originalContent = checkoutBtn ? checkoutBtn.innerHTML : '';
         
         if (checkoutBtn) {
@@ -2703,15 +2745,23 @@ function canProceedToCheckout() {
 // Fonction pour mettre à jour l'état du bouton de paiement
 function updateCheckoutButtonState() {
     const checkoutBtn = document.getElementById('proceedToCheckoutBtn');
+    const guestCheckoutBtn = document.getElementById('guestCheckoutSubmitBtn');
     const blockedText = document.getElementById('checkoutBlockedText');
-    
-    if (!checkoutBtn) return;
     
     const canCheckout = canProceedToCheckout();
     
-    // Mettre à jour l'attribut data et le disabled
-    checkoutBtn.setAttribute('data-can-checkout', canCheckout ? 'true' : 'false');
-    checkoutBtn.disabled = !canCheckout;
+    if (checkoutBtn) {
+        checkoutBtn.setAttribute('data-can-checkout', canCheckout ? 'true' : 'false');
+        checkoutBtn.disabled = !canCheckout;
+    }
+    if (guestCheckoutBtn) {
+        guestCheckoutBtn.setAttribute('data-can-checkout', canCheckout ? 'true' : 'false');
+        guestCheckoutBtn.disabled = !canCheckout;
+    }
+    
+    if (!checkoutBtn && !guestCheckoutBtn) {
+        return;
+    }
     
     // Afficher/masquer le message d'avertissement
     if (blockedText) {
@@ -3000,6 +3050,64 @@ document.addEventListener('DOMContentLoaded', function() {
             // Utiliser directement la fonction Moneroo pour éviter le conflit avec app.blade.php
             if (typeof window.proceedToCheckoutMoneroo === 'function') {
                 window.proceedToCheckoutMoneroo(e);
+            }
+            return false;
+        });
+    }
+
+    const guestCheckoutSubmitBtn = document.getElementById('guestCheckoutSubmitBtn');
+    if (guestCheckoutSubmitBtn) {
+        guestCheckoutSubmitBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!canProceedToCheckout()) {
+                showNotification('Veuillez saisir un code promo valide ou décochez la case pour continuer', 'error');
+                return false;
+            }
+            const name = (document.getElementById('guestCheckoutName')?.value || '').trim();
+            const email = (document.getElementById('guestCheckoutEmail')?.value || '').trim();
+            const phone = (document.getElementById('guestCheckoutPhone')?.value || '').trim();
+            if (!name || !email || !phone) {
+                showNotification('Veuillez renseigner votre nom, votre e-mail et votre téléphone.', 'error');
+                return false;
+            }
+            const btn = guestCheckoutSubmitBtn;
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
+            try {
+                const res = await fetch('{{ route("cart.guest-checkout") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify({ name, email, phone, _token: '{{ csrf_token() }}' }),
+                    credentials: 'same-origin',
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    let msg = data.message || 'Impossible de continuer.';
+                    if (data.errors) {
+                        const firstKey = Object.keys(data.errors)[0];
+                        const first = firstKey ? data.errors[firstKey] : null;
+                        if (Array.isArray(first) && first[0]) {
+                            msg = first[0];
+                        }
+                    }
+                    throw new Error(msg);
+                }
+                if (data.message) {
+                    showNotification(data.message, 'success');
+                }
+                if (typeof window.proceedToCheckoutMoneroo === 'function') {
+                    await window.proceedToCheckoutMoneroo(e, btn);
+                }
+            } catch (err) {
+                showNotification(err.message || 'Une erreur est survenue.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = orig;
             }
             return false;
         });

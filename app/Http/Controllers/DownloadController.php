@@ -352,21 +352,12 @@ class DownloadController extends Controller
             return back()->with('error', 'Cette leçon n\'appartient pas à ce cours.');
         }
 
-        // Chercher le fichier à télécharger (file_path ou content_url)
+        // Fichier principal de la leçon (file_path ou content_url sur disque privé)
         $filePath = null;
-        $fileName = $lesson->downloadable_filename ?? ($this->sanitizeFileName($lesson->title).'.zip');
-
-        if ($lesson->download_file_path && ! filter_var($lesson->download_file_path, FILTER_VALIDATE_URL)) {
+        $relative = $lesson->getStoredLessonFileRelativePath();
+        if ($relative) {
             $disk = Storage::disk('local');
-            $cleanPath = ltrim($lesson->download_file_path, '/');
-
-            if ($disk->exists($cleanPath)) {
-                $filePath = $disk->path($cleanPath);
-            } elseif ($disk->exists($lesson->download_file_path)) {
-                $filePath = $disk->path($lesson->download_file_path);
-            }
-        } elseif ($lesson->download_file_path) {
-            return redirect($lesson->download_file_path);
+            $filePath = $disk->path($relative);
         }
 
         if (! $filePath || ! file_exists($filePath)) {

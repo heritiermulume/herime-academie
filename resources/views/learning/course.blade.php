@@ -2013,6 +2013,47 @@
     color: #ffcc33 !important;
 }
 
+/*
+ * Plein écran Plyr : tous viewports (avant: règles seulement en <=991px, donc desktop /
+ * tablette large restaient dans aspect-ratio + max-height + overflow des cartes).
+ */
+.learning-player-card.learning-player-card--video-fullscreen {
+    overflow: visible !important;
+}
+
+.player-shell.plyr-mobile-fullscreen,
+.player-shell:has(.plyr.plyr--fullscreen) {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    aspect-ratio: unset !important;
+    z-index: 2147483647 !important;
+    background: #000 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+}
+
+.player-shell.plyr-mobile-fullscreen .ratio,
+.player-shell.plyr-mobile-fullscreen .player-shell__media,
+.player-shell.plyr-mobile-fullscreen .plyr-player-wrapper,
+.player-shell.plyr-mobile-fullscreen .plyr,
+.player-shell:has(.plyr.plyr--fullscreen) .ratio,
+.player-shell:has(.plyr.plyr--fullscreen) .player-shell__media,
+.player-shell:has(.plyr.plyr--fullscreen) .plyr-player-wrapper,
+.player-shell:has(.plyr.plyr--fullscreen) .plyr {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
 /* Sur desktop : réduire l'espacement sous le lecteur */
 @media (min-width: 992px) {
     .player-shell.mb-4 {
@@ -2209,39 +2250,6 @@
     
     .plyr__control[data-plyr="settings"]:hover {
         color: #ffcc33 !important;
-    }
-    
-    /* Fullscreen mobile: player-shell en overlay au-dessus de tout quand plyr est en fullscreen */
-    .player-shell.plyr-mobile-fullscreen,
-    .player-shell:has(.plyr.plyr--fullscreen) {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        height: 100dvh !important;
-        z-index: 2147483647 !important;
-        background: #000 !important;
-        overflow: visible !important;
-    }
-    
-    .player-shell.plyr-mobile-fullscreen .ratio,
-    .player-shell.plyr-mobile-fullscreen .player-shell__media,
-    .player-shell.plyr-mobile-fullscreen .plyr-player-wrapper,
-    .player-shell.plyr-mobile-fullscreen .plyr,
-    .player-shell:has(.plyr.plyr--fullscreen) .ratio,
-    .player-shell:has(.plyr.plyr--fullscreen) .player-shell__media,
-    .player-shell:has(.plyr.plyr--fullscreen) .plyr-player-wrapper,
-    .player-shell:has(.plyr.plyr--fullscreen) .plyr {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
     }
 }
 
@@ -4027,6 +4035,7 @@ const notesUrl = '{{ route('learning.notes.index', ['course' => $course->slug, '
 const notesStoreUrl = '{{ route('learning.notes.store', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
 const notesAllUrl = '{{ route('learning.notes.all', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
 const resourcesUrl = '{{ route('learning.resources.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
+const lessonAttachmentDownloadUrl = @json(route('learning.lesson.attachment.download', ['course' => $course->slug, 'lesson' => $activeLesson->id]));
 const discussionsUrl = '{{ route('learning.discussions.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
 const discussionsStoreUrl = '{{ route('learning.discussions.store', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
 const discussionsAllUrl = '{{ route('learning.discussions.all', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
@@ -4286,42 +4295,118 @@ function loadNotes() {
         });
 }
 
+function escapeLearningHtml(str) {
+    if (str == null) {
+        return '';
+    }
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 // Load Resources
 function loadResources() {
     fetch(resourcesUrl)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                const resourcesList = document.getElementById('resources-list');
-                if (data.resources.length === 0) {
-                    resourcesList.innerHTML = '<p class="text-muted">Aucune ressource disponible pour cette leçon.</p>';
-                } else {
-                    resourcesList.innerHTML = data.resources.map(resource => `
-                        <div class="card mb-3" style="background: rgba(0,51,102,0.75); border-color: rgba(255,204,51,0.15);">
+            const resourcesList = document.getElementById('resources-list');
+            if (!resourcesList) {
+                return;
+            }
+            if (!data.success) {
+                resourcesList.innerHTML = '<p class="text-danger">' + escapeLearningHtml(data.message || 'Impossible de charger les ressources.') + '</p>';
+                showToast(data.message || 'Impossible de charger les ressources.', 'error');
+                return;
+            }
+
+            const resources = data.resources || [];
+            const att = data.lesson_attachment;
+            const hasAttachment = att && ((att.kind === 'file' && att.download_url) || (att.kind === 'link' && att.external_url));
+            const hasResources = resources.length > 0;
+
+            if (!hasAttachment && !hasResources) {
+                resourcesList.innerHTML = '<p class="text-muted">Aucune ressource disponible pour cette leçon.</p>';
+                return;
+            }
+
+            const resourcesBase = resourcesUrl;
+            let blocks = [];
+
+            if (hasAttachment) {
+                if (att.kind === 'file' && att.download_url) {
+                    const dlUrl = att.download_url || lessonAttachmentDownloadUrl;
+                    blocks.push(`
+                        <div class="card mb-3 border-warning" style="background: rgba(0,51,102,0.85); border-color: rgba(255,193,7,0.45);">
                             <div class="card-body">
-                                <div class="d-flex align-items-start justify-content-between">
+                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
                                     <div class="flex-grow-1">
-                                        <h6 class="text-white mb-1"><i class="fas fa-file-download me-2"></i>${resource.title}</h6>
-                                        ${resource.description ? `<p class="text-muted small mb-2">${resource.description}</p>` : ''}
-                                        <div class="d-flex gap-3 small text-muted">
-                                            <span><i class="fas fa-file me-1"></i>${resource.file_type || 'Fichier'}</span>
-                                            <span><i class="fas fa-weight me-1"></i>${resource.file_size}</span>
-                                            <span><i class="fas fa-download me-1"></i>${resource.download_count} téléchargements</span>
+                                        <h6 class="text-white mb-1"><i class="fas fa-paperclip me-2 text-warning"></i>${escapeLearningHtml(att.title)}</h6>
+                                        ${att.description ? `<p class="text-muted small mb-2">${escapeLearningHtml(att.description)}</p>` : ''}
+                                        <div class="d-flex flex-wrap gap-3 small text-muted">
+                                            <span><i class="fas fa-file me-1"></i>${escapeLearningHtml(att.file_type || 'Fichier')}</span>
+                                            <span><i class="fas fa-weight me-1"></i>${escapeLearningHtml(att.file_size || '')}</span>
                                         </div>
                                     </div>
-                                    <a href="{{ route('learning.resources.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}/${resource.id}/download" 
-                                       class="btn btn-info btn-sm" target="_blank">
-                                        <i class="fas fa-download"></i>
+                                    <a href="${dlUrl}" class="btn btn-warning btn-sm">
+                                        <i class="fas fa-redo me-1"></i>Télécharger à nouveau
                                     </a>
                                 </div>
                             </div>
                         </div>
-                    `).join('');
+                    `);
+                } else if (att.kind === 'link' && att.external_url) {
+                    const linkUrl = att.external_url;
+                    blocks.push(`
+                        <div class="card mb-3" style="background: rgba(0,51,102,0.75); border-color: rgba(255,204,51,0.15);">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                                    <div class="flex-grow-1">
+                                        <h6 class="text-white mb-1"><i class="fas fa-link me-2"></i>${escapeLearningHtml(att.title)}</h6>
+                                        ${att.description ? `<p class="text-muted small mb-2">${escapeLearningHtml(att.description)}</p>` : ''}
+                                    </div>
+                                    <a href="${linkUrl}" class="btn btn-info btn-sm" target="_blank" rel="noopener noreferrer">
+                                        <i class="fas fa-external-link-alt me-1"></i>Ouvrir
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `);
                 }
             }
+
+            if (hasResources) {
+                const resourceCards = resources.map(resource => `
+                        <div class="card mb-3" style="background: rgba(0,51,102,0.75); border-color: rgba(255,204,51,0.15);">
+                            <div class="card-body">
+                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                                    <div class="flex-grow-1">
+                                        <h6 class="text-white mb-1"><i class="fas fa-file-download me-2"></i>${escapeLearningHtml(resource.title)}</h6>
+                                        ${resource.description ? `<p class="text-muted small mb-2">${escapeLearningHtml(resource.description)}</p>` : ''}
+                                        <div class="d-flex flex-wrap gap-3 small text-muted">
+                                            <span><i class="fas fa-file me-1"></i>${escapeLearningHtml(resource.file_type || 'Fichier')}</span>
+                                            <span><i class="fas fa-weight me-1"></i>${escapeLearningHtml(resource.file_size || '')}</span>
+                                            <span><i class="fas fa-download me-1"></i>${resource.download_count} téléchargements</span>
+                                        </div>
+                                    </div>
+                                    ${resource.is_downloadable ? `
+                                    <a href="${resourcesBase}/${resource.id}/download"
+                                       class="btn btn-info btn-sm" target="_blank" rel="noopener noreferrer">
+                                        <i class="fas fa-download"></i>
+                                    </a>` : '<span class="small text-muted align-self-center">Lecture en ligne</span>'}
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                blocks = blocks.concat(resourceCards);
+            }
+
+            resourcesList.innerHTML = blocks.join('');
         })
         .catch(error => {
             console.error('Erreur lors du chargement des ressources:', error);
+            showToast('Erreur lors du chargement des ressources', 'error');
         });
 }
 

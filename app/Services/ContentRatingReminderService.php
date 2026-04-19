@@ -87,10 +87,16 @@ class ContentRatingReminderService
     {
         $sent = 0;
 
+        // Jusqu’à 9 envois sur 3 jours (3× / jour), espacés d’au moins MIN_HOURS_BETWEEN_REMINDERS, tant que la campagne est active et qu’il n’y a pas d’avis.
+        $minHours = ContentRatingReminder::MIN_HOURS_BETWEEN_REMINDERS;
         $query = ContentRatingReminder::query()
-            ->with(['user', 'course'])
+            ->with(['user', 'course', 'enrollment'])
             ->where('reminders_sent', '<', ContentRatingReminder::MAX_REMINDERS)
-            ->where('campaign_started_at', '>=', now()->subDays(ContentRatingReminder::CAMPAIGN_DAYS)->startOfDay());
+            ->where('campaign_started_at', '>=', now()->subDays(ContentRatingReminder::CAMPAIGN_DAYS)->startOfDay())
+            ->where(function ($q) use ($minHours) {
+                $q->whereNull('last_sent_at')
+                    ->orWhere('last_sent_at', '<=', now()->subHours($minHours));
+            });
 
         foreach ($query->cursor() as $reminder) {
             if (! $reminder->isCampaignActive()) {
@@ -125,7 +131,8 @@ class ContentRatingReminderService
                 continue;
             }
 
-            $inviteUrl = $this->makeSignedInviteUrl($user, $course);
+            $ratingUrl = route('contents.rate', $course);
+            $usePurchaseWording = $this->reminderUsesPurchaseWording($reminder);
 
             try {
                 $communicationService = null;
@@ -134,7 +141,7 @@ class ContentRatingReminderService
                 } catch (\Throwable) {
                 }
 
-                $mailable = new ContentRatingRequestMail($course, $inviteUrl);
+                $mailable = new ContentRatingRequestMail($user, $course, $ratingUrl, $usePurchaseWording);
                 if ($communicationService) {
                     $communicationService->sendEmailAndWhatsApp($user, $mailable, null, false);
                 } else {
@@ -157,5 +164,21 @@ class ContentRatingReminderService
         }
 
         return $sent;
+    }
+
+    /**
+     * Libellés « achat / acheteur » uniquement si l’accès provient d’une commande (order_id sur l’inscription).
+     */
+    private function reminderUsesPurchaseWording(ContentRatingReminder $reminder): bool
+    {
+        if (! $reminder->enrollment_id) {
+            return false;
+        }
+
+        $enrollment = $reminder->relationLoaded('enrollment')
+            ? $reminder->enrollment
+            : Enrollment::find($reminder->enrollment_id);
+
+        return $enrollment && $enrollment->order_id !== null;
     }
 }

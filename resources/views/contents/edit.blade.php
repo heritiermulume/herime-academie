@@ -136,7 +136,7 @@
                         <div class="row g-4">
                             <div class="col-12 col-md-6 mb-3">
                                 <label for="thumbnail" class="form-label fw-bold">Image de couverture</label>
-                                <div class="upload-zone" id="thumbnailUploadZone">
+                                <div class="upload-zone upload-zone--droppable" id="thumbnailUploadZone">
                                     <input type="file" 
                                            class="form-control d-none @error('thumbnail') is-invalid @enderror" 
                                            id="thumbnail" 
@@ -148,7 +148,7 @@
                                     <input type="hidden" id="thumbnail_chunk_size" name="thumbnail_chunk_size" value="{{ old('thumbnail_chunk_size') }}">
                                     <div class="upload-placeholder text-center p-4" onclick="document.getElementById('thumbnail').click()">
                                         <i class="fas fa-image fa-3x text-primary mb-3"></i>
-                                        <p class="mb-2"><strong>Cliquez pour sélectionner une image</strong></p>
+                                        <p class="mb-2"><strong>Glissez-déposez une image ou cliquez pour parcourir</strong></p>
                                         <p class="text-muted small mb-0">Format : JPG, PNG, WEBP | Max : 5MB</p>
                                         <p class="text-muted small">Recommandé : 1920x1080px (16:9)</p>
                                     </div>
@@ -175,7 +175,7 @@
                                 <!-- Upload fichier -->
                                 <div>
                                     <label class="form-label small">Téléverser un fichier</label>
-                                    <div class="upload-zone" id="videoUploadZone">
+                                    <div class="upload-zone upload-zone--droppable" id="videoUploadZone">
                                         <input type="file" 
                                                class="form-control d-none @error('video_preview_file') is-invalid @enderror" 
                                                id="video_preview_file" 
@@ -187,8 +187,8 @@
                                     <input type="hidden" id="video_preview_size" name="video_preview_size" value="{{ old('video_preview_size') }}">
                                         <div class="upload-placeholder text-center p-3" onclick="document.getElementById('video_preview_file').click()">
                                             <i class="fas fa-video fa-2x text-success mb-2"></i>
-                                            <p class="mb-1 small"><strong>Cliquez pour sélectionner une vidéo</strong></p>
-                                            <p class="text-muted small mb-0">Format : MP4, WEBM | Max : 500&nbsp;Mo</p>
+                                            <p class="mb-1 small"><strong>Glissez-déposez une vidéo ou cliquez pour parcourir</strong></p>
+                                            <p class="text-muted small mb-0">Format : MP4, WEBM, OGG | Envoi par fragments | Max : 500&nbsp;Mo</p>
                                         </div>
                                         <div class="upload-preview d-none">
                                             <video controls class="w-100 rounded" style="max-height: 200px; border: 3px solid #28a745;"></video>
@@ -780,7 +780,7 @@ let cachedSaleStartValue = null;
 let cachedSaleEndValue = null;
 
 // Gestion de l'upload d'image de couverture
-function handleThumbnailUpload(input) {
+function handleThumbnailUpload(input, droppedFile = null) {
     const zone = document.getElementById('thumbnailUploadZone');
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
@@ -788,9 +788,10 @@ function handleThumbnailUpload(input) {
     
     errorDiv.textContent = '';
     errorDiv.style.display = 'none';
+
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
     
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
+    if (file) {
         
         if (!VALID_IMAGE_TYPES.includes(file.type)) {
             showError(errorDiv, '❌ Format invalide. Utilisez JPG, PNG ou WEBP.');
@@ -1033,7 +1034,7 @@ function clearThumbnail(options = {}) {
 }
 
 // Gestion de l'upload de vidéo
-function handleVideoUpload(input) {
+function handleVideoUpload(input, droppedFile = null) {
     const zone = document.getElementById('videoUploadZone');
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
@@ -1041,9 +1042,10 @@ function handleVideoUpload(input) {
     
     errorDiv.textContent = '';
     errorDiv.style.display = 'none';
+
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
     
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
+    if (file) {
         
         if (!VALID_VIDEO_TYPES.includes(file.type)) {
             showError(errorDiv, '❌ Format invalide. Utilisez MP4 ou WEBM.');
@@ -1068,8 +1070,8 @@ function handleVideoUpload(input) {
         };
         reader.readAsDataURL(file);
         
-        // Upload AJAX optionnel
-        uploadVideoPreviewAjax(input);
+        // Upload AJAX optionnel (fractionné)
+        uploadVideoPreviewAjax(input, droppedFile || null);
     }
 }
 
@@ -1530,6 +1532,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function bindUploadDropZone(zoneEl, fileInput, onFile) {
+        if (!zoneEl || !fileInput || typeof onFile !== 'function') {
+            return;
+        }
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            zoneEl.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zoneEl.classList.add('upload-zone--drag-over');
+            });
+        });
+        zoneEl.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!zoneEl.contains(e.relatedTarget)) {
+                zoneEl.classList.remove('upload-zone--drag-over');
+            }
+        });
+        zoneEl.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            zoneEl.classList.remove('upload-zone--drag-over');
+            const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f) {
+                onFile(fileInput, f);
+            }
+        });
+    }
+
+    bindUploadDropZone(
+        document.getElementById('thumbnailUploadZone'),
+        document.getElementById('thumbnail'),
+        handleThumbnailUpload
+    );
+    bindUploadDropZone(
+        document.getElementById('videoUploadZone'),
+        document.getElementById('video_preview_file'),
+        handleVideoUpload
+    );
+
     const btnRemoveCurrent = document.getElementById('btnRemoveCurrentDownloadFile');
     const removeDownloadCheckbox = document.getElementById('remove_download_file');
     const currentDownloadBlock = document.getElementById('downloadCurrentFile');
@@ -1711,9 +1753,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Upload AJAX de la vidéo de prévisualisation (optionnel)
-function uploadVideoPreviewAjax(input) {
-    const file = input.files && input.files[0];
+// Upload AJAX de la vidéo de prévisualisation (optionnel, fractionné)
+function uploadVideoPreviewAjax(input, droppedFile = null) {
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
     if (!file) {
         return;
     }

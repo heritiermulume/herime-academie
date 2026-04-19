@@ -73,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $announcement = Announcement::active()
+                ->forGlobalBanner()
                 ->orderByRaw('COALESCE(starts_at, created_at) ASC')
                 ->latest('created_at')
                 ->first();

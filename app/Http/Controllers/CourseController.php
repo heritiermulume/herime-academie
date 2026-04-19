@@ -9,6 +9,7 @@ use App\Models\CourseLesson;
 use App\Models\Order;
 use App\Services\ContentPackageRecommendationService;
 use App\Services\FileUploadService;
+use App\Services\ReviewEligibilityService;
 use App\Traits\CourseStatistics;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -706,6 +708,70 @@ class CourseController extends Controller
             ->count();
 
         return view('contents.reviews', compact('course', 'reviews', 'averageRating', 'totalReviews'));
+    }
+
+    /**
+     * Page dédiée pour noter un contenu (lien direct partageable).
+     */
+    public function rate(Course $course)
+    {
+        if (! $course->is_published) {
+            abort(404, 'Ce contenu n\'est pas disponible.');
+        }
+
+        $course->load(['provider', 'category']);
+
+        $user = Auth::user();
+        $canReview = false;
+        $userReview = null;
+
+        if ($user) {
+            try {
+                $canReview = app(ReviewEligibilityService::class)->evaluate($user, $course)['can_review'];
+            } catch (\Throwable $e) {
+                Log::error('Erreur lors de la vérification de canReview (page noter)', [
+                    'user_id' => $user->id,
+                    'course_id' => $course->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $canReview = false;
+            }
+
+            $userReview = \App\Models\Review::where('user_id', $user->id)
+                ->where('content_id', $course->id)
+                ->first();
+        }
+
+        $hasUserReview = $userReview !== null;
+        $shareUrl = route('contents.rate', $course);
+
+        return view('contents.rate', compact(
+            'course',
+            'user',
+            'canReview',
+            'userReview',
+            'hasUserReview',
+            'shareUrl'
+        ));
+    }
+
+    /**
+     * Enregistre l’URL de retour après connexion SSO vers la page « noter ».
+     */
+    public function rateLoginIntent(Course $course)
+    {
+        if (! $course->is_published) {
+            abort(404, 'Ce contenu n\'est pas disponible.');
+        }
+
+        if (Auth::check()) {
+            return redirect()->route('contents.rate', $course);
+        }
+
+        session(['url.intended' => route('contents.rate', $course)]);
+
+        return redirect()->route('login')
+            ->with('info', 'Connectez-vous pour noter ce contenu et laisser votre avis.');
     }
 
     public function create()

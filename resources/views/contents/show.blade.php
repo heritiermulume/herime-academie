@@ -740,6 +740,57 @@ body.has-global-announcement:has(.course-details-page) {
     }
 }
 
+/* Plein écran Plyr dans le modal (aperçu) — aligné sur resources/views/components/plyr-player.blade.php */
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-dialog,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-content,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-body,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-body .row,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-body .col-lg-8,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-body .col-lg-8 > div {
+    overflow: visible !important;
+}
+
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-fixed-height .modal-body {
+    max-height: none !important;
+    height: auto !important;
+}
+
+#previewVideoContainer.plyr-mobile-fullscreen,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    aspect-ratio: unset !important;
+    z-index: 2147483647 !important;
+    background: #000 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+}
+
+#previewVideoContainer.plyr-mobile-fullscreen .preview-player-wrapper,
+#previewVideoContainer.plyr-mobile-fullscreen .plyr-player-wrapper,
+#previewVideoContainer.plyr-mobile-fullscreen .plyr,
+#previewVideoContainer.plyr-mobile-fullscreen .plyr__video-wrapper,
+#previewVideoContainer.plyr-mobile-fullscreen .plyr__video-embed,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .preview-player-wrapper,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .plyr-player-wrapper,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .plyr,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .plyr__video-wrapper,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .plyr__video-embed {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
 
 .modal-fixed-height .modal-content {
     max-height: 95vh;
@@ -4794,6 +4845,59 @@ button.mobile-price-slider__btn--download i,
 <script>
 const HERIME_VIDEO_PRELOAD = @json($__herimeVideoPreload);
 
+if (!window.herimeAttachPlyrFullscreenHosts) {
+    window.herimeAttachPlyrFullscreenHosts = function(player, wrapper) {
+        if (!player || !wrapper) {
+            return;
+        }
+        const playerShell = wrapper.closest('.player-shell');
+        const previewContainer = wrapper.closest('#previewVideoContainer');
+        const previewModal = previewContainer ? previewContainer.closest('#coursePreviewModal') : null;
+        const learningCard = playerShell ? playerShell.closest('.learning-player-card') : null;
+        if (!playerShell && !previewContainer) {
+            return;
+        }
+        player.on('enterfullscreen', function() {
+            if (playerShell) {
+                playerShell.classList.add('plyr-mobile-fullscreen');
+                if (learningCard) {
+                    learningCard.classList.add('learning-player-card--video-fullscreen');
+                }
+            } else if (previewContainer) {
+                previewContainer.classList.add('plyr-mobile-fullscreen');
+                if (previewModal) {
+                    previewModal.classList.add('course-preview-modal--plyr-fullscreen');
+                }
+            }
+        });
+        player.on('exitfullscreen', function() {
+            if (playerShell) {
+                playerShell.classList.remove('plyr-mobile-fullscreen');
+            }
+            if (learningCard) {
+                learningCard.classList.remove('learning-player-card--video-fullscreen');
+            }
+            if (previewContainer) {
+                previewContainer.classList.remove('plyr-mobile-fullscreen');
+            }
+            if (previewModal) {
+                previewModal.classList.remove('course-preview-modal--plyr-fullscreen');
+            }
+        });
+    };
+    document.addEventListener('hidden.bs.modal', function(ev) {
+        const modal = ev.target;
+        if (!modal || modal.id !== 'coursePreviewModal') {
+            return;
+        }
+        const pvc = document.getElementById('previewVideoContainer');
+        if (pvc) {
+            pvc.classList.remove('plyr-mobile-fullscreen');
+        }
+        modal.classList.remove('course-preview-modal--plyr-fullscreen');
+    });
+}
+
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(function() {
         // Créer une notification toast moderne
@@ -5111,6 +5215,10 @@ function loadPreviewList() {
                                         });
                                         window['plyr_' + playerId] = player;
                                         if (typeof attachInternalVideoRobustness === 'function') attachInternalVideoRobustness(player);
+                                        const __plyrFsW = document.getElementById('wrapper-' + playerId);
+                                        if (typeof window.herimeAttachPlyrFullscreenHosts === 'function' && __plyrFsW) {
+                                            window.herimeAttachPlyrFullscreenHosts(player, __plyrFsW);
+                                        }
                                     } catch (error) {
                                         console.error('❌ Error initializing Plyr for video:', error);
                                     }
@@ -5292,6 +5400,10 @@ function initializePreviewPlayer(lessonId, youtubeId, isUnlisted) {
         
         // Sauvegarder la référence
         window['plyr_' + playerId] = player;
+        const innerWrapper = document.getElementById('wrapper-' + playerId);
+        if (typeof window.herimeAttachPlyrFullscreenHosts === 'function' && innerWrapper) {
+            window.herimeAttachPlyrFullscreenHosts(player, innerWrapper);
+        }
         
         // Désactiver le menu contextuel
         wrapper.addEventListener('contextmenu', function(e) {
@@ -5456,6 +5568,9 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                             e.preventDefault();
                                             return false;
                                         });
+                                        if (typeof window.herimeAttachPlyrFullscreenHosts === 'function') {
+                                            window.herimeAttachPlyrFullscreenHosts(player, wrapperEl);
+                                        }
                                     }
                                     
                                 } catch (error) {
@@ -5540,6 +5655,9 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                         e.preventDefault();
                                         return false;
                                     });
+                                    if (typeof window.herimeAttachPlyrFullscreenHosts === 'function') {
+                                        window.herimeAttachPlyrFullscreenHosts(player, wrapperEl);
+                                    }
                                 }
                                 
                             } catch (error) {
@@ -5598,6 +5716,9 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                     e.preventDefault();
                                     return false;
                                 });
+                                if (typeof window.herimeAttachPlyrFullscreenHosts === 'function') {
+                                    window.herimeAttachPlyrFullscreenHosts(player, wrapperEl);
+                                }
                             }
                             
                         } catch (error) {
@@ -5740,6 +5861,9 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                                     e.preventDefault();
                                                     return false;
                                                 });
+                                                if (typeof window.herimeAttachPlyrFullscreenHosts === 'function') {
+                                                    window.herimeAttachPlyrFullscreenHosts(player, wrapperEl);
+                                                }
                                             }
                                             
                                         } catch (error) {
@@ -5880,6 +6004,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     e.preventDefault();
                                     return false;
                                 });
+                                if (typeof window.herimeAttachPlyrFullscreenHosts === 'function') {
+                                    window.herimeAttachPlyrFullscreenHosts(player, wrapper);
+                                }
                             }
                             
                         } catch (error) {

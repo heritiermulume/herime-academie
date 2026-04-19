@@ -170,6 +170,7 @@ class HomeController extends Controller
             ->get();
 
         $announcements = Announcement::where('is_active', true)
+            ->where('type', '!=', Announcement::TYPE_HOME_MODAL)
             ->where(function ($query) {
                 $query->whereNull('starts_at')
                     ->orWhere('starts_at', '<=', now());
@@ -181,6 +182,12 @@ class HomeController extends Controller
             ->latest()
             ->limit(3)
             ->get();
+
+        $homeModalAnnouncement = Announcement::active()
+            ->where('type', Announcement::TYPE_HOME_MODAL)
+            ->orderByDesc('starts_at')
+            ->orderByDesc('created_at')
+            ->first();
 
         $partners = Partner::where('is_active', true)
             ->ordered()
@@ -269,6 +276,7 @@ class HomeController extends Controller
             'categories',
             'providers',
             'announcements',
+            'homeModalAnnouncement',
             'partners',
             'testimonials'
         ));

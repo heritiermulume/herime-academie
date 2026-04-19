@@ -22,8 +22,20 @@
                 
                 <dt class="col-sm-3">Type :</dt>
                 <dd class="col-sm-9">
-                    <span class="badge bg-{{ $announcement->type === 'info' ? 'info' : ($announcement->type === 'success' ? 'success' : ($announcement->type === 'warning' ? 'warning' : 'danger')) }}">
-                        {{ ucfirst($announcement->type) }}
+                    @php
+                        $previewTypeBadge = match ($announcement->type) {
+                            'success' => 'success',
+                            'warning' => 'warning',
+                            'error' => 'danger',
+                            'home_modal' => 'primary',
+                            default => 'info',
+                        };
+                        $previewTypeLabel = $announcement->type === 'home_modal'
+                            ? 'Modale page d’accueil'
+                            : ucfirst($announcement->type);
+                    @endphp
+                    <span class="badge bg-{{ $previewTypeBadge }}">
+                        {{ $previewTypeLabel }}
                     </span>
                 </dd>
                 
@@ -53,6 +65,31 @@
         <!-- Aperçu de l'annonce -->
         <div class="mb-4">
             <h5 class="mb-3"><i class="fas fa-eye me-2"></i>Aperçu de l'annonce</h5>
+            @if($announcement->type === \App\Models\Announcement::TYPE_HOME_MODAL)
+                @php
+                    $previewImg = \App\Helpers\FileHelper::url($announcement->image, 'announcements');
+                @endphp
+                <div class="preview-container" style="border: 2px dashed #dee2e6; border-radius: 8px; padding: 1rem; background: #e9ecef;">
+                    <p class="text-muted small mb-2">Simulation : modale centrée sur la page d’accueil (une seule annonce active de ce type à la fois).</p>
+                    <div class="mx-auto bg-white rounded-3 shadow-lg overflow-hidden" style="max-width: 640px;">
+                        <div class="border-bottom px-3 py-2 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-primary">{{ $announcement->title }}</span>
+                            <span class="text-muted small"><i class="fas fa-times"></i></span>
+                        </div>
+                        @if($previewImg)
+                            <img src="{{ $previewImg }}" alt="" class="w-100" style="max-height: 200px; object-fit: cover;">
+                        @endif
+                        <div class="p-3 text-secondary small" style="line-height: 1.5;">
+                            {!! nl2br(e($announcement->content)) !!}
+                        </div>
+                        @if($announcement->button_text && $announcement->button_url)
+                            <div class="px-3 pb-3">
+                                <span class="btn btn-primary btn-sm disabled">{{ $announcement->button_text }}</span>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @else
             <div class="preview-container" style="border: 2px dashed #dee2e6; border-radius: 8px; padding: 1rem; background: #f8f9fa; position: relative; z-index: 0; overflow: visible;">
                 <div class="global-announcement global-announcement--{{ $announcement->type }}" style="position: relative; width: 100%; border-radius: 8px; overflow: hidden; z-index: 0;">
                     <div class="global-announcement__inner">
@@ -76,6 +113,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
 
         <!-- Contenu complet -->

@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class CourseLesson extends Model
 {
     protected $table = 'content_lessons';
-    
+
     protected $fillable = [
         'content_id',
         'section_id',
@@ -104,7 +105,7 @@ class CourseLesson extends Model
      */
     public function isYoutubeVideo(): bool
     {
-        return !empty($this->youtube_video_id);
+        return ! empty($this->youtube_video_id);
     }
 
     /**
@@ -112,7 +113,7 @@ class CourseLesson extends Model
      */
     public function getSecureYouTubeEmbedUrl(): ?string
     {
-        if (!$this->isYoutubeVideo()) {
+        if (! $this->isYoutubeVideo()) {
             return null;
         }
 
@@ -124,7 +125,7 @@ class CourseLesson extends Model
             'origin' => config('video.youtube.embed_domain', request()->getHost()),
         ];
 
-        return "https://www.youtube.com/embed/{$videoId}?" . http_build_query($params);
+        return "https://www.youtube.com/embed/{$videoId}?".http_build_query($params);
     }
 
     /**
@@ -132,7 +133,7 @@ class CourseLesson extends Model
      */
     public function getYouTubeWatchUrl(): ?string
     {
-        if (!$this->isYoutubeVideo()) {
+        if (! $this->isYoutubeVideo()) {
             return null;
         }
 
@@ -141,7 +142,7 @@ class CourseLesson extends Model
 
     public function getFileUrlAttribute(): string
     {
-        if (!$this->file_path) {
+        if (! $this->file_path) {
             return '';
         }
 
@@ -150,12 +151,13 @@ class CourseLesson extends Model
         }
 
         $service = app(\App\Services\FileUploadService::class);
+
         return $service->getUrl($this->file_path, 'courses/lessons');
     }
 
     public function getContentFileUrlAttribute(): string
     {
-        if (!$this->content_url) {
+        if (! $this->content_url) {
             return '';
         }
 
@@ -164,6 +166,7 @@ class CourseLesson extends Model
         }
 
         $service = app(\App\Services\FileUploadService::class);
+
         return $service->getUrl($this->content_url, 'courses/lessons');
     }
 
@@ -184,6 +187,31 @@ class CourseLesson extends Model
 
             if (in_array($ext, ['mp4', 'm4v', 'mov', 'webm', 'mkv'], true)) {
                 return $p;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Chemin relatif sur le disque local (storage/app/private) pour un fichier de leçon
+     * hébergé sur le serveur (hors URL http(s)), pour ZIP ou téléchargement espace d'apprentissage.
+     */
+    public function getStoredLessonFileRelativePath(): ?string
+    {
+        $disk = Storage::disk('local');
+
+        foreach (['file_path', 'content_url'] as $attr) {
+            $value = $this->getRawOriginal($attr) ?? $this->getAttribute($attr);
+            if (empty($value) || filter_var($value, FILTER_VALIDATE_URL)) {
+                continue;
+            }
+            $clean = ltrim((string) $value, '/');
+            if ($disk->exists($clean)) {
+                return $clean;
+            }
+            if ($disk->exists((string) $value)) {
+                return ltrim((string) $value, '/');
             }
         }
 

@@ -8,9 +8,13 @@ use Illuminate\Support\Carbon;
 
 class ContentRatingReminder extends Model
 {
-    public const MAX_REMINDERS = 6;
+    /** Nombre maximum d’emails sur la campagne (3 jours × 3 envois / jour). */
+    public const MAX_REMINDERS = 9;
 
     public const CAMPAIGN_DAYS = 3;
+
+    /** Délai minimum entre deux envois au même utilisateur pour le même contenu (compatible 3× / jour). */
+    public const MIN_HOURS_BETWEEN_REMINDERS = 5;
 
     protected $fillable = [
         'user_id',

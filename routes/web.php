@@ -109,6 +109,8 @@ Route::get('/invite/notation/{course:slug}', [RatingInviteController::class, 'sh
     ->name('rating.invite');
 
 Route::get('/contents/{course:slug}', [CourseController::class, 'show'])->name('contents.show');
+Route::get('/contents/{course:slug}/noter', [CourseController::class, 'rate'])->name('contents.rate');
+Route::get('/contents/{course:slug}/noter/connexion', [CourseController::class, 'rateLoginIntent'])->name('contents.rate.login-intent');
 Route::get('/contents/{course:slug}/reviews', [CourseController::class, 'reviews'])->name('contents.reviews');
 Route::get('/contents/{course:slug}/preview-data', [CourseController::class, 'previewData'])->name('contents.preview-data');
 Route::get('/contents/{course:slug}/lesson/{lesson}', [CourseController::class, 'lesson'])->name('contents.lesson');
@@ -156,6 +158,9 @@ Route::middleware('sync.cart')->group(function () {
     Route::get('/cart/summary', [CartController::class, 'getSummary'])->name('cart.summary');
     Route::get('/cart/recommendations', [CartController::class, 'getRecommendations'])->name('cart.recommendations');
     Route::get('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+    Route::post('/cart/guest-checkout', [CartController::class, 'guestCheckoutPrepare'])
+        ->middleware('throttle:10,1')
+        ->name('cart.guest-checkout');
 });
 
 // Routes de fallback pour éviter les erreurs 500 sur /me et /logout
@@ -883,6 +888,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Lesson Resources routes
     Route::prefix('/learning/courses/{course:slug}/lessons/{lesson}')->group(function () {
+        Route::get('/attachment/download', [App\Http\Controllers\LessonResourceController::class, 'downloadLessonAttachment'])
+            ->name('learning.lesson.attachment.download');
         Route::get('/resources', [App\Http\Controllers\LessonResourceController::class, 'index'])->name('learning.resources.index');
         Route::get('/resources/{resource}/download', [App\Http\Controllers\LessonResourceController::class, 'download'])->name('learning.resources.download');
     });

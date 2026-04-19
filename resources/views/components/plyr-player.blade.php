@@ -251,6 +251,57 @@
         padding: 0.5rem !important;
     }
 }
+
+/* Plein écran : modal aperçu cours (#coursePreviewModal) — mêmes contraintes que .learning-player-card */
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-dialog,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-content,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-body,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-body .row,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-body .col-lg-8,
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-body .col-lg-8 > div {
+    overflow: visible !important;
+}
+
+#coursePreviewModal.course-preview-modal--plyr-fullscreen .modal-fixed-height .modal-body {
+    max-height: none !important;
+    height: auto !important;
+}
+
+#previewVideoContainer.plyr-mobile-fullscreen,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    aspect-ratio: unset !important;
+    z-index: 2147483647 !important;
+    background: #000 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+}
+
+#previewVideoContainer.plyr-mobile-fullscreen .preview-player-wrapper,
+#previewVideoContainer.plyr-mobile-fullscreen .plyr-player-wrapper,
+#previewVideoContainer.plyr-mobile-fullscreen .plyr,
+#previewVideoContainer.plyr-mobile-fullscreen .plyr__video-wrapper,
+#previewVideoContainer.plyr-mobile-fullscreen .plyr__video-embed,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .preview-player-wrapper,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .plyr-player-wrapper,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .plyr,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .plyr__video-wrapper,
+#previewVideoContainer:has(.plyr.plyr--fullscreen) .plyr__video-embed {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
 </style>
 
 @if($isYoutube || ($isInternalVideo && !empty($internalVideoUrl) && trim($internalVideoUrl) !== '') || $useHls)
@@ -324,6 +375,44 @@
 <script>
 (function() {
     'use strict';
+
+    if (!window.herimeAttachPlyrFullscreenHosts) {
+        window.herimeAttachPlyrFullscreenHosts = function(player, wrapper) {
+            if (!player || !wrapper) {
+                return;
+            }
+            const playerShell = wrapper.closest('.player-shell');
+            const previewContainer = wrapper.closest('#previewVideoContainer');
+            const previewModal = previewContainer ? previewContainer.closest('#coursePreviewModal') : null;
+            const learningCard = playerShell ? playerShell.closest('.learning-player-card') : null;
+            if (!playerShell && !previewContainer) {
+                return;
+            }
+            player.on('enterfullscreen', function() {
+                if (playerShell) {
+                    playerShell.classList.add('plyr-mobile-fullscreen');
+                    learningCard?.classList.add('learning-player-card--video-fullscreen');
+                } else if (previewContainer) {
+                    previewContainer.classList.add('plyr-mobile-fullscreen');
+                    previewModal?.classList.add('course-preview-modal--plyr-fullscreen');
+                }
+            });
+            player.on('exitfullscreen', function() {
+                playerShell?.classList.remove('plyr-mobile-fullscreen');
+                learningCard?.classList.remove('learning-player-card--video-fullscreen');
+                previewContainer?.classList.remove('plyr-mobile-fullscreen');
+                previewModal?.classList.remove('course-preview-modal--plyr-fullscreen');
+            });
+        };
+        document.addEventListener('hidden.bs.modal', function(ev) {
+            const modal = ev.target;
+            if (!modal || modal.id !== 'coursePreviewModal') {
+                return;
+            }
+            document.getElementById('previewVideoContainer')?.classList.remove('plyr-mobile-fullscreen');
+            modal.classList.remove('course-preview-modal--plyr-fullscreen');
+        });
+    }
     
     // Attendre que Plyr soit chargé
     function waitForPlyr(callback, maxAttempts = 50) {
@@ -801,19 +890,9 @@
                 });
             }
 
-            // Fullscreen mobile : ajouter classe au player-shell pour le faire passer au-dessus de tout (CSS :has + fallback)
-            (function() {
-                const playerShell = wrapper ? wrapper.closest('.player-shell') : null;
-                if (!playerShell) return;
-                player.on('enterfullscreen', function() {
-                    if (window.matchMedia('(max-width: 991.98px)').matches) {
-                        playerShell.classList.add('plyr-mobile-fullscreen');
-                    }
-                });
-                player.on('exitfullscreen', function() {
-                    playerShell.classList.remove('plyr-mobile-fullscreen');
-                });
-            })();
+            if (typeof window.herimeAttachPlyrFullscreenHosts === 'function') {
+                window.herimeAttachPlyrFullscreenHosts(player, wrapper);
+            }
 
             // Sauvegarder la référence
             window['plyr_' + playerId] = player;

@@ -34,7 +34,70 @@
 </div>
 @endif
 
+@if(! empty($homeModalAnnouncement))
+    @php
+        $homeModalImageUrl = \App\Helpers\FileHelper::url($homeModalAnnouncement->image, 'announcements');
+        $homeModalHideUntilIso = optional($homeModalAnnouncement->expires_at)->toIso8601String()
+            ?: now()->addYear()->toIso8601String();
+    @endphp
+    <div class="modal fade"
+         id="homeMarketingAnnouncementModal"
+         tabindex="-1"
+         aria-labelledby="homeMarketingAnnouncementModalLabel"
+         aria-hidden="true"
+         data-announcement-id="{{ $homeModalAnnouncement->id }}"
+         data-hide-until="{{ $homeModalHideUntilIso }}">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg overflow-hidden">
+                <div class="modal-header border-0 pb-0 position-relative">
+                    <h2 class="modal-title h5 fw-bold pe-4 text-primary" id="homeMarketingAnnouncementModalLabel">
+                        {{ $homeModalAnnouncement->title }}
+                    </h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                @if($homeModalImageUrl)
+                    <div class="px-3 pt-0">
+                        <img src="{{ $homeModalImageUrl }}"
+                             alt=""
+                             class="w-100 rounded-3 home-marketing-modal__img">
+                    </div>
+                @endif
+                <div class="modal-body pt-3">
+                    <div class="home-marketing-modal__body text-secondary">
+                        {!! nl2br(e($homeModalAnnouncement->content)) !!}
+                    </div>
+                    @if($homeModalAnnouncement->button_text && $homeModalAnnouncement->button_url)
+                        <div class="mt-4 d-grid gap-2 d-sm-flex">
+                            <a href="{{ $homeModalAnnouncement->button_url }}" class="btn btn-primary btn-lg">
+                                {{ $homeModalAnnouncement->button_text }}
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">
+                                Fermer
+                            </button>
+                        </div>
+                    @else
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">
+                                J’ai compris
+                            </button>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
 <style>
+/* Modale marketing accueil */
+.home-marketing-modal__img {
+    max-height: 280px;
+    object-fit: cover;
+}
+.home-marketing-modal__body {
+    line-height: 1.55;
+}
+
 /* Prévenir le débordement horizontal sur mobile */
 html {
     overflow-x: hidden;
@@ -1455,6 +1518,39 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start auto-sliding
     startAutoSlide();
 });
+
+@if(! empty($homeModalAnnouncement))
+document.addEventListener('DOMContentLoaded', function() {
+    const el = document.getElementById('homeMarketingAnnouncementModal');
+    if (! el || typeof bootstrap === 'undefined' || ! bootstrap.Modal) {
+        return;
+    }
+    const id = el.getAttribute('data-announcement-id');
+    const hideUntil = el.getAttribute('data-hide-until');
+    const storageKey = 'herime_home_marketing_modal';
+    try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+            const o = JSON.parse(raw);
+            if (String(o.id) === String(id) && o.hide_until && (new Date() < new Date(o.hide_until))) {
+                return;
+            }
+        }
+    } catch (e) {
+        /* ignore */
+    }
+    const modal = new bootstrap.Modal(el);
+    modal.show();
+    el.addEventListener('hidden.bs.modal', function onHidden() {
+        try {
+            localStorage.setItem(storageKey, JSON.stringify({ id: id, hide_until: hideUntil }));
+        } catch (e) {
+            /* ignore */
+        }
+        el.removeEventListener('hidden.bs.modal', onHidden);
+    });
+});
+@endif
 
 // La fonction showNotification est maintenant définie globalement dans app.blade.php
 

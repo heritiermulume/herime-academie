@@ -21,7 +21,7 @@ class ReviewController extends Controller
     public function store(Request $request, Course $course)
     {
         // Vérifier que l'utilisateur est connecté
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Vous devez être connecté pour noter un cours.');
         }
@@ -30,14 +30,14 @@ class ReviewController extends Controller
 
         $eligibility = $this->reviewEligibility->evaluate($user, $course);
         if (! $eligibility['can_review']) {
-            return redirect()->route('contents.show', $course)
-                ->with('error', $eligibility['message']);
+            return $this->redirectAfterReview($request, $course, $eligibility['message'], 'error');
         }
 
         // Valider les données
         $validated = $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:2000',
+            'redirect_to' => 'nullable|in:rate',
         ]);
 
         // Vérifier si l'utilisateur a déjà un avis pour ce cours
@@ -56,8 +56,7 @@ class ReviewController extends Controller
             ContentRatingReminderService::forgetForUserAndContent($user->id, $course->id);
             $request->session()->forget('pending_content_rating_course_id');
 
-            return redirect()->route('contents.show', $course)
-                ->with('success', 'Votre avis a été mis à jour avec succès.');
+            return $this->redirectAfterReview($request, $course, 'Votre avis a été mis à jour avec succès.');
         } else {
             // Créer un nouvel avis
             Review::create([
@@ -71,8 +70,7 @@ class ReviewController extends Controller
             ContentRatingReminderService::forgetForUserAndContent($user->id, $course->id);
             $request->session()->forget('pending_content_rating_course_id');
 
-            return redirect()->route('contents.show', $course)
-                ->with('success', 'Votre avis a été publié avec succès.');
+            return $this->redirectAfterReview($request, $course, 'Votre avis a été publié avec succès.');
         }
     }
 
@@ -82,12 +80,16 @@ class ReviewController extends Controller
     public function destroy(Course $course)
     {
         // Vérifier que l'utilisateur est connecté
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login')
                 ->with('error', 'Vous devez être connecté pour supprimer un avis.');
         }
 
         $user = Auth::user();
+
+        $request->validate([
+            'redirect_to' => 'nullable|in:rate',
+        ]);
 
         // Trouver l'avis de l'utilisateur pour ce cours
         $review = Review::where('user_id', $user->id)
@@ -101,8 +103,14 @@ class ReviewController extends Controller
 
         $review->delete();
 
-        return redirect()->route('contents.show', $course)
-            ->with('success', 'Votre avis a été supprimé avec succès.');
+        return $this->redirectAfterReview($request, $course, 'Votre avis a été supprimé avec succès.');
+    }
+
+    private function redirectAfterReview(Request $request, Course $course, string $message, string $flashKey = 'success'): \Illuminate\Http\RedirectResponse
+    {
+        $to = $request->input('redirect_to');
+        $route = $to === 'rate' ? 'contents.rate' : 'contents.show';
+
+        return redirect()->route($route, $course)->with($flashKey, $message);
     }
 }
-

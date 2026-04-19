@@ -3,47 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Donnez votre avis — {{ $course->title }}</title>
+    <title>Votre avis — {{ $course->title }} — {{ config('app.name') }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 3px solid #003366;
+        }
+        .logo-container {
+            margin-bottom: 20px;
+        }
+        .logo-container img {
+            max-width: 200px;
+            height: auto;
+        }
+        .header h1 {
+            color: #003366;
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .header p {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .content {
+            margin-bottom: 40px;
+        }
+        .content h2 {
+            color: #003366;
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .content p {
+            color: #495057;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .order-details {
+            background-color: #f8f9fa;
+            border-left: 4px solid #003366;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 4px;
+        }
+        .order-details h3 {
+            color: #003366;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .order-details p {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        .order-details strong {
+            color: #003366;
+            font-weight: 600;
+        }
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            background-color: #003366;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #004080;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .footer p {
+            margin-bottom: 10px;
+        }
+        .footer a {
+            color: #003366;
+            text-decoration: none;
+        }
+        .footer-disclaimer {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            font-size: 13px;
+            color: #6c757d;
+            line-height: 1.5;
+            text-align: left;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px 20px;
+            }
+            .header h1 {
+                font-size: 22px;
+            }
+            .content h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
 </head>
-<body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#f8f9fa;color:#2c3e50;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:24px 12px;">
-        <tr>
-            <td align="center">
-                <table role="presentation" width="100%" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);">
-                    <tr>
-                        <td style="padding:32px 28px 16px;text-align:center;border-bottom:3px solid #003366;">
-                            @if(!empty($logoUrl))
-                                <img src="{{ $logoUrl }}" alt="Herime Académie" style="max-width:200px;height:auto;margin-bottom:16px;">
-                            @endif
-                            <h1 style="margin:0;font-size:22px;color:#003366;">Votre avis nous aide à progresser</h1>
-                            <p style="margin:12px 0 0;font-size:14px;color:#6c757d;">Quelques secondes pour noter ce contenu.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:28px;">
-                            <div style="background:linear-gradient(135deg,rgba(0,51,102,.06) 0%,rgba(0,64,128,.06) 100%);padding:20px;border-radius:10px;border-left:4px solid #003366;margin-bottom:24px;">
-                                <h2 style="margin:0 0 8px;font-size:18px;color:#003366;">{{ $course->title }}</h2>
-                                @if($course->provider)
-                                    <p style="margin:0;font-size:14px;color:#6c757d;">par {{ $course->provider->name }}</p>
-                                @endif
-                            </div>
-                            <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">
-                                Vous y avez accès : partagez une note et un commentaire pour guider les prochains apprenants.
-                            </p>
-                            <div style="text-align:center;">
-                                <a href="{{ $ratingUrl }}" style="display:inline-block;background:linear-gradient(135deg,#003366 0%,#004080 100%);color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:8px;">
-                                    Noter ce contenu
-                                </a>
-                            </div>
-                            <p style="font-size:12px;color:#94a3b8;margin-top:28px;text-align:center;">
-                                Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
-                                <span style="word-break:break-all;color:#64748b;">{{ $ratingUrl }}</span>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
+<body>
+    <div class="container">
+        <div class="header">
+            @if(isset($logoUrl))
+            <div class="logo-container">
+                <img src="{{ $logoUrl }}" alt="{{ config('app.name') }}">
+            </div>
+            @endif
+            <h1>Votre avis compte</h1>
+            <p>Herime Académie</p>
+        </div>
+
+        <div class="content">
+            <h2>Bonjour {{ $greetingName }},</h2>
+
+            @if($usePurchaseWording ?? true)
+            <p>Nous espérons que vous profitez pleinement de votre achat <strong>«&nbsp;{{ $course->title }}&nbsp;»</strong>.</p>
+
+            <p>En tant qu'acheteur récent, votre retour d'expérience est particulièrement précieux.<br>
+            Il nous aidera non seulement à améliorer, mais guidera aussi les futurs acheteurs dans leurs choix.</p>
+            @else
+            <p>Nous espérons que vous profitez pleinement de votre accès au contenu <strong>«&nbsp;{{ $course->title }}&nbsp;»</strong>.</p>
+
+            <p>En tant que participant, votre retour d'expérience est particulièrement précieux.<br>
+            Il nous aidera non seulement à améliorer, mais guidera aussi les prochains apprenants dans leurs choix.</p>
+            @endif
+
+            <p>Pourriez-vous prendre un instant pour partager votre avis&nbsp;?</p>
+
+            <div class="order-details">
+                <h3>Contenu concerné</h3>
+                <p><strong>Titre :</strong> {{ $course->title }}</p>
+                @if($course->provider)
+                    <p><strong>Formateur :</strong> {{ $course->provider->name }}</p>
+                @endif
+            </div>
+
+            <div class="button-container">
+                <a href="{{ $ratingUrl }}" class="button">Laisser un avis</a>
+            </div>
+
+            <p style="text-align: center; color: #6c757d; font-size: 15px;">C'est simple et rapide — quelques secondes suffisent pour faire la différence&nbsp;!</p>
+
+            <p>À très bientôt,<br><strong>L'équipe Herime Académie</strong></p>
+        </div>
+
+        <div class="footer">
+            <p>Cet email a été envoyé par <strong>{{ config('app.name') }}</strong></p>
+            <p>
+                <a href="{{ config('app.url') }}">Visiter le site</a> |
+                <a href="{{ config('app.url') }}/contact">Nous contacter</a>
+            </p>
+            <div class="footer-disclaimer">
+                @if($usePurchaseWording ?? true)
+                Vous recevez cet email suite à votre achat de <strong>«&nbsp;{{ $course->title }}&nbsp;»</strong>.
+                Si vous n'êtes pas à l'origine de cet achat, veuillez contacter notre service client.
+                @else
+                Vous recevez cet email suite à votre accès au contenu <strong>«&nbsp;{{ $course->title }}&nbsp;»</strong>.
+                Si vous n'êtes pas à l'origine de cet accès, veuillez contacter notre service client.
+                @endif
+            </div>
+        </div>
+    </div>
 </body>
 </html>

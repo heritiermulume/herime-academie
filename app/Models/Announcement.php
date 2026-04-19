@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Announcement extends Model
 {
+    public const TYPE_HOME_MODAL = 'home_modal';
+
     protected $fillable = [
         'title',
         'content',
@@ -30,18 +32,26 @@ class Announcement extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('starts_at')
-                  ->orWhere('starts_at', '<=', now());
+                    ->orWhere('starts_at', '<=', now());
             })
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('expires_at')
-                  ->orWhere('expires_at', '>=', now());
+                    ->orWhere('expires_at', '>=', now());
             });
     }
 
     public function scopeByType($query, $type)
     {
         return $query->where('type', $type);
+    }
+
+    /**
+     * Annonces affichées dans la bannière globale (hors modale d’accueil).
+     */
+    public function scopeForGlobalBanner($query)
+    {
+        return $query->where('type', '!=', self::TYPE_HOME_MODAL);
     }
 }

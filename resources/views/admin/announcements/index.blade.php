@@ -35,6 +35,7 @@
                                         <option value="success" {{ request('announcement_type') === 'success' ? 'selected' : '' }}>Succès</option>
                                         <option value="warning" {{ request('announcement_type') === 'warning' ? 'selected' : '' }}>Attention</option>
                                         <option value="error" {{ request('announcement_type') === 'error' ? 'selected' : '' }}>Erreur</option>
+                                        <option value="home_modal" {{ request('announcement_type') === 'home_modal' ? 'selected' : '' }}>Modale page d’accueil</option>
                                     </select>
                                 </div>
                                 <div>
@@ -79,8 +80,20 @@
                                             <small class="text-muted text-truncate d-block" style="max-width: 100%;" title="{{ $announcement->content }}">{{ $announcement->content }}</small>
                                         </td>
                                         <td style="white-space: nowrap;">
-                                            <span class="badge bg-{{ $announcement->type === 'info' ? 'info' : ($announcement->type === 'success' ? 'success' : ($announcement->type === 'warning' ? 'warning' : 'danger')) }}">
-                                                {{ ucfirst($announcement->type) }}
+                                            @php
+                                                $annTypeBadge = match ($announcement->type) {
+                                                    'success' => 'success',
+                                                    'warning' => 'warning',
+                                                    'error' => 'danger',
+                                                    'home_modal' => 'primary',
+                                                    default => 'info',
+                                                };
+                                                $annTypeLabel = $announcement->type === 'home_modal'
+                                                    ? 'Modale accueil'
+                                                    : ucfirst($announcement->type);
+                                            @endphp
+                                            <span class="badge bg-{{ $annTypeBadge }}">
+                                                {{ $annTypeLabel }}
                                             </span>
                                         </td>
                                         <td style="white-space: nowrap;">
@@ -892,7 +905,7 @@
                 <h5 class="modal-title">Nouvelle annonce</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ route('admin.announcements.store') }}">
+            <form method="POST" action="{{ route('admin.announcements.store') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -914,6 +927,7 @@
                                     <option value="success">Succès</option>
                                     <option value="warning">Attention</option>
                                     <option value="error">Erreur</option>
+                                    <option value="home_modal">Modale page d’accueil</option>
                                 </select>
                             </div>
                         </div>
@@ -927,7 +941,13 @@
                     
                     <div class="mb-3">
                         <label for="button_url" class="form-label">URL du bouton</label>
-                        <input type="url" class="form-control" id="button_url" name="button_url">
+                        <input type="text" class="form-control" id="button_url" name="button_url" placeholder="https://… ou chemin relatif (/catalogue)">
+                    </div>
+
+                    <div class="mb-3 d-none" id="create_announcement_image_row">
+                        <label for="create_announcement_image" class="form-label">Image (modale accueil) *</label>
+                        <input type="file" class="form-control" id="create_announcement_image" name="image" accept="image/jpeg,image/png,image/gif,image/webp">
+                        <small class="text-muted">Visuel affiché en haut de la modale sur la page d’accueil (JPEG, PNG, WebP ou GIF, 5&nbsp;Mo max).</small>
                     </div>
                     
                     <div class="row">
@@ -935,12 +955,14 @@
                             <div class="mb-3">
                                 <label for="starts_at" class="form-label">Date de début</label>
                                 <input type="datetime-local" class="form-control" id="starts_at" name="starts_at">
+                                <small class="text-muted">Vide = affichage dès que l’annonce est active.</small>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="expires_at" class="form-label">Date de fin</label>
                                 <input type="datetime-local" class="form-control" id="expires_at" name="expires_at">
+                                <small class="text-muted">Vide = pas de fin (modale : après fermeture, masquage jusqu’à cette date si renseignée).</small>
                             </div>
                         </div>
                     </div>
@@ -969,7 +991,7 @@
                 <h5 class="modal-title">Modifier l'annonce</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="editAnnouncementForm" method="POST">
+            <form id="editAnnouncementForm" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="modal-body">
@@ -992,6 +1014,7 @@
                                     <option value="success">Succès</option>
                                     <option value="warning">Attention</option>
                                     <option value="error">Erreur</option>
+                                    <option value="home_modal">Modale page d’accueil</option>
                                 </select>
                             </div>
                         </div>
@@ -1005,7 +1028,17 @@
                     
                     <div class="mb-3">
                         <label for="edit_button_url" class="form-label">URL du bouton</label>
-                        <input type="url" class="form-control" id="edit_button_url" name="button_url">
+                        <input type="text" class="form-control" id="edit_button_url" name="button_url" placeholder="https://… ou chemin relatif">
+                    </div>
+
+                    <div class="mb-3 d-none" id="edit_announcement_image_row">
+                        <label class="form-label">Image actuelle</label>
+                        <div class="mb-2" id="edit_announcement_image_preview_wrap" style="display: none;">
+                            <img src="" alt="" id="edit_announcement_image_preview" class="img-fluid rounded border" style="max-height: 160px;">
+                        </div>
+                        <label for="edit_announcement_image" class="form-label">Remplacer l’image</label>
+                        <input type="file" class="form-control" id="edit_announcement_image" name="image" accept="image/jpeg,image/png,image/gif,image/webp">
+                        <small class="text-muted">Obligatoire uniquement si aucune image n’est encore enregistrée.</small>
                     </div>
                     
                     <div class="row">
@@ -1044,6 +1077,33 @@
 <script src="{{ asset('js/bulk-actions.js') }}"></script>
 <script src="{{ asset('js/modern-confirm-modal.js') }}"></script>
 <script>
+function syncCreateAnnouncementImageRow() {
+    const typeEl = document.getElementById('type');
+    const row = document.getElementById('create_announcement_image_row');
+    const input = document.getElementById('create_announcement_image');
+    if (!typeEl || !row) return;
+    const show = typeEl.value === 'home_modal';
+    row.classList.toggle('d-none', !show);
+    if (input) {
+        input.required = show;
+        if (!show) input.value = '';
+    }
+}
+
+function syncEditAnnouncementImageRow() {
+    const typeEl = document.getElementById('edit_type');
+    const row = document.getElementById('edit_announcement_image_row');
+    const input = document.getElementById('edit_announcement_image');
+    if (!typeEl || !row) return;
+    const show = typeEl.value === 'home_modal';
+    row.classList.toggle('d-none', !show);
+    if (input) {
+        const hasExisting = input.getAttribute('data-has-existing-image') === '1';
+        input.required = show && !hasExisting;
+        if (!show) input.value = '';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialiser les bulk actions pour la liste principale des annonces
     const announcementsContainer = document.getElementById('bulkActionsContainer-announcementsTable');
@@ -1205,6 +1265,10 @@ document.addEventListener('DOMContentLoaded', function() {
     bulkActions.init('whatsappTable', {
         exportRoute: '{{ route('admin.announcements') }}'
     });
+
+    document.getElementById('type')?.addEventListener('change', syncCreateAnnouncementImageRow);
+    document.getElementById('edit_type')?.addEventListener('change', syncEditAnnouncementImageRow);
+    document.getElementById('createAnnouncementModal')?.addEventListener('show.bs.modal', syncCreateAnnouncementImageRow);
 });
 
 function editAnnouncement(id) {
@@ -1221,6 +1285,25 @@ function editAnnouncement(id) {
             document.getElementById('edit_starts_at').value = data.starts_at ? data.starts_at.substring(0, 16) : '';
             document.getElementById('edit_expires_at').value = data.expires_at ? data.expires_at.substring(0, 16) : '';
             document.getElementById('edit_is_active').checked = data.is_active || false;
+
+            const fileInput = document.getElementById('edit_announcement_image');
+            if (fileInput) {
+                fileInput.value = '';
+                const hasImg = !!(data.image && String(data.image).trim());
+                fileInput.setAttribute('data-has-existing-image', hasImg ? '1' : '0');
+            }
+            const prevWrap = document.getElementById('edit_announcement_image_preview_wrap');
+            const prevImg = document.getElementById('edit_announcement_image_preview');
+            if (prevWrap && prevImg) {
+                if (data.image_preview_url) {
+                    prevImg.src = data.image_preview_url;
+                    prevWrap.style.display = 'block';
+                } else {
+                    prevWrap.style.display = 'none';
+                    prevImg.removeAttribute('src');
+                }
+            }
+            syncEditAnnouncementImageRow();
             
             // Mettre à jour l'action du formulaire
             document.getElementById('editAnnouncementForm').action = `/admin/announcements/${id}`;

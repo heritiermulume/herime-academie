@@ -3115,6 +3115,27 @@ class AdminController extends Controller
     {
         $data = $this->validatedAnnouncementData($request);
 
+        if ($data['type'] === Announcement::TYPE_HOME_MODAL) {
+            if (! $request->hasFile('image')) {
+                throw ValidationException::withMessages([
+                    'image' => ['Une image est requise pour une annonce modale sur la page d’accueil.'],
+                ]);
+            }
+        }
+
+        if ($request->hasFile('image')) {
+            $request->validate([
+                'image' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            ]);
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('image'),
+                'announcements',
+                null,
+                1920
+            );
+            $data['image'] = $result['path'];
+        }
+
         $announcement = Announcement::create($data);
 
         $this->notifyUsersOfAnnouncement($announcement);
@@ -3130,12 +3151,38 @@ class AdminController extends Controller
 
     public function editAnnouncement(Announcement $announcement)
     {
-        return response()->json($announcement);
+        return response()->json(array_merge($announcement->toArray(), [
+            'image_preview_url' => FileHelper::url($announcement->image, 'announcements'),
+        ]));
     }
 
     public function updateAnnouncement(Request $request, Announcement $announcement)
     {
         $data = $this->validatedAnnouncementData($request);
+
+        if ($data['type'] === Announcement::TYPE_HOME_MODAL && ! $request->hasFile('image') && empty($announcement->image)) {
+            throw ValidationException::withMessages([
+                'image' => ['Une image est requise pour une annonce modale sur la page d’accueil.'],
+            ]);
+        }
+
+        if ($request->hasFile('image')) {
+            $request->validate([
+                'image' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            ]);
+            $oldPath = null;
+            if ($announcement->image && ! str_starts_with($announcement->image, 'data:')) {
+                $oldPath = preg_replace('#^storage/#', '', $announcement->image);
+            }
+
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('image'),
+                'announcements',
+                $oldPath,
+                1920
+            );
+            $data['image'] = $result['path'];
+        }
 
         $announcement->update($data);
 
@@ -3313,9 +3360,9 @@ class AdminController extends Controller
         $data = $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
-            'type' => 'required|in:info,success,warning,error',
+            'type' => 'required|in:info,success,warning,error,home_modal',
             'button_text' => 'nullable|string|max:255',
-            'button_url' => 'nullable|url',
+            'button_url' => 'nullable|string|max:2048',
             'starts_at' => ['nullable', 'date_format:Y-m-d\TH:i'],
             'expires_at' => ['nullable', 'date_format:Y-m-d\TH:i', 'after_or_equal:starts_at'],
             'is_active' => 'sometimes|boolean',
@@ -3340,6 +3387,10 @@ class AdminController extends Controller
     protected function notifyUsersOfAnnouncement(Announcement $announcement): void
     {
         if (! $announcement->is_active) {
+            return;
+        }
+
+        if ($announcement->type === Announcement::TYPE_HOME_MODAL) {
             return;
         }
 

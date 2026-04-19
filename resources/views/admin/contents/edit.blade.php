@@ -218,7 +218,7 @@
                                 @endif
                                 
                                 <!-- Zone d'upload pour nouveau -->
-                                <div class="upload-zone" id="thumbnailUploadZone">
+                                <div class="upload-zone upload-zone--droppable" id="thumbnailUploadZone">
                                     <input type="file" 
                                            class="form-control d-none @error('thumbnail') is-invalid @enderror" 
                                            id="thumbnail" 
@@ -230,7 +230,7 @@
                                     <input type="hidden" id="thumbnail_chunk_size" name="thumbnail_chunk_size" value="{{ old('thumbnail_chunk_size') }}">
                                     <div class="upload-placeholder text-center p-4" onclick="document.getElementById('thumbnail').click()">
                                         <i class="fas fa-image fa-3x text-primary mb-3"></i>
-                                        <p class="mb-2"><strong>Cliquez pour sélectionner une image</strong></p>
+                                        <p class="mb-2"><strong>Glissez-déposez une image ou cliquez pour parcourir</strong></p>
                                         <p class="text-muted small mb-0">Format : JPG, PNG, WEBP | Max : 5MB</p>
                                         <p class="text-muted small">Recommandé : 1920x1080px (16:9)</p>
                                     </div>
@@ -322,7 +322,7 @@
                                 <!-- Option 3: Upload fichier -->
                                 <div>
                                     <label class="form-label small">Option 3: Téléverser un fichier</label>
-                                    <div class="upload-zone" id="videoUploadZone">
+                                    <div class="upload-zone upload-zone--droppable" id="videoUploadZone">
                                         <input type="file" 
                                                class="form-control d-none @error('video_preview_file') is-invalid @enderror" 
                                                id="video_preview_file" 
@@ -334,8 +334,8 @@
                                         <input type="hidden" id="video_preview_size" name="video_preview_size" value="{{ old('video_preview_size') }}">
                                         <div class="upload-placeholder text-center p-3" onclick="document.getElementById('video_preview_file').click()">
                                             <i class="fas fa-video fa-2x text-success mb-2"></i>
-                                            <p class="mb-1 small"><strong>Cliquez pour sélectionner une vidéo</strong></p>
-                                            <p class="text-muted small mb-0">Format : MP4, WEBM | Max : 10&nbsp;Go</p>
+                                            <p class="mb-1 small"><strong>Glissez-déposez une vidéo ou cliquez pour parcourir</strong></p>
+                                            <p class="text-muted small mb-0">Format : MP4, WEBM, OGG | Envoi par fragments | Max : 10&nbsp;Go</p>
                                         </div>
                                         <div class="upload-preview d-none">
                                             <p class="fw-bold text-info text-center mb-2">
@@ -555,7 +555,7 @@
                                     </div>
                                     @endif
                                     
-                                    <div class="upload-zone" id="downloadFileUploadZone">
+                                    <div class="upload-zone upload-zone--droppable" id="downloadFileUploadZone">
                                         <input type="file" 
                                                class="form-control d-none @error('download_file_path') is-invalid @enderror" 
                                                id="download_file_path" 
@@ -567,7 +567,7 @@
                                         <input type="hidden" id="download_file_chunk_size" name="download_file_chunk_size" value="{{ old('download_file_chunk_size') }}">
                                         <div class="upload-placeholder text-center p-4" onclick="document.getElementById('download_file_path').click()">
                                             <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
-                                            <p class="mb-2"><strong>Cliquez pour sélectionner un fichier</strong></p>
+                                            <p class="mb-2"><strong>Glissez-déposez un fichier ou cliquez pour parcourir</strong></p>
                                             <p class="text-muted small mb-0">Formats : ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR, GZ</p>
                                             <p class="text-muted small">Maximum : 10&nbsp;Go</p>
                                         </div>
@@ -1228,10 +1228,56 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    function bindUploadDropZone(zoneEl, fileInput, onFile) {
+        if (!zoneEl || !fileInput || typeof onFile !== 'function') {
+            return;
+        }
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            zoneEl.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zoneEl.classList.add('upload-zone--drag-over');
+            });
+        });
+        zoneEl.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!zoneEl.contains(e.relatedTarget)) {
+                zoneEl.classList.remove('upload-zone--drag-over');
+            }
+        });
+        zoneEl.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            zoneEl.classList.remove('upload-zone--drag-over');
+            const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f) {
+                onFile(fileInput, f);
+            }
+        });
+    }
+
+    bindUploadDropZone(
+        document.getElementById('thumbnailUploadZone'),
+        document.getElementById('thumbnail'),
+        handleThumbnailUpload
+    );
+    bindUploadDropZone(
+        document.getElementById('videoUploadZone'),
+        document.getElementById('video_preview_file'),
+        handleVideoUpload
+    );
+
+    const downloadZone = document.getElementById('downloadFileUploadZone');
+    const downloadInput = document.getElementById('download_file_path');
+    if (downloadZone && downloadInput) {
+        bindUploadDropZone(downloadZone, downloadInput, handleDownloadFileUpload);
+    }
 });
 
 // Gestion de l'upload d'image de couverture
-function handleThumbnailUpload(input) {
+function handleThumbnailUpload(input, droppedFile = null) {
     const zone = document.getElementById('thumbnailUploadZone');
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
@@ -1239,9 +1285,10 @@ function handleThumbnailUpload(input) {
     
     errorDiv.textContent = '';
     errorDiv.style.display = 'none';
+
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
     
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
+    if (file) {
         
         if (!VALID_IMAGE_TYPES.includes(file.type)) {
             showError(errorDiv, '❌ Format invalide. Utilisez JPG, PNG ou WEBP.');
@@ -1483,7 +1530,7 @@ function clearThumbnail(options = {}) {
 }
 
 // Gestion de l'upload de vidéo
-function handleVideoUpload(input) {
+function handleVideoUpload(input, droppedFile = null) {
     const zone = document.getElementById('videoUploadZone');
     const placeholder = zone.querySelector('.upload-placeholder');
     const preview = zone.querySelector('.upload-preview');
@@ -1491,9 +1538,10 @@ function handleVideoUpload(input) {
     
     errorDiv.textContent = '';
     errorDiv.style.display = 'none';
+
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
     
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
+    if (file) {
         
         if (!VALID_VIDEO_TYPES.includes(file.type)) {
             showError(errorDiv, '❌ Format invalide. Utilisez MP4 ou WEBM.');
@@ -1518,7 +1566,7 @@ function handleVideoUpload(input) {
         };
         reader.readAsDataURL(file);
 
-        uploadVideoPreviewAjax(input);
+        uploadVideoPreviewAjax(input, droppedFile || null);
     }
 }
 
@@ -1618,8 +1666,8 @@ function clearVideo(options = {}) {
     }
 }
 
-function uploadVideoPreviewAjax(input) {
-    const file = input.files && input.files[0];
+function uploadVideoPreviewAjax(input, droppedFile = null) {
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
     if (!file) {
         return;
     }
@@ -2062,7 +2110,7 @@ function addLesson(sectionId, lessonData = null) {
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Fichier ou média de la leçon</label>
-                    <div class="upload-zone lesson-upload-zone" id="lessonUploadZone-${lessonUniqueId}" data-lesson-unique="${lessonUniqueId}" data-lesson-section="${sectionId}" data-lesson-index="${lessonIndex}" onclick="triggerLessonFile('${lessonUniqueId}', event)">
+                    <div class="upload-zone upload-zone--droppable lesson-upload-zone" id="lessonUploadZone-${lessonUniqueId}" data-lesson-unique="${lessonUniqueId}" data-lesson-section="${sectionId}" data-lesson-index="${lessonIndex}" onclick="triggerLessonFile('${lessonUniqueId}', event)">
                         <input type="file"
                                class="form-control d-none lesson-file-input"
                                id="lesson_file_${lessonUniqueId}"
@@ -2083,8 +2131,8 @@ function addLesson(sectionId, lessonData = null) {
                                data-lesson-size="${lessonUniqueId}">
                         <div class="upload-placeholder text-center p-3">
                             <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
-                            <p class="mb-1"><strong>Cliquez pour sélectionner un fichier</strong></p>
-                            <p class="text-muted small mb-0">Formats acceptés : MP4, WEBM, PDF, ZIP, DOCX...</p>
+                            <p class="mb-1"><strong>Glissez-déposez un fichier ou cliquez pour parcourir</strong></p>
+                            <p class="text-muted small mb-0">Formats acceptés : MP4, WEBM, PDF, ZIP, DOCX… — envoi par fragments</p>
                             <p class="text-muted small">Taille max&nbsp;: 10&nbsp;Go</p>
                         </div>
                         <div class="upload-preview d-none text-center">
@@ -2203,6 +2251,8 @@ function addLesson(sectionId, lessonData = null) {
             url: existingFileUrl
         });
     }
+
+    bindLessonFileDropZone(lessonUniqueId);
 }
 
 function removeLesson(button) {
@@ -2211,7 +2261,42 @@ function removeLesson(button) {
     card.remove();
 }
 
-function handleLessonFileUpload(uniqueId, input) {
+function bindLessonFileDropZone(uniqueId) {
+    const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
+    const input = zone?.querySelector('input.lesson-file-input') || zone?.querySelector('input[type="file"]');
+    if (!zone || !input) {
+        return;
+    }
+    if (zone.dataset.lessonDropBound === '1') {
+        return;
+    }
+    zone.dataset.lessonDropBound = '1';
+    ['dragenter', 'dragover'].forEach((eventName) => {
+        zone.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.add('upload-zone--drag-over');
+        });
+    });
+    zone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!zone.contains(e.relatedTarget)) {
+            zone.classList.remove('upload-zone--drag-over');
+        }
+    });
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.classList.remove('upload-zone--drag-over');
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) {
+            handleLessonFileUpload(uniqueId, input, f);
+        }
+    });
+}
+
+function handleLessonFileUpload(uniqueId, input, droppedFile = null) {
     const zone = document.getElementById(`lessonUploadZone-${uniqueId}`);
     if (!zone) return;
 
@@ -2229,18 +2314,17 @@ function handleLessonFileUpload(uniqueId, input) {
 
     cancelLessonUpload(uniqueId, true);
 
-    if (!input.files || !input.files[0]) {
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
+    if (!file) {
         clearLessonFile(uniqueId, true);
         return;
     }
 
-    if (input.files.length > 1) {
+    if (!droppedFile && input.files && input.files.length > 1) {
         showLessonFileError(uniqueId, 'Veuillez sélectionner un seul fichier à la fois.');
         resetFileInput(input);
         return;
     }
-
-    const file = input.files[0];
 
     if (!isLessonFileTypeAllowed(file)) {
         showLessonFileError(uniqueId, '❌ Format non supporté. Utilisez une vidéo (MP4/WEBM) ou un document (PDF, ZIP, DOCX, etc.).');
@@ -2274,6 +2358,11 @@ function handleLessonFileUpload(uniqueId, input) {
     const removeFlagInput = document.querySelector(`[data-lesson-remove-flag="${uniqueId}"]`);
     if (removeFlagInput) {
         removeFlagInput.value = 0;
+    }
+
+    const lessonUrlInput = document.querySelector(`[data-lesson-url="${uniqueId}"]`);
+    if (lessonUrlInput) {
+        lessonUrlInput.value = '';
     }
 
     startLessonChunkUpload(uniqueId, file, input);
@@ -3012,10 +3101,10 @@ function resetDownloadHiddenFields() {
     if (chunkSizeInput) chunkSizeInput.value = '';
 }
 
-function handleDownloadFileUpload(input) {
+function handleDownloadFileUpload(input, droppedFile = null) {
     const zone = document.getElementById('downloadFileUploadZone');
     const errorDiv = document.getElementById('downloadFileError');
-    const file = input.files[0];
+    const file = droppedFile || (input && input.files && input.files[0]) || null;
     
     if (!zone) {
         return;
@@ -3554,6 +3643,16 @@ document.addEventListener('DOMContentLoaded', function () {
 .upload-zone:hover {
     border-color: #003366;
     background-color: #e9ecef;
+}
+
+.upload-zone--droppable {
+    cursor: pointer;
+}
+
+.upload-zone.upload-zone--drag-over {
+    border-color: #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.07);
+    box-shadow: inset 0 0 0 2px rgba(13, 110, 253, 0.2);
 }
 
 .upload-placeholder {
