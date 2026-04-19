@@ -2061,10 +2061,36 @@
 
 /* Styles pour le lecteur Plyr sur mobile */
 @media (max-width: 991.98px) {
+    /*
+     * Ne pas fixer une hauteur trop petite sur .plyr__progress : Plyr superpose
+     * .plyr__progress__buffer (<progress>) et l’input seek ; une hauteur ~4px casse
+     * le centrage (top: 50% / margin-top) et affiche « tampon » et « progression » sur deux lignes.
+     * On affine la piste via les variables officielles Plyr à la place.
+     */
+    .plyr--full-ui.plyr--video {
+        --plyr-range-track-height: 4px;
+        --plyr-range-thumb-height: 11px;
+    }
+    .plyr__progress {
+        height: auto !important;
+        min-height: 1.125rem;
+        align-self: center;
+    }
+    .plyr__progress__container {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+    }
+    .plyr__progress__buffer {
+        height: var(--plyr-range-track-height, 5px) !important;
+        margin-top: calc(var(--plyr-range-track-height, 5px) / 2 * -1) !important;
+    }
     /* Barre de contrôles Plyr - adapter pour mobile */
     .plyr__controls {
         padding: 8px 10px !important;
         font-size: 12px !important;
+        flex-wrap: nowrap;
+        align-items: center;
     }
     
     /* Boutons de contrôle - taille adaptée pour mobile */
@@ -2093,10 +2119,6 @@
         min-width: 60px !important;
     }
     
-    .plyr__volume input[type="range"] {
-        height: 4px !important;
-    }
-    
     /* Éléments de contrôle individuels */
     .plyr__controls__item {
         margin: 0 2px !important;
@@ -2115,16 +2137,6 @@
     .plyr__time {
         font-size: 11px !important;
         padding: 0 4px !important;
-    }
-    
-    /* Barre de progression - taille réduite pour mobile */
-    .plyr__progress {
-        height: 4px !important;
-    }
-    
-    .plyr__progress__buffer,
-    .plyr__progress__played {
-        height: 4px !important;
     }
     
     /* Tooltip - taille adaptée pour mobile */
@@ -2384,6 +2396,8 @@
     .plyr__controls {
         padding: 5px 6px !important;
         font-size: 10px !important;
+        flex-wrap: nowrap;
+        align-items: center;
     }
     
     /* Boutons de contrôle - taille minimale pour très petit mobile */
@@ -2411,10 +2425,6 @@
         min-width: 40px !important;
     }
     
-    .plyr__volume input[type="range"] {
-        height: 3px !important;
-    }
-    
     /* Éléments de contrôle individuels - très petit mobile */
     .plyr__controls__item {
         margin: 0 1px !important;
@@ -2435,14 +2445,13 @@
         padding: 0 2px !important;
     }
     
-    /* Barre de progression - taille minimale pour très petit mobile */
-    .plyr__progress {
-        height: 3px !important;
+    .plyr--full-ui.plyr--video {
+        --plyr-range-track-height: 3px;
+        --plyr-range-thumb-height: 10px;
     }
-    
-    .plyr__progress__buffer,
-    .plyr__progress__played {
-        height: 3px !important;
+    .plyr__progress__buffer {
+        height: var(--plyr-range-track-height, 5px) !important;
+        margin-top: calc(var(--plyr-range-track-height, 5px) / 2 * -1) !important;
     }
     
     /* Tooltip - taille minimale pour très petit mobile */

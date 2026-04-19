@@ -2,7 +2,9 @@
     'lesson',
     'course',
     'lessonProgress' => null,
-    'isMobile' => false
+    'isMobile' => false,
+    /** null = suivre config video.autoplay_on_load */
+    'autoplay' => null,
 ])
 
 @php
@@ -128,6 +130,10 @@
         $hlsManifestUrl = (string) $lesson->hls_manifest_url;
     }
     $useHls = $hlsManifestUrl !== '' && $isInternalVideo;
+
+    $autoplayOnLoad = $autoplay !== null
+        ? (bool) $autoplay
+        : (bool) config('video.autoplay_on_load', true);
     
 @endphp
 
@@ -270,9 +276,9 @@
         @if(!empty($internalVideoUrl) && trim($internalVideoUrl) !== '')
         {{-- HLS multi-débits (hls.js) + repli MP4 progressif --}}
         @if($useHls)
-        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="{{ $playerPreload }}" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;" data-hls-url="{{ $hlsManifestUrl }}" data-fallback-src="{{ $internalVideoUrl }}"></video>
+        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="{{ $playerPreload }}" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;" data-hls-url="{{ $hlsManifestUrl }}" data-fallback-src="{{ $internalVideoUrl }}"@if($autoplayOnLoad) autoplay @endif></video>
         @else
-        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="{{ $playerPreload }}" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;">
+        <video id="{{ $playerId }}" class="plyr-player-video" playsinline controls preload="{{ $playerPreload }}" controlsList="nodownload" style="width: 100%; height: 100%; margin: 0; padding: 0;"@if($autoplayOnLoad) autoplay @endif>
             <source src="{{ $internalVideoUrl }}" type="{{ $videoMimeType }}">
             Votre navigateur ne supporte pas la lecture vidéo.
         </video>
@@ -384,6 +390,7 @@
         let lastVideoTime = 0; // Temps de la vidéo lors de la dernière mise à jour
         let hasStarted = false;
         let hasRestoredPosition = false; // Indique si la position a été restaurée
+        const autoplayOnLoad = {{ $autoplayOnLoad ? 'true' : 'false' }};
         
     if (!window.Plyr) {
         console.error('Plyr library not loaded');
@@ -526,10 +533,10 @@
                 const hlsUrl = playerElement.getAttribute('data-hls-url');
                 const fb = playerElement.getAttribute('data-fallback-src');
                 if (hlsUrl && typeof window.herimeAttachHlsToVideo === 'function') {
-                    await window.herimeAttachHlsToVideo(playerElement, hlsUrl, fb, @json($videoMimeType));
+                    await window.herimeAttachHlsToVideo(playerElement, hlsUrl, fb, @json($videoMimeType), { deferUntilInteraction: {{ $autoplayOnLoad ? 'false' : 'true' }} });
                 } else if (!hlsUrl && typeof window.adjustVideoPreloadForConnection === 'function') {
                     window.adjustVideoPreloadForConnection(playerElement, @json($playerPreload));
-                    @if($playerPreload !== 'none')
+                    @if($playerPreload !== 'none' || $autoplayOnLoad)
                     try { playerElement.load(); } catch (e) {}
                     @endif
                 }
@@ -1093,6 +1100,27 @@
                     });
                 }
             });
+        }
+
+        if (autoplayOnLoad && player) {
+            let herimeAutoplayDone = false;
+            function herimeTryAutoplayPlayback() {
+                if (herimeAutoplayDone || !player) {
+                    return;
+                }
+                herimeAutoplayDone = true;
+                const pr = player.play();
+                if (pr !== undefined && typeof pr.then === 'function') {
+                    pr.catch(function() {
+                        try {
+                            player.muted = true;
+                            player.play().catch(function() {});
+                        } catch (e) {}
+                    });
+                }
+            }
+            const herimeAutoplayDelayMs = savedTime > 0 ? 1200 : 400;
+            setTimeout(herimeTryAutoplayPlayback, herimeAutoplayDelayMs);
         }
         
         return player;

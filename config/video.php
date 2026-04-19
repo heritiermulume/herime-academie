@@ -72,6 +72,14 @@ return [
     'hls_defer_until_interaction' => env('VIDEO_HLS_DEFER_UNTIL_INTERACTION', true),
 
     /*
+    | Lecture automatique au chargement de la page (espace apprentissage / leçon Plyr).
+    | Les navigateurs bloquent souvent la lecture avec son sans geste utilisateur : en cas d’échec,
+    | le lecteur retente en muet (l’utilisateur réactive le son d’un clic).
+    | Désactivez sur la fiche cours (aperçu) via :autoplay="false" sur le composant.
+    */
+    'autoplay_on_load' => env('VIDEO_AUTOPLAY_ON_LOAD', true),
+
+    /*
     | Historique : le streaming vidéo passe par BinaryFileResponse (Range natif). Clé conservée pour
     | ne pas casser les .env existants ; ignorée par le code.
     */

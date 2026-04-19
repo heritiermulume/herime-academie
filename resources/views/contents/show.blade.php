@@ -4723,7 +4723,7 @@ button.mobile-price-slider__btn--download i,
                                         $previewLesson->is_preview = true;
                                     @endphp
                                     <div class="preview-player-wrapper active" data-preview-id="0">
-                                    <x-plyr-player :lesson="$previewLesson" :course="$course" :isMobile="false" />
+                                    <x-plyr-player :lesson="$previewLesson" :course="$course" :isMobile="false" :autoplay="false" />
                                     </div>
                                 @elseif($course->video_preview_url)
                                     <div class="preview-player-wrapper active" data-preview-id="0">
