@@ -267,6 +267,11 @@ class DownloadController extends Controller
             },
         ]);
 
+        // Aucune leçon : le ZIP serait vide (README/index puis suppression). Passer directement au reçu côté appelant.
+        if (! $course->sections->some(fn ($section) => $section->lessons->isNotEmpty())) {
+            return null;
+        }
+
         // Créer un fichier ZIP temporaire
         $zipFileName = 'cours-'.$course->slug.'-'.now()->format('Y-m-d').'.zip';
         $zipPath = storage_path('app/temp/'.$zipFileName);
@@ -368,8 +373,9 @@ class DownloadController extends Controller
             return back()->with('error', 'Fichier non disponible sur le site.');
         }
 
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
         $fileName = 'Leçon '.$lesson->sort_order.' - '.$this->sanitizeFileName($lesson->title);
-        if ($extension) {
+        if ($extension !== '') {
             $fileName .= '.'.$extension;
         }
 
@@ -463,12 +469,12 @@ class DownloadController extends Controller
         $content .= '='.str_repeat('=', strlen($course->title))."\n\n";
 
         $content .= "Description:\n";
-        $content .= $course->description."\n\n";
+        $content .= ($course->description ?? '')."\n\n";
 
-        $content .= 'Prestataire: '.$course->provider->name."\n";
-        $content .= 'Durée: '.$course->duration." minutes\n";
-        $content .= 'Niveau: '.ucfirst($course->level)."\n";
-        $content .= 'Catégorie: '.$course->category->name."\n\n";
+        $content .= 'Prestataire: '.($course->provider?->name ?? '—')."\n";
+        $content .= 'Durée: '.($course->duration ?? 0)." minutes\n";
+        $content .= 'Niveau: '.ucfirst((string) ($course->level ?? ''))."\n";
+        $content .= 'Catégorie: '.($course->category?->name ?? '—')."\n\n";
 
         $content .= "STRUCTURE DU COURS:\n";
         $content .= str_repeat('-', 20)."\n\n";
@@ -485,7 +491,7 @@ class DownloadController extends Controller
                 if ($lesson->description) {
                     $content .= '    '.$lesson->description."\n";
                 }
-                $content .= '    Type: '.ucfirst($lesson->type)."\n";
+                $content .= '    Type: '.ucfirst((string) ($lesson->type ?? ''))."\n";
                 $content .= '    Durée: '.$lesson->duration." minutes\n\n";
             }
         }
@@ -637,14 +643,14 @@ class DownloadController extends Controller
 <body>
     <div class="header">
         <h1>'.htmlspecialchars($course->title).'</h1>
-        <p><strong>Prestataire:</strong> '.htmlspecialchars($course->provider->name).'</p>
-        <p><strong>Durée:</strong> '.$course->duration.' minutes</p>
-        <p><strong>Niveau:</strong> '.ucfirst($course->level).'</p>
+        <p><strong>Prestataire:</strong> '.htmlspecialchars($course->provider?->name ?? '—').'</p>
+        <p><strong>Durée:</strong> '.($course->duration ?? 0).' minutes</p>
+        <p><strong>Niveau:</strong> '.ucfirst((string) ($course->level ?? '')).'</p>
     </div>
     
     <div class="description">
         <h2>Description</h2>
-        <p>'.nl2br(htmlspecialchars($course->description)).'</p>
+        <p>'.nl2br(htmlspecialchars((string) ($course->description ?? ''))).'</p>
     </div>
     
     <div class="content">
@@ -661,7 +667,7 @@ class DownloadController extends Controller
             foreach ($section->lessons as $lesson) {
                 $html .= '<div class="lesson">
                     <h4>Leçon '.$lesson->sort_order.': '.htmlspecialchars($lesson->title).'</h4>
-                    <span class="lesson-type">'.ucfirst($lesson->type).'</span>
+                    <span class="lesson-type">'.ucfirst((string) ($lesson->type ?? '')).'</span>
                     <span> - '.$lesson->duration.' minutes</span>';
 
                 if ($lesson->description) {
