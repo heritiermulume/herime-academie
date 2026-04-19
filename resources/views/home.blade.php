@@ -70,23 +70,23 @@
                         $homeModalBtnUrl = trim((string) ($homeModalAnnouncement->button_url ?? ''));
                     @endphp
                     @if($homeModalBtnText !== '')
-                        <div class="mt-4 d-grid gap-2 d-sm-flex">
+                        <div class="mt-4 home-marketing-modal__actions d-flex flex-wrap gap-2 justify-content-end">
                             @if($homeModalBtnUrl !== '')
-                                <a href="{{ $homeModalBtnUrl }}" class="btn btn-primary btn-lg">
+                                <a href="{{ $homeModalBtnUrl }}" class="btn btn-primary btn-sm home-marketing-modal__btn">
                                     {{ $homeModalBtnText }}
                                 </a>
                             @else
-                                <button type="button" class="btn btn-primary btn-lg" data-bs-dismiss="modal">
+                                <button type="button" class="btn btn-primary btn-sm home-marketing-modal__btn" data-bs-dismiss="modal">
                                     {{ $homeModalBtnText }}
                                 </button>
                             @endif
-                            <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">
+                            <button type="button" class="btn btn-outline-secondary btn-sm home-marketing-modal__btn" data-bs-dismiss="modal">
                                 Fermer
                             </button>
                         </div>
                     @else
                         <div class="mt-4">
-                            <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">
+                            <button type="button" class="btn btn-primary btn-sm home-marketing-modal__btn" data-bs-dismiss="modal">
                                 J’ai compris
                             </button>
                         </div>
@@ -105,6 +105,31 @@
 }
 .home-marketing-modal__body {
     line-height: 1.55;
+}
+
+/* Boutons modale annonce : compacts pour ne pas dépasser du modal */
+#homeMarketingAnnouncementModal .home-marketing-modal__actions {
+    max-width: 100%;
+}
+#homeMarketingAnnouncementModal .home-marketing-modal__btn {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    padding: 0.35rem 0.75rem;
+    max-width: min(100%, 12rem);
+    white-space: normal;
+    text-align: center;
+    word-break: break-word;
+}
+@media (max-width: 576px) {
+    #homeMarketingAnnouncementModal .home-marketing-modal__actions {
+        justify-content: stretch !important;
+    }
+    #homeMarketingAnnouncementModal .home-marketing-modal__btn {
+        max-width: 100%;
+        flex: 1 1 calc(50% - 0.25rem);
+        min-width: 0;
+    }
 }
 
 /* Prévenir le débordement horizontal sur mobile */
