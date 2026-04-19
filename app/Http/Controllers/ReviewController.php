@@ -4,13 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\Review;
-use App\Models\CourseDownload;
-use App\Models\Order;
+use App\Services\ContentRatingReminderService;
+use App\Services\ReviewEligibilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ReviewController extends Controller
 {
+    public function __construct(
+        protected ReviewEligibilityService $reviewEligibility
+    ) {}
+
     /**
      * Store a new review or update an existing one
      */
@@ -24,72 +28,10 @@ class ReviewController extends Controller
 
         $user = Auth::user();
 
-        // Vérifier les conditions selon le type de contenu
-        $canReview = false;
-        $errorMessage = '';
-
-        // Programme en présentiel : pas de restriction (pas besoin d'achat/inscription)
-        if ($course->is_in_person_program ?? false) {
-            $canReview = true;
-        } elseif ($course->is_downloadable) {
-            // Contenu téléchargeable
-            if ($course->is_free) {
-                // Téléchargeable gratuit : avoir téléchargé au moins une fois
-                $hasDownloaded = CourseDownload::where('content_id', $course->id)
-                    ->where('user_id', $user->id)
-                    ->exists();
-                
-                if ($hasDownloaded) {
-                    $canReview = true;
-                } else {
-                    $errorMessage = 'Vous devez avoir téléchargé ce contenu au moins une fois pour pouvoir le noter.';
-                }
-            } else {
-                // Téléchargeable payant : avoir payé
-                $hasPurchased = Order::where('user_id', $user->id)
-                    ->whereIn('status', ['paid', 'completed'])
-                    ->whereHas('orderItems', function ($query) use ($course) {
-                        $query->where('content_id', $course->id);
-                    })
-                    ->exists();
-                
-                if ($hasPurchased) {
-                    $canReview = true;
-                } else {
-                    $errorMessage = 'Vous devez avoir acheté ce contenu pour pouvoir le noter.';
-                }
-            }
-        } else {
-            // Contenu non téléchargeable
-            if ($course->is_free) {
-                // Non téléchargeable gratuit : être inscrit
-                $isEnrolled = $course->isEnrolledBy($user->id);
-                
-                if ($isEnrolled) {
-                    $canReview = true;
-                } else {
-                    $errorMessage = 'Vous devez être inscrit à ce contenu pour pouvoir le noter.';
-                }
-            } else {
-                // Non téléchargeable payant : avoir payé
-                $hasPurchased = Order::where('user_id', $user->id)
-                    ->whereIn('status', ['paid', 'completed'])
-                    ->whereHas('orderItems', function ($query) use ($course) {
-                        $query->where('content_id', $course->id);
-                    })
-                    ->exists();
-                
-                if ($hasPurchased) {
-                    $canReview = true;
-                } else {
-                    $errorMessage = 'Vous devez avoir acheté ce contenu pour pouvoir le noter.';
-                }
-            }
-        }
-
-        if (!$canReview) {
+        $eligibility = $this->reviewEligibility->evaluate($user, $course);
+        if (! $eligibility['can_review']) {
             return redirect()->route('contents.show', $course)
-                ->with('error', $errorMessage);
+                ->with('error', $eligibility['message']);
         }
 
         // Valider les données
@@ -111,6 +53,9 @@ class ReviewController extends Controller
                 'is_approved' => true, // Approuver automatiquement après modification
             ]);
 
+            ContentRatingReminderService::forgetForUserAndContent($user->id, $course->id);
+            $request->session()->forget('pending_content_rating_course_id');
+
             return redirect()->route('contents.show', $course)
                 ->with('success', 'Votre avis a été mis à jour avec succès.');
         } else {
@@ -122,6 +67,9 @@ class ReviewController extends Controller
                 'comment' => $validated['comment'] ?? null,
                 'is_approved' => true, // Approuver automatiquement
             ]);
+
+            ContentRatingReminderService::forgetForUserAndContent($user->id, $course->id);
+            $request->session()->forget('pending_content_rating_course_id');
 
             return redirect()->route('contents.show', $course)
                 ->with('success', 'Votre avis a été publié avec succès.');

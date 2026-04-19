@@ -63,6 +63,10 @@ return [
         // Si true, désactive la validation stricte du token SSO
         // La validation locale sera utilisée même si l'API SSO est disponible
         'skip_strict_validation' => env('SSO_SKIP_STRICT_VALIDATION', false),
+        // Validation automatique du token à chaque requête web (GET inclus), hors routes exclues
+        'validate_on_page_load' => env('SSO_VALIDATE_ON_PAGE_LOAD', true),
+        // Si pas de token en session mais SSO activé : déconnecter (sinon laisser passer les sessions locales)
+        'strict_validation' => env('SSO_STRICT_VALIDATION', false),
     ],
 
     'whatsapp' => [

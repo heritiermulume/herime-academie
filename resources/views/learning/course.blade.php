@@ -387,20 +387,37 @@
     color: #94a3b8;
 }
 
-.player-shell {
+/* 16:9 fixe sauf vidéo hébergée (.player-shell--video-adaptive) : ratio recalculé au chargement (JS) */
+.player-shell:not(.player-shell--video-adaptive) {
     position: relative;
     border-radius: 18px;
     overflow: hidden;
     border: 1px solid rgba(148, 163, 184, 0.18);
     background: #040913;
     margin-bottom: clamp(0.75rem, 0.6rem + 0.6vw, 1.2rem);
-    /* Fixer le ratio 16:9 - la hauteur sera calculée automatiquement */
     aspect-ratio: 16 / 9 !important;
     width: 100% !important;
     height: auto !important;
 }
 
-.player-shell .ratio {
+.player-shell--video-adaptive {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: #040913;
+    margin-bottom: clamp(0.75rem, 0.6rem + 0.6vw, 1.2rem);
+    width: 100% !important;
+    margin-left: auto;
+    margin-right: auto;
+    min-height: 200px;
+    aspect-ratio: 16 / 9;
+    max-height: 85vh;
+    height: auto;
+}
+
+.player-shell .ratio,
+.player-shell .player-shell__media {
     width: 100% !important;
     height: 100% !important;
     position: absolute !important;
@@ -409,7 +426,6 @@
     right: 0 !important;
     bottom: 0 !important;
     padding-bottom: 0 !important; /* Désactiver le padding-bottom du ratio Bootstrap */
-    /* Le ratio est géré par le parent .player-shell */
 }
 
 /* S'assurer que les lecteurs vidéo remplissent le conteneur sans changer sa taille */
@@ -435,6 +451,7 @@
 .player-shell .d-flex.align-items-center.justify-content-center,
 .player-shell .d-flex.flex-column.align-items-center.justify-content-center,
 .player-shell .ratio > .d-flex.flex-column.align-items-center.justify-content-center,
+.player-shell .player-shell__media > .d-flex.flex-column.align-items-center.justify-content-center,
 .player-shell .bg-dark.d-flex {
     position: absolute !important;
     top: 0 !important;
@@ -840,11 +857,15 @@
         gap: 1rem;
     }
 
-    .player-shell {
+    .player-shell:not(.player-shell--video-adaptive) {
         margin-bottom: 1rem;
         aspect-ratio: 16 / 9 !important;
         width: 100% !important;
         height: auto !important;
+    }
+
+    .player-shell--video-adaptive {
+        max-height: 80vh;
     }
     
     /* S'assurer que les vidéos s'adaptent sur mobile */
@@ -1209,15 +1230,16 @@
         border-radius: 18px;
     }
 
-    .player-shell .ratio {
+    .player-shell .ratio,
+    .player-shell .player-shell__media {
         position: absolute !important;
         width: 100% !important;
         height: 100% !important;
         padding-bottom: 0 !important;
     }
     
-    /* S'assurer que le conteneur garde le ratio 16:9 sur tablette */
-    .player-shell {
+    /* S'assurer que le conteneur garde le ratio 16:9 sur tablette (sauf shell adaptatif) */
+    .player-shell:not(.player-shell--video-adaptive) {
         aspect-ratio: 16 / 9 !important;
         width: 100% !important;
         height: auto !important;
@@ -1917,89 +1939,64 @@
     }
 }
 
-/* Styles pour le lecteur Plyr (tous les écrans) */
-/* Styles de base pour desktop et mobile */
-.plyr__menu__container {
-    font-size: 0.5rem !important;
-    min-width: 90px !important;
-    max-width: 120px !important;
-    padding: 0.2rem 0 !important;
-    background-color: #001a33 !important; /* Bleu très sombre */
+/* Menu Plyr (vitesse, qualité) — espace apprentissage : lisible, pas en micro-texte */
+.learning-player-card .plyr__menu__container {
+    font-size: 0.875rem !important;
+    min-width: 11rem !important;
+    max-width: min(18rem, 92vw) !important;
+    padding: 0.35rem 0 !important;
+    background-color: #001a33 !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    border-radius: 4px !important;
+    border-radius: 8px !important;
 }
 
-.plyr__menu__container .plyr__control {
-    padding: 0.2rem 0.4rem !important;
+.learning-player-card .plyr__menu__container .plyr__control {
+    padding: 0.45rem 0.75rem !important;
     margin: 0 !important;
-    font-size: 0.5rem !important;
-    line-height: 1.2 !important;
+    font-size: 0.875rem !important;
+    line-height: 1.35 !important;
     min-height: auto !important;
     height: auto !important;
 }
 
-.plyr__menu__container .plyr__control[role="menuitem"],
-.plyr__menu__container .plyr__control[role="menuitemradio"] {
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitem"],
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"] {
     color: #ffffff !important;
     background-color: transparent !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-.plyr__menu__container .plyr__control[role="menuitem"]:last-child,
-.plyr__menu__container .plyr__control[role="menuitemradio"]:last-child {
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitem"]:last-child,
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"]:last-child {
     border-bottom: none !important;
 }
 
-.plyr__menu__container .plyr__control[role="menuitem"]:hover,
-.plyr__menu__container .plyr__control[role="menuitem"]:focus,
-.plyr__menu__container .plyr__control[role="menuitemradio"]:hover,
-.plyr__menu__container .plyr__control[role="menuitemradio"]:focus {
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitem"]:hover,
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitem"]:focus,
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"]:hover,
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"]:focus {
     background-color: rgba(255, 204, 51, 0.25) !important;
     color: #ffcc33 !important;
 }
 
-.plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"] {
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"] {
     background-color: rgba(255, 204, 51, 0.35) !important;
     color: #ffcc33 !important;
     font-weight: 600 !important;
 }
 
-/* Labels dans le menu */
-.plyr__menu__container .plyr__control span {
+.learning-player-card .plyr__menu__container .plyr__control span {
     color: inherit !important;
-    font-size: 0.5rem !important;
-}
-
-/* Options de vitesse (4x, 2x, 1.75x, etc.) - taille ultra réduite */
-.plyr__menu__container .plyr__control[role="menuitemradio"] span,
-.plyr__menu__container .plyr__control[role="menuitem"] span {
-    font-size: 0.45rem !important;
-    line-height: 1.1 !important;
+    font-size: 0.875rem !important;
+    line-height: 1.35 !important;
     white-space: nowrap !important;
-    letter-spacing: -0.3px !important; /* Réduire l'espacement entre les lettres */
-    padding: 0 !important;
-    margin: 0 !important;
+    letter-spacing: normal !important;
+    transform: none !important;
 }
 
-/* Cibler spécifiquement les options de vitesse (qui contiennent "x" ou des nombres décimaux) */
-.plyr__menu__container .plyr__control[role="menuitemradio"] span:not(:empty),
-.plyr__menu__container .plyr__control[role="menuitem"] span:not(:empty) {
-    font-size: 0.4rem !important;
-    transform: scale(0.85) !important; /* Réduire encore plus via scale */
-}
-
-/* Réduire drastiquement la taille des options de vitesse (4x, 2x, 1.75x, etc.) */
-.plyr__menu__container .plyr__control[role="menuitemradio"] span,
-.plyr__menu__container .plyr__control[role="menuitem"] span {
-    font-size: 0.45rem !important;
-    line-height: 1.2 !important;
-    white-space: nowrap !important;
-}
-
-/* Options de vitesse spécifiquement - taille ultra réduite */
-.plyr__menu__container .plyr__control span:contains('x'),
-.plyr__menu__container .plyr__control[aria-label*='x'] span {
-    font-size: 0.4rem !important;
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"] span,
+.learning-player-card .plyr__menu__container .plyr__control[role="menuitem"] span {
+    font-size: 0.9rem !important;
 }
 
 /* Tooltips en français - forcer via CSS si possible */
@@ -2191,56 +2188,18 @@
         font-size: 35px !important;
         line-height: 1 !important;
     }
-    /* Réduire la taille des items de settings sur mobile */
-    .plyr__menu__container {
-        font-size: 0.5rem !important;
-        min-width: 90px !important;
-        max-width: 120px !important;
-        padding: 0.2rem 0 !important;
-        background-color: #001a33 !important; /* Bleu très sombre */
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 4px !important;
+    /* Menu paramètres / vitesse : rester lisible (ne pas réécraser avec des 0.5rem) */
+    .learning-player-card .plyr__menu__container {
+        min-width: 10rem !important;
+        max-width: min(17rem, 92vw) !important;
     }
-    
-    .plyr__menu__container .plyr__control {
-        padding: 0.2rem 0.4rem !important;
-        margin: 0 !important;
-        font-size: 0.5rem !important;
-        line-height: 1.2 !important;
-        min-height: auto !important;
-        height: auto !important;
+    .learning-player-card .plyr__menu__container .plyr__control {
+        font-size: 0.8rem !important;
+        padding: 0.4rem 0.65rem !important;
     }
-    
-    .plyr__menu__container .plyr__control[role="menuitem"],
-    .plyr__menu__container .plyr__control[role="menuitemradio"] {
-        color: #ffffff !important;
-        background-color: transparent !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-    
-    .plyr__menu__container .plyr__control[role="menuitem"]:last-child,
-    .plyr__menu__container .plyr__control[role="menuitemradio"]:last-child {
-        border-bottom: none !important;
-    }
-    
-    .plyr__menu__container .plyr__control[role="menuitem"]:hover,
-    .plyr__menu__container .plyr__control[role="menuitem"]:focus,
-    .plyr__menu__container .plyr__control[role="menuitemradio"]:hover,
-    .plyr__menu__container .plyr__control[role="menuitemradio"]:focus {
-        background-color: rgba(255, 204, 51, 0.25) !important;
-        color: #ffcc33 !important;
-    }
-    
-    .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"] {
-        background-color: rgba(255, 204, 51, 0.35) !important;
-        color: #ffcc33 !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Labels dans le menu */
-    .plyr__menu__container .plyr__control span {
-        color: inherit !important;
-        font-size: 0.5rem !important;
+    .learning-player-card .plyr__menu__container .plyr__control span,
+    .learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"] span {
+        font-size: 0.82rem !important;
     }
     
     /* Bouton settings */
@@ -2269,9 +2228,11 @@
     }
     
     .player-shell.plyr-mobile-fullscreen .ratio,
+    .player-shell.plyr-mobile-fullscreen .player-shell__media,
     .player-shell.plyr-mobile-fullscreen .plyr-player-wrapper,
     .player-shell.plyr-mobile-fullscreen .plyr,
     .player-shell:has(.plyr.plyr--fullscreen) .ratio,
+    .player-shell:has(.plyr.plyr--fullscreen) .player-shell__media,
     .player-shell:has(.plyr.plyr--fullscreen) .plyr-player-wrapper,
     .player-shell:has(.plyr.plyr--fullscreen) .plyr {
         position: absolute !important;
@@ -2328,33 +2289,9 @@
         padding: 3px 5px !important;
     }
     
-    /* Réduire encore plus sur tablette - taille de police réduite pour les paramètres */
-    .plyr__menu__container {
-        font-size: 0.5rem !important; /* Taille réduite pour mobile */
-        min-width: 70px !important;
-        max-width: 95px !important;
-        padding: 0.1rem 0 !important;
-    }
-    
-    .plyr__menu__container .plyr__control {
-        padding: 0.2rem 0.35rem !important;
-        font-size: 0.5rem !important; /* Taille réduite pour mobile */
-        line-height: 1.1 !important;
-        min-height: 22px !important;
-    }
-    
-    .plyr__menu__container .plyr__control span {
-        font-size: 0.5rem !important; /* Taille réduite pour mobile */
-        white-space: nowrap !important;
-    }
-    
-    /* Options de vitesse - taille ultra réduite sur tablette */
-    .plyr__menu__container .plyr__control[role="menuitemradio"] span,
-    .plyr__menu__container .plyr__control[role="menuitem"] span {
-        font-size: 0.4rem !important;
-        transform: scale(0.85) !important; /* Réduire encore plus via scale */
-        letter-spacing: -0.3px !important;
-        padding: 0 !important;
+    .learning-player-card .plyr__menu__container .plyr__control span,
+    .learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"] span {
+        font-size: 0.78rem !important;
     }
     
     /* Bouton play central - rond sur tablette */
@@ -2503,66 +2440,13 @@
         line-height: 1 !important;
     }
     
-    /* Items de settings sur très petit mobile - taille ultra réduite pour mobile */
-    .plyr__menu__container {
-        font-size: 0.45rem !important; /* Taille ultra réduite pour mobile */
-        min-width: 60px !important;
-        max-width: 85px !important;
-        padding: 0.1rem 0 !important;
-        background-color: #001a33 !important; /* Bleu très sombre */
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        border-radius: 4px !important;
+    .learning-player-card .plyr__menu__container {
+        min-width: 9.5rem !important;
+        max-width: min(16rem, 94vw) !important;
     }
-    
-    .plyr__menu__container .plyr__control {
-        padding: 0.15rem 0.3rem !important;
-        margin: 0 !important;
-        font-size: 0.45rem !important; /* Taille ultra réduite pour mobile */
-        line-height: 1.1 !important;
-        min-height: 20px !important;
-        height: auto !important;
-    }
-    
-    .plyr__menu__container .plyr__control[role="menuitem"],
-    .plyr__menu__container .plyr__control[role="menuitemradio"] {
-        color: #ffffff !important;
-        background-color: transparent !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
-    }
-    
-    .plyr__menu__container .plyr__control[role="menuitem"]:last-child,
-    .plyr__menu__container .plyr__control[role="menuitemradio"]:last-child {
-        border-bottom: none !important;
-    }
-    
-    .plyr__menu__container .plyr__control[role="menuitem"]:hover,
-    .plyr__menu__container .plyr__control[role="menuitem"]:focus,
-    .plyr__menu__container .plyr__control[role="menuitemradio"]:hover,
-    .plyr__menu__container .plyr__control[role="menuitemradio"]:focus {
-        background-color: rgba(255, 204, 51, 0.3) !important;
-        color: #ffcc33 !important;
-    }
-    
-    .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"] {
-        background-color: rgba(255, 204, 51, 0.4) !important;
-        color: #ffcc33 !important;
-        font-weight: 600 !important;
-    }
-    
-    .plyr__menu__container .plyr__control span {
-        color: inherit !important;
-        font-size: 0.45rem !important; /* Taille ultra réduite pour mobile */
-        white-space: nowrap !important;
-    }
-    
-    /* Options de vitesse - taille ultra réduite sur très petit mobile */
-    .plyr__menu__container .plyr__control[role="menuitemradio"] span,
-    .plyr__menu__container .plyr__control[role="menuitem"] span {
-        font-size: 0.35rem !important; /* Taille encore plus petite pour les vitesses */
-        transform: scale(0.8) !important; /* Réduire drastiquement via scale */
-        letter-spacing: -0.5px !important; /* Réduire l'espacement entre les lettres */
-        padding: 0 !important;
-        margin: 0 !important;
+    .learning-player-card .plyr__menu__container .plyr__control span,
+    .learning-player-card .plyr__menu__container .plyr__control[role="menuitemradio"] span {
+        font-size: 0.75rem !important;
     }
     
     /* Bouton play central - rond sur très petit mobile */
@@ -3436,8 +3320,11 @@
                     </div>
                 </div>
 
-                    <div class="player-shell mb-4">
-                                <div class="ratio ratio-16x9">
+                    @php
+                        $learningAdaptivePlayerShell = isset($activeLesson) && $activeLesson->usesAdaptivePlayerShell();
+                    @endphp
+                    <div class="player-shell mb-4{{ $learningAdaptivePlayerShell ? ' player-shell--video-adaptive' : '' }}">
+                                <div class="{{ $learningAdaptivePlayerShell ? 'player-shell__media' : 'ratio ratio-16x9' }}">
                             @if(isset($activeLesson))
                                     @switch($activeLesson->type)
                                         @case('video')
@@ -3499,16 +3386,17 @@
                             {{-- Action Buttons (Center/Right) --}}
                             <div class="d-flex gap-2 flex-wrap">
                             @if(isset($activeLesson))
-                                <button class="btn btn-success d-flex align-items-center gap-2"
-                                        @if($progress['completed_lessons_ids']->contains($activeLesson->id))
-                                            disabled
-                                    @else
-                                            onclick="markAsComplete({{ $activeLesson->id }})"
-                                    @endif
-                                >
-                                    <i class="fas fa-check"></i>
-                                        <span>{{ $progress['completed_lessons_ids']->contains($activeLesson->id) ? 'Leçon terminée' : 'Marquer comme terminé' }}</span>
+                                @if($progress['completed_lessons_ids']->contains($activeLesson->id))
+                                    <button type="button" class="btn btn-success d-flex align-items-center gap-2" disabled>
+                                        <i class="fas fa-check"></i>
+                                        <span>Leçon terminée</span>
                                     </button>
+                                @else
+                                    <button type="button" class="btn btn-success d-flex align-items-center gap-2" onclick="markAsComplete({{ $activeLesson->id }})">
+                                        <i class="fas fa-check"></i>
+                                        <span>Marquer comme terminé</span>
+                                    </button>
+                                @endif
                             @endif
                         </div>
                         </div>
@@ -4013,6 +3901,89 @@ document.addEventListener('DOMContentLoaded', () => {
             requestAnimationFrame(() => progressFill.style.width = width);
         });
     }
+
+    (function setupAdaptiveLearningPlayerShell() {
+        const shell = document.querySelector('.learning-player-card .player-shell--video-adaptive');
+        if (!shell) {
+            return;
+        }
+        const video = shell.querySelector('video.plyr-player-video');
+        if (!video) {
+            return;
+        }
+
+        const card = shell.closest('.learning-player-card');
+        let raf = 0;
+        let resizeTimer = null;
+
+        const isShellFullscreen = () =>
+            shell.classList.contains('plyr-mobile-fullscreen')
+            || !!shell.querySelector('.plyr.plyr--fullscreen');
+
+        const layout = () => {
+            if (raf) {
+                cancelAnimationFrame(raf);
+            }
+            raf = requestAnimationFrame(() => {
+                raf = 0;
+                if (isShellFullscreen()) {
+                    shell.style.removeProperty('aspect-ratio');
+                    shell.style.removeProperty('height');
+                    shell.style.removeProperty('max-width');
+
+                    return;
+                }
+                const vw = (card?.getBoundingClientRect().width ?? shell.getBoundingClientRect().width) || 0;
+                const maxH = window.innerHeight * 0.85;
+                const w = video.videoWidth;
+                const h = video.videoHeight;
+                if (!vw || !w || !h) {
+                    return;
+                }
+                const ar = w / h;
+                let boxW = vw;
+                let boxH = boxW / ar;
+                if (boxH > maxH) {
+                    boxH = maxH;
+                    boxW = boxH * ar;
+                }
+                shell.style.setProperty('aspect-ratio', 'auto');
+                shell.style.width = '100%';
+                shell.style.maxWidth = `${Math.round(boxW)}px`;
+                shell.style.height = `${Math.round(boxH)}px`;
+            });
+        };
+
+        video.addEventListener('loadedmetadata', layout);
+        video.addEventListener('loadeddata', layout);
+        video.addEventListener('canplay', layout);
+        video.addEventListener('playing', layout);
+        video.addEventListener('herime:video-display-size', layout);
+
+        if (video.readyState >= 1) {
+            layout();
+        }
+
+        window.addEventListener('resize', () => {
+            if (resizeTimer) {
+                clearTimeout(resizeTimer);
+            }
+            resizeTimer = setTimeout(layout, 120);
+        });
+        document.addEventListener('fullscreenchange', layout);
+        document.addEventListener('webkitfullscreenchange', layout);
+        window.addEventListener('orientationchange', () => setTimeout(layout, 280));
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                layout();
+            }
+        });
+
+        if (card && typeof ResizeObserver !== 'undefined') {
+            const ro = new ResizeObserver(() => layout());
+            ro.observe(card);
+        }
+    })();
 });
 
 function markAsComplete(lessonId) {

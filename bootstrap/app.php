@@ -5,6 +5,7 @@ use App\Jobs\ProcessSubscriptionRenewalsJob;
 use App\Jobs\RunMonerooPaymentMaintenanceJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,25 +18,62 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule): void {
-        $schedule->call(function (): void {
-            \App\Models\VideoAccessToken::cleanupExpired();
-        })->hourly()->name('youtube-cleanup-tokens');
+        /**
+         * Exécute une tâche planifiée sans faire échouer les autres en cas d’exception.
+         * withoutOverlapping() évite les doubles exécutions si un cron déborde (nécessite un driver cache fiable).
+         */
+        $runSafe = static function (string $name, \Closure $task): void {
+            try {
+                $task();
+            } catch (\Throwable $e) {
+                Log::error('Tâche planifiée en échec', [
+                    'task' => $name,
+                    'message' => $e->getMessage(),
+                    'exception' => $e::class,
+                ]);
+            }
+        };
 
-        $schedule->call(function (): void {
-            app(\App\Services\VideoSecurityService::class)->monitorSuspiciousActivity();
-        })->everySixHours()->name('youtube-monitor-activity');
+        // Mutex (minutes) : assez long pour couvrir l’exécution normale + marge, court assez pour ne pas bloquer des heures si un worker reste coincé.
+        $schedule->call(function () use ($runSafe): void {
+            $runSafe('youtube-cleanup-tokens', static fn () => \App\Models\VideoAccessToken::cleanupExpired());
+        })
+            ->hourly()
+            ->name('youtube-cleanup-tokens')
+            ->withoutOverlapping(20);
+
+        $schedule->call(function () use ($runSafe): void {
+            $runSafe('youtube-monitor-activity', static fn () => app(\App\Services\VideoSecurityService::class)->monitorSuspiciousActivity());
+        })
+            ->everySixHours()
+            ->name('youtube-monitor-activity')
+            ->withoutOverlapping(90);
 
         $schedule->job(new ProcessSubscriptionRenewalsJob)
             ->hourly()
-            ->name('subscriptions-process-renewals');
+            ->name('subscriptions-process-renewals')
+            ->withoutOverlapping(45);
 
-        $schedule->call(function (): void {
-            Bus::dispatchSync(new RunMonerooPaymentMaintenanceJob);
-        })->everyTenMinutes()->name('moneroo-payment-maintenance');
+        $schedule->call(function () use ($runSafe): void {
+            $runSafe('moneroo-payment-maintenance', static function (): void {
+                Bus::dispatchSync(new RunMonerooPaymentMaintenanceJob);
+            });
+        })
+            ->everyTenMinutes()
+            ->name('moneroo-payment-maintenance')
+            ->withoutOverlapping(7);
 
         $schedule->job(new CleanTemporaryUploadsJob)
             ->hourly()
-            ->name('clean-temporary-uploads');
+            ->name('clean-temporary-uploads')
+            ->withoutOverlapping(45);
+
+        $schedule->call(function () use ($runSafe): void {
+            $runSafe('content-rating-reminders', static fn () => app(\App\Services\ContentRatingReminderService::class)->sendDueReminders());
+        })
+            ->twiceDaily(9, 21)
+            ->name('content-rating-reminders')
+            ->withoutOverlapping(40);
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
@@ -53,9 +91,8 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleUploadErrors::class,
             // Capturer le contexte marketing (utm/funnel) et le persister
             \App\Http\Middleware\CaptureMarketingContext::class,
-            // Valider le token SSO à chaque chargement de page pour les utilisateurs authentifiés
-            // DÉSACTIVÉ TEMPORAIREMENT pour éviter les boucles de redirection
-            // \App\Http\Middleware\ValidateSSOOnPageLoad::class,
+            // Valider le token SSO sur chaque requête web authentifiée (configurable, voir config/services.php)
+            \App\Http\Middleware\ValidateSSOOnPageLoad::class,
             // Tracker les visiteurs du site
             \App\Http\Middleware\TrackVisitors::class,
         ]);

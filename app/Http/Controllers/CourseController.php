@@ -553,28 +553,14 @@ class CourseController extends Controller
                 }
             }
 
-            // Calculer si l'utilisateur peut noter selon les nouvelles règles
+            // Calculer si l'utilisateur peut noter (mêmes règles que ReviewController)
             $canReview = false;
             if ($userId) {
                 try {
-                    if ($course->is_downloadable) {
-                        // Contenu téléchargeable
-                        if ($course->is_free) {
-                            // Téléchargeable gratuit : avoir téléchargé au moins une fois
-                            $canReview = $hasDownloaded;
-                        } else {
-                            // Téléchargeable payant : avoir payé
-                            $canReview = $hasPurchased;
-                        }
-                    } else {
-                        // Contenu non téléchargeable
-                        if ($course->is_free) {
-                            // Non téléchargeable gratuit : être inscrit
-                            $canReview = $isEnrolled;
-                        } else {
-                            // Non téléchargeable payant : avoir payé
-                            $canReview = $hasPurchased;
-                        }
+                    $reviewUser = \App\Models\User::find($userId);
+                    if ($reviewUser) {
+                        $canReview = app(\App\Services\ReviewEligibilityService::class)
+                            ->evaluate($reviewUser, $course)['can_review'];
                     }
                 } catch (\Throwable $e) {
                     \Log::error('Erreur lors de la vérification de canReview', [

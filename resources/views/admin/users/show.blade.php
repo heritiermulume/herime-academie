@@ -219,6 +219,7 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                         <th>Statut</th>
                                         <th>Progression</th>
                                         <th>Type d'accès</th>
+                                        <th class="text-center">Notation</th>
                                         <th class="text-center">Actions</th>
                                     </tr>
                                 </thead>
@@ -334,6 +335,18 @@ Consultez les informations synchronisées et l'activité de {{ $user->name ?? "l
                                                     <span class="badge bg-success">
                                                         <i class="fas fa-gift me-1"></i>Gratuit
                                                     </span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @if(!$isPackage && $course && $course->id)
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-primary btn-action-small"
+                                                            onclick="copyAdminRatingInviteLink({{ $course->id }})"
+                                                            title="Générer et copier le lien de notation (30 j.)">
+                                                        <i class="fas fa-link"></i>
+                                                    </button>
+                                                @else
+                                                    <span class="text-muted">—</span>
                                                 @endif
                                             </td>
                                             <td class="text-center">
@@ -899,6 +912,34 @@ async function openDeleteModal(userId) {
         
         document.body.appendChild(form);
         form.submit();
+    }
+}
+
+async function copyAdminRatingInviteLink(contentId) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    try {
+        const res = await fetch('{{ route('admin.users.rating-invite-link', $user) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken || '',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ content_id: contentId }),
+        });
+        if (! res.ok) {
+            throw new Error(await res.text());
+        }
+        const data = await res.json();
+        if (! data.url) {
+            throw new Error('Réponse invalide');
+        }
+        await navigator.clipboard.writeText(data.url);
+        alert('Lien de notation copié dans le presse-papiers (valable 30 jours).');
+    } catch (e) {
+        console.error(e);
+        alert('Impossible de générer le lien. Réessayez ou ouvrez la console pour le détail.');
     }
 }
 

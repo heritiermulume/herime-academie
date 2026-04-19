@@ -209,4 +209,104 @@ class CourseLesson extends Model
 
         return route('files.serve', ['type' => 'lessons', 'path' => $p]);
     }
+
+    /**
+     * Détection alignée sur le lecteur Plyr (YouTube via champ ou URL dans content_url).
+     */
+    public function isYoutubePlyrSource(): bool
+    {
+        $videoId = trim((string) ($this->youtube_video_id ?? ''));
+        $isYoutube = $videoId !== '';
+
+        if (! $isYoutube && ! empty($this->content_url)) {
+            $contentUrl = (string) $this->content_url;
+            if (str_contains($contentUrl, 'youtube.com') || str_contains($contentUrl, 'youtu.be')) {
+                if (str_contains($contentUrl, 'youtube.com/watch')) {
+                    parse_str((string) parse_url($contentUrl, PHP_URL_QUERY), $query);
+                    $videoId = trim((string) ($query['v'] ?? ''));
+                } elseif (str_contains($contentUrl, 'youtu.be/')) {
+                    $videoId = trim((string) basename((string) parse_url($contentUrl, PHP_URL_PATH)));
+                } elseif (str_contains($contentUrl, 'youtube.com/embed/')) {
+                    $videoId = trim((string) basename((string) parse_url($contentUrl, PHP_URL_PATH)));
+                }
+                $isYoutube = $videoId !== '';
+            }
+        }
+
+        return $isYoutube;
+    }
+
+    /**
+     * URL de lecture HTML5 (fichier hébergé), hors YouTube / Vimeo URL seule.
+     * Même logique que {@see resources/views/components/plyr-player.blade.php}.
+     */
+    public function resolveInternalPlyrVideoUrl(): ?string
+    {
+        if ($this->isYoutubePlyrSource()) {
+            return null;
+        }
+
+        $internalVideoUrl = null;
+        $filePath = $this->getRawOriginal('file_path') ?? $this->file_path ?? null;
+        $contentUrlRaw = $this->getRawOriginal('content_url') ?? $this->content_url ?? null;
+
+        if (! empty($filePath) && trim((string) $filePath) !== '') {
+            try {
+                $fileUrl = $this->file_url;
+                if (! empty($fileUrl) && trim($fileUrl) !== '') {
+                    $internalVideoUrl = $fileUrl;
+                } elseif (! filter_var($filePath, FILTER_VALIDATE_URL)) {
+                    $internalVideoUrl = route('files.serve', ['type' => 'lessons', 'path' => ltrim((string) $filePath, '/')]);
+                } else {
+                    $internalVideoUrl = (string) $filePath;
+                }
+            } catch (\Throwable) {
+                if (! filter_var($filePath, FILTER_VALIDATE_URL)) {
+                    $internalVideoUrl = route('files.serve', ['type' => 'lessons', 'path' => ltrim((string) $filePath, '/')]);
+                } else {
+                    $internalVideoUrl = (string) $filePath;
+                }
+            }
+        } elseif (! empty($contentUrlRaw) && trim((string) $contentUrlRaw) !== '') {
+            $isExternalUrl = filter_var($contentUrlRaw, FILTER_VALIDATE_URL)
+                && str_contains((string) $contentUrlRaw, 'vimeo.com');
+
+            if (! $isExternalUrl) {
+                try {
+                    $contentFileUrl = $this->content_file_url;
+                    if (! empty($contentFileUrl) && trim($contentFileUrl) !== '') {
+                        $internalVideoUrl = $contentFileUrl;
+                    } elseif (! filter_var($contentUrlRaw, FILTER_VALIDATE_URL)) {
+                        $internalVideoUrl = route('files.serve', ['type' => 'lessons', 'path' => ltrim((string) $contentUrlRaw, '/')]);
+                    } else {
+                        $internalVideoUrl = (string) $contentUrlRaw;
+                    }
+                } catch (\Throwable) {
+                    if (! filter_var($contentUrlRaw, FILTER_VALIDATE_URL)) {
+                        $internalVideoUrl = route('files.serve', ['type' => 'lessons', 'path' => ltrim((string) $contentUrlRaw, '/')]);
+                    } else {
+                        $internalVideoUrl = (string) $contentUrlRaw;
+                    }
+                }
+            }
+        }
+
+        if ($internalVideoUrl === null || trim($internalVideoUrl) === '') {
+            return null;
+        }
+
+        return $internalVideoUrl;
+    }
+
+    /**
+     * Coque du lecteur sur la page apprentissage : ratio piloté par la vidéo (MP4/HLS), pas l’iframe YouTube 16:9.
+     */
+    public function usesAdaptivePlayerShell(): bool
+    {
+        if (($this->type ?? '') !== 'video') {
+            return false;
+        }
+
+        return $this->resolveInternalPlyrVideoUrl() !== null;
+    }
 }

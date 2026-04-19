@@ -34,12 +34,21 @@ class ValidateSSOOnPageLoad
     {
         try {
             // Ne valider que si SSO est activé
-            if (!config('services.sso.enabled', true)) {
+            if (! config('services.sso.enabled', true)) {
+                return $next($request);
+            }
+
+            if (! config('services.sso.validate_on_page_load', true)) {
                 return $next($request);
             }
 
             // Si la validation stricte est désactivée, laisser passer
             if (config('services.sso.skip_strict_validation', false)) {
+                return $next($request);
+            }
+
+            // Chemins techniques (pas de boucle SSO / pas de session complète)
+            if ($request->is('livewire/*', 'broadcasting/auth', 'sanctum/csrf-cookie', 'horizon/*', 'telescope/*', 'up', '_debugbar/*')) {
                 return $next($request);
             }
 
@@ -52,22 +61,23 @@ class ValidateSSOOnPageLoad
                 'register',
                 'password.request',
                 'password.reset',
+                'password.email',
+                'password.store',
+                'verification.notice',
+                'verification.verify',
+                'verification.send',
+                'password.confirm',
+                'profile.redirect',
             ];
 
             $routeName = $request->route()?->getName();
-            if (in_array($routeName, $excludedRoutes)) {
+            if ($routeName && in_array($routeName, $excludedRoutes, true)) {
                 return $next($request);
             }
 
             $chunkRoutes = ['admin.uploads.chunk', 'provider.uploads.chunk'];
-            if (in_array($routeName, $chunkRoutes, true) || $request->ajax() || $request->wantsJson()) {
+            if ($routeName && in_array($routeName, $chunkRoutes, true)) {
                 return $next($request);
-            }
-
-            // Exclure les routes API et AJAX si nécessaire
-            if ($request->expectsJson() && !$request->is('api/*')) {
-                // Pour les requêtes AJAX, on peut être plus permissif
-                // ou valider quand même selon vos besoins
             }
 
             // Si l'utilisateur n'est pas authentifié, laisser passer
@@ -101,7 +111,7 @@ class ValidateSSOOnPageLoad
                 // Si SSO est activé mais pas de token, on peut considérer que c'est un problème
                 // Cependant, pour éviter de bloquer les utilisateurs, on laisse passer
                 // Vous pouvez activer la validation stricte si nécessaire
-                $strictValidation = config('services.sso.strict_validation', false);
+                $strictValidation = (bool) config('services.sso.strict_validation', false);
                 
                 if ($strictValidation) {
                     // En mode strict, si SSO est activé, un token est requis
@@ -130,6 +140,10 @@ class ValidateSSOOnPageLoad
                         'route' => $routeName,
                         'user_email' => $localValidation['email'] ?? 'unknown',
                     ]);
+                    if ($request->hasSession()) {
+                        $request->session()->put('sso_page_last_ok_at', time());
+                    }
+
                     return $next($request);
                 }
             } catch (\Throwable $localException) {
@@ -143,6 +157,10 @@ class ValidateSSOOnPageLoad
             try {
                 $isValid = $this->ssoService->checkToken($ssoToken);
                 if ($isValid) {
+                    if ($request->hasSession()) {
+                        $request->session()->put('sso_page_last_ok_at', time());
+                    }
+
                     return $next($request);
                 }
             } catch (\Throwable $e) {
@@ -151,6 +169,7 @@ class ValidateSSOOnPageLoad
                     'user_id' => $user->id ?? null,
                     'error' => $e->getMessage(),
                 ]);
+
                 return $next($request);
             }
 
@@ -164,8 +183,6 @@ class ValidateSSOOnPageLoad
 
             // Token vraiment invalide, déconnecter l'utilisateur
             return $this->handleInvalidToken($request);
-
-            return $next($request);
         } catch (\Throwable $e) {
             // En cas d'erreur dans le middleware, logger et laisser passer pour ne pas bloquer l'application
             Log::error('SSO page load validation middleware error', [

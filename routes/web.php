@@ -25,6 +25,8 @@ use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProviderApplicationController;
 use App\Http\Controllers\ProviderController;
+use App\Http\Controllers\RatingInviteController;
+use App\Http\Controllers\RatingPendingController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\SSOCallbackController;
 use App\Http\Controllers\SubscriptionController;
@@ -101,6 +103,11 @@ Route::get('/test-categories-view', function () {
 Route::get('/contents', [CourseController::class, 'index'])->name('contents.index');
 Route::get('/packs', [ContentPackageController::class, 'index'])->name('packs.index');
 Route::get('/packs/{package}', [ContentPackageController::class, 'show'])->name('packs.show');
+
+Route::get('/invite/notation/{course:slug}', [RatingInviteController::class, 'show'])
+    ->middleware('signed')
+    ->name('rating.invite');
+
 Route::get('/contents/{course:slug}', [CourseController::class, 'show'])->name('contents.show');
 Route::get('/contents/{course:slug}/reviews', [CourseController::class, 'reviews'])->name('contents.reviews');
 Route::get('/contents/{course:slug}/preview-data', [CourseController::class, 'previewData'])->name('contents.preview-data');
@@ -291,6 +298,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/contents/{course:slug}/review', [ReviewController::class, 'destroy'])
         ->middleware('sso.validate')
         ->name('contents.review.destroy');
+    Route::post('/rating/pending/dismiss', [RatingPendingController::class, 'dismiss'])
+        ->middleware('sso.validate')
+        ->name('rating.pending.dismiss');
 
     // Provider Application routes (accessible to authenticated users) - avec validation SSO pour les POST
     Route::middleware('auth')->group(function () {
@@ -444,6 +454,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/users/{user}/grant-course-access', [AdminController::class, 'grantCourseAccess'])
             ->middleware('sso.validate')
             ->name('users.grant-course-access');
+        Route::post('/users/{user}/rating-invite-link', [AdminController::class, 'generateUserRatingInviteLink'])
+            ->middleware('sso.validate')
+            ->name('users.rating-invite-link');
         Route::delete('/users/{user}/contents/{course}/revoke-access', [AdminController::class, 'revokeCourseAccess'])
             ->middleware('sso.validate')
             ->name('users.revoke-content-access');

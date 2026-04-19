@@ -5,6 +5,8 @@
     'isMobile' => false,
     /** null = suivre config video.autoplay_on_load */
     'autoplay' => null,
+    /** Masquer la barre de contrôles au repos (Plyr hideControls) — désactiver en modal / aperçu pour éviter le clignotement */
+    'hideControlsOnIdle' => true,
 ])
 
 @php
@@ -134,6 +136,8 @@
     $autoplayOnLoad = $autoplay !== null
         ? (bool) $autoplay
         : (bool) config('video.autoplay_on_load', true);
+
+    $hideControlsOnIdle = filter_var($hideControlsOnIdle, FILTER_VALIDATE_BOOLEAN);
     
 @endphp
 
@@ -417,7 +421,7 @@
             keyboard: { focused: true, global: false },
             tooltips: { controls: true, seek: true },
             clickToPlay: true,
-            hideControls: true,
+            hideControls: @json($hideControlsOnIdle),
             resetOnEnd: false,
             disableContextMenu: true,
             download: false,

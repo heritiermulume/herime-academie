@@ -7,10 +7,16 @@ use App\Listeners\GenerateCertificateOnCourseCompletion;
 use App\Models\Announcement;
 use App\Models\ContentPackage;
 use App\Models\Course;
+use App\Models\CourseDownload;
 use App\Models\CourseLesson;
+use App\Models\Enrollment;
+use App\Models\Review;
 use App\Observers\ContentPackageCoverVideoHlsObserver;
+use App\Observers\CourseDownloadObserver;
 use App\Observers\CourseLessonObserver;
 use App\Observers\CourseVideoPreviewHlsObserver;
+use App\Observers\EnrollmentObserver;
+use App\Services\ReviewEligibilityService;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
@@ -61,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.app', function ($view) {
             if (request()->is('admin') || request()->is('admin/*')) {
                 $view->with('globalAnnouncement', null);
+                $view->with('pendingRatingModal', null);
 
                 return;
             }
@@ -71,6 +78,30 @@ class AppServiceProvider extends ServiceProvider
                 ->first();
 
             $view->with('globalAnnouncement', $announcement);
+
+            $pendingRatingModal = null;
+            if (auth()->check() && session()->has('pending_content_rating_course_id')) {
+                $courseId = (int) session('pending_content_rating_course_id');
+                $course = Course::query()->whereKey($courseId)->first();
+                if ($course) {
+                    $authUser = auth()->user();
+                    $userReview = Review::where('user_id', $authUser->id)
+                        ->where('content_id', $course->id)
+                        ->first();
+                    if ($userReview) {
+                        session()->forget('pending_content_rating_course_id');
+                    } else {
+                        $eligibility = app(ReviewEligibilityService::class)->evaluate($authUser, $course);
+                        $pendingRatingModal = [
+                            'course' => $course,
+                            'can_review' => $eligibility['can_review'],
+                            'message' => $eligibility['message'],
+                            'user_review' => null,
+                        ];
+                    }
+                }
+            }
+            $view->with('pendingRatingModal', $pendingRatingModal);
         });
 
         // Rien à faire - FileHelper est accessible directement dans les vues via \App\Helpers\FileHelper
@@ -84,6 +115,8 @@ class AppServiceProvider extends ServiceProvider
         CourseLesson::observe(CourseLessonObserver::class);
         Course::observe(CourseVideoPreviewHlsObserver::class);
         ContentPackage::observe(ContentPackageCoverVideoHlsObserver::class);
+        Enrollment::observe(EnrollmentObserver::class);
+        CourseDownload::observe(CourseDownloadObserver::class);
 
         Course::saved(function (Course $course) {
             if (! $course->wasRecentlyCreated && ! $course->wasChanged([

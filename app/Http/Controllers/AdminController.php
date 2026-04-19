@@ -1440,6 +1440,22 @@ class AdminController extends Controller
     }
 
     /**
+     * Génère un lien signé pour que l'utilisateur ouvre la modale de notation (envoi manuel).
+     */
+    public function generateUserRatingInviteLink(Request $request, User $user): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'content_id' => 'required|exists:contents,id',
+        ]);
+
+        $course = Course::query()->whereKey((int) $request->input('content_id'))->firstOrFail();
+
+        $url = app(\App\Services\ContentRatingReminderService::class)->makeSignedInviteUrl($user, $course);
+
+        return response()->json(['url' => $url]);
+    }
+
+    /**
      * Enlever complètement l'accès à un cours pour un utilisateur.
      *
      * Cette méthode supprime toutes les données de liaison entre l'utilisateur

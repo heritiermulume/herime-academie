@@ -5107,6 +5107,8 @@
 
     @stack('modals')
 
+    @include('components.content-rating-modal', ['pendingRatingModal' => $pendingRatingModal ?? null])
+
     <!-- Modal moderne de confirmation pour les actions -->
     <div class="modal fade" id="bulkActionConfirmModal" tabindex="-1" aria-labelledby="bulkActionConfirmModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">

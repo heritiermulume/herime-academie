@@ -1,6 +1,23 @@
 import Hls from 'hls.js';
 import { getNetworkPlaybackProfile } from './video-preload';
 
+/**
+ * Permet à l’UI (ex. shell d’aspect sur la page apprentissage) de recalculer la taille
+ * une fois les dimensions intrinsèques disponibles (souvent après HLS / premier segment).
+ */
+function dispatchVideoDisplaySize(videoEl) {
+    if (!videoEl || typeof CustomEvent === 'undefined') {
+        return;
+    }
+    requestAnimationFrame(() => {
+        try {
+            videoEl.dispatchEvent(new CustomEvent('herime:video-display-size', { bubbles: true }));
+        } catch {
+            /* ignore */
+        }
+    });
+}
+
 function buildHlsConfig(profile) {
     const base = {
         capLevelToPlayerSize: true,
@@ -171,18 +188,22 @@ export function attachHlsToVideo(
         if (Hls.isSupported()) {
             const hls = new Hls(buildHlsConfig(profile));
             videoEl._herimeHls = hls;
+            const onVideoMeta = () => dispatchVideoDisplaySize(videoEl);
+            videoEl.addEventListener('loadedmetadata', onVideoMeta);
             hls.loadSource(hlsUrl);
             hls.attachMedia(videoEl);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 if (profile === 'slow' && hls.levels && hls.levels.length > 0) {
                     hls.startLevel = 0;
                 }
+                dispatchVideoDisplaySize(videoEl);
                 done();
             });
             hls.on(Hls.Events.ERROR, (_, data) => {
                 if (!data.fatal) {
                     return;
                 }
+                videoEl.removeEventListener('loadedmetadata', onVideoMeta);
                 hls.destroy();
                 videoEl._herimeHls = null;
                 if (fallbackSrc) {
@@ -194,6 +215,7 @@ export function attachHlsToVideo(
                     s.src = fallbackSrc;
                     s.type = fallbackMime;
                     videoEl.appendChild(s);
+                    videoEl.addEventListener('loadedmetadata', onVideoMeta, { once: true });
                     try {
                         videoEl.load();
                     } catch (e) {}
@@ -204,7 +226,9 @@ export function attachHlsToVideo(
         }
 
         if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+            videoEl.addEventListener('loadedmetadata', () => dispatchVideoDisplaySize(videoEl), { once: true });
             videoEl.src = hlsUrl;
+            dispatchVideoDisplaySize(videoEl);
             done();
             return;
         }
@@ -214,10 +238,12 @@ export function attachHlsToVideo(
             s.src = fallbackSrc;
             s.type = fallbackMime;
             videoEl.appendChild(s);
+            videoEl.addEventListener('loadedmetadata', () => dispatchVideoDisplaySize(videoEl), { once: true });
             try {
                 videoEl.load();
             } catch (e) {}
         }
+        dispatchVideoDisplaySize(videoEl);
         done();
     });
 }

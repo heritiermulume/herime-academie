@@ -716,6 +716,11 @@ body.has-global-announcement:has(.course-details-page) {
     display: none !important;
 }
 
+/* Modal aperçu : éviter le clignotement des contrôles (Plyr alterne hideControls + transitions pendant buffering) */
+#coursePreviewModal .plyr--video .plyr__controls {
+    transition: none !important;
+}
+
 /* Fixer la taille du conteneur vidéo pour qu'elle ne change pas */
 #previewVideoContainer {
     position: relative !important;
@@ -4723,7 +4728,7 @@ button.mobile-price-slider__btn--download i,
                                         $previewLesson->is_preview = true;
                                     @endphp
                                     <div class="preview-player-wrapper active" data-preview-id="0">
-                                    <x-plyr-player :lesson="$previewLesson" :course="$course" :isMobile="false" :autoplay="false" />
+                                    <x-plyr-player :lesson="$previewLesson" :course="$course" :isMobile="false" :autoplay="false" :hide-controls-on-idle="false" />
                                     </div>
                                 @elseif($course->video_preview_url)
                                     <div class="preview-player-wrapper active" data-preview-id="0">
@@ -5100,7 +5105,7 @@ function loadPreviewList() {
                                             keyboard: { focused: true, global: false },
                                             tooltips: { controls: true, seek: true },
                                             clickToPlay: true,
-                                            hideControls: true,
+                                            hideControls: false,
                                             resetOnEnd: false,
                                             disableContextMenu: true
                                         });
@@ -5280,7 +5285,7 @@ function initializePreviewPlayer(lessonId, youtubeId, isUnlisted) {
             keyboard: { focused: true, global: false },
             tooltips: { controls: true, seek: true },
             clickToPlay: true,
-            hideControls: true,
+            hideControls: false,
             resetOnEnd: false,
             disableContextMenu: true
         });
@@ -5434,7 +5439,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                         keyboard: { focused: true, global: false },
                                         tooltips: { controls: true, seek: true },
                                         clickToPlay: true,
-                                        hideControls: true,
+                                        hideControls: false,
                                         resetOnEnd: false,
                                         disableContextMenu: true
                                     });
@@ -5518,7 +5523,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                     keyboard: { focused: true, global: false },
                                     tooltips: { controls: true, seek: true },
                                     clickToPlay: true,
-                                    hideControls: true,
+                                    hideControls: false,
                                     resetOnEnd: false,
                                     disableContextMenu: true
                                 });
@@ -5575,7 +5580,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                 keyboard: { focused: true, global: false },
                                 tooltips: { controls: true, seek: true },
                                 clickToPlay: true,
-                                hideControls: true,
+                                hideControls: false,
                                 resetOnEnd: false,
                                 disableContextMenu: true
                             });
@@ -5717,7 +5722,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                                                 keyboard: { focused: true, global: false },
                                                 tooltips: { controls: true, seek: true },
                                                 clickToPlay: true,
-                                                hideControls: true,
+                                                hideControls: false,
                                                 resetOnEnd: false,
                                                 disableContextMenu: true
                                             });
@@ -5832,7 +5837,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 keyboard: { focused: true, global: false },
                                 tooltips: { controls: true, seek: true },
                                 clickToPlay: true,
-                                hideControls: true,
+                                hideControls: false,
                                 resetOnEnd: false,
                                 disableContextMenu: true
                             };
@@ -6075,6 +6080,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function disableContextMenuOnPlayers() {
         const players = document.querySelectorAll('.plyr-player-container');
         players.forEach(function(container) {
+            if (container.dataset.herimePreviewContextBound === '1') {
+                return;
+            }
+            container.dataset.herimePreviewContextBound = '1';
             // Désactiver le clic droit
             container.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
@@ -6110,22 +6119,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Appliquer immédiatement
     disableContextMenuOnPlayers();
     
-    // Observer les nouveaux lecteurs ajoutés dynamiquement
+    // Observer les nouveaux lecteurs (debounce : Plyr injecte beaucoup de nœuds d’un coup → évite rafales)
+    let modalContextMenuDebounce = null;
     const observer = new MutationObserver(function(mutations) {
+        let needsBind = false;
         mutations.forEach(function(mutation) {
             mutation.addedNodes.forEach(function(node) {
-                if (node.nodeType === 1) { // Element node
+                if (node.nodeType === 1) {
                     if (node.classList && node.classList.contains('plyr-player-container')) {
-                        disableContextMenuOnPlayers();
+                        needsBind = true;
                     } else if (node.querySelectorAll) {
-                        const newPlayers = node.querySelectorAll('.plyr-player-container');
-                        if (newPlayers.length > 0) {
-                            disableContextMenuOnPlayers();
+                        if (node.querySelectorAll('.plyr-player-container').length > 0) {
+                            needsBind = true;
                         }
                     }
                 }
             });
         });
+        if (!needsBind) {
+            return;
+        }
+        clearTimeout(modalContextMenuDebounce);
+        modalContextMenuDebounce = setTimeout(function() {
+            disableContextMenuOnPlayers();
+            modalContextMenuDebounce = null;
+        }, 200);
     });
     
     // Observer le modal pour les nouveaux lecteurs
@@ -6201,9 +6219,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewModal = document.getElementById('coursePreviewModal');
     if (previewModal) {
         previewModal.addEventListener('shown.bs.modal', function() {
-            setTimeout(updateAllPlyrTooltips, 200);
-            setTimeout(updateAllPlyrTooltips, 500);
-            setTimeout(updateAllPlyrTooltips, 1500);
+            setTimeout(updateAllPlyrTooltips, 600);
         });
     }
     
