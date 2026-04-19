@@ -4893,26 +4893,42 @@
             });
         }
 
-        // Fonction pour afficher les notifications
-        function showNotification(message, type) {
-            // Créer une notification toast
+        // Notifications : restent affichées jusqu’à fermeture par l’utilisateur (pas de disparition auto)
+        function showNotification(message, type = 'info') {
+            const cls = type === 'success' ? 'success'
+                : (type === 'error' || type === 'danger') ? 'danger'
+                : type === 'warning' ? 'warning'
+                : 'info';
+            const icon = type === 'success' ? 'check-circle'
+                : type === 'warning' ? 'exclamation-triangle'
+                : (type === 'error' || type === 'danger') ? 'exclamation-circle'
+                : 'info-circle';
             const notification = document.createElement('div');
-            notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
-            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-            notification.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
-                    ${message}
-                </div>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            // Supprimer la notification après 3 secondes
-            setTimeout(() => {
+            notification.className = `alert alert-${cls} alert-dismissible fade show position-fixed shadow`;
+            notification.setAttribute('role', 'alert');
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 10560; max-width: min(420px, calc(100vw - 2rem));';
+            const row = document.createElement('div');
+            row.className = 'd-flex align-items-start';
+            const iconEl = document.createElement('i');
+            iconEl.className = `fas fa-${icon} me-2 mt-1`;
+            const textWrap = document.createElement('div');
+            textWrap.className = 'small flex-grow-1';
+            textWrap.style.whiteSpace = 'pre-wrap';
+            textWrap.textContent = typeof message === 'string' ? message : String(message);
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'btn-close';
+            closeBtn.setAttribute('aria-label', 'Fermer');
+            closeBtn.addEventListener('click', function() {
                 notification.remove();
-            }, 3000);
+            });
+            row.appendChild(iconEl);
+            row.appendChild(textWrap);
+            notification.appendChild(row);
+            notification.appendChild(closeBtn);
+            document.body.appendChild(notification);
         }
+        window.showNotification = showNotification;
         
         /* Compteur à rebours pour les promotions */
         function initPromotionCountdowns() {

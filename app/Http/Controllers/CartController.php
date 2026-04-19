@@ -302,22 +302,19 @@ class CartController extends Controller
             ]);
         }
 
+        $passwordEmailSent = null;
         if ($result['plain_password']) {
             try {
                 Mail::to($result['user']->email)->send(
                     new GuestCheckoutPasswordMail($result['user'], $result['plain_password'])
                 );
+                $passwordEmailSent = true;
             } catch (\Throwable $e) {
-                \Log::error('Guest checkout: échec envoi mail mot de passe', [
+                \Log::error('Guest checkout: échec envoi mail mot de passe (le parcours continue)', [
                     'user_id' => $result['user']->id,
                     'message' => $e->getMessage(),
                 ]);
-                $result['user']->delete();
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Impossible d’envoyer l’e-mail avec votre mot de passe pour le moment. Réessayez ou contactez le support.',
-                ], 500);
+                $passwordEmailSent = false;
             }
         }
 
@@ -325,12 +322,17 @@ class CartController extends Controller
         $request->session()->regenerate();
         $this->syncSessionToDatabase();
 
+        $message = $result['plain_password']
+            ? ($passwordEmailSent === false
+                ? 'Compte créé. L’envoi du mot de passe par e-mail a échoué : utilisez « Mot de passe oublié » sur compte.herime.com ou contactez le support.'
+                : 'Un compte a été créé. Consultez votre boîte e-mail pour votre mot de passe temporaire.')
+            : 'Compte reconnu. Poursuite du paiement…';
+
         return response()->json([
             'success' => true,
-            'message' => $result['plain_password']
-                ? 'Un compte a été créé. Consultez votre boîte e-mail pour votre mot de passe temporaire.'
-                : 'Compte reconnu. Poursuite du paiement…',
+            'message' => $message,
             'csrf_token' => csrf_token(),
+            'password_email_sent' => $passwordEmailSent,
         ]);
     }
 

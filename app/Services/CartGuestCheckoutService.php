@@ -65,8 +65,15 @@ class CartGuestCheckoutService
             ]);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'Duplicate')) {
+                $sqlMsg = $e->getMessage();
+                if (str_contains($sqlMsg, 'phone') || str_contains($sqlMsg, 'Phone')) {
+                    throw ValidationException::withMessages([
+                        'phone' => ['Ce numéro de téléphone est déjà utilisé. Connectez-vous ou indiquez un autre numéro.'],
+                    ]);
+                }
+
                 throw ValidationException::withMessages([
-                    'email' => ['Un compte existe déjà avec cette adresse. Veuillez vérifier vos informations ou vous connecter.'],
+                    'email' => ['Cette adresse e-mail est déjà utilisée. Connectez-vous avec ce compte ou utilisez une autre adresse.'],
                 ]);
             }
             throw $e;

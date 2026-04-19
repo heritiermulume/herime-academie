@@ -276,11 +276,14 @@
                             @endphp
                             <div class="guest-checkout-form">
                                 <label class="guest-checkout-label" for="guestCheckoutName">Nom complet</label>
-                                <input type="text" id="guestCheckoutName" class="guest-checkout-input" name="guest_name" autocomplete="name" required maxlength="255" placeholder="Jean Dupont">
+                                <input type="text" id="guestCheckoutName" class="guest-checkout-input" name="guest_name" autocomplete="name" required maxlength="255" placeholder="Votre nom complet" aria-describedby="guestCheckoutNameError">
+                                <div id="guestCheckoutNameError" class="guest-checkout-field-error" role="alert" hidden></div>
                                 <label class="guest-checkout-label" for="guestCheckoutEmail">Adresse e-mail</label>
-                                <input type="email" id="guestCheckoutEmail" class="guest-checkout-input" name="guest_email" autocomplete="email" required maxlength="255" placeholder="vous@exemple.com">
+                                <input type="email" id="guestCheckoutEmail" class="guest-checkout-input" name="guest_email" autocomplete="email" required maxlength="255" placeholder="vous@email.com" aria-describedby="guestCheckoutEmailError">
+                                <div id="guestCheckoutEmailError" class="guest-checkout-field-error" role="alert" hidden></div>
                                 <label class="guest-checkout-label" for="guestCheckoutPhone">Téléphone</label>
-                                <input type="tel" id="guestCheckoutPhone" class="guest-checkout-input" name="guest_phone" autocomplete="tel" required maxlength="20" placeholder="+243 …">
+                                <input type="tel" id="guestCheckoutPhone" class="guest-checkout-input" name="guest_phone" autocomplete="tel" required maxlength="20" placeholder="+243 …" aria-describedby="guestCheckoutPhoneError">
+                                <div id="guestCheckoutPhoneError" class="guest-checkout-field-error" role="alert" hidden></div>
                                 <button type="button" class="checkout-btn" id="guestCheckoutSubmitBtn" data-can-checkout="true">
                                     <i class="fas fa-credit-card"></i>
                                     Procéder au paiement
@@ -924,6 +927,24 @@
 .guest-checkout-sso-hint__link:hover {
     color: var(--herime-blue-hover, #002147) !important;
     text-decoration: underline;
+}
+.guest-checkout-input.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+}
+.guest-checkout-field-error {
+    font-size: 13px;
+    color: #b02a37;
+    margin: -6px 0 10px 0;
+    line-height: 1.35;
+    min-height: 0;
+}
+.guest-checkout-field-error[hidden],
+.guest-checkout-field-error:empty {
+    display: none !important;
+}
+.guest-checkout-field-error:not([hidden]):not(:empty) {
+    display: block;
 }
 .checkout-btn:disabled,
 .checkout-btn[data-can-checkout="false"] {
@@ -2532,38 +2553,36 @@ function addToCartFromCartPage(courseId) {
     });
 }
 
-// Fonction utilitaire pour afficher les notifications
+// Fonction utilitaire pour afficher les notifications (persistantes jusqu’à fermeture si layout absent)
 function showNotification(message, type = 'info') {
-    // Vérifier si la fonction globale existe
-    if (typeof window.showNotification === 'function') {
+    if (typeof window.showNotification === 'function' && window.showNotification !== showNotification) {
         window.showNotification(message, type);
         return;
     }
-    
-    // Fallback simple
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show`;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        min-width: 300px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    `;
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 5000);
+    const cls = type === 'success' ? 'success' : (type === 'error' || type === 'danger') ? 'danger' : type === 'warning' ? 'warning' : 'info';
+    const icon = type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : (type === 'error' || type === 'danger') ? 'exclamation-circle' : 'info-circle';
+    const el = document.createElement('div');
+    el.className = `alert alert-${cls} alert-dismissible fade show position-fixed shadow`;
+    el.setAttribute('role', 'alert');
+    el.style.cssText = 'top:20px;right:20px;z-index:10560;max-width:min(420px,calc(100vw - 2rem));';
+    const row = document.createElement('div');
+    row.className = 'd-flex align-items-start';
+    const ic = document.createElement('i');
+    ic.className = `fas fa-${icon} me-2 mt-1`;
+    const text = document.createElement('div');
+    text.className = 'small flex-grow-1';
+    text.style.whiteSpace = 'pre-wrap';
+    text.textContent = message;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'btn-close';
+    close.setAttribute('aria-label', 'Fermer');
+    close.addEventListener('click', () => el.remove());
+    row.appendChild(ic);
+    row.appendChild(text);
+    el.appendChild(row);
+    el.appendChild(close);
+    document.body.appendChild(el);
 }
 
 // Fonction pour mettre à jour le compteur du panier
@@ -3086,11 +3105,57 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function clearGuestCheckoutFieldErrors() {
+        [['guestCheckoutName', 'guestCheckoutNameError'], ['guestCheckoutEmail', 'guestCheckoutEmailError'], ['guestCheckoutPhone', 'guestCheckoutPhoneError']].forEach(([inputId, errId]) => {
+            const inp = document.getElementById(inputId);
+            if (inp) {
+                inp.classList.remove('is-invalid');
+            }
+            const fb = document.getElementById(errId);
+            if (fb) {
+                fb.textContent = '';
+                fb.hidden = true;
+            }
+        });
+    }
+    function applyGuestCheckoutFieldErrors(errors) {
+        if (!errors || typeof errors !== 'object') {
+            return null;
+        }
+        const map = [
+            { key: 'name', input: 'guestCheckoutName', feedback: 'guestCheckoutNameError' },
+            { key: 'email', input: 'guestCheckoutEmail', feedback: 'guestCheckoutEmailError' },
+            { key: 'phone', input: 'guestCheckoutPhone', feedback: 'guestCheckoutPhoneError' },
+        ];
+        let firstInput = null;
+        map.forEach(({ key, input, feedback }) => {
+            const msgs = errors[key];
+            if (!msgs) {
+                return;
+            }
+            const line = Array.isArray(msgs) ? msgs[0] : String(msgs);
+            const inputEl = document.getElementById(input);
+            const fbEl = document.getElementById(feedback);
+            if (inputEl && line) {
+                inputEl.classList.add('is-invalid');
+                if (!firstInput) {
+                    firstInput = inputEl;
+                }
+            }
+            if (fbEl && line) {
+                fbEl.textContent = line;
+                fbEl.hidden = false;
+            }
+        });
+        return firstInput;
+    }
+
     const guestCheckoutSubmitBtn = document.getElementById('guestCheckoutSubmitBtn');
     if (guestCheckoutSubmitBtn) {
         guestCheckoutSubmitBtn.addEventListener('click', async function(e) {
             e.preventDefault();
             e.stopPropagation();
+            clearGuestCheckoutFieldErrors();
             if (!canProceedToCheckout()) {
                 showNotification('Veuillez saisir un code promo valide ou décochez la case pour continuer', 'error');
                 return false;
@@ -3112,25 +3177,37 @@ document.addEventListener('DOMContentLoaded', function() {
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-CSRF-TOKEN': cartPageCsrfToken(),
                     },
-                    body: JSON.stringify({ name, email, phone, _token: '{{ csrf_token() }}' }),
+                    body: JSON.stringify({ name, email, phone, _token: cartPageCsrfToken() }),
                     credentials: 'same-origin',
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.success) {
                     let msg = data.message || 'Impossible de continuer.';
                     if (data.errors) {
-                        const firstKey = Object.keys(data.errors)[0];
+                        const firstEl = applyGuestCheckoutFieldErrors(data.errors);
+                        const keys = Object.keys(data.errors);
+                        const firstKey = keys[0];
                         const first = firstKey ? data.errors[firstKey] : null;
                         if (Array.isArray(first) && first[0]) {
                             msg = first[0];
                         }
+                        if (firstEl) {
+                            firstEl.focus({ preventScroll: false });
+                            try {
+                                firstEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            } catch (scrollErr) {}
+                        }
                     }
-                    throw new Error(msg);
+                    showNotification(msg, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                    return false;
                 }
+                const notifType = data.password_email_sent === false ? 'warning' : 'success';
                 if (data.message) {
-                    showNotification(data.message, 'success');
+                    showNotification(data.message, notifType);
                 }
                 if (data.csrf_token) {
                     cartPageSetCsrfToken(data.csrf_token);
