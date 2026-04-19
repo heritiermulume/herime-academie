@@ -10,8 +10,10 @@ use App\Models\ContentPackage;
 use App\Models\Course;
 use App\Services\CartGuestCheckoutService;
 use App\Services\ContentPackageRecommendationService;
+use App\Services\SSOService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 
@@ -246,7 +248,7 @@ class CartController extends Controller
     /**
      * Préparer le paiement pour un invité : associer ou créer un compte, connecter, synchroniser le panier.
      */
-    public function guestCheckoutPrepare(Request $request, CartGuestCheckoutService $guestCheckoutService)
+    public function guestCheckoutPrepare(Request $request, CartGuestCheckoutService $guestCheckoutService, SSOService $ssoService)
     {
         if (auth()->check()) {
             return response()->json([
@@ -258,7 +260,7 @@ class CartController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:40',
+            'phone' => 'required|string|max:20',
         ]);
 
         if (empty($this->getSessionCartItems())) {
@@ -280,6 +282,23 @@ class CartController extends Controller
                 'message' => 'Veuillez corriger les informations saisies.',
                 'errors' => $e->errors(),
             ], 422);
+        }
+
+        $sync = $ssoService->syncGuestCheckoutUser($result['user'], $result['plain_password']);
+        if (! $sync['ok']) {
+            if ($result['plain_password'] !== null) {
+                $result['user']->delete();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $sync['message'] ?? 'Synchronisation avec Compte Herime impossible.',
+                ], 422);
+            }
+
+            Log::warning('SSO guest sync failed for existing local user; continuing checkout', [
+                'user_id' => $result['user']->id,
+                'message' => $sync['message'] ?? null,
+            ]);
         }
 
         if ($result['plain_password']) {

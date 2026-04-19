@@ -248,6 +248,40 @@ class FileUploadService
     }
 
     /**
+     * Redimensionne une image déjà stockée sur le disque local (ex. après upload par chunks).
+     */
+    public function resizeStoredImageIfNeeded(string $path, ?int $maxWidth = 1920, int $quality = 85): void
+    {
+        if (! $maxWidth || ! class_exists(\Intervention\Image\Facades\Image::class)) {
+            return;
+        }
+
+        $disk = Storage::disk('local');
+        $cleanPath = $this->sanitizePath($path);
+
+        if (! $disk->exists($cleanPath)) {
+            return;
+        }
+
+        $fullPath = $disk->path($cleanPath);
+
+        try {
+            $image = \Intervention\Image\Facades\Image::make($fullPath);
+
+            if ($image->width() > $maxWidth) {
+                $image->resize($maxWidth, null, function ($constraint) {
+                    $constraint->aspectRatio();
+                    $constraint->upsize();
+                });
+            }
+
+            $image->save($fullPath, $quality);
+        } catch (\Throwable $e) {
+            \Log::warning('resizeStoredImageIfNeeded: '.$e->getMessage(), ['path' => $cleanPath]);
+        }
+    }
+
+    /**
      * Upload une vidéo
      *
      * @param  UploadedFile  $file  La vidéo à uploader

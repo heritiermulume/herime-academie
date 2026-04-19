@@ -15,6 +15,7 @@
 @endsection
 
 @section('admin-content')
+    @include('partials.upload-progress-modal')
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
                     <x-admin.search-panel
@@ -905,7 +906,7 @@
                 <h5 class="modal-title">Nouvelle annonce</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ route('admin.announcements.store') }}" enctype="multipart/form-data">
+            <form id="createAnnouncementForm" method="POST" action="{{ route('admin.announcements.store') }}">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -945,9 +946,11 @@
                     </div>
 
                     <div class="mb-3 d-none" id="create_announcement_image_row">
-                        <label for="create_announcement_image" class="form-label">Image (modale accueil) *</label>
-                        <input type="file" class="form-control" id="create_announcement_image" name="image" accept="image/jpeg,image/png,image/gif,image/webp">
-                        <small class="text-muted">Visuel affiché en haut de la modale sur la page d’accueil (JPEG, PNG, WebP ou GIF, 5&nbsp;Mo max).</small>
+                        @include('admin.announcements.partials.announcement-image-chunk-field', [
+                            'suffix' => 'create',
+                            'label' => 'Image (modale accueil)',
+                            'help' => 'Glissez-déposez une image ou cliquez pour parcourir. Affichée en haut de la modale sur la page d’accueil.',
+                        ])
                     </div>
                     
                     <div class="row">
@@ -991,7 +994,7 @@
                 <h5 class="modal-title">Modifier l'annonce</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="editAnnouncementForm" method="POST" enctype="multipart/form-data">
+            <form id="editAnnouncementForm" method="POST">
                 @csrf
                 @method('PUT')
                 <div class="modal-body">
@@ -1036,9 +1039,11 @@
                         <div class="mb-2" id="edit_announcement_image_preview_wrap" style="display: none;">
                             <img src="" alt="" id="edit_announcement_image_preview" class="img-fluid rounded border" style="max-height: 160px;">
                         </div>
-                        <label for="edit_announcement_image" class="form-label">Remplacer l’image</label>
-                        <input type="file" class="form-control" id="edit_announcement_image" name="image" accept="image/jpeg,image/png,image/gif,image/webp">
-                        <small class="text-muted">Obligatoire uniquement si aucune image n’est encore enregistrée.</small>
+                        @include('admin.announcements.partials.announcement-image-chunk-field', [
+                            'suffix' => 'edit',
+                            'label' => 'Remplacer l’image',
+                            'help' => 'Glissez-déposez une nouvelle image ou cliquez pour parcourir. Laissez vide pour conserver l’image actuelle.',
+                        ])
                     </div>
                     
                     <div class="row">
@@ -1071,6 +1076,7 @@
         </div>
     </div>
 </div>
+    @include('admin.announcements.partials.announcement-image-chunk-upload')
 @endsection
 
 @push('scripts')
@@ -1080,27 +1086,22 @@
 function syncCreateAnnouncementImageRow() {
     const typeEl = document.getElementById('type');
     const row = document.getElementById('create_announcement_image_row');
-    const input = document.getElementById('create_announcement_image');
     if (!typeEl || !row) return;
     const show = typeEl.value === 'home_modal';
     row.classList.toggle('d-none', !show);
-    if (input) {
-        input.required = show;
-        if (!show) input.value = '';
+    if (!show && typeof window.resetAnnouncementImageChunk === 'function') {
+        window.resetAnnouncementImageChunk('create');
     }
 }
 
 function syncEditAnnouncementImageRow() {
     const typeEl = document.getElementById('edit_type');
     const row = document.getElementById('edit_announcement_image_row');
-    const input = document.getElementById('edit_announcement_image');
     if (!typeEl || !row) return;
     const show = typeEl.value === 'home_modal';
     row.classList.toggle('d-none', !show);
-    if (input) {
-        const hasExisting = input.getAttribute('data-has-existing-image') === '1';
-        input.required = show && !hasExisting;
-        if (!show) input.value = '';
+    if (!show && typeof window.resetAnnouncementImageChunk === 'function') {
+        window.resetAnnouncementImageChunk('edit');
     }
 }
 
@@ -1268,7 +1269,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('type')?.addEventListener('change', syncCreateAnnouncementImageRow);
     document.getElementById('edit_type')?.addEventListener('change', syncEditAnnouncementImageRow);
-    document.getElementById('createAnnouncementModal')?.addEventListener('show.bs.modal', syncCreateAnnouncementImageRow);
+    document.getElementById('createAnnouncementModal')?.addEventListener('show.bs.modal', function() {
+        if (typeof window.resetAnnouncementImageChunk === 'function') {
+            window.resetAnnouncementImageChunk('create');
+        }
+        syncCreateAnnouncementImageRow();
+    });
 });
 
 function editAnnouncement(id) {
@@ -1286,11 +1292,8 @@ function editAnnouncement(id) {
             document.getElementById('edit_expires_at').value = data.expires_at ? data.expires_at.substring(0, 16) : '';
             document.getElementById('edit_is_active').checked = data.is_active || false;
 
-            const fileInput = document.getElementById('edit_announcement_image');
-            if (fileInput) {
-                fileInput.value = '';
-                const hasImg = !!(data.image && String(data.image).trim());
-                fileInput.setAttribute('data-has-existing-image', hasImg ? '1' : '0');
+            if (typeof window.resetAnnouncementImageChunk === 'function') {
+                window.resetAnnouncementImageChunk('edit');
             }
             const prevWrap = document.getElementById('edit_announcement_image_preview_wrap');
             const prevImg = document.getElementById('edit_announcement_image_preview');

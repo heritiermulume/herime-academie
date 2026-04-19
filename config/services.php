@@ -54,9 +54,11 @@ return [
 
     'sso' => [
         'enabled' => env('SSO_ENABLED', true),
-        'base_url' => env('SSO_BASE_URL', 'https://compte.herime.com'),
-        'secret' => env('SSO_SECRET'),
-        'timeout' => env('SSO_TIMEOUT', 10),
+        // URL publique de l’app Compte (sans slash final). Défaut production si absent du .env.
+        'base_url' => env('SSO_BASE_URL') ?: 'https://compte.herime.com',
+        // Obligatoire pour validate-token / provision-user ; pas de défaut dans le dépôt (variable d’environnement serveur).
+        'secret' => env('SSO_SECRET') ?: null,
+        'timeout' => (int) env('SSO_TIMEOUT', 10),
         // Si true, la déconnexion se fera uniquement localement sans passer par le SSO
         // Utile si le SSO ne redirige pas correctement après déconnexion
         'force_local_logout' => env('SSO_FORCE_LOCAL_LOGOUT', false),
@@ -67,6 +69,15 @@ return [
         'validate_on_page_load' => env('SSO_VALIDATE_ON_PAGE_LOAD', true),
         // Si pas de token en session mais SSO activé : déconnecter (sinon laisser passer les sessions locales)
         'strict_validation' => env('SSO_STRICT_VALIDATION', false),
+        // Panier invité : provision sur l’app Compte Herime (routes API Laravel, préfixe api).
+        // URL appelée : rtrim(base_url,'/').sync_user_path — ex. https://compte.herime.com/api/sso/provision-user (POST, Bearer secret).
+        // sync_user_url : optionnel ; URL absolue si elle ne se déduit pas de base + path.
+        'sync_guest_on_checkout' => filter_var(env('SSO_SYNC_GUEST_ON_CHECKOUT', true), FILTER_VALIDATE_BOOL),
+        'sync_user_path' => env('SSO_SYNC_USER_PATH') ?: '/api/sso/provision-user',
+        'sync_user_url' => env('SSO_SYNC_USER_URL') ?: null,
+        // Champ "source" pour provision-user. Par défaut : hôte de APP_URL (ex. academie.herime.com), sinon academie.herime.com.
+        'provision_source' => env('SSO_PROVISION_SOURCE')
+            ?: (parse_url((string) env('APP_URL', 'https://academie.herime.com'), PHP_URL_HOST) ?: 'academie.herime.com'),
     ],
 
     'whatsapp' => [

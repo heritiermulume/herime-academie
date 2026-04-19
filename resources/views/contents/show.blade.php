@@ -3951,7 +3951,29 @@ button.mobile-price-slider__btn--download i,
                             ->first();
                     }
                     $hasUserReview = $userReview !== null;
+                    $canSharePublicRateLink = $user && (
+                        $user->isAdmin()
+                        || ((int) ($course->provider_id ?? 0) === (int) $user->id)
+                    );
+                    $publicRatePageUrl = route('contents.rate', $course);
                 @endphp
+                @if($canSharePublicRateLink)
+                <div class="content-card mb-3 border border-2" style="border-color: rgba(0, 51, 102, 0.35) !important;">
+                    <h2 class="section-title-modern">
+                        <i class="fas fa-link"></i>
+                        Lien public pour demander une note
+                    </h2>
+                    <p class="text-muted small mb-3">Les apprenants ouvrent une page dédiée (sans passer par toute la fiche). Copiez l’URL ci-dessous pour la partager.</p>
+                    <label for="show-content-public-rate-url" class="form-label fw-semibold small">Adresse à copier</label>
+                    <div class="input-group input-group-sm flex-wrap flex-md-nowrap gap-2 gap-md-0 mb-2">
+                        <input type="text" class="form-control font-monospace small" id="show-content-public-rate-url" readonly value="{{ $publicRatePageUrl }}">
+                        <button type="button" class="btn btn-primary" id="show-content-public-rate-copy-btn" title="Copier le lien">
+                            <i class="fas fa-copy me-1"></i> Copier le lien
+                        </button>
+                    </div>
+                    <a href="{{ $publicRatePageUrl }}" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">Prévisualiser la page</a>
+                </div>
+                @endif
                 @if($user && (($canReview ?? false) || ($course->is_in_person_program ?? false)))
                 <div class="content-card">
                     <h2 class="section-title-modern">
@@ -6460,6 +6482,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 form.appendChild(methodInput);
                 document.body.appendChild(form);
                 form.submit();
+            }
+        });
+    }
+
+    const showPublicRateCopyBtn = document.getElementById('show-content-public-rate-copy-btn');
+    const showPublicRateUrlInput = document.getElementById('show-content-public-rate-url');
+    if (showPublicRateCopyBtn && showPublicRateUrlInput) {
+        showPublicRateCopyBtn.addEventListener('click', function() {
+            showPublicRateUrlInput.focus();
+            showPublicRateUrlInput.select();
+            showPublicRateUrlInput.setSelectionRange(0, 99999);
+            var url = showPublicRateUrlInput.value;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function() {
+                    showPublicRateCopyBtn.innerHTML = '<i class="fas fa-check me-1"></i> Copié';
+                    setTimeout(function() {
+                        showPublicRateCopyBtn.innerHTML = '<i class="fas fa-copy me-1"></i> Copier le lien';
+                    }, 2000);
+                }).catch(function() {
+                    try { document.execCommand('copy'); } catch (e) {}
+                });
+            } else {
+                try { document.execCommand('copy'); } catch (e) {}
             }
         });
     }

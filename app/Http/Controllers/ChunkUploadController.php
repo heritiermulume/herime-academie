@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\FileUploadService;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -10,14 +11,11 @@ use Illuminate\Support\Facades\Storage;
 use Pion\Laravel\ChunkUpload\Exceptions\UploadMissingFileException;
 use Pion\Laravel\ChunkUpload\Handler\HandlerFactory;
 use Pion\Laravel\ChunkUpload\Receiver\FileReceiver;
-use Exception;
 use RuntimeException;
 
 class ChunkUploadController extends Controller
 {
-    public function __construct(private readonly FileUploadService $fileUploadService)
-    {
-    }
+    public function __construct(private readonly FileUploadService $fileUploadService) {}
 
     /**
      * Handle chunked uploads for large lesson files and preview videos.
@@ -29,7 +27,7 @@ class ChunkUploadController extends Controller
             if (empty($request->all()) && empty($request->files->all()) && $request->header('Content-Length')) {
                 $contentLength = (int) $request->header('Content-Length');
                 $postMaxSize = $this->parseSize(ini_get('post_max_size'));
-                
+
                 Log::error('Chunk upload failed: post_max_size exceeded', [
                     'content_length' => $contentLength,
                     'post_max_size' => $postMaxSize,
@@ -38,7 +36,7 @@ class ChunkUploadController extends Controller
                 ]);
 
                 return response()->json([
-                    'message' => 'Le fichier est trop volumineux. La taille dépasse la limite du serveur (post_max_size: ' . ini_get('post_max_size') . '). Contactez l\'administrateur pour augmenter cette limite.',
+                    'message' => 'Le fichier est trop volumineux. La taille dépasse la limite du serveur (post_max_size: '.ini_get('post_max_size').'). Contactez l\'administrateur pour augmenter cette limite.',
                     'error' => 'POST_MAX_SIZE_EXCEEDED',
                     'content_length' => $contentLength,
                     'post_max_size' => $postMaxSize,
@@ -54,7 +52,7 @@ class ChunkUploadController extends Controller
                 'file_name' => $request->input('resumableFilename'),
                 'content_length' => $request->headers->get('content-length'),
                 'user_id' => auth()->id(),
-                'has_files' => !empty($request->files->all()),
+                'has_files' => ! empty($request->files->all()),
                 'php_upload_max_filesize' => ini_get('upload_max_filesize'),
                 'php_post_max_size' => ini_get('post_max_size'),
             ]);
@@ -68,6 +66,7 @@ class ChunkUploadController extends Controller
                 Log::warning('Chunk upload failed: No file uploaded', [
                     'request_data' => $request->except(['file']),
                 ]);
+
                 return response()->json([
                     'message' => 'Aucun fichier n\'a été reçu. Veuillez réessayer.',
                     'error' => 'UPLOAD_MISSING_FILE',
@@ -79,10 +78,11 @@ class ChunkUploadController extends Controller
             if ($save->isFinished()) {
                 $file = $save->getFile();
 
-                if (!$file || !$file->isValid()) {
+                if (! $file || ! $file->isValid()) {
                     Log::error('Chunk upload failed: Invalid file after assembly', [
                         'file_error' => $file ? $file->getError() : 'file_is_null',
                     ]);
+
                     return response()->json([
                         'message' => 'Le fichier assemblé est invalide. Veuillez réessayer.',
                         'error' => 'INVALID_FILE',
@@ -91,7 +91,7 @@ class ChunkUploadController extends Controller
 
                 $uploadType = $request->input('upload_type', 'lesson');
                 $folder = $this->resolveFolder($uploadType);
-                
+
                 try {
                     $result = $this->fileUploadService->uploadTemporary($file, $folder);
                 } catch (Exception $e) {
@@ -101,7 +101,7 @@ class ChunkUploadController extends Controller
                         'upload_type' => $uploadType,
                         'folder' => $folder,
                     ]);
-                    
+
                     // Nettoyer le fichier temporaire en cas d'erreur
                     $temporaryPath = $file->getPathname();
                     if ($temporaryPath && file_exists($temporaryPath)) {
@@ -109,7 +109,7 @@ class ChunkUploadController extends Controller
                     }
 
                     $errorMessage = $this->getUserFriendlyErrorMessage($e);
-                    
+
                     return response()->json([
                         'message' => $errorMessage,
                         'error' => 'UPLOAD_FAILED',
@@ -123,8 +123,9 @@ class ChunkUploadController extends Controller
                 }
 
                 $storedPath = $result['path'] ?? null;
-                if (!$storedPath) {
+                if (! $storedPath) {
                     Log::error('Chunk upload failed: No path returned from upload service');
+
                     return response()->json([
                         'message' => 'Le fichier n\'a pas pu être enregistré. Veuillez réessayer.',
                         'error' => 'STORAGE_FAILED',
@@ -134,10 +135,11 @@ class ChunkUploadController extends Controller
                 $disk = Storage::disk('local');
 
                 // Vérifier que le fichier existe bien
-                if (!$disk->exists($storedPath)) {
+                if (! $disk->exists($storedPath)) {
                     Log::error('Chunk upload failed: File not found after upload', [
                         'stored_path' => $storedPath,
                     ]);
+
                     return response()->json([
                         'message' => 'Le fichier n\'a pas pu être trouvé après l\'upload. Veuillez réessayer.',
                         'error' => 'FILE_NOT_FOUND',
@@ -176,6 +178,7 @@ class ChunkUploadController extends Controller
             Log::warning('Chunk upload failed: UploadMissingFileException', [
                 'error' => $e->getMessage(),
             ]);
+
             return response()->json([
                 'message' => 'Aucun fichier n\'a été reçu. Veuillez réessayer.',
                 'error' => 'UPLOAD_MISSING_FILE',
@@ -206,6 +209,7 @@ class ChunkUploadController extends Controller
             'media', 'lesson' => 'courses/lessons',
             'document' => 'ambassador-applications/documents',
             'community_home', 'community_home_poster' => 'site/community-home',
+            'announcement_image' => 'announcements',
             default => 'courses/lessons',
         };
     }
@@ -216,24 +220,24 @@ class ChunkUploadController extends Controller
     private function checkStoragePermissions(): void
     {
         $storagePath = storage_path('app');
-        
-        if (!is_dir($storagePath)) {
+
+        if (! is_dir($storagePath)) {
             throw new RuntimeException("Le dossier de stockage n'existe pas: {$storagePath}");
         }
 
-        if (!is_writable($storagePath)) {
+        if (! is_writable($storagePath)) {
             throw new RuntimeException("Le dossier de stockage n'est pas accessible en écriture: {$storagePath}");
         }
 
         // Vérifier le dossier temporaire
         $tmpPath = storage_path('app/tmp');
-        if (!is_dir($tmpPath)) {
-            if (!@mkdir($tmpPath, 0755, true)) {
+        if (! is_dir($tmpPath)) {
+            if (! @mkdir($tmpPath, 0755, true)) {
                 throw new RuntimeException("Impossible de créer le dossier temporaire: {$tmpPath}");
             }
         }
 
-        if (!is_writable($tmpPath)) {
+        if (! is_writable($tmpPath)) {
             throw new RuntimeException("Le dossier temporaire n'est pas accessible en écriture: {$tmpPath}");
         }
     }
@@ -298,5 +302,3 @@ class ChunkUploadController extends Controller
         return $size;
     }
 }
-
-

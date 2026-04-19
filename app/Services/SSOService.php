@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -15,9 +16,11 @@ class SSOService
 
     public function __construct()
     {
-        $this->ssoBaseUrl = config('services.sso.base_url');
-        $this->ssoSecret = config('services.sso.secret');
-        $this->timeout = config('services.sso.timeout', 10);
+        $base = config('services.sso.base_url');
+        $this->ssoBaseUrl = rtrim((string) (($base !== null && $base !== '') ? $base : 'https://compte.herime.com'), '/');
+        $secret = config('services.sso.secret');
+        $this->ssoSecret = ($secret !== null && $secret !== '') ? (string) $secret : null;
+        $this->timeout = (int) (config('services.sso.timeout') ?? 10);
     }
 
     /**
@@ -616,6 +619,202 @@ class SSOService
         }
         
         return $logoutUrl;
+    }
+
+    /**
+     * Provisionne le compte sur Compte Herime (SSO) lors d’un paiement panier invité.
+     *
+     * Appelle POST /api/sso/provision-user (ou l’URL complète `services.sso.sync_user_url` si définie) avec Bearer SSO_SECRET.
+     * Corps : email, name, phone (max 20), external_user_id, source (ex. academie.herime.com), password optionnel.
+     * Succès HTTP 201 (créé) ou 200 (idempotence) avec { "success": true, "user": { "id": … }, "user_id": … }.
+     *
+     * @return array{ok: bool, message?: string}
+     */
+    public function syncGuestCheckoutUser(User $user, ?string $plainPassword): array
+    {
+        if (! config('services.sso.enabled', true)) {
+            return ['ok' => true];
+        }
+
+        if (! config('services.sso.sync_guest_on_checkout', true)) {
+            return ['ok' => true];
+        }
+
+        if (empty($this->ssoSecret) || empty($this->ssoBaseUrl)) {
+            Log::warning('SSO guest provision skipped: SSO secret or base URL missing');
+
+            return ['ok' => true];
+        }
+
+        $url = config('services.sso.sync_user_url');
+        if (empty($url)) {
+            $path = (string) config('services.sso.sync_user_path', '/api/sso/provision-user');
+            $url = rtrim($this->ssoBaseUrl, '/').'/'.ltrim($path, '/');
+        }
+
+        $phone = (string) ($user->phone ?? '');
+        $phone = mb_substr(trim($phone), 0, 20);
+
+        $payload = [
+            'email' => mb_strtolower(trim((string) $user->email)),
+            'name' => trim((string) $user->name) !== '' ? trim((string) $user->name) : 'Client',
+            'phone' => $phone,
+            'external_user_id' => (string) $user->id,
+            'source' => (string) config('services.sso.provision_source', 'academie.herime.com'),
+        ];
+        if ($plainPassword !== null && $plainPassword !== '') {
+            $payload['password'] = $plainPassword;
+        }
+
+        try {
+            $response = Http::timeout($this->timeout)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'Authorization' => 'Bearer '.$this->ssoSecret,
+                ])
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            Log::error('SSO guest provision: request failed', [
+                'user_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return [
+                'ok' => false,
+                'message' => 'Le service Compte Herime est momentanément indisponible. Veuillez réessayer dans quelques instants.',
+            ];
+        }
+
+        $data = $response->json();
+
+        if (! $response->successful()) {
+            $msg = $this->extractProvisionUserErrorMessage(
+                is_array($data) ? $data : null,
+                match ($response->status()) {
+                    409 => 'Cette adresse e-mail est déjà utilisée sur Compte Herime. Connectez-vous ou utilisez une autre adresse.',
+                    422 => 'Le numéro de téléphone n’est pas accepté (déjà utilisé ou invalide).',
+                    default => 'Synchronisation avec Compte Herime impossible.',
+                }
+            );
+            Log::warning('SSO guest provision: HTTP error', [
+                'status' => $response->status(),
+                'user_id' => $user->id,
+                'body' => $response->body(),
+            ]);
+
+            return ['ok' => false, 'message' => $msg];
+        }
+
+        if (is_array($data) && array_key_exists('success', $data) && $data['success'] === false) {
+            $msg = $this->extractProvisionUserErrorMessage(
+                $data,
+                'Synchronisation refusée par Compte Herime.'
+            );
+            Log::warning('SSO guest provision: API reported success=false', ['user_id' => $user->id, 'response' => $data]);
+
+            return ['ok' => false, 'message' => $msg];
+        }
+
+        $remoteId = $this->extractRemoteSsoUserIdFromGuestSyncResponse(is_array($data) ? $data : null);
+        if ($remoteId !== null && $remoteId !== '' && $remoteId !== (string) ($user->sso_id ?? '')) {
+            $conflict = User::where('sso_id', $remoteId)->where('id', '!=', $user->id)->exists();
+            if ($conflict) {
+                Log::error('SSO guest provision: remote id already bound to another user', [
+                    'remote_id' => $remoteId,
+                    'user_id' => $user->id,
+                ]);
+
+                return [
+                    'ok' => false,
+                    'message' => 'Un conflit de compte a été détecté. Contactez le support ou connectez-vous avec votre compte Herime.',
+                ];
+            }
+            try {
+                $user->update([
+                    'sso_id' => $remoteId,
+                    'sso_provider' => $user->sso_provider ?: 'herime',
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                Log::error('SSO guest provision: failed to persist sso_id', [
+                    'user_id' => $user->id,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return [
+                    'ok' => false,
+                    'message' => 'Impossible d’associer votre compte à Compte Herime. Réessayez ou contactez le support.',
+                ];
+            }
+        }
+
+        if (($remoteId === null || $remoteId === '') && in_array($response->status(), [200, 201], true)) {
+            Log::warning('SSO guest provision: success response without user id', [
+                'user_id' => $user->id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        }
+
+        Log::info('SSO guest provision completed', [
+            'user_id' => $user->id,
+            'remote_sso_id' => $remoteId,
+            'http_status' => $response->status(),
+        ]);
+
+        return ['ok' => true];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $data
+     */
+    private function extractProvisionUserErrorMessage(?array $data, string $fallback): string
+    {
+        if (! is_array($data)) {
+            return $fallback;
+        }
+        foreach (['message', 'error'] as $key) {
+            if (isset($data[$key]) && is_string($data[$key]) && $data[$key] !== '') {
+                return $data[$key];
+            }
+        }
+        if (! empty($data['errors']) && is_array($data['errors'])) {
+            foreach ($data['errors'] as $messages) {
+                if (is_array($messages) && isset($messages[0]) && is_string($messages[0])) {
+                    return $messages[0];
+                }
+                if (is_string($messages)) {
+                    return $messages;
+                }
+            }
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $data
+     */
+    private function extractRemoteSsoUserIdFromGuestSyncResponse(?array $data): ?string
+    {
+        if (! is_array($data)) {
+            return null;
+        }
+        foreach (['user_id', 'sso_id'] as $key) {
+            if (isset($data[$key]) && is_scalar($data[$key]) && (string) $data[$key] !== '') {
+                return (string) $data[$key];
+            }
+        }
+        $u = $data['user'] ?? null;
+        if (is_array($u)) {
+            foreach (['user_id', 'id', 'sso_id'] as $key) {
+                if (isset($u[$key]) && is_scalar($u[$key]) && (string) $u[$key] !== '') {
+                    return (string) $u[$key];
+                }
+            }
+        }
+
+        return null;
     }
 }
 

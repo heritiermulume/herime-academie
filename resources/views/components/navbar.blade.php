@@ -207,8 +207,8 @@
                 <a class="nav-link" href="{{ route('contact') }}">Contact</a>
             </div>
             
-            <!-- Right Side Actions -->
-            <div class="navbar-nav">
+            <!-- Right Side Actions (flex-nowrap : panier + invité sur une ligne) -->
+            <div class="navbar-nav flex-nowrap align-items-center flex-shrink-0 ms-lg-2">
                 <!-- Cart -->
                 <a class="nav-link position-relative me-3" href="{{ route('cart.index') }}" title="Panier">
                     <i class="fas fa-shopping-cart fa-lg"></i>
@@ -363,20 +363,18 @@
                         $finalLogin = url()->full();
                         $callbackLogin = route('sso.callback', ['redirect' => $finalLogin]);
                         $ssoLoginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLogin);
-                    @endphp
-                    <a class="nav-link me-3" href="{{ $ssoLoginUrl }}" title="Connexion">
-                        <i class="fas fa-sign-in-alt fa-lg"></i>
-                        <span class="d-none d-lg-inline ms-1">Connexion</span>
-                    </a>
-                    @php
                         $finalRegister = url()->full();
                         $callbackRegister = route('sso.callback', ['redirect' => $finalRegister]);
                         $ssoRegisterUrl = 'https://compte.herime.com/login?force_token=1&action=register&redirect=' . urlencode($callbackRegister);
                     @endphp
-                    <a class="btn btn-primary" href="{{ $ssoRegisterUrl }}" title="S'inscrire">
-                        <i class="fas fa-user-plus me-1"></i>
-                        <span class="d-none d-lg-inline">S'inscrire</span>
-                    </a>
+                    <div class="navbar-guest-desktop d-flex align-items-center flex-nowrap flex-shrink-0 gap-1 ms-1">
+                        <a class="nav-link navbar-guest-login" href="{{ $ssoLoginUrl }}" title="Connexion">
+                            <i class="fas fa-sign-in-alt fa-sm" aria-hidden="true"></i><span class="d-none d-lg-inline navbar-guest-login__label">Connexion</span>
+                        </a>
+                        <a class="btn btn-primary btn-sm navbar-guest-register" href="{{ $ssoRegisterUrl }}" title="S'inscrire">
+                            <i class="fas fa-user-plus fa-sm me-1" aria-hidden="true"></i><span class="d-none d-lg-inline">S'inscrire</span>
+                        </a>
+                    </div>
                 @endauth
             </div>
         </div>

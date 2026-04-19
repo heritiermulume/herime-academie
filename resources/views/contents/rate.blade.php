@@ -20,7 +20,7 @@
         <div class="cart-header content-rate-header">
             <div class="cart-title-section">
                 <h1 class="cart-title">Noter ce contenu</h1>
-                <p class="cart-subtitle">Votre avis aide la communauté à choisir ses formations.</p>
+                <p class="cart-subtitle">Votre avis aide la communauté à choisir ses formations. Pour inviter quelqu’un à noter, utilisez le bloc <strong>«&nbsp;Lien public&nbsp;»</strong> juste en dessous.</p>
             </div>
             <div class="cart-actions">
                 <a href="{{ route('contents.show', $course) }}" class="continue-shopping-btn">
@@ -49,21 +49,23 @@
             </div>
         @endif
 
-        <div class="cart-items-section content-rate-share mb-3">
+        <div class="cart-items-section content-rate-share mb-4 shadow-sm" id="lien-public-page-noter">
             <div class="cart-items-header py-3 px-4">
-                <h2 class="cart-items-title mb-0" style="font-size: 1rem;">
+                <h2 class="cart-items-title mb-0">
                     <i class="fas fa-link"></i>
-                    Lien direct pour noter ce contenu
+                    Lien public de cette page (à copier)
                 </h2>
             </div>
-            <div class="p-3 p-md-4 border-top-0 bg-white rounded-bottom">
-                <p class="text-muted small mb-2">Partagez cette adresse par e-mail ou message : l'utilisateur arrive directement sur cette page.</p>
-                <div class="input-group input-group-sm">
-                    <input type="text" class="form-control font-monospace small" id="content-rate-share-url" readonly value="{{ $shareUrl }}">
-                    <button type="button" class="btn btn-outline-primary" id="content-rate-copy-btn" title="Copier le lien">
-                        <i class="fas fa-copy me-1"></i> Copier
+            <div class="p-3 p-md-4 bg-white rounded-bottom">
+                <p class="text-dark mb-3" style="font-size: 0.95rem;">Copiez l’adresse ci-dessous et envoyez-la par e-mail, WhatsApp, etc. La personne ouvre directement <strong>cette page</strong> pour laisser une note et un avis.</p>
+                <label for="content-rate-share-url" class="form-label fw-semibold small text-muted mb-1">Adresse à copier</label>
+                <div class="input-group">
+                    <input type="text" class="form-control font-monospace" id="content-rate-share-url" readonly value="{{ $shareUrl }}" aria-describedby="content-rate-copy-hint">
+                    <button type="button" class="btn btn-primary px-3" id="content-rate-copy-btn" title="Copier le lien dans le presse-papiers">
+                        <i class="fas fa-copy me-1"></i> Copier le lien
                     </button>
                 </div>
+                <p class="form-text mb-0 mt-2" id="content-rate-copy-hint">Après « Copier », collez le lien où vous voulez l’envoyer.</p>
             </div>
         </div>
 
@@ -242,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 navigator.clipboard.writeText(url).then(function() {
                     copyBtn.innerHTML = '<i class="fas fa-check me-1"></i> Copié';
                     setTimeout(function() {
-                        copyBtn.innerHTML = '<i class="fas fa-copy me-1"></i> Copier';
+                        copyBtn.innerHTML = '<i class="fas fa-copy me-1"></i> Copier le lien';
                     }, 2000);
                 }).catch(function() {
                     document.execCommand('copy');

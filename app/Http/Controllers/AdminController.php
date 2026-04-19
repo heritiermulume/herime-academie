@@ -3115,26 +3115,17 @@ class AdminController extends Controller
     {
         $data = $this->validatedAnnouncementData($request);
 
-        if ($data['type'] === Announcement::TYPE_HOME_MODAL) {
-            if (! $request->hasFile('image')) {
-                throw ValidationException::withMessages([
-                    'image' => ['Une image est requise pour une annonce modale sur la page d’accueil.'],
-                ]);
-            }
+        $chunkPathInput = $this->sanitizeUploadedPath($request->input('image_chunk_path'));
+        $hasChunkImage = $chunkPathInput && $this->fileUploadService->isTemporaryPath($chunkPathInput);
+        $hasFileImage = $request->hasFile('image');
+
+        if ($data['type'] === Announcement::TYPE_HOME_MODAL && ! $hasChunkImage && ! $hasFileImage) {
+            throw ValidationException::withMessages([
+                'image' => ['Une image est requise pour une annonce modale sur la page d’accueil (glisser-déposer ou fichier).'],
+            ]);
         }
 
-        if ($request->hasFile('image')) {
-            $request->validate([
-                'image' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-            ]);
-            $result = $this->fileUploadService->uploadImage(
-                $request->file('image'),
-                'announcements',
-                null,
-                1920
-            );
-            $data['image'] = $result['path'];
-        }
+        $this->applyAnnouncementImageFromRequest($request, $data, null);
 
         $announcement = Announcement::create($data);
 
@@ -3160,29 +3151,17 @@ class AdminController extends Controller
     {
         $data = $this->validatedAnnouncementData($request);
 
-        if ($data['type'] === Announcement::TYPE_HOME_MODAL && ! $request->hasFile('image') && empty($announcement->image)) {
+        $chunkPathInput = $this->sanitizeUploadedPath($request->input('image_chunk_path'));
+        $hasChunkImage = $chunkPathInput && $this->fileUploadService->isTemporaryPath($chunkPathInput);
+        $hasFileImage = $request->hasFile('image');
+
+        if ($data['type'] === Announcement::TYPE_HOME_MODAL && ! $hasChunkImage && ! $hasFileImage && empty($announcement->image)) {
             throw ValidationException::withMessages([
-                'image' => ['Une image est requise pour une annonce modale sur la page d’accueil.'],
+                'image' => ['Une image est requise pour une annonce modale sur la page d’accueil (glisser-déposer ou fichier).'],
             ]);
         }
 
-        if ($request->hasFile('image')) {
-            $request->validate([
-                'image' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
-            ]);
-            $oldPath = null;
-            if ($announcement->image && ! str_starts_with($announcement->image, 'data:')) {
-                $oldPath = preg_replace('#^storage/#', '', $announcement->image);
-            }
-
-            $result = $this->fileUploadService->uploadImage(
-                $request->file('image'),
-                'announcements',
-                $oldPath,
-                1920
-            );
-            $data['image'] = $result['path'];
-        }
+        $this->applyAnnouncementImageFromRequest($request, $data, $announcement);
 
         $announcement->update($data);
 
@@ -3366,6 +3345,9 @@ class AdminController extends Controller
             'starts_at' => ['nullable', 'date_format:Y-m-d\TH:i'],
             'expires_at' => ['nullable', 'date_format:Y-m-d\TH:i', 'after_or_equal:starts_at'],
             'is_active' => 'sometimes|boolean',
+            'image_chunk_path' => 'nullable|string|max:2048',
+            'image_chunk_name' => 'nullable|string|max:512',
+            'image_chunk_size' => 'nullable|integer|min:0|max:2147483647',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', false);
@@ -3381,7 +3363,51 @@ class AdminController extends Controller
         $data['button_text'] = $data['button_text'] ?? null;
         $data['button_url'] = $data['button_url'] ?? null;
 
+        unset($data['image_chunk_path'], $data['image_chunk_name'], $data['image_chunk_size']);
+
         return $data;
+    }
+
+    /**
+     * Image modale : upload par chunks (image_chunk_path) ou fichier classique (image).
+     */
+    private function applyAnnouncementImageFromRequest(Request $request, array &$data, ?Announcement $existing = null): void
+    {
+        $chunkPath = $this->sanitizeUploadedPath($request->input('image_chunk_path'));
+
+        if ($chunkPath && $this->fileUploadService->isTemporaryPath($chunkPath)) {
+            $oldPath = null;
+            if ($existing?->image && ! str_starts_with($existing->image, 'data:')) {
+                $oldPath = preg_replace('#^storage/#', '', $existing->image);
+            }
+            if ($oldPath) {
+                $this->fileUploadService->deleteFile($oldPath);
+            }
+
+            $finalPath = $this->fileUploadService->promoteTemporaryFile($chunkPath, 'announcements');
+            $this->fileUploadService->resizeStoredImageIfNeeded($finalPath, 1920);
+            $data['image'] = $finalPath;
+
+            return;
+        }
+
+        if ($request->hasFile('image')) {
+            $request->validate([
+                'image' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            ]);
+            $oldPath = null;
+            if ($existing?->image && ! str_starts_with($existing->image, 'data:')) {
+                $oldPath = preg_replace('#^storage/#', '', $existing->image);
+            }
+
+            $result = $this->fileUploadService->uploadImage(
+                $request->file('image'),
+                'announcements',
+                $oldPath,
+                1920
+            );
+            $data['image'] = $result['path'];
+        }
     }
 
     protected function notifyUsersOfAnnouncement(Announcement $announcement): void
@@ -6006,6 +6032,7 @@ class AdminController extends Controller
             'courses/lessons',
             'courses/downloads',
             'site/community-home',
+            'announcements',
         ];
 
         foreach ($allowedPrefixes as $prefix) {

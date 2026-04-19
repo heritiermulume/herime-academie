@@ -4,40 +4,68 @@
 @section('description', 'Consultez tous les avis des étudiants sur le contenu : ' . $course->title)
 
 @section('content')
-<div class="container py-5">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="breadcrumb-modern mb-4">
-        <ol class="breadcrumb mb-0">
-            <li class="breadcrumb-item"><a href="{{ route('home') }}">Accueil</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('contents.index') }}">Contenus</a></li>
-            @if($course->category)
-            <li class="breadcrumb-item"><a href="{{ route('contents.category', $course->category->slug) }}">{{ $course->category->name }}</a></li>
-            @endif
-            <li class="breadcrumb-item"><a href="{{ route('contents.show', $course->slug) }}">{{ Str::limit($course->title, 40) }}</a></li>
-            <li class="breadcrumb-item active">Avis</li>
-        </ol>
-    </nav>
+@php
+    $reviewsThumbUrl = '';
+    try {
+        $reviewsThumbUrl = $course->thumbnail_url ?? '';
+    } catch (\Throwable $e) {
+        $reviewsThumbUrl = '';
+    }
+    $reviewsThumbUrl = $reviewsThumbUrl ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop';
+@endphp
 
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                <div>
-                    <h1 class="h3 fw-bold mb-2">Avis des étudiants</h1>
-                    <a href="{{ route('contents.show', $course->slug) }}" class="text-decoration-none">
-                        <h2 class="h5 text-muted mb-0">{{ $course->title }}</h2>
-                    </a>
+<div class="udemy-cart-container content-reviews-page">
+    <div class="cart-wrapper content-reviews-wrapper">
+        <nav aria-label="breadcrumb" class="breadcrumb-modern content-reviews-breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ route('home') }}">Accueil</a></li>
+                <li class="breadcrumb-item"><a href="{{ route('contents.index') }}">Contenus</a></li>
+                @if($course->category)
+                    <li class="breadcrumb-item"><a href="{{ route('contents.category', $course->category->slug) }}">{{ $course->category->name }}</a></li>
+                @endif
+                <li class="breadcrumb-item"><a href="{{ route('contents.show', $course->slug) }}">{{ Str::limit($course->title, 48) }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Notes et avis</li>
+            </ol>
+        </nav>
+
+        <header class="content-reviews-page-header">
+            <div class="content-reviews-page-header__identity">
+                <a href="{{ route('contents.show', $course->slug) }}" class="content-reviews-thumb-link" title="Voir la fiche du contenu">
+                    <img src="{{ $reviewsThumbUrl }}" alt="" width="96" height="72" loading="lazy" class="content-reviews-thumb-img">
+                </a>
+                <div class="content-reviews-page-header__text">
+                    <h1 class="content-reviews-page-title">Notes et avis</h1>
+                    <a href="{{ route('contents.show', $course->slug) }}" class="content-reviews-course-link">{{ $course->title }}</a>
+                    <div class="content-reviews-page-meta" aria-label="Synthèse des notes">
+                        <span class="content-reviews-page-meta__score">{{ number_format($averageRating, 1) }}</span>
+                        <span class="content-reviews-page-meta__stars" style="color: var(--warning-color, #ffc107);">
+                            @for($i = 1; $i <= 5; $i++)
+                                @php $filledStar = $i <= round($averageRating, 0); @endphp
+                                <i class="{{ $filledStar ? 'fas' : 'far' }} fa-star" aria-hidden="true"></i>
+                            @endfor
+                        </span>
+                        <span class="content-reviews-page-meta__count text-muted">
+                            @if($totalReviews === 0)
+                                · Aucun avis pour l’instant
+                            @elseif($totalReviews === 1)
+                                · 1 avis
+                            @else
+                                · {{ $totalReviews }} avis
+                            @endif
+                        </span>
+                    </div>
                 </div>
-                <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-outline-primary">
-                    <i class="fas fa-arrow-left me-2"></i>
-                    Retour au cours
+            </div>
+            <div class="content-reviews-page-header__actions">
+                <a href="{{ route('contents.show', $course->slug) }}" class="continue-shopping-btn content-reviews-back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Retour à la fiche</span>
                 </a>
             </div>
-        </div>
-    </div>
+        </header>
 
     <!-- Rating Summary -->
-    <div class="row mb-4">
+    <div class="row mb-4 gx-0">
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
@@ -51,11 +79,17 @@
                                     @php
                                         $filledStar = $i <= round($averageRating, 0);
                                     @endphp
-                                    <i class="fas fa-star {{ $filledStar ? '' : 'far' }}"></i>
+                                    <i class="{{ $filledStar ? 'fas' : 'far' }} fa-star" aria-hidden="true"></i>
                                 @endfor
                             </div>
                             <div class="rating-count text-muted">
-                                Basé sur {{ $totalReviews }} {{ $totalReviews > 1 ? 'avis' : 'avis' }}
+                                @if($totalReviews === 0)
+                                    Aucun avis publié
+                                @elseif($totalReviews === 1)
+                                    Basé sur 1 avis
+                                @else
+                                    Basé sur {{ $totalReviews }} avis
+                                @endif
                             </div>
                         </div>
                         <div class="col-md-9">
@@ -183,17 +217,183 @@
                         <p class="text-muted mb-4">Soyez le premier à laisser un avis sur ce contenu !</p>
                         <a href="{{ route('contents.show', $course->slug) }}" class="btn btn-primary">
                             <i class="fas fa-arrow-left me-2"></i>
-                            Retour au cours
+                            Retour à la fiche
                         </a>
                     </div>
                 </div>
             @endif
         </div>
     </div>
+    </div>
 </div>
 
 @push('styles')
 <style>
+    .content-reviews-page {
+        background-color: #f7f9fa;
+        padding-bottom: 2rem;
+    }
+
+    .content-reviews-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.25rem 1.5rem 1.5rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .content-reviews-wrapper {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+    }
+
+    .content-reviews-breadcrumb {
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #e5e5e5;
+    }
+
+    .content-reviews-breadcrumb .breadcrumb {
+        flex-wrap: wrap;
+        row-gap: 0.25rem;
+    }
+
+    .content-reviews-page-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid #e5e5e5;
+    }
+
+    .content-reviews-page-header__identity {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        min-width: 0;
+        flex: 1 1 280px;
+    }
+
+    .content-reviews-thumb-link {
+        flex-shrink: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(0, 51, 102, 0.12);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        line-height: 0;
+        align-self: center;
+    }
+
+    .content-reviews-thumb-img {
+        display: block;
+        width: 96px;
+        height: 72px;
+        object-fit: cover;
+    }
+
+    .content-reviews-page-header__text {
+        min-width: 0;
+    }
+
+    .content-reviews-page-title {
+        font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+        font-weight: 700;
+        color: #1c1d1f;
+        margin: 0 0 0.35rem;
+        line-height: 1.2;
+    }
+
+    .content-reviews-course-link {
+        display: block;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #003366;
+        text-decoration: none;
+        margin-bottom: 0.5rem;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .content-reviews-course-link:hover {
+        color: #002147;
+        text-decoration: underline;
+    }
+
+    .content-reviews-page-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .content-reviews-page-meta__score {
+        font-weight: 700;
+        font-size: 1rem;
+        color: #1c1d1f;
+    }
+
+    .content-reviews-page-meta__stars {
+        font-size: 0.9rem;
+        letter-spacing: 0.02em;
+    }
+
+    .content-reviews-page-header__actions {
+        flex-shrink: 0;
+        width: 100%;
+    }
+
+    @media (min-width: 576px) {
+        .content-reviews-page-header__actions {
+            width: auto;
+            align-self: center;
+        }
+    }
+
+    .content-reviews-back-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    @media (min-width: 576px) {
+        .content-reviews-back-btn {
+            width: auto;
+            justify-content: flex-start;
+        }
+    }
+
+    .content-reviews-page .continue-shopping-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background-color: transparent;
+        color: #003366;
+        text-decoration: none;
+        border: 1px solid #003366;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .content-reviews-page .continue-shopping-btn:hover {
+        background-color: #003366;
+        color: #fff;
+        text-decoration: none;
+    }
+
+    .content-reviews-breadcrumb .breadcrumb-item a {
+        color: #003366;
+    }
+
+    .content-reviews-breadcrumb .breadcrumb-item a:hover {
+        color: #002147;
+    }
+
     :root {
         --review-card-bg: #ffffff;
         --review-card-border: #e9ecef;

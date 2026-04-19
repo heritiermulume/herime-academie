@@ -280,13 +280,14 @@
                                 <label class="guest-checkout-label" for="guestCheckoutEmail">Adresse e-mail</label>
                                 <input type="email" id="guestCheckoutEmail" class="guest-checkout-input" name="guest_email" autocomplete="email" required maxlength="255" placeholder="vous@exemple.com">
                                 <label class="guest-checkout-label" for="guestCheckoutPhone">Téléphone</label>
-                                <input type="tel" id="guestCheckoutPhone" class="guest-checkout-input" name="guest_phone" autocomplete="tel" required maxlength="40" placeholder="+243 …">
+                                <input type="tel" id="guestCheckoutPhone" class="guest-checkout-input" name="guest_phone" autocomplete="tel" required maxlength="20" placeholder="+243 …">
                                 <button type="button" class="checkout-btn" id="guestCheckoutSubmitBtn" data-can-checkout="true">
                                     <i class="fas fa-credit-card"></i>
                                     Procéder au paiement
                                 </button>
-                                <p class="guest-checkout-sso-hint mb-0 mt-2">
-                                    <a href="{{ $ssoLoginUrlCart }}" class="text-muted small text-decoration-none">Déjà un compte Herime ? Se connecter</a>
+                                <p class="guest-checkout-sso-hint mb-0 mt-2 small">
+                                    <span class="guest-checkout-sso-hint__label">Déjà un compte Herime&nbsp;?</span>
+                                    <a href="{{ $ssoLoginUrlCart }}" class="guest-checkout-sso-hint__link">Se connecter</a>
                                 </p>
                             </div>
                             <small class="checkout-blocked-text" id="checkoutBlockedText" style="display: none; color: #dc3545; margin-top: 8px;">
@@ -908,6 +909,21 @@
 }
 .guest-checkout-sso-hint {
     text-align: center;
+    color: #6c757d;
+}
+.guest-checkout-sso-hint__label {
+    color: inherit;
+    font-weight: 400;
+}
+.guest-checkout-sso-hint__link {
+    color: var(--herime-blue, #003366) !important;
+    font-weight: 700;
+    text-decoration: none;
+    margin-left: 0.25rem;
+}
+.guest-checkout-sso-hint__link:hover {
+    color: var(--herime-blue-hover, #002147) !important;
+    text-decoration: underline;
 }
 .checkout-btn:disabled,
 .checkout-btn[data-can-checkout="false"] {

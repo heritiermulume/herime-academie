@@ -1501,6 +1501,42 @@
             color: white !important;
         }
 
+        /* Invité desktop : groupe compact, une seule ligne (évite retour à la ligne) */
+        .navbar .navbar-guest-desktop {
+            flex-shrink: 0;
+        }
+
+        .navbar .navbar-nav .navbar-guest-login.nav-link {
+            display: inline-flex !important;
+            align-items: center;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+            font-size: 0.75rem;
+            line-height: 1.2;
+            padding: 0.15rem 0.3rem !important;
+            gap: 0.2rem;
+        }
+
+        .navbar .navbar-guest-login__label {
+            white-space: nowrap;
+        }
+
+        .navbar .navbar-guest-register.btn-primary {
+            padding: 0.15rem 0.45rem !important;
+            font-size: 0.75rem !important;
+            font-weight: 500;
+            border-radius: 0.25rem;
+            line-height: 1.25;
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+
+        .navbar .navbar-guest-register.btn-primary:hover {
+            transform: translateY(-1px);
+        }
+
         .btn-secondary {
             background-color: var(--secondary-color);
             border-color: var(--secondary-color);
