@@ -35,18 +35,41 @@ class CartController extends Controller
         ]);
     }
 
+    private function guestPayIntentUserId(): ?int
+    {
+        if (! Session::get(self::GUEST_PAY_READY_KEY)) {
+            return null;
+        }
+        $id = (int) Session::get(self::GUEST_PAY_USER_ID_KEY);
+
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * Lignes du panier pour l’affichage et le résumé (session invitée, BDD si intent paiement compte existant, ou connecté).
+     */
+    private function getCartItemsForCurrentRequest(): array
+    {
+        if (auth()->check()) {
+            return $this->getDatabaseCartItems();
+        }
+        $guestUid = $this->guestPayIntentUserId();
+        if ($guestUid !== null) {
+            $user = User::find($guestUid);
+            if ($user) {
+                return $this->getDatabaseCartItems($user);
+            }
+        }
+
+        return $this->getSessionCartItems();
+    }
+
     /**
      * Afficher le contenu du panier
      */
     public function index()
     {
-        if (auth()->check()) {
-            // Utilisateur connecté : utiliser la base de données
-            $cartItems = $this->getDatabaseCartItems();
-        } else {
-            // Utilisateur non connecté : utiliser la session
-            $cartItems = $this->getSessionCartItems();
-        }
+        $cartItems = $this->getCartItemsForCurrentRequest();
 
         // S'assurer que $cartItems est un tableau
         $cartItems = is_array($cartItems) ? $cartItems : $cartItems->toArray();
@@ -556,13 +579,19 @@ class CartController extends Controller
             ->toArray();
         $excludedIds = $excludedIds->merge($freeContentIds);
 
-        // 3. Si l'utilisateur est connecté, exclure les contenus déjà accessibles (inscription, achat, pack)
-        if (auth()->check()) {
-            $purchasedCourseIds = auth()->user()->getRecommendationExcludedContentIds();
+        // 3. Utilisateur connecté ou invité en « paiement compte existant » : exclure contenus déjà accessibles
+        $userForExclusions = auth()->user();
+        if (! $userForExclusions) {
+            $guestUid = $this->guestPayIntentUserId();
+            if ($guestUid) {
+                $userForExclusions = User::find($guestUid);
+            }
+        }
+        if ($userForExclusions) {
+            $purchasedCourseIds = $userForExclusions->getRecommendationExcludedContentIds();
             $excludedIds = $excludedIds->merge($purchasedCourseIds);
 
-            // Debug: Log des cours exclus
-            \Log::info('Cours exclus pour l\'utilisateur '.auth()->id().':', [
+            \Log::info('Cours exclus pour l\'utilisateur '.$userForExclusions->id.':', [
                 'cart_content_ids' => $cartContentIds,
                 'purchased_content_ids' => $purchasedCourseIds,
                 'free_content_ids' => $freeContentIds,
@@ -580,20 +609,7 @@ class CartController extends Controller
      */
     private function getPopularCoursesForCart()
     {
-        $pseudoCart = [];
-        $norm = $this->getSessionCartNormalized();
-        foreach ($norm['contents'] as $cid) {
-            $pseudoCart[] = ['type' => 'content', 'course' => (object) ['id' => (int) $cid]];
-        }
-        foreach ($norm['packages'] as $pid) {
-            $p = ContentPackage::with('contents')->find($pid);
-            if ($p) {
-                $pseudoCart[] = ['type' => 'package', 'package' => $p];
-            }
-        }
-        if (auth()->check()) {
-            $pseudoCart = $this->getDatabaseCartItems();
-        }
+        $pseudoCart = $this->getCartItemsForCurrentRequest();
         $excludedCourseIds = $this->getExcludedCourseIds($pseudoCart);
 
         // Obtenir les cours populaires avec filtrage approprié
@@ -886,13 +902,7 @@ class CartController extends Controller
      */
     public function getRecommendations()
     {
-        if (auth()->check()) {
-            // Utilisateur connecté : utiliser la base de données
-            $cartItems = $this->getDatabaseCartItems();
-        } else {
-            // Utilisateur non connecté : utiliser la session
-            $cartItems = $this->getSessionCartItems();
-        }
+        $cartItems = $this->getCartItemsForCurrentRequest();
 
         // S'assurer que $cartItems est un tableau
         $cartItems = is_array($cartItems) ? $cartItems : $cartItems->toArray();
@@ -944,11 +954,16 @@ class CartController extends Controller
     /**
      * Obtenir les articles du panier depuis la base de données
      */
-    private function getDatabaseCartItems(): array
+    private function getDatabaseCartItems(?User $user = null): array
     {
+        $user = $user ?? auth()->user();
+        if (! $user) {
+            return [];
+        }
+
         $lines = [];
 
-        $dbItems = auth()->user()->cartItems()->with([
+        $dbItems = $user->cartItems()->with([
             'course.category',
             'course.provider',
             'course.reviews',
@@ -970,7 +985,7 @@ class CartController extends Controller
             }
         }
 
-        $pkgRows = auth()->user()->cartPackages()->with([
+        $pkgRows = $user->cartPackages()->with([
             'contentPackage' => fn ($q) => $q->withCount('contents'),
             'contentPackage.contents' => fn ($q) => $q->orderByPivot('sort_order'),
         ])->get();
@@ -1090,13 +1105,7 @@ class CartController extends Controller
      */
     public function getSummary(Request $request)
     {
-        if (auth()->check()) {
-            // Utilisateur connecté : utiliser la base de données
-            $cartItems = $this->getDatabaseCartItems();
-        } else {
-            // Utilisateur non connecté : utiliser la session
-            $cartItems = $this->getSessionCartItems();
-        }
+        $cartItems = $this->getCartItemsForCurrentRequest();
 
         // S'assurer que $cartItems est un tableau
         $cartItems = is_array($cartItems) ? $cartItems : $cartItems->toArray();
@@ -1197,6 +1206,13 @@ class CartController extends Controller
     {
         if (auth()->check()) {
             return auth()->user()->cartItems()->count() + auth()->user()->cartPackages()->count();
+        }
+        $guestUid = $this->guestPayIntentUserId();
+        if ($guestUid !== null) {
+            $u = User::find($guestUid);
+            if ($u) {
+                return $u->cartItems()->count() + $u->cartPackages()->count();
+            }
         }
         $n = $this->getSessionCartNormalized();
 
