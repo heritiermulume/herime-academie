@@ -241,8 +241,8 @@ class WhatsAppService
 
     /**
      * Vérifier l'état de connexion de l'instance
-     * 
-     * @return array ['connected' => bool, 'state' => string|null]
+     *
+     * @return array{connected: bool, state: string|null, diagnostic?: string}
      */
     public function checkConnection(): array
     {
@@ -250,11 +250,11 @@ class WhatsAppService
         try {
             // Vérifier l'état de l'instance Evolution API
             $url = rtrim($this->baseUrl, '/') . "/instance/connectionState/{$this->instanceName}";
-            
+
             $headers = [
                 'apikey' => $this->apiKey,
             ];
-            
+
             $response = Http::timeout(10)
                 ->withHeaders($headers)
                 ->get($url);
@@ -264,53 +264,65 @@ class WhatsAppService
                 // Evolution API retourne l'état dans instance.state
                 $state = $data['instance']['state'] ?? $data['state'] ?? $data['status'] ?? 'unknown';
                 $connected = ($state === 'open' || $state === 'connected');
-                
+
                 return [
                     'connected' => $connected,
-                    'state' => $state
+                    'state' => $state,
                 ];
             }
 
             // Si l'endpoint n'existe pas, essayer fetchInstances
-            $url2 = rtrim($this->baseUrl, '/') . "/instance/fetchInstances";
+            $url2 = rtrim($this->baseUrl, '/') . '/instance/fetchInstances';
             $response2 = Http::timeout(10)
                 ->withHeaders($headers)
                 ->get($url2);
-                
+
             if ($response2->successful()) {
                 $instances = $response2->json();
                 if (is_array($instances) && count($instances) > 0) {
                     $instance = $instances[0];
-                    $state = $instance['connectionStatus'] ?? 'unknown';
+                    $state = $instance['connectionStatus'] ?? $instance['state'] ?? 'unknown';
                     $connected = ($state === 'open' || $state === 'connected');
-                    
+
                     return [
                         'connected' => $connected,
-                        'state' => $state
+                        'state' => $state,
                     ];
                 }
-                
+
                 return [
                     'connected' => false,
-                    'state' => 'no_instance'
+                    'state' => 'no_instance',
+                    'diagnostic' => 'Aucune instance retournée par fetchInstances (créez une instance dans Evolution).',
                 ];
             }
 
+            $snippet1 = substr((string) $response->body(), 0, 300);
+            $snippet2 = substr((string) $response2->body(), 0, 300);
+
             return [
                 'connected' => false,
-                'state' => 'error'
+                'state' => 'error',
+                'diagnostic' => sprintf(
+                    'connectionState → HTTP %s; fetchInstances → HTTP %s | URL: %s | Réponse (extrait): %s',
+                    $response->status(),
+                    $response2->status(),
+                    $url,
+                    $snippet1 !== '' ? $snippet1 : $snippet2
+                ),
             ];
         } catch (\Exception $e) {
             Log::error('Erreur lors de la vérification de connexion WhatsApp', [
                 'error' => $e->getMessage(),
                 'url' => $url ?: 'unknown',
                 'base_url' => $this->baseUrl,
-                'instance' => $this->instanceName
+                'instance' => $this->instanceName,
             ]);
 
             return [
                 'connected' => false,
-                'state' => 'error'
+                'state' => 'error',
+                'diagnostic' => $e->getMessage() . ($url !== '' ? " ({$url})" : ''),
             ];
         }
     }

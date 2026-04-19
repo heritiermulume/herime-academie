@@ -42,6 +42,20 @@ class TestWhatsAppConnection extends Command
         } else {
             $this->error('❌ Connexion non active!');
             $this->line('   État: ' . ($connectionStatus['state'] ?? 'unknown'));
+            if (!empty($connectionStatus['diagnostic'])) {
+                $this->newLine();
+                $this->warn('   Diagnostic (HTTP / réseau):');
+                $this->line('   ' . $connectionStatus['diagnostic']);
+            }
+            $this->newLine();
+            $this->warn('   Config effective (Laravel):');
+            $this->line('   WHATSAPP_BASE_URL → ' . (config('services.whatsapp.base_url') ?: '(vide)'));
+            $this->line('   WHATSAPP_INSTANCE_NAME → ' . (config('services.whatsapp.instance_name') ?: '(vide)'));
+            $key = (string) config('services.whatsapp.api_key');
+            $this->line('   WHATSAPP_API_KEY → ' . ($key === '' ? '(vide — à remplir)' : 'défini (' . strlen($key) . ' caractères)'));
+            $this->newLine();
+            $this->line('   Test manuel depuis ce serveur (remplacez LA_CLE par votre clé Evolution):');
+            $this->line('   curl -sS -w "\\nHTTP:%{http_code}\\n" -H "apikey: LA_CLE" "http://127.0.0.1:8080/instance/fetchInstances"');
             $this->newLine();
             $this->warn('⚠️  Assurez-vous que:');
             $this->line('   1. Evolution API est démarré');
