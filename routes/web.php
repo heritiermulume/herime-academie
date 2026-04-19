@@ -145,9 +145,8 @@ Route::get('/sso/callback', [SSOCallbackController::class, 'handle'])->name('sso
 // Authentication routes
 require __DIR__.'/auth.php';
 
-// Cart routes (accessible to all users). Ne pas appliquer guest.moneroo.cart ici : onceUsingId
-// rendrait la page /cart « connectée » pour l’affichage alors que la session n’est pas persistée.
-// L’auth invité Moneroo est réservée au groupe moneroo (initiate, status, etc.).
+// Cart routes (accessible à tous). L’accès Moneroo invité « compte existant » est géré par
+// le middleware auth.moneroo.checkout + resolveMonerooCartOwner() (session cart_guest_pay_*), pas sur /cart.
 Route::middleware(['sync.cart'])->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
@@ -990,7 +989,7 @@ Route::prefix('moneroo')->name('moneroo.')->group(function () {
     Route::get('/methods', [MonerooController::class, 'availableMethods'])->name('methods');
 
     // Endpoints nécessitant l'auth (depuis le checkout)
-    Route::middleware(['guest.moneroo.cart', 'auth'])->group(function () {
+    Route::middleware(['auth.moneroo.checkout'])->group(function () {
         Route::post('/initiate', [MonerooController::class, 'initiate'])->name('initiate');
         Route::get('/status/{paymentId}', [MonerooController::class, 'status'])->name('status');
         Route::post('/verify-order/{order}', [MonerooController::class, 'verifyOrderPayment'])->name('verify-order');

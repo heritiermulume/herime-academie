@@ -197,15 +197,27 @@ class MonerooController extends Controller
         return response()->json($responseData, $response->status());
     }
 
-    public function initiate(Request $request)
+    /**
+     * Propriétaire du panier pour Moneroo : utilisateur en session ou intent invité (compte existant).
+     */
+    private function resolveMonerooCartOwner(): ?User
     {
-        if (! auth()->check()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous devez être connecté pour procéder au paiement.',
-            ], 401);
+        if (auth()->check()) {
+            return auth()->user();
+        }
+        if (! Session::get(CartController::GUEST_PAY_READY_KEY)) {
+            return null;
+        }
+        $id = (int) Session::get(CartController::GUEST_PAY_USER_ID_KEY);
+        if ($id <= 0) {
+            return null;
         }
 
+        return User::find($id);
+    }
+
+    public function initiate(Request $request)
+    {
         // Validation rapide du code promo (sans créer de commande)
         if ($request->has('validate_promo_code') && $request->validate_promo_code === true) {
             $code = $request->ambassador_promo_code;
@@ -254,7 +266,13 @@ class MonerooController extends Controller
         $data['country'] = $data['country'] ?? null;
         $data['provider'] = $data['provider'] ?? null;
 
-        $user = auth()->user();
+        $user = $this->resolveMonerooCartOwner();
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous devez être connecté pour procéder au paiement.',
+            ], 401);
+        }
 
         // Récupérer les articles du panier (contenus + packs)
         $cartItems = $user->cartItems()->with('course')->get();
@@ -792,8 +810,9 @@ class MonerooController extends Controller
 
     public function status(string $paymentId)
     {
-        if (auth()->check()) {
-            $this->maybeAutoCancelStaleOrdersForUser((int) auth()->id());
+        $cartOwner = $this->resolveMonerooCartOwner();
+        if ($cartOwner) {
+            $this->maybeAutoCancelStaleOrdersForUser((int) $cartOwner->id);
         }
 
         // Utiliser l'endpoint /verify selon la documentation Moneroo
@@ -1011,7 +1030,8 @@ class MonerooController extends Controller
      */
     public function verifyOrderPayment(Order $order)
     {
-        if ($order->user_id !== auth()->id()) {
+        $owner = $this->resolveMonerooCartOwner();
+        if (! $owner || (int) $order->user_id !== (int) $owner->id) {
             abort(403, 'Accès non autorisé à cette commande.');
         }
 
@@ -1572,6 +1592,11 @@ class MonerooController extends Controller
             return response()->json(['success' => false, 'message' => 'Transaction introuvable'], 404);
         }
 
+        $owner = $this->resolveMonerooCartOwner();
+        if (! $owner || ! $payment->order || (int) $payment->order->user_id !== (int) $owner->id) {
+            return response()->json(['success' => false, 'message' => 'Accès non autorisé'], 403);
+        }
+
         // Vérifier que le paiement n'est pas déjà complété
         if ($payment->status === 'completed' || in_array($payment->order?->status ?? null, ['paid', 'completed'])) {
             \Log::warning('Moneroo cancel: Cannot cancel - payment already completed', [
@@ -1615,10 +1640,11 @@ class MonerooController extends Controller
      */
     public function cancelLatestPending(Request $request)
     {
-        if (! auth()->check()) {
+        $cartOwner = $this->resolveMonerooCartOwner();
+        if (! $cartOwner) {
             return response()->json(['success' => false, 'message' => 'Non authentifié'], 401);
         }
-        $userId = auth()->id();
+        $userId = (int) $cartOwner->id;
         // Ne pas toucher aux commandes d’abonnement (SUB-*) : le flux panier ne doit pas annuler un checkout Membre en cours.
         $order = Order::where('user_id', $userId)
             ->where('status', 'pending')
@@ -2479,6 +2505,14 @@ class MonerooController extends Controller
                     'success' => false,
                     'message' => 'Paiement introuvable',
                 ], 404);
+            }
+
+            $actor = $this->resolveMonerooCartOwner();
+            if (! $actor || (int) $payment->order->user_id !== (int) $actor->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Accès non autorisé',
+                ], 403);
             }
 
             // Mapper le type d'échec vers une raison compréhensible

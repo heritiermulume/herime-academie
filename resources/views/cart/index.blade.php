@@ -1898,6 +1898,7 @@ async function getCurrentCartTotal() {
             // Initier le paiement Moneroo directement
             const response = await fetch('{{ route("moneroo.initiate") }}', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': cartPageCsrfToken(),
@@ -2292,6 +2293,7 @@ async function proceedToCheckout(event) {
         // Initier le paiement Moneroo directement
         const response = await fetch('{{ route("moneroo.initiate") }}', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': cartPageCsrfToken(),
@@ -2403,6 +2405,7 @@ const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) 
         // Initier le paiement Moneroo directement
         const response = await fetch('{{ route("moneroo.initiate") }}', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': cartPageCsrfToken(),
