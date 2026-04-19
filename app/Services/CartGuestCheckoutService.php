@@ -59,7 +59,7 @@ class CartGuestCheckoutService
                 'email' => $email,
                 'phone' => $phone,
                 'password' => Hash::make($plainPassword),
-                'role' => 'student',
+                'role' => 'customer',
                 'is_active' => true,
                 'is_verified' => false,
             ]);
