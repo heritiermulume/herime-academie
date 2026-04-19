@@ -889,7 +889,7 @@ class MonerooController extends Controller
 
     /**
      * Synchroniser automatiquement les paiements Moneroo en attente.
-     * Appelé depuis runThrottledVisitPaymentMaintenance (middleware GET, cache externe).
+     * Appelé depuis runThrottledVisitPaymentMaintenance (navigation) ou runScheduledPaymentMaintenance (cron).
      * - Pour les admins : synchronise TOUTES les commandes en attente (données à jour).
      * - Pour les clients : synchronise uniquement les paiements de l'utilisateur.
      */
@@ -985,7 +985,7 @@ class MonerooController extends Controller
                 ]),
             ]);
             $this->finalizeOrderAfterPayment($payment->order);
-            \Log::info('Moneroo: Order finalized after auto-sync on page load', [
+            \Log::info('Moneroo: Order finalized after auto-sync', [
                 'order_id' => $payment->order->id,
                 'payment_id' => $payment->payment_id,
             ]);
@@ -2788,26 +2788,62 @@ class MonerooController extends Controller
 
     private function autoCancelStale(int $userId): void
     {
+        $this->eachStalePendingOrderQuery($userId)->chunkById(50, function ($orders): void {
+            foreach ($orders as $order) {
+                $this->cancelSingleStalePendingOrder($order);
+            }
+        });
+    }
+
+    /**
+     * Annule les commandes pending expirées pour tous les utilisateurs (cron / file).
+     */
+    public function autoCancelAllStalePendingOrders(): void
+    {
+        $this->eachStalePendingOrderQuery(null)->chunkById(50, function ($orders): void {
+            foreach ($orders as $order) {
+                $this->cancelSingleStalePendingOrder($order);
+            }
+        });
+    }
+
+    /**
+     * Synchronise les paiements Moneroo en attente et annule les commandes pending trop anciennes.
+     * Appelé depuis le planificateur (file d'attente), plus depuis le middleware web.
+     */
+    public function runScheduledPaymentMaintenance(): void
+    {
+        $this->syncAllPendingPayments();
+        $this->autoCancelAllStalePendingOrders();
+    }
+
+    private function eachStalePendingOrderQuery(?int $userId)
+    {
         $timeoutMinutes = (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30));
         $threshold = now()->subMinutes($timeoutMinutes);
-        $orders = Order::where('user_id', $userId)
+        $query = Order::query()
             ->where('status', 'pending')
             ->where('created_at', '<', $threshold)
-            ->with(array_merge(['user', 'payments'], Order::eagerLoadOrderItemsWithPackages()))
-            ->get();
-        foreach ($orders as $order) {
-            $order->update(['status' => 'cancelled']);
-            Payment::where('order_id', $order->id)
-                ->where('status', 'pending')
-                ->update([
-                    'status' => 'failed',
-                    'failure_reason' => 'Annulation automatique après délai',
-                ]);
-
-            // Envoyer email ET notification d'annulation automatique
-            $failureReason = 'Annulation automatique après délai d\'attente';
-            $this->sendPaymentFailureNotifications($order, $failureReason);
+            ->with(array_merge(['user', 'payments'], Order::eagerLoadOrderItemsWithPackages()));
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
         }
+
+        return $query;
+    }
+
+    private function cancelSingleStalePendingOrder(Order $order): void
+    {
+        $order->update(['status' => 'cancelled']);
+        Payment::where('order_id', $order->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'failed',
+                'failure_reason' => 'Annulation automatique après délai',
+            ]);
+
+        $failureReason = 'Annulation automatique après délai d\'attente';
+        $this->sendPaymentFailureNotifications($order, $failureReason);
     }
 
     /**

@@ -15,20 +15,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Cache entre deux passages de processRenewalsForUser() (client connecté)
+    | Ancien cache « visite web » (middleware retiré : traitement via scheduler + file)
     |--------------------------------------------------------------------------
     |
-    | Limite la charge serveur sur les GET. Défaut 10 minutes (aligné commandes Moneroo).
-    | Une facture peut donc être traitée en « en retard » jusqu’à ce délai après son due_at.
+    | Conservés pour compatibilité si du code ou des déploiements y font encore référence.
     |
     */
     'process_renewals_visit_cache_seconds' => (int) env('SUBSCRIPTION_RENEWALS_VISIT_CACHE_SECONDS', 600),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Cache entre deux processRenewals() globaux déclenchés par un admin (GET)
-    |--------------------------------------------------------------------------
-    */
     'process_renewals_admin_visit_cache_seconds' => (int) env('SUBSCRIPTION_RENEWALS_ADMIN_VISIT_CACHE_SECONDS', 600),
 
 ];

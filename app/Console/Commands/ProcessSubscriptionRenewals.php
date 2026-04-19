@@ -8,7 +8,8 @@ use Illuminate\Console\Command;
 class ProcessSubscriptionRenewals extends Command
 {
     protected $signature = 'subscriptions:process-renewals';
-    protected $description = 'Traite tous les renouvellements (tous utilisateurs). En prod, les clients sont aussi mis à jour à la visite (middleware web).';
+
+    protected $description = 'Traite tous les renouvellements (tous utilisateurs). En prod, le planificateur dispatch aussi ProcessSubscriptionRenewalsJob (file d\'attente).';
 
     public function handle(SubscriptionService $subscriptionService): int
     {
@@ -18,4 +19,3 @@ class ProcessSubscriptionRenewals extends Command
         return self::SUCCESS;
     }
 }
-

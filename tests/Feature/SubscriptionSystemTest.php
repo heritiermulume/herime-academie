@@ -2252,15 +2252,15 @@ class SubscriptionSystemTest extends TestCase
         );
     }
 
-    public function test_customer_get_request_triggers_subscription_renewal_middleware(): void
+    public function test_subscription_renewals_are_processed_by_service_not_on_page_load(): void
     {
         Cache::flush();
 
         $user = User::factory()->create(['role' => 'customer']);
 
         $plan = SubscriptionPlan::create([
-            'name' => 'Middleware renew',
-            'slug' => 'mw-renew-'.uniqid(),
+            'name' => 'Scheduler renew',
+            'slug' => 'sched-renew-'.uniqid(),
             'plan_type' => 'recurring',
             'billing_period' => 'monthly',
             'price' => 19,
@@ -2286,6 +2286,15 @@ class SubscriptionSystemTest extends TestCase
         ]);
 
         $this->actingAs($user)->get(route('customer.dashboard'))->assertOk();
+
+        $subscription->refresh();
+        $this->assertSame(
+            $periodEnd->copy()->utc()->format('Y-m-d H:i:s'),
+            $subscription->current_period_ends_at->copy()->utc()->format('Y-m-d H:i:s'),
+            'Le renouvellement ne doit plus être déclenché par le seul chargement d’une page.'
+        );
+
+        app(SubscriptionService::class)->processRenewals();
 
         $subscription->refresh();
         $this->assertTrue($subscription->current_period_ends_at->greaterThan($periodEnd));

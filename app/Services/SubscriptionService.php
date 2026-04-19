@@ -904,8 +904,8 @@ class SubscriptionService
     }
 
     /**
-     * Traite tous les abonnements (cron / commande artisan).
-     * Pour éviter de dépendre du scheduler, voir aussi processRenewalsForUser() + middleware web.
+     * Traite tous les abonnements (cron / commande artisan / job planifié).
+     * processRenewalsForUser() reste utilisable pour des tests ou déclenchements ciblés.
      */
     public function processRenewals(): int
     {

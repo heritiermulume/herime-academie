@@ -1,5 +1,9 @@
 <?php
 
+use App\Jobs\CleanTemporaryUploadsJob;
+use App\Jobs\ProcessSubscriptionRenewalsJob;
+use App\Jobs\RunMonerooPaymentMaintenanceJob;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -11,9 +15,29 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->call(function (): void {
+            \App\Models\VideoAccessToken::cleanupExpired();
+        })->hourly()->name('youtube-cleanup-tokens');
+
+        $schedule->call(function (): void {
+            app(\App\Services\VideoSecurityService::class)->monitorSuspiciousActivity();
+        })->everySixHours()->name('youtube-monitor-activity');
+
+        $schedule->job(new ProcessSubscriptionRenewalsJob)
+            ->hourly()
+            ->name('subscriptions-process-renewals');
+
+        $schedule->job(new RunMonerooPaymentMaintenanceJob)
+            ->everyTenMinutes()
+            ->name('moneroo-payment-maintenance');
+
+        $schedule->job(new CleanTemporaryUploadsJob)
+            ->hourly()
+            ->name('clean-temporary-uploads');
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'subscription.renewals.admin_visit' => \App\Http\Middleware\ProcessSubscriptionRenewalsOnAdminVisit::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'security' => \App\Http\Middleware\SecurityMiddleware::class,
             'upload.errors' => \App\Http\Middleware\HandleUploadErrors::class,
@@ -26,11 +50,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // Appliquer les middlewares globalement sur les routes web
         $middleware->web(append: [
             \App\Http\Middleware\HandleUploadErrors::class,
-            // Synchroniser automatiquement les paiements Moneroo en attente pour les clients
-            // Quand la connexion revient après une coupure, vérifie auprès de Moneroo et finalise
-            \App\Http\Middleware\SyncPendingMonerooPayments::class,
-            // Renouvellements / factures en retard : traités à la visite (GET), sans cron obligatoire
-            \App\Http\Middleware\ProcessSubscriptionRenewalsOnVisit::class,
             // Capturer le contexte marketing (utm/funnel) et le persister
             \App\Http\Middleware\CaptureMarketingContext::class,
             // Valider le token SSO à chaque chargement de page pour les utilisateurs authentifiés

@@ -404,7 +404,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Admin routes - avec validation SSO pour les actions de modification (appliqué individuellement)
-    Route::prefix('admin')->name('admin.')->middleware(['role:admin', 'subscription.renewals.admin_visit'])->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware(['role:admin'])->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
         Route::get('/analytics/revenue-data', [AdminController::class, 'getRevenueData'])->name('analytics.revenue-data');

@@ -11,10 +11,8 @@ use App\Models\Partner;
 use App\Models\Testimonial;
 use App\Models\User;
 use App\Services\CommunitySettingsService;
-use App\Services\TemporaryUploadCleaner;
 use App\Traits\CourseStatistics;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 
 class HomeController extends Controller
 {
@@ -116,23 +114,8 @@ class HomeController extends Controller
         ]);
     }
 
-    public function index(TemporaryUploadCleaner $temporaryUploadCleaner)
+    public function index()
     {
-        $cacheKey = 'temporary_uploads_last_cleanup_at';
-        $lockKey = 'temporary_uploads_cleanup_lock';
-        $interval = max(1, (int) config('uploads.temporary.home_cleanup_interval_minutes', 60));
-        $lastCleanup = Cache::get($cacheKey);
-
-        if ((! $lastCleanup || now()->diffInMinutes($lastCleanup) >= $interval)
-            && Cache::add($lockKey, true, 60)) {
-            try {
-                $temporaryUploadCleaner->clean();
-                Cache::put($cacheKey, now(), now()->addMinutes($interval * 2));
-            } finally {
-                Cache::forget($lockKey);
-            }
-        }
-
         // Récupérer les bannières actives pour le carousel
         $banners = Banner::active()->ordered()->get();
 
