@@ -52,7 +52,7 @@ HTML;
     /**
      * Génère le contenu PDF du reçu d'inscription (binaire).
      *
-     * @param Enrollment $enrollment Inscription (avec user et course chargés)
+     * @param  Enrollment  $enrollment  Inscription (avec user et course chargés)
      * @return string Contenu binaire du PDF
      */
     public function generatePdfContent(Enrollment $enrollment): string
@@ -83,7 +83,7 @@ HTML;
             'logoBase64' => $logoBase64,
         ])->render();
 
-        $options = new Options();
+        $options = new Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', false);
         $options->set('defaultFont', 'DejaVu Sans');
@@ -105,6 +105,7 @@ HTML;
         if ($course->receipt_custom_title !== null && trim($course->receipt_custom_title) !== '') {
             return trim($course->receipt_custom_title);
         }
+
         return Setting::get('receipt_default_title', self::DEFAULT_TITLE) ?: self::DEFAULT_TITLE;
     }
 
@@ -116,6 +117,7 @@ HTML;
         if ($course->receipt_custom_body !== null && trim($course->receipt_custom_body) !== '') {
             return trim($course->receipt_custom_body);
         }
+
         return Setting::get('receipt_default_body', self::DEFAULT_BODY) ?: self::DEFAULT_BODY;
     }
 
@@ -124,7 +126,7 @@ HTML;
         $course->loadMissing(['provider', 'category']);
 
         $contentType = $course->getContentTypeLabel();
-        $courseUrl = ($course->is_downloadable || ($course->is_in_person_program ?? false))
+        $courseUrl = ($course->is_downloadable || ($course->is_in_person_program ?? false) || $course->isEnrollmentReceiptOnly())
             ? route('contents.show', $course->slug)
             : route('learning.course', $course->slug);
 
@@ -144,8 +146,9 @@ HTML;
     private function replacePlaceholders(string $text, array $replacements): string
     {
         foreach ($replacements as $key => $value) {
-            $text = str_replace('{' . $key . '}', $value, $text);
+            $text = str_replace('{'.$key.'}', $value, $text);
         }
+
         return $text;
     }
 
@@ -155,13 +158,14 @@ HTML;
     private function getLogoBase64(): string
     {
         $logoPath = public_path('images/logo-herime-academie.png');
-        if (!file_exists($logoPath)) {
+        if (! file_exists($logoPath)) {
             $logoPath = public_path('images/logo-herime-academie-blanc.png');
         }
-        if (!file_exists($logoPath)) {
+        if (! file_exists($logoPath)) {
             return '';
         }
         $data = file_get_contents($logoPath);
-        return 'data:image/png;base64,' . base64_encode($data);
+
+        return 'data:image/png;base64,'.base64_encode($data);
     }
 }

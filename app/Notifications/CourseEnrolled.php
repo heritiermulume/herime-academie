@@ -2,10 +2,8 @@
 
 namespace App\Notifications;
 
-use App\Models\Course;
 use App\Mail\CourseEnrolledMail;
-use App\Services\EmailService;
-use App\Notifications\EmailSentNotification;
+use App\Models\Course;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -42,26 +40,26 @@ class CourseEnrolled extends Notification
     {
         try {
             // Charger les relations nécessaires si elles ne sont pas déjà chargées
-            if (!$this->course->relationLoaded('provider')) {
+            if (! $this->course->relationLoaded('provider')) {
                 $this->course->load('provider');
             }
-            if (!$this->course->relationLoaded('category')) {
+            if (! $this->course->relationLoaded('category')) {
                 $this->course->load('category');
             }
-            
+
             // Utiliser le Mailable personnalisé pour l'email HTML avec la charte graphique
             $mailable = new CourseEnrolledMail($this->course);
-            
-            \Log::info("CourseEnrolled::toMail() appelé", [
+
+            \Log::info('CourseEnrolled::toMail() appelé', [
                 'user_id' => $notifiable->id,
                 'user_email' => $notifiable->email,
                 'course_id' => $this->course->id,
                 'course_title' => $this->course->title,
             ]);
-            
+
             return $mailable;
         } catch (\Exception $e) {
-            \Log::error("Erreur dans CourseEnrolled::toMail()", [
+            \Log::error('Erreur dans CourseEnrolled::toMail()', [
                 'user_id' => $notifiable->id ?? null,
                 'user_email' => $notifiable->email ?? null,
                 'course_id' => $this->course->id ?? null,
@@ -80,7 +78,7 @@ class CourseEnrolled extends Notification
     public function toArray(object $notifiable): array
     {
         // Charger les relations nécessaires si elles ne sont pas déjà chargées
-        if (!$this->course->relationLoaded('provider')) {
+        if (! $this->course->relationLoaded('provider')) {
             $this->course->load('provider');
         }
 
@@ -88,28 +86,33 @@ class CourseEnrolled extends Notification
         if ($this->course->is_in_person_program ?? false) {
             // Programme en présentiel
             $message = ($this->course->is_free ? 'Inscription au programme confirmée !' : 'Réservation confirmée !')
-                . ' Consultez les détails : ' . $this->course->title;
+                .' Consultez les détails : '.$this->course->title;
             $buttonText = 'Voir le programme';
             $buttonUrl = route('contents.show', $this->course->slug);
         } elseif ($this->course->is_downloadable) {
             // Contenu téléchargeable
             if ($this->course->is_free) {
-                $message = 'Contenu gratuit disponible ! Vous pouvez maintenant télécharger : ' . $this->course->title;
+                $message = 'Contenu gratuit disponible ! Vous pouvez maintenant télécharger : '.$this->course->title;
                 $buttonText = 'Télécharger';
                 $buttonUrl = route('contents.show', $this->course->slug);
             } else {
-                $message = 'Achat confirmé ! Vous pouvez maintenant télécharger : ' . $this->course->title;
+                $message = 'Achat confirmé ! Vous pouvez maintenant télécharger : '.$this->course->title;
                 $buttonText = 'Télécharger';
                 $buttonUrl = route('contents.show', $this->course->slug);
             }
+        } elseif ($this->course->isEnrollmentReceiptOnly()) {
+            $message = ($this->course->is_free ? 'Inscription confirmée ! ' : 'Achat confirmé ! ')
+                .'Votre reçu d\'inscription pour : '.$this->course->title;
+            $buttonText = 'Voir le contenu et le reçu';
+            $buttonUrl = route('contents.show', $this->course->slug);
         } else {
             // Cours en ligne
             if ($this->course->is_free) {
-                $message = 'Inscription confirmée ! Vous êtes maintenant inscrit au cours : ' . $this->course->title;
+                $message = 'Inscription confirmée ! Vous êtes maintenant inscrit au cours : '.$this->course->title;
                 $buttonText = 'Commencer le cours';
                 $buttonUrl = route('learning.course', $this->course->slug);
             } else {
-                $message = 'Achat confirmé ! Vous pouvez maintenant accéder au cours : ' . $this->course->title;
+                $message = 'Achat confirmé ! Vous pouvez maintenant accéder au cours : '.$this->course->title;
                 $buttonText = 'Commencer le cours';
                 $buttonUrl = route('learning.course', $this->course->slug);
             }

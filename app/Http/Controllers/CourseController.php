@@ -534,9 +534,10 @@ class CourseController extends Controller
             }
 
             $canAccessCourse = $isEnrolled || $hasPurchased;
-            // Télécharger : contenu (téléchargeable) ou reçu (présentiel / téléchargeable sans fichier)
+            // Télécharger : contenu (téléchargeable) ou reçu (présentiel / téléchargeable sans fichier / option reçu sur contenu non téléchargeable)
             $canDownloadCourse = ($course->is_downloadable && $canAccessCourse)
-                || (($course->is_in_person_program ?? false) && $isEnrolled);
+                || (($course->is_in_person_program ?? false) && $isEnrolled)
+                || ($course->isEnrollmentReceiptOnly() && $isEnrolled);
 
             // Calculer si l'utilisateur a téléchargé (pour les contenus téléchargeables gratuits)
             $hasDownloaded = false;

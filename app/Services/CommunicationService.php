@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
+use App\Jobs\SendWhatsAppFromEmailJob;
 use App\Models\SentEmail;
 use App\Models\User;
-use App\Jobs\SendWhatsAppFromEmailJob;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class CommunicationService
 {
@@ -21,11 +21,11 @@ class CommunicationService
     /**
      * Envoie un email et un message WhatsApp en parallèle
      * Si l'un échoue, l'autre continue
-     * 
-     * @param User $user L'utilisateur destinataire
-     * @param Mailable $mailable L'email à envoyer
-     * @param string|null $whatsappMessage Message WhatsApp personnalisé (optionnel)
-     * @param bool $sendWhatsApp Si false, n'envoie que l'email
+     *
+     * @param  User  $user  L'utilisateur destinataire
+     * @param  Mailable  $mailable  L'email à envoyer
+     * @param  string|null  $whatsappMessage  Message WhatsApp personnalisé (optionnel)
+     * @param  bool  $sendWhatsApp  Si false, n'envoie que l'email
      * @return array ['email' => ['success' => bool, 'error' => string|null], 'whatsapp' => ['success' => bool, 'error' => string|null]]
      */
     public function sendEmailAndWhatsApp(
@@ -36,113 +36,113 @@ class CommunicationService
     ): array {
         $results = [
             'email' => ['success' => false, 'error' => null],
-            'whatsapp' => ['success' => false, 'error' => null]
+            'whatsapp' => ['success' => false, 'error' => null],
         ];
 
         // --- Email : isolé dans un try/catch pour que son échec ne bloque jamais WhatsApp ---
         try {
-        // Envoyer l'email
-        try {
-            if ($user->email) {
-                // Vérifier la configuration du mailer
-                $mailer = config('mail.default');
-                $mailerConfig = config("mail.mailers.{$mailer}");
-                
-                Log::info("Tentative d'envoi d'email", [
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                    'mailer' => $mailer,
-                    'mailer_transport' => $mailerConfig['transport'] ?? 'unknown',
-                    'mailable' => get_class($mailable)
-                ]);
-                
-                // Tenter d'envoyer l'email
-                Mail::to($user->email)->send($mailable);
-                
-                // Vérifier si le mailer est en mode "log" ou "array" (pas d'envoi réel)
-                if (in_array($mailerConfig['transport'] ?? '', ['log', 'array'])) {
-                    $warning = "Email enregistré en mode {$mailerConfig['transport']} mais non envoyé réellement";
-                    $results['email'] = ['success' => false, 'error' => $warning];
-                    Log::warning($warning, [
+            // Envoyer l'email
+            try {
+                if ($user->email) {
+                    // Vérifier la configuration du mailer
+                    $mailer = config('mail.default');
+                    $mailerConfig = config("mail.mailers.{$mailer}");
+
+                    Log::info("Tentative d'envoi d'email", [
                         'user_id' => $user->id,
                         'user_email' => $user->email,
-                        'mailer' => $mailer
+                        'mailer' => $mailer,
+                        'mailer_transport' => $mailerConfig['transport'] ?? 'unknown',
+                        'mailable' => get_class($mailable),
                     ]);
 
-                    // Enregistrer quand même la tentative (utile pour audit)
-                    $this->recordSentEmail($user, $user->email, $mailable, 'pending', $warning);
+                    // Tenter d'envoyer l'email
+                    Mail::to($user->email)->send($mailable);
+
+                    // Vérifier si le mailer est en mode "log" ou "array" (pas d'envoi réel)
+                    if (in_array($mailerConfig['transport'] ?? '', ['log', 'array'])) {
+                        $warning = "Email enregistré en mode {$mailerConfig['transport']} mais non envoyé réellement";
+                        $results['email'] = ['success' => false, 'error' => $warning];
+                        Log::warning($warning, [
+                            'user_id' => $user->id,
+                            'user_email' => $user->email,
+                            'mailer' => $mailer,
+                        ]);
+
+                        // Enregistrer quand même la tentative (utile pour audit)
+                        $this->recordSentEmail($user, $user->email, $mailable, 'pending', $warning);
+                    } else {
+                        $results['email'] = ['success' => true, 'error' => null];
+                        Log::info("Email envoyé avec succès à {$user->email}", [
+                            'user_id' => $user->id,
+                            'mailable' => get_class($mailable),
+                        ]);
+
+                        // Enregistrer l'envoi (permet de vérifier + dédupliquer)
+                        $this->recordSentEmail($user, $user->email, $mailable, 'sent', null);
+                    }
                 } else {
-                    $results['email'] = ['success' => true, 'error' => null];
-                    Log::info("Email envoyé avec succès à {$user->email}", [
-                        'user_id' => $user->id,
-                        'mailable' => get_class($mailable)
-                    ]);
-
-                    // Enregistrer l'envoi (permet de vérifier + dédupliquer)
-                    $this->recordSentEmail($user, $user->email, $mailable, 'sent', null);
+                    $results['email'] = ['success' => false, 'error' => 'Aucun email pour cet utilisateur'];
+                    Log::warning("Tentative d'envoi d'email à un utilisateur sans email", ['user_id' => $user->id]);
                 }
-            } else {
-                $results['email'] = ['success' => false, 'error' => 'Aucun email pour cet utilisateur'];
-                Log::warning("Tentative d'envoi d'email à un utilisateur sans email", ['user_id' => $user->id]);
+            } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+                // Erreur spécifique de transport SMTP (Symfony Mailer)
+                $errorMessage = 'Erreur SMTP: '.$e->getMessage();
+                $results['email'] = ['success' => false, 'error' => $errorMessage];
+                Log::error("Erreur SMTP lors de l'envoi d'email", [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $e->getMessage(),
+                    'error_code' => method_exists($e, 'getCode') ? $e->getCode() : null,
+                    'trace' => $e->getTraceAsString(),
+                    'mailable' => get_class($mailable),
+                ]);
+
+                $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
+            } catch (\Illuminate\Mail\Mailables\AttachmentException $e) {
+                // Erreur avec les pièces jointes
+                $errorMessage = 'Erreur pièce jointe: '.$e->getMessage();
+                $results['email'] = ['success' => false, 'error' => $errorMessage];
+                Log::error("Erreur pièce jointe lors de l'envoi d'email", [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $e->getMessage(),
+                    'mailable' => get_class($mailable),
+                ]);
+
+                $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
+            } catch (\Exception $e) {
+                $errorMessage = $e->getMessage();
+                $results['email'] = ['success' => false, 'error' => $errorMessage];
+                Log::error("Erreur lors de l'envoi d'email", [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $errorMessage,
+                    'error_class' => get_class($e),
+                    'trace' => $e->getTraceAsString(),
+                    'mailable' => get_class($mailable),
+                ]);
+
+                $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
+            } catch (\Throwable $e) {
+                // Capturer toutes les erreurs fatales
+                $errorMessage = 'Erreur fatale: '.$e->getMessage();
+                $results['email'] = ['success' => false, 'error' => $errorMessage];
+                Log::error("Erreur fatale lors de l'envoi d'email", [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'error' => $errorMessage,
+                    'error_class' => get_class($e),
+                    'trace' => $e->getTraceAsString(),
+                    'mailable' => get_class($mailable),
+                ]);
+
+                $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
             }
-        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
-            // Erreur spécifique de transport SMTP (Symfony Mailer)
-            $errorMessage = "Erreur SMTP: " . $e->getMessage();
-            $results['email'] = ['success' => false, 'error' => $errorMessage];
-            Log::error("Erreur SMTP lors de l'envoi d'email", [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'error' => $e->getMessage(),
-                'error_code' => method_exists($e, 'getCode') ? $e->getCode() : null,
-                'trace' => $e->getTraceAsString(),
-                'mailable' => get_class($mailable)
-            ]);
-
-            $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
-        } catch (\Illuminate\Mail\Mailables\AttachmentException $e) {
-            // Erreur avec les pièces jointes
-            $errorMessage = "Erreur pièce jointe: " . $e->getMessage();
-            $results['email'] = ['success' => false, 'error' => $errorMessage];
-            Log::error("Erreur pièce jointe lors de l'envoi d'email", [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'error' => $e->getMessage(),
-                'mailable' => get_class($mailable)
-            ]);
-
-            $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
-        } catch (\Exception $e) {
-            $errorMessage = $e->getMessage();
-            $results['email'] = ['success' => false, 'error' => $errorMessage];
-            Log::error("Erreur lors de l'envoi d'email", [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'error' => $errorMessage,
-                'error_class' => get_class($e),
-                'trace' => $e->getTraceAsString(),
-                'mailable' => get_class($mailable)
-            ]);
-
-            $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
-        } catch (\Throwable $e) {
-            // Capturer toutes les erreurs fatales
-            $errorMessage = "Erreur fatale: " . $e->getMessage();
-            $results['email'] = ['success' => false, 'error' => $errorMessage];
-            Log::error("Erreur fatale lors de l'envoi d'email", [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'error' => $errorMessage,
-                'error_class' => get_class($e),
-                'trace' => $e->getTraceAsString(),
-                'mailable' => get_class($mailable)
-            ]);
-
-            $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
-        }
         } catch (\Throwable $e) {
             // Sécurité : aucune exception du bloc email ne doit empêcher l'envoi WhatsApp
             $results['email'] = ['success' => false, 'error' => $e->getMessage()];
-            Log::error("CommunicationService: exception non gérée dans le bloc email (WhatsApp sera tout de même tenté)", [
+            Log::error('CommunicationService: exception non gérée dans le bloc email (WhatsApp sera tout de même tenté)', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -152,17 +152,17 @@ class CommunicationService
         // --- WhatsApp : isolé pour que son échec ne bloque jamais l'email (déjà envoyé ci-dessus) ---
         // Envoyer WhatsApp (si activé et si l'utilisateur a un numéro)
         if ($sendWhatsApp) {
-            if (!$user->phone) {
+            if (! $user->phone) {
                 $results['whatsapp'] = ['success' => false, 'error' => 'Aucun numéro de téléphone pour cet utilisateur'];
                 Log::warning("Tentative d'envoi WhatsApp à un utilisateur sans numéro", [
                     'user_id' => $user->id,
                     'user_email' => $user->email,
-                    'mailable' => get_class($mailable)
+                    'mailable' => get_class($mailable),
                 ]);
             } else {
                 try {
                     // Générer le message WhatsApp si non fourni
-                    if (!$whatsappMessage) {
+                    if (! $whatsappMessage) {
                         $whatsappMessage = $this->generateWhatsAppMessageFromMailable($mailable, $user);
                     } else {
                         // Si un message personnalisé est fourni, ajouter quand même l'en-tête et le pied
@@ -173,48 +173,48 @@ class CommunicationService
                         // Envoyer via job pour ne pas bloquer
                         $queueConnection = config('queue.default');
                         $queueDriver = config("queue.connections.{$queueConnection}.driver", 'sync');
-                        
-                        Log::info("Démarrage envoi WhatsApp", [
+
+                        Log::info('Démarrage envoi WhatsApp', [
                             'user_id' => $user->id,
                             'user_phone' => $user->phone,
                             'queue_driver' => $queueDriver,
-                            'mailable' => get_class($mailable)
+                            'mailable' => get_class($mailable),
                         ]);
-                        
+
                         if ($queueDriver === 'sync') {
                             // Exécution synchrone immédiate
                             SendWhatsAppFromEmailJob::dispatchSync($user, $whatsappMessage);
                             Log::info("Job WhatsApp exécuté en mode sync pour {$user->phone}", [
                                 'user_id' => $user->id,
-                                'mailable' => get_class($mailable)
+                                'mailable' => get_class($mailable),
                             ]);
                         } else {
                             // Exécution asynchrone via queue
                             SendWhatsAppFromEmailJob::dispatchAfterResponse($user, $whatsappMessage);
                             Log::info("Job WhatsApp dispatché en mode async pour {$user->phone}", [
                                 'user_id' => $user->id,
-                                'mailable' => get_class($mailable)
+                                'mailable' => get_class($mailable),
                             ]);
                         }
-                        
+
                         $results['whatsapp'] = ['success' => true, 'error' => null];
                     } else {
                         $results['whatsapp'] = ['success' => false, 'error' => 'Impossible de générer le message WhatsApp'];
-                        Log::warning("Impossible de générer le message WhatsApp", [
+                        Log::warning('Impossible de générer le message WhatsApp', [
                             'user_id' => $user->id,
                             'user_phone' => $user->phone,
-                            'mailable' => get_class($mailable)
+                            'mailable' => get_class($mailable),
                         ]);
                     }
                 } catch (\Throwable $e) {
                     // Capturer Exception et Error pour que l'échec WhatsApp ne remonte jamais (l'email est déjà envoyé)
                     $results['whatsapp'] = ['success' => false, 'error' => $e->getMessage()];
-                    Log::error("Erreur lors du dispatch WhatsApp", [
+                    Log::error('Erreur lors du dispatch WhatsApp', [
                         'user_id' => $user->id,
                         'user_phone' => $user->phone,
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
-                        'mailable' => get_class($mailable)
+                        'mailable' => get_class($mailable),
                     ]);
                 }
             }
@@ -326,13 +326,13 @@ class CommunicationService
                 ->where('recipient_email', $email)
                 ->where('metadata->mail_class', get_class($mailable));
 
-            if (!empty($metadata['order_id'])) {
+            if (! empty($metadata['order_id'])) {
                 $dedupeQuery->where('metadata->order_id', $metadata['order_id']);
             }
-            if (!empty($metadata['content_id'])) {
+            if (! empty($metadata['content_id'])) {
                 $dedupeQuery->where('metadata->content_id', $metadata['content_id']);
             }
-            if (!empty($metadata['content_package_id'])) {
+            if (! empty($metadata['content_package_id'])) {
                 $dedupeQuery->where('metadata->content_package_id', $metadata['content_package_id']);
             }
 
@@ -369,119 +369,132 @@ class CommunicationService
 
     /**
      * Ajoute l'en-tête et le pied de page à un message WhatsApp
-     * 
-     * @param string $message Le message principal
-     * @param User $user L'utilisateur destinataire
-     * @return string
+     *
+     * @param  string  $message  Le message principal
+     * @param  User  $user  L'utilisateur destinataire
      */
     protected function formatWhatsAppMessage(string $message, User $user): string
     {
         $userName = $user->name ?? 'Cher utilisateur';
-        
-        $header = "━━━━━━━━━━━━━━━━━\n" .
-                  "🎓 *HERIME ACADÉMIE*\n" .
+
+        $header = "━━━━━━━━━━━━━━━━━\n".
+                  "🎓 *HERIME ACADÉMIE*\n".
                   "━━━━━━━━━━━━━━━━━\n\n";
-        
-        $footer = "\n\n" .
-                  "━━━━━━━━━━━━━━━━━\n" .
-                  "📚 _Herime Académie - Votre plateforme d'apprentissage en ligne._\n" .
-                  "🌐 academie.herime.com\n" .
-                  "📧 academie@herime.com\n" .
-                  "━━━━━━━━━━━━━━━━━";
-        
-        return $header . $message . $footer;
+
+        $footer = "\n\n".
+                  "━━━━━━━━━━━━━━━━━\n".
+                  "📚 _Herime Académie - Votre plateforme d'apprentissage en ligne._\n".
+                  "🌐 academie.herime.com\n".
+                  "📧 academie@herime.com\n".
+                  '━━━━━━━━━━━━━━━━━';
+
+        return $header.$message.$footer;
     }
 
     /**
      * Génère un message WhatsApp à partir d'un Mailable
-     * 
-     * @param Mailable $mailable
-     * @param User $user L'utilisateur destinataire
-     * @return string|null
+     *
+     * @param  User  $user  L'utilisateur destinataire
      */
     protected function generateWhatsAppMessageFromMailable(Mailable $mailable, User $user): ?string
     {
         $mailableClass = get_class($mailable);
         $userName = $user->name ?? 'Cher utilisateur';
-        
+
         // Messages personnalisés selon le type d'email
         switch ($mailableClass) {
             case \App\Mail\CourseEnrolledMail::class:
                 $course = $mailable->course;
-                
+
                 // Personnaliser selon le type de contenu
                 if ($course->is_in_person_program ?? false) {
                     // Programme en présentiel
                     $courseUrl = route('contents.show', $course->slug);
-                    $message = ($course->is_free ? "🎓 *Inscription au programme confirmée !*" : "✅ *Réservation confirmée !*") . "\n\n" .
-                              "Bonjour *{$userName}*,\n\n" .
-                              "Votre inscription au programme en présentiel *{$course->title}* a été confirmée.\n\n" .
-                              "Consultez la page du programme pour les coordonnées WhatsApp et les prochaines étapes.\n\n" .
-                              "👉 {$courseUrl}\n\n" .
-                              "À bientôt !";
+                    $message = ($course->is_free ? '🎓 *Inscription au programme confirmée !*' : '✅ *Réservation confirmée !*')."\n\n".
+                              "Bonjour *{$userName}*,\n\n".
+                              "Votre inscription au programme en présentiel *{$course->title}* a été confirmée.\n\n".
+                              "Consultez la page du programme pour les coordonnées WhatsApp et les prochaines étapes.\n\n".
+                              "👉 {$courseUrl}\n\n".
+                              'À bientôt !';
                 } elseif ($course->is_downloadable) {
                     // Contenu téléchargeable
                     if ($course->is_free) {
                         // Téléchargeable gratuit
                         $courseUrl = route('contents.show', $course->slug);
-                        $message = "🎁 *Contenu gratuit disponible !*\n\n" .
-                                  "Bonjour *{$userName}*,\n\n" .
-                                  "Félicitations ! Vous avez maintenant accès à ce contenu gratuit :\n" .
-                                  "*{$course->title}*\n\n" .
-                                  "Vous pouvez le télécharger dès maintenant et en profiter à tout moment.\n\n" .
-                                  "👉 {$courseUrl}\n\n" .
-                                  "Bonne découverte !";
+                        $message = "🎁 *Contenu gratuit disponible !*\n\n".
+                                  "Bonjour *{$userName}*,\n\n".
+                                  "Félicitations ! Vous avez maintenant accès à ce contenu gratuit :\n".
+                                  "*{$course->title}*\n\n".
+                                  "Vous pouvez le télécharger dès maintenant et en profiter à tout moment.\n\n".
+                                  "👉 {$courseUrl}\n\n".
+                                  'Bonne découverte !';
                     } else {
                         // Téléchargeable payant
                         $courseUrl = route('contents.show', $course->slug);
-                        $message = "✅ *Achat confirmé !*\n\n" .
-                                  "Bonjour *{$userName}*,\n\n" .
-                                  "Votre achat a été confirmé avec succès. Vous avez maintenant accès à :\n" .
-                                  "*{$course->title}*\n\n" .
-                                  "Vous pouvez télécharger ce produit immédiatement.\n\n" .
-                                  "👉 {$courseUrl}\n\n" .
-                                  "Merci pour votre confiance !";
+                        $message = "✅ *Achat confirmé !*\n\n".
+                                  "Bonjour *{$userName}*,\n\n".
+                                  "Votre achat a été confirmé avec succès. Vous avez maintenant accès à :\n".
+                                  "*{$course->title}*\n\n".
+                                  "Vous pouvez télécharger ce produit immédiatement.\n\n".
+                                  "👉 {$courseUrl}\n\n".
+                                  'Merci pour votre confiance !';
+                    }
+                } elseif ($course->isEnrollmentReceiptOnly()) {
+                    $courseUrl = route('contents.show', $course->slug);
+                    if ($course->is_free) {
+                        $message = "🧾 *Inscription confirmée !*\n\n".
+                                  "Bonjour *{$userName}*,\n\n".
+                                  "Votre inscription à *{$course->title}* a été confirmée. Vous recevrez un reçu PDF par email ; vous pouvez aussi le télécharger depuis la page du contenu.\n\n".
+                                  "👉 {$courseUrl}\n\n".
+                                  'Merci !';
+                    } else {
+                        $message = "🧾 *Achat confirmé !*\n\n".
+                                  "Bonjour *{$userName}*,\n\n".
+                                  "Votre achat pour *{$course->title}* a été confirmé. Vous recevrez un reçu PDF par email ; vous pouvez aussi le télécharger depuis la page du contenu.\n\n".
+                                  "👉 {$courseUrl}\n\n".
+                                  'Merci pour votre confiance !';
                     }
                 } else {
                     // Contenu non téléchargeable => parler de *formation* et de *formateur*
                     if ($course->is_free) {
                         // Formation gratuite
                         $courseUrl = route('learning.course', $course->slug);
-                        $message = "🎓 *Inscription confirmée !*\n\n" .
-                                  "Bonjour *{$userName}*,\n\n" .
-                                  "Félicitations ! Vous êtes maintenant inscrit à la formation :\n" .
-                                  "*{$course->title}*\n\n" .
-                                  "Vous pouvez commencer votre apprentissage dès maintenant.\n\n" .
-                                  "👉 {$courseUrl}\n\n" .
-                                  "Bon apprentissage !";
+                        $message = "🎓 *Inscription confirmée !*\n\n".
+                                  "Bonjour *{$userName}*,\n\n".
+                                  "Félicitations ! Vous êtes maintenant inscrit à la formation :\n".
+                                  "*{$course->title}*\n\n".
+                                  "Vous pouvez commencer votre apprentissage dès maintenant.\n\n".
+                                  "👉 {$courseUrl}\n\n".
+                                  'Bon apprentissage !';
                     } else {
                         // Formation payante
                         $courseUrl = route('learning.course', $course->slug);
-                        $message = "✅ *Achat confirmé !*\n\n" .
-                                  "Bonjour *{$userName}*,\n\n" .
-                                  "Votre achat a été confirmé avec succès. Vous avez maintenant accès à la formation :\n" .
-                                  "*{$course->title}*\n\n" .
-                                  "Vous pouvez commencer votre apprentissage dès maintenant.\n\n" .
-                                  "👉 {$courseUrl}\n\n" .
-                                  "Merci pour votre confiance !";
+                        $message = "✅ *Achat confirmé !*\n\n".
+                                  "Bonjour *{$userName}*,\n\n".
+                                  "Votre achat a été confirmé avec succès. Vous avez maintenant accès à la formation :\n".
+                                  "*{$course->title}*\n\n".
+                                  "Vous pouvez commencer votre apprentissage dès maintenant.\n\n".
+                                  "👉 {$courseUrl}\n\n".
+                                  'Merci pour votre confiance !';
                     }
                 }
+
                 return $this->formatWhatsAppMessage($message, $user);
 
             case \App\Mail\PackageEnrolledMail::class:
                 $package = $mailable->package;
                 $packUrl = route('customer.pack', $package);
-                $message = "📦 *Accès à votre pack*\n\n" .
-                    "Bonjour *{$userName}*,\n\n" .
-                    "Votre pack *{$package->title}* est disponible. Tous les contenus inclus sont accessibles depuis la page du pack.\n\n" .
-                    "👉 {$packUrl}\n\n" .
-                    "Bonne formation !";
+                $message = "📦 *Accès à votre pack*\n\n".
+                    "Bonjour *{$userName}*,\n\n".
+                    "Votre pack *{$package->title}* est disponible. Tous les contenus inclus sont accessibles depuis la page du pack.\n\n".
+                    "👉 {$packUrl}\n\n".
+                    'Bonne formation !';
 
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\PaymentReceivedMail::class:
                 $order = property_exists($mailable, 'order') ? $mailable->order : null;
-                if (!$order) {
+                if (! $order) {
                     return null;
                 }
 
@@ -490,116 +503,125 @@ class CommunicationService
                 $contentType = $copy['whatsapp_types_label'];
                 $actionText = $copy['action_text'];
 
-                $message = "✅ *Paiement reçu*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Votre paiement pour la commande *{$order->order_number}* a été confirmé.\n\n" .
-                          "Montant : *" . number_format($order->total, 0, ',', ' ') . " FCFA*\n\n" .
-                          "Vous avez maintenant accès à tous vos {$contentType}.\n\n" .
-                          "{$actionText}\n\n" .
-                          "Merci pour votre confiance !";
+                $message = "✅ *Paiement reçu*\n\n".
+                          "Bonjour *{$userName}*,\n\n".
+                          "Votre paiement pour la commande *{$order->order_number}* a été confirmé.\n\n".
+                          'Montant : *'.number_format($order->total, 0, ',', ' ')." FCFA*\n\n".
+                          "Vous avez maintenant accès à tous vos {$contentType}.\n\n".
+                          "{$actionText}\n\n".
+                          'Merci pour votre confiance !';
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\InvoiceMail::class:
                 $order = property_exists($mailable, 'order') ? $mailable->order : null;
-                if (!$order) {
+                if (! $order) {
                     return null;
                 }
-                $message = "📄 *Facture disponible*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Votre facture pour la commande *{$order->order_number}* est disponible.\n\n" .
-                          "Montant : *" . number_format($order->total, 0, ',', ' ') . " FCFA*\n\n" .
-                          "Consultez votre espace personnel pour télécharger la facture.";
+                $message = "📄 *Facture disponible*\n\n".
+                          "Bonjour *{$userName}*,\n\n".
+                          "Votre facture pour la commande *{$order->order_number}* est disponible.\n\n".
+                          'Montant : *'.number_format($order->total, 0, ',', ' ')." FCFA*\n\n".
+                          'Consultez votre espace personnel pour télécharger la facture.';
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\PaymentFailedMail::class:
                 $order = property_exists($mailable, 'order') ? $mailable->order : null;
-                if (!$order) {
+                if (! $order) {
                     return null;
                 }
-                $reason = property_exists($mailable, 'failureReason') && $mailable->failureReason 
-                    ? $mailable->failureReason 
+                $reason = property_exists($mailable, 'failureReason') && $mailable->failureReason
+                    ? $mailable->failureReason
                     : 'Raison non spécifiée';
-                $message = "❌ *Échec du paiement*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Le paiement pour la commande *{$order->order_number}* a échoué.\n\n" .
-                          "Raison : {$reason}\n\n" .
-                          "Veuillez réessayer ou contacter le support.";
+                $message = "❌ *Échec du paiement*\n\n".
+                          "Bonjour *{$userName}*,\n\n".
+                          "Le paiement pour la commande *{$order->order_number}* a échoué.\n\n".
+                          "Raison : {$reason}\n\n".
+                          'Veuillez réessayer ou contacter le support.';
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\CourseAccessRevokedMail::class:
                 $course = property_exists($mailable, 'course') ? $mailable->course : null;
-                if (!$course) {
+                if (! $course) {
                     return null;
                 }
                 $label = $course->getContentLabel();
-                $message = "⚠️ *Accès révoqué*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Votre accès au {$label} *{$course->title}* a été révoqué.\n\n" .
+                $message = "⚠️ *Accès révoqué*\n\n".
+                          "Bonjour *{$userName}*,\n\n".
+                          "Votre accès au {$label} *{$course->title}* a été révoqué.\n\n".
                           "Pour plus d'informations, contactez le support.";
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\CertificateIssuedMail::class:
                 $certificate = property_exists($mailable, 'certificate') ? $mailable->certificate : null;
-                if (!$certificate || !$certificate->course) {
+                if (! $certificate || ! $certificate->course) {
                     return null;
                 }
                 $course = $certificate->course;
                 $label = $course->getContentLabel();
-                $message = "🎉 *Certificat disponible*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Félicitations ! Votre certificat pour la {$label} *{$course->title}* est disponible.\n\n" .
-                          "Téléchargez-le depuis votre espace personnel.";
+                $message = "🎉 *Certificat disponible*\n\n".
+                          "Bonjour *{$userName}*,\n\n".
+                          "Félicitations ! Votre certificat pour la {$label} *{$course->title}* est disponible.\n\n".
+                          'Téléchargez-le depuis votre espace personnel.';
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\OrderDeletedMail::class:
                 $order = property_exists($mailable, 'order') ? $mailable->order : null;
-                if (!$order) {
+                if (! $order) {
                     return null;
                 }
-                $message = "🗑️ *Commande annulée*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Votre commande *{$order->order_number}* a été annulée.\n\n" .
+                $message = "🗑️ *Commande annulée*\n\n".
+                          "Bonjour *{$userName}*,\n\n".
+                          "Votre commande *{$order->order_number}* a été annulée.\n\n".
                           "Pour plus d'informations, contactez le support.";
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\ProviderPayoutReceivedMail::class:
                 $payout = property_exists($mailable, 'payout') ? $mailable->payout : null;
-                if (!$payout) {
+                if (! $payout) {
                     return null;
                 }
-                $message = "💰 *Paiement reçu*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
-                          "Votre paiement de *" . number_format($payout->amount, 0, ',', ' ') . " FCFA* a été effectué.\n\n" .
-                          "Merci pour votre contribution !";
+                $message = "💰 *Paiement reçu*\n\n".
+                          "Bonjour *{$userName}*,\n\n".
+                          'Votre paiement de *'.number_format($payout->amount, 0, ',', ' ')." FCFA* a été effectué.\n\n".
+                          'Merci pour votre contribution !';
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\NewsletterWelcome::class:
                 $subscriber = property_exists($mailable, 'subscriber') ? $mailable->subscriber : null;
-                if (!$subscriber) {
+                if (! $subscriber) {
                     return null;
                 }
                 $subscriberName = $subscriber->name ?? $userName;
-                $message = "👋 *Bienvenue !*\n\n" .
-                          "Bonjour *{$subscriberName}*,\n\n" .
-                          "Merci de vous être inscrit à notre newsletter !\n\n" .
-                          "Vous recevrez nos dernières actualités et offres spéciales.";
+                $message = "👋 *Bienvenue !*\n\n".
+                          "Bonjour *{$subscriberName}*,\n\n".
+                          "Merci de vous être inscrit à notre newsletter !\n\n".
+                          'Vous recevrez nos dernières actualités et offres spéciales.';
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             case \App\Mail\CustomAnnouncementMail::class:
                 // Pour les annonces personnalisées, extraire le texte du HTML
                 $subject = property_exists($mailable, 'subject') ? $mailable->subject : 'Annonce';
                 $content = property_exists($mailable, 'content') ? $this->htmlToText($mailable->content) : '';
-                $message = "*{$subject}*\n\n" .
-                          "Bonjour *{$userName}*,\n\n" .
+                $message = "*{$subject}*\n\n".
+                          "Bonjour *{$userName}*,\n\n".
                           "{$content}";
+
                 return $this->formatWhatsAppMessage($message, $user);
-            
+
             default:
                 // Message générique : extraire le sujet et convertir le HTML en texte
                 try {
                     $envelope = $mailable->envelope();
                     $subject = $envelope->subject ?? 'Notification';
-                    
+
                     // Essayer d'extraire le contenu
                     $content = '';
                     try {
@@ -612,15 +634,17 @@ class CommunicationService
                     } catch (\Exception $e) {
                         // Ignorer
                     }
-                    
-                    $message = "*{$subject}*\n\n" .
-                              "Bonjour *{$userName}*,\n\n" .
+
+                    $message = "*{$subject}*\n\n".
+                              "Bonjour *{$userName}*,\n\n".
                               ($content ?: "Vous avez reçu une nouvelle notification.\n\nConsultez votre espace personnel pour plus de détails.");
+
                     return $this->formatWhatsAppMessage($message, $user);
                 } catch (\Exception $e) {
                     Log::warning("Impossible de générer un message WhatsApp pour {$mailableClass}", [
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
+
                     return null;
                 }
         }
@@ -628,27 +652,23 @@ class CommunicationService
 
     /**
      * Convertit du HTML en texte simple pour WhatsApp
-     * 
-     * @param string $html
-     * @return string
      */
     protected function htmlToText(string $html): string
     {
         // Supprimer les balises HTML
         $text = strip_tags($html);
-        
+
         // Décoder les entités HTML
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        
+
         // Nettoyer les espaces multiples
         $text = preg_replace('/\s+/', ' ', $text);
-        
+
         // Limiter la longueur (WhatsApp a une limite de 4096 caractères)
         if (mb_strlen($text) > 3500) {
-            $text = mb_substr($text, 0, 3500) . '...';
+            $text = mb_substr($text, 0, 3500).'...';
         }
-        
+
         return trim($text);
     }
 }
-

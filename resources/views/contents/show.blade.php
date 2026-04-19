@@ -4211,7 +4211,7 @@ button.mobile-price-slider__btn--download i,
                                     {{-- Contenu gratuit --}}
                                     @if($isEnrolled)
                                         {{-- Utilisateur inscrit au contenu gratuit --}}
-                                        @if(($course->is_downloadable && $canDownloadCourse) || ($course->is_in_person_program ?? false))
+                                        @if($course->showDownloadActionForEnrolledViewer($canDownloadCourse))
                                             <a href="{{ route('contents.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
                                                 <i class="fas fa-download me-2"></i>{{ $course->getDownloadButtonText() }}
                                             </a>
@@ -4257,7 +4257,7 @@ button.mobile-price-slider__btn--download i,
                                     {{-- Contenu payant --}}
                                     @if($isEnrolled)
                                         {{-- Utilisateur inscrit au contenu payant --}}
-                                        @if(($course->is_downloadable && $canDownloadCourse) || ($course->is_in_person_program ?? false))
+                                        @if($course->showDownloadActionForEnrolledViewer($canDownloadCourse))
                                             <a href="{{ route('contents.download', $course->slug) }}" class="btn btn-primary btn-lg w-100">
                                                 <i class="fas fa-download me-2"></i>{{ $course->getDownloadButtonText() }}
                                             </a>
@@ -4488,7 +4488,7 @@ button.mobile-price-slider__btn--download i,
                     {{-- Contenu gratuit --}}
                     @if($isEnrolled)
                         {{-- Utilisateur inscrit au cours gratuit --}}
-                        @if(($course->is_downloadable && $canDownloadCourse) || ($course->is_in_person_program ?? false))
+                        @if($course->showDownloadActionForEnrolledViewer($canDownloadCourse))
                             @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
                                 <div class="mobile-price-slider__btn-group">
                                     <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"
@@ -4611,7 +4611,7 @@ button.mobile-price-slider__btn--download i,
                     {{-- Cours payant --}}
                     @if($isEnrolled)
                         {{-- Utilisateur inscrit au cours payant --}}
-                        @if(($course->is_downloadable && $canDownloadCourse) || ($course->is_in_person_program ?? false))
+                        @if($course->showDownloadActionForEnrolledViewer($canDownloadCourse))
                             @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
                                 <div class="mobile-price-slider__btn-group">
                                     <a href="{{ $course->whatsapp_chat_url }}" target="_blank" rel="noopener noreferrer"

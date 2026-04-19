@@ -40,6 +40,12 @@ class LearningController extends Controller
                 ->with('info', 'Ce programme en présentiel ne comporte pas de contenu en ligne. Utilisez le bouton « Télécharger » pour obtenir votre reçu d\'inscription.');
         }
 
+        // Reçu d'inscription uniquement (option activée sur un contenu non téléchargeable) : pas d'espace d'apprentissage
+        if ($course->isEnrollmentReceiptOnly()) {
+            return redirect()->route('contents.show', $course)
+                ->with('info', 'Ce contenu est limité à l\'inscription et au reçu PDF. Utilisez le bouton « Télécharger le reçu » sur la page du contenu.');
+        }
+
         $enrollment = $course->getEnrollmentFor(auth()->id());
 
         // Charger les données complètes depuis la base de données
@@ -119,6 +125,11 @@ class LearningController extends Controller
                 ->with('info', 'Ce programme en présentiel ne comporte pas de contenu en ligne. Utilisez le bouton « Télécharger » pour obtenir votre reçu d\'inscription.');
         }
 
+        if ($course->isEnrollmentReceiptOnly()) {
+            return redirect()->route('contents.show', $course)
+                ->with('info', 'Ce contenu est limité à l\'inscription et au reçu PDF. Utilisez le bouton « Télécharger le reçu » sur la page du contenu.');
+        }
+
         // Vérifier que la leçon appartient au cours
         if ($lesson->content_id !== $course->id) {
             abort(404);
@@ -189,6 +200,10 @@ class LearningController extends Controller
             return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
         }
 
+        if (($course->is_in_person_program ?? false) || $course->isEnrollmentReceiptOnly()) {
+            return response()->json(['success' => false, 'message' => 'Ce contenu ne propose pas d\'espace d\'apprentissage en ligne. Retrouvez votre reçu sur la page du contenu.'], 403);
+        }
+
         $progress = LessonProgress::firstOrCreate([
             'user_id' => auth()->id(),
             'content_id' => $course->id,
@@ -221,6 +236,10 @@ class LearningController extends Controller
         // Vérifier que le cours n'est pas téléchargeable
         if ($course->is_downloadable) {
             return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+        }
+
+        if (($course->is_in_person_program ?? false) || $course->isEnrollmentReceiptOnly()) {
+            return response()->json(['success' => false, 'message' => 'Ce contenu ne propose pas d\'espace d\'apprentissage en ligne. Retrouvez votre reçu sur la page du contenu.'], 403);
         }
 
         $progress = LessonProgress::firstOrCreate([
@@ -259,6 +278,10 @@ class LearningController extends Controller
             return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
         }
 
+        if (($course->is_in_person_program ?? false) || $course->isEnrollmentReceiptOnly()) {
+            return response()->json(['success' => false, 'message' => 'Ce contenu ne propose pas d\'espace d\'apprentissage en ligne. Retrouvez votre reçu sur la page du contenu.'], 403);
+        }
+
         $progress = LessonProgress::firstOrCreate([
             'user_id' => auth()->id(),
             'content_id' => $course->id,
@@ -288,6 +311,10 @@ class LearningController extends Controller
         // Vérifier que le cours n'est pas téléchargeable
         if ($course->is_downloadable) {
             return response()->json(['success' => false, 'message' => 'Ce cours est disponible uniquement en téléchargement.'], 403);
+        }
+
+        if (($course->is_in_person_program ?? false) || $course->isEnrollmentReceiptOnly()) {
+            return response()->json(['success' => false, 'message' => 'Ce contenu ne propose pas d\'espace d\'apprentissage en ligne. Retrouvez votre reçu sur la page du contenu.'], 403);
         }
 
         $request->validate([

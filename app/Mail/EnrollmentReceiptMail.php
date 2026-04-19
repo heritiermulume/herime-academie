@@ -18,7 +18,7 @@ class EnrollmentReceiptMail extends Mailable
     public Course $course;
 
     /**
-     * @param string $pdfContent Contenu binaire du PDF du reçu
+     * @param  string  $pdfContent  Contenu binaire du PDF du reçu
      */
     public function __construct(
         Course $course,
@@ -31,7 +31,7 @@ class EnrollmentReceiptMail extends Mailable
     {
         return new Envelope(
             from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Académie'),
-            subject: 'Votre reçu d\'inscription - ' . $this->course->title . ' - Herime Académie',
+            subject: 'Votre reçu d\'inscription - '.$this->course->title.' - Herime Académie',
         );
     }
 
@@ -41,7 +41,7 @@ class EnrollmentReceiptMail extends Mailable
             view: 'emails.enrollment-receipt',
             with: [
                 'course' => $this->course,
-                'courseUrl' => ($this->course->is_downloadable || ($this->course->is_in_person_program ?? false))
+                'courseUrl' => ($this->course->is_downloadable || ($this->course->is_in_person_program ?? false) || $this->course->isEnrollmentReceiptOnly())
                     ? route('contents.show', $this->course->slug)
                     : route('learning.course', $this->course->slug),
             ],
@@ -53,7 +53,7 @@ class EnrollmentReceiptMail extends Mailable
      */
     public function attachments(): array
     {
-        $filename = 'recu-inscription-' . Str::slug($this->course->title) . '.pdf';
+        $filename = 'recu-inscription-'.Str::slug($this->course->title).'.pdf';
 
         return [
             Attachment::fromData(fn () => $this->pdfContent, $filename)

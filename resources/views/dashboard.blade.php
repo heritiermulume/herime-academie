@@ -186,7 +186,7 @@
                             @if($course)
                                 <div class="course-item d-flex align-items-center mb-3 p-2 border rounded">
                                     <div class="course-icon me-3">
-                                        @if($course->is_downloadable)
+                                        @if($course->is_downloadable || ($course->is_in_person_program ?? false) || $course->isEnrollmentReceiptOnly())
                                             <i class="fas fa-download fa-2x text-primary"></i>
                                         @else
                                             <i class="fas fa-play-circle fa-2x text-primary"></i>
@@ -198,7 +198,7 @@
                                             Inscrit le {{ $enrollment->enrolled_at->format('d/m/Y') }}
                                         </p>
                                     </div>
-                                    @if($course->is_downloadable || ($course->is_in_person_program ?? false))
+                                    @if($course->showDownloadActionForEnrolledViewer(true))
                                         <a href="{{ route('contents.download', $course->slug) }}" 
                                            class="btn btn-sm btn-outline-primary"
                                            title="{{ $course->getDownloadButtonText() }}">

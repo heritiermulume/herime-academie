@@ -207,7 +207,7 @@
                                         <i class="fas fa-box-open me-1"></i>Ouvrir le pack
                                     </a>
                                 @elseif($firstCourse)
-                                    @if($firstCourse->is_downloadable)
+                                    @if($firstCourse->is_downloadable || ($firstCourse->is_in_person_program ?? false) || $firstCourse->isEnrollmentReceiptOnly())
                                         <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
                                             <i class="fas fa-eye me-1"></i>Voir le contenu
                                         </a>

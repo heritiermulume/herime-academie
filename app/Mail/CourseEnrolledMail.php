@@ -30,7 +30,7 @@ class CourseEnrolledMail extends Mailable
     {
         return new Envelope(
             from: new \Illuminate\Mail\Mailables\Address('academie@herime.com', 'Herime Académie'),
-            subject: 'Inscription confirmée - ' . $this->course->title . ' - Herime Académie',
+            subject: 'Inscription confirmée - '.$this->course->title.' - Herime Académie',
         );
     }
 
@@ -83,6 +83,26 @@ class CourseEnrolledMail extends Mailable
                     'Accéder à votre bibliothèque de contenus',
                 ];
             }
+        } elseif ($this->course->isEnrollmentReceiptOnly()) {
+            $courseUrl = route('contents.show', $this->course->slug);
+            $buttonText = 'Voir le contenu et le reçu';
+            if ($this->course->is_free) {
+                $messageTitle = 'Inscription confirmée !';
+                $messageText = 'Votre inscription a été confirmée. Vous recevrez un reçu PDF par email ; vous pouvez aussi le télécharger depuis la page du contenu.';
+                $features = [
+                    'Consulter la page du contenu',
+                    'Télécharger votre reçu d\'inscription en PDF',
+                    'Conserver le reçu pour vos dossiers',
+                ];
+            } else {
+                $messageTitle = 'Achat confirmé !';
+                $messageText = 'Votre achat a été confirmé. Vous recevrez un reçu PDF par email ; vous pouvez aussi le télécharger depuis la page du contenu.';
+                $features = [
+                    'Consulter la page du contenu',
+                    'Télécharger votre reçu d\'inscription en PDF',
+                    'Conserver le reçu pour vos dossiers',
+                ];
+            }
         } else {
             // Contenu non téléchargeable
             if ($this->course->is_free) {
@@ -123,7 +143,7 @@ class CourseEnrolledMail extends Mailable
                 'messageTitle' => $messageTitle,
                 'messageText' => $messageText,
                 'features' => $features,
-                'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
+                'logoUrl' => config('app.url').'/images/logo-herime-academie.png',
             ],
         );
     }
@@ -138,5 +158,3 @@ class CourseEnrolledMail extends Mailable
         return [];
     }
 }
-
-

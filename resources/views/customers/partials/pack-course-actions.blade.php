@@ -6,7 +6,7 @@
 @endphp
 <div class="customer-pack-course__actions">
     @if($isPurchasedNotEnrolled)
-        @if(($course->is_downloadable ?? false) || ($course->is_in_person_program ?? false))
+        @if($course->showDownloadActionForEnrolledViewer(true))
             <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
                 <i class="fas fa-download me-1"></i>{{ $course->getDownloadButtonText() }}
             </a>
@@ -23,7 +23,7 @@
             </form>
         @endif
     @else
-        @if(($course->is_downloadable ?? false) || ($course->is_in_person_program ?? false))
+        @if($course->showDownloadActionForEnrolledViewer(true))
             <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
                 <i class="fas fa-download me-1"></i>{{ $course->getDownloadButtonText() }}
             </a>

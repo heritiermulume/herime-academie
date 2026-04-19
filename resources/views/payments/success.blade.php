@@ -111,7 +111,7 @@
                                 </div>
                                 <div class="col-md-3 text-end">
                                     <div class="fw-bold">{{ \App\Helpers\CurrencyHelper::formatWithSymbol($item->total) }}</div>
-                                    @if($item->course->is_downloadable || ($item->course->is_in_person_program ?? false))
+                                    @if($item->course->is_downloadable || ($item->course->is_in_person_program ?? false) || $item->course->isEnrollmentReceiptOnly())
                                         <a href="{{ route('contents.download', $item->course->slug) }}"
                                            class="btn btn-primary btn-sm mt-2">
                                             <i class="fas fa-download me-1"></i>{{ $item->course->getDownloadButtonText() }}

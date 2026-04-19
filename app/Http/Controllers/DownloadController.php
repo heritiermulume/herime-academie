@@ -93,6 +93,16 @@ class DownloadController extends Controller
             return back()->with('error', 'Aucun contenu téléchargeable disponible pour ce cours.');
         }
 
+        // Contenu en ligne non téléchargeable avec reçu PDF : uniquement le reçu d'inscription (même logique que le présentiel côté fichier)
+        if ($course->isEnrollmentReceiptOnly()) {
+            $enrollment = $this->getEnrollmentForReceipt($course, $userId);
+            if (! $enrollment) {
+                return back()->with('error', 'Vous devez être inscrit pour télécharger le reçu d\'inscription.');
+            }
+
+            return $this->downloadEnrollmentReceipt($enrollment);
+        }
+
         return back()->with('error', 'Ce cours n\'est pas disponible en téléchargement.');
     }
 

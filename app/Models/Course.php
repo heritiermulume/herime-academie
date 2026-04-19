@@ -247,6 +247,39 @@ class Course extends Model
     }
 
     /**
+     * Contenu en ligne non téléchargeable avec envoi de reçu PDF activé : inscription = reçu uniquement (pas d'espace d'apprentissage).
+     */
+    public function isEnrollmentReceiptOnly(): bool
+    {
+        if ($this->is_downloadable) {
+            return false;
+        }
+        if ($this->is_in_person_program ?? false) {
+            return false;
+        }
+
+        return (bool) ($this->send_receipt_enabled ?? false);
+    }
+
+    /**
+     * Afficher le bouton « Télécharger » (fichier ou reçu) sur la fiche pour un utilisateur déjà inscrit.
+     */
+    public function showDownloadActionForEnrolledViewer(bool $canDownloadCourse): bool
+    {
+        if (($this->is_downloadable ?? false) && $canDownloadCourse) {
+            return true;
+        }
+        if ($this->is_in_person_program ?? false) {
+            return true;
+        }
+        if ($this->isEnrollmentReceiptOnly()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Texte du bouton de téléchargement selon le contexte
      * Retourne "Télécharger le reçu" si c'est uniquement le reçu, sinon "Télécharger"
      */
@@ -254,6 +287,10 @@ class Course extends Model
     {
         // Cours en présentiel : toujours le reçu uniquement
         if ($this->is_in_person_program ?? false) {
+            return 'Télécharger le reçu';
+        }
+
+        if ($this->isEnrollmentReceiptOnly()) {
             return 'Télécharger le reçu';
         }
 
@@ -1226,8 +1263,8 @@ class Course extends Model
 
         switch ($state) {
             case 'enrolled':
-                // Cours téléchargeable ou en présentiel : bouton "Télécharger" (contenu ou reçu)
-                if ($this->is_downloadable || ($this->is_in_person_program ?? false)) {
+                // Cours téléchargeable, présentiel ou « reçu uniquement » : bouton « Télécharger » (contenu ou reçu)
+                if ($this->is_downloadable || ($this->is_in_person_program ?? false) || $this->isEnrollmentReceiptOnly()) {
                     return [
                         'type' => 'link',
                         'url' => route('contents.download', $this->slug),
@@ -1254,6 +1291,7 @@ class Course extends Model
 
             case 'purchased':
                 // Cours téléchargeable ou en présentiel : proposer le téléchargement (contenu ou reçu)
+                // (reçu uniquement : inscription requise avant téléchargement — bouton « S'inscrire » ci-dessous)
                 if ($this->is_downloadable || ($this->is_in_person_program ?? false)) {
                     return [
                         'type' => 'link',

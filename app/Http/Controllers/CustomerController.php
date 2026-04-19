@@ -784,8 +784,8 @@ class CustomerController extends Controller
         $customer = auth()->user();
         $redirectTo = $request->input('redirect_to', 'learn');
 
-        // Pour les cours téléchargeables ou en présentiel, ne pas rediriger vers learning, mais vers la page du cours
-        if (($course->is_downloadable || ($course->is_in_person_program ?? false)) && $redirectTo === 'learn') {
+        // Pour les cours téléchargeables, en présentiel ou « reçu uniquement », ne pas rediriger vers learning, mais vers la page du cours
+        if (($course->is_downloadable || ($course->is_in_person_program ?? false) || $course->isEnrollmentReceiptOnly()) && $redirectTo === 'learn') {
             $redirectTo = 'course';
         }
 
@@ -860,7 +860,9 @@ class CustomerController extends Controller
             ? 'Inscription réussie ! Vous pouvez maintenant télécharger le cours.'
             : (($course->is_in_person_program ?? false)
                 ? 'Inscription réussie ! Utilisez le bouton « Télécharger » pour obtenir votre reçu.'
-                : 'Inscription réussie ! Vous pouvez commencer à apprendre.');
+                : ($course->isEnrollmentReceiptOnly()
+                    ? 'Inscription réussie ! Vous recevrez votre reçu par email ; vous pouvez aussi le télécharger depuis la page du contenu.'
+                    : 'Inscription réussie ! Vous pouvez commencer à apprendre.'));
 
         $packSlug = $request->input('return_to_customer_pack');
         if (is_string($packSlug) && $packSlug !== '') {
@@ -877,11 +879,15 @@ class CustomerController extends Controller
 
     protected function redirectAfterEnrollment(Course $course, string $redirectTo, string $message, string $flashType = 'success')
     {
+        $defaultRoute = $course->isEnrollmentReceiptOnly()
+            ? ['name' => 'contents.show', 'params' => ['course' => $course->slug]]
+            : ['name' => 'learning.course', 'params' => ['course' => $course->slug]];
+
         $route = match ($redirectTo) {
             'download' => ['name' => 'contents.download', 'params' => ['course' => $course->slug]],
             'dashboard' => ['name' => 'customer.contents', 'params' => []],
             'course' => ['name' => 'contents.show', 'params' => ['course' => $course->slug]],
-            default => ['name' => 'learning.course', 'params' => ['course' => $course->slug]],
+            default => $defaultRoute,
         };
 
         return redirect()->route($route['name'], $route['params'])->with($flashType, $message);

@@ -97,9 +97,15 @@
                         @php
                             $progress = $resumeHighlightEnrollment->progress ?? 0;
                         @endphp
-                        <a href="{{ route('learning.course', $highlightCourse->slug) }}" class="admin-btn success lg">
-                            <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
-                        </a>
+                        @if($highlightCourse->showDownloadActionForEnrolledViewer(true))
+                            <a href="{{ route('contents.download', $highlightCourse->slug) }}" class="admin-btn primary lg">
+                                <i class="fas fa-download me-2"></i>{{ $highlightCourse->getDownloadButtonText() }}
+                            </a>
+                        @else
+                            <a href="{{ route('learning.course', $highlightCourse->slug) }}" class="admin-btn success lg">
+                                <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
+                            </a>
+                        @endif
                         <a href="{{ route('customer.contents') }}" class="admin-btn ghost">
                             Voir tous mes contenus
                         </a>
@@ -177,7 +183,7 @@
                                     </div>
                                 </div>
                                 <div class="student-course-item__progress">
-                                    @if(!($course->is_downloadable ?? false))
+                                    @if(!($course->is_downloadable ?? false) && !($course->isEnrollmentReceiptOnly()))
                                         <div class="student-progress">
                                             <div class="student-progress__bar">
                                                 <span style="width: {{ $enrollment->progress }}%"></span>
@@ -203,6 +209,11 @@
                                                     <i class="fas fa-download me-1"></i>
                                                     {{ $course->user_downloads_count }} téléchargements
                                                 </span>
+                                            @elseif($course->isEnrollmentReceiptOnly())
+                                                <span>
+                                                    <i class="fas fa-receipt me-1"></i>
+                                                    Reçu d'inscription
+                                                </span>
                                             @endif
                                         </div>
                                     @endif
@@ -211,7 +222,7 @@
                                     @php
                                         $progress = $enrollment->progress ?? 0;
                                     @endphp
-                                    @if(($course->is_downloadable ?? false) || ($course->is_in_person_program ?? false))
+                                    @if($course->showDownloadActionForEnrolledViewer(true))
                                         <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
                                             <i class="fas fa-download me-1"></i>{{ $course->getDownloadButtonText() }}
                                         </a>

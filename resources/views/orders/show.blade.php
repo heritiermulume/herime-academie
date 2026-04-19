@@ -157,6 +157,10 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                             <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
                                 <i class="fas fa-eye me-1"></i>Voir le programme
                             </a>
+                        @elseif($firstCourse->isEnrollmentReceiptOnly())
+                            <a href="{{ route('contents.show', $firstCourse->slug) }}" class="admin-btn primary sm">
+                                <i class="fas fa-receipt me-1"></i>Voir le contenu et le reçu
+                            </a>
                         @else
                             <a href="{{ route('learning.course', $firstCourse->slug) }}" class="admin-btn success sm">
                                 <i class="fas fa-play me-1"></i>Commencer le cours
@@ -328,7 +332,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                             <p>
                                 @if($course && $course->is_downloadable)
                                     Acheté le {{ optional($enrollment->created_at)->format('d/m/Y') }}
-                                @elseif($course && ($course->is_in_person_program ?? false))
+                                @elseif($course && (($course->is_in_person_program ?? false) || $course->isEnrollmentReceiptOnly()))
                                     Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y') }}
                                 @else
                                     Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y') }}
@@ -337,7 +341,7 @@ Détails de la commande et accès aux {{ $generalLabel }} associés.
                             </p>
                         </div>
                         @if($course)
-                            @if($course->is_downloadable || ($course->is_in_person_program ?? false))
+                            @if($course->showDownloadActionForEnrolledViewer(true))
                                 <a href="{{ route('contents.download', $course->slug) }}" class="admin-btn primary sm">
                                     <i class="fas fa-download me-1"></i>{{ $course->getDownloadButtonText() }}
                                 </a>
