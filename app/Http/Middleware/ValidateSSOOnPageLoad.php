@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Middleware pour valider le token SSO à chaque chargement de page
- * 
+ *
  * Ce middleware s'exécute sur toutes les requêtes authentifiées (GET, POST, etc.)
  * pour s'assurer que la session SSO est toujours valide
  */
@@ -68,6 +68,10 @@ class ValidateSSOOnPageLoad
                 'verification.send',
                 'password.confirm',
                 'profile.redirect',
+                // Paiement facture abonnement (Moneroo) : l’utilisateur peut rester longtemps sur la page externe ;
+                // éviter une déconnexion « session expirée » au retour ou au POST si le JWT SSO a expiré pendant le paiement.
+                'subscriptions.invoices.pay',
+                'subscriptions.invoices.return',
             ];
 
             $routeName = $request->route()?->getName();
@@ -81,16 +85,16 @@ class ValidateSSOOnPageLoad
             }
 
             // Si l'utilisateur n'est pas authentifié, laisser passer
-            if (!Auth::check()) {
+            if (! Auth::check()) {
                 return $next($request);
             }
 
             $user = Auth::user();
-            
-            if (!$user) {
+
+            if (! $user) {
                 return $next($request);
             }
-            
+
             // Récupérer le token SSO depuis la session
             $ssoToken = null;
             try {
@@ -112,17 +116,18 @@ class ValidateSSOOnPageLoad
                 // Cependant, pour éviter de bloquer les utilisateurs, on laisse passer
                 // Vous pouvez activer la validation stricte si nécessaire
                 $strictValidation = (bool) config('services.sso.strict_validation', false);
-                
+
                 if ($strictValidation) {
                     // En mode strict, si SSO est activé, un token est requis
                     Log::warning('SSO token missing but SSO is enabled (strict mode)', [
                         'user_id' => $user->id,
                         'route' => $routeName,
                     ]);
+
                     // Déconnecter l'utilisateur en mode strict
                     return $this->handleInvalidToken($request);
                 }
-                
+
                 return $next($request);
             }
 
@@ -191,15 +196,13 @@ class ValidateSSOOnPageLoad
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
+
             return $next($request);
         }
     }
 
     /**
      * Gérer le cas d'un token invalide
-     * 
-     * @param Request $request
-     * @return Response
      */
     protected function handleInvalidToken(Request $request): Response
     {
@@ -208,7 +211,7 @@ class ValidateSSOOnPageLoad
             return response()->json([
                 'message' => 'Votre session a expiré. Veuillez vous reconnecter.',
                 'redirect' => route('home'),
-                'session_expired' => true
+                'session_expired' => true,
             ], 401);
         }
 
@@ -220,14 +223,14 @@ class ValidateSSOOnPageLoad
                 Log::debug('Error during logout in SSO page load validation', [
                     'error' => $e->getMessage(),
                 ]);
-                
+
                 // En cas d'erreur, faire une déconnexion de base et rediriger
                 try {
                     // Supprimer le token SSO avant de déconnecter
                     if ($request->hasSession() && $request->session()->has('sso_token')) {
                         $request->session()->forget('sso_token');
                     }
-                    
+
                     Auth::logout();
                     if ($request->hasSession()) {
                         $request->session()->invalidate();
@@ -240,7 +243,7 @@ class ValidateSSOOnPageLoad
                         'error' => $logoutError->getMessage(),
                     ]);
                 }
-                
+
                 return redirect()->route('home');
             }
         }
@@ -251,9 +254,6 @@ class ValidateSSOOnPageLoad
 
     /**
      * Valider la session SSO en appelant /api/me
-     * 
-     * @param string $token
-     * @return bool
      */
     protected function validateSSOSession(string $token): bool
     {
@@ -270,25 +270,27 @@ class ValidateSSOOnPageLoad
 
             if ($response->successful()) {
                 $data = $response->json();
-                
+
                 // Vérifier que le token est valide ET que la session est active
                 $isValid = $data['valid'] ?? false;
                 $sessionActive = $data['session_active'] ?? false;
-                
-                if (!$isValid) {
+
+                if (! $isValid) {
                     Log::debug('SSO token is invalid', [
                         'response' => $data,
                     ]);
+
                     return false;
                 }
-                
-                if (!$sessionActive) {
+
+                if (! $sessionActive) {
                     Log::debug('SSO session marked as inactive', [
                         'response' => $data,
                     ]);
+
                     return false;
                 }
-                
+
                 // Token valide ET session active
                 return true;
             }
@@ -304,10 +306,9 @@ class ValidateSSOOnPageLoad
                 'error' => $e->getMessage(),
                 'type' => get_class($e),
             ]);
-            
+
             // En cas d'erreur réseau, considérer comme invalide pour forcer une reconnexion
             return false;
         }
     }
 }
-

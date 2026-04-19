@@ -19,6 +19,33 @@
             </div>
         </div>
 
+        <div id="cart-guest-pay-existing-banner"
+             class="cart-guest-pay-banner {{ $guestPayExistingAccountReady ? '' : 'd-none' }}"
+             role="status"
+             aria-live="polite"
+             data-initial-visible="{{ $guestPayExistingAccountReady ? '1' : '0' }}">
+            <div class="cart-guest-pay-banner__inner">
+                <div class="cart-guest-pay-banner__icon" aria-hidden="true">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="cart-guest-pay-banner__body">
+                    <h2 class="cart-guest-pay-banner__title">Compte reconnu</h2>
+                    <p class="cart-guest-pay-banner__text mb-2">
+                        Vous pouvez finaliser le paiement depuis cette page sans vous connecter. Après le paiement, pour accéder à vos contenus et à votre espace client, connectez-vous avec le mot de passe de votre compte Herime.
+                    </p>
+                    <div class="cart-guest-pay-banner__actions">
+                        <a href="{{ route('login') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-sign-in-alt me-1"></i>Se connecter
+                        </a>
+                    </div>
+                </div>
+                <button type="button"
+                        class="btn-close cart-guest-pay-banner__close"
+                        data-cart-guest-pay-banner-dismiss
+                        aria-label="Masquer ce message"></button>
+            </div>
+        </div>
+
         @if(count($cartItems) > 0)
         <!-- Main Cart Content -->
         <div class="cart-main-content" id="cart-main-container">
@@ -1538,6 +1565,81 @@
     border-left: 4px solid #17a2b8;
 }
 
+.cart-guest-pay-banner {
+    margin-bottom: 1.25rem;
+}
+
+.cart-guest-pay-banner__inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid rgba(23, 162, 184, 0.35);
+    background: linear-gradient(135deg, #e8f7fa 0%, #f0fbfc 100%);
+    box-shadow: 0 4px 18px rgba(12, 84, 96, 0.08);
+}
+
+.cart-guest-pay-banner__icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(23, 162, 184, 0.15);
+    color: #0c5460;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.cart-guest-pay-banner__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.cart-guest-pay-banner__title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0c5460;
+    margin: 0 0 0.35rem;
+}
+
+.cart-guest-pay-banner__text {
+    font-size: 0.95rem;
+    color: #0c5460;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.cart-guest-pay-banner__actions {
+    margin-top: 0.5rem;
+}
+
+.cart-guest-pay-banner__close {
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+    opacity: 0.55;
+}
+
+.cart-guest-pay-banner__close:hover {
+    opacity: 1;
+}
+
+@media (max-width: 576px) {
+    .cart-guest-pay-banner__inner {
+        flex-wrap: wrap;
+        position: relative;
+        padding-right: 2.5rem;
+    }
+
+    .cart-guest-pay-banner__close {
+        position: absolute;
+        top: 0.65rem;
+        right: 0.65rem;
+    }
+}
+
 /* Modern Modal Styles */
 .modern-modal {
     border: none;
@@ -2953,10 +3055,53 @@ function handlePromoCodeInput(e) {
     }, 800);
 }
 
+const CART_GUEST_PAY_BANNER_DISMISS_KEY = 'herime_cart_guest_pay_banner_dismissed';
+
+function showCartGuestPayExistingBanner() {
+    const el = document.getElementById('cart-guest-pay-existing-banner');
+    if (!el) {
+        return;
+    }
+    try {
+        sessionStorage.removeItem(CART_GUEST_PAY_BANNER_DISMISS_KEY);
+    } catch (err) {}
+    el.classList.remove('d-none');
+    el.dataset.initialVisible = '1';
+    try {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {}
+}
+
+function initCartGuestPayExistingBanner() {
+    const el = document.getElementById('cart-guest-pay-existing-banner');
+    if (!el) {
+        return;
+    }
+    const initial = el.dataset.initialVisible === '1';
+    let dismissed = false;
+    try {
+        dismissed = sessionStorage.getItem(CART_GUEST_PAY_BANNER_DISMISS_KEY) === '1';
+    } catch (err) {}
+    if (initial && dismissed) {
+        el.classList.add('d-none');
+    }
+    const closeBtn = el.querySelector('[data-cart-guest-pay-banner-dismiss]');
+    if (closeBtn && !closeBtn.dataset.bound) {
+        closeBtn.dataset.bound = '1';
+        closeBtn.addEventListener('click', function() {
+            el.classList.add('d-none');
+            try {
+                sessionStorage.setItem(CART_GUEST_PAY_BANNER_DISMISS_KEY, '1');
+            } catch (err) {}
+        });
+    }
+}
+
 // Initialiser la page au chargement
 document.addEventListener('DOMContentLoaded', function() {
     // Mettre à jour le compteur du panier au chargement
     updateCartCount();
+    initCartGuestPayExistingBanner();
     
     // Gestionnaire pour le checkbox du code promo
     const promoCheckbox = document.getElementById('applyPromoCode');
@@ -3205,8 +3350,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     btn.innerHTML = orig;
                     return false;
                 }
-                const notifType = data.password_email_sent === false ? 'warning' : 'success';
-                if (data.message) {
+                if (data.guest_pay_without_login) {
+                    showCartGuestPayExistingBanner();
+                } else if (data.message) {
+                    const notifType = data.password_email_sent === false ? 'warning' : 'success';
                     showNotification(data.message, notifType);
                 }
                 if (data.csrf_token) {

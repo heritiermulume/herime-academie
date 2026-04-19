@@ -3660,11 +3660,23 @@
                 default => 'fas fa-bullhorn',
             };
         @endphp
+        @php
+            $globalAnnBtnText = trim((string) ($globalAnnouncement->button_text ?? ''));
+            $globalAnnBtnUrl = trim((string) ($globalAnnouncement->button_url ?? ''));
+            $globalAnnImageUrl = ! empty($globalAnnouncement->image)
+                ? \App\Helpers\FileHelper::url($globalAnnouncement->image, 'announcements')
+                : '';
+        @endphp
         <div id="global-announcement"
              class="global-announcement global-announcement--{{ $globalAnnouncement->type }}"
              data-announcement-id="{{ $globalAnnouncement->id }}">
             <div class="container global-announcement__inner">
                 <div class="global-announcement__content">
+                    @if($globalAnnImageUrl)
+                        <span class="global-announcement__thumb d-none d-sm-inline-flex me-2 flex-shrink-0">
+                            <img src="{{ $globalAnnImageUrl }}" alt="" class="rounded" style="width: 44px; height: 44px; object-fit: cover;">
+                        </span>
+                    @endif
                     <span class="global-announcement__icon">
                         <i class="{{ $announcementIcon }}"></i>
                     </span>
@@ -3678,14 +3690,21 @@
                     </div>
                 </div>
                 <div class="global-announcement__actions">
-                    @if($globalAnnouncement->button_text && $globalAnnouncement->button_url)
-                        <a href="{{ $globalAnnouncement->button_url }}"
-                           class="global-announcement__btn"
-                           target="_blank"
-                           rel="noopener noreferrer">
-                            <span>{{ $globalAnnouncement->button_text }}</span>
-                            <i class="fas fa-arrow-up-right-from-square"></i>
-                        </a>
+                    @if($globalAnnBtnText !== '')
+                        @if($globalAnnBtnUrl !== '')
+                            <a href="{{ $globalAnnBtnUrl }}"
+                               class="global-announcement__btn"
+                               @if(\Illuminate\Support\Str::startsWith($globalAnnBtnUrl, ['http://', 'https://'])) target="_blank" rel="noopener noreferrer" @endif>
+                                <span>{{ $globalAnnBtnText }}</span>
+                                @if(\Illuminate\Support\Str::startsWith($globalAnnBtnUrl, ['http://', 'https://']))
+                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                @endif
+                            </a>
+                        @else
+                            <button type="button" class="global-announcement__btn" data-announcement-dismiss>
+                                <span>{{ $globalAnnBtnText }}</span>
+                            </button>
+                        @endif
                     @endif
                     <button type="button"
                             class="global-announcement__close"

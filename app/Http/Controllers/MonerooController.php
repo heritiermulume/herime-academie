@@ -13,6 +13,7 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\SentEmail;
 use App\Models\Setting;
+use App\Models\User;
 use App\Notifications\AdminSubscriptionInvoiceFailed;
 use App\Notifications\PaymentReceived;
 use App\Notifications\SubscriptionInvoiceFailed;
@@ -1740,6 +1741,10 @@ class MonerooController extends Controller
             $cartItemsDeleted = CartItem::where('user_id', $order->user_id)->delete();
             Session::forget('cart');
 
+            if ((int) Session::get(CartController::GUEST_PAY_USER_ID_KEY) === (int) $order->user_id) {
+                CartController::clearGuestMonerooPayIntent();
+            }
+
             // Retirer le code promo de la session après utilisation
             Session::forget('applied_promo_code');
 
@@ -1991,15 +1996,21 @@ class MonerooController extends Controller
                             $this->finalizeOrderAfterPayment($payment->order);
                         }
 
-                        // Sécuriser le vidage du panier côté session utilisateur (contexte redirection)
-                        if (auth()->check()) {
-                            try {
-                                // Supprimer éventuels reliquats (même si déjà vidé par webhook)
-                                auth()->user()->cartItems()->delete();
-                                auth()->user()->cartPackages()->delete();
-                            } catch (\Throwable $e) {
+                        // Sécuriser le vidage du panier (contexte redirection ; invité paiement compte existant inclus)
+                        try {
+                            $ownerId = (int) ($payment->order->user_id ?? 0);
+                            if ($ownerId > 0) {
+                                $owner = User::query()->find($ownerId);
+                                if ($owner) {
+                                    $owner->cartItems()->delete();
+                                    $owner->cartPackages()->delete();
+                                }
+                                if ((int) Session::get(CartController::GUEST_PAY_USER_ID_KEY) === $ownerId) {
+                                    CartController::clearGuestMonerooPayIntent();
+                                }
                             }
-                            \Session::forget('cart');
+                            Session::forget('cart');
+                        } catch (\Throwable $e) {
                         }
 
                         // TOUJOURS assurer l'envoi des emails en contexte redirection (même si commande déjà payée)

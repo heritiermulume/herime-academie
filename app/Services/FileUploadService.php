@@ -449,6 +449,8 @@ class FileUploadService
                 $type = 'package-covers';
             } elseif (strpos($cleanPath, 'site/community-home') === 0) {
                 $type = 'community-home';
+            } elseif (strpos($cleanPath, 'announcements/') === 0) {
+                $type = 'announcements';
             } else {
                 $type = 'files'; // Type par défaut
             }
@@ -496,6 +498,8 @@ class FileUploadService
             return 'package-covers';
         } elseif (strpos($folder, 'site/community-home') !== false) {
             return 'community-home';
+        } elseif (strpos($folder, 'announcements') !== false) {
+            return 'announcements';
         } elseif (strpos($folder, self::TEMPORARY_BASE_PATH) !== false) {
             return 'temporary';
         }
@@ -518,6 +522,7 @@ class FileUploadService
             'package-thumbnails' => 'packages/thumbnails',
             'package-covers' => 'packages/covers',
             'community-home' => 'site/community-home',
+            'announcements' => 'announcements',
             default => null,
         };
     }

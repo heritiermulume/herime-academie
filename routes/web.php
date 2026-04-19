@@ -146,7 +146,7 @@ Route::get('/sso/callback', [SSOCallbackController::class, 'handle'])->name('sso
 require __DIR__.'/auth.php';
 
 // Cart routes (accessible to all users) - avec validation SSO pour les actions de modification
-Route::middleware('sync.cart')->group(function () {
+Route::middleware(['guest.moneroo.cart', 'sync.cart'])->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
     Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
@@ -282,7 +282,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('sso.validate')
         ->name('subscriptions.resume');
     Route::post('/subscriptions/invoices/{invoice}/pay', [SubscriptionController::class, 'payInvoice'])
-        ->middleware('sso.validate')
         ->name('subscriptions.invoices.pay');
     Route::get('/subscriptions/invoices/{invoice}/return', [SubscriptionController::class, 'invoiceReturn'])->name('subscriptions.invoices.return');
 
@@ -989,7 +988,7 @@ Route::prefix('moneroo')->name('moneroo.')->group(function () {
     Route::get('/methods', [MonerooController::class, 'availableMethods'])->name('methods');
 
     // Endpoints nécessitant l'auth (depuis le checkout)
-    Route::middleware('auth')->group(function () {
+    Route::middleware(['guest.moneroo.cart', 'auth'])->group(function () {
         Route::post('/initiate', [MonerooController::class, 'initiate'])->name('initiate');
         Route::get('/status/{paymentId}', [MonerooController::class, 'status'])->name('status');
         Route::post('/verify-order/{order}', [MonerooController::class, 'verifyOrderPayment'])->name('verify-order');

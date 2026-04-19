@@ -78,6 +78,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'guest.moneroo.cart' => \App\Http\Middleware\AuthenticateGuestMonerooCart::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'security' => \App\Http\Middleware\SecurityMiddleware::class,
             'upload.errors' => \App\Http\Middleware\HandleUploadErrors::class,

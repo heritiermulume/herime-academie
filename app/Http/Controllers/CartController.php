@@ -8,6 +8,7 @@ use App\Models\CartItem;
 use App\Models\CartPackage;
 use App\Models\ContentPackage;
 use App\Models\Course;
+use App\Models\User;
 use App\Services\CartGuestCheckoutService;
 use App\Services\ContentPackageRecommendationService;
 use App\Services\SSOService;
@@ -19,6 +20,21 @@ use Illuminate\Support\Facades\Session;
 
 class CartController extends Controller
 {
+    public const GUEST_PAY_USER_ID_KEY = 'cart_guest_pay_user_id';
+
+    public const GUEST_PAY_READY_KEY = 'cart_guest_pay_ready';
+
+    /**
+     * Retirer le mode « paiement invité compte existant » (session).
+     */
+    public static function clearGuestMonerooPayIntent(): void
+    {
+        Session::forget([
+            self::GUEST_PAY_USER_ID_KEY,
+            self::GUEST_PAY_READY_KEY,
+        ]);
+    }
+
     /**
      * Afficher le contenu du panier
      */
@@ -51,7 +67,20 @@ class CartController extends Controller
         // Récupérer le code promo appliqué depuis la session
         $appliedPromoCode = Session::get('applied_promo_code');
 
-        return view('cart.index', compact('cartItems', 'subtotal', 'tax', 'total', 'recommendedCourses', 'recommendedPackages', 'popularCourses', 'popularPackages', 'appliedPromoCode'));
+        $guestPayExistingAccountReady = ! Auth::check() && Session::get(self::GUEST_PAY_READY_KEY);
+
+        return view('cart.index', compact(
+            'cartItems',
+            'subtotal',
+            'tax',
+            'total',
+            'recommendedCourses',
+            'recommendedPackages',
+            'popularCourses',
+            'popularPackages',
+            'appliedPromoCode',
+            'guestPayExistingAccountReady',
+        ));
     }
 
     /**
@@ -318,22 +347,60 @@ class CartController extends Controller
             }
         }
 
-        Auth::login($result['user'], true);
-        $request->session()->regenerate();
-        $this->syncSessionToDatabase();
+        $isNewAccount = $result['plain_password'] !== null;
 
-        $message = $result['plain_password']
+        $this->mergeSessionCartIntoUser($result['user']);
+
+        if ($isNewAccount) {
+            Auth::login($result['user'], true);
+            $request->session()->regenerate();
+        } else {
+            Session::put(self::GUEST_PAY_USER_ID_KEY, $result['user']->id);
+            Session::put(self::GUEST_PAY_READY_KEY, true);
+            $request->session()->regenerate();
+        }
+
+        $message = $isNewAccount
             ? ($passwordEmailSent === false
                 ? 'Compte créé. L’envoi du mot de passe par e-mail a échoué : utilisez « Mot de passe oublié » sur compte.herime.com ou contactez le support.'
                 : 'Un compte a été créé. Consultez votre boîte e-mail pour votre mot de passe temporaire.')
-            : 'Compte reconnu. Poursuite du paiement…';
+            : 'Compte reconnu. Vous pouvez finaliser le paiement. Pour accéder à votre espace client, connectez-vous avec votre mot de passe.';
 
         return response()->json([
             'success' => true,
             'message' => $message,
             'csrf_token' => csrf_token(),
             'password_email_sent' => $passwordEmailSent,
+            'guest_pay_without_login' => ! $isNewAccount,
         ]);
+    }
+
+    /**
+     * Copier le panier session vers le panier base du compte (sans exiger Auth::login).
+     */
+    private function mergeSessionCartIntoUser(User $user): void
+    {
+        $norm = $this->getSessionCartNormalized();
+
+        foreach ($norm['contents'] as $contentId) {
+            if (! $user->cartItems()->where('content_id', $contentId)->exists()) {
+                CartItem::create([
+                    'user_id' => $user->id,
+                    'content_id' => (int) $contentId,
+                ]);
+            }
+        }
+
+        foreach ($norm['packages'] as $packageId) {
+            if (! $user->cartPackages()->where('content_package_id', $packageId)->exists()) {
+                CartPackage::create([
+                    'user_id' => $user->id,
+                    'content_package_id' => (int) $packageId,
+                ]);
+            }
+        }
+
+        Session::forget('cart');
     }
 
     /**

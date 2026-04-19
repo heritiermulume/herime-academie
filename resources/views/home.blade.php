@@ -37,8 +37,6 @@
 @if(! empty($homeModalAnnouncement))
     @php
         $homeModalImageUrl = \App\Helpers\FileHelper::url($homeModalAnnouncement->image, 'announcements');
-        $homeModalHideUntilIso = optional($homeModalAnnouncement->expires_at)->toIso8601String()
-            ?: now()->addYear()->toIso8601String();
     @endphp
     <div class="modal fade"
          id="homeMarketingAnnouncementModal"
@@ -46,7 +44,8 @@
          aria-labelledby="homeMarketingAnnouncementModalLabel"
          aria-hidden="true"
          data-announcement-id="{{ $homeModalAnnouncement->id }}"
-         data-hide-until="{{ $homeModalHideUntilIso }}">
+         data-announcement-expires="{{ optional($homeModalAnnouncement->expires_at)->toIso8601String() ?? '' }}"
+         data-snooze-minutes="5">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content border-0 shadow-lg overflow-hidden">
                 <div class="modal-header border-0 pb-0 position-relative">
@@ -66,11 +65,21 @@
                     <div class="home-marketing-modal__body text-secondary">
                         {!! nl2br(e($homeModalAnnouncement->content)) !!}
                     </div>
-                    @if($homeModalAnnouncement->button_text && $homeModalAnnouncement->button_url)
+                    @php
+                        $homeModalBtnText = trim((string) ($homeModalAnnouncement->button_text ?? ''));
+                        $homeModalBtnUrl = trim((string) ($homeModalAnnouncement->button_url ?? ''));
+                    @endphp
+                    @if($homeModalBtnText !== '')
                         <div class="mt-4 d-grid gap-2 d-sm-flex">
-                            <a href="{{ $homeModalAnnouncement->button_url }}" class="btn btn-primary btn-lg">
-                                {{ $homeModalAnnouncement->button_text }}
-                            </a>
+                            @if($homeModalBtnUrl !== '')
+                                <a href="{{ $homeModalBtnUrl }}" class="btn btn-primary btn-lg">
+                                    {{ $homeModalBtnText }}
+                                </a>
+                            @else
+                                <button type="button" class="btn btn-primary btn-lg" data-bs-dismiss="modal">
+                                    {{ $homeModalBtnText }}
+                                </button>
+                            @endif
                             <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">
                                 Fermer
                             </button>
@@ -1526,8 +1535,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     const id = el.getAttribute('data-announcement-id');
-    const hideUntil = el.getAttribute('data-hide-until');
+    const expiresAttr = (el.getAttribute('data-announcement-expires') || '').trim();
+    const snoozeMinutes = Math.max(1, parseInt(el.getAttribute('data-snooze-minutes') || '5', 10) || 5);
     const storageKey = 'herime_home_marketing_modal';
+    const snoozeMs = snoozeMinutes * 60 * 1000;
     try {
         const raw = localStorage.getItem(storageKey);
         if (raw) {
@@ -1543,7 +1554,22 @@ document.addEventListener('DOMContentLoaded', function() {
     modal.show();
     el.addEventListener('hidden.bs.modal', function onHidden() {
         try {
-            localStorage.setItem(storageKey, JSON.stringify({ id: id, hide_until: hideUntil }));
+            const dismissAt = Date.now();
+            const snoozeEnd = dismissAt + snoozeMs;
+            let hideUntilMs = snoozeEnd;
+            if (expiresAttr) {
+                const campaignEnd = new Date(expiresAttr).getTime();
+                if (! Number.isNaN(campaignEnd)) {
+                    hideUntilMs = Math.min(snoozeEnd, campaignEnd);
+                    if (campaignEnd <= dismissAt) {
+                        hideUntilMs = dismissAt;
+                    }
+                }
+            }
+            localStorage.setItem(storageKey, JSON.stringify({
+                id: id,
+                hide_until: new Date(hideUntilMs).toISOString(),
+            }));
         } catch (e) {
             /* ignore */
         }

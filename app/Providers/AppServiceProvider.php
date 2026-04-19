@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Events\CourseCompleted;
+use App\Http\Controllers\CartController;
 use App\Listeners\GenerateCertificateOnCourseCompletion;
 use App\Models\Announcement;
 use App\Models\ContentPackage;
@@ -18,6 +19,7 @@ use App\Observers\CourseVideoPreviewHlsObserver;
 use App\Observers\EnrollmentObserver;
 use App\Services\ReviewEligibilityService;
 use App\Services\SubscriptionService;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\View;
@@ -112,6 +114,10 @@ class AppServiceProvider extends ServiceProvider
             CourseCompleted::class,
             GenerateCertificateOnCourseCompletion::class
         );
+
+        Event::listen(Login::class, function () {
+            CartController::clearGuestMonerooPayIntent();
+        });
 
         CourseLesson::observe(CourseLessonObserver::class);
         Course::observe(CourseVideoPreviewHlsObserver::class);
