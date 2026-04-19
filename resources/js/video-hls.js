@@ -61,18 +61,107 @@ function buildHlsConfig(profile) {
     };
 }
 
+function resolveDeferUntilInteraction(videoEl, options) {
+    if (videoEl?.dataset?.herimeHlsEager === '1') {
+        return false;
+    }
+    if (options && typeof options.deferUntilInteraction === 'boolean') {
+        return options.deferUntilInteraction;
+    }
+    if (typeof document !== 'undefined' && document.body?.dataset?.herimeHlsDefer === '0') {
+        return false;
+    }
+    return true;
+}
+
 /**
  * Branche hls.js (ou HLS natif Safari) sur un <video>, avec repli MP4 progressif.
+ *
+ * Par défaut, aucune requête HLS n’est lancée avant la première interaction utilisateur
+ * (pointerdown sur le conteneur ou lecture), pour éviter de lier la vidéo au chargement
+ * initial du document (arrêt du chargement du navigateur).
  *
  * @param {HTMLVideoElement} videoEl
  * @param {string|null|undefined} hlsUrl
  * @param {string|null|undefined} fallbackSrc URL MP4 (FileController)
  * @param {string} fallbackMime ex. video/mp4
+ * @param {{ deferUntilInteraction?: boolean }} [options]
  * @returns {Promise<void>}
  */
-export function attachHlsToVideo(videoEl, hlsUrl, fallbackSrc, fallbackMime = 'video/mp4') {
+export function attachHlsToVideo(
+    videoEl,
+    hlsUrl,
+    fallbackSrc,
+    fallbackMime = 'video/mp4',
+    options = {},
+) {
     if (!videoEl || !hlsUrl) {
         return Promise.resolve();
+    }
+
+    const deferUntilInteraction = resolveDeferUntilInteraction(videoEl, options);
+
+    if (deferUntilInteraction) {
+        if (videoEl.dataset.herimeHlsDeferScheduled === '1') {
+            return Promise.resolve();
+        }
+        videoEl.dataset.herimeHlsDeferScheduled = '1';
+
+        const root =
+            videoEl.closest('[data-herime-video-interact-root]') ||
+            videoEl.parentElement ||
+            videoEl;
+
+        return new Promise((resolve) => {
+            let attachPromise = null;
+            let attachDone = false;
+
+            const cleanup = () => {
+                root.removeEventListener('pointerdown', onPointer, true);
+                videoEl.removeEventListener('play', onPlay, true);
+            };
+
+            const ensureAttached = () => {
+                if (attachDone) {
+                    return Promise.resolve();
+                }
+                if (!attachPromise) {
+                    attachPromise = attachHlsToVideo(
+                        videoEl,
+                        hlsUrl,
+                        fallbackSrc,
+                        fallbackMime,
+                        { ...options, deferUntilInteraction: false },
+                    ).then(() => {
+                        attachDone = true;
+                        cleanup();
+                    });
+                }
+                return attachPromise;
+            };
+
+            const onPointer = () => {
+                void ensureAttached();
+            };
+
+            const onPlay = () => {
+                if (attachDone) {
+                    return;
+                }
+                videoEl.pause();
+                void ensureAttached().then(() => {
+                    try {
+                        void videoEl.play();
+                    } catch (e) {
+                        /* ignore */
+                    }
+                });
+            };
+
+            root.addEventListener('pointerdown', onPointer, { capture: true, once: true });
+            videoEl.addEventListener('play', onPlay, { capture: true });
+            resolve();
+        });
     }
 
     return new Promise((resolve) => {

@@ -4,6 +4,7 @@ use App\Jobs\CleanTemporaryUploadsJob;
 use App\Jobs\ProcessSubscriptionRenewalsJob;
 use App\Jobs\RunMonerooPaymentMaintenanceJob;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -28,9 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ->hourly()
             ->name('subscriptions-process-renewals');
 
-        $schedule->job(new RunMonerooPaymentMaintenanceJob)
-            ->everyTenMinutes()
-            ->name('moneroo-payment-maintenance');
+        $schedule->call(function (): void {
+            Bus::dispatchSync(new RunMonerooPaymentMaintenanceJob);
+        })->everyTenMinutes()->name('moneroo-payment-maintenance');
 
         $schedule->job(new CleanTemporaryUploadsJob)
             ->hourly()

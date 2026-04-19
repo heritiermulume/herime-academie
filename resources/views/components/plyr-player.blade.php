@@ -244,7 +244,7 @@
 </style>
 
 @if($isYoutube || ($isInternalVideo && !empty($internalVideoUrl) && trim($internalVideoUrl) !== '') || $useHls)
-<div class="plyr-player-wrapper {{ $isYoutube ? 'plyr-external-video' : 'plyr-internal-video' }} position-absolute top-0 start-0 w-100 h-100" id="wrapper-{{ $playerId }}" style="margin: 0; padding: 0; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; max-width: 100% !important; max-height: 100% !important; overflow: hidden;">
+<div class="plyr-player-wrapper {{ $isYoutube ? 'plyr-external-video' : 'plyr-internal-video' }} position-absolute top-0 start-0 w-100 h-100" id="wrapper-{{ $playerId }}" data-herime-video-interact-root="1" style="margin: 0; padding: 0; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; max-width: 100% !important; max-height: 100% !important; overflow: hidden;">
     @if($isInternalVideo)
     <div class="video-buffer-indicator" id="buffer-{{ $playerId }}" aria-hidden="true">
         <span class="spinner"></span>
@@ -529,7 +529,9 @@
                     await window.herimeAttachHlsToVideo(playerElement, hlsUrl, fb, @json($videoMimeType));
                 } else if (!hlsUrl && typeof window.adjustVideoPreloadForConnection === 'function') {
                     window.adjustVideoPreloadForConnection(playerElement, @json($playerPreload));
+                    @if($playerPreload !== 'none')
                     try { playerElement.load(); } catch (e) {}
+                    @endif
                 }
             }
             player = new Plyr(playerElement, plyrConfig);

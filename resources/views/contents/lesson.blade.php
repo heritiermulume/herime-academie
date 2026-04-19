@@ -105,6 +105,7 @@
                                     @if($videoId)
                                         <iframe src="https://player.vimeo.com/video/{{ $videoId }}"
                                                 title="{{ $lesson->title }}"
+                                                loading="lazy"
                                                 allowfullscreen></iframe>
                                     @else
                                         <div class="d-flex align-items-center justify-content-center bg-dark text-white">

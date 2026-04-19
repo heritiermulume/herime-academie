@@ -40,10 +40,12 @@ async function initHerimeStreamVideos(root = document) {
             );
         } else {
             adjustVideoPreloadForConnection(videoEl, base);
-            try {
-                videoEl.load();
-            } catch (e) {
-                /* ignore */
+            if (base !== 'none') {
+                try {
+                    videoEl.load();
+                } catch (e) {
+                    /* ignore */
+                }
             }
         }
     }

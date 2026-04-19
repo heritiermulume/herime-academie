@@ -4727,7 +4727,7 @@ button.mobile-price-slider__btn--download i,
                                     </div>
                                 @elseif($course->video_preview_url)
                                     <div class="preview-player-wrapper active" data-preview-id="0">
-                                        <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-plyr-player-0">
+                                        <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-plyr-player-0" data-herime-video-interact-root="1">
                                             {{-- Préchargement config (défaut metadata) pour limiter data + laisser le streaming par plages --}}
                                             <video id="plyr-player-0" class="plyr-player-video" playsinline preload="{{ in_array($p = config('video.player_preload', 'metadata'), ['none', 'metadata', 'auto'], true) ? $p : 'metadata' }}"
                                                 @if($course->hasVideoPreviewHlsStreamReady())
@@ -5061,7 +5061,7 @@ function loadPreviewList() {
                             // Pour YouTube, créer un conteneur Plyr
                             const playerId = 'plyr-player-' + preview.id;
                             wrapper.innerHTML = `
-                                <div class="plyr-player-wrapper plyr-external-video position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                                <div class="plyr-player-wrapper plyr-external-video position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}" data-herime-video-interact-root="1">
                                     <div class="plyr__video-embed" id="${playerId}" data-plyr-provider="youtube" data-plyr-embed-id="${preview.youtube_id}"></div>
                                 </div>
                             `;
@@ -5079,7 +5079,7 @@ function loadPreviewList() {
                                 ? ''
                                 : `<source src="${preview.video_url}" type="video/mp4">`;
                             wrapper.innerHTML = `
-                                <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                                <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}" data-herime-video-interact-root="1">
                                     <video id="${playerId}" class="plyr-player-video" playsinline preload="${HERIME_VIDEO_PRELOAD}"${hlsAttrs}>
                                         ${videoInner}
                                     </video>
@@ -5398,7 +5398,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                     if (youtubeId) {
                         const playerId = 'plyr-player-' + lessonId;
                         wrapper.innerHTML = `
-                            <div class="plyr-player-wrapper plyr-external-video position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                            <div class="plyr-player-wrapper plyr-external-video position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}" data-herime-video-interact-root="1">
                                 <div class="plyr__video-embed" id="${playerId}" data-plyr-provider="youtube" data-plyr-embed-id="${youtubeId}"></div>
                             </div>
                         `;
@@ -5412,7 +5412,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                             : '';
                         const videoInner = hlsUrl ? '' : `<source src="${videoUrl}" type="video/mp4">`;
                         wrapper.innerHTML = `
-                            <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                            <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}" data-herime-video-interact-root="1">
                                 <video id="${playerId}" class="plyr-player-video" playsinline preload="${HERIME_VIDEO_PRELOAD}"${hlsAttrs}>
                                     ${videoInner}
                                 </video>
@@ -5482,7 +5482,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                 if (youtubeId) {
                     const playerId = 'plyr-player-' + lessonId;
                     wrapper.innerHTML = `
-                        <div class="plyr-player-wrapper plyr-external-video position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                        <div class="plyr-player-wrapper plyr-external-video position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}" data-herime-video-interact-root="1">
                             <div class="plyr__video-embed" id="${playerId}" data-plyr-provider="youtube" data-plyr-embed-id="${youtubeId}"></div>
                         </div>
                     `;
@@ -5496,7 +5496,7 @@ function openPreviewLesson(lessonId, clickedElement = null) {
                         : '';
                     const videoInner = hlsUrl ? '' : `<source src="${videoUrl}" type="video/mp4">`;
                     wrapper.innerHTML = `
-                        <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}">
+                        <div class="plyr-player-wrapper position-absolute top-0 start-0 w-100 h-100" id="wrapper-${playerId}" data-herime-video-interact-root="1">
                             <video id="${playerId}" class="plyr-player-video" playsinline preload="${HERIME_VIDEO_PRELOAD}"${hlsAttrs}>
                                 ${videoInner}
                             </video>

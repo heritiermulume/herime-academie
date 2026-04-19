@@ -3599,7 +3599,7 @@
     {{-- Meta (Facebook) Pixel + Events (dynamique via BDD) --}}
     @include('partials.meta-tracking')
     </head>
-<body data-cart-add-url="{{ route('cart.add') }}" data-herime-video-preload="{{ in_array($__hp = config('video.player_preload', 'metadata'), ['none', 'metadata', 'auto'], true) ? $__hp : 'metadata' }}">
+<body data-cart-add-url="{{ route('cart.add') }}" data-herime-video-preload="{{ in_array($__hp = config('video.player_preload', 'metadata'), ['none', 'metadata', 'auto'], true) ? $__hp : 'metadata' }}" data-herime-hls-defer="{{ config('video.hls_defer_until_interaction', true) ? '1' : '0' }}">
     @php
         if (isset($globalAnnouncement) && $globalAnnouncement) {
             $now = \Illuminate\Support\Carbon::now();

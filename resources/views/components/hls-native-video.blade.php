@@ -11,6 +11,7 @@
     $hls = is_string($hlsUrl) ? trim($hlsUrl) : '';
     $fb = is_string($fallbackSrc) ? trim($fallbackSrc) : '';
 @endphp
+<div class="herime-hls-native-root w-100 h-100" data-herime-video-interact-root="1">
 <video {{ $attributes->class(['herime-stream-video']) }}
     @if($controls) controls @endif
     playsinline
@@ -24,3 +25,4 @@
         src="{{ $fb }}"
     @endif
 ></video>
+</div>

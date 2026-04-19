@@ -65,6 +65,13 @@ return [
     'player_preload' => env('VIDEO_PLAYER_PRELOAD', 'metadata'),
 
     /*
+    | HLS (hls.js) : ne pas appeler loadSource tant que l’utilisateur n’a pas interagi avec la zone
+    | du lecteur (pointerdown) ou tenté de lire (play). Évite de lier la vidéo au chargement du
+    | document (arrêt du chargement navigateur = flux vidéo encore démarrable ensuite).
+    */
+    'hls_defer_until_interaction' => env('VIDEO_HLS_DEFER_UNTIL_INTERACTION', true),
+
+    /*
     | Historique : le streaming vidéo passe par BinaryFileResponse (Range natif). Clé conservée pour
     | ne pas casser les .env existants ; ignorée par le code.
     */
