@@ -4847,8 +4847,10 @@
                     }
                 }
                 
-                // Vérifier si le panier est vide
-                const cartItems = tempDiv.querySelectorAll('.cart-item-modern');
+                // Vérifier si le panier est vide (le panier Herime utilise .cart-item-wrapper, pas .cart-item-modern)
+                const cartItems = tempDiv.querySelectorAll(
+                    '#cart-items-container .recommended-item.cart-item-wrapper, #cart-items-container .cart-item-modern'
+                );
                 if (cartItems.length === 0) {
                     // Afficher le message de panier vide
                     const emptyCartMessage = tempDiv.querySelector('#empty-cart-container');

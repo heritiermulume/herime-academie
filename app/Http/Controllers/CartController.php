@@ -316,7 +316,8 @@ class CartController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
-        if (empty($this->getSessionCartItems())) {
+        // Inclure le panier BDD pour l’intent « compte existant » (session déjà fusionnée et vidée).
+        if (empty($this->getCartItemsForCurrentRequest())) {
             return response()->json([
                 'success' => false,
                 'message' => 'Votre panier est vide.',
