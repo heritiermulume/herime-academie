@@ -145,8 +145,10 @@ Route::get('/sso/callback', [SSOCallbackController::class, 'handle'])->name('sso
 // Authentication routes
 require __DIR__.'/auth.php';
 
-// Cart routes (accessible to all users) - avec validation SSO pour les actions de modification
-Route::middleware(['guest.moneroo.cart', 'sync.cart'])->group(function () {
+// Cart routes (accessible to all users). Ne pas appliquer guest.moneroo.cart ici : onceUsingId
+// rendrait la page /cart « connectée » pour l’affichage alors que la session n’est pas persistée.
+// L’auth invité Moneroo est réservée au groupe moneroo (initiate, status, etc.).
+Route::middleware(['sync.cart'])->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
     Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
