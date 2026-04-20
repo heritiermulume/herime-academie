@@ -375,12 +375,14 @@ class CartController extends Controller
 
         $this->mergeSessionCartIntoUser($result['user']);
 
-        // Toujours conserver le checkout en mode "invité rattaché à un compte" :
-        // évite une authentification locale immédiate qui peut déclencher des contrôles SSO
-        // avant l'initiation du paiement.
-        Session::put(self::GUEST_PAY_USER_ID_KEY, $result['user']->id);
-        Session::put(self::GUEST_PAY_READY_KEY, true);
-        $request->session()->regenerate();
+        if ($isNewAccount) {
+            Auth::login($result['user'], true);
+            $request->session()->regenerate();
+        } else {
+            Session::put(self::GUEST_PAY_USER_ID_KEY, $result['user']->id);
+            Session::put(self::GUEST_PAY_READY_KEY, true);
+            $request->session()->regenerate();
+        }
 
         $message = $isNewAccount
             ? ($passwordEmailSent === false

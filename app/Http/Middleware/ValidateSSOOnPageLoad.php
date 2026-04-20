@@ -72,6 +72,14 @@ class ValidateSSOOnPageLoad
                 // éviter une déconnexion « session expirée » au retour ou au POST si le JWT SSO a expiré pendant le paiement.
                 'subscriptions.invoices.pay',
                 'subscriptions.invoices.return',
+                // Checkout panier Moneroo : autoriser la finalisation immédiate après création/connexion locale
+                // sans bloquer sur une validation SSO synchrone.
+                'moneroo.initiate',
+                'moneroo.status',
+                'moneroo.verify-order',
+                'moneroo.cancel',
+                'moneroo.cancel-latest',
+                'moneroo.report-failure',
             ];
 
             $routeName = $request->route()?->getName();
