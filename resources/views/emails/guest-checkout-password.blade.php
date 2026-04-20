@@ -146,7 +146,6 @@
         </div>
 
         <div class="content">
-            <div class="success-badge">✓ Paiement recu</div>
 
             <h2>Bonjour {{ $user->name }} !</h2>
 
