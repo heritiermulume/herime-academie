@@ -4035,7 +4035,6 @@ const notesUrl = '{{ route('learning.notes.index', ['course' => $course->slug, '
 const notesStoreUrl = '{{ route('learning.notes.store', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
 const notesAllUrl = '{{ route('learning.notes.all', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
 const resourcesUrl = '{{ route('learning.resources.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
-const lessonAttachmentDownloadUrl = @json(route('learning.lesson.attachment.download', ['course' => $course->slug, 'lesson' => $activeLesson->id]));
 const discussionsUrl = '{{ route('learning.discussions.index', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
 const discussionsStoreUrl = '{{ route('learning.discussions.store', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
 const discussionsAllUrl = '{{ route('learning.discussions.all', ['course' => $course->slug, 'lesson' => $activeLesson->id]) }}';
@@ -4322,59 +4321,15 @@ function loadResources() {
             }
 
             const resources = data.resources || [];
-            const att = data.lesson_attachment;
-            const hasAttachment = att && ((att.kind === 'file' && att.download_url) || (att.kind === 'link' && att.external_url));
             const hasResources = resources.length > 0;
 
-            if (!hasAttachment && !hasResources) {
+            if (!hasResources) {
                 resourcesList.innerHTML = '<p class="text-muted">Aucune ressource disponible pour cette leçon.</p>';
                 return;
             }
 
             const resourcesBase = resourcesUrl;
             let blocks = [];
-
-            if (hasAttachment) {
-                if (att.kind === 'file' && att.download_url) {
-                    const dlUrl = att.download_url || lessonAttachmentDownloadUrl;
-                    blocks.push(`
-                        <div class="card mb-3 border-warning" style="background: rgba(0,51,102,0.85); border-color: rgba(255,193,7,0.45);">
-                            <div class="card-body">
-                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
-                                    <div class="flex-grow-1">
-                                        <h6 class="text-white mb-1"><i class="fas fa-paperclip me-2 text-warning"></i>${escapeLearningHtml(att.title)}</h6>
-                                        ${att.description ? `<p class="text-muted small mb-2">${escapeLearningHtml(att.description)}</p>` : ''}
-                                        <div class="d-flex flex-wrap gap-3 small text-muted">
-                                            <span><i class="fas fa-file me-1"></i>${escapeLearningHtml(att.file_type || 'Fichier')}</span>
-                                            <span><i class="fas fa-weight me-1"></i>${escapeLearningHtml(att.file_size || '')}</span>
-                                        </div>
-                                    </div>
-                                    <a href="${dlUrl}" class="btn btn-warning btn-sm">
-                                        <i class="fas fa-redo me-1"></i>Télécharger à nouveau
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    `);
-                } else if (att.kind === 'link' && att.external_url) {
-                    const linkUrl = att.external_url;
-                    blocks.push(`
-                        <div class="card mb-3" style="background: rgba(0,51,102,0.75); border-color: rgba(255,204,51,0.15);">
-                            <div class="card-body">
-                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
-                                    <div class="flex-grow-1">
-                                        <h6 class="text-white mb-1"><i class="fas fa-link me-2"></i>${escapeLearningHtml(att.title)}</h6>
-                                        ${att.description ? `<p class="text-muted small mb-2">${escapeLearningHtml(att.description)}</p>` : ''}
-                                    </div>
-                                    <a href="${linkUrl}" class="btn btn-info btn-sm" target="_blank" rel="noopener noreferrer">
-                                        <i class="fas fa-external-link-alt me-1"></i>Ouvrir
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    `);
-                }
-            }
 
             if (hasResources) {
                 const resourceCards = resources.map(resource => `

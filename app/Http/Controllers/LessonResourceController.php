@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class LessonResourceController extends Controller
 {
     /**
-     * Obtenir toutes les ressources d'une leçon (+ fichier principal hébergé, retéléchargeable)
+     * Obtenir toutes les ressources d'une leçon
      */
     public function index(Course $course, CourseLesson $lesson)
     {
@@ -45,97 +45,7 @@ class LessonResourceController extends Controller
         return response()->json([
             'success' => true,
             'resources' => $resources,
-            'lesson_attachment' => $this->lessonAttachmentPayload($course, $lesson),
         ]);
-    }
-
-    /**
-     * Téléchargement du fichier principal de la leçon (hébergé sur le disque privé).
-     */
-    public function downloadLessonAttachment(Course $course, CourseLesson $lesson)
-    {
-        if (! auth()->check() || ! $course->isEnrolledBy(auth()->id())) {
-            abort(403);
-        }
-
-        if ($lesson->content_id !== $course->id) {
-            abort(404);
-        }
-
-        $relative = $lesson->getStoredLessonFileRelativePath();
-        if (! $relative) {
-            abort(404, 'Aucun fichier téléchargeable pour cette leçon.');
-        }
-
-        $disk = Storage::disk('local');
-        if (! $disk->exists($relative)) {
-            abort(404, 'Fichier introuvable.');
-        }
-
-        $ext = pathinfo($relative, PATHINFO_EXTENSION);
-        $base = 'Lecon-'.preg_replace('/[^a-zA-Z0-9_-]+/', '-', $lesson->title);
-        $filename = $ext !== '' && $ext !== '0' ? $base.'.'.$ext : $base;
-
-        return $disk->download($relative, $filename);
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function lessonAttachmentPayload(Course $course, CourseLesson $lesson): ?array
-    {
-        $disk = Storage::disk('local');
-        $relative = $lesson->getStoredLessonFileRelativePath();
-        if ($relative && $disk->exists($relative)) {
-            $bytes = (int) $disk->size($relative);
-            $ext = pathinfo($relative, PATHINFO_EXTENSION);
-
-            return [
-                'kind' => 'file',
-                'title' => 'Fichier de la leçon : '.$lesson->title,
-                'description' => 'Téléchargez à nouveau le fichier principal de cette leçon (même contenu que dans le lecteur ou la vue associée).',
-                'file_type' => $ext ? strtoupper((string) $ext) : 'Fichier',
-                'file_size' => $this->formatBytes($bytes),
-                'download_count' => null,
-                'download_url' => route('learning.lesson.attachment.download', [
-                    'course' => $course->slug,
-                    'lesson' => $lesson->id,
-                ]),
-            ];
-        }
-
-        foreach (['file_path', 'content_url'] as $attr) {
-            $value = $lesson->getRawOriginal($attr) ?? $lesson->getAttribute($attr);
-            if (! empty($value) && filter_var($value, FILTER_VALIDATE_URL)) {
-                return [
-                    'kind' => 'link',
-                    'title' => 'Lien associé à la leçon',
-                    'description' => 'Ouvrir la ressource dans un nouvel onglet.',
-                    'file_type' => 'Lien',
-                    'file_size' => '—',
-                    'download_count' => null,
-                    'external_url' => $value,
-                ];
-            }
-        }
-
-        return null;
-    }
-
-    private function formatBytes(int $bytes): string
-    {
-        if ($bytes <= 0) {
-            return '0 B';
-        }
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $i = 0;
-        $v = (float) $bytes;
-        while ($v >= 1024 && $i < count($units) - 1) {
-            $v /= 1024;
-            $i++;
-        }
-
-        return round($v, 2).' '.$units[$i];
     }
 
     /**

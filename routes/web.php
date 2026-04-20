@@ -888,8 +888,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Lesson Resources routes
     Route::prefix('/learning/courses/{course:slug}/lessons/{lesson}')->group(function () {
-        Route::get('/attachment/download', [App\Http\Controllers\LessonResourceController::class, 'downloadLessonAttachment'])
-            ->name('learning.lesson.attachment.download');
         Route::get('/resources', [App\Http\Controllers\LessonResourceController::class, 'index'])->name('learning.resources.index');
         Route::get('/resources/{resource}/download', [App\Http\Controllers\LessonResourceController::class, 'download'])->name('learning.resources.download');
     });
