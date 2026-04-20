@@ -36,47 +36,13 @@ class ProfileRedirectController extends Controller
         $user = Auth::user();
         $ssoToken = session('sso_token');
 
-        // Si pas de token SSO, déclencher la déconnexion avec notification
-        // Ne pas rediriger vers compte.herime.com si le token est absent
+        // Si pas de token SSO, démarrer le flux SSO pour en obtenir un
         if (empty($ssoToken)) {
             Log::warning('SSO token missing before profile redirect', [
                 'user_id' => $user->id,
             ]);
 
-            // Déclencher la déconnexion avec notification
-            if (Auth::check()) {
-                try {
-                    return AuthenticatedSessionController::performLocalLogoutWithNotification($request);
-                } catch (\Throwable $e) {
-                    Log::debug('Error during logout in profile redirect (missing token)', [
-                        'error' => $e->getMessage(),
-                    ]);
-                    
-                    // En cas d'erreur, faire une déconnexion de base et rediriger
-                    try {
-                        // Supprimer le token SSO avant de déconnecter
-                        if ($request->hasSession() && $request->session()->has('sso_token')) {
-                            $request->session()->forget('sso_token');
-                        }
-                        
-                        Auth::logout();
-                        if ($request->hasSession()) {
-                            $request->session()->invalidate();
-                            $request->session()->regenerateToken();
-                            $request->session()->flash('session_expired', true);
-                            $request->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
-                        }
-                    } catch (\Throwable $logoutError) {
-                        Log::debug('Error during basic logout in profile redirect (missing token)', [
-                            'error' => $logoutError->getMessage(),
-                        ]);
-                    }
-                    
-                    return redirect()->route('home');
-                }
-            }
-
-            return redirect()->route('home');
+            return redirect($this->buildSsoLoginUrlForProfileRedirect());
         }
 
         // Valider le token SSO (avec gestion d'erreur)
@@ -88,85 +54,24 @@ class ProfileRedirectController extends Controller
                 'error' => $e->getMessage(),
             ]);
             
-            // En cas d'exception lors de la validation, déclencher la déconnexion avec notification
-            // Ne pas rediriger vers compte.herime.com si la validation échoue
-            if (Auth::check()) {
-                try {
-                    return AuthenticatedSessionController::performLocalLogoutWithNotification($request);
-                } catch (\Throwable $logoutException) {
-                    Log::debug('Error during logout in profile redirect (validation exception)', [
-                        'error' => $logoutException->getMessage(),
-                    ]);
-                    
-                    // En cas d'erreur, faire une déconnexion de base et rediriger
-                    try {
-                        // Supprimer le token SSO avant de déconnecter
-                        if ($request->hasSession() && $request->session()->has('sso_token')) {
-                            $request->session()->forget('sso_token');
-                        }
-                        
-                        Auth::logout();
-                        if ($request->hasSession()) {
-                            $request->session()->invalidate();
-                            $request->session()->regenerateToken();
-                            $request->session()->flash('session_expired', true);
-                            $request->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
-                        }
-                    } catch (\Throwable $logoutError) {
-                        Log::debug('Error during basic logout in profile redirect (validation exception)', [
-                            'error' => $logoutError->getMessage(),
-                        ]);
-                    }
-                    
-                    return redirect()->route('home');
-                }
+            if ($request->hasSession()) {
+                $request->session()->forget('sso_token');
             }
 
-            return redirect()->route('home');
+            return redirect($this->buildSsoLoginUrlForProfileRedirect());
         }
 
-        // Si le token n'est pas valide, déclencher la déconnexion avec notification
+        // Si le token n'est pas valide, relancer un login SSO pour regénérer un token valide.
         if (!$isValid) {
             Log::warning('SSO token validation failed before profile redirect', [
                 'user_id' => $user->id,
             ]);
 
-            // Si l'utilisateur est encore connecté, appeler la méthode logout avec notification
-            if (Auth::check()) {
-                try {
-                    // Déconnexion locale avec notification (l'utilisateur verra une notification et pourra choisir de se reconnecter)
-                    return AuthenticatedSessionController::performLocalLogoutWithNotification($request);
-                } catch (\Throwable $e) {
-                    Log::debug('Error during logout in profile redirect (invalid token)', [
-                        'error' => $e->getMessage(),
-                    ]);
-                    
-                    // En cas d'erreur, faire une déconnexion de base et rediriger
-                    try {
-                        // Supprimer le token SSO avant de déconnecter
-                        if ($request->hasSession() && $request->session()->has('sso_token')) {
-                            $request->session()->forget('sso_token');
-                        }
-                        
-                        Auth::logout();
-                        if ($request->hasSession()) {
-                            $request->session()->invalidate();
-                            $request->session()->regenerateToken();
-                            $request->session()->flash('session_expired', true);
-                            $request->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
-                        }
-                    } catch (\Throwable $logoutError) {
-                        Log::debug('Error during basic logout in profile redirect (invalid token)', [
-                            'error' => $logoutError->getMessage(),
-                        ]);
-                    }
-                    
-                    return redirect()->route('home');
-                }
+            if ($request->hasSession()) {
+                $request->session()->forget('sso_token');
             }
 
-            // Si l'utilisateur n'est plus connecté, rediriger vers la page d'accueil
-            return redirect()->route('home');
+            return redirect($this->buildSsoLoginUrlForProfileRedirect());
         }
 
         // Token valide, vérifier que le profil correspond bien à l'utilisateur connecté
@@ -232,9 +137,15 @@ class ProfileRedirectController extends Controller
             ]);
         }
 
-        // Token valide et correspond à l'utilisateur : forcer un logout SSO pour sélectionner le bon compte
-        // Token valide et correspond à l'utilisateur : rediriger vers la page de logout SSO
-        return redirect($this->ssoService->getLogoutUrl());
+        // Token valide et correspond à l'utilisateur : aller vers le profil SSO.
+        return redirect($this->ssoService->getProfileUrl());
+    }
+
+    private function buildSsoLoginUrlForProfileRedirect(): string
+    {
+        $callbackUrl = route('sso.callback', ['redirect' => route('profile.redirect')]);
+
+        return $this->ssoService->getLoginUrl($callbackUrl, true);
     }
 }
 

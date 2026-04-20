@@ -376,6 +376,11 @@ class CartController extends Controller
         $this->mergeSessionCartIntoUser($result['user']);
 
         if ($isNewAccount) {
+            // S'assurer qu'aucun ancien token SSO (potentiellement expiré/mauvais compte)
+            // ne reste attaché à la nouvelle session locale.
+            if ($request->hasSession()) {
+                $request->session()->forget('sso_token');
+            }
             Auth::login($result['user'], true);
             $request->session()->regenerate();
         } else {

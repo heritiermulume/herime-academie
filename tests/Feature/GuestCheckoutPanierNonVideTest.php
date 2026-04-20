@@ -176,4 +176,22 @@ class GuestCheckoutPanierNonVideTest extends TestCase
             mb_strtolower((string) ($initResponse->json('message') ?? ''))
         );
     }
+
+    public function test_profile_redirect_without_sso_token_redirects_to_sso_login_not_local_logout(): void
+    {
+        config(['services.sso.enabled' => true]);
+
+        $user = User::factory()->create([
+            'role' => 'customer',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('profile.redirect'));
+
+        $response->assertRedirect();
+        $target = (string) $response->headers->get('Location', '');
+        $this->assertStringContainsString('compte.herime.com/login', $target);
+        $this->assertStringContainsString('force_token=1', $target);
+        $this->assertAuthenticatedAs($user);
+    }
 }
