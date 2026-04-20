@@ -15,16 +15,16 @@ class SSOCallbackController extends Controller
     public function handle(Request $request)
     {
         try {
-            $token = $request->query('token');
+            $token = $request->query('token') ?: $request->query('access_token');
             $finalRedirect = $request->query('redirect', url('/'));
+            $retryCount = (int) $request->query('sso_retry', 0);
 
             if (!$token) {
                 Log::info('SSO callback: no token, redirecting to SSO for token generation', [
                     'final_redirect' => $finalRedirect,
+                    'retry_count' => $retryCount,
                 ]);
-                $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
-                return redirect()->away($loginUrl);
+                return $this->redirectBackToSso($request, $finalRedirect, 'missing_token');
             }
 
             // Valider le token côté compte.herime.com (Passport) - endpoint recommandé /api/me
@@ -37,29 +37,29 @@ class SSOCallbackController extends Controller
                 Log::warning('SSO callback: token invalid, redirecting back to SSO', [
                     'status' => $resp->status(),
                     'body' => $resp->body(),
+                    'retry_count' => $retryCount,
                 ]);
-                $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
-                return redirect()->away($loginUrl);
+                return $this->redirectBackToSso($request, $finalRedirect, 'invalid_token', [
+                    'status' => $resp->status(),
+                ]);
             }
 
             // Succès SSO: créer une session locale fonctionnelle
             $payload = $resp->json();
             if (!is_array($payload)) {
                 Log::warning('SSO callback: unexpected /api/me payload (not JSON object)', ['payload' => $resp->body()]);
-                $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
-                return redirect()->away($loginUrl);
+                return $this->redirectBackToSso($request, $finalRedirect, 'invalid_payload');
             }
 
-            // Le contrat attendu: { success: true, data: { user: {...} } }
-            $success = (bool) data_get($payload, 'success', false);
-            $remoteUser = data_get($payload, 'data.user', []);
+            // Accepter plusieurs formats de payload (/api/me peut varier selon les versions)
+            $remoteUser = $this->extractRemoteUserFromPayload($payload);
+            $success = data_get($payload, 'success');
+            if (!is_bool($success)) {
+                $success = !empty($remoteUser);
+            }
             if (!$success || empty($remoteUser) || !is_array($remoteUser)) {
                 Log::warning('SSO callback: /api/me returned invalid structure or not success', ['payload' => $payload]);
-                $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
-                return redirect()->away($loginUrl);
+                return $this->redirectBackToSso($request, $finalRedirect, 'invalid_payload_structure');
             }
 
             $email = data_get($remoteUser, 'email');
@@ -77,9 +77,7 @@ class SSOCallbackController extends Controller
             if (!$email) {
                 Log::warning('SSO callback: missing email in /api/me response');
                 // Si les données sont insuffisantes, relancer le flux SSO
-                $callback = route('sso.callback', ['redirect' => $finalRedirect]);
-                $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
-                return redirect()->away($loginUrl);
+                return $this->redirectBackToSso($request, $finalRedirect, 'missing_email');
             }
 
             // Récupérer le bio depuis SSO
@@ -320,6 +318,61 @@ class SSOCallbackController extends Controller
             return $url;
         }
         return url('/'); // fallback sûr
+    }
+
+    /**
+     * Relance le flux SSO au maximum une fois pour éviter les boucles infinies.
+     */
+    private function redirectBackToSso(Request $request, string $finalRedirect, string $reason, array $context = [])
+    {
+        $retryCount = (int) $request->query('sso_retry', 0);
+
+        if ($retryCount >= 1) {
+            Log::error('SSO callback: retry limit reached, aborting infinite loop', array_merge($context, [
+                'reason' => $reason,
+                'retry_count' => $retryCount,
+                'final_redirect' => $finalRedirect,
+            ]));
+
+            return redirect()->to($this->safeRedirect($finalRedirect));
+        }
+
+        $callback = route('sso.callback', [
+            'redirect' => $finalRedirect,
+            'sso_retry' => $retryCount + 1,
+        ]);
+        $loginUrl = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callback);
+
+        return redirect()->away($loginUrl);
+    }
+
+    /**
+     * Accepte les réponses suivantes:
+     * - { success: true, data: { user: {...} } }
+     * - { user: {...} }
+     * - { data: {...user fields...} }
+     * - {...user fields...}
+     */
+    private function extractRemoteUserFromPayload(array $payload): array
+    {
+        $candidates = [
+            data_get($payload, 'data.user'),
+            data_get($payload, 'user'),
+            data_get($payload, 'data'),
+            $payload,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!is_array($candidate)) {
+                continue;
+            }
+
+            if (!empty(data_get($candidate, 'email'))) {
+                return $candidate;
+            }
+        }
+
+        return [];
     }
 }
 
