@@ -745,6 +745,7 @@ class CourseController extends Controller
 
         $hasUserReview = $userReview !== null;
         $shareUrl = route('contents.rate', $course);
+        $canSeeShareLink = $user && $user->isAdmin();
 
         return view('contents.rate', compact(
             'course',
@@ -752,7 +753,8 @@ class CourseController extends Controller
             'canReview',
             'userReview',
             'hasUserReview',
-            'shareUrl'
+            'shareUrl',
+            'canSeeShareLink'
         ));
     }
 
