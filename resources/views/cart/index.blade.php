@@ -2091,7 +2091,7 @@ function removeCartLine(kind, courseId, packageId) {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-CSRF-TOKEN': cartPageCsrfToken(),
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         },
@@ -2202,7 +2202,7 @@ function clearCart() {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-CSRF-TOKEN': cartPageCsrfToken(),
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         }
@@ -2582,7 +2582,7 @@ function addToCartFromCartPage(courseId) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-CSRF-TOKEN': cartPageCsrfToken(),
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         },
@@ -2742,7 +2742,7 @@ function validatePromoCodeRealtime(promoCode) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-CSRF-TOKEN': cartPageCsrfToken(),
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         },
@@ -2959,7 +2959,7 @@ function removePromoCode() {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-CSRF-TOKEN': cartPageCsrfToken(),
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
         }
