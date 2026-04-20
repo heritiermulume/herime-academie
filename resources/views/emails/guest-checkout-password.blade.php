@@ -3,15 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compte créé</title>
+    <title>Compte cree - {{ config('app.name') }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 3px solid #003366;
+        }
+        .logo-container {
+            margin-bottom: 20px;
+        }
+        .logo-container img {
+            max-width: 200px;
+            height: auto;
+        }
+        .header h1 {
+            color: #003366;
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .header p {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .success-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #28a745;
+            color: #ffffff;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .content {
+            margin-bottom: 40px;
+        }
+        .content h2 {
+            color: #003366;
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .content p {
+            color: #495057;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .order-details {
+            background-color: #f8f9fa;
+            border-left: 4px solid #003366;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 4px;
+        }
+        .order-details h3 {
+            color: #003366;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .order-details p {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        .order-details strong {
+            color: #003366;
+            font-weight: 600;
+        }
+        .temporary-password {
+            font-size: 20px;
+            letter-spacing: 0.08em;
+            background: #ffffff;
+            border: 1px dashed #003366;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-top: 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+            color: #003366;
+            font-weight: 700;
+            display: inline-block;
+        }
+        .button-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            background-color: #003366;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .footer p {
+            margin-bottom: 10px;
+        }
+        .footer a {
+            color: #003366;
+            text-decoration: none;
+        }
+    </style>
 </head>
-<body style="font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 560px; margin: 0 auto; padding: 24px;">
-    <h1 style="color: #003366; font-size: 22px;">Bienvenue sur {{ config('app.name') }}</h1>
-    <p>Bonjour {{ $user->name }},</p>
-    <p>Un compte a été créé pour finaliser votre commande depuis le panier.</p>
-    <p><strong>Votre mot de passe temporaire :</strong></p>
-    <p style="font-size: 18px; letter-spacing: 0.05em; background: #f4f6f8; padding: 12px 16px; border-radius: 8px; font-family: ui-monospace, monospace;">{{ $plainPassword }}</p>
-    <p>Nous vous recommandons de le modifier après votre paiement depuis votre profil, lorsque cette option est disponible, ou d’utiliser la connexion Herime (compte.herime.com) avec la même adresse e-mail si vous y avez déjà un compte.</p>
-    <p style="margin-top: 32px; font-size: 14px; color: #666;">— L’équipe {{ config('app.name') }}</p>
+<body>
+    <div class="container">
+        <div class="header">
+            @if(isset($logoUrl))
+            <div class="logo-container">
+                <img src="{{ $logoUrl }}" alt="{{ config('app.name') }}">
+            </div>
+            @endif
+            <h1>Compte cree</h1>
+            <p>Bienvenue sur {{ config('app.name') }}</p>
+        </div>
+
+        <div class="content">
+            <div class="success-badge">✓ Paiement recu</div>
+
+            <h2>Bonjour {{ $user->name }} !</h2>
+
+            <p>Un compte a ete cree automatiquement pour finaliser votre commande.</p>
+
+            <div class="order-details">
+                <h3>Identifiants temporaires</h3>
+                <p><strong>Email :</strong> {{ $user->email }}</p>
+                <p><strong>Mot de passe temporaire :</strong></p>
+                <p class="temporary-password">{{ $plainPassword }}</p>
+            </div>
+
+            <p>Nous vous recommandons de modifier ce mot de passe des que possible depuis votre profil.</p>
+            <p>Vous pouvez aussi utiliser la connexion Herime (compte.herime.com) avec cette meme adresse email si vous y avez deja un compte.</p>
+
+            <div class="button-container">
+                <a href="{{ config('app.url') }}/login" class="button">Se connecter</a>
+            </div>
+
+            <p>Merci de votre confiance !</p>
+        </div>
+
+        <div class="footer">
+            <p>Cet email a ete envoye par <strong>{{ config('app.name') }}</strong></p>
+            <p>
+                <a href="{{ config('app.url') }}">Visiter le site</a> |
+                <a href="{{ config('app.url') }}/contact">Nous contacter</a>
+            </p>
+        </div>
+    </div>
 </body>
 </html>

@@ -30,6 +30,9 @@ class GuestCheckoutPasswordMail extends Mailable
     {
         return new Content(
             view: 'emails.guest-checkout-password',
+            with: [
+                'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
+            ],
         );
     }
 }
