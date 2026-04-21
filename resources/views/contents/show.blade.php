@@ -3963,11 +3963,9 @@ button.mobile-price-slider__btn--download i,
                         <i class="fas fa-link"></i>
                         Lien public pour demander une note
                     </h2>
-                    <p class="text-muted small mb-3">Les apprenants ouvrent une page dédiée (sans passer par toute la fiche). Copiez l’URL ci-dessous pour la partager.</p>
-                    <label for="show-content-public-rate-url" class="form-label fw-semibold small">Adresse à copier</label>
-                    <div class="input-group input-group-sm flex-wrap flex-md-nowrap gap-2 gap-md-0 mb-2">
-                        <input type="text" class="form-control font-monospace small" id="show-content-public-rate-url" readonly value="{{ $publicRatePageUrl }}">
-                        <button type="button" class="btn btn-primary" id="show-content-public-rate-copy-btn" title="Copier le lien">
+                    <p class="text-muted small mb-3">Les apprenants ouvrent une page dédiée (sans passer par toute la fiche). Utilisez le bouton ci-dessous pour copier rapidement le lien de partage.</p>
+                    <div class="mb-2">
+                        <button type="button" class="btn btn-primary" id="show-content-public-rate-copy-btn" title="Copier le lien" data-url="{{ $publicRatePageUrl }}">
                             <i class="fas fa-copy me-1"></i> Copier le lien
                         </button>
                     </div>
@@ -4181,9 +4179,12 @@ button.mobile-price-slider__btn--download i,
                                         $finalLoginCourse = url()->full();
                                         $callbackLoginCourse = route('sso.callback', ['redirect' => $finalLoginCourse]);
                                         $ssoLoginUrlCourse = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse);
+                                        $guestFreeLoginLabel = $course->is_downloadable
+                                            ? 'Se connecter pour télécharger'
+                                            : 'Se connecter pour s\'inscrire';
                                     @endphp
                                     <a href="{{ $ssoLoginUrlCourse }}" class="btn btn-primary btn-lg w-100">
-                                        <i class="fas fa-sign-in-alt me-2"></i>{{ $course->is_downloadable ? 'Se connecter pour télécharger' : 'Se connecter pour accéder au contenu' }}
+                                        <i class="fas fa-sign-in-alt me-2"></i>{{ $guestFreeLoginLabel }}
                                     </a>
                                     @php
                                         $finalRegisterCourse = url()->full();
@@ -4269,7 +4270,6 @@ button.mobile-price-slider__btn--download i,
                                                 <i class="fas fa-play me-2"></i>{{ $progress > 0 ? 'Continuer' : 'Commencer' }}
                                             </a>
                                         @endif
-                                        @include('contents.partials.repurchase-offer-cta', ['course' => $course, 'layout' => 'desktop'])
                                     @elseif($hasPurchased)
                                         {{-- Utilisateur a acheté --}}
                                         @if($course->is_downloadable)
@@ -4299,7 +4299,6 @@ button.mobile-price-slider__btn--download i,
                                                 </button>
                                             @endif
                                         @endif
-                                        @include('contents.partials.repurchase-offer-cta', ['course' => $course, 'layout' => 'desktop'])
                                     @else
                                         {{-- Utilisateur n'a pas encore acheté --}}
                                         @if($course->is_sale_enabled ?? true)
@@ -4437,6 +4436,9 @@ button.mobile-price-slider__btn--download i,
                     $finalLoginCourse2 = url()->full();
                     $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
                     $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
+                    $guestFreeLoginMobileLabel = $course->is_downloadable
+                        ? 'Se connecter pour télécharger'
+                        : 'Se connecter pour s\'inscrire';
                 @endphp
                 @if($course->is_free)
                     @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)
@@ -4448,13 +4450,13 @@ button.mobile-price-slider__btn--download i,
                             </a>
                             <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
                                 <i class="fas fa-sign-in-alt"></i>
-                                <span>Se connecter</span>
+                                <span>{{ $guestFreeLoginMobileLabel }}</span>
                             </a>
                         </div>
                     @else
                         <a href="{{ $ssoLoginUrlCourse2 }}" class="mobile-price-slider__btn mobile-price-slider__btn--primary mobile-price-slider__btn--login">
                             <i class="fas fa-sign-in-alt"></i>
-                            <span>Se connecter</span>
+                            <span>{{ $guestFreeLoginMobileLabel }}</span>
                         </a>
                     @endif
                 @else
@@ -6462,38 +6464,45 @@ document.addEventListener('DOMContentLoaded', function() {
     // Gestion de la suppression d'avis
     const deleteReviewBtn = document.getElementById('deleteReviewBtn');
     if (deleteReviewBtn) {
-        deleteReviewBtn.addEventListener('click', function() {
-            if (confirm('Êtes-vous sûr de vouloir supprimer votre avis ? Cette action est irréversible.')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '{{ route('contents.review.destroy', $course->slug) }}';
-                
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = '{{ csrf_token() }}';
-                
-                const methodInput = document.createElement('input');
-                methodInput.type = 'hidden';
-                methodInput.name = '_method';
-                methodInput.value = 'DELETE';
-                
-                form.appendChild(csrfInput);
-                form.appendChild(methodInput);
-                document.body.appendChild(form);
-                form.submit();
-            }
+        deleteReviewBtn.addEventListener('click', async function() {
+            const confirmed = await window.showModernConfirmModal(
+                'Êtes-vous sûr de vouloir supprimer votre avis ? Cette action est irréversible.',
+                {
+                    title: 'Supprimer votre avis',
+                    confirmButtonText: 'Supprimer',
+                    confirmButtonClass: 'btn-danger',
+                    icon: 'fa-trash',
+                }
+            );
+
+            if (!confirmed) return;
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ route('contents.review.destroy', $course->slug) }}';
+
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = '{{ csrf_token() }}';
+
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+
+            form.appendChild(csrfInput);
+            form.appendChild(methodInput);
+            document.body.appendChild(form);
+            form.submit();
         });
     }
 
     const showPublicRateCopyBtn = document.getElementById('show-content-public-rate-copy-btn');
-    const showPublicRateUrlInput = document.getElementById('show-content-public-rate-url');
-    if (showPublicRateCopyBtn && showPublicRateUrlInput) {
+    if (showPublicRateCopyBtn) {
         showPublicRateCopyBtn.addEventListener('click', function() {
-            showPublicRateUrlInput.focus();
-            showPublicRateUrlInput.select();
-            showPublicRateUrlInput.setSelectionRange(0, 99999);
-            var url = showPublicRateUrlInput.value;
+            var url = showPublicRateCopyBtn.dataset.url || '';
+            if (!url) return;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(function() {
                     showPublicRateCopyBtn.innerHTML = '<i class="fas fa-check me-1"></i> Copié';

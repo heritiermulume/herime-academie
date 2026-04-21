@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\UserSubscription;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -23,15 +24,29 @@ class SubscriptionAutoRenewResumed extends Notification
         $this->subscription->loadMissing('plan');
         $planName = $this->subscription->plan->name ?? 'Plan';
         $periodEnd = $this->subscription->current_period_ends_at;
+        $periodEndText = $periodEnd?->format('d/m/Y');
 
         return (new MailMessage)
             ->subject('Renouvellement automatique réactivé — '.config('app.name'))
-            ->greeting('Bonjour '.($notifiable->name ?? ''))
-            ->line("Le renouvellement automatique pour le plan « {$planName} » est de nouveau activé.")
-            ->line('Votre abonnement sera prolongé à chaque échéance, selon les conditions de votre formule.')
-            ->when($periodEnd, fn (MailMessage $m) => $m->line('Prochaine fin de période affichée sur votre espace : '.$periodEnd->format('d/m/Y').'.'))
-            ->action('Voir mes abonnements', route('customer.subscriptions'))
-            ->line('Merci de votre confiance.');
+            ->view('emails.subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Renouvellement réactivé',
+                'subtitle' => 'Votre abonnement continue automatiquement',
+                'badgeText' => 'Auto-renouvellement actif',
+                'badgeColor' => '#28a745',
+                'userName' => $notifiable->name ?? 'Client',
+                'intro' => "Le renouvellement automatique pour le plan « {$planName} » est de nouveau activé.",
+                'detailsTitle' => 'Détails de l’abonnement',
+                'detailLines' => array_filter([
+                    ['label' => 'Plan', 'value' => $planName],
+                    $periodEndText ? ['label' => 'Prochaine fin de période', 'value' => $periodEndText] : null,
+                ]),
+                'extraParagraphs' => [
+                    'Votre abonnement sera prolongé à chaque échéance, selon les conditions de votre formule.',
+                ],
+                'actionUrl' => route('customer.subscriptions'),
+                'actionLabel' => 'Voir mes abonnements',
+            ]);
     }
 
     public function toArray(object $notifiable): array

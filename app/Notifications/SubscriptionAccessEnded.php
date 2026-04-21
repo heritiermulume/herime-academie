@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\UserSubscription;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -25,14 +26,30 @@ class SubscriptionAccessEnded extends Notification
     {
         $this->subscription->loadMissing('plan');
         $planName = $this->subscription->plan->name ?? 'Plan';
+        $endedAtText = optional($this->subscription->ended_at ?? $this->subscription->current_period_ends_at)->format('d/m/Y');
 
         return (new MailMessage)
             ->subject('Fin de votre abonnement — '.config('app.name'))
-            ->greeting('Bonjour '.($notifiable->name ?? ''))
-            ->line("Votre abonnement au plan « {$planName} » est terminé.")
-            ->line('L’accès aux contenus réservés aux abonnés n’est plus actif pour ce plan.')
-            ->action('Voir les offres', route('community.premium'))
-            ->line('Nous serions ravis de vous revoir sur '.config('app.name').'.');
+            ->view('emails.subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Fin de votre abonnement',
+                'subtitle' => 'Accès abonnement terminé',
+                'badgeText' => 'Abonnement expiré',
+                'badgeColor' => '#6c757d',
+                'userName' => $notifiable->name ?? 'Client',
+                'intro' => "Votre abonnement au plan « {$planName} » est terminé.",
+                'detailsTitle' => 'Détails',
+                'detailLines' => array_filter([
+                    ['label' => 'Plan', 'value' => $planName],
+                    $endedAtText ? ['label' => 'Date de fin', 'value' => $endedAtText] : null,
+                ]),
+                'extraParagraphs' => [
+                    'L’accès aux contenus réservés aux abonnés n’est plus actif pour ce plan.',
+                    'Nous serions ravis de vous revoir sur '.config('app.name').'.',
+                ],
+                'actionUrl' => route('community.premium'),
+                'actionLabel' => 'Voir les offres',
+            ]);
     }
 
     public function toArray(object $notifiable): array

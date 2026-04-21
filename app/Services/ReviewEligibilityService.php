@@ -41,13 +41,13 @@ class ReviewEligibilityService
                 })
                 ->exists();
 
-            if ($hasPurchased) {
+            if ($hasPurchased || $course->isEnrolledBy($user->id)) {
                 return ['can_review' => true, 'message' => ''];
             }
 
             return [
                 'can_review' => false,
-                'message' => 'Vous devez avoir acheté ce contenu pour pouvoir le noter.',
+                'message' => 'Vous devez avoir acheté ce contenu (ou bénéficier d\'un accès accordé) pour pouvoir le noter.',
             ];
         }
 
@@ -69,13 +69,13 @@ class ReviewEligibilityService
             })
             ->exists();
 
-        if ($hasPurchased) {
+        if ($hasPurchased || $course->isEnrolledBy($user->id)) {
             return ['can_review' => true, 'message' => ''];
         }
 
         return [
             'can_review' => false,
-            'message' => 'Vous devez avoir acheté ce contenu pour pouvoir le noter.',
+            'message' => 'Vous devez avoir acheté ce contenu (ou bénéficier d\'un accès accordé) pour pouvoir le noter.',
         ];
     }
 }

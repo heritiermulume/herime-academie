@@ -77,7 +77,7 @@ class ReviewController extends Controller
     /**
      * Delete a review
      */
-    public function destroy(Course $course)
+    public function destroy(Request $request, Course $course)
     {
         // Vérifier que l'utilisateur est connecté
         if (! Auth::check()) {

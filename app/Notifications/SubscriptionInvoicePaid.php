@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Helpers\CurrencyHelper;
 use App\Models\SubscriptionInvoice;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -22,16 +23,22 @@ class SubscriptionInvoicePaid extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $this->invoice->loadMissing('subscription.plan');
-        $planName = $this->invoice->subscription?->plan->name ?? 'Votre plan';
+        $planName = $this->invoice->subscription?->plan->name ?? 'Programme membre';
+        $paidAtText = optional($this->invoice->paid_at)
+            ->timezone(config('app.timezone'))
+            ->format('d/m/Y à H:i');
 
         return (new MailMessage)
-            ->subject('Paiement reçu — facture '.$this->invoice->invoice_number)
-            ->greeting('Bonjour '.($notifiable->name ?? ''))
-            ->line("Nous avons bien enregistré le paiement de votre facture d’abonnement pour « {$planName} ».")
-            ->line('Facture : '.$this->invoice->invoice_number)
-            ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-            ->action('Voir mes abonnements', route('customer.subscriptions'))
-            ->line('Merci de votre confiance.');
+            ->subject('Paiement confirmé - '.config('app.name'))
+            ->view('emails.subscription-payment-received', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'userName' => $notifiable->name ?? 'Client',
+                'invoiceNumber' => $this->invoice->invoice_number,
+                'planName' => $planName,
+                'amountFormatted' => CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency),
+                'paidAtText' => $paidAtText,
+                'subscriptionsUrl' => route('customer.subscriptions'),
+            ]);
     }
 
     public function toArray(object $notifiable): array

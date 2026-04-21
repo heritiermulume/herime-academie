@@ -208,6 +208,19 @@ MAIL_USERNAME=votre-email@votre-domaine
 MAIL_PASSWORD=votre-password-email
 ```
 
+### Téléchargements de gros fichiers (optionnel mais recommandé)
+Pour accélérer les contenus téléchargeables avec fichier unique :
+```
+# Activés par défaut dans le code (sur VPS) :
+# DOWNLOAD_X_SENDFILE_ENABLED=true
+# DOWNLOAD_ACCEL_ENABLED=true
+
+# Option Nginx (alternative) si vous gérez un reverse proxy :
+# DOWNLOAD_ACCEL_INTERNAL_PREFIX=/protected-downloads
+```
+Si le serveur ne supporte pas ces en-têtes, le fallback est automatique : Laravel continue d'envoyer le fichier normalement.  
+Pour désactiver explicitement ces optimisations : `DOWNLOAD_X_SENDFILE_ENABLED=false` et/ou `DOWNLOAD_ACCEL_ENABLED=false`.
+
 
 ## 14. Checklist de déploiement
 

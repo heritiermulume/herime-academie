@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Services\EnrollmentReceiptPdfService;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class DownloadController extends Controller
@@ -168,8 +170,9 @@ class DownloadController extends Controller
             $ipAddress = request()->ip();
             $userAgent = request()->userAgent();
 
-            // Obtenir les informations géographiques depuis l'IP
-            $geoInfo = $this->getGeoInfoFromIp($ipAddress);
+            // Important perf: ne pas faire d'appel réseau externe dans le chemin critique du download.
+            // La géolocalisation peut être traitée plus tard via job asynchrone si nécessaire.
+            $geoInfo = [];
 
             CourseDownload::create([
                 'content_id' => $course->id,
@@ -184,7 +187,7 @@ class DownloadController extends Controller
             ]);
         } catch (\Exception $e) {
             // Log l'erreur mais ne pas bloquer le téléchargement
-            \Log::warning('Erreur lors de l\'enregistrement du téléchargement: '.$e->getMessage());
+            Log::warning('Erreur lors de l\'enregistrement du téléchargement: '.$e->getMessage());
         }
     }
 
@@ -194,7 +197,7 @@ class DownloadController extends Controller
     private function getGeoInfoFromIp($ipAddress)
     {
         // Pour les IPs locales, retourner null
-        if (in_array($ipAddress, ['127.0.0.1', '::1']) || str_starts_with($ipAddress, '192.168.') || str_starts_with($ipAddress, '10.') || str_starts_with($ipAddress, '172.')) {
+        if ($this->isPrivateIpAddress($ipAddress)) {
             return [];
         }
 
@@ -257,7 +260,42 @@ class DownloadController extends Controller
             $fileName = $this->sanitizeFileName($course->title).'.'.($extension ?: 'zip');
         }
 
-        return response()->download($filePath, $fileName);
+        return $this->buildDownloadResponseWithOptionalAcceleration($filePath, $fileName);
+    }
+
+    /**
+     * Retourne une réponse download Laravel avec accélération serveur optionnelle.
+     * Fallback automatique: si l'en-tête n'est pas supporté, Laravel envoie le fichier normalement.
+     */
+    private function buildDownloadResponseWithOptionalAcceleration(string $filePath, string $fileName)
+    {
+        $response = response()->download($filePath, $fileName);
+        $lastModified = gmdate('D, d M Y H:i:s', filemtime($filePath)).' GMT';
+        $etag = '"'.md5($filePath.'|'.filesize($filePath).'|'.filemtime($filePath)).'"';
+
+        // Headers utiles pour les gros fichiers: reprise, validation conditionnelle, cache privé.
+        $response->headers->set('Accept-Ranges', 'bytes');
+        $response->headers->set('ETag', $etag);
+        $response->headers->set('Last-Modified', $lastModified);
+        $response->headers->set('Cache-Control', 'private, max-age=0, must-revalidate');
+
+        // Activé par défaut sur VPS (peut être désactivé via .env).
+        if ((bool) env('DOWNLOAD_ACCEL_ENABLED', true)) {
+            $privateRoot = rtrim(storage_path('app/private'), '/');
+            if (str_starts_with($filePath, $privateRoot.'/')) {
+                $relativePath = substr($filePath, strlen($privateRoot));
+                $internalPrefix = rtrim((string) env('DOWNLOAD_ACCEL_INTERNAL_PREFIX', '/protected-downloads'), '/');
+                $internalPath = $internalPrefix.$relativePath;
+
+                $response->headers->set('X-Accel-Redirect', $internalPath);
+            }
+        }
+
+        if ((bool) env('DOWNLOAD_X_SENDFILE_ENABLED', true)) {
+            $response->headers->set('X-Sendfile', $filePath);
+        }
+
+        return $response;
     }
 
     /**
@@ -282,18 +320,54 @@ class DownloadController extends Controller
             return null;
         }
 
-        // Créer un fichier ZIP temporaire
-        $zipFileName = 'cours-'.$course->slug.'-'.now()->format('Y-m-d').'.zip';
-        $zipPath = storage_path('app/temp/'.$zipFileName);
+        $zipResult = $this->getCachedOrCreateCourseZip($course);
+        if ($zipResult === null) {
+            return null;
+        }
 
-        // Créer le dossier temp s'il n'existe pas
-        if (! file_exists(storage_path('app/temp'))) {
-            mkdir(storage_path('app/temp'), 0755, true);
+        if ($zipResult === false) {
+            return back()->with('error', 'Impossible de créer le fichier ZIP.');
+        }
+
+        ['zipPath' => $zipPath, 'zipFileName' => $zipFileName] = $zipResult;
+
+        return response()->download($zipPath, $zipFileName);
+    }
+
+    /**
+     * Retourne un ZIP de cours prêt à servir (cache disque + rebuild si nécessaire).
+     *
+     * @return array{zipPath:string,zipFileName:string}|false|null
+     */
+    private function getCachedOrCreateCourseZip(Course $course)
+    {
+        $cacheDir = storage_path('app/temp/course-zips');
+        if (! File::exists($cacheDir)) {
+            File::makeDirectory($cacheDir, 0755, true);
+        }
+
+        $contentSignature = $this->buildCourseZipContentSignature($course);
+        $zipFileName = 'cours-'.$course->slug.'-'.substr($contentSignature, 0, 12).'.zip';
+        $zipPath = $cacheDir.'/'.$zipFileName;
+
+        // Réutiliser directement le ZIP si déjà prêt.
+        if (File::exists($zipPath) && File::size($zipPath) > 0) {
+            return [
+                'zipPath' => $zipPath,
+                'zipFileName' => $zipFileName,
+            ];
+        }
+
+        // Nettoyer les anciennes versions de ZIP du même cours.
+        foreach (glob($cacheDir.'/cours-'.$course->slug.'-*.zip') ?: [] as $oldZipPath) {
+            if ($oldZipPath !== $zipPath && File::exists($oldZipPath)) {
+                @unlink($oldZipPath);
+            }
         }
 
         $zip = new \ZipArchive;
         if ($zip->open($zipPath, \ZipArchive::CREATE) !== true) {
-            return back()->with('error', 'Impossible de créer le fichier ZIP.');
+            return false;
         }
 
         // Ajouter un fichier README avec les informations du cours
@@ -325,7 +399,52 @@ class DownloadController extends Controller
             return null;
         }
 
-        return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
+        return [
+            'zipPath' => $zipPath,
+            'zipFileName' => $zipFileName,
+        ];
+    }
+
+    /**
+     * Génère une signature qui change quand le contenu ZIP source change.
+     */
+    private function buildCourseZipContentSignature(Course $course): string
+    {
+        $latestLessonUpdate = $course->sections
+            ->flatMap(fn ($section) => $section->lessons)
+            ->max('updated_at');
+
+        $latestSectionUpdate = $course->sections->max('updated_at');
+        $latestResourceUpdate = $course->updated_at;
+
+        return sha1(implode('|', [
+            $course->id,
+            optional($latestLessonUpdate)->timestamp ?? 0,
+            optional($latestSectionUpdate)->timestamp ?? 0,
+            optional($latestResourceUpdate)->timestamp ?? 0,
+            $course->sections->count(),
+            $course->sections->sum(fn ($section) => $section->lessons->count()),
+        ]));
+    }
+
+    /**
+     * Vérifie si l'adresse IP est privée / locale.
+     */
+    private function isPrivateIpAddress(?string $ipAddress): bool
+    {
+        if (! $ipAddress) {
+            return true;
+        }
+
+        if (in_array($ipAddress, ['127.0.0.1', '::1'], true)) {
+            return true;
+        }
+
+        if (str_starts_with($ipAddress, '192.168.') || str_starts_with($ipAddress, '10.')) {
+            return true;
+        }
+
+        return str_starts_with($ipAddress, '172.');
     }
 
     /**

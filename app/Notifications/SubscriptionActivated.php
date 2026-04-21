@@ -6,6 +6,7 @@ use App\Helpers\CurrencyHelper;
 use App\Models\ContentPackage;
 use App\Models\SubscriptionInvoice;
 use App\Models\UserSubscription;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -38,45 +39,71 @@ class SubscriptionActivated extends Notification
             $periodLine = $periodEnd
                 ? 'Prochaine échéance de période : '.$periodEnd->format('d/m/Y').'.'
                 : null;
+            $title = 'Renouvellement confirmé';
+            $badgeText = 'Abonnement renouvelé';
+            $badgeColor = '#28a745';
         } elseif ($this->isRenewal) {
             $subject = 'Réabonnement confirmé — '.config('app.name');
             $intro = "Votre réabonnement au plan « {$planName} » est bien enregistré.";
             $periodLine = null;
+            $title = 'Réabonnement confirmé';
+            $badgeText = 'Réabonnement enregistré';
+            $badgeColor = '#003366';
         } else {
             $subject = 'Abonnement confirmé — '.config('app.name');
             $intro = "Votre abonnement au plan « {$planName} » est bien activé.";
             $periodLine = null;
+            $title = 'Abonnement confirmé';
+            $badgeText = 'Abonnement actif';
+            $badgeColor = '#28a745';
         }
 
-        $mail = (new MailMessage)
-            ->subject($subject)
-            ->greeting('Bonjour '.($notifiable->name ?? ''))
-            ->line($intro)
-            ->when($periodLine, fn (MailMessage $m) => $m->line($periodLine))
-            ->line('Vous pouvez suivre votre abonnement depuis votre espace client.')
-            ->action('Voir mes abonnements', route('customer.subscriptions'));
+        $detailLines = [
+            ['label' => 'Plan', 'value' => $planName],
+        ];
 
         if ($this->invoice) {
             $invoiceStatusLabel = $this->invoice->status === 'paid'
                 ? 'Payée'
                 : 'En attente de paiement';
-            $mail->line('Facture associée : '.$this->invoice->invoice_number)
-                ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-                ->line('Statut facture : '.$invoiceStatusLabel);
+            $detailLines[] = ['label' => 'Facture associée', 'value' => $this->invoice->invoice_number];
+            $detailLines[] = ['label' => 'Montant', 'value' => CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency)];
+            $detailLines[] = ['label' => 'Statut facture', 'value' => $invoiceStatusLabel];
         } else {
-            $mail->line('Aucune facture immédiate n\'est requise pour ce plan.');
+            $detailLines[] = ['label' => 'Facturation', 'value' => 'Aucune facture immédiate requise pour ce plan'];
         }
+
+        $extraParagraphs = [];
+        if ($periodLine) {
+            $extraParagraphs[] = $periodLine;
+        }
+        $extraParagraphs[] = 'Vous pouvez suivre votre abonnement depuis votre espace client.';
 
         if (! empty($includedContentTitles)) {
-            $mail->line('Formations incluses : '.collect($includedContentTitles)->take(3)->join(', ')
-                .(count($includedContentTitles) > 3 ? ' +'.(count($includedContentTitles) - 3) : ''));
+            $extraParagraphs[] = '<strong>Formations incluses :</strong> '.collect($includedContentTitles)->take(3)->join(', ')
+                .(count($includedContentTitles) > 3 ? ' +'.(count($includedContentTitles) - 3) : '');
         }
         if (! empty($includedPackageTitles)) {
-            $mail->line('Packs inclus : '.collect($includedPackageTitles)->take(3)->join(', ')
-                .(count($includedPackageTitles) > 3 ? ' +'.(count($includedPackageTitles) - 3) : ''));
+            $extraParagraphs[] = '<strong>Packs inclus :</strong> '.collect($includedPackageTitles)->take(3)->join(', ')
+                .(count($includedPackageTitles) > 3 ? ' +'.(count($includedPackageTitles) - 3) : '');
         }
 
-        return $mail->line('Merci de votre confiance.');
+        return (new MailMessage)
+            ->subject($subject)
+            ->view('emails.subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => $title,
+                'subtitle' => 'Votre espace abonnement',
+                'badgeText' => $badgeText,
+                'badgeColor' => $badgeColor,
+                'userName' => $notifiable->name ?? 'Client',
+                'intro' => $intro,
+                'detailsTitle' => 'Détails de l’abonnement',
+                'detailLines' => $detailLines,
+                'extraParagraphs' => $extraParagraphs,
+                'actionUrl' => route('customer.subscriptions'),
+                'actionLabel' => 'Voir mes abonnements',
+            ]);
     }
 
     public function toArray(object $notifiable): array

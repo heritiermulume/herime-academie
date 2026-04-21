@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\UserSubscription;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -23,14 +24,24 @@ class AdminSubscriptionAccessEnded extends Notification
         $this->subscription->loadMissing(['plan', 'user']);
         $user = $this->subscription->user;
         $planName = $this->subscription->plan->name ?? 'Plan';
+        $endedAtText = optional($this->subscription->ended_at ?? $this->subscription->current_period_ends_at)->format('d/m/Y');
 
         return (new MailMessage)
-            ->subject('Abonnement expiré (fin de période) — '.config('app.name'))
-            ->greeting('Bonjour '.($notifiable->name ?? 'Admin'))
-            ->line('Un abonnement est passé en statut expiré (fin de période atteinte).')
-            ->line('Client : '.($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : ''))
-            ->line('Plan : '.$planName)
-            ->action('Voir les abonnements', route('admin.subscriptions.index'));
+            ->subject('Abonnement expiré (fin de période) - '.config('app.name').' [Admin]')
+            ->view('emails.admin-subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Abonnement expiré',
+                'adminName' => $notifiable->name ?? null,
+                'intro' => 'Un abonnement est passé en statut expiré (fin de période atteinte).',
+                'detailsTitle' => 'Détails de l’expiration',
+                'detailLines' => array_filter([
+                    ['label' => 'Client', 'value' => ($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : '')],
+                    ['label' => 'Plan', 'value' => $planName],
+                    $endedAtText ? ['label' => 'Date de fin', 'value' => $endedAtText] : null,
+                ]),
+                'actionUrl' => route('admin.subscriptions.index'),
+                'actionLabel' => 'Voir les abonnements admin',
+            ]);
     }
 
     public function toArray(object $notifiable): array

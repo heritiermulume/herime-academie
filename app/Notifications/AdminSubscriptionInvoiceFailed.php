@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Helpers\CurrencyHelper;
 use App\Models\SubscriptionInvoice;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -26,14 +27,22 @@ class AdminSubscriptionInvoiceFailed extends Notification
         $planName = $this->invoice->subscription?->plan->name ?? 'Plan';
 
         return (new MailMessage)
-            ->subject('Échec paiement facture abonnement — '.config('app.name'))
-            ->greeting('Bonjour '.($notifiable->name ?? 'Admin'))
-            ->line('Une facture d’abonnement est en échec ou a échoué côté paiement.')
-            ->line('Client : '.($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : ''))
-            ->line('Plan : '.$planName)
-            ->line('Facture : '.$this->invoice->invoice_number)
-            ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-            ->action('Voir les abonnements', route('admin.subscriptions.index'));
+            ->subject('Échec paiement facture abonnement - '.config('app.name').' [Admin]')
+            ->view('emails.admin-subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Échec de paiement abonnement',
+                'adminName' => $notifiable->name ?? null,
+                'intro' => 'Une facture d’abonnement est en échec ou a échoué côté paiement.',
+                'detailsTitle' => 'Détails de la facture',
+                'detailLines' => [
+                    ['label' => 'Client', 'value' => ($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : '')],
+                    ['label' => 'Plan', 'value' => $planName],
+                    ['label' => 'Facture', 'value' => $this->invoice->invoice_number],
+                    ['label' => 'Montant', 'value' => CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency)],
+                ],
+                'actionUrl' => route('admin.subscriptions.index'),
+                'actionLabel' => 'Voir les abonnements admin',
+            ]);
     }
 
     public function toArray(object $notifiable): array

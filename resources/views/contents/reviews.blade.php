@@ -14,8 +14,29 @@
     $reviewsThumbUrl = $reviewsThumbUrl ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop';
 @endphp
 
+<section class="community-premium-hero content-rate-hero">
+    <div class="content-rate-hero__inner">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div class="cart-title-section">
+                <h1 class="cart-title h1-md mb-2">Notes et avis</h1>
+                <p class="cart-subtitle mb-0">
+                    Consultez tous les retours des apprenants pour ce contenu.
+                </p>
+            </div>
+            <div class="cart-actions">
+                <a href="{{ route('contents.show', $course->slug) }}" class="continue-shopping-btn mp-ghost-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour à la fiche
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
 <div class="udemy-cart-container content-reviews-page">
-    <div class="cart-wrapper content-reviews-wrapper">
+    <div class="cart-wrapper content-reviews-wrapper mp-subscribe-zone">
+    <div class="mp-card">
+    <div class="mp-card__inner">
         <nav aria-label="breadcrumb" class="breadcrumb-modern content-reviews-breadcrumb">
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="{{ route('home') }}">Accueil</a></li>
@@ -55,12 +76,6 @@
                         </span>
                     </div>
                 </div>
-            </div>
-            <div class="content-reviews-page-header__actions">
-                <a href="{{ route('contents.show', $course->slug) }}" class="continue-shopping-btn content-reviews-back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Retour à la fiche</span>
-                </a>
             </div>
         </header>
 
@@ -203,8 +218,8 @@
                 @if($reviews->hasPages())
                 <div class="row mt-4">
                     <div class="col-12">
-                        <div class="d-flex justify-content-center">
-                            {{ $reviews->links('pagination.bootstrap-4') }}
+                        <div class="content-reviews-pagination d-flex justify-content-center">
+                            {{ $reviews->links('pagination::bootstrap-5') }}
                         </div>
                     </div>
                 </div>
@@ -225,25 +240,99 @@
         </div>
     </div>
     </div>
+    </div>
+    </div>
 </div>
 
 @push('styles')
 <style>
+    .community-premium-hero.content-rate-hero {
+        background: linear-gradient(145deg, #001a33 0%, #003366 45%, #004080 100%);
+        color: #fff;
+        padding: 0.5rem 0 0.35rem;
+    }
+    .community-premium-hero.content-rate-hero .h1-md {
+        font-size: clamp(1.6rem, 1.2rem + 1.8vw, 2.35rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+    .community-premium-hero.content-rate-hero .cart-subtitle {
+        max-width: 760px;
+        font-size: 0.92rem;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.35;
+    }
+    .content-rate-hero__inner {
+        width: 100%;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0.8rem 0.75rem;
+    }
+    .mp-ghost-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        padding: 0.65rem 0.95rem;
+        text-decoration: none;
+    }
+    .mp-subscribe-zone {
+        position: relative;
+        padding: 0.5rem 0 1rem;
+        width: 100%;
+        max-width: 760px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .mp-subscribe-zone::before {
+        content: '';
+        position: absolute;
+        inset: -8% -20% auto -20%;
+        height: 70%;
+        background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 51, 102, 0.14), transparent 70%);
+        pointer-events: none;
+    }
+    .mp-card {
+        position: relative;
+        width: 100%;
+        border-radius: 1.35rem;
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow:
+            0 0 0 1px rgba(15, 23, 42, 0.06),
+            0 2px 4px rgba(15, 23, 42, 0.04),
+            0 24px 48px -12px rgba(0, 51, 102, 0.18),
+            0 48px 96px -24px rgba(15, 23, 42, 0.12);
+    }
+    .mp-card__inner {
+        padding: 1.25rem;
+    }
     .content-reviews-page {
         background-color: #f7f9fa;
-        padding-bottom: 2rem;
+        padding: 0.75rem 0 2rem;
     }
 
     .content-reviews-wrapper {
-        max-width: 1200px;
+        max-width: 760px;
         margin: 0 auto;
-        padding: 1.25rem 1.5rem 1.5rem;
+        padding: 0;
     }
 
     @media (max-width: 767.98px) {
         .content-reviews-wrapper {
-            padding-left: 1rem;
-            padding-right: 1rem;
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .community-premium-hero.content-rate-hero {
+            padding: 0.35rem 0 0.2rem;
+        }
+        .content-rate-hero__inner {
+            padding: 0.7rem 1rem;
+        }
+        .mp-card__inner {
+            padding: 1rem;
         }
     }
 
@@ -395,15 +484,15 @@
     }
 
     :root {
-        --review-card-bg: #ffffff;
-        --review-card-border: #e9ecef;
-        --review-card-hover-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-        --review-primary: #0d6efd;
+        --review-card-bg: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        --review-card-border: rgba(0, 51, 102, 0.12);
+        --review-card-hover-shadow: 0 18px 36px -24px rgba(0, 51, 102, 0.25);
+        --review-primary: #003366;
         --review-success: #198754;
         --review-warning: #ffc107;
         --review-text: #212529;
         --review-text-muted: #6c757d;
-        --review-bg-light: #f8f9fa;
+        --review-bg-light: rgba(0, 51, 102, 0.05);
     }
 
     .rating-score {
@@ -452,7 +541,7 @@
         border-radius: 16px;
         overflow: hidden;
         transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 10px 22px -18px rgba(2, 6, 23, 0.35);
         position: relative;
     }
 
@@ -462,8 +551,8 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, var(--review-primary), var(--review-warning));
+        height: 3px;
+        background: linear-gradient(90deg, #003366, #004080);
         opacity: 0;
         transition: opacity 0.3s ease;
     }
@@ -471,7 +560,7 @@
     .review-card-modern:hover {
         transform: translateY(-4px);
         box-shadow: var(--review-card-hover-shadow);
-        border-color: rgba(13, 110, 253, 0.2);
+        border-color: rgba(0, 51, 102, 0.24);
     }
 
     .review-card-modern:hover::before {
@@ -513,7 +602,7 @@
     }
 
     .review-avatar-modern .avatar-initials {
-        background: linear-gradient(135deg, var(--review-primary), #0056b3);
+        background: linear-gradient(135deg, #003366, #004080);
         color: white;
         font-size: 1.5rem;
         font-weight: 700;
@@ -528,7 +617,7 @@
         right: -4px;
         bottom: -4px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--review-primary), var(--review-warning));
+        background: linear-gradient(135deg, #003366, #66b3ff);
         opacity: 0.2;
         z-index: 1;
         animation: pulse 2s ease-in-out infinite;
@@ -572,7 +661,8 @@
         margin-bottom: 1.25rem;
         padding: 0.75rem;
         background: var(--review-bg-light);
-        border-radius: 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 51, 102, 0.1);
     }
 
     .rating-stars-modern {
@@ -591,7 +681,7 @@
     }
 
     .rating-badge {
-        background: var(--review-primary);
+        background: linear-gradient(135deg, #003366 0%, #004080 100%);
         color: white;
         padding: 0.25rem 0.75rem;
         border-radius: 20px;
@@ -611,7 +701,7 @@
         position: absolute;
         left: 0;
         top: 0;
-        color: var(--review-primary);
+        color: #003366;
         opacity: 0.2;
         font-size: 1.5rem;
     }
@@ -630,7 +720,7 @@
 
     .review-card-footer {
         padding: 1rem 1.75rem;
-        background: var(--review-bg-light);
+        background: rgba(0, 51, 102, 0.04);
         border-top: 1px solid var(--review-card-border);
         display: flex;
         align-items: center;
@@ -760,6 +850,71 @@
 
         .review-verified {
             font-size: 0.75rem;
+        }
+    }
+
+    .content-reviews-pagination nav {
+        width: 100%;
+    }
+
+    .content-reviews-pagination .pagination {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0.35rem;
+        margin: 0;
+    }
+
+    .content-reviews-pagination .page-item {
+        margin: 0;
+    }
+
+    .content-reviews-pagination .page-link {
+        border-radius: 10px !important;
+        border: 1px solid rgba(0, 51, 102, 0.2);
+        color: #003366;
+        background: #ffffff;
+        min-width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.4rem 0.65rem;
+        font-weight: 600;
+        box-shadow: 0 6px 14px -14px rgba(0, 51, 102, 0.45);
+    }
+
+    .content-reviews-pagination .page-link:hover {
+        color: #ffffff;
+        background: #003366;
+        border-color: #003366;
+    }
+
+    .content-reviews-pagination .page-item.active .page-link {
+        color: #ffffff;
+        background: linear-gradient(135deg, #003366 0%, #004080 100%);
+        border-color: #003366;
+    }
+
+    .content-reviews-pagination .page-item.disabled .page-link {
+        color: #9ca3af;
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        box-shadow: none;
+    }
+
+    @media (max-width: 575.98px) {
+        .content-reviews-pagination .pagination {
+            gap: 0.25rem;
+        }
+
+        .content-reviews-pagination .page-link {
+            min-width: 34px;
+            height: 34px;
+            padding: 0.25rem 0.45rem;
+            font-size: 0.8rem;
+            border-radius: 8px !important;
         }
     }
 </style>

@@ -120,6 +120,27 @@ class ValidateSSOOnPageLoad
             // Si pas de token SSO, laisser passer (utilisateur peut être connecté localement)
             // Mais seulement pour les routes qui ne nécessitent pas SSO
             if (empty($ssoToken)) {
+                // Fenêtre de grâce après auto-login d'un invité en checkout:
+                // le compte local est valide, mais le token SSO externe n'est pas encore établi.
+                $guestCheckoutAutologinUntil = null;
+                $guestCheckoutAutologinUserId = null;
+                if ($request->hasSession()) {
+                    $guestCheckoutAutologinUntil = (int) $request->session()->get('guest_checkout_autologin_until', 0);
+                    $guestCheckoutAutologinUserId = (int) $request->session()->get('guest_checkout_autologin_user_id', 0);
+                }
+                if (
+                    $guestCheckoutAutologinUntil > time()
+                    && $guestCheckoutAutologinUserId > 0
+                    && (int) $user->id === $guestCheckoutAutologinUserId
+                ) {
+                    Log::debug('SSO token missing during guest checkout autologin grace period - allowing request', [
+                        'user_id' => $user->id,
+                        'route' => $routeName,
+                    ]);
+
+                    return $next($request);
+                }
+
                 // Si SSO est activé mais pas de token, on peut considérer que c'est un problème
                 // Cependant, pour éviter de bloquer les utilisateurs, on laisse passer
                 // Vous pouvez activer la validation stricte si nécessaire

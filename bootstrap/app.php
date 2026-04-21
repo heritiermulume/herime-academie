@@ -71,6 +71,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->name('content-rating-reminders')
             ->withoutOverlapping(25);
 
+        // Rattrapage idempotent: crée les relances manquantes (ex: inscriptions passées de pending -> active).
+        $schedule->command('content-rating-reminders:sync')
+            ->dailyAt('06:50')
+            ->name('content-rating-reminders-sync')
+            ->withoutOverlapping(45);
+
         $schedule->command('announcements:expire')
             ->hourly()
             ->name('announcements-expire')

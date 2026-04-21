@@ -196,8 +196,16 @@
         .then(() => window.location.reload());
     }
 
-    function deleteNotification(id) {
-        if (!confirm('Supprimer cette notification ?')) return;
+    async function deleteNotification(id) {
+        const confirmed = await window.showModernConfirmModal('Supprimer cette notification ?', {
+            title: 'Supprimer le message',
+            confirmButtonText: 'Supprimer',
+            confirmButtonClass: 'btn-danger',
+            icon: 'fa-trash',
+        });
+
+        if (!confirmed) return;
+
         fetch(`/notifications/${id}`, {
             method: 'DELETE',
             headers: {

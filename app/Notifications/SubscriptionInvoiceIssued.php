@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Helpers\CurrencyHelper;
 use App\Models\SubscriptionInvoice;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -22,16 +23,30 @@ class SubscriptionInvoiceIssued extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $this->invoice->loadMissing('subscription.plan');
-        $planName = $this->invoice->subscription?->plan->name ?? 'Votre plan';
+        $planName = $this->invoice->subscription?->plan->name ?? 'Programme membre';
 
         return (new MailMessage)
             ->subject('Nouvelle facture d’abonnement — '.config('app.name'))
-            ->greeting('Bonjour '.($notifiable->name ?? ''))
-            ->line("Une nouvelle facture a été émise pour « {$planName} » (renouvellement ou relance).")
-            ->line('Numéro : '.$this->invoice->invoice_number)
-            ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-            ->line('Merci de la régler depuis votre espace pour conserver votre accès.')
-            ->action('Voir mes abonnements et payer', route('customer.subscriptions'));
+            ->view('emails.subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Facture d’abonnement émise',
+                'subtitle' => 'Action requise',
+                'badgeText' => 'Paiement en attente',
+                'badgeColor' => '#f39c12',
+                'userName' => $notifiable->name ?? 'Client',
+                'intro' => "Une nouvelle facture a été émise pour « {$planName} » (renouvellement ou relance).",
+                'detailsTitle' => 'Détails de la facture',
+                'detailLines' => [
+                    ['label' => 'Facture', 'value' => $this->invoice->invoice_number],
+                    ['label' => 'Plan', 'value' => $planName],
+                    ['label' => 'Montant', 'value' => CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency)],
+                ],
+                'extraParagraphs' => [
+                    'Merci de régler cette facture depuis votre espace pour conserver votre accès.',
+                ],
+                'actionUrl' => route('customer.subscriptions'),
+                'actionLabel' => 'Voir mes abonnements et payer',
+            ]);
     }
 
     public function toArray(object $notifiable): array

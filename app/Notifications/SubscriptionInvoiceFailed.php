@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Helpers\CurrencyHelper;
 use App\Models\SubscriptionInvoice;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -30,21 +31,50 @@ class SubscriptionInvoiceFailed extends Notification
         if ($this->firstPaymentDeadlineExpired) {
             return (new MailMessage)
                 ->subject('Souscription non finalisée — délai dépassé — '.config('app.name'))
-                ->greeting('Bonjour '.($notifiable->name ?? ''))
-                ->line("La facture « {$planName} » ({$this->invoice->invoice_number}) n’a pas été réglée dans le délai prévu.")
-                ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-                ->line('Votre demande d’adhésion a expiré. Vous pouvez relancer une souscription quand vous le souhaitez depuis votre espace client.')
-                ->action('Voir les formules', route('customer.subscriptions'));
+                ->view('emails.subscription-event', [
+                    'logoUrl' => EmailBranding::logoUrl(),
+                    'title' => 'Souscription non finalisée',
+                    'subtitle' => 'Délai dépassé',
+                    'badgeText' => 'Action requise',
+                    'badgeColor' => '#dc3545',
+                    'userName' => $notifiable->name ?? 'Client',
+                    'intro' => "La facture « {$planName} » n’a pas été réglée dans le délai prévu.",
+                    'detailsTitle' => 'Détails de la facture',
+                    'detailLines' => [
+                        ['label' => 'Facture', 'value' => $this->invoice->invoice_number],
+                        ['label' => 'Plan', 'value' => $planName],
+                        ['label' => 'Montant', 'value' => CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency)],
+                    ],
+                    'extraParagraphs' => [
+                        'Votre demande d’adhésion a expiré. Vous pouvez relancer une souscription à tout moment depuis votre espace client.',
+                    ],
+                    'actionUrl' => route('customer.subscriptions'),
+                    'actionLabel' => 'Voir les formules',
+                ]);
         }
 
         return (new MailMessage)
             ->subject('Échec de paiement — facture '.$this->invoice->invoice_number)
-            ->greeting('Bonjour '.($notifiable->name ?? ''))
-            ->line("Le paiement de votre facture d’abonnement « {$planName} » n’a pas pu être finalisé.")
-            ->line('Facture : '.$this->invoice->invoice_number)
-            ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-            ->line('Vous pouvez réessayer depuis votre espace client.')
-            ->action('Régulariser mon abonnement', route('customer.subscriptions'));
+            ->view('emails.subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Échec de paiement',
+                'subtitle' => 'Paiement non finalisé',
+                'badgeText' => 'Paiement échoué',
+                'badgeColor' => '#dc3545',
+                'userName' => $notifiable->name ?? 'Client',
+                'intro' => "Le paiement de votre facture d’abonnement « {$planName} » n’a pas pu être finalisé.",
+                'detailsTitle' => 'Détails de la facture',
+                'detailLines' => [
+                    ['label' => 'Facture', 'value' => $this->invoice->invoice_number],
+                    ['label' => 'Plan', 'value' => $planName],
+                    ['label' => 'Montant', 'value' => CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency)],
+                ],
+                'extraParagraphs' => [
+                    'Vous pouvez réessayer depuis votre espace client.',
+                ],
+                'actionUrl' => route('customer.subscriptions'),
+                'actionLabel' => 'Régulariser mon abonnement',
+            ]);
     }
 
     public function toArray(object $notifiable): array

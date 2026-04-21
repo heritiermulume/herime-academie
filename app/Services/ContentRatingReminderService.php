@@ -35,13 +35,16 @@ class ContentRatingReminderService
             return;
         }
 
-        ContentRatingReminder::firstOrCreate(
+        $reminder = ContentRatingReminder::firstOrCreate(
             ['user_id' => $userId, 'content_id' => $contentId],
             [
                 'enrollment_id' => $enrollment->id,
-                'campaign_started_at' => $enrollment->created_at ?? now(),
+                // Démarre la campagne au moment où la relance est effectivement mise en place.
+                'campaign_started_at' => now(),
             ]
         );
+
+        $this->reviveLegacyCampaignIfNeeded($reminder, $enrollment->id);
     }
 
     public function ensureForDownload(CourseDownload $download): void
@@ -55,13 +58,16 @@ class ContentRatingReminderService
             return;
         }
 
-        ContentRatingReminder::firstOrCreate(
+        $reminder = ContentRatingReminder::firstOrCreate(
             ['user_id' => $download->user_id, 'content_id' => $course->id],
             [
                 'enrollment_id' => null,
-                'campaign_started_at' => $download->created_at ?? now(),
+                // Démarre la campagne au moment où la relance est effectivement mise en place.
+                'campaign_started_at' => now(),
             ]
         );
+
+        $this->reviveLegacyCampaignIfNeeded($reminder, null);
     }
 
     public static function forgetForUserAndContent(int $userId, int $contentId): void
@@ -180,5 +186,31 @@ class ContentRatingReminderService
             : Enrollment::find($reminder->enrollment_id);
 
         return $enrollment && $enrollment->order_id !== null;
+    }
+
+    /**
+     * Réactive les anciennes campagnes jamais envoyées pour couvrir les accès
+     * accordés avant la mise en place complète de l’automatisation.
+     */
+    private function reviveLegacyCampaignIfNeeded(ContentRatingReminder $reminder, ?int $enrollmentId): void
+    {
+        if ($reminder->reminders_sent > 0) {
+            return;
+        }
+
+        if ($reminder->isCampaignActive()) {
+            return;
+        }
+
+        $payload = [
+            'campaign_started_at' => now(),
+            'last_sent_at' => null,
+        ];
+
+        if ($enrollmentId !== null && $reminder->enrollment_id === null) {
+            $payload['enrollment_id'] = $enrollmentId;
+        }
+
+        $reminder->forceFill($payload)->save();
     }
 }

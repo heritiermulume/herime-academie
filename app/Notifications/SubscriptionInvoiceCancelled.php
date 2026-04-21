@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Helpers\CurrencyHelper;
 use App\Models\SubscriptionInvoice;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -21,13 +22,31 @@ class SubscriptionInvoiceCancelled extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $this->invoice->loadMissing('subscription.plan');
+        $planName = $this->invoice->subscription?->plan->name ?? 'Programme membre';
+
         return (new MailMessage)
             ->subject('Facture d’abonnement annulée — '.config('app.name'))
-            ->greeting('Bonjour '.($notifiable->name ?? ''))
-            ->line('La facture '.$this->invoice->invoice_number.' a été annulée.')
-            ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-            ->line('Si vous avez une question, contactez le support.')
-            ->action('Voir mes abonnements', route('customer.subscriptions'));
+            ->view('emails.subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Facture annulée',
+                'subtitle' => 'Mise à jour de facturation',
+                'badgeText' => 'Facture annulée',
+                'badgeColor' => '#6c757d',
+                'userName' => $notifiable->name ?? 'Client',
+                'intro' => 'La facture de votre abonnement a été annulée.',
+                'detailsTitle' => 'Détails de la facture',
+                'detailLines' => [
+                    ['label' => 'Facture', 'value' => $this->invoice->invoice_number],
+                    ['label' => 'Plan', 'value' => $planName],
+                    ['label' => 'Montant', 'value' => CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency)],
+                ],
+                'extraParagraphs' => [
+                    'Si vous avez une question, contactez le support.',
+                ],
+                'actionUrl' => route('customer.subscriptions'),
+                'actionLabel' => 'Voir mes abonnements',
+            ]);
     }
 
     public function toArray(object $notifiable): array

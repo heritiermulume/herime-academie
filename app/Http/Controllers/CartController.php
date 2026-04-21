@@ -383,6 +383,12 @@ class CartController extends Controller
             }
             Auth::login($result['user'], true);
             $request->session()->regenerate();
+            // Marquer l'auto-login "checkout invité" afin d'éviter une déconnexion SSO stricte
+            // immédiate avant la fin du paiement (pas encore de token SSO côté compte externe).
+            if ($request->hasSession()) {
+                $request->session()->put('guest_checkout_autologin_user_id', (int) $result['user']->id);
+                $request->session()->put('guest_checkout_autologin_until', now()->addMinutes(20)->timestamp);
+            }
         } else {
             Session::put(self::GUEST_PAY_USER_ID_KEY, $result['user']->id);
             Session::put(self::GUEST_PAY_READY_KEY, true);

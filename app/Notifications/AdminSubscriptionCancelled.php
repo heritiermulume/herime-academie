@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\UserSubscription;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -33,13 +34,21 @@ class AdminSubscriptionCancelled extends Notification
             : 'Un client a annulé son abonnement.';
 
         return (new MailMessage)
-            ->subject('Annulation d’abonnement client — '.config('app.name'))
-            ->greeting('Bonjour '.($notifiable->name ?? 'Admin'))
-            ->line($intro)
-            ->line('Client : '.($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : ''))
-            ->line('Plan : '.$planName)
-            ->when($end, fn (MailMessage $m) => $m->line('Fin d’accès prévue : '.$end->format('d/m/Y')))
-            ->action('Voir les abonnements', route('admin.subscriptions.index'));
+            ->subject('Annulation d’abonnement client - '.config('app.name').' [Admin]')
+            ->view('emails.admin-subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Annulation d’abonnement',
+                'adminName' => $notifiable->name ?? null,
+                'intro' => $intro,
+                'detailsTitle' => 'Détails de l’annulation',
+                'detailLines' => array_filter([
+                    ['label' => 'Client', 'value' => ($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : '')],
+                    ['label' => 'Plan', 'value' => $planName],
+                    $end ? ['label' => 'Fin d’accès prévue', 'value' => $end->format('d/m/Y')] : null,
+                ]),
+                'actionUrl' => route('admin.subscriptions.index'),
+                'actionLabel' => 'Voir les abonnements admin',
+            ]);
     }
 
     public function toArray(object $notifiable): array

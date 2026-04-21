@@ -8,20 +8,25 @@ use Illuminate\Console\Command;
 
 class SyncContentRatingRemindersCommand extends Command
 {
-    protected $signature = 'content-rating-reminders:sync {--days=90 : Inscriptions depuis N jours au plus}';
+    protected $signature = 'content-rating-reminders:sync {--days= : Inscriptions depuis N jours au plus (laisser vide pour toutes)}';
 
     protected $description = 'Crée les suivis de relance notation pour les inscriptions existantes sans avis (idempotent)';
 
     public function handle(ContentRatingReminderService $service): int
     {
-        $days = max(1, (int) $this->option('days'));
-        $since = now()->subDays($days);
+        $daysOption = $this->option('days');
+        $days = is_numeric($daysOption) ? max(1, (int) $daysOption) : null;
 
         $processed = 0;
-        Enrollment::query()
+        $query = Enrollment::query()
             ->whereIn('status', ['active', 'completed'])
-            ->where('created_at', '>=', $since)
-            ->orderBy('id')
+            ->orderBy('id');
+
+        if ($days !== null) {
+            $query->where('created_at', '>=', now()->subDays($days));
+        }
+
+        $query
             ->chunkById(200, function ($enrollments) use ($service, &$processed) {
                 foreach ($enrollments as $enrollment) {
                     $service->ensureForEnrollment($enrollment);
@@ -29,7 +34,8 @@ class SyncContentRatingRemindersCommand extends Command
                 }
             });
 
-        $this->info("Traité {$processed} inscription(s) (relances créées ou inchangées).");
+        $scopeLabel = $days !== null ? "sur {$days} jour(s)" : 'sur toutes les inscriptions';
+        $this->info("Traité {$processed} inscription(s) {$scopeLabel} (relances créées ou inchangées).");
 
         return self::SUCCESS;
     }

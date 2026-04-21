@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\UserSubscription;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -23,15 +24,29 @@ class SubscriptionCancelled extends Notification
         $this->subscription->loadMissing('plan');
         $planName = $this->subscription->plan->name ?? 'Plan';
         $end = $this->subscription->ended_at ?? $this->subscription->current_period_ends_at;
+        $endText = $end ? $end->format('d/m/Y') : null;
 
         return (new MailMessage)
             ->subject('Annulation de votre abonnement — '.config('app.name'))
-            ->greeting('Bonjour '.($notifiable->name ?? ''))
-            ->line("Votre abonnement au plan « {$planName} » a bien été annulé.")
-            ->line('Le renouvellement automatique est désactivé.')
-            ->when($end, fn (MailMessage $m) => $m->line('Vous conservez l’accès jusqu’au '.$end->format('d/m/Y').' (fin de période en cours).'))
-            ->action('Voir mes abonnements', route('customer.subscriptions'))
-            ->line('Merci de votre confiance.');
+            ->view('emails.subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => 'Abonnement annulé',
+                'subtitle' => 'Mise à jour de votre abonnement',
+                'badgeText' => 'Renouvellement désactivé',
+                'badgeColor' => '#6c757d',
+                'userName' => $notifiable->name ?? 'Client',
+                'intro' => "Votre abonnement au plan « {$planName} » a bien été annulé.",
+                'detailsTitle' => 'Détails de l’annulation',
+                'detailLines' => array_filter([
+                    ['label' => 'Plan', 'value' => $planName],
+                    $endText ? ['label' => 'Accès conservé jusqu’au', 'value' => $endText] : null,
+                ]),
+                'extraParagraphs' => [
+                    'Le renouvellement automatique est désactivé.',
+                ],
+                'actionUrl' => route('customer.subscriptions'),
+                'actionLabel' => 'Voir mes abonnements',
+            ]);
     }
 
     public function toArray(object $notifiable): array

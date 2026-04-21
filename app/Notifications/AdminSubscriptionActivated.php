@@ -6,6 +6,7 @@ use App\Helpers\CurrencyHelper;
 use App\Models\ContentPackage;
 use App\Models\SubscriptionInvoice;
 use App\Models\UserSubscription;
+use App\Support\EmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -41,31 +42,42 @@ class AdminSubscriptionActivated extends Notification
                 ? 'Un client a programmé un réabonnement.'
                 : 'Un client vient de souscrire un abonnement.');
 
-        $mail = (new MailMessage)
-            ->subject($subject)
-            ->greeting('Bonjour '.($notifiable->name ?? 'Admin'))
-            ->line($lead)
-            ->line('Client : '.($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : ''))
-            ->line('Plan : '.$planName)
-            ->line('Période en cours : '.optional($this->subscription->current_period_starts_at)->format('d/m/Y').' - '.optional($this->subscription->current_period_ends_at)->format('d/m/Y'))
-            ->action('Voir les abonnements admin', route('admin.subscriptions.index'));
+        $detailLines = [
+            ['label' => 'Client', 'value' => ($user->name ?? 'N/A').($user?->email ? ' ('.$user->email.')' : '')],
+            ['label' => 'Plan', 'value' => $planName],
+            ['label' => 'Période en cours', 'value' => optional($this->subscription->current_period_starts_at)->format('d/m/Y').' - '.optional($this->subscription->current_period_ends_at)->format('d/m/Y')],
+        ];
 
         if ($this->invoice) {
             $invoiceStatusLabel = $this->invoice->status === 'paid' ? 'Payée' : 'En attente de paiement';
-            $mail->line('Facture : '.$this->invoice->invoice_number)
-                ->line('Montant : '.CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency))
-                ->line('Statut : '.$invoiceStatusLabel);
-        }
-        if (! empty($includedContentTitles)) {
-            $mail->line('Formations incluses : '.collect($includedContentTitles)->take(3)->join(', ')
-                .(count($includedContentTitles) > 3 ? ' +'.(count($includedContentTitles) - 3) : ''));
-        }
-        if (! empty($includedPackageTitles)) {
-            $mail->line('Packs inclus : '.collect($includedPackageTitles)->take(3)->join(', ')
-                .(count($includedPackageTitles) > 3 ? ' +'.(count($includedPackageTitles) - 3) : ''));
+            $detailLines[] = ['label' => 'Facture', 'value' => $this->invoice->invoice_number];
+            $detailLines[] = ['label' => 'Montant', 'value' => CurrencyHelper::formatWithSymbol($this->invoice->amount, $this->invoice->currency)];
+            $detailLines[] = ['label' => 'Statut', 'value' => $invoiceStatusLabel];
         }
 
-        return $mail;
+        $extraParagraphs = [];
+        if (! empty($includedContentTitles)) {
+            $extraParagraphs[] = '<strong>Formations incluses :</strong> '.collect($includedContentTitles)->take(3)->join(', ')
+                .(count($includedContentTitles) > 3 ? ' +'.(count($includedContentTitles) - 3) : '');
+        }
+        if (! empty($includedPackageTitles)) {
+            $extraParagraphs[] = '<strong>Packs inclus :</strong> '.collect($includedPackageTitles)->take(3)->join(', ')
+                .(count($includedPackageTitles) > 3 ? ' +'.(count($includedPackageTitles) - 3) : '');
+        }
+
+        return (new MailMessage)
+            ->subject($subject.' [Admin]')
+            ->view('emails.admin-subscription-event', [
+                'logoUrl' => EmailBranding::logoUrl(),
+                'title' => $this->isPaidCycleRenewal ? 'Paiement d\'abonnement reçu' : ($this->isRenewal ? 'Réabonnement client' : 'Nouvel abonnement client'),
+                'adminName' => $notifiable->name ?? null,
+                'intro' => $lead,
+                'detailsTitle' => 'Détails de l’abonnement',
+                'detailLines' => $detailLines,
+                'extraParagraphs' => $extraParagraphs,
+                'actionUrl' => route('admin.subscriptions.index'),
+                'actionLabel' => 'Voir les abonnements admin',
+            ]);
     }
 
     public function toArray(object $notifiable): array
