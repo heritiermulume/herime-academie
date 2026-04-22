@@ -140,15 +140,7 @@ class DownloadController extends Controller
      */
     private function tryDownloadSpecificFile(Course $course)
     {
-        if (! filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
-            $disk = Storage::disk('local');
-            $cleanPath = ltrim($course->download_file_path, '/');
-            if (! $disk->exists($cleanPath)) {
-                return null;
-            }
-        }
-
-        return $this->downloadSpecificFile($course);
+        return $this->downloadSpecificFile($course, true);
     }
 
     /**
@@ -231,26 +223,23 @@ class DownloadController extends Controller
     /**
      * Télécharger un fichier spécifique défini pour le cours
      */
-    private function downloadSpecificFile(Course $course)
+    private function downloadSpecificFile(Course $course, bool $returnNullWhenMissing = false)
     {
         $filePath = null;
         $fileName = null;
 
         if (! filter_var($course->download_file_path, FILTER_VALIDATE_URL)) {
-            $disk = Storage::disk('local');
-
-            $cleanPath = ltrim($course->download_file_path, '/');
-
-            if ($disk->exists($cleanPath)) {
-                $filePath = $disk->path($cleanPath);
-                $fileName = basename($cleanPath);
-            }
+            ['filePath' => $filePath, 'fileName' => $fileName] = $this->resolveDownloadFileFromStoragePath($course->download_file_path);
         } else {
             // C'est une URL externe - rediriger vers cette URL
             return redirect($course->download_file_path);
         }
 
         if (! $filePath || ! file_exists($filePath)) {
+            if ($returnNullWhenMissing) {
+                return null;
+            }
+
             return back()->with('error', 'Le fichier de téléchargement n\'existe plus sur le serveur.');
         }
 
@@ -261,6 +250,43 @@ class DownloadController extends Controller
         }
 
         return $this->buildDownloadResponseWithOptionalAcceleration($filePath, $fileName);
+    }
+
+    /**
+     * Résoudre un chemin de fichier uploadé (formats actuels + anciens formats possibles).
+     *
+     * @return array{filePath:?string,fileName:?string}
+     */
+    private function resolveDownloadFileFromStoragePath(?string $storedPath): array
+    {
+        if (! $storedPath) {
+            return ['filePath' => null, 'fileName' => null];
+        }
+
+        $disk = Storage::disk('local');
+        $cleanPath = ltrim(trim($storedPath), '/');
+
+        if ($cleanPath === '') {
+            return ['filePath' => null, 'fileName' => null];
+        }
+
+        $candidates = array_values(array_unique(array_filter([
+            $cleanPath,
+            preg_replace('#^storage/#', '', $cleanPath),
+            preg_replace('#^app/private/#', '', $cleanPath),
+            preg_replace('#^private/#', '', $cleanPath),
+        ], fn ($value) => is_string($value) && $value !== '')));
+
+        foreach ($candidates as $candidate) {
+            if ($disk->exists($candidate)) {
+                return [
+                    'filePath' => $disk->path($candidate),
+                    'fileName' => basename($candidate),
+                ];
+            }
+        }
+
+        return ['filePath' => null, 'fileName' => null];
     }
 
     /**

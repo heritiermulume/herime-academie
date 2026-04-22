@@ -3554,6 +3554,10 @@ button.mobile-price-slider__btn--download i,
                         <span>{{ $totalLessons }} leçons</span>
                     </div>
                 @endif
+                <div class="course-stat-item">
+                    <i class="fas {{ $course->is_downloadable ? 'fa-download' : 'fa-graduation-cap' }}"></i>
+                    <span>{{ $course->is_downloadable ? 'Téléchargeable' : 'Formation' }}</span>
+                </div>
                 @if($course->show_customers_count)
                 @php
                     $count = 0;

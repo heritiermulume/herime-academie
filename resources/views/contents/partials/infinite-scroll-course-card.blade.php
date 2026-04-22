@@ -44,6 +44,13 @@
                     </div>
                 </div>
 
+                <div class="customers-count mb-2">
+                    <small class="text-muted">
+                        <i class="fas {{ $course->is_downloadable ? 'fa-download' : 'fa-graduation-cap' }} me-1"></i>
+                        {{ $course->is_downloadable ? 'Téléchargeable' : 'Formation' }}
+                    </small>
+                </div>
+
                 @if($course->show_customers_count)
                     @php
                         $count = 0;

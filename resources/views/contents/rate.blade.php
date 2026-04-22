@@ -16,6 +16,9 @@
     $communityImpactText = $course->is_downloadable
         ? "Votre avis aide d'autres personnes à savoir si ce contenu correspond vraiment à leurs besoins."
         : "Votre avis aide d'autres apprenants à choisir la formation la plus adaptée à leurs objectifs.";
+    $ratingPromptText = $course->is_downloadable
+        ? "Comment évaluez-vous ce contenu ?"
+        : "Comment évaluez-vous cette formation ?";
 @endphp
 
 <section class="community-premium-hero content-rate-hero">
@@ -119,7 +122,7 @@
                                     @csrf
                                     <input type="hidden" name="redirect_to" value="rate">
 
-                                    <p class="fw-semibold mb-2" style="font-size: 0.9375rem;">Comment évaluez-vous ce contenu ou cette formation ?</p>
+                                    <p class="fw-semibold mb-2" style="font-size: 0.9375rem;">{{ $ratingPromptText }}</p>
 
                                     <div class="mb-3">
                                         <div class="rating-input-wrapper">
