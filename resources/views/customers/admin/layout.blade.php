@@ -43,9 +43,9 @@
         [
             'label' => 'Formation en direct',
             'icon' => 'fas fa-video',
-            'route' => 'live-training.index',
-            'url' => route('live-training.index'),
-            'active' => ['live-training.index'],
+            'route' => 'customer.live-training',
+            'url' => route('customer.live-training'),
+            'active' => ['customer.live-training', 'live-training.*'],
         ],
     ];
 

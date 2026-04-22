@@ -1,13 +1,47 @@
-@extends('layouts.app')
+@php
+    $authUser = auth()->user();
+    $liveLayout = 'layouts.app';
+    $useDashboardSection = false;
+    $liveShowRouteName = 'live-training.show';
+    $currentRouteName = optional(request()->route())->getName();
+
+    if ($currentRouteName && str_starts_with($currentRouteName, 'customer.')) {
+        $liveLayout = 'customers.admin.layout';
+        $useDashboardSection = true;
+        $liveShowRouteName = 'customer.live-training.show';
+    } elseif ($currentRouteName && str_starts_with($currentRouteName, 'provider.')) {
+        $liveLayout = 'providers.admin.layout';
+        $useDashboardSection = true;
+        $liveShowRouteName = 'provider.live-training.show';
+    } elseif ($authUser && method_exists($authUser, 'isCustomer') && $authUser->isCustomer()) {
+        $liveLayout = 'customers.admin.layout';
+        $useDashboardSection = true;
+        $liveShowRouteName = 'customer.live-training.show';
+    } elseif ($authUser && method_exists($authUser, 'isProvider') && $authUser->isProvider()) {
+        $liveLayout = 'providers.admin.layout';
+        $useDashboardSection = true;
+        $liveShowRouteName = 'provider.live-training.show';
+    }
+@endphp
+
+@extends($liveLayout)
 
 @section('title', 'Formation en direct')
+@section('admin-title', 'Formation en direct')
+@section('admin-subtitle', 'Espace de cours en visioconference')
 
+@if($useDashboardSection)
+@section('admin-content')
+@else
 @section('content')
+@endif
 <section class="container py-4 py-lg-5">
-    <div class="live-header mb-4">
-        <h1 class="h3 fw-bold mb-2">Formation en direct</h1>
-        <p class="text-muted mb-0">Cet espace vous permet de suivre ou d'animer des sessions de formation en temps reel pour un programme precis, avec echanges audio/video, questions-reponses et accompagnement pedagogique pendant la seance.</p>
-    </div>
+    @if(!$useDashboardSection)
+        <div class="live-header mb-4">
+            <h1 class="h3 fw-bold mb-2">Formation en direct</h1>
+            <p class="text-muted mb-0">Cet espace vous permet de suivre ou d'animer des sessions de formation en temps reel pour un programme precis, avec echanges audio/video, questions-reponses et accompagnement pedagogique pendant la seance.</p>
+        </div>
+    @endif
 
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
@@ -67,7 +101,7 @@
                                     </div>
                                 </div>
                                 @if($isLiveActive)
-                                    <a href="{{ route('live-training.show', $program->slug) }}" class="btn btn-sm btn-primary">
+                                    <a href="{{ route($liveShowRouteName, $program->slug) }}" class="btn btn-sm btn-primary">
                                         <i class="fas fa-video me-1"></i>Rejoindre
                                     </a>
                                 @else
@@ -99,8 +133,8 @@
             </div>
         </div>
 
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-2 p-md-3">
+        <div class="card shadow-sm border-0 live-jitsi-card">
+            <div class="card-body p-0">
                 <div id="jitsi-container" class="jitsi-frame" aria-label="Visioconference en direct"></div>
             </div>
         </div>
@@ -292,12 +326,25 @@
     .list-group-item,
     .card-body p,
     code {
-        overflow-wrap: anywhere;
-        word-break: break-word;
+        overflow-wrap: break-word;
+        word-break: normal;
+    }
+
+    .live-header p {
+        max-width: 900px;
+        line-height: 1.6;
     }
 
     .card {
         overflow: hidden;
+    }
+
+    .live-jitsi-card {
+        margin: 0 !important;
+    }
+
+    .live-jitsi-card .card-body {
+        padding: 0 !important;
     }
 
     .jitsi-frame {
@@ -305,10 +352,11 @@
         height: auto;
         min-height: 560px;
         max-width: 100%;
-        border-radius: 12px;
+        border-radius: 0;
         overflow: hidden;
         background: #0f172a;
         position: relative;
+        margin: 0 !important;
     }
 
     .jitsi-frame > div,
@@ -339,7 +387,7 @@
         .jitsi-frame {
             height: auto;
             min-height: 360px;
-            border-radius: 10px;
+            border-radius: 0;
         }
     }
 </style>

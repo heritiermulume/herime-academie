@@ -266,7 +266,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::match(['POST', 'DELETE'], '/uploads/temp', [TemporaryUploadController::class, 'destroy'])
         ->name('uploads.temp.destroy');
 
-    Route::get('/live-training', [LiveTrainingController::class, 'index'])->name('live-training.index');
+    Route::get('/live-training', function () {
+        $user = auth()->user();
+        if ($user?->isCustomer()) {
+            return redirect()->route('customer.live-training');
+        }
+        if ($user?->isProvider()) {
+            return redirect()->route('provider.live-training');
+        }
+
+        return app(LiveTrainingController::class)->index(request());
+    })->name('live-training.index');
     Route::post('/live-training/start', [LiveTrainingController::class, 'start'])->name('live-training.start');
     Route::get('/live-training/{course:slug}', [LiveTrainingController::class, 'show'])->name('live-training.show');
     Route::post('/live-training/{course:slug}/stop', [LiveTrainingController::class, 'stop'])->name('live-training.stop');
@@ -281,6 +291,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/subscriptions', [SubscriptionController::class, 'index'])->name('subscriptions');
         Route::get('/packs/{package:slug}', [CustomerController::class, 'showPurchasedPack'])->name('pack');
         Route::get('/certificates', [CustomerController::class, 'certificates'])->name('certificates');
+        Route::get('/live-training', [LiveTrainingController::class, 'index'])->name('live-training');
+        Route::get('/live-training/{course:slug}', [LiveTrainingController::class, 'show'])->name('live-training.show');
     });
     Route::post('/subscriptions/plans/{plan}/subscribe', [SubscriptionController::class, 'subscribe'])
         ->middleware('sso.validate')
@@ -410,6 +422,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/customers/export', [ProviderController::class, 'exportCustomers'])->name('customers.export');
         Route::get('/analytics', [ProviderController::class, 'analytics'])->name('analytics');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
+        Route::get('/live-training', [LiveTrainingController::class, 'index'])->name('live-training');
+        Route::get('/live-training/{course:slug}', [LiveTrainingController::class, 'show'])->name('live-training.show');
         Route::get('/payment-settings', [ProviderController::class, 'paymentSettings'])->name('payment-settings');
         Route::post('/payment-settings', [ProviderController::class, 'updatePaymentSettings'])
             ->middleware('sso.validate')

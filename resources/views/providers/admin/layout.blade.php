@@ -52,9 +52,9 @@
             'label' => 'Formation en direct',
             'label_mobile' => 'Formation',
             'icon' => 'fas fa-video',
-            'route' => 'live-training.index',
-            'url' => route('live-training.index'),
-            'active' => ['live-training.index'],
+            'route' => 'provider.live-training',
+            'url' => route('provider.live-training'),
+            'active' => ['provider.live-training', 'live-training.*'],
         ],
     ];
 

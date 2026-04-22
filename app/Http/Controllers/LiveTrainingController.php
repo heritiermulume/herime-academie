@@ -87,7 +87,7 @@ class LiveTrainingController extends Controller
             'started_at' => now()->toDateTimeString(),
         ], now()->addHours(8));
 
-        return redirect()->route('live-training.show', $course->slug);
+        return redirect()->route($this->showRouteForUser($user), $course->slug);
     }
 
     public function show(Request $request, Course $course)
@@ -160,7 +160,7 @@ class LiveTrainingController extends Controller
 
         Cache::forget($this->sessionKey($course->id));
 
-        return redirect()->route('live-training.index')->with('success', 'Le live a été arrêté.');
+        return redirect()->route($this->indexRouteForUser($user))->with('success', 'Le live a été arrêté.');
     }
 
     public function participantPing(Request $request, Course $course)
@@ -335,6 +335,32 @@ class LiveTrainingController extends Controller
         }
 
         return $user->hasRole(['super_user', 'admin', 'provider']);
+    }
+
+    private function showRouteForUser($user): string
+    {
+        if ($user && $user->isCustomer() && \Route::has('customer.live-training.show')) {
+            return 'customer.live-training.show';
+        }
+
+        if ($user && $user->isProvider() && \Route::has('provider.live-training.show')) {
+            return 'provider.live-training.show';
+        }
+
+        return 'live-training.show';
+    }
+
+    private function indexRouteForUser($user): string
+    {
+        if ($user && $user->isCustomer() && \Route::has('customer.live-training')) {
+            return 'customer.live-training';
+        }
+
+        if ($user && $user->isProvider() && \Route::has('provider.live-training')) {
+            return 'provider.live-training';
+        }
+
+        return 'live-training.index';
     }
 
     private function registerJoin(LiveTrainingSession $session, int $userId, ?string $displayName, ?string $jitsiParticipantId): LiveTrainingParticipant
