@@ -3,25 +3,31 @@
     $liveLayout = 'layouts.app';
     $useDashboardSection = false;
     $liveShowRouteName = 'live-training.show';
+    $liveShowPathPrefix = '/live-training/';
     $currentRouteName = optional(request()->route())->getName();
 
     if ($currentRouteName && str_starts_with($currentRouteName, 'customer.')) {
         $liveLayout = 'customers.admin.layout';
         $useDashboardSection = true;
         $liveShowRouteName = 'customer.live-training.show';
+        $liveShowPathPrefix = '/customer/live-training/';
     } elseif ($currentRouteName && str_starts_with($currentRouteName, 'provider.')) {
         $liveLayout = 'providers.admin.layout';
         $useDashboardSection = true;
         $liveShowRouteName = 'provider.live-training.show';
+        $liveShowPathPrefix = '/provider/live-training/';
     } elseif ($authUser && method_exists($authUser, 'isCustomer') && $authUser->isCustomer()) {
         $liveLayout = 'customers.admin.layout';
         $useDashboardSection = true;
         $liveShowRouteName = 'customer.live-training.show';
+        $liveShowPathPrefix = '/customer/live-training/';
     } elseif ($authUser && method_exists($authUser, 'isProvider') && $authUser->isProvider()) {
         $liveLayout = 'providers.admin.layout';
         $useDashboardSection = true;
         $liveShowRouteName = 'provider.live-training.show';
+        $liveShowPathPrefix = '/provider/live-training/';
     }
+    $contextSpace = $useDashboardSection ? (str_starts_with($currentRouteName ?? '', 'provider.') ? 'provider' : 'customer') : 'default';
 @endphp
 
 @extends($liveLayout)
@@ -56,6 +62,7 @@
                 <h2 class="h5 mb-3">Demarrer une formation en direct (Admin)</h2>
                 <form method="POST" action="{{ route('live-training.start') }}" class="row g-3 align-items-end">
                     @csrf
+                    <input type="hidden" name="context_space" value="{{ $contextSpace }}">
                     <div class="col-md-5">
                         <label for="course_id" class="form-label fw-semibold">Programme</label>
                         <select id="course_id" name="course_id" class="form-select" required>
@@ -86,24 +93,26 @@
                 @else
                     <div class="list-group">
                         @foreach($accessiblePrograms as $program)
-                            @php
-                                $isLiveActive = isset($activeSessions[$program->id]);
-                            @endphp
+                            @php $courseSessions = $activeSessionsByCourse[$program->id] ?? []; @endphp
                             <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                                 <div>
                                     <strong>{{ $program->title }}</strong>
                                     <div class="small text-muted">
-                                        @if($isLiveActive)
-                                            Formation en direct active
+                                        @if(!empty($courseSessions))
+                                            {{ count($courseSessions) }} session(s) active(s)
                                         @else
                                             En attente du demarrage de la formation
                                         @endif
                                     </div>
                                 </div>
-                                @if($isLiveActive)
-                                    <a href="{{ route($liveShowRouteName, $program->slug) }}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-video me-1"></i>Rejoindre
-                                    </a>
+                                @if(!empty($courseSessions))
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach($courseSessions as $sessionInfo)
+                                            <a href="{{ url($liveShowPathPrefix . $program->slug) }}?session_owner={{ (int) ($sessionInfo['started_by'] ?? 0) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-video me-1"></i>Rejoindre {{ $sessionInfo['started_by_name'] ?? 'admin' }}
+                                            </a>
+                                        @endforeach
+                                    </div>
                                 @else
                                     <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Pas encore actif</button>
                                 @endif
@@ -123,9 +132,11 @@
                     <p class="mb-0 text-muted">Salle: <code>{{ $roomName }}</code></p>
                 </div>
                 @if($isAdmin)
-                    <form method="POST" action="{{ route('live-training.stop', $selectedCourse->slug) }}">
+                    <form class="stop-live-form stop-live-form--main" method="POST" action="{{ route('live-training.stop', $selectedCourse->slug) }}">
                         @csrf
-                        <button type="submit" class="btn btn-outline-danger">
+                        <input type="hidden" name="context_space" value="{{ $contextSpace }}">
+                        <input type="hidden" name="session_owner" value="{{ $sessionOwnerId ?? ($user?->id ?? 0) }}">
+                        <button type="submit" class="btn btn-danger stop-live-btn-main">
                             <i class="fas fa-stop me-2"></i>Arreter la formation
                         </button>
                     </form>
@@ -136,6 +147,57 @@
         <div class="card shadow-sm border-0 live-jitsi-card">
             <div class="card-body p-0">
                 <div id="jitsi-container" class="jitsi-frame" aria-label="Visioconference en direct"></div>
+            </div>
+        </div>
+    @endif
+
+    @if($isAdmin)
+        <div class="card shadow-sm border-0 mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Sessions actives par admin</h2>
+                @php $hasAdminSessions = false; @endphp
+                @foreach($coursesForStart as $course)
+                    @php $courseSessions = $activeSessionsByCourse[$course->id] ?? []; @endphp
+                    @if(!empty($courseSessions))
+                        @php $hasAdminSessions = true; @endphp
+                        <div class="mb-3">
+                            <h3 class="h6 mb-2">{{ $course->title }}</h3>
+                            <div class="list-group">
+                                @foreach($courseSessions as $sessionInfo)
+                                    <div class="list-group-item live-session-item">
+                                        <div class="live-session-item__meta">
+                                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                <strong>{{ $sessionInfo['started_by_name'] ?? 'Administrateur' }}</strong>
+                                                @if((int) ($sessionInfo['started_by'] ?? 0) === (int) ($user?->id ?? 0))
+                                                    <span class="badge rounded-pill text-bg-success">Ma session</span>
+                                                @endif
+                                            </div>
+                                            <div class="small text-muted">
+                                                Salle: <code>{{ $sessionInfo['room'] ?? '-' }}</code>
+                                            </div>
+                                        </div>
+                                        <div class="live-session-item__actions">
+                                            <a href="{{ url($liveShowPathPrefix . $course->slug) }}?session_owner={{ (int) ($sessionInfo['started_by'] ?? 0) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-video me-1"></i>Rejoindre
+                                            </a>
+                                            <form method="POST" action="{{ route('live-training.stop', $course->slug) }}">
+                                                @csrf
+                                                <input type="hidden" name="context_space" value="{{ $contextSpace }}">
+                                                <input type="hidden" name="session_owner" value="{{ (int) ($sessionInfo['started_by'] ?? 0) }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fas fa-stop me-1"></i>Arreter
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                @endforeach
+                @if(!$hasAdminSessions)
+                    <p class="text-muted mb-0">Aucune session active pour le moment.</p>
+                @endif
             </div>
         </div>
     @endif
@@ -191,13 +253,13 @@
                 email: userEmail
             },
             configOverwrite: {
-                prejoinPageEnabled: true,
+                prejoinPageEnabled: !isAdmin,
                 startWithAudioMuted: false,
                 startWithVideoMuted: false,
                 readOnlyName: true,
                 hideConferenceSubject: true,
                 prejoinConfig: {
-                    enabled: true,
+                    enabled: !isAdmin,
                     hideDisplayName: true
                 },
                 disableProfile: true
@@ -235,6 +297,7 @@
 
         const api = new window.JitsiMeetExternalAPI(domain, options);
         let currentParticipantId = null;
+        let stopSubmitInProgress = false;
 
         const postJson = async function (url, payload) {
             try {
@@ -302,6 +365,32 @@
 
         api.addEventListener('readyToClose', sendLeave);
         window.addEventListener('beforeunload', sendLeave);
+
+        if (isAdmin) {
+            const stopForms = document.querySelectorAll('.stop-live-form');
+            stopForms.forEach(function (stopForm) {
+                stopForm.addEventListener('submit', function (event) {
+                    if (stopSubmitInProgress) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    stopSubmitInProgress = true;
+
+                    try {
+                        // Ferme la conference pour tous les participants (moderateur requis).
+                        api.executeCommand('endConference');
+                    } catch (error) {
+                        // Fallback: la soumission serveur continue meme si la commande echoue.
+                    }
+
+                    setTimeout(function () {
+                        sendLeave();
+                        stopForm.submit();
+                    }, 450);
+                });
+            });
+        }
     });
 </script>
 @endif
@@ -333,6 +422,48 @@
     .live-header p {
         max-width: 900px;
         line-height: 1.6;
+    }
+
+    .live-session-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .live-session-item__meta {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .live-session-item__actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .live-session-item__actions form {
+        margin: 0;
+    }
+
+    .stop-live-form--main {
+        margin-left: auto;
+    }
+
+    .stop-live-btn-main {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: #fff;
+        font-weight: 600;
+    }
+
+    .stop-live-btn-main:hover,
+    .stop-live-btn-main:focus {
+        background-color: #bb2d3b;
+        border-color: #b02a37;
+        color: #fff;
     }
 
     .card {
@@ -388,6 +519,28 @@
             height: auto;
             min-height: 360px;
             border-radius: 0;
+        }
+
+        .live-session-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .live-session-item__actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .stop-live-form--main {
+            margin-left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .stop-live-btn-main {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.75rem;
         }
     }
 </style>

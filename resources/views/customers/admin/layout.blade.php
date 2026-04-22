@@ -20,6 +20,13 @@
             'active' => ['customer.contents', 'customer.contents.*', 'customer.pack'],
         ],
         [
+            'label' => 'Formation en direct',
+            'icon' => 'fas fa-video',
+            'route' => 'customer.live-training',
+            'url' => route('customer.live-training'),
+            'active' => ['customer.live-training', 'customer.live-training.*', 'live-training.*'],
+        ],
+        [
             'label' => 'Certificats',
             'icon' => 'fas fa-certificate',
             'route' => 'customer.certificates',
@@ -39,13 +46,6 @@
             'route' => 'customer.subscriptions',
             'url' => route('customer.subscriptions'),
             'active' => ['customer.subscriptions', 'subscriptions.*'],
-        ],
-        [
-            'label' => 'Formation en direct',
-            'icon' => 'fas fa-video',
-            'route' => 'customer.live-training',
-            'url' => route('customer.live-training'),
-            'active' => ['customer.live-training', 'live-training.*'],
         ],
     ];
 
@@ -262,14 +262,14 @@
     .admin-sidebar__nav {
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.35rem;
     }
 
     .admin-sidebar__link {
         display: flex;
         align-items: center;
         gap: 0.85rem;
-        padding: 0.85rem 1rem;
+        padding: 0.65rem 0.9rem;
         border-radius: 0.85rem;
         color: rgba(255, 255, 255, 0.8);
         text-decoration: none;

@@ -7,6 +7,7 @@ use App\Models\LiveTrainingMessage;
 use App\Models\LiveTrainingParticipant;
 use App\Models\LiveTrainingSession;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -20,6 +21,7 @@ class LiveTrainingController extends Controller
         $coursesForStart = collect();
         $accessiblePrograms = collect();
         $activeSessions = [];
+        $activeSessionsByCourse = [];
 
         if ($canManageLive) {
             $coursesForStart = Course::query()
@@ -36,10 +38,11 @@ class LiveTrainingController extends Controller
                 ->get(['id', 'title', 'slug']);
         }
 
-        foreach (($canManageLive ? $coursesForStart : $accessiblePrograms) as $course) {
-            $session = $this->getSessionData($course->id);
-            if ($session !== null) {
-                $activeSessions[$course->id] = $session;
+        $targetCourses = $canManageLive ? $coursesForStart : $accessiblePrograms;
+        $activeSessionsByCourse = $this->getActiveSessionsByCourse($targetCourses);
+        foreach ($activeSessionsByCourse as $courseId => $sessions) {
+            if (! empty($sessions)) {
+                $activeSessions[$courseId] = $sessions[0];
             }
         }
 
@@ -50,10 +53,12 @@ class LiveTrainingController extends Controller
             'coursesForStart' => $coursesForStart,
             'accessiblePrograms' => $accessiblePrograms,
             'activeSessions' => $activeSessions,
+            'activeSessionsByCourse' => $activeSessionsByCourse,
             'selectedCourse' => null,
             'roomName' => null,
             'sessionStartedByAdmin' => false,
             'liveSessionId' => null,
+            'sessionOwnerId' => null,
         ]);
     }
 
@@ -67,18 +72,28 @@ class LiveTrainingController extends Controller
         $validated = $request->validate([
             'course_id' => ['required', 'integer', 'exists:contents,id'],
             'room' => ['nullable', 'string', 'max:80'],
+            'context_space' => ['nullable', 'in:customer,provider,default'],
         ]);
 
         $course = Course::query()->findOrFail($validated['course_id']);
-        $room = $this->sanitizeRoomName((string) ($validated['room'] ?? ''), $course);
+        $baseRoom = $this->sanitizeRoomName((string) ($validated['room'] ?? ''), $course);
+
+        $this->closeActiveSessionsForCourseByStarter($course->id, (int) $user->id);
 
         $session = LiveTrainingSession::query()->create([
             'course_id' => $course->id,
             'started_by' => $user->id,
-            'room_name' => $room,
+            'room_name' => $baseRoom,
             'started_at' => now(),
             'status' => 'active',
         ]);
+
+        // Room unique par session pour éviter de réutiliser une salle existante
+        // où un autre participant pourrait déjà détenir le rôle modérateur.
+        $room = Str::limit($baseRoom.'-s'.$session->id, 80, '');
+        if ($room !== $session->room_name) {
+            $session->update(['room_name' => $room]);
+        }
 
         Cache::put($this->sessionKey($course->id), [
             'session_id' => $session->id,
@@ -87,27 +102,46 @@ class LiveTrainingController extends Controller
             'started_at' => now()->toDateTimeString(),
         ], now()->addHours(8));
 
-        return redirect()->route($this->showRouteForUser($user), $course->slug);
+        return redirect()->route(
+            $this->showRouteForUser($user, $validated['context_space'] ?? null),
+            [
+                'course' => $course->slug,
+                'session_owner' => (int) $user->id,
+            ]
+        );
     }
 
     public function show(Request $request, Course $course)
     {
         $user = $request->user();
+        $currentRouteName = optional($request->route())->getName();
+
+        if ($currentRouteName === 'live-training.show') {
+            return redirect()->route($this->indexRouteForUser($user));
+        }
+
         $canManageLive = $this->canManageLive($user);
 
         if (! $canManageLive && ! $this->userCanJoinCourse($user?->id, $course)) {
             abort(403, 'Vous n’avez pas accès à ce programme.');
         }
 
-        $sessionData = $this->getSessionData($course->id);
+        $sessionOwnerId = (int) $request->query('session_owner', 0);
+        $sessionData = null;
+        if ($canManageLive && $sessionOwnerId > 0) {
+            $sessionData = $this->getSessionDataForStarter($course->id, $sessionOwnerId);
+        }
         if ($sessionData === null) {
-            return redirect()->route('live-training.index')
+            $sessionData = $this->getSessionData($course->id);
+        }
+        if ($sessionData === null) {
+            return redirect()->route($this->indexRouteForUser($user))
                 ->with('error', 'Aucun live actif pour ce programme. Attendez le démarrage par un administrateur.');
         }
 
         $session = LiveTrainingSession::query()->find($sessionData['session_id'] ?? 0);
         if (! $session) {
-            return redirect()->route('live-training.index')
+            return redirect()->route($this->indexRouteForUser($user))
                 ->with('error', 'La session live est introuvable.');
         }
 
@@ -120,10 +154,12 @@ class LiveTrainingController extends Controller
             'coursesForStart' => collect(),
             'accessiblePrograms' => collect(),
             'activeSessions' => [$course->id => $sessionData],
+            'activeSessionsByCourse' => [$course->id => [$sessionData]],
             'selectedCourse' => $course,
             'roomName' => $sessionData['room'],
             'sessionStartedByAdmin' => true,
             'liveSessionId' => $session->id,
+            'sessionOwnerId' => (int) ($session->started_by ?? $sessionOwnerId),
         ]);
     }
 
@@ -133,8 +169,16 @@ class LiveTrainingController extends Controller
         if (! $this->canManageLive($user)) {
             abort(403, 'Seuls les roles autorises peuvent arreter un live.');
         }
+        $validated = $request->validate([
+            'context_space' => ['nullable', 'in:customer,provider,default'],
+            'session_owner' => ['nullable', 'integer'],
+        ]);
 
-        $sessionData = $this->getSessionData($course->id);
+        $sessionOwnerId = (int) ($validated['session_owner'] ?? $user->id);
+        $sessionData = $this->getSessionDataForStarter($course->id, $sessionOwnerId);
+        if ($sessionData === null) {
+            $sessionData = $this->getSessionData($course->id);
+        }
         if ($sessionData && ! empty($sessionData['session_id'])) {
             $session = LiveTrainingSession::query()->find((int) $sessionData['session_id']);
             if ($session) {
@@ -160,7 +204,9 @@ class LiveTrainingController extends Controller
 
         Cache::forget($this->sessionKey($course->id));
 
-        return redirect()->route($this->indexRouteForUser($user))->with('success', 'Le live a été arrêté.');
+        return redirect()->route(
+            $this->indexRouteForUser($user, $validated['context_space'] ?? null)
+        )->with('success', 'Le live a été arrêté.');
     }
 
     public function participantPing(Request $request, Course $course)
@@ -337,8 +383,16 @@ class LiveTrainingController extends Controller
         return $user->hasRole(['super_user', 'admin', 'provider']);
     }
 
-    private function showRouteForUser($user): string
+    private function showRouteForUser($user, ?string $contextSpace = null): string
     {
+        if ($contextSpace === 'customer' && \Route::has('customer.live-training.show')) {
+            return 'customer.live-training.show';
+        }
+
+        if ($contextSpace === 'provider' && \Route::has('provider.live-training.show')) {
+            return 'provider.live-training.show';
+        }
+
         if ($user && $user->isCustomer() && \Route::has('customer.live-training.show')) {
             return 'customer.live-training.show';
         }
@@ -350,8 +404,16 @@ class LiveTrainingController extends Controller
         return 'live-training.show';
     }
 
-    private function indexRouteForUser($user): string
+    private function indexRouteForUser($user, ?string $contextSpace = null): string
     {
+        if ($contextSpace === 'customer' && \Route::has('customer.live-training')) {
+            return 'customer.live-training';
+        }
+
+        if ($contextSpace === 'provider' && \Route::has('provider.live-training')) {
+            return 'provider.live-training';
+        }
+
         if ($user && $user->isCustomer() && \Route::has('customer.live-training')) {
             return 'customer.live-training';
         }
@@ -388,5 +450,99 @@ class LiveTrainingController extends Controller
         }
 
         return $participant;
+    }
+
+    private function closeActiveSessionsForCourseByStarter(int $courseId, int $starterId): void
+    {
+        $activeSessions = LiveTrainingSession::query()
+            ->where('course_id', $courseId)
+            ->where('status', 'active')
+            ->where('started_by', $starterId)
+            ->get();
+
+        if ($activeSessions->isEmpty()) {
+            return;
+        }
+
+        foreach ($activeSessions as $session) {
+            $session->update([
+                'status' => 'ended',
+                'ended_at' => now(),
+            ]);
+
+            LiveTrainingParticipant::query()
+                ->where('session_id', $session->id)
+                ->whereNull('left_at')
+                ->get()
+                ->each(function (LiveTrainingParticipant $participant) {
+                    $leftAt = now();
+                    $duration = max(0, $participant->joined_at?->diffInSeconds($leftAt) ?? 0);
+                    $participant->update([
+                        'left_at' => $leftAt,
+                        'duration_seconds' => max((int) $participant->duration_seconds, $duration),
+                    ]);
+                });
+        }
+
+        Cache::forget($this->sessionKey($courseId));
+    }
+
+    private function getActiveSessionsByCourse(Collection $courses): array
+    {
+        if ($courses->isEmpty()) {
+            return [];
+        }
+
+        $courseIds = $courses->pluck('id')->filter()->values();
+        if ($courseIds->isEmpty()) {
+            return [];
+        }
+
+        $sessions = LiveTrainingSession::query()
+            ->with(['starter:id,name'])
+            ->whereIn('course_id', $courseIds)
+            ->where('status', 'active')
+            ->orderByDesc('started_at')
+            ->get();
+
+        $grouped = [];
+        foreach ($sessions as $session) {
+            $courseId = (int) $session->course_id;
+            $grouped[$courseId] ??= [];
+            $grouped[$courseId][] = [
+                'session_id' => $session->id,
+                'room' => $session->room_name,
+                'started_by' => (int) $session->started_by,
+                'started_by_name' => $session->starter?->name ?? 'Administrateur',
+                'started_at' => optional($session->started_at)->toDateTimeString(),
+            ];
+        }
+
+        return $grouped;
+    }
+
+    private function getSessionDataForStarter(int $courseId, int $starterId): ?array
+    {
+        if ($starterId <= 0) {
+            return null;
+        }
+
+        $dbSession = LiveTrainingSession::query()
+            ->where('course_id', $courseId)
+            ->where('started_by', $starterId)
+            ->where('status', 'active')
+            ->latest('started_at')
+            ->first();
+
+        if (! $dbSession) {
+            return null;
+        }
+
+        return [
+            'session_id' => $dbSession->id,
+            'room' => $dbSession->room_name,
+            'started_by' => $dbSession->started_by,
+            'started_at' => optional($dbSession->started_at)->toDateTimeString(),
+        ];
     }
 }
