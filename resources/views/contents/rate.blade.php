@@ -14,7 +14,7 @@
     $canSubmitReview = $user
         && (($canReview ?? false) || ($course->is_in_person_program ?? false));
     $communityImpactText = $course->is_downloadable
-        ? "Votre avis aide d'autres personnes à savoir si ce contenu téléchargeable correspond vraiment à leurs besoins."
+        ? "Votre avis aide d'autres personnes à savoir si ce contenu correspond vraiment à leurs besoins."
         : "Votre avis aide d'autres apprenants à choisir la formation la plus adaptée à leurs objectifs.";
 @endphp
 
