@@ -56,6 +56,8 @@ use Illuminate\Support\Str;
  */
 class MonerooController extends Controller
 {
+    private const AUTO_CANCELLATION_TIMEOUT_REASON = 'Paiement annulé automatiquement : le délai de confirmation a été dépassé. Vous pouvez relancer le paiement depuis votre commande.';
+
     private function baseUrl(): string
     {
         return rtrim(config('services.moneroo.base_url', 'https://api.moneroo.io/v1'), '/');
@@ -1553,17 +1555,40 @@ class MonerooController extends Controller
      */
     private function extractFailureReason(array $paymentData, array $payload, string $status): string
     {
-        // Chercher la raison d'échec dans plusieurs champs possibles
-        $reason = $paymentData['failure_reason']
-               ?? $paymentData['error_message']
-               ?? $paymentData['error']
-               ?? $paymentData['message']
-               ?? $payload['message']
-               ?? $payload['error_message']
-               ?? null;
+        // Chercher la raison d'échec dans plusieurs champs possibles,
+        // en priorisant les champs explicitement liés à une erreur.
+        $candidates = [
+            $paymentData['failure_reason'] ?? null,
+            $paymentData['error_message'] ?? null,
+            $paymentData['error'] ?? null,
+            $paymentData['reason'] ?? null,
+            data_get($paymentData, 'error.message'),
+            data_get($paymentData, 'error.description'),
+            data_get($paymentData, 'errors.0.message'),
+            data_get($paymentData, 'errors.0.description'),
+            $payload['failure_reason'] ?? null,
+            $payload['error_message'] ?? null,
+            $payload['error'] ?? null,
+            $payload['reason'] ?? null,
+            data_get($payload, 'error.message'),
+            data_get($payload, 'error.description'),
+            data_get($payload, 'errors.0.message'),
+            data_get($payload, 'errors.0.description'),
+            // Garder message en dernier recours (peut contenir un message de succès technique).
+            $paymentData['message'] ?? null,
+            $payload['message'] ?? null,
+        ];
 
-        // Si une raison spécifique est trouvée, la retourner
-        if ($reason && is_string($reason)) {
+        foreach ($candidates as $candidate) {
+            if (! is_string($candidate)) {
+                continue;
+            }
+
+            $reason = trim($candidate);
+            if ($reason === '' || $this->isNonFailureMessage($reason)) {
+                continue;
+            }
+
             return $reason;
         }
 
@@ -1571,10 +1596,24 @@ class MonerooController extends Controller
         return match ($status) {
             'failed' => 'Le paiement a échoué. Veuillez vérifier vos informations de paiement et réessayer.',
             'cancelled' => 'Le paiement a été annulé.',
-            'expired' => 'Le délai de paiement a expiré.',
+            'expired' => self::AUTO_CANCELLATION_TIMEOUT_REASON,
             'rejected' => 'Le paiement a été rejeté. Cela peut être dû à un solde insuffisant ou à une restriction sur votre compte.',
             default => 'Le paiement n\'a pas pu être complété.',
         };
+    }
+
+    /**
+     * Écarter les messages techniques ou de succès non pertinents pour un échec.
+     */
+    private function isNonFailureMessage(string $message): bool
+    {
+        $normalized = strtolower(trim($message));
+
+        return str_contains($normalized, 'fetched successfully')
+            || str_contains($normalized, 'fetched succesfully')
+            || str_contains($normalized, 'transaction fetched')
+            || str_contains($normalized, 'payement transaction fetched successfully')
+            || str_contains($normalized, 'payment transaction fetched successfully');
     }
 
     /**
@@ -2879,16 +2918,17 @@ class MonerooController extends Controller
 
     private function cancelSingleStalePendingOrder(Order $order): void
     {
+        $timeoutReason = self::AUTO_CANCELLATION_TIMEOUT_REASON;
+
         $order->update(['status' => 'cancelled']);
         Payment::where('order_id', $order->id)
             ->where('status', 'pending')
             ->update([
                 'status' => 'failed',
-                'failure_reason' => 'Annulation automatique après délai',
+                'failure_reason' => $timeoutReason,
             ]);
 
-        $failureReason = 'Annulation automatique après délai d\'attente';
-        $this->sendPaymentFailureNotifications($order, $failureReason);
+        $this->sendPaymentFailureNotifications($order, $timeoutReason);
     }
 
     /**
