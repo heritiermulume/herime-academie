@@ -48,6 +48,14 @@
             'url' => url('/provider/notifications'),
             'active' => ['provider.notifications'],
         ],
+        [
+            'label' => 'Formation en direct',
+            'label_mobile' => 'Formation',
+            'icon' => 'fas fa-video',
+            'route' => 'live-training.index',
+            'url' => route('live-training.index'),
+            'active' => ['live-training.index'],
+        ],
     ];
 
     if (\Illuminate\Support\Facades\Route::has('profile.edit')) {

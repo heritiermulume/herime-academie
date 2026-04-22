@@ -86,4 +86,8 @@ return [
         'api_key' => env('WHATSAPP_API_KEY', ''),
     ],
 
+    'jitsi' => [
+        'domain' => env('JITSI_DOMAIN', 'meet.jit.si'),
+    ],
+
 ];

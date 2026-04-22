@@ -20,6 +20,9 @@ use App\Models\Enrollment;
 use App\Models\LessonDiscussion;
 use App\Models\LessonNote;
 use App\Models\LessonProgress;
+use App\Models\LiveTrainingMessage;
+use App\Models\LiveTrainingParticipant;
+use App\Models\LiveTrainingSession;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Partner;
@@ -7649,5 +7652,422 @@ class AdminController extends Controller
 
         return redirect()->route('admin.announcements')
             ->with('success', 'Message supprimé avec succès.');
+    }
+
+    public function liveTrainingSessions(Request $request)
+    {
+        $query = LiveTrainingSession::query()
+            ->with(['course:id,title,slug,provider_id', 'course.provider:id,name', 'starter:id,name'])
+            ->withCount(['participants', 'messages']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('course')) {
+            $query->whereHas('course', function ($courseQuery) use ($request) {
+                $courseQuery->where('title', 'like', '%'.$request->string('course').'%');
+            });
+        }
+
+        if ($request->filled('started_by')) {
+            $query->whereHas('starter', function ($starterQuery) use ($request) {
+                $starterQuery->where('name', 'like', '%'.$request->string('started_by').'%');
+            });
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('started_at', '>=', $request->string('start_date'));
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('started_at', '<=', $request->string('end_date'));
+        }
+
+        if ($request->filled('participants_min')) {
+            $query->has('participants', '>=', (int) $request->integer('participants_min'));
+        }
+
+        $sessions = $query->latest('started_at')->paginate(20)->withQueryString();
+
+        $filteredForStats = clone $query;
+        $sessionsStatsCollection = $filteredForStats->get();
+        $sessionIds = $sessionsStatsCollection->pluck('id')->all();
+
+        $participantsQuery = LiveTrainingParticipant::query()->whereIn('session_id', $sessionIds);
+        $messagesQuery = LiveTrainingMessage::query()->whereIn('session_id', $sessionIds);
+
+        $participantsTotal = (clone $participantsQuery)->count();
+        $participantsUnique = (clone $participantsQuery)->distinct('user_id')->count('user_id');
+        $messagesTotal = (clone $messagesQuery)->count();
+        $avgMessagesPerSession = $sessionsStatsCollection->count() > 0
+            ? round($messagesTotal / $sessionsStatsCollection->count(), 2)
+            : 0;
+
+        $sessionsByProgram = LiveTrainingSession::query()
+            ->with(['course:id,title'])
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->when($request->filled('start_date'), fn ($q) => $q->whereDate('started_at', '>=', $request->string('start_date')))
+            ->when($request->filled('end_date'), fn ($q) => $q->whereDate('started_at', '<=', $request->string('end_date')))
+            ->when($request->filled('participants_min'), fn ($q) => $q->has('participants', '>=', (int) $request->integer('participants_min')))
+            ->when($request->filled('course'), function ($q) use ($request) {
+                $q->whereHas('course', fn ($courseQuery) => $courseQuery->where('title', 'like', '%'.$request->string('course').'%'));
+            })
+            ->get()
+            ->groupBy('course_id')
+            ->map(function ($group) {
+                $first = $group->first();
+                $sessionIds = $group->pluck('id');
+                $participants = LiveTrainingParticipant::query()->whereIn('session_id', $sessionIds)->get();
+
+                $participantsCount = $participants->count();
+                $sessionsCount = $group->count();
+                $avgParticipants = $sessionsCount > 0 ? round($participantsCount / $sessionsCount, 2) : 0;
+                $messagesCount = LiveTrainingMessage::query()->whereIn('session_id', $sessionIds)->count();
+                $avgDuration = (int) round($participants->avg('duration_seconds') ?? 0);
+                $sessionDurationSum = (int) $group->sum(function ($session) {
+                    if (! $session->started_at) {
+                        return 0;
+                    }
+                    $end = $session->ended_at ?? now();
+
+                    return $session->started_at->diffInSeconds($end);
+                });
+                $attendanceRate = $sessionDurationSum > 0
+                    ? round((($participants->sum('duration_seconds') / $sessionDurationSum) * 100), 2)
+                    : 0;
+
+                return [
+                    'course_title' => $first?->course?->title ?? 'Programme supprimé',
+                    'sessions_count' => $sessionsCount,
+                    'participants_total' => $participantsCount,
+                    'participants_unique' => $participants->pluck('user_id')->filter()->unique()->count(),
+                    'avg_participants' => $avgParticipants,
+                    'messages_count' => $messagesCount,
+                    'avg_duration_seconds' => $avgDuration,
+                    'attendance_rate' => $attendanceRate,
+                ];
+            })
+            ->sortByDesc('sessions_count')
+            ->values();
+
+        $stats = [
+            'total_sessions' => LiveTrainingSession::count(),
+            'active_sessions' => LiveTrainingSession::where('status', 'active')->count(),
+            'total_participants' => $participantsUnique,
+            'total_participant_entries' => $participantsTotal,
+            'total_messages' => $messagesTotal,
+            'avg_messages_per_session' => $avgMessagesPerSession,
+            'sessions_in_view' => $sessionsStatsCollection->count(),
+        ];
+
+        $evolutionWeekly = $this->buildLiveTrainingEvolutionSeries($sessionsStatsCollection, 'week');
+        $evolutionMonthly = $this->buildLiveTrainingEvolutionSeries($sessionsStatsCollection, 'month');
+
+        return view('admin/live-training/sessions-index', compact('sessions', 'stats', 'sessionsByProgram', 'evolutionWeekly', 'evolutionMonthly'));
+    }
+
+    public function showLiveTrainingSession(LiveTrainingSession $session)
+    {
+        $session->load([
+            'course:id,title,slug',
+            'starter:id,name,email',
+            'participants.user:id,name,email',
+            'messages.user:id,name,email',
+        ]);
+
+        $participants = $session->participants->sortByDesc('joined_at')->values();
+        $messages = $session->messages->sortByDesc('sent_at')->values();
+
+        $participantsCount = $participants->count();
+        $uniqueParticipants = $participants->pluck('user_id')->filter()->unique()->count();
+        $totalDurationSeconds = (int) $participants->sum('duration_seconds');
+        $avgDurationSeconds = $participantsCount > 0 ? (int) round($totalDurationSeconds / $participantsCount) : 0;
+
+        $sessionDurationSeconds = 0;
+        if ($session->started_at) {
+            $sessionDurationSeconds = $session->ended_at
+                ? $session->started_at->diffInSeconds($session->ended_at)
+                : $session->started_at->diffInSeconds(now());
+        }
+
+        $stats = [
+            'participants_count' => $participantsCount,
+            'unique_participants_count' => $uniqueParticipants,
+            'messages_count' => $messages->count(),
+            'total_duration_seconds' => $totalDurationSeconds,
+            'avg_duration_seconds' => $avgDurationSeconds,
+            'session_duration_seconds' => $sessionDurationSeconds,
+        ];
+
+        return view('admin/live-training/session-show', compact('session', 'participants', 'messages', 'stats'));
+    }
+
+    public function exportLiveTrainingSessions(Request $request)
+    {
+        $query = LiveTrainingSession::query()
+            ->with(['course:id,title', 'starter:id,name'])
+            ->withCount(['participants', 'messages']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+        if ($request->filled('course')) {
+            $query->whereHas('course', fn ($q) => $q->where('title', 'like', '%'.$request->string('course').'%'));
+        }
+        if ($request->filled('started_by')) {
+            $query->whereHas('starter', fn ($q) => $q->where('name', 'like', '%'.$request->string('started_by').'%'));
+        }
+        if ($request->filled('start_date')) {
+            $query->whereDate('started_at', '>=', $request->string('start_date'));
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('started_at', '<=', $request->string('end_date'));
+        }
+
+        $rows = $query->latest('started_at')->get()->map(function (LiveTrainingSession $session) {
+            $duration = 0;
+            if ($session->started_at) {
+                $end = $session->ended_at ?? now();
+                $duration = $session->started_at->diffInSeconds($end);
+            }
+
+            return [
+                'id' => $session->id,
+                'programme' => $session->course?->title,
+                'salle' => $session->room_name,
+                'demarre_par' => $session->starter?->name,
+                'debut' => optional($session->started_at)->format('Y-m-d H:i:s'),
+                'fin' => optional($session->ended_at)->format('Y-m-d H:i:s'),
+                'statut' => $session->status,
+                'participants' => $session->participants_count,
+                'messages' => $session->messages_count,
+                'duree_secondes' => $duration,
+            ];
+        });
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['ID', 'Programme', 'Salle', 'Démarré par', 'Début', 'Fin', 'Statut', 'Participants', 'Messages', 'Durée (s)']);
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row['id'],
+                    $row['programme'],
+                    $row['salle'],
+                    $row['demarre_par'],
+                    $row['debut'],
+                    $row['fin'],
+                    $row['statut'],
+                    $row['participants'],
+                    $row['messages'],
+                    $row['duree_secondes'],
+                ]);
+            }
+            fclose($handle);
+        }, 'formations-live-sessions.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    public function exportLiveTrainingSessionDetails(LiveTrainingSession $session)
+    {
+        $session->load(['course:id,title', 'starter:id,name', 'participants.user:id,name,email', 'messages.user:id,name,email']);
+
+        return response()->streamDownload(function () use ($session) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Session ID', $session->id]);
+            fputcsv($handle, ['Programme', $session->course?->title]);
+            fputcsv($handle, ['Salle', $session->room_name]);
+            fputcsv($handle, ['Démarré par', $session->starter?->name]);
+            fputcsv($handle, ['Début', optional($session->started_at)->format('Y-m-d H:i:s')]);
+            fputcsv($handle, ['Fin', optional($session->ended_at)->format('Y-m-d H:i:s')]);
+            fputcsv($handle, []);
+            fputcsv($handle, ['Participants']);
+            fputcsv($handle, ['Nom', 'Email', 'Nom affiché', 'Arrivée', 'Départ', 'Durée (s)']);
+            foreach ($session->participants as $participant) {
+                fputcsv($handle, [
+                    $participant->user?->name,
+                    $participant->user?->email,
+                    $participant->display_name,
+                    optional($participant->joined_at)->format('Y-m-d H:i:s'),
+                    optional($participant->left_at)->format('Y-m-d H:i:s'),
+                    $participant->duration_seconds,
+                ]);
+            }
+            fputcsv($handle, []);
+            fputcsv($handle, ['Messages']);
+            fputcsv($handle, ['Date', 'Expéditeur', 'Type', 'Message']);
+            foreach ($session->messages as $message) {
+                fputcsv($handle, [
+                    optional($message->sent_at)->format('Y-m-d H:i:s'),
+                    $message->sender_name ?? $message->user?->name,
+                    $message->message_type,
+                    $message->message,
+                ]);
+            }
+            fclose($handle);
+        }, 'formation-live-session-'.$session->id.'.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    public function exportLiveTrainingSessionDetailsPdf(LiveTrainingSession $session)
+    {
+        $session->load(['course:id,title', 'starter:id,name,email', 'participants.user:id,name,email', 'messages.user:id,name,email']);
+
+        $participants = $session->participants->sortBy('joined_at')->values();
+        $messages = $session->messages->sortBy('sent_at')->values();
+
+        $totalDurationSeconds = (int) $participants->sum('duration_seconds');
+        $avgDurationSeconds = $participants->count() > 0
+            ? (int) round($totalDurationSeconds / $participants->count())
+            : 0;
+
+        $sessionDurationSeconds = 0;
+        if ($session->started_at) {
+            $sessionDurationSeconds = $session->ended_at
+                ? $session->started_at->diffInSeconds($session->ended_at)
+                : $session->started_at->diffInSeconds(now());
+        }
+
+        $logoBase64 = null;
+        $logoPath = public_path('images/logo-herime-academie.png');
+        if (is_file($logoPath)) {
+            $mimeType = function_exists('mime_content_type') ? mime_content_type($logoPath) : 'image/png';
+            $content = file_get_contents($logoPath);
+            if ($content !== false) {
+                $logoBase64 = 'data:'.$mimeType.';base64,'.base64_encode($content);
+            }
+        }
+
+        $html = view('admin.live-training.session-detail-pdf', [
+            'generatedAt' => now(),
+            'session' => $session,
+            'participants' => $participants,
+            'messages' => $messages,
+            'stats' => [
+                'participants_count' => $participants->count(),
+                'unique_participants_count' => $participants->pluck('user_id')->filter()->unique()->count(),
+                'messages_count' => $messages->count(),
+                'total_duration_seconds' => $totalDurationSeconds,
+                'avg_duration_seconds' => $avgDurationSeconds,
+                'session_duration_seconds' => $sessionDurationSeconds,
+            ],
+            'logoBase64' => $logoBase64,
+            'appName' => config('app.name', 'Herime Academie'),
+        ])->render();
+
+        $options = new \Dompdf\Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="formation-live-session-'.$session->id.'.pdf"',
+        ]);
+    }
+
+    public function exportLiveTrainingSummaryPdf(Request $request)
+    {
+        $query = LiveTrainingSession::query()
+            ->with(['course:id,title', 'starter:id,name'])
+            ->withCount(['participants', 'messages']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+        if ($request->filled('course')) {
+            $query->whereHas('course', fn ($q) => $q->where('title', 'like', '%'.$request->string('course').'%'));
+        }
+        if ($request->filled('started_by')) {
+            $query->whereHas('starter', fn ($q) => $q->where('name', 'like', '%'.$request->string('started_by').'%'));
+        }
+        if ($request->filled('start_date')) {
+            $query->whereDate('started_at', '>=', $request->string('start_date'));
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('started_at', '<=', $request->string('end_date'));
+        }
+        if ($request->filled('participants_min')) {
+            $query->has('participants', '>=', (int) $request->integer('participants_min'));
+        }
+
+        $sessions = $query->latest('started_at')->limit(500)->get();
+        $totalMessages = (int) $sessions->sum('messages_count');
+        $totalParticipantsEntries = (int) $sessions->sum('participants_count');
+
+        $logoBase64 = null;
+        $logoPath = public_path('images/logo-herime-academie.png');
+        if (is_file($logoPath)) {
+            $mimeType = function_exists('mime_content_type') ? mime_content_type($logoPath) : 'image/png';
+            $content = file_get_contents($logoPath);
+            if ($content !== false) {
+                $logoBase64 = 'data:'.$mimeType.';base64,'.base64_encode($content);
+            }
+        }
+
+        $html = view('admin.live-training.summary-pdf', [
+            'generatedAt' => now(),
+            'sessions' => $sessions,
+            'filters' => $request->only(['status', 'course', 'started_by', 'start_date', 'end_date', 'participants_min']),
+            'summary' => [
+                'sessions_count' => $sessions->count(),
+                'participants_entries' => $totalParticipantsEntries,
+                'messages_count' => $totalMessages,
+                'avg_messages_per_session' => $sessions->count() > 0 ? round($totalMessages / $sessions->count(), 2) : 0,
+            ],
+            'logoBase64' => $logoBase64,
+            'appName' => config('app.name', 'Herime Academie'),
+        ])->render();
+
+        $options = new \Dompdf\Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="formations-live-recapitulatif.pdf"',
+        ]);
+    }
+
+    private function buildLiveTrainingEvolutionSeries($sessionsCollection, string $period): array
+    {
+        $buckets = [];
+
+        foreach ($sessionsCollection as $session) {
+            if (! $session->started_at) {
+                continue;
+            }
+
+            $key = $period === 'week'
+                ? $session->started_at->format('o-\WW')
+                : $session->started_at->format('Y-m');
+
+            if (! isset($buckets[$key])) {
+                $buckets[$key] = [
+                    'label' => $key,
+                    'sessions' => 0,
+                    'participants' => 0,
+                    'messages' => 0,
+                ];
+            }
+
+            $buckets[$key]['sessions']++;
+            $buckets[$key]['participants'] += (int) ($session->participants_count ?? 0);
+            $buckets[$key]['messages'] += (int) ($session->messages_count ?? 0);
+        }
+
+        ksort($buckets);
+
+        return [
+            'labels' => array_values(array_map(fn ($bucket) => $bucket['label'], $buckets)),
+            'sessions' => array_values(array_map(fn ($bucket) => $bucket['sessions'], $buckets)),
+            'participants' => array_values(array_map(fn ($bucket) => $bucket['participants'], $buckets)),
+            'messages' => array_values(array_map(fn ($bucket) => $bucket['messages'], $buckets)),
+        ];
     }
 }

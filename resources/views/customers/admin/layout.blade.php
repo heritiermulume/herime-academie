@@ -40,6 +40,13 @@
             'url' => route('customer.subscriptions'),
             'active' => ['customer.subscriptions', 'subscriptions.*'],
         ],
+        [
+            'label' => 'Formation en direct',
+            'icon' => 'fas fa-video',
+            'route' => 'live-training.index',
+            'url' => route('live-training.index'),
+            'active' => ['live-training.index'],
+        ],
     ];
 
     if (\Illuminate\Support\Facades\Route::has('profile.edit')) {

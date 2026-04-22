@@ -18,6 +18,7 @@ use App\Http\Controllers\FileController;
 use App\Http\Controllers\FilterController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LearningController;
+use App\Http\Controllers\LiveTrainingController;
 use App\Http\Controllers\MetaConversionsController;
 use App\Http\Controllers\MonerooController;
 use App\Http\Controllers\MonerooPayoutController;
@@ -264,6 +265,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::match(['POST', 'DELETE'], '/uploads/temp', [TemporaryUploadController::class, 'destroy'])
         ->name('uploads.temp.destroy');
+
+    Route::get('/live-training', [LiveTrainingController::class, 'index'])->name('live-training.index');
+    Route::post('/live-training/start', [LiveTrainingController::class, 'start'])->name('live-training.start');
+    Route::get('/live-training/{course:slug}', [LiveTrainingController::class, 'show'])->name('live-training.show');
+    Route::post('/live-training/{course:slug}/stop', [LiveTrainingController::class, 'stop'])->name('live-training.stop');
+    Route::post('/live-training/{course:slug}/participants/ping', [LiveTrainingController::class, 'participantPing'])->name('live-training.participants.ping');
+    Route::post('/live-training/{course:slug}/participants/leave', [LiveTrainingController::class, 'participantLeave'])->name('live-training.participants.leave');
+    Route::post('/live-training/{course:slug}/messages', [LiveTrainingController::class, 'storeMessage'])->name('live-training.messages.store');
 
     // Customer routes
     Route::prefix('customer')->name('customer.')->middleware('role:customer')->group(function () {
@@ -806,6 +815,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Provider payouts management
         Route::get('/provider-payouts', [AdminController::class, 'providerPayouts'])->name('provider-payouts');
+        Route::get('/live-training/sessions', [AdminController::class, 'liveTrainingSessions'])->name('live-training.sessions');
+        Route::get('/live-training/sessions/{session}', [AdminController::class, 'showLiveTrainingSession'])->name('live-training.sessions.show');
+        Route::get('/live-training/sessions-export', [AdminController::class, 'exportLiveTrainingSessions'])->name('live-training.sessions.export');
+        Route::get('/live-training/sessions/{session}/export', [AdminController::class, 'exportLiveTrainingSessionDetails'])->name('live-training.sessions.export-details');
+        Route::get('/live-training/sessions-summary-pdf', [AdminController::class, 'exportLiveTrainingSummaryPdf'])->name('live-training.sessions.export-summary-pdf');
+        Route::get('/live-training/sessions/{session}/export-pdf', [AdminController::class, 'exportLiveTrainingSessionDetailsPdf'])->name('live-training.sessions.export-details-pdf');
     });
 
     // Profile routes - avec validation SSO pour les modifications

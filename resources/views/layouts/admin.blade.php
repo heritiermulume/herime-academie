@@ -28,6 +28,13 @@
             'available' => Route::has('admin.packages.index')
         ],
         [
+            'label' => 'Formations live',
+            'icon' => 'fas fa-video',
+            'route' => 'admin.live-training.sessions',
+            'active' => ['admin.live-training.sessions', 'admin.live-training.sessions.show'],
+            'available' => Route::has('admin.live-training.sessions')
+        ],
+        [
             'label' => 'Catégories',
             'icon' => 'fas fa-tags',
             'route' => 'admin.categories',
