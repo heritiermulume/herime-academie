@@ -602,10 +602,11 @@
             display: flex;
             gap: 0.25rem;
             background: transparent;
-            padding: 0.3rem 0;
+            padding: 0.3rem 0.25rem;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            justify-content: center;
+            justify-content: flex-start;
+            scroll-padding-left: 0.25rem;
         }
 
         .admin-sidebar__link {
@@ -614,6 +615,7 @@
             font-size: 0.72rem;
             padding: 0.45rem 0.5rem;
             flex: 0 0 auto;
+            white-space: nowrap;
         }
 
         .admin-sidebar__link i {

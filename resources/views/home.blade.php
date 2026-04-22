@@ -49,7 +49,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content border-0 shadow-lg overflow-hidden">
                 <div class="modal-header border-0 pb-0 position-relative">
-                    <h2 class="modal-title h5 fw-bold pe-4 text-primary" id="homeMarketingAnnouncementModalLabel">
+                    <h2 class="modal-title h5 fw-bold pe-4 home-marketing-modal__title" id="homeMarketingAnnouncementModalLabel">
                         {{ $homeModalAnnouncement->title }}
                     </h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
@@ -105,6 +105,9 @@
 }
 .home-marketing-modal__body {
     line-height: 1.55;
+}
+.home-marketing-modal__title {
+    color: var(--primary-color);
 }
 
 /* Boutons modale annonce : compacts pour ne pas dépasser du modal */

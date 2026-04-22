@@ -32,8 +32,8 @@
 
 @extends($liveLayout)
 
-@section('title', 'Formation en direct')
-@section('admin-title', 'Formation en direct')
+@section('title', 'Formations en direct')
+@section('admin-title', 'Formations en direct')
 @section('admin-subtitle', 'Espace de cours en visioconference')
 
 @if($useDashboardSection)
@@ -41,10 +41,10 @@
 @else
 @section('content')
 @endif
-<section class="container py-4 py-lg-5">
+<section class="container live-training-page {{ $useDashboardSection ? 'live-training-page--dashboard' : '' }} pt-2 pb-4 pt-lg-3 pb-lg-5">
     @if(!$useDashboardSection)
         <div class="live-header mb-4">
-            <h1 class="h3 fw-bold mb-2">Formation en direct</h1>
+            <h1 class="h3 fw-bold mb-2">Formations en direct</h1>
             <p class="text-muted mb-0">Cet espace vous permet de suivre ou d'animer des sessions de formation en temps reel pour un programme precis, avec echanges audio/video, questions-reponses et accompagnement pedagogique pendant la seance.</p>
         </div>
     @endif
@@ -403,6 +403,19 @@
         overflow-x: hidden;
     }
 
+    .live-training-page--dashboard {
+        padding-top: 0.2rem !important;
+        padding-bottom: 0.7rem !important;
+    }
+
+    .live-training-page--dashboard .card.mb-4 {
+        margin-bottom: 0.55rem !important;
+    }
+
+    .live-training-page--dashboard .card.mb-3 {
+        margin-bottom: 0.45rem !important;
+    }
+
     .live-header,
     .card,
     .card-body,
@@ -505,6 +518,15 @@
     }
 
     @media (max-width: 768px) {
+        .student-admin-shell {
+            padding-top: calc(var(--site-navbar-height, 64px) + 1.1rem);
+        }
+
+        .live-training-page--dashboard {
+            padding-top: 0.1rem !important;
+            padding-bottom: 0.45rem !important;
+        }
+
         section.container {
             padding-left: 0.75rem;
             padding-right: 0.75rem;
@@ -541,6 +563,12 @@
         .stop-live-btn-main {
             font-size: 0.85rem;
             padding: 0.4rem 0.75rem;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .student-admin-shell {
+            padding-top: calc(var(--site-navbar-height, 64px) + 0.85rem);
         }
     }
 </style>
