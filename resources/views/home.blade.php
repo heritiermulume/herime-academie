@@ -759,6 +759,13 @@ body {
                                         <span class="text-muted">({{ $course->stats['total_reviews'] ?? 0 }})</span>
                                     </div>
                                 </div>
+
+                                <div class="customers-count mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas {{ $course->is_downloadable ? 'fa-download' : 'fa-graduation-cap' }} me-1"></i>
+                                        {{ $course->is_downloadable ? 'Téléchargeable' : 'Formation' }}
+                                    </small>
+                                </div>
                                 
                                 @if($course->show_customers_count)
                                 @php
@@ -923,6 +930,13 @@ body {
                                         <span>{{ number_format($course->stats['average_rating'] ?? 0, 1) }}</span>
                                         <span class="text-muted">({{ $course->stats['total_reviews'] ?? 0 }})</span>
                                     </div>
+                                </div>
+
+                                <div class="customers-count mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas {{ $course->is_downloadable ? 'fa-download' : 'fa-graduation-cap' }} me-1"></i>
+                                        {{ $course->is_downloadable ? 'Téléchargeable' : 'Formation' }}
+                                    </small>
                                 </div>
                                 
                                 @if($course->show_customers_count)
@@ -1255,6 +1269,13 @@ body {
                                         <span>{{ number_format($course->stats['average_rating'] ?? 0, 1) }}</span>
                                         <span class="text-muted">({{ $course->stats['total_reviews'] ?? 0 }})</span>
                                     </div>
+                                </div>
+
+                                <div class="customers-count mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas {{ $course->is_downloadable ? 'fa-download' : 'fa-graduation-cap' }} me-1"></i>
+                                        {{ $course->is_downloadable ? 'Téléchargeable' : 'Formation' }}
+                                    </small>
                                 </div>
                                 
                                 @if($course->show_customers_count)

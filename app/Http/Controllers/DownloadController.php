@@ -305,8 +305,9 @@ class DownloadController extends Controller
         $response->headers->set('Last-Modified', $lastModified);
         $response->headers->set('Cache-Control', 'private, max-age=0, must-revalidate');
 
-        // Activé par défaut sur VPS (peut être désactivé via .env).
-        if ((bool) env('DOWNLOAD_ACCEL_ENABLED', true)) {
+        // Désactivé par défaut : certains hébergements mutualisés servent un mauvais payload
+        // (ex: page HTML) quand X-Accel-Redirect est envoyé sans configuration serveur adaptée.
+        if ((bool) env('DOWNLOAD_ACCEL_ENABLED', false)) {
             $privateRoot = rtrim(storage_path('app/private'), '/');
             if (str_starts_with($filePath, $privateRoot.'/')) {
                 $relativePath = substr($filePath, strlen($privateRoot));
@@ -317,7 +318,8 @@ class DownloadController extends Controller
             }
         }
 
-        if ((bool) env('DOWNLOAD_X_SENDFILE_ENABLED', true)) {
+        // Désactivé par défaut pour éviter les réponses erronées si mod_xsendfile n'est pas actif.
+        if ((bool) env('DOWNLOAD_X_SENDFILE_ENABLED', false)) {
             $response->headers->set('X-Sendfile', $filePath);
         }
 
