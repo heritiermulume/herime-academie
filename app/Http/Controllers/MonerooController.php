@@ -56,7 +56,7 @@ use Illuminate\Support\Str;
  */
 class MonerooController extends Controller
 {
-    private const AUTO_CANCELLATION_TIMEOUT_REASON = 'Paiement annulé automatiquement : le délai de confirmation a été dépassé. Vous pouvez relancer le paiement depuis votre commande.';
+    private const AUTO_CANCELLATION_TIMEOUT_REASON = 'Paiement annulé automatiquement en raison d\'un dépassement du délai d\'attente de confirmation. Vous pouvez relancer le paiement depuis votre commande.';
     private const RETRY_REPLACED_ORDER_REASON = 'Paiement annulé automatiquement : une nouvelle tentative de paiement a été lancée pour cette commande.';
     private const CANCELLED_WITHOUT_AUTORETRY_REASON = 'Paiement annulé automatiquement : la tentative en cours a été interrompue. Vous pouvez relancer le paiement manuellement.';
 
@@ -1603,6 +1603,9 @@ class MonerooController extends Controller
             if ($reason === '' || $this->isNonFailureMessage($reason)) {
                 continue;
             }
+            if ($status === 'cancelled' && $this->isGenericCancelledMessage($reason)) {
+                continue;
+            }
 
             return $reason;
         }
@@ -1610,7 +1613,7 @@ class MonerooController extends Controller
         // Sinon, mapper le statut vers un message compréhensible
         return match ($status) {
             'failed' => 'Le paiement a échoué. Veuillez vérifier vos informations de paiement et réessayer.',
-            'cancelled' => 'Le paiement a été annulé.',
+            'cancelled' => self::AUTO_CANCELLATION_TIMEOUT_REASON,
             'expired' => self::AUTO_CANCELLATION_TIMEOUT_REASON,
             'rejected' => 'Le paiement a été rejeté. Cela peut être dû à un solde insuffisant ou à une restriction sur votre compte.',
             default => 'Le paiement n\'a pas pu être complété.',
@@ -1629,6 +1632,20 @@ class MonerooController extends Controller
             || str_contains($normalized, 'transaction fetched')
             || str_contains($normalized, 'payement transaction fetched successfully')
             || str_contains($normalized, 'payment transaction fetched successfully');
+    }
+
+    /**
+     * Détecte les messages d'annulation trop génériques qui masquent la vraie cause métier.
+     */
+    private function isGenericCancelledMessage(string $message): bool
+    {
+        $normalized = strtolower(trim($message));
+
+        return $normalized === 'le paiement a été annulé.'
+            || $normalized === 'le paiement a ete annule.'
+            || $normalized === 'paiement annulé'
+            || $normalized === 'payment cancelled'
+            || $normalized === 'payment canceled';
     }
 
     /**
