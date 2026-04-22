@@ -4436,9 +4436,7 @@ button.mobile-price-slider__btn--download i,
                     $finalLoginCourse2 = url()->full();
                     $callbackLoginCourse2 = route('sso.callback', ['redirect' => $finalLoginCourse2]);
                     $ssoLoginUrlCourse2 = 'https://compte.herime.com/login?force_token=1&redirect=' . urlencode($callbackLoginCourse2);
-                    $guestFreeLoginMobileLabel = $course->is_downloadable
-                        ? 'Se connecter pour télécharger'
-                        : 'Se connecter pour s\'inscrire';
+                    $guestFreeLoginMobileLabel = 'Se connecter';
                 @endphp
                 @if($course->is_free)
                     @if(($course->is_in_person_program ?? false) && $course->whatsapp_chat_url)

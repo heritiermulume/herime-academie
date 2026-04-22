@@ -13,6 +13,9 @@
     $thumbnailUrl = $thumbnailUrl ?: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300&h=200&fit=crop';
     $canSubmitReview = $user
         && (($canReview ?? false) || ($course->is_in_person_program ?? false));
+    $communityImpactText = $course->is_downloadable
+        ? "Votre avis aide d'autres personnes à savoir si ce contenu téléchargeable correspond vraiment à leurs besoins."
+        : "Votre avis aide d'autres apprenants à choisir la formation la plus adaptée à leurs objectifs.";
 @endphp
 
 <section class="community-premium-hero content-rate-hero">
@@ -21,7 +24,7 @@
             <div class="cart-title-section">
                 <h1 class="cart-title h1-md mb-2">Noter ce contenu</h1>
                 <p class="cart-subtitle mb-0">
-                    Votre avis aide la communauté à choisir ses formations.
+                    {{ $communityImpactText }}
                     @if($canSeeShareLink ?? false)
                         Pour inviter quelqu'un à noter, utilisez le bloc <strong>"Lien public"</strong> juste en dessous.
                     @endif

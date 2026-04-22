@@ -120,6 +120,15 @@ class ContentRatingReminderService
             $user = $reminder->user;
             $course = $reminder->course;
             if (! $user || ! $course) {
+                $reminder->delete();
+
+                continue;
+            }
+
+            // N'envoyer la relance que pour un contenu actif (publié et non supprimé).
+            if (! $course->is_published) {
+                $reminder->delete();
+
                 continue;
             }
 

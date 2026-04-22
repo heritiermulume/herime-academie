@@ -167,7 +167,7 @@
                 <h3>Contenu concerné</h3>
                 <p><strong>Titre :</strong> {{ $course->title }}</p>
                 @if($course->provider)
-                    <p><strong>Formateur :</strong> {{ $course->provider->name }}</p>
+                    <p><strong>{{ $course->getProviderLabel() }} :</strong> {{ $course->provider->name }}</p>
                 @endif
             </div>
 

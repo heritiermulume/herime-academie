@@ -263,7 +263,23 @@ class CartController extends Controller
             auth()->user()->cartItems()->delete();
             auth()->user()->cartPackages()->delete();
         } else {
+            // Panier invité standard (session)
             Session::forget('cart');
+
+            // Panier invité "compte existant" (source BDD) :
+            // si cet intent est actif, il faut aussi vider le panier du compte ciblé,
+            // sinon les lignes réapparaissent après rechargement.
+            $guestUid = $this->guestPayIntentUserId();
+            if ($guestUid !== null) {
+                $user = User::find($guestUid);
+                if ($user) {
+                    $user->cartItems()->delete();
+                    $user->cartPackages()->delete();
+                }
+            }
+
+            // Nettoyer l'intent invité pour éviter toute relecture future du panier BDD.
+            self::clearGuestMonerooPayIntent();
         }
 
         return response()->json([
