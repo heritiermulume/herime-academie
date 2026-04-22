@@ -1891,7 +1891,7 @@ class AdminController extends Controller
             'is_downloadable' => 'boolean',
             'is_in_person_program' => 'boolean',
             'whatsapp_number' => 'nullable|string|max:30|required_if:is_in_person_program,1',
-            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:10485760', // 10GB max (kilobytes)
+            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz,jpg,jpeg,png,webp,gif,mp4,mov,avi,webm,mkv|max:10485760', // 10GB max (kilobytes)
             'download_file_url' => 'nullable|url|max:1000',
             'is_published' => 'boolean',
             'is_sale_enabled' => 'boolean',
@@ -1944,7 +1944,7 @@ class AdminController extends Controller
             'thumbnail.mimes' => 'Le fichier doit être de type: jpeg, png, jpg, gif, webp.',
             'thumbnail.max' => 'Le fichier ne doit pas dépasser 5MB.',
             'download_file_path.file' => 'Le fichier de téléchargement doit être un fichier valide.',
-            'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz.',
+            'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz, jpg, jpeg, png, webp, gif, mp4, mov, avi, webm, mkv.',
             'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 10 Go. Pour les fichiers plus volumineux, utilisez une URL externe.',
             'external_payment_url.required_if' => 'L\'URL de paiement externe est requise quand le paiement externe est activé.',
         ]);
@@ -2237,7 +2237,7 @@ class AdminController extends Controller
             'is_downloadable' => 'boolean',
             'is_in_person_program' => 'boolean',
             'whatsapp_number' => 'nullable|string|max:30|required_if:is_in_person_program,1',
-            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz|max:10485760', // 10GB max (kilobytes)
+            'download_file_path' => 'nullable|file|mimes:zip,pdf,doc,docx,rar,7z,tar,gz,jpg,jpeg,png,webp,gif,mp4,mov,avi,webm,mkv|max:10485760', // 10GB max (kilobytes)
             'download_file_url' => 'nullable|url|max:1000',
             'use_external_payment' => 'boolean',
             'external_payment_url' => 'nullable|url|max:500|required_if:use_external_payment,1',
@@ -2280,7 +2280,7 @@ class AdminController extends Controller
             'thumbnail.image' => 'Le fichier doit être une image.',
             'thumbnail.mimes' => 'Le fichier doit être de type: jpeg, png, jpg, gif, webp.',
             'thumbnail.max' => 'Le fichier ne doit pas dépasser 5MB.',
-            'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz.',
+            'download_file_path.mimes' => 'Le fichier de téléchargement doit être de type: zip, pdf, doc, docx, rar, 7z, tar, gz, jpg, jpeg, png, webp, gif, mp4, mov, avi, webm, mkv.',
             'download_file_path.max' => 'Le fichier de téléchargement ne doit pas dépasser 10 Go. Pour les fichiers plus volumineux, utilisez une URL externe.',
             'external_payment_url.required_if' => 'L\'URL de paiement externe est requise quand le paiement externe est activé.',
         ]);

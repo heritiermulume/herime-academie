@@ -318,7 +318,7 @@
                                        class="form-control d-none @error('download_file_path') is-invalid @enderror"
                                        id="download_file_path"
                                        name="download_file_path"
-                                       accept=".zip,.pdf,.doc,.docx,.rar,.7z,.tar,.gz"
+                                       accept=".zip,.pdf,.doc,.docx,.rar,.7z,.tar,.gz,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.webm,.mkv"
                                        onchange="handleDownloadFileUpload(this)">
                                 <input type="hidden" id="download_file_chunk_path" name="download_file_chunk_path" value="{{ old('download_file_chunk_path') }}">
                                 <input type="hidden" id="download_file_chunk_name" name="download_file_chunk_name" value="{{ old('download_file_chunk_name') }}">
@@ -326,7 +326,7 @@
                                 <div class="upload-placeholder text-center p-4" data-download-placeholder onclick="document.getElementById('download_file_path').click()">
                                     <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
                                     <p class="mb-2"><strong>Glissez-déposez un fichier ou cliquez pour parcourir</strong></p>
-                                    <p class="text-muted small mb-0">Formats : ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR, GZ</p>
+                                    <p class="text-muted small mb-0">Formats : ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR, GZ, JPG, JPEG, PNG, WEBP, GIF, MP4, MOV, AVI, WEBM, MKV</p>
                                     <p class="text-muted small">Maximum : 1&nbsp;Go — envoi par fragments automatique</p>
                                 </div>
                                 <div class="upload-preview d-none download-upload-preview">
@@ -490,7 +490,7 @@ const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
 const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const VALID_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg'];
 const CHUNK_SIZE_BYTES = 1 * 1024 * 1024; // 1MB pour upload fractionné (garder petit pour limiter post size)
-const DOWNLOAD_ALLOWED_EXTENSIONS = ['.zip', '.pdf', '.doc', '.docx', '.rar', '.7z', '.tar', '.gz'];
+const DOWNLOAD_ALLOWED_EXTENSIONS = ['.zip', '.pdf', '.doc', '.docx', '.rar', '.7z', '.tar', '.gz', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.mov', '.avi', '.webm', '.mkv'];
 const MAX_DOWNLOAD_FILE_SIZE = 1 * 1024 * 1024 * 1024; // 1GB
 const CHUNK_UPLOAD_ENDPOINT = (function() {
     const origin = window.location.origin.replace(/\/+$/, '');
@@ -1217,7 +1217,7 @@ function handleDownloadFileUpload(input, droppedFile = null) {
     
     const extension = '.' + file.name.split('.').pop().toLowerCase();
     if (!DOWNLOAD_ALLOWED_EXTENSIONS.includes(extension)) {
-        showDownloadFileError('❌ Format invalide. Utilisez ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR ou GZ.');
+        showDownloadFileError('❌ Format invalide. Utilisez ZIP, PDF, DOC, DOCX, RAR, 7Z, TAR, GZ, JPG, JPEG, PNG, WEBP, GIF, MP4, MOV, AVI, WEBM ou MKV.');
         resetFileInput(input);
         return;
     }
