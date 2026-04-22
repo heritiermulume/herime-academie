@@ -57,6 +57,8 @@ use Illuminate\Support\Str;
 class MonerooController extends Controller
 {
     private const AUTO_CANCELLATION_TIMEOUT_REASON = 'Paiement annulé automatiquement : le délai de confirmation a été dépassé. Vous pouvez relancer le paiement depuis votre commande.';
+    private const RETRY_REPLACED_ORDER_REASON = 'Paiement annulé automatiquement : une nouvelle tentative de paiement a été lancée pour cette commande.';
+    private const CANCELLED_WITHOUT_AUTORETRY_REASON = 'Paiement annulé automatiquement : la tentative en cours a été interrompue. Vous pouvez relancer le paiement manuellement.';
 
     private function baseUrl(): string
     {
@@ -387,7 +389,7 @@ class MonerooController extends Controller
 
                 $existingPayment->update([
                     'status' => 'failed',
-                    'failure_reason' => 'pending_timeout',
+                    'failure_reason' => self::RETRY_REPLACED_ORDER_REASON,
                 ]);
             }
 
@@ -431,6 +433,12 @@ class MonerooController extends Controller
                 ]);
 
                 // Annuler l'ancienne commande
+                Payment::where('order_id', $recentPendingOrder->id)
+                    ->whereIn('status', ['pending', 'processing'])
+                    ->update([
+                        'status' => 'failed',
+                        'failure_reason' => self::RETRY_REPLACED_ORDER_REASON,
+                    ]);
                 $recentPendingOrder->update(['status' => 'cancelled']);
 
                 // Continuer pour créer une nouvelle commande (le code continue après ce bloc)
@@ -445,6 +453,12 @@ class MonerooController extends Controller
                         'order_age_minutes' => $orderAge,
                     ]);
 
+                    Payment::where('order_id', $recentPendingOrder->id)
+                        ->whereIn('status', ['pending', 'processing'])
+                        ->update([
+                            'status' => 'failed',
+                            'failure_reason' => self::RETRY_REPLACED_ORDER_REASON,
+                        ]);
                     $recentPendingOrder->update(['status' => 'cancelled']);
                 }
             }
@@ -842,9 +856,10 @@ class MonerooController extends Controller
                     ->first();
                 if ($payment) {
                     if ($payment->status === 'pending') {
+                        $failureReason = $this->extractFailureReason($paymentData, $responseData, (string) $status);
                         $payment->update([
                             'status' => 'failed',
-                            'failure_reason' => $paymentData['failure_reason'] ?? ($paymentData['message'] ?? 'Paiement échoué'),
+                            'failure_reason' => $failureReason,
                         ]);
                     }
                     if ($payment->order && ! in_array($payment->order->status, ['paid', 'completed'])) {
@@ -1701,7 +1716,7 @@ class MonerooController extends Controller
             ->whereIn('status', ['pending', 'processing'])
             ->update([
                 'status' => 'failed',
-                'failure_reason' => 'Annulation commande panier (reprise paiement)',
+                'failure_reason' => self::CANCELLED_WITHOUT_AUTORETRY_REASON,
             ]);
         $order->update(['status' => 'cancelled']);
 
