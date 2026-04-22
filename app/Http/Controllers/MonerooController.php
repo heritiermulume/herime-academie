@@ -857,6 +857,7 @@ class MonerooController extends Controller
                 if ($payment) {
                     if ($payment->status === 'pending') {
                         $failureReason = $this->extractFailureReason($paymentData, $responseData, (string) $status);
+                        $failureReason = $this->contextualizeFailureReasonForStalePendingOrder($payment->order, (string) $status, $failureReason);
                         $payment->update([
                             'status' => 'failed',
                             'failure_reason' => $failureReason,
@@ -1032,6 +1033,7 @@ class MonerooController extends Controller
 
         if (in_array($status, ['failed', 'cancelled', 'expired', 'rejected']) && $payment->order) {
             $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
+            $failureReason = $this->contextualizeFailureReasonForStalePendingOrder($payment->order, (string) $status, $failureReason);
             $payment->update(['status' => 'failed', 'failure_reason' => $failureReason]);
             if (! in_array($payment->order->status, ['paid', 'completed'])) {
                 $payment->order->update(['status' => 'cancelled']);
@@ -1125,6 +1127,7 @@ class MonerooController extends Controller
 
         if (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
             $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
+            $failureReason = $this->contextualizeFailureReasonForStalePendingOrder($order, (string) $status, $failureReason);
             $payment->update([
                 'status' => 'failed',
                 'failure_reason' => $failureReason,
@@ -1282,6 +1285,7 @@ class MonerooController extends Controller
                 // Échec : enregistrer la raison détaillée et annuler la commande
                 // Extraire la raison d'échec de plusieurs sources possibles selon la structure Moneroo
                 $failureReason = $this->extractFailureReason($paymentData, $payload, $status);
+                $failureReason = $this->contextualizeFailureReasonForStalePendingOrder($payment->order, (string) $status, $failureReason);
 
                 $payment->update(['failure_reason' => $failureReason]);
 
@@ -1509,11 +1513,13 @@ class MonerooController extends Controller
         $processedAt = $paymentData['processed_at'] ?? null;
         $failureReason = null;
         if (in_array($rawStatus, ['failed', 'cancelled', 'expired', 'rejected'], true)) {
+            $statusForReason = $rawStatus !== '' ? $rawStatus : 'failed';
             $failureReason = $this->extractFailureReason(
                 $paymentData,
                 $payload,
-                $rawStatus !== '' ? $rawStatus : 'failed',
+                $statusForReason,
             );
+            $failureReason = $this->contextualizeFailureReasonForStalePendingOrder($order, $statusForReason, $failureReason);
         }
 
         $payment->update([
@@ -1555,6 +1561,31 @@ class MonerooController extends Controller
             }
             $this->sendPaymentFailureNotifications($order->fresh(), $failureReason);
         }
+    }
+
+    /**
+     * Lorsque la commande est restée non payée au-delà du délai local (ORDER_PENDING_TIMEOUT_MIN)
+     * et que Moneroo clôt en annulation ou expiration, on préfère expliquer le dépassement de délai
+     * plutôt que le libellé générique du PSP (ex. cron : sync API avant auto-cancel local).
+     */
+    private function contextualizeFailureReasonForStalePendingOrder(?Order $order, string $monerooStatus, string $extractedReason): string
+    {
+        if (! $order || in_array($order->status, ['paid', 'completed'], true)) {
+            return $extractedReason;
+        }
+
+        $timeoutMinutes = max(1, (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30)));
+        if ($order->created_at->gte(now()->subMinutes($timeoutMinutes))) {
+            return $extractedReason;
+        }
+
+        $terminal = strtolower($monerooStatus);
+
+        if (! in_array($terminal, ['cancelled', 'expired'], true)) {
+            return $extractedReason;
+        }
+
+        return self::AUTO_CANCELLATION_TIMEOUT_REASON;
     }
 
     /**
@@ -1640,12 +1671,22 @@ class MonerooController extends Controller
     private function isGenericCancelledMessage(string $message): bool
     {
         $normalized = strtolower(trim($message));
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+        $normalized = preg_replace('/[.!?]+$/u', '', $normalized) ?? $normalized;
+        $normalized = trim((string) $normalized);
 
-        return $normalized === 'le paiement a été annulé.'
-            || $normalized === 'le paiement a ete annule.'
-            || $normalized === 'paiement annulé'
-            || $normalized === 'payment cancelled'
-            || $normalized === 'payment canceled';
+        if (str_starts_with($normalized, 'le ')) {
+            $normalized = trim(substr($normalized, 3));
+        }
+
+        return in_array($normalized, [
+            'paiement a été annulé',
+            'paiement a ete annule',
+            'paiement annulé',
+            'paiement annule',
+            'payment cancelled',
+            'payment canceled',
+        ], true);
     }
 
     /**
@@ -2133,6 +2174,7 @@ class MonerooController extends Controller
                     } elseif (in_array($status, ['failed', 'cancelled', 'expired', 'rejected'])) {
                         // Échec : extraire la raison détaillée et rediriger vers la page d'échec
                         $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
+                        $failureReason = $this->contextualizeFailureReasonForStalePendingOrder($payment->order, (string) $status, $failureReason);
 
                         $payment->update([
                             'status' => 'failed',
@@ -2424,6 +2466,7 @@ class MonerooController extends Controller
 
                         // Extraire la raison d'échec détaillée depuis l'API
                         $failureReason = $this->extractFailureReason($statusData, $responseData, $status);
+                        $failureReason = $this->contextualizeFailureReasonForStalePendingOrder($payment->order, (string) $status, $failureReason);
 
                         \Log::info('Moneroo: Status check on failed redirect', [
                             'payment_id' => $paymentId,

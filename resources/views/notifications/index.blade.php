@@ -145,22 +145,27 @@
 </div>
 
 <!-- Modal Marquer tout comme lu -->
-<div class="modal fade" id="markAllModal" tabindex="-1" aria-labelledby="markAllModalLabel" aria-hidden="true">
+<div class="modal fade notifications-mark-all-modal" id="markAllModal" tabindex="-1" aria-labelledby="markAllModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header notifications-modal-header border-0 py-4">
-                <h5 class="modal-title text-white fw-semibold" id="markAllModalLabel">
-                    <i class="fas fa-check-double me-2"></i>Confirmer l'action
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        <div class="modal-content border-0 shadow-lg rounded-4 notifications-mark-all-modal__content">
+            <div class="modal-header border-0 flex-nowrap align-items-start gap-3 pb-0 pt-4 px-4">
+                <div class="notifications-mark-all-modal__icon flex-shrink-0" aria-hidden="true">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="min-width-0 flex-grow-1 pe-2">
+                    <h5 class="modal-title fw-semibold text-body mb-1" id="markAllModalLabel">Marquer tout comme lu</h5>
+                    <p class="text-muted small mb-0">Cette action est irréversible.</p>
+                </div>
+                <button type="button" class="btn-close flex-shrink-0 mt-0" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
-            <div class="modal-body py-4">
-                <p class="mb-0 text-body">Voulez-vous vraiment marquer toutes vos notifications comme lues ? Cette action est irréversible.</p>
+            <div class="modal-body pt-3 px-4 pb-2">
+                <p class="mb-0 text-body">Voulez-vous vraiment marquer toutes vos notifications comme lues ?</p>
             </div>
-            <div class="modal-footer border-0 bg-light py-4">
+            {{-- Pas de classe Bootstrap .modal-footer (flex + marges enfants) : styles dédiés + #markAllModal pour gagner la cascade --}}
+            <div class="notifications-mark-all-modal__footer border-0 bg-light px-4 py-3 rounded-bottom-4">
                 <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary rounded-3 px-4" onclick="markAllAsRead()">
-                    <i class="fas fa-check-double me-2"></i>Oui, tout marquer comme lu
+                <button type="button" class="btn btn-primary rounded-3 px-2 px-sm-3" onclick="markAllAsRead()">
+                    <i class="fas fa-check-double d-none d-sm-inline me-sm-2" aria-hidden="true"></i>Confirmer
                 </button>
             </div>
         </div>
@@ -614,12 +619,79 @@ setInterval(function() {
     font-size: 2rem;
 }
 
-/* Modal */
-.notifications-modal-header {
-    background: linear-gradient(135deg, var(--notif-primary) 0%, #004080 100%) !important;
+/* Modal « Marquer tout comme lu » (aligné sur la carte notifications) */
+.notifications-mark-all-modal__content {
+    overflow: hidden;
 }
 
-.notifications-page .modal-content {
+.notifications-mark-all-modal__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--notif-radius-sm);
+    background: var(--notif-primary-light);
+    color: var(--notif-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+/* Pied du modal : hors de .modal-footer Bootstrap pour éviter flex/marges ; Vite charge après la pile des styles Blade. */
+#markAllModal .notifications-mark-all-modal__footer {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#markAllModal .notifications-mark-all-modal__footer .btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0;
+    margin: 0 !important;
+    white-space: nowrap;
+}
+
+/* Mobile : une seule ligne, deux colonnes égales (grille, pas le flex Bootstrap du footer) */
+@media (max-width: 767.98px) {
+    #markAllModal .notifications-mark-all-modal__content {
+        overflow: visible;
+    }
+
+    #markAllModal .notifications-mark-all-modal__footer {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: stretch;
+        justify-content: stretch;
+        gap: 0.375rem;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    #markAllModal .notifications-mark-all-modal__footer .btn {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding-left: 0.35rem !important;
+        padding-right: 0.35rem !important;
+        font-size: 0.8125rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        justify-content: center;
+        display: inline-flex !important;
+        align-items: center;
+    }
+}
+
+.notifications-page .notifications-mark-all-modal .modal-content {
+    border-radius: var(--notif-radius) !important;
     border-top-left-radius: var(--notif-radius-top) !important;
     border-top-right-radius: var(--notif-radius-top) !important;
 }
@@ -668,7 +740,8 @@ setInterval(function() {
         border-top-right-radius: var(--notif-radius-top) !important;
     }
 
-    .notifications-page .modal-content {
+    .notifications-page .notifications-mark-all-modal .modal-content {
+        border-radius: var(--notif-radius) !important;
         border-top-left-radius: var(--notif-radius-top) !important;
         border-top-right-radius: var(--notif-radius-top) !important;
         border-bottom-left-radius: var(--notif-radius) !important;
