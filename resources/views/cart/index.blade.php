@@ -1764,8 +1764,6 @@
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
 }
-
-/* Styles harmonisés - utilisent les styles globaux de app.blade.php */
 </style>
 
 <script>
@@ -1834,8 +1832,6 @@ async function getCurrentCartTotal() {
         
         return 0;
     } catch (error) {
-        console.error('Erreur lors de la récupération du montant du panier:', error);
-        // En cas d'erreur, retourner le montant initial de la page
         return {{ $total ?? 0 }};
     }
 }
@@ -1858,7 +1854,6 @@ async function getCurrentCartTotal() {
         
         // PROTECTION CONTRE LES SOUMISSIONS MULTIPLES
         if (isProcessingPayment) {
-            console.warn('Paiement déjà en cours de traitement, ignore la nouvelle soumission');
             return false;
         }
         
@@ -2101,7 +2096,7 @@ function removeCartLine(kind, courseId, packageId) {
             const contentType = response.headers.get('content-type');
 
             if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
+                await response.text();
 
                 if (response.status === 401 || response.status === 403) {
                     throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
@@ -2211,7 +2206,7 @@ function clearCart() {
         const contentType = response.headers.get('content-type');
 
         if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
+            await response.text();
 
             if (response.status === 401 || response.status === 403) {
                 throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
@@ -2254,258 +2249,6 @@ function clearCart() {
             }, 1500);
         }
     });
-}
-
-// Fonction pour procéder au paiement Moneroo directement depuis le panier
-async function proceedToCheckout(event) {
-    // Empêcher tout comportement par défaut
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    
-    // Vérifier si le checkout est autorisé (code promo valide ou non utilisé)
-    if (!canProceedToCheckout()) {
-        showNotification('Veuillez saisir un code promo valide ou décochez la case pour continuer', 'error');
-        return false;
-    }
-    
-    // Désactiver le bouton pour éviter les doubles clics
-    const checkoutBtn = document.getElementById('proceedToCheckoutBtn') || document.querySelector('.checkout-btn');
-    const originalContent = checkoutBtn ? checkoutBtn.innerHTML : '';
-    
-    if (checkoutBtn) {
-        checkoutBtn.disabled = true;
-        checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initialisation du paiement...';
-    }
-    
-    try {
-        // Récupérer le montant actuel du panier depuis le serveur (pour s'assurer qu'il est à jour)
-        const totalAmount = await getCurrentCartTotal();
-        
-        if (!totalAmount || totalAmount <= 0) {
-            throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
-        }
-        
-        // Récupérer la devise de base depuis la configuration
-        const currency = '{{ config("services.moneroo.default_currency", "USD") }}';
-        
-        // Initier le paiement Moneroo directement
-        const response = await fetch('{{ route("moneroo.initiate") }}', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': cartPageCsrfToken(),
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                amount: totalAmount,
-                currency: currency,
-                _token: cartPageCsrfToken()
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
-            throw new Error(errorData.message || `Erreur HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.message || 'Erreur lors de l\'initialisation du paiement');
-        }
-        
-        // Récupérer l'URL de checkout Moneroo (intégration standard)
-        // Format selon la documentation: data.checkout_url
-        const redirectUrl = data.checkout_url 
-                         || data.data?.checkout_url
-                         || data.redirect_url 
-                         || data.data?.redirect_url
-                         || data.authorizationUrl 
-                         || data.authorization_url
-                         || data.data?.authorizationUrl
-                         || data.data?.authorization_url
-                         || data.payment_url
-                         || data.url;
-        
-        if (redirectUrl) {
-            // Rediriger immédiatement vers la page de checkout Moneroo
-            // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
-            window.location.replace(redirectUrl);
-            return; // S'assurer que la fonction s'arrête ici
-        } else {
-            await showMessageModal('Erreur', 'Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
-            throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
-        }
-        
-    } catch (error) {
-        // Afficher un message d'erreur plus convivial
-        const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
-        await showMessageModal('Erreur', errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
-        
-        // Réactiver le bouton
-        if (checkoutBtn) {
-            checkoutBtn.disabled = false;
-            checkoutBtn.innerHTML = originalContent;
-        }
-    }
-};
-
-// Surcharger la fonction proceedToCheckout de app.blade.php pour utiliser Moneroo
-// Cette fonction sera appelée depuis le bouton checkout sur la page cart
-window.proceedToCheckout = window.proceedToCheckout || async function proceedToCheckout(event) {
-    // Si on est sur la page cart, utiliser Moneroo
-    if (window.location.pathname.includes('/cart') && !window.location.pathname.includes('/checkout')) {
-        // Appeler la fonction Moneroo définie plus haut
-        if (typeof proceedToCheckoutMoneroo === 'function') {
-            return proceedToCheckoutMoneroo(event);
-        }
-    }
-    // Sinon, utiliser le comportement par défaut de app.blade.php
-    const courseId = null;
-    const redirectToCheckout = () => {
-        window.location.href = '{{ route("cart.checkout") }}';
-    };
-    if (!courseId) {
-        redirectToCheckout();
-        return;
-    }
-};
-
-// Renommer la fonction Moneroo pour éviter les conflits
-const proceedToCheckoutMoneroo = async function proceedToCheckoutMoneroo(event) {
-    // Empêcher tout comportement par défaut
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    
-    // Désactiver le bouton pour éviter les doubles clics
-    const checkoutBtn = document.getElementById('proceedToCheckoutBtn') || document.querySelector('.checkout-btn');
-    const originalContent = checkoutBtn ? checkoutBtn.innerHTML : '';
-    
-    if (checkoutBtn) {
-        checkoutBtn.disabled = true;
-        checkoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initialisation du paiement...';
-    }
-    
-    try {
-        // Récupérer le montant actuel du panier depuis le serveur (pour s'assurer qu'il est à jour)
-        const totalAmount = await getCurrentCartTotal();
-        
-        if (!totalAmount || totalAmount <= 0) {
-            throw new Error('Le montant du panier est invalide. Veuillez réessayer.');
-        }
-        
-        // Récupérer la devise de base depuis la configuration
-        const currency = '{{ config("services.moneroo.default_currency", "USD") }}';
-        
-        // Initier le paiement Moneroo directement
-        const response = await fetch('{{ route("moneroo.initiate") }}', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': cartPageCsrfToken(),
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                amount: totalAmount,
-                currency: currency,
-                _token: cartPageCsrfToken()
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'Erreur serveur' }));
-            
-            // Extraire le message d'erreur détaillé de Moneroo si disponible
-            let errorMessage = errorData.message || `Erreur HTTP ${response.status}`;
-            if (errorData.error && errorData.error.message) {
-                errorMessage = errorData.error.message;
-            }
-            
-            throw new Error(errorMessage);
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            // Extraire le message d'erreur détaillé de Moneroo si disponible
-            let errorMessage = data.message || 'Erreur lors de l\'initialisation du paiement';
-            if (data.error && data.error.message) {
-                errorMessage = data.error.message;
-            }
-            throw new Error(errorMessage);
-        }
-        
-        // Récupérer l'URL de checkout Moneroo (intégration standard)
-        // Format selon la documentation: data.checkout_url
-        const redirectUrl = data.checkout_url 
-                         || data.data?.checkout_url
-                         || data.redirect_url 
-                         || data.data?.redirect_url
-                         || data.authorizationUrl 
-                         || data.authorization_url
-                         || data.data?.authorizationUrl
-                         || data.data?.authorization_url
-                         || data.payment_url
-                         || data.url;
-        
-        if (redirectUrl) {
-            // Rediriger immédiatement vers la page de checkout Moneroo
-            // Utiliser window.location.replace pour éviter que l'utilisateur puisse revenir en arrière
-            window.location.replace(redirectUrl);
-            return; // S'assurer que la fonction s'arrête ici
-        } else {
-            await showMessageModal('Erreur', 'Impossible d\'obtenir l\'URL de checkout Moneroo.\n\nRéponse reçue: ' + JSON.stringify(data, null, 2));
-            throw new Error('Impossible d\'obtenir l\'URL de checkout Moneroo. Veuillez réessayer.');
-        }
-        
-    } catch (error) {
-        // Afficher un message d'erreur plus convivial
-        const errorMessage = error.message || 'Une erreur est survenue lors de l\'initialisation du paiement.';
-        await showMessageModal('Erreur', errorMessage + '\n\nVeuillez réessayer ou contacter le support si le problème persiste.');
-        
-        // Réactiver le bouton
-        if (checkoutBtn) {
-            checkoutBtn.disabled = false;
-            checkoutBtn.innerHTML = originalContent;
-        }
-    }
-};
-
-// Fonction pour mettre à jour les recommandations
-function updateRecommendations() {
-    // Cette fonction peut être étendue pour mettre à jour les recommandations dynamiquement
-}
-
-// Fonction utilitaire pour masquer l'état du panier vide (utilisée lors de l'ajout d'articles)
-function hideEmptyCartState() {
-    const emptyCartContainer = document.getElementById('empty-cart-container');
-    const emptyCartRecommendations = document.getElementById('empty-cart-recommendations');
-    const mainContainer = document.getElementById('cart-main-container');
-    const recommendationsContainer = document.querySelector('.recommendations-container');
-    
-    // Masquer les sections de panier vide
-    if (emptyCartContainer) {
-        emptyCartContainer.style.display = 'none';
-    }
-    
-    if (emptyCartRecommendations) {
-        emptyCartRecommendations.style.display = 'none';
-    }
-    
-    // Afficher le contenu principal
-    if (mainContainer) {
-        mainContainer.style.display = 'block';
-    }
-    
-    if (recommendationsContainer) {
-        recommendationsContainer.style.display = 'block';
-    }
 }
 
 // Fonction pour mettre à jour seulement le résumé de la commande
@@ -2554,14 +2297,11 @@ function updateCartSummary() {
             }
         }
     })
-    .catch(error => {
-        // Erreur silencieuse
-        console.error('Erreur lors de la mise à jour du résumé du panier:', error);
-    });
+    .catch(() => {});
 }
 
 // Fonction pour ajouter un article au panier (version spécifique à la page panier)
-function addToCartFromCartPage(courseId) {
+function addToCartFromCartPage(clickEvent, courseId) {
     // Vérifier si une requête est déjà en cours
     if (window.addingToCart) {
         return;
@@ -2571,7 +2311,7 @@ function addToCartFromCartPage(courseId) {
     window.addingToCart = true;
     
     // Désactiver le bouton
-    const button = event.target.closest('button');
+    const button = clickEvent && clickEvent.target ? clickEvent.target.closest('button') : null;
     if (button) {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Ajout...';
@@ -2596,7 +2336,7 @@ function addToCartFromCartPage(courseId) {
         
         // Si ce n'est pas du JSON, c'est probablement une erreur HTML
         if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
+            await response.text();
             
             if (response.status === 401 || response.status === 403) {
                 throw new Error('Votre session a expiré. Veuillez vous reconnecter.');
@@ -2706,8 +2446,6 @@ function updateCartCount() {
     });
 }
 
-// Fonction supprimée - plus nécessaire avec la nouvelle approche
-
 // Variable pour le timeout de debounce
 let promoValidationTimeout = null;
 // Variable pour tracker l'état du code promo
@@ -2754,7 +2492,7 @@ function validatePromoCodeRealtime(promoCode) {
         const contentType = response.headers.get('content-type');
         
         if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
+            await response.text();
             throw new Error('Erreur lors de la vérification du code promo');
         }
         
@@ -3234,7 +2972,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (courseIdMatch) {
                 const courseId = parseInt(courseIdMatch[1]);
-                addToCartFromCartPage(courseId);
+                addToCartFromCartPage(e, courseId);
             }
         }
     });
@@ -3312,7 +3050,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const email = (document.getElementById('guestCheckoutEmail')?.value || '').trim();
             const phone = (document.getElementById('guestCheckoutPhone')?.value || '').trim();
             if (!name || !email || !phone) {
-                showNotification('Veuillez renseigner votre nom, votre e-mail et votre téléphone.', 'error');
+                const clientErrors = {};
+                if (!name) {
+                    clientErrors.name = ['Veuillez renseigner votre nom complet.'];
+                }
+                if (!email) {
+                    clientErrors.email = ['Veuillez renseigner votre adresse e-mail.'];
+                }
+                if (!phone) {
+                    clientErrors.phone = ['Veuillez renseigner votre numéro de téléphone.'];
+                }
+                const firstEmpty = applyGuestCheckoutFieldErrors(clientErrors);
+                if (firstEmpty) {
+                    firstEmpty.focus({ preventScroll: false });
+                    try {
+                        firstEmpty.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } catch (scrollErr) {}
+                }
                 return false;
             }
             const btn = guestCheckoutSubmitBtn;
