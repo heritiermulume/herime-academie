@@ -16,6 +16,7 @@
 
 @section('admin-content')
     @include('partials.upload-progress-modal')
+    <div id="emailAsyncNoticeContainer" class="mb-3" style="display: none;"></div>
     <section class="admin-panel admin-panel--main">
         <div class="admin-panel__body">
                     <x-admin.search-panel
@@ -206,8 +207,8 @@
                             <i class="fas fa-clock text-warning"></i>
                         </div>
                         <div class="admin-stat-card__content">
-                            <div class="admin-stat-card__value">{{ number_format($emailStats['pending_scheduled'] ?? 0) }}</div>
-                            <div class="admin-stat-card__label">En attente</div>
+                            <div class="admin-stat-card__value" id="processingNowCount">{{ number_format($emailStats['processing_now'] ?? 0) }}</div>
+                            <div class="admin-stat-card__label">En traitement</div>
                         </div>
                     </div>
                 </div>
@@ -1551,6 +1552,102 @@ async function openDeleteWhatsAppModal(button) {
         form.submit();
     }
 }
+</script>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const processingCountElement = document.getElementById('processingNowCount');
+    const processingCountEndpoint = "{{ route('admin.announcements.email-processing-count') }}";
+    const minPollDelayMs = 10000;
+    const maxPollDelayMs = 15000;
+
+    function randomPollDelay() {
+        return Math.floor(Math.random() * (maxPollDelayMs - minPollDelayMs + 1)) + minPollDelayMs;
+    }
+
+    function refreshProcessingCount() {
+        if (!processingCountElement) {
+            return;
+        }
+
+        fetch(processingCountEndpoint, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                return response.json();
+            })
+            .then(data => {
+                const nextCount = Number(data?.count ?? 0);
+                processingCountElement.textContent = Number.isFinite(nextCount) ? nextCount.toLocaleString('fr-FR') : '0';
+            })
+            .catch(error => {
+                console.warn('Impossible de rafraichir le compteur de traitement des emails:', error);
+            })
+            .finally(() => {
+                window.setTimeout(refreshProcessingCount, randomPollDelay());
+            });
+    }
+
+    if (processingCountElement) {
+        window.setTimeout(refreshProcessingCount, randomPollDelay());
+    }
+
+    const container = document.getElementById('emailAsyncNoticeContainer');
+    if (!container) {
+        return;
+    }
+
+    const noticeKey = 'adminEmailAsyncNotice';
+    let noticeRaw = null;
+
+    try {
+        noticeRaw = sessionStorage.getItem(noticeKey);
+    } catch (error) {
+        console.warn('Session storage indisponible:', error);
+        return;
+    }
+
+    if (!noticeRaw) {
+        return;
+    }
+
+    let notice = null;
+    try {
+        notice = JSON.parse(noticeRaw);
+    } catch (error) {
+        sessionStorage.removeItem(noticeKey);
+        return;
+    }
+
+    const createdAt = Number(notice?.createdAt || 0);
+    const isRecent = createdAt > 0 && (Date.now() - createdAt) < (5 * 60 * 1000);
+    if (!isRecent) {
+        sessionStorage.removeItem(noticeKey);
+        return;
+    }
+
+    const message = notice?.message || "L'envoi des emails a ete lance en arriere-plan.";
+    container.innerHTML = `
+        <div class="alert alert-info alert-dismissible fade show mb-0" role="alert">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span><i class="fas fa-spinner fa-spin me-2"></i>${message}</span>
+                <a href="{{ route('admin.emails.sent') }}" class="btn btn-sm btn-outline-primary">Voir emails envoyes</a>
+                <a href="{{ route('admin.emails.scheduled') }}" class="btn btn-sm btn-outline-secondary">Voir emails programmes</a>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    container.style.display = 'block';
+    sessionStorage.removeItem(noticeKey);
+});
 </script>
 @endpush
 

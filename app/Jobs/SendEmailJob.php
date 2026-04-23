@@ -11,7 +11,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
 class SendEmailJob implements ShouldQueue
@@ -23,17 +22,26 @@ class SendEmailJob implements ShouldQueue
     public $content;
     public $attachmentPaths;
     public $recipientType;
+    public $sentEmailId;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(User $user, string $subject, string $content, array $attachmentPaths = [], string $recipientType = 'custom')
+    public function __construct(
+        User $user,
+        string $subject,
+        string $content,
+        array $attachmentPaths = [],
+        string $recipientType = 'custom',
+        ?int $sentEmailId = null
+    )
     {
         $this->user = $user;
         $this->subject = $subject;
         $this->content = $content;
         $this->attachmentPaths = $attachmentPaths;
         $this->recipientType = $recipientType;
+        $this->sentEmailId = $sentEmailId;
     }
 
     /**
@@ -56,41 +64,13 @@ class SendEmailJob implements ShouldQueue
                 $errorMessage = $results['email']['error'] ?? 'Erreur inconnue lors de l\'envoi de l\'email';
                 Log::error("Échec de l'envoi d'email à {$this->user->email}: {$errorMessage}");
                 
-                // Enregistrer l'échec
-                SentEmail::create([
-                    'user_id' => $this->user->id,
-                    'recipient_email' => $this->user->email,
-                    'recipient_name' => $this->user->name,
-                    'subject' => $this->subject,
-                    'content' => $this->content,
-                    'attachments' => $this->attachmentPaths ?: null,
-                    'type' => $this->recipientType,
-                    'status' => 'failed',
-                    'error_message' => $errorMessage,
-                    'metadata' => [
-                        'recipient_type' => $this->recipientType,
-                    ],
-                ]);
+                $this->storeFailedEmail($errorMessage);
                 
                 // Lancer une exception pour que le job soit marqué comme échoué
                 throw new \Exception($errorMessage);
             }
             
-            // Enregistrer l'email envoyé avec succès
-            SentEmail::create([
-                'user_id' => $this->user->id,
-                'recipient_email' => $this->user->email,
-                'recipient_name' => $this->user->name,
-                'subject' => $this->subject,
-                'content' => $this->content,
-                'attachments' => $this->attachmentPaths ?: null,
-                'type' => $this->recipientType,
-                'status' => 'sent',
-                'sent_at' => now(),
-                'metadata' => [
-                    'recipient_type' => $this->recipientType,
-                ],
-            ]);
+            $this->storeSentEmail();
             
             // Notifier l'utilisateur qu'un email lui a été envoyé
             try {
@@ -104,32 +84,98 @@ class SendEmailJob implements ShouldQueue
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // Enregistrer l'échec si ce n'est pas déjà fait
-            $existingEmail = SentEmail::where('user_id', $this->user->id)
-                ->where('subject', $this->subject)
-                ->where('recipient_email', $this->user->email)
-                ->where('created_at', '>=', now()->subMinute())
-                ->first();
-            
-            if (!$existingEmail) {
-                SentEmail::create([
-                    'user_id' => $this->user->id,
-                    'recipient_email' => $this->user->email,
-                    'recipient_name' => $this->user->name,
-                    'subject' => $this->subject,
-                    'content' => $this->content,
-                    'attachments' => $this->attachmentPaths ?: null,
-                    'type' => $this->recipientType,
-                    'status' => 'failed',
-                    'error_message' => $e->getMessage(),
-                    'metadata' => [
-                        'recipient_type' => $this->recipientType,
-                    ],
-                ]);
-            }
+            $this->storeFailedEmail($e->getMessage());
             
             // Relancer l'exception pour que le job soit marqué comme échoué dans la queue
             throw $e;
         }
+    }
+
+    protected function storeSentEmail(): void
+    {
+        $existingEmail = $this->resolveTrackedEmail();
+        if ($existingEmail) {
+            $existingEmail->update([
+                'status' => 'sent',
+                'error_message' => null,
+                'sent_at' => now(),
+            ]);
+
+            return;
+        }
+
+        SentEmail::create($this->baseEmailPayload([
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]));
+    }
+
+    protected function storeFailedEmail(string $errorMessage): void
+    {
+        $existingEmail = $this->resolveTrackedEmail();
+        if ($existingEmail) {
+            $existingEmail->update([
+                'status' => 'failed',
+                'error_message' => $errorMessage,
+                'sent_at' => null,
+            ]);
+
+            return;
+        }
+
+        $recentFailure = SentEmail::where('user_id', $this->user->id)
+            ->where('subject', $this->subject)
+            ->where('recipient_email', $this->user->email)
+            ->where('created_at', '>=', now()->subMinute())
+            ->first();
+
+        if ($recentFailure) {
+            $recentFailure->update([
+                'status' => 'failed',
+                'error_message' => $errorMessage,
+                'sent_at' => null,
+            ]);
+
+            return;
+        }
+
+        SentEmail::create($this->baseEmailPayload([
+            'status' => 'failed',
+            'error_message' => $errorMessage,
+            'sent_at' => null,
+        ]));
+    }
+
+    protected function resolveTrackedEmail(): ?SentEmail
+    {
+        if ($this->sentEmailId) {
+            $tracked = SentEmail::find($this->sentEmailId);
+            if ($tracked) {
+                return $tracked;
+            }
+        }
+
+        return SentEmail::where('user_id', $this->user->id)
+            ->where('subject', $this->subject)
+            ->where('recipient_email', $this->user->email)
+            ->whereIn('status', ['pending', 'failed'])
+            ->where('created_at', '>=', now()->subMinutes(5))
+            ->first();
+    }
+
+    protected function baseEmailPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'user_id' => $this->user->id,
+            'recipient_email' => $this->user->email,
+            'recipient_name' => $this->user->name,
+            'subject' => $this->subject,
+            'content' => $this->content,
+            'attachments' => $this->attachmentPaths ?: null,
+            'type' => 'custom',
+            'metadata' => [
+                'recipient_type' => $this->recipientType,
+            ],
+        ], $overrides);
     }
 }

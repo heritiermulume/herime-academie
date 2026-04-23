@@ -3030,6 +3030,7 @@ class AdminController extends Controller
             'total_sent' => SentEmail::count(),
             'sent_today' => SentEmail::whereDate('sent_at', today())->count(),
             'failed_today' => SentEmail::whereDate('created_at', today())->where('status', 'failed')->count(),
+            'processing_now' => SentEmail::where('status', 'pending')->where('type', 'custom')->count(),
             'pending_scheduled' => ScheduledEmail::where('status', 'pending')->count(),
         ];
 
@@ -3639,6 +3640,18 @@ class AdminController extends Controller
     }
 
     /**
+     * Compter les emails actuellement en traitement.
+     */
+    public function emailProcessingCount()
+    {
+        $count = SentEmail::where('status', 'pending')
+            ->where('type', 'custom')
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
+
+    /**
      * Uploader une image pour TinyMCE
      */
     public function uploadImage(Request $request)
@@ -3742,7 +3755,6 @@ class AdminController extends Controller
 
             // Envoi immédiat ou programmé
             if ($request->send_type === 'now') {
-                // S'assurer que $users est une Collection
                 if (! $users instanceof \Illuminate\Support\Collection) {
                     $users = collect($users);
                 }
@@ -3760,126 +3772,46 @@ class AdminController extends Controller
                 $filteredRecipientCount = $users->count();
                 $ignoredRecipientCount = max(0, $initialRecipientCount - $filteredRecipientCount);
 
-                // Gros envois : éviter la coupure PHP/nginx avant la fin des envois
-                if ($users->count() > 25) {
-                    @set_time_limit(0);
-                }
+                // Éviter les doublons récents avant de pousser les jobs
+                $eligibleUsers = $users->reject(function ($user) use ($subject, $recipientType) {
+                    return SentEmail::where('user_id', $user->id)
+                        ->where('subject', $subject)
+                        ->where('status', 'sent')
+                        ->where('created_at', '>=', now()->subMinutes(5))
+                        ->where('metadata->recipient_type', $recipientType)
+                        ->exists();
+                })->values();
 
-                // Limiter le débit pour réduire les blocages/quota SMTP sur hébergement mutualisé.
-                // Valeur fixe volontaire pour éviter de dépendre de .env.
-                $maxPerMinute = 20;
-                $delayMicroseconds = (int) floor(60000000 / $maxPerMinute);
+                $skippedDuplicateCount = max(0, $filteredRecipientCount - $eligibleUsers->count());
 
-                $sentCount = 0;
-                $failedCount = 0;
-                $skippedDuplicateCount = 0;
-                $totalRecipientsForThrottle = $users->count();
+                // En production, on envoie après la réponse HTTP pour éviter les 504.
+                // En test, exécuter immédiatement pour conserver des assertions déterministes.
+                $runAsyncAfterResponse = ! app()->environment('testing');
+                $eligibleUsers->each(function ($user) use ($subject, $content, $attachmentPaths, $recipientType, $runAsyncAfterResponse) {
+                    $pendingEmail = SentEmail::create([
+                        'user_id' => $user->id,
+                        'recipient_email' => $user->email,
+                        'recipient_name' => $user->name,
+                        'subject' => $subject,
+                        'content' => $content,
+                        'attachments' => $attachmentPaths ?: null,
+                        'type' => 'custom',
+                        'status' => 'pending',
+                        'metadata' => [
+                            'recipient_type' => $recipientType,
+                        ],
+                    ]);
 
-                // Envoyer immédiatement en lots
-                $users->chunk(100)->each(function ($userChunk) use ($subject, $content, $attachmentPaths, &$sentCount, &$failedCount, &$skippedDuplicateCount, $recipientType, $totalRecipientsForThrottle, $delayMicroseconds) {
-                    foreach ($userChunk as $user) {
-                        // Anti-doublon : même objet + même type de campagne (metadata) dans les 5 dernières minutes.
-                        // Sans le filtre recipient_type, un envoi « sélectionné » ou « un utilisateur » avec le même
-                        // objet bloquait ensuite l'envoi « tous les utilisateurs » pour ces personnes.
-                        $recentSent = SentEmail::where('user_id', $user->id)
-                            ->where('subject', $subject)
-                            ->where('status', 'sent')
-                            ->where('created_at', '>=', now()->subMinutes(5))
-                            ->where('metadata->recipient_type', $recipientType)
-                            ->exists();
-                        if ($recentSent) {
-                            $skippedDuplicateCount++;
+                    if ($runAsyncAfterResponse) {
+                        SendEmailJob::dispatchAfterResponse($user, $subject, $content, $attachmentPaths, $recipientType, $pendingEmail->id);
 
-                            continue;
-                        }
-                        try {
-                            // Envoyer l'email de manière synchrone (immédiate)
-                            // Mail::to()->send() envoie immédiatement, contrairement à Mail::to()->queue()
-                            $mailable = new CustomAnnouncementMail($subject, $content, $attachmentPaths);
-                            $communicationService = app(\App\Services\CommunicationService::class);
-                            $results = $communicationService->sendEmailAndWhatsApp($user, $mailable, null, false);
-
-                            // Vérifier si l'envoi a réussi
-                            if ($results['email']['success']) {
-                                // Enregistrer l'email envoyé avec succès
-                                SentEmail::create([
-                                    'user_id' => $user->id,
-                                    'recipient_email' => $user->email,
-                                    'recipient_name' => $user->name,
-                                    'subject' => $subject,
-                                    'content' => $content,
-                                    'attachments' => $attachmentPaths ?: null,
-                                    'type' => 'custom',
-                                    'status' => 'sent',
-                                    'sent_at' => now(),
-                                    'metadata' => [
-                                        'recipient_type' => $recipientType,
-                                    ],
-                                ]);
-
-                                // Notifier l'utilisateur qu'un email lui a été envoyé
-                                // Utiliser sendNow() pour envoyer immédiatement sans passer par la queue
-                                try {
-                                    Notification::sendNow($user, new EmailSentNotification($subject, now()));
-                                } catch (\Exception $notifException) {
-                                    Log::warning("Impossible d'envoyer la notification email à {$user->email}: ".$notifException->getMessage());
-                                }
-
-                                $sentCount++;
-                            } else {
-                                // Enregistrer l'échec
-                                $errorMessage = $results['email']['error'] ?? 'Erreur inconnue lors de l\'envoi de l\'email';
-                                SentEmail::create([
-                                    'user_id' => $user->id,
-                                    'recipient_email' => $user->email,
-                                    'recipient_name' => $user->name,
-                                    'subject' => $subject,
-                                    'content' => $content,
-                                    'attachments' => $attachmentPaths ?: null,
-                                    'type' => 'custom',
-                                    'status' => 'failed',
-                                    'error_message' => $errorMessage,
-                                    'metadata' => [
-                                        'recipient_type' => $recipientType,
-                                    ],
-                                ]);
-                                $failedCount++;
-                                Log::error("Échec de l'envoi d'email à {$user->email}: {$errorMessage}");
-                            }
-                        } catch (\Exception $e) {
-                            \Log::error("Erreur lors de l'envoi d'email à {$user->email}: ".$e->getMessage());
-
-                            // Enregistrer l'échec
-                            SentEmail::create([
-                                'user_id' => $user->id,
-                                'recipient_email' => $user->email,
-                                'recipient_name' => $user->name,
-                                'subject' => $subject,
-                                'content' => $content,
-                                'attachments' => $attachmentPaths ?: null,
-                                'type' => 'custom',
-                                'status' => 'failed',
-                                'error_message' => $e->getMessage(),
-                                'metadata' => [
-                                    'recipient_type' => $recipientType,
-                                ],
-                            ]);
-
-                            $failedCount++;
-                        }
-
-                        // Ralentir légèrement l'envoi sur les campagnes volumineuses
-                        // pour éviter le throttling SMTP côté fournisseur.
-                        if ($totalRecipientsForThrottle > 10) {
-                            usleep($delayMicroseconds);
-                        }
+                        return;
                     }
+
+                    SendEmailJob::dispatchSync($user, $subject, $content, $attachmentPaths, $recipientType, $pendingEmail->id);
                 });
 
-                $message = "Email envoyé avec succès à {$sentCount} destinataire(s).";
-                if ($failedCount > 0) {
-                    $message .= " {$failedCount} envoi(s) ont échoué.";
-                }
+                $message = "L'envoi des emails est lancé en arrière-plan pour {$eligibleUsers->count()} destinataire(s).";
                 if ($skippedDuplicateCount > 0) {
                     $message .= " {$skippedDuplicateCount} destinataire(s) ignoré(s) (même objet et même type d'envoi déjà envoyé dans les 5 dernières minutes).";
                 }

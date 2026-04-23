@@ -478,6 +478,7 @@
 // Variables globales
 let selectedUsers = [];
 let quill;
+const EMAIL_ASYNC_NOTICE_KEY = 'adminEmailAsyncNotice';
 
 // Initialiser Quill Editor quand le DOM est prêt
 document.addEventListener('DOMContentLoaded', function() {
@@ -1555,6 +1556,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     const data = await response.json();
                     if (data.success) {
+                        try {
+                            sessionStorage.setItem(EMAIL_ASYNC_NOTICE_KEY, JSON.stringify({
+                                message: data.message || "L'envoi des emails a ete lance en arriere-plan.",
+                                createdAt: Date.now()
+                            }));
+                        } catch (storageError) {
+                            console.warn('Impossible de sauvegarder la notification temporaire:', storageError);
+                        }
+
                         if (data.redirect) {
                             window.location.href = data.redirect;
                         } else {

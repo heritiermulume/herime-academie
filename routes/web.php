@@ -613,6 +613,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('announcements.search-users');
         Route::get('/announcements/count-users', [AdminController::class, 'countUsers'])
             ->name('announcements.count-users');
+        Route::get('/announcements/email-processing-count', [AdminController::class, 'emailProcessingCount'])
+            ->name('announcements.email-processing-count');
         Route::post('/announcements/upload-image', [AdminController::class, 'uploadImage'])
             ->middleware('sso.validate')
             ->name('announcements.upload-image');
