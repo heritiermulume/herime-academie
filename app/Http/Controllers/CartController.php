@@ -397,9 +397,9 @@ class CartController extends Controller
 
         if ($isNewAccount) {
             try {
-                $communicationService->sendWelcomeCommunicationOnce($result['user']);
+                $communicationService->scheduleWelcomeCommunicationOnce($result['user']);
             } catch (\Throwable $e) {
-                Log::error('Guest checkout: échec envoi message de bienvenue (le parcours continue)', [
+                Log::error('Guest checkout: échec planification message de bienvenue (le parcours continue)', [
                     'user_id' => $result['user']->id,
                     'message' => $e->getMessage(),
                 ]);

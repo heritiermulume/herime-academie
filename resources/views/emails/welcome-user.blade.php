@@ -56,12 +56,18 @@
             font-size: 16px;
         }
         .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-            font-size: 14px;
-            color: #6c757d;
             text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .footer p {
+            margin-bottom: 10px;
+        }
+        .footer a {
+            color: #003366;
+            text-decoration: none;
         }
     </style>
 </head>
@@ -109,8 +115,8 @@
             </p>
 
             <p>
-                Pour découvrir notre vision complète, consultez notre page à propos :
-                <a href="{{ route('about') }}">{{ route('about') }}</a>
+                Pour découvrir notre vision complète,
+                <a href="{{ route('about') }}">consultez notre page À propos</a>.
             </p>
 
             <div class="button-container">
@@ -128,7 +134,10 @@
 
         <div class="footer">
             <p>Cet email a été envoyé par <strong>{{ config('app.name') }}</strong></p>
-            <p>{{ config('app.url') }}</p>
+            <p>
+                <a href="{{ config('app.url') }}">Visiter le site</a> |
+                <a href="{{ route('contact') }}">Nous contacter</a>
+            </p>
         </div>
     </div>
 </body>

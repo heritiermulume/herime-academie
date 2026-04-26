@@ -81,6 +81,21 @@ return Application::configure(basePath: dirname(__DIR__))
             ->hourly()
             ->name('announcements-expire')
             ->withoutOverlapping(25);
+
+        // Traiter la file d’attente (jobs retardés inclus, ex. accueil T+30) sans worker permanent.
+        // Nécessite QUEUE_CONNECTION != sync (ex. database) + table `jobs` migrée. Voir DEPLOY_O2SWITCH.md.
+        $queueDefault = (string) config('queue.default');
+        if ($queueDefault !== '' && $queueDefault !== 'sync') {
+            $schedule->command('queue:work', [
+                $queueDefault,
+                '--stop-when-empty',
+                '--max-time=50',
+                '--sleep=1',
+            ])
+                ->everyMinute()
+                ->name('queue-work-stop-when-empty')
+                ->withoutOverlapping(5);
+        }
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

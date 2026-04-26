@@ -187,9 +187,9 @@ class SSOCallbackController extends Controller
 
             if ($user->wasRecentlyCreated) {
                 try {
-                    $this->communicationService->sendWelcomeCommunicationOnce($user);
+                    $this->communicationService->scheduleWelcomeCommunicationOnce($user);
                 } catch (\Throwable $welcomeException) {
-                    Log::error('SSO callback: failed to send welcome communication', [
+                    Log::error('SSO callback: failed to schedule welcome communication', [
                         'user_id' => $user->id,
                         'email' => $user->email,
                         'error' => $welcomeException->getMessage(),

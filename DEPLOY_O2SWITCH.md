@@ -112,7 +112,10 @@ DB_PASSWORD=votre_password_sql
 BROADCAST_DRIVER=log
 CACHE_DRIVER=file
 FILESYSTEM_DISK=local
-QUEUE_CONNECTION=sync
+# En production : utiliser `database` (ou redis) pour les jobs retardés (ex. email d’accueil T+30).
+# Le cron `schedule:run` exécute aussi `queue:work --stop-when-empty` chaque minute (voir bootstrap/app.php).
+# En local uniquement, `sync` peut rester acceptable.
+QUEUE_CONNECTION=database
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 
@@ -301,6 +304,20 @@ Dans **cPanel > Tâches Cron**, ajoutez :
 * * * * * /opt/alt/php82/usr/bin/php ~/public_html/herime-academie/artisan schedule:run >> /dev/null 2>&1
 ```
 
+Une seule tâche cron suffit : `schedule:run` déclenche à la fois les tâches métier (abonnements, etc.) et le **traitement court de la file d’attente** (`queue:work … --stop-when-empty`), ce qui exécute les jobs **avec délai** (par exemple l’accueil email/WhatsApp/notification **30 minutes** après création de compte).
+
+**Prérequis file d’attente (production)** :
+
+1. Dans `.env` : `QUEUE_CONNECTION=database` (recommandé sur O2Switch ; éviter `sync` si vous voulez les délais).
+2. Tables Laravel pour les jobs (une fois par projet) :
+
+```bash
+cd ~/public_html/herime-academie
+php artisan queue:table
+php artisan queue:failed-table
+php artisan migrate
+```
+
 Vérification rapide :
 
 ```bash
@@ -308,7 +325,7 @@ cd ~/public_html/herime-academie
 php artisan schedule:list
 ```
 
-Vous devez voir `subscriptions:process-renewals`.
+Vous devez notamment voir `subscriptions:process-renewals` et `queue-work-stop-when-empty`.
 
 ### 20.2 Variables `.env` critiques
 

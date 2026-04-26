@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SendWelcomeCommunicationJob;
 use App\Jobs\SendWhatsAppFromEmailJob;
 use App\Mail\WelcomeUserMail;
 use App\Models\SentEmail;
@@ -19,6 +20,49 @@ class CommunicationService
     public function __construct(WhatsAppService $whatsappService)
     {
         $this->whatsappService = $whatsappService;
+    }
+
+    /**
+     * Planifie l’envoi du message d’accueil (email + WhatsApp + notification) ~30 minutes après création du compte.
+     * Idempotent : une seule planification par utilisateur dans la fenêtre considérée.
+     */
+    public function scheduleWelcomeCommunicationOnce(User $user): void
+    {
+        try {
+            $scheduledKey = 'welcome-communication-scheduled-'.$user->id;
+
+            if (Cache::has($scheduledKey)) {
+                return;
+            }
+
+            $lock = Cache::lock('welcome-schedule-dispatch-'.$user->id, 10);
+            $dispatched = $lock->get(function () use ($user, $scheduledKey) {
+                if (Cache::has($scheduledKey)) {
+                    return false;
+                }
+
+                SendWelcomeCommunicationJob::dispatch($user->id)
+                    ->delay(now()->addMinutes(30));
+
+                // Couvre le délai + marge pour éviter une double planification avant exécution du job.
+                Cache::put($scheduledKey, true, now()->addMinutes(45));
+
+                return true;
+            });
+
+            if ($dispatched === false) {
+                Log::debug('Planification accueil ignorée (verrou ou doublon)', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('CommunicationService: échec planification message d’accueil', [
+                'user_id' => $user->id ?? null,
+                'email' => $user->email ?? null,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
