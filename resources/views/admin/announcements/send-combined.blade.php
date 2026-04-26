@@ -10,6 +10,8 @@
     </a>
 @endsection
 
+@include('partials.upload-progress-modal')
+
 @section('admin-content')
 <div class="admin-panel">
     <div class="admin-panel__body admin-panel__body--padded">
@@ -250,6 +252,7 @@
                     <label class="form-label">Contenu *</label>
                     <div id="email_content_editor" style="height: 400px;"></div>
                     <textarea class="form-control d-none" id="email_content" name="email_content" required></textarea>
+                    <div id="email_editor_upload_status" class="rich-editor-upload-status" role="status" aria-live="polite"></div>
                 </div>
 
                 <div class="mb-3">
@@ -349,18 +352,246 @@
     border-radius: 6px;
     font-size: 14px;
 }
+
+.rich-editor-upload-status {
+    display: none;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+}
+.rich-editor-upload-status.is-visible {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.rich-editor-upload-status.is-loading {
+    color: #0c4a6e;
+    background: #e0f2fe;
+    border: 1px solid #bae6fd;
+}
+.rich-editor-upload-status.is-success {
+    color: #065f46;
+    background: #d1fae5;
+    border: 1px solid #a7f3d0;
+}
+.rich-editor-upload-status.is-error {
+    color: #991b1b;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+}
 </style>
 @endpush
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/resumablejs@1.1.0/resumable.min.js"></script>
 <script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
 <script>
 // Variables globales
 let selectedUsers = [];
 let quill;
+let pendingRichEditorUploads = 0;
 
 // Initialiser Quill Editor quand le DOM est prêt
 document.addEventListener('DOMContentLoaded', function() {
+    const RICH_EDITOR_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+    const editorUploadStatusEl = document.getElementById('email_editor_upload_status');
+
+    function getRichEditorChunkEndpoint() {
+        const origin = window.location.origin.replace(/\/+$/, '');
+        const path = "{{ trim(parse_url(route('admin.uploads.chunk'), PHP_URL_PATH), '/') }}";
+        return `${origin}/${path}`;
+    }
+
+    function setEditorUploadStatus(state, message = '') {
+        if (!editorUploadStatusEl) {
+            return;
+        }
+        editorUploadStatusEl.classList.remove('is-visible', 'is-loading', 'is-success', 'is-error');
+        if (!state || !message) {
+            editorUploadStatusEl.textContent = '';
+            return;
+        }
+        editorUploadStatusEl.textContent = message;
+        editorUploadStatusEl.classList.add('is-visible', `is-${state}`);
+    }
+
+    function hasPendingOrLocalImages() {
+        return pendingRichEditorUploads > 0 || !!quill.root.querySelector('img[src^="data:image/"]');
+    }
+
+    function ensureModernDialogModal() {
+        let modalEl = document.getElementById('announcementCombinedModernDialog');
+        if (modalEl) {
+            return modalEl;
+        }
+
+        modalEl = document.createElement('div');
+        modalEl.className = 'modal fade';
+        modalEl.id = 'announcementCombinedModernDialog';
+        modalEl.tabIndex = -1;
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" data-dialog-title>Information</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-0" data-dialog-message></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" data-dialog-ok>OK</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+
+        return modalEl;
+    }
+
+    function showModernAlert(message, title = 'Information') {
+        return new Promise((resolve) => {
+            const modalEl = ensureModernDialogModal();
+            const titleEl = modalEl.querySelector('[data-dialog-title]');
+            const messageEl = modalEl.querySelector('[data-dialog-message]');
+            const okBtn = modalEl.querySelector('[data-dialog-ok]');
+            const modal = new bootstrap.Modal(modalEl);
+
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            const onOk = () => modal.hide();
+            const onHidden = () => {
+                okBtn.removeEventListener('click', onOk);
+                modalEl.removeEventListener('hidden.bs.modal', onHidden);
+                resolve();
+            };
+
+            okBtn.addEventListener('click', onOk);
+            modalEl.addEventListener('hidden.bs.modal', onHidden);
+            modal.show();
+        });
+    }
+
+    function createUploadTask(fileName, fileSize, description = 'Téléversement en cours…') {
+        if (!window.UploadProgressModal) {
+            return null;
+        }
+        const taskId = `announcement-combined-upload-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+        window.UploadProgressModal.startTask(taskId, {
+            label: fileName || 'Image',
+            description,
+            sizeLabel: fileSize ? `${Math.max(1, Math.round(fileSize / 1024))} Ko` : '',
+            initialMessage: 'Préparation du téléversement…',
+        });
+        return taskId;
+    }
+
+    function updateUploadTask(taskId, percent, message) {
+        if (taskId && window.UploadProgressModal) {
+            window.UploadProgressModal.updateTask(taskId, percent, message);
+        }
+    }
+
+    function completeUploadTask(taskId, message = 'Téléversement terminé') {
+        if (taskId && window.UploadProgressModal) {
+            window.UploadProgressModal.completeTask(taskId, message);
+        }
+    }
+
+    function errorUploadTask(taskId, message = 'Erreur lors du téléversement') {
+        if (taskId && window.UploadProgressModal) {
+            window.UploadProgressModal.errorTask(taskId, message);
+        }
+    }
+
+    function uploadRichEditorImageInChunks(file) {
+        return new Promise((resolve, reject) => {
+            const uploadTaskId = createUploadTask(
+                file?.name || 'Image de l’email',
+                file?.size || 0,
+                'Téléversement de l’image de l’email'
+            );
+
+            if (typeof Resumable === 'undefined') {
+                errorUploadTask(uploadTaskId, 'Votre navigateur ne supporte pas l’upload fractionné.');
+                reject(new Error('Votre navigateur ne supporte pas l’upload fractionné.'));
+                return;
+            }
+
+            const resumable = new Resumable({
+                target: getRichEditorChunkEndpoint(),
+                chunkSize: 1 * 1024 * 1024,
+                simultaneousUploads: 3,
+                testChunks: false,
+                throttleProgressCallbacks: 1,
+                fileParameterName: 'file',
+                fileType: ['png', 'jpg', 'jpeg', 'webp', 'gif'],
+                withCredentials: true,
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'application/json',
+                },
+                query: () => ({
+                    upload_type: 'richtext_image',
+                    original_name: file.name,
+                }),
+            });
+
+            let isSettled = false;
+
+            resumable.on('fileProgress', (resumableFile) => {
+                const percent = Math.max(0, Math.min(100, Math.round(resumableFile.progress() * 100)));
+                setEditorUploadStatus('loading', `Téléversement de l'image en cours (${Math.max(5, percent)}%)`);
+                updateUploadTask(uploadTaskId, percent, 'Téléversement en cours…');
+            });
+
+            resumable.on('fileSuccess', (_resumableFile, response) => {
+                if (isSettled) {
+                    return;
+                }
+                isSettled = true;
+                try {
+                    const payload = typeof response === 'string' ? JSON.parse(response) : response;
+                    if (!payload || !payload.url) {
+                        errorUploadTask(uploadTaskId, 'Réponse serveur invalide.');
+                        reject(new Error('Réponse serveur invalide.'));
+                        return;
+                    }
+                    completeUploadTask(uploadTaskId, 'Image importée avec succès');
+                    resolve(payload);
+                } catch (_error) {
+                    errorUploadTask(uploadTaskId, 'Réponse serveur invalide.');
+                    reject(new Error('Réponse serveur invalide.'));
+                } finally {
+                    resumable.cancel();
+                }
+            });
+
+            const handleError = () => {
+                if (isSettled) {
+                    return;
+                }
+                isSettled = true;
+                resumable.cancel();
+                errorUploadTask(uploadTaskId, 'Échec du téléversement de l’image.');
+                reject(new Error('Échec du téléversement de l’image.'));
+            };
+            resumable.on('fileError', handleError);
+            resumable.on('error', handleError);
+            resumable.on('chunkingComplete', function () {
+                if (!resumable.isUploading()) {
+                    resumable.upload();
+                }
+            });
+
+            resumable.addFile(file);
+        });
+    }
+
     // Configuration Quill Editor
     quill = new Quill('#email_content_editor', {
         theme: 'snow',
@@ -380,7 +611,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bounds: '#email_content_editor'
     });
 
-    // Upload d'images
+    // Upload d'images (chunk upload + remplacement URL serveur)
     var toolbar = quill.getModule('toolbar');
     toolbar.addHandler('image', function() {
         var input = document.createElement('input');
@@ -388,30 +619,47 @@ document.addEventListener('DOMContentLoaded', function() {
         input.setAttribute('accept', 'image/*');
         input.click();
         
-        input.onchange = function() {
+        input.onchange = async function() {
             var file = input.files[0];
             if (file) {
-                var formData = new FormData();
-                formData.append('file', file);
-                formData.append('_token', '{{ csrf_token() }}');
-                
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', '{{ route("admin.announcements.upload-image") }}');
-                
-                xhr.onload = function() {
-                    if (xhr.status === 200) {
-                        var json = JSON.parse(xhr.responseText);
-                        if (json.location) {
-                            var range = quill.getSelection(true);
-                            quill.insertEmbed(range.index, 'image', json.location);
-                            quill.setSelection(range.index + 1);
+                if (file.size > RICH_EDITOR_IMAGE_MAX_SIZE) {
+                    showModernAlert('Image trop volumineuse. Maximum 5 Mo.');
+                    return;
+                }
+
+                const readAsDataUrl = (selectedFile) => new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => resolve(event.target?.result || '');
+                    reader.onerror = () => reject(new Error('Impossible de lire le fichier image.'));
+                    reader.readAsDataURL(selectedFile);
+                });
+
+                try {
+                    const localSrc = await readAsDataUrl(file);
+                    const range = quill.getSelection(true);
+                    const index = range ? range.index : quill.getLength();
+                    quill.insertEmbed(index, 'image', localSrc, 'user');
+                    quill.setSelection(index + 1);
+
+                    pendingRichEditorUploads++;
+                    setEditorUploadStatus('loading', "Téléversement de l'image en cours (5%)");
+                    const payload = await uploadRichEditorImageInChunks(file);
+                    const images = quill.root.querySelectorAll('img');
+                    for (const image of images) {
+                        if (image.getAttribute('src') === localSrc) {
+                            image.setAttribute('src', payload.url);
+                            break;
                         }
-                    } else {
-                        alert('Erreur lors du téléchargement de l\'image');
                     }
-                };
-                
-                xhr.send(formData);
+                    quill.update('user');
+                    setEditorUploadStatus('success', 'Image téléversée et intégrée.');
+                    window.setTimeout(() => setEditorUploadStatus(null, ''), 2500);
+                } catch (error) {
+                    setEditorUploadStatus('error', error?.message || "Échec du téléversement de l'image.");
+                    showModernAlert(error?.message || "Échec du téléversement de l'image.");
+                } finally {
+                    pendingRichEditorUploads = Math.max(0, pendingRichEditorUploads - 1);
+                }
             }
         };
     });
@@ -1125,12 +1373,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sendCombinedForm) {
         sendCombinedForm.addEventListener('submit', function(e) {
             e.preventDefault();
+
+            if (hasPendingOrLocalImages()) {
+                showModernAlert('Veuillez patienter: une image est encore en cours de téléversement dans le contenu de l’email.');
+                return false;
+            }
             
             const sendEmail = document.getElementById('send_email').checked;
             const sendWhatsApp = document.getElementById('send_whatsapp').checked;
             
             if (!sendEmail && !sendWhatsApp) {
-                alert('Veuillez sélectionner au moins un canal d\'envoi (Email ou WhatsApp)');
+                showModernAlert('Veuillez sélectionner au moins un canal d\'envoi (Email ou WhatsApp)');
                 return false;
             }
             
@@ -1141,25 +1394,25 @@ document.addEventListener('DOMContentLoaded', function() {
             if (type === 'role') {
                 const checkedRoles = document.querySelectorAll('input[name="roles[]"]:checked');
                 if (checkedRoles.length === 0) {
-                    alert('Veuillez sélectionner au moins un rôle');
+                    showModernAlert('Veuillez sélectionner au moins un rôle');
                     isValid = false;
                 }
             } else if (type === 'course') {
                 const courseId = document.getElementById('content_id')?.value;
                 if (!courseId) {
-                    alert('Veuillez sélectionner un contenu');
+                    showModernAlert('Veuillez sélectionner un contenu');
                     isValid = false;
                 }
             } else if (type === 'category') {
                 const categoryId = document.getElementById('category_id')?.value;
                 if (!categoryId) {
-                    alert('Veuillez sélectionner une catégorie');
+                    showModernAlert('Veuillez sélectionner une catégorie');
                     isValid = false;
                 }
             } else if (type === 'provider') {
                 const providerId = document.getElementById('provider_id')?.value;
                 if (!providerId) {
-                    alert('Veuillez sélectionner un prestataire');
+                    showModernAlert('Veuillez sélectionner un prestataire');
                     isValid = false;
                 }
             } else if (type === 'downloaded_free') {
@@ -1168,16 +1421,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 const purchaseType = document.getElementById('purchase_type')?.value;
                 const purchasedContentId = document.getElementById('purchased_content_id')?.value;
                 if (!purchaseType) {
-                    alert('Veuillez sélectionner un type d\'achat');
+                    showModernAlert('Veuillez sélectionner un type d\'achat');
                     isValid = false;
                 } else if (purchaseType === 'specific_content' && !purchasedContentId) {
-                    alert('Veuillez sélectionner un contenu acheté');
+                    showModernAlert('Veuillez sélectionner un contenu acheté');
                     isValid = false;
                 }
             } else if (type === 'purchased_content') {
                 const purchasedContentId = document.getElementById('purchased_content_id')?.value;
                 if (!purchasedContentId) {
-                    alert('Veuillez sélectionner un contenu acheté');
+                    showModernAlert('Veuillez sélectionner un contenu acheté');
                     isValid = false;
                 }
             } else if (type === 'failed_payment') {
@@ -1186,24 +1439,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 const dateFrom = document.getElementById('registration_date_from')?.value;
                 const dateTo = document.getElementById('registration_date_to')?.value;
                 if (!dateFrom && !dateTo) {
-                    alert('Veuillez sélectionner au moins une date');
+                    showModernAlert('Veuillez sélectionner au moins une date');
                     isValid = false;
                 }
             } else if (type === 'activity') {
                 const activityType = document.getElementById('activity_type')?.value;
                 if (!activityType) {
-                    alert('Veuillez sélectionner un type d\'activité');
+                    showModernAlert('Veuillez sélectionner un type d\'activité');
                     isValid = false;
                 }
             } else if (type === 'single') {
                 const singleUserId = document.getElementById('single_user_id');
                 if (!singleUserId || !singleUserId.value) {
-                    alert('Veuillez sélectionner un utilisateur');
+                    showModernAlert('Veuillez sélectionner un utilisateur');
                     isValid = false;
                 }
             } else if (type === 'selected') {
                 if (!selectedUsers || selectedUsers.length === 0) {
-                    alert('Veuillez sélectionner au moins un utilisateur');
+                    showModernAlert('Veuillez sélectionner au moins un utilisateur');
                     isValid = false;
                 }
             }
@@ -1265,7 +1518,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Erreur:', error);
                 hideLoadingModal();
-                alert('Une erreur est survenue lors de l\'envoi. Veuillez réessayer.');
+                showModernAlert('Une erreur est survenue lors de l\'envoi. Veuillez réessayer.');
                 if (sendBtn) {
                     sendBtn.disabled = false;
                     sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Envoyer';

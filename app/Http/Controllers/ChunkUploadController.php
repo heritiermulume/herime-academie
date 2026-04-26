@@ -207,6 +207,7 @@ class ChunkUploadController extends Controller
             'thumbnail' => 'courses/thumbnails',
             'preview' => 'courses/previews',
             'media', 'lesson' => 'courses/lessons',
+            'richtext_image' => 'richtext/images',
             'document' => 'ambassador-applications/documents',
             'community_home', 'community_home_poster' => 'site/community-home',
             'announcement_image' => 'announcements',

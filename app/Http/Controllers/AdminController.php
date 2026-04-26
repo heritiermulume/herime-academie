@@ -47,6 +47,7 @@ use App\Services\FileUploadService;
 use App\Services\HlsEncodingService;
 use App\Services\PackageEnrollmentNotifier;
 use App\Services\WhatsAppService;
+use App\Support\RichText;
 use App\Traits\DatabaseCompatibility;
 use App\Traits\HandlesBulkActions;
 use Illuminate\Http\Request;
@@ -1967,6 +1968,12 @@ class AdminController extends Controller
             ]);
 
             $courseData['short_description'] = $this->normalizeNullableString($courseData['short_description'] ?? null);
+            $courseData['description'] = RichText::sanitize((string) ($courseData['description'] ?? ''));
+            $courseData['description'] = RichText::promoteTemporaryImageSources(
+                $courseData['description'],
+                $this->fileUploadService,
+                'richtext/images'
+            );
             $courseData['video_preview'] = $this->normalizeNullableString($courseData['video_preview'] ?? null);
             $courseData['meta_description'] = $this->normalizeNullableString($courseData['meta_description'] ?? null);
             $courseData['meta_keywords'] = $this->normalizeCommaSeparatedString($courseData['meta_keywords'] ?? null);
@@ -2305,6 +2312,12 @@ class AdminController extends Controller
             ]);
 
             $data['short_description'] = $this->normalizeNullableString($data['short_description'] ?? null);
+            $data['description'] = RichText::sanitize((string) ($data['description'] ?? ''));
+            $data['description'] = RichText::promoteTemporaryImageSources(
+                $data['description'],
+                $this->fileUploadService,
+                'richtext/images'
+            );
             $data['video_preview'] = $this->normalizeNullableString($data['video_preview'] ?? null);
             $data['meta_description'] = $this->normalizeNullableString($data['meta_description'] ?? null);
             $data['meta_keywords'] = $this->normalizeCommaSeparatedString($data['meta_keywords'] ?? null);
@@ -3726,7 +3739,12 @@ class AdminController extends Controller
 
             $recipientType = $request->recipient_type;
             $subject = $request->subject;
-            $content = $request->email_content;
+            $content = RichText::sanitize((string) $request->email_content);
+            $content = RichText::promoteTemporaryImageSources(
+                $content,
+                app(FileUploadService::class),
+                'richtext/images'
+            );
 
             // Gérer les pièces jointes
             $attachmentPaths = [];
@@ -7066,7 +7084,12 @@ class AdminController extends Controller
 
         $recipientType = $request->recipient_type;
         $subject = $request->subject;
-        $emailContent = $request->email_content;
+        $emailContent = RichText::sanitize((string) $request->email_content);
+        $emailContent = RichText::promoteTemporaryImageSources(
+            $emailContent,
+            app(FileUploadService::class),
+            'richtext/images'
+        );
         $whatsappMessage = $request->whatsapp_message;
         $sendEmail = $request->has('send_email');
         $sendWhatsApp = $request->has('send_whatsapp');

@@ -115,7 +115,23 @@ class CustomAnnouncementMail extends Mailable
         // Convertir les URLs en liens cliquables si elles ne le sont pas déjà
         // Stratégie : remplacer temporairement les liens existants, convertir les URLs, puis restaurer les liens
         
-        // Étape 1 : Remplacer temporairement tous les liens existants par des placeholders
+        // Étape 1 : Remplacer temporairement les balises <img> par des placeholders
+        // pour éviter de transformer leurs src en liens cliquables.
+        $imagePlaceholders = [];
+        $imagePlaceholderIndex = 0;
+        $content = preg_replace_callback(
+            '/<img\b[^>]*>/i',
+            function ($matches) use (&$imagePlaceholders, &$imagePlaceholderIndex) {
+                $placeholder = "___IMAGE_PLACEHOLDER_{$imagePlaceholderIndex}___";
+                $imagePlaceholders[$placeholder] = $matches[0];
+                $imagePlaceholderIndex++;
+
+                return $placeholder;
+            },
+            $content
+        );
+
+        // Étape 2 : Remplacer temporairement tous les liens existants par des placeholders
         $linkPlaceholders = [];
         $placeholderIndex = 0;
         $content = preg_replace_callback(
@@ -132,7 +148,7 @@ class CustomAnnouncementMail extends Mailable
             $content
         );
         
-        // Étape 2 : Convertir les URLs restantes en liens (celles qui ne sont pas dans des balises <a>)
+        // Étape 3 : Convertir les URLs restantes en liens (celles qui ne sont pas dans des balises <a>)
         // Pattern simplifié sans lookbehind complexe
         $content = preg_replace_callback(
             '/(https?:\/\/[^\s<>"\'{}|\\^`\[\]]+)/i',
@@ -147,10 +163,15 @@ class CustomAnnouncementMail extends Mailable
             $content
         );
         
-        // Étape 3 : Restaurer les liens originaux avec le bon style
+        // Étape 4 : Restaurer les liens originaux avec le bon style
         foreach ($linkPlaceholders as $placeholder => $linkData) {
             $styledLink = '<a href="' . $linkData['href'] . '" style="color: #003366; text-decoration: underline; word-break: break-all;">' . $linkData['text'] . '</a>';
             $content = str_replace($placeholder, $styledLink, $content);
+        }
+
+        // Étape 5 : Restaurer les balises <img> originales
+        foreach ($imagePlaceholders as $placeholder => $imgTag) {
+            $content = str_replace($placeholder, $imgTag, $content);
         }
         
         // Réduire les espaces interlignes multiples dans les paragraphes
@@ -351,6 +372,9 @@ class CustomAnnouncementMail extends Mailable
                         break;
                     case 'temporary':
                         $basePath = 'tmp/uploads';
+                        break;
+                    case 'richtext-images':
+                        $basePath = 'richtext/images';
                         break;
                     default:
                         \Log::debug("Type de fichier non reconnu dans l'URL: {$type} (URL: {$url})");

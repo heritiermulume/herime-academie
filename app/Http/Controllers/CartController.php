@@ -10,6 +10,7 @@ use App\Models\ContentPackage;
 use App\Models\Course;
 use App\Models\User;
 use App\Services\CartGuestCheckoutService;
+use App\Services\CommunicationService;
 use App\Services\ContentPackageRecommendationService;
 use App\Services\SSOService;
 use Illuminate\Http\Request;
@@ -316,7 +317,12 @@ class CartController extends Controller
     /**
      * Préparer le paiement pour un invité : associer ou créer un compte, connecter, synchroniser le panier.
      */
-    public function guestCheckoutPrepare(Request $request, CartGuestCheckoutService $guestCheckoutService, SSOService $ssoService)
+    public function guestCheckoutPrepare(
+        Request $request,
+        CartGuestCheckoutService $guestCheckoutService,
+        SSOService $ssoService,
+        CommunicationService $communicationService
+    )
     {
         if (auth()->check()) {
             return response()->json([
@@ -388,6 +394,17 @@ class CartController extends Controller
         }
 
         $isNewAccount = $result['plain_password'] !== null;
+
+        if ($isNewAccount) {
+            try {
+                $communicationService->sendWelcomeCommunicationOnce($result['user']);
+            } catch (\Throwable $e) {
+                Log::error('Guest checkout: échec envoi message de bienvenue (le parcours continue)', [
+                    'user_id' => $result['user']->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
 
         $this->mergeSessionCartIntoUser($result['user']);
 

@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Jobs\SendWhatsAppFromEmailJob;
+use App\Mail\WelcomeUserMail;
 use App\Models\SentEmail;
 use App\Models\User;
+use App\Notifications\WelcomeUserNotification;
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -16,6 +19,67 @@ class CommunicationService
     public function __construct(WhatsAppService $whatsappService)
     {
         $this->whatsappService = $whatsappService;
+    }
+
+    /**
+     * Envoie le message d'accueil une seule fois par utilisateur (idempotent).
+     * Ne doit jamais faire échouer le flux appelant.
+     */
+    public function sendWelcomeCommunicationOnce(User $user): bool
+    {
+        try {
+            $lock = Cache::lock('welcome-communication-user-'.$user->id, 10);
+
+            return (bool) $lock->get(function () use ($user) {
+                $welcomeMailAlreadySent = SentEmail::query()
+                    ->where('user_id', $user->id)
+                    ->where('metadata->mail_class', WelcomeUserMail::class)
+                    ->whereIn('status', ['sent', 'pending'])
+                    ->exists();
+
+                $welcomeNotificationAlreadySent = $user->notifications()
+                    ->where('type', WelcomeUserNotification::class)
+                    ->exists();
+
+                if ($welcomeMailAlreadySent && $welcomeNotificationAlreadySent) {
+                    Log::info('Welcome communication skipped (already sent)', [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                    ]);
+
+                    return false;
+                }
+
+                if (! $welcomeMailAlreadySent) {
+                    $this->sendEmailAndWhatsApp(
+                        $user,
+                        new WelcomeUserMail($user->name ?? $user->email)
+                    );
+                }
+
+                if (! $welcomeNotificationAlreadySent) {
+                    try {
+                        $user->notify(new WelcomeUserNotification());
+                    } catch (\Throwable $notificationException) {
+                        Log::error('CommunicationService: failed to send welcome database notification', [
+                            'user_id' => $user->id,
+                            'email' => $user->email,
+                            'error' => $notificationException->getMessage(),
+                        ]);
+                    }
+                }
+
+                return true;
+            });
+        } catch (\Throwable $e) {
+            Log::error('CommunicationService: failed to send welcome communication once', [
+                'user_id' => $user->id ?? null,
+                'email' => $user->email ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**
@@ -39,8 +103,9 @@ class CommunicationService
             'whatsapp' => ['success' => false, 'error' => null],
         ];
 
-        // --- Email : isolé dans un try/catch pour que son échec ne bloque jamais WhatsApp ---
+        // Sécurité globale: ne jamais laisser une exception casser le processus appelant.
         try {
+            // --- Email : isolé dans un try/catch pour que son échec ne bloque jamais WhatsApp ---
             // Envoyer l'email
             try {
                 if ($user->email) {
@@ -139,85 +204,86 @@ class CommunicationService
 
                 $this->recordSentEmail($user, $user->email, $mailable, 'failed', $errorMessage);
             }
-        } catch (\Throwable $e) {
-            // Sécurité : aucune exception du bloc email ne doit empêcher l'envoi WhatsApp
-            $results['email'] = ['success' => false, 'error' => $e->getMessage()];
-            Log::error('CommunicationService: exception non gérée dans le bloc email (WhatsApp sera tout de même tenté)', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-        }
 
-        // --- WhatsApp : isolé pour que son échec ne bloque jamais l'email (déjà envoyé ci-dessus) ---
-        // Envoyer WhatsApp (si activé et si l'utilisateur a un numéro)
-        if ($sendWhatsApp) {
-            if (! $user->phone) {
-                $results['whatsapp'] = ['success' => false, 'error' => 'Aucun numéro de téléphone pour cet utilisateur'];
-                Log::warning("Tentative d'envoi WhatsApp à un utilisateur sans numéro", [
-                    'user_id' => $user->id,
-                    'user_email' => $user->email,
-                    'mailable' => get_class($mailable),
-                ]);
-            } else {
-                try {
-                    // Générer le message WhatsApp si non fourni
-                    if (! $whatsappMessage) {
-                        $whatsappMessage = $this->generateWhatsAppMessageFromMailable($mailable, $user);
-                    } else {
-                        // Si un message personnalisé est fourni, ajouter quand même l'en-tête et le pied
-                        $whatsappMessage = $this->formatWhatsAppMessage($whatsappMessage, $user);
-                    }
+            // --- WhatsApp : isolé pour que son échec ne bloque jamais l'email (déjà envoyé ci-dessus) ---
+            // Envoyer WhatsApp (si activé et si l'utilisateur a un numéro)
+            if ($sendWhatsApp) {
+                if (! $user->phone) {
+                    $results['whatsapp'] = ['success' => false, 'error' => 'Aucun numéro de téléphone pour cet utilisateur'];
+                    Log::warning("Tentative d'envoi WhatsApp à un utilisateur sans numéro", [
+                        'user_id' => $user->id,
+                        'user_email' => $user->email,
+                        'mailable' => get_class($mailable),
+                    ]);
+                } else {
+                    try {
+                        // Générer le message WhatsApp si non fourni
+                        if (! $whatsappMessage) {
+                            $whatsappMessage = $this->generateWhatsAppMessageFromMailable($mailable, $user);
+                        } else {
+                            // Si un message personnalisé est fourni, ajouter quand même l'en-tête et le pied
+                            $whatsappMessage = $this->formatWhatsAppMessage($whatsappMessage, $user);
+                        }
 
-                    if ($whatsappMessage) {
-                        // Envoyer via job pour ne pas bloquer
-                        $queueConnection = config('queue.default');
-                        $queueDriver = config("queue.connections.{$queueConnection}.driver", 'sync');
+                        if ($whatsappMessage) {
+                            // Envoyer via job pour ne pas bloquer
+                            $queueConnection = config('queue.default');
+                            $queueDriver = config("queue.connections.{$queueConnection}.driver", 'sync');
 
-                        Log::info('Démarrage envoi WhatsApp', [
-                            'user_id' => $user->id,
-                            'user_phone' => $user->phone,
-                            'queue_driver' => $queueDriver,
-                            'mailable' => get_class($mailable),
-                        ]);
-
-                        if ($queueDriver === 'sync') {
-                            // Exécution synchrone immédiate
-                            SendWhatsAppFromEmailJob::dispatchSync($user, $whatsappMessage);
-                            Log::info("Job WhatsApp exécuté en mode sync pour {$user->phone}", [
+                            Log::info('Démarrage envoi WhatsApp', [
                                 'user_id' => $user->id,
+                                'user_phone' => $user->phone,
+                                'queue_driver' => $queueDriver,
                                 'mailable' => get_class($mailable),
                             ]);
+
+                            if ($queueDriver === 'sync') {
+                                // Exécution synchrone immédiate
+                                SendWhatsAppFromEmailJob::dispatchSync($user, $whatsappMessage);
+                                Log::info("Job WhatsApp exécuté en mode sync pour {$user->phone}", [
+                                    'user_id' => $user->id,
+                                    'mailable' => get_class($mailable),
+                                ]);
+                            } else {
+                                // Exécution asynchrone via queue
+                                SendWhatsAppFromEmailJob::dispatchAfterResponse($user, $whatsappMessage);
+                                Log::info("Job WhatsApp dispatché en mode async pour {$user->phone}", [
+                                    'user_id' => $user->id,
+                                    'mailable' => get_class($mailable),
+                                ]);
+                            }
+
+                            $results['whatsapp'] = ['success' => true, 'error' => null];
                         } else {
-                            // Exécution asynchrone via queue
-                            SendWhatsAppFromEmailJob::dispatchAfterResponse($user, $whatsappMessage);
-                            Log::info("Job WhatsApp dispatché en mode async pour {$user->phone}", [
+                            $results['whatsapp'] = ['success' => false, 'error' => 'Impossible de générer le message WhatsApp'];
+                            Log::warning('Impossible de générer le message WhatsApp', [
                                 'user_id' => $user->id,
+                                'user_phone' => $user->phone,
                                 'mailable' => get_class($mailable),
                             ]);
                         }
-
-                        $results['whatsapp'] = ['success' => true, 'error' => null];
-                    } else {
-                        $results['whatsapp'] = ['success' => false, 'error' => 'Impossible de générer le message WhatsApp'];
-                        Log::warning('Impossible de générer le message WhatsApp', [
+                    } catch (\Throwable $e) {
+                        // Capturer Exception et Error pour que l'échec WhatsApp ne remonte jamais (l'email est déjà envoyé)
+                        $results['whatsapp'] = ['success' => false, 'error' => $e->getMessage()];
+                        Log::error('Erreur lors du dispatch WhatsApp', [
                             'user_id' => $user->id,
                             'user_phone' => $user->phone,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString(),
                             'mailable' => get_class($mailable),
                         ]);
                     }
-                } catch (\Throwable $e) {
-                    // Capturer Exception et Error pour que l'échec WhatsApp ne remonte jamais (l'email est déjà envoyé)
-                    $results['whatsapp'] = ['success' => false, 'error' => $e->getMessage()];
-                    Log::error('Erreur lors du dispatch WhatsApp', [
-                        'user_id' => $user->id,
-                        'user_phone' => $user->phone,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
-                        'mailable' => get_class($mailable),
-                    ]);
                 }
             }
+        } catch (\Throwable $e) {
+            $results['email']['error'] = $results['email']['error'] ?? 'Erreur inattendue dans le service de communication';
+            $results['whatsapp']['error'] = $results['whatsapp']['error'] ?? 'Erreur inattendue dans le service de communication';
+            Log::error('CommunicationService: exception globale capturée (aucun processus appelant ne sera interrompu)', [
+                'user_id' => $user->id ?? null,
+                'mailable' => get_class($mailable),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
 
         return $results;
@@ -613,6 +679,25 @@ class CommunicationService
                 $message = "*{$subject}*\n\n".
                           "Bonjour *{$userName}*,\n\n".
                           "{$content}";
+
+                return $this->formatWhatsAppMessage($message, $user);
+
+            case \App\Mail\WelcomeUserMail::class:
+                $hour = now()->timezone(config('app.timezone'))->hour;
+                $timeGreeting = $hour < 12 ? 'Bonjour' : ($hour < 18 ? 'Bon après-midi' : 'Bonsoir');
+                $aboutUrl = route('about');
+                $contentsUrl = route('contents.index');
+
+                $message = "👋 *Bienvenue sur Herime Académie !*\n\n".
+                          "{$timeGreeting} *{$userName}*,\n\n".
+                          "Nous sommes honorés de vous accueillir au sein de Herime Académie et heureux de vous accompagner dans votre parcours d'évolution.\n\n".
+                          "Permettez-nous de vous partager l'origine de cette initiative.\n\n".
+                          "Notre histoire est née d'un constat simple : en Afrique centrale, de nombreux talents et professionnels ont besoin d'un accès plus simple à une éducation de qualité et à des ressources professionnelles fiables pour évoluer.\n\n".
+                          "C'est pourquoi nous avons créé Herime Académie : une plateforme simple, intuitive et puissante, pensée pour permettre à chaque apprenant et professionnel de développer ses compétences à son rythme.\n\n".
+                          "🧭 *À propos de nous* : {$aboutUrl}\n".
+                          "🔎 *Découvrir les contenus* : {$contentsUrl}\n\n".
+                          "Aujourd'hui, Herime Académie est devenue une communauté dynamique de créateurs et de professionnels qui se soutiennent et se développent. Nous sommes fiers de vous avoir parmi nous et de vous aider à réaliser vos ambitions.\n\n".
+                          "Au plaisir de vous retrouver très bientôt,\nL'équipe Herime Académie";
 
                 return $this->formatWhatsAppMessage($message, $user);
 

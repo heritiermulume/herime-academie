@@ -9,9 +9,14 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Models\User;
+use App\Services\CommunicationService;
 
 class SSOCallbackController extends Controller
 {
+    public function __construct(
+        protected CommunicationService $communicationService
+    ) {}
+
     public function handle(Request $request)
     {
         try {
@@ -179,6 +184,18 @@ class SSOCallbackController extends Controller
                     'gender' => $gender, // Ajouter le sexe depuis SSO
                 ]
             );
+
+            if ($user->wasRecentlyCreated) {
+                try {
+                    $this->communicationService->sendWelcomeCommunicationOnce($user);
+                } catch (\Throwable $welcomeException) {
+                    Log::error('SSO callback: failed to send welcome communication', [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'error' => $welcomeException->getMessage(),
+                    ]);
+                }
+            }
             
             // Mettre à jour le rôle et autres informations si l'utilisateur existe déjà
             if ($user->wasRecentlyCreated === false) {

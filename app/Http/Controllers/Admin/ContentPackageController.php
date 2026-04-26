@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ContentPackage;
 use App\Models\Course;
 use App\Services\FileUploadService;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -167,6 +168,12 @@ class ContentPackageController extends Controller
         $validated['is_featured'] = $request->boolean('is_featured', false);
         $validated['cover_video_is_unlisted'] = $request->boolean('cover_video_is_unlisted', false);
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 0);
+        $validated['description'] = RichText::sanitize((string) ($validated['description'] ?? ''));
+        $validated['description'] = RichText::promoteTemporaryImageSources(
+            $validated['description'],
+            $this->fileUploadService,
+            'richtext/images'
+        );
 
         $validated['marketing_highlights'] = $this->filterLines($request->input('marketing_highlights', []));
         $validated['marketing_benefits'] = $this->filterLines($request->input('marketing_benefits', []));

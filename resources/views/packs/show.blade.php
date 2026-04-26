@@ -25,6 +25,34 @@
     letter-spacing: 0.01em;
 }
 
+.content-description img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    margin: 0.5rem 0;
+}
+
+.content-description p:last-child {
+    margin-bottom: 0;
+}
+
+.content-description .rich-embed-container {
+    margin: 1rem 0;
+}
+
+.content-description .rich-embed-container iframe {
+    width: 100%;
+    min-height: 420px;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.content-description .rich-embed-fallback {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
 .breadcrumb-modern {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(10px);
@@ -181,7 +209,7 @@
 
                 @if($package->description)
                     <div class="content-description mt-4">
-                        {!! nl2br(e($package->description)) !!}
+                        {!! \App\Support\RichText::toHtml($package->description) !!}
                     </div>
                 @endif
 

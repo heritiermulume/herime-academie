@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', $course->title . ' - Herime Academie')
-@section('description', $course->meta_description ?: Str::limit($course->description, 160))
+@section('description', $course->meta_description ?: Str::limit(strip_tags($course->description ?? ''), 160))
 
 @push('styles')
 <style>
@@ -26,6 +26,34 @@
 .btn-whatsapp-herime:active {
     background: var(--herime-blue-hover) !important;
     border-color: var(--herime-blue-hover) !important;
+}
+
+.course-description img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    margin: 0.5rem 0;
+}
+
+.course-description p:last-child {
+    margin-bottom: 0;
+}
+
+.course-description .rich-embed-container {
+    margin: 1rem 0;
+}
+
+.course-description .rich-embed-container iframe {
+    width: 100%;
+    min-height: 420px;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.course-description .rich-embed-fallback {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
 }
 
 /* Variante invité (section prix): WhatsApp vert */
@@ -3708,9 +3736,7 @@ button.mobile-price-slider__btn--download i,
                         <i class="fas fa-book-open"></i>
                         Description
                     </h2>
-                    <div class="course-description">
-                        {!! nl2br(e($course->description)) !!}
-                    </div>
+                    <div class="course-description">{!! \App\Support\RichText::toHtml($course->description) !!}</div>
                 </div>
 
                 <!-- What You'll Learn -->
