@@ -63,11 +63,11 @@ return Application::configure(basePath: dirname(__DIR__))
             ->name('clean-temporary-uploads')
             ->withoutOverlapping(45);
 
-        // 3 exécutions / jour (6h, 15h, 22h) — voir ContentRatingReminder::CAMPAIGN_DAYS pour la durée de campagne.
+        // Vérifie chaque heure les demandes d'avis arrivées à échéance (H+24), avec envoi unique.
         $schedule->call(function () use ($runSafe): void {
             $runSafe('content-rating-reminders', static fn () => app(\App\Services\ContentRatingReminderService::class)->sendDueReminders());
         })
-            ->cron('0 6,15,22 * * *')
+            ->hourly()
             ->name('content-rating-reminders')
             ->withoutOverlapping(25);
 

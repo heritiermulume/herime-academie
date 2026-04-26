@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Carbon;
 
 class ContentRatingReminderService
 {
@@ -35,16 +36,17 @@ class ContentRatingReminderService
             return;
         }
 
+        $scheduledAt = $this->buildReminderSendAt($enrollment->created_at);
         $reminder = ContentRatingReminder::firstOrCreate(
             ['user_id' => $userId, 'content_id' => $contentId],
             [
                 'enrollment_id' => $enrollment->id,
-                // Démarre la campagne au moment où la relance est effectivement mise en place.
-                'campaign_started_at' => now(),
+                // Envoi planifié 24h après l'accès au contenu.
+                'campaign_started_at' => $scheduledAt,
             ]
         );
 
-        $this->reviveLegacyCampaignIfNeeded($reminder, $enrollment->id);
+        $this->reviveLegacyCampaignIfNeeded($reminder, $enrollment->id, $scheduledAt);
     }
 
     public function ensureForDownload(CourseDownload $download): void
@@ -58,16 +60,17 @@ class ContentRatingReminderService
             return;
         }
 
+        $scheduledAt = $this->buildReminderSendAt($download->created_at);
         $reminder = ContentRatingReminder::firstOrCreate(
             ['user_id' => $download->user_id, 'content_id' => $course->id],
             [
                 'enrollment_id' => null,
-                // Démarre la campagne au moment où la relance est effectivement mise en place.
-                'campaign_started_at' => now(),
+                // Envoi planifié 24h après l'accès gratuit au contenu.
+                'campaign_started_at' => $scheduledAt,
             ]
         );
 
-        $this->reviveLegacyCampaignIfNeeded($reminder, null);
+        $this->reviveLegacyCampaignIfNeeded($reminder, null, $scheduledAt);
     }
 
     public static function forgetForUserAndContent(int $userId, int $contentId): void
@@ -93,22 +96,14 @@ class ContentRatingReminderService
     {
         $sent = 0;
 
-        // Jusqu’à 9 envois sur 3 jours (3× / jour), espacés d’au moins MIN_HOURS_BETWEEN_REMINDERS, tant que la campagne est active et qu’il n’y a pas d’avis.
-        $minHours = ContentRatingReminder::MIN_HOURS_BETWEEN_REMINDERS;
+        // Un seul envoi, déclenché à partir de l'échéance (H+24 après accès).
         $query = ContentRatingReminder::query()
             ->with(['user', 'course', 'enrollment'])
             ->where('reminders_sent', '<', ContentRatingReminder::MAX_REMINDERS)
-            ->where('campaign_started_at', '>=', now()->subDays(ContentRatingReminder::CAMPAIGN_DAYS)->startOfDay())
-            ->where(function ($q) use ($minHours) {
-                $q->whereNull('last_sent_at')
-                    ->orWhere('last_sent_at', '<=', now()->subHours($minHours));
-            });
+            ->whereNull('last_sent_at')
+            ->where('campaign_started_at', '<=', now());
 
         foreach ($query->cursor() as $reminder) {
-            if (! $reminder->isCampaignActive()) {
-                continue;
-            }
-
             if (Review::where('user_id', $reminder->user_id)
                 ->where('content_id', $reminder->content_id)
                 ->exists()) {
@@ -201,25 +196,39 @@ class ContentRatingReminderService
      * Réactive les anciennes campagnes jamais envoyées pour couvrir les accès
      * accordés avant la mise en place complète de l’automatisation.
      */
-    private function reviveLegacyCampaignIfNeeded(ContentRatingReminder $reminder, ?int $enrollmentId): void
+    private function reviveLegacyCampaignIfNeeded(
+        ContentRatingReminder $reminder,
+        ?int $enrollmentId,
+        Carbon $expectedScheduledAt
+    ): void
     {
         if ($reminder->reminders_sent > 0) {
             return;
         }
 
-        if ($reminder->isCampaignActive()) {
-            return;
-        }
-
-        $payload = [
-            'campaign_started_at' => now(),
-            'last_sent_at' => null,
-        ];
-
-        if ($enrollmentId !== null && $reminder->enrollment_id === null) {
+        $payload = [];
+        if ($enrollmentId !== null) {
             $payload['enrollment_id'] = $enrollmentId;
         }
 
+        // Corrige les anciennes lignes créées avec une date de campagne "immédiate"
+        // pour respecter strictement l'envoi unique à H+24 après l'accès.
+        if (! $reminder->campaign_started_at || ! $reminder->campaign_started_at->eq($expectedScheduledAt)) {
+            $payload['campaign_started_at'] = $expectedScheduledAt;
+            $payload['last_sent_at'] = null;
+        }
+
+        if ($payload === []) {
+            return;
+        }
+
         $reminder->forceFill($payload)->save();
+    }
+
+    private function buildReminderSendAt(Carbon|string|null $accessedAt): Carbon
+    {
+        $base = $accessedAt ? Carbon::parse($accessedAt) : now();
+
+        return $base->copy()->addHours(ContentRatingReminder::FIRST_REMINDER_DELAY_HOURS);
     }
 }

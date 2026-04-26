@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Services\SSOService;
 use Closure;
 use Illuminate\Http\Request;
@@ -218,67 +217,39 @@ class ValidateSSOToken
      */
     protected function handleInvalidToken(Request $request): Response
     {
+        $redirectUrl = $this->buildSsoReauthUrl($request);
+
         // Pour les requêtes AJAX, retourner directement une réponse JSON
         if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
-            try {
-                // Déconnexion locale
-                if ($request->hasSession() && $request->session()->has('sso_token')) {
-                    $request->session()->forget('sso_token');
-                }
-                Auth::guard('web')->logout();
-                if ($request->hasSession()) {
-                    $request->session()->invalidate();
-                    $request->session()->regenerateToken();
-                }
-            } catch (\Throwable $e) {
-                Log::debug('Error during logout in SSO validation (AJAX)', [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-            
             return response()->json([
                 'success' => false,
                 'message' => 'Votre session a expiré. Veuillez vous reconnecter pour continuer.',
                 'session_expired' => true,
-                'redirect' => route('home')
+                'redirect' => $redirectUrl,
             ], 401);
         }
 
-        // Pour les requêtes normales, déconnexion avec notification
-        if (Auth::check()) {
-            try {
-                // Déconnexion locale avec notification
-                return AuthenticatedSessionController::performLocalLogoutWithNotification($request);
-            } catch (\Throwable $e) {
-                Log::debug('Error during logout in SSO validation', [
-                    'error' => $e->getMessage(),
-                ]);
-                
-                // En cas d'erreur, faire une déconnexion de base et rediriger
-                try {
-                    // Supprimer le token SSO avant de déconnecter
-                    if ($request->hasSession() && $request->session()->has('sso_token')) {
-                        $request->session()->forget('sso_token');
-                    }
-                    
-                    Auth::logout();
-                    if ($request->hasSession()) {
-                        $request->session()->invalidate();
-                        $request->session()->regenerateToken();
-                        $request->session()->flash('session_expired', true);
-                        $request->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
-                    }
-                } catch (\Throwable $logoutError) {
-                    Log::debug('Error during basic logout', [
-                        'error' => $logoutError->getMessage(),
-                    ]);
-                }
-                
-                return redirect()->route('home');
-            }
+        // Supprimer uniquement le token SSO local pour forcer l'obtention d'un token frais au callback.
+        if ($request->hasSession() && $request->session()->has('sso_token')) {
+            $request->session()->forget('sso_token');
         }
 
-        // Si l'utilisateur n'est plus connecté, rediriger vers la page d'accueil
-        return redirect()->route('home');
+        return redirect()->to($redirectUrl);
+    }
+
+    protected function buildSsoReauthUrl(Request $request): string
+    {
+        $target = $request->fullUrl();
+        $callbackUrl = route('sso.callback', ['redirect' => $target]);
+
+        try {
+            return $this->ssoService->getLoginUrl($callbackUrl, true);
+        } catch (\Throwable $e) {
+            Log::warning('Unable to build SSO reauth URL, falling back to local home', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return route('home');
+        }
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Services\SSOService;
 use Closure;
 use Illuminate\Http\Request;
@@ -235,50 +234,39 @@ class ValidateSSOOnPageLoad
      */
     protected function handleInvalidToken(Request $request): Response
     {
-        // Pour les requêtes AJAX, retourner une réponse JSON
-        if ($request->expectsJson() || $request->ajax()) {
+        $redirectUrl = $this->buildSsoReauthUrl($request);
+
+        // Pour les requêtes AJAX, retourner une réponse JSON avec URL de reconnexion SSO.
+        if ($request->expectsJson() || $request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'message' => 'Votre session a expiré. Veuillez vous reconnecter.',
-                'redirect' => route('home'),
+                'redirect' => $redirectUrl,
                 'session_expired' => true,
             ], 401);
         }
 
-        // Si l'utilisateur est encore connecté, appeler la méthode logout avec notification
-        if (Auth::check()) {
-            try {
-                return AuthenticatedSessionController::performLocalLogoutWithNotification($request);
-            } catch (\Throwable $e) {
-                Log::debug('Error during logout in SSO page load validation', [
-                    'error' => $e->getMessage(),
-                ]);
-
-                // En cas d'erreur, faire une déconnexion de base et rediriger
-                try {
-                    // Supprimer le token SSO avant de déconnecter
-                    if ($request->hasSession() && $request->session()->has('sso_token')) {
-                        $request->session()->forget('sso_token');
-                    }
-
-                    Auth::logout();
-                    if ($request->hasSession()) {
-                        $request->session()->invalidate();
-                        $request->session()->regenerateToken();
-                        $request->session()->flash('session_expired', true);
-                        $request->session()->flash('warning', 'Votre session a expiré. Veuillez vous reconnecter pour continuer.');
-                    }
-                } catch (\Throwable $logoutError) {
-                    Log::debug('Error during basic logout in SSO page load', [
-                        'error' => $logoutError->getMessage(),
-                    ]);
-                }
-
-                return redirect()->route('home');
-            }
+        // Supprimer uniquement le token SSO local pour forcer l'obtention d'un token frais au callback.
+        if ($request->hasSession() && $request->session()->has('sso_token')) {
+            $request->session()->forget('sso_token');
         }
 
-        // Si l'utilisateur n'est plus connecté, rediriger vers la page d'accueil
-        return redirect()->route('home');
+        return redirect()->to($redirectUrl);
+    }
+
+    protected function buildSsoReauthUrl(Request $request): string
+    {
+        $target = $request->fullUrl();
+        $callbackUrl = route('sso.callback', ['redirect' => $target]);
+
+        try {
+            return $this->ssoService->getLoginUrl($callbackUrl, true);
+        } catch (\Throwable $e) {
+            Log::warning('Unable to build SSO reauth URL, falling back to local home', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return route('home');
+        }
     }
 
     /**

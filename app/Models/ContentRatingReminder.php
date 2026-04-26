@@ -8,13 +8,11 @@ use Illuminate\Support\Carbon;
 
 class ContentRatingReminder extends Model
 {
-    /** Nombre maximum d’emails sur la campagne (3 jours × 3 envois / jour). */
-    public const MAX_REMINDERS = 9;
+    /** Un seul email de demande d'avis par accès au contenu. */
+    public const MAX_REMINDERS = 1;
 
-    public const CAMPAIGN_DAYS = 3;
-
-    /** Délai minimum entre deux envois au même utilisateur pour le même contenu (compatible 3× / jour). */
-    public const MIN_HOURS_BETWEEN_REMINDERS = 5;
+    /** Délai avant envoi du mail de demande d'avis (achat ou accès gratuit). */
+    public const FIRST_REMINDER_DELAY_HOURS = 24;
 
     protected $fillable = [
         'user_id',
@@ -50,7 +48,7 @@ class ContentRatingReminder extends Model
 
     public function campaignEndsAt(): Carbon
     {
-        return $this->campaign_started_at->copy()->addDays(self::CAMPAIGN_DAYS);
+        return $this->campaign_started_at->copy();
     }
 
     public function isCampaignActive(): bool
