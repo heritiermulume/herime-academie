@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\InvoiceMail;
 use App\Mail\PaymentFailedMail;
+use App\Mail\PendingPaymentReminderMail;
 use App\Models\AmbassadorCommission;
 use App\Models\AmbassadorPromoCode;
 use App\Models\CartItem;
@@ -56,8 +57,14 @@ use Illuminate\Support\Str;
  */
 class MonerooController extends Controller
 {
+    private const DEFAULT_PENDING_PAYMENT_REMINDER_DELAY_MINUTES = 10;
+
+    private const DEFAULT_PENDING_ORDER_AUTO_CANCEL_DELAY_MINUTES = 20;
+
     private const AUTO_CANCELLATION_TIMEOUT_REASON = 'Paiement annulé automatiquement en raison d\'un dépassement du délai d\'attente de confirmation. Vous pouvez relancer le paiement depuis votre commande.';
+
     private const RETRY_REPLACED_ORDER_REASON = 'Paiement annulé automatiquement : une nouvelle tentative de paiement a été lancée pour cette commande.';
+
     private const CANCELLED_WITHOUT_AUTORETRY_REASON = 'Paiement annulé automatiquement : la tentative en cours a été interrompue. Vous pouvez relancer le paiement manuellement.';
 
     private function baseUrl(): string
@@ -900,7 +907,7 @@ class MonerooController extends Controller
     }
 
     /**
-     * Annulation des commandes pending trop anciennes, avec le même délai minimal qu’en navigation (10 min par défaut).
+     * Annulation des commandes pending trop anciennes, avec le même délai minimal qu’en navigation.
      * Évite de répéter le travail si runThrottledVisitPaymentMaintenance vient d’être exécuté (même fenêtre).
      */
     public function maybeAutoCancelStaleOrdersForUser(int $userId): void
@@ -1564,7 +1571,7 @@ class MonerooController extends Controller
     }
 
     /**
-     * Lorsque la commande est restée non payée au-delà du délai local (ORDER_PENDING_TIMEOUT_MIN)
+     * Lorsque la commande est restée non payée au-delà du délai local d'annulation automatique
      * et que Moneroo clôt en annulation ou expiration, on préfère expliquer le dépassement de délai
      * plutôt que le libellé générique du PSP (ex. cron : sync API avant auto-cancel local).
      */
@@ -1574,7 +1581,7 @@ class MonerooController extends Controller
             return $extractedReason;
         }
 
-        $timeoutMinutes = max(1, (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30)));
+        $timeoutMinutes = $this->pendingOrderAutoCancelDelayMinutes();
         if ($order->created_at->gte(now()->subMinutes($timeoutMinutes))) {
             return $extractedReason;
         }
@@ -1766,8 +1773,8 @@ class MonerooController extends Controller
         if (! $order) {
             return response()->json(['success' => false, 'message' => 'Aucune commande en attente'], 404);
         }
-        // Optionnel: ne pas annuler des commandes trop anciennes (>10 min)
-        if ($order->created_at->lt(now()->subMinutes(10))) {
+        // Optionnel: ne pas annuler des commandes trop anciennes (au-delà du délai d'annulation automatique).
+        if ($order->created_at->lt(now()->subMinutes($this->pendingOrderAutoCancelDelayMinutes()))) {
             return response()->json(['success' => false, 'message' => 'Commande trop ancienne pour annulation automatique'], 422);
         }
         Payment::where('order_id', $order->id)
@@ -2947,6 +2954,7 @@ class MonerooController extends Controller
 
     private function autoCancelStale(int $userId): void
     {
+        $this->sendPendingPaymentReminders($userId);
         $this->eachStalePendingOrderQuery($userId)->chunkById(50, function ($orders): void {
             foreach ($orders as $order) {
                 $this->cancelSingleStalePendingOrder($order);
@@ -2959,6 +2967,7 @@ class MonerooController extends Controller
      */
     public function autoCancelAllStalePendingOrders(): void
     {
+        $this->sendPendingPaymentReminders(null);
         $this->eachStalePendingOrderQuery(null)->chunkById(50, function ($orders): void {
             foreach ($orders as $order) {
                 $this->cancelSingleStalePendingOrder($order);
@@ -2978,7 +2987,7 @@ class MonerooController extends Controller
 
     private function eachStalePendingOrderQuery(?int $userId)
     {
-        $timeoutMinutes = (int) (env('ORDER_PENDING_TIMEOUT_MIN', 30));
+        $timeoutMinutes = $this->pendingOrderAutoCancelDelayMinutes();
         $threshold = now()->subMinutes($timeoutMinutes);
         $query = Order::query()
             ->where('status', 'pending')
@@ -3004,6 +3013,78 @@ class MonerooController extends Controller
             ]);
 
         $this->sendPaymentFailureNotifications($order, $timeoutReason);
+    }
+
+    private function pendingPaymentReminderDelayMinutes(): int
+    {
+        return max(1, (int) env('ORDER_PENDING_REMINDER_DELAY_MIN', self::DEFAULT_PENDING_PAYMENT_REMINDER_DELAY_MINUTES));
+    }
+
+    private function pendingOrderAutoCancelDelayMinutes(): int
+    {
+        return max(1, (int) env('ORDER_PENDING_AUTO_CANCEL_DELAY_MIN', self::DEFAULT_PENDING_ORDER_AUTO_CANCEL_DELAY_MINUTES));
+    }
+
+    private function sendPendingPaymentReminders(?int $userId): void
+    {
+        $reminderDelay = $this->pendingPaymentReminderDelayMinutes();
+        $cancelDelay = $this->pendingOrderAutoCancelDelayMinutes();
+
+        if ($reminderDelay >= $cancelDelay) {
+            return;
+        }
+
+        $reminderFrom = now()->subMinutes($cancelDelay);
+        $reminderUntil = now()->subMinutes($reminderDelay);
+
+        $query = Order::query()
+            ->where('status', 'pending')
+            ->whereBetween('created_at', [$reminderFrom, $reminderUntil])
+            ->where(function ($q) {
+                $q->whereNull('billing_info')
+                    ->orWhereRaw("JSON_EXTRACT(billing_info, '$.payment_reminder_sent_at') IS NULL");
+            })
+            ->with(['user', 'payments']);
+
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+
+        $query->chunkById(50, function ($orders): void {
+            foreach ($orders as $order) {
+                $this->sendSinglePendingPaymentReminder($order);
+            }
+        });
+    }
+
+    private function sendSinglePendingPaymentReminder(Order $order): void
+    {
+        if ($order->status !== 'pending') {
+            return;
+        }
+
+        $pendingMonerooPayment = $order->payments
+            ->where('payment_method', 'moneroo')
+            ->whereIn('status', ['pending', 'processing'])
+            ->isNotEmpty();
+
+        if (! $pendingMonerooPayment || ! $order->user || ! $order->user->email) {
+            return;
+        }
+
+        try {
+            Mail::to($order->user->email)->send(new PendingPaymentReminderMail($order));
+
+            $billingInfo = $order->billing_info ?? [];
+            $billingInfo['payment_reminder_sent_at'] = now()->toIso8601String();
+            $order->update(['billing_info' => $billingInfo]);
+        } catch (\Throwable $e) {
+            \Log::error('Moneroo: impossible d\'envoyer la relance de paiement', [
+                'order_id' => $order->id,
+                'user_id' => $order->user_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

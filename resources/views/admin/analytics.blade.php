@@ -499,13 +499,19 @@ Analyses & Statistiques
                 <div class="col-md-6">
                     <div class="admin-card shadow-sm h-100">
                         <div class="admin-card__header">
-                            <h5 class="admin-card__title">
-                                <i class="fas fa-map-marker-alt me-2"></i>Visites par ville
-                            </h5>
+                            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                <h5 class="admin-card__title mb-0">
+                                    <i class="fas fa-map-marker-alt me-2"></i>Visites par ville
+                                </h5>
+                                <select id="cityCountryFilter" class="form-select form-select-sm" style="width: auto; min-width: 170px;">
+                                    <option value="">Tous les pays</option>
+                                </select>
+                            </div>
                             <p class="text-muted small mb-0 mt-1">
                                 Uniquement les visites avec <strong>ville et pays</strong> renseignés ({{ number_format($stats['visits_with_city_geo'] ?? 0) }} au total), groupées par couple ville + pays — cohérent avec l’API de géolocalisation.
                                 Le total par pays ci-dessus peut être plus élevé (visites sans ville précise).
                             </p>
+                            <p class="text-muted small mb-0 mt-1" id="cityCountryConsistency"></p>
                         </div>
                         <div class="admin-card__body">
                             <div class="chart-container">
@@ -771,6 +777,8 @@ const visitorsByBrowser = @json($visitorStats['by_browser'] ?? []);
 const visitorsByOS = @json($visitorStats['by_os'] ?? []);
 const visitorsByCountry = @json($visitorStats['by_country'] ?? []);
 const visitorsByCity = @json($visitorStats['by_city'] ?? []);
+const visitorsByCountryAll = @json($visitorStats['by_country_all'] ?? []);
+const visitorsByCityAll = @json($visitorStats['by_city_all'] ?? []);
 
 
 // Fonction pour détecter la taille d'écran
@@ -1828,24 +1836,40 @@ if (countryCtx) {
     });
 }
 
-// Graphique des visiteurs par ville
-const cityCtx = document.getElementById('visitorsCityChart');
-if (cityCtx) {
-    new Chart(cityCtx.getContext('2d'), {
+let visitorsCityChartInstance = null;
+
+function renderVisitorsCityChart(selectedCountry = '') {
+    const cityCtx = document.getElementById('visitorsCityChart');
+    if (!cityCtx) {
+        return;
+    }
+
+    const normalizedCountry = (selectedCountry || '').trim();
+    const allCityData = visitorsByCityAll.length ? visitorsByCityAll : visitorsByCity;
+    const filteredData = normalizedCountry === ''
+        ? allCityData
+        : allCityData.filter(item => (item.country || '') === normalizedCountry);
+    const topData = filteredData.slice(0, 10);
+
+    if (visitorsCityChartInstance) {
+        visitorsCityChartInstance.destroy();
+    }
+
+    visitorsCityChartInstance = new Chart(cityCtx.getContext('2d'), {
         type: 'bar',
         data: {
-            labels: visitorsByCity.map(item => (item.city || 'Inconnu') + (item.country ? ' (' + item.country + ')' : '')),
+            labels: topData.map(item => (item.city || 'Inconnu') + (item.country ? ' (' + item.country + ')' : '')),
             datasets: [{
                 label: 'Visites',
-                data: visitorsByCity.map(item => item.count),
+                data: topData.map(item => item.count),
                 backgroundColor: '#ffcc33',
                 borderColor: '#ffcc33',
                 borderWidth: 1
             }]
         },
         options: {
-        responsive: true,
-        maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     display: false
@@ -1873,7 +1897,45 @@ if (cityCtx) {
             indexAxis: 'y'
         }
     });
+
+    const consistencyEl = document.getElementById('cityCountryConsistency');
+    if (consistencyEl) {
+        if (normalizedCountry === '') {
+            consistencyEl.textContent = `Affichage global : ${filteredData.length} villes/pays agrégés, top 10 affiché.`;
+        } else {
+            const countryTotal = (visitorsByCountryAll.find(item => (item.country || '') === normalizedCountry)?.count) || 0;
+            const cityKnownTotal = filteredData.reduce((sum, row) => sum + (row.count || 0), 0);
+            const missingCity = Math.max(countryTotal - cityKnownTotal, 0);
+            consistencyEl.textContent = `${normalizedCountry} : ${countryTotal} visites pays, ${cityKnownTotal} visites avec ville connue, ${missingCity} sans ville.`;
+        }
+    }
 }
+
+function initCityCountryFilter() {
+    const select = document.getElementById('cityCountryFilter');
+    if (!select) {
+        return;
+    }
+
+    const countries = visitorsByCountryAll.length ? visitorsByCountryAll : visitorsByCountry;
+    countries.forEach(item => {
+        const country = (item.country || '').trim();
+        if (!country) {
+            return;
+        }
+        const option = document.createElement('option');
+        option.value = country;
+        option.textContent = `${country} (${item.count})`;
+        select.appendChild(option);
+    });
+
+    select.addEventListener('change', function () {
+        renderVisitorsCityChart(this.value || '');
+    });
+}
+
+initCityCountryFilter();
+renderVisitorsCityChart('');
 
 // Gestionnaire de redimensionnement pour mettre à jour les graphiques
 let resizeTimer;

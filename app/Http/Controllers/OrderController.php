@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Mail\CourseAccessRevokedMail;
 use App\Mail\InvoiceMail;
+use App\Models\CartItem;
+use App\Models\CartPackage;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\SubscriptionInvoice;
@@ -151,6 +153,93 @@ class OrderController extends Controller
         }
 
         return view('orders.show', compact('order'));
+    }
+
+    /**
+     * Remplacer le panier courant par les lignes d'une commande non finalisée
+     * puis rediriger l'utilisateur vers son panier pour reprendre le paiement.
+     */
+    public function restoreCartAndRedirectToCart(Order $order)
+    {
+        if ($order->user_id !== Auth::id()) {
+            abort(403, 'Accès non autorisé à cette commande.');
+        }
+
+        $user = Auth::user();
+        $this->replaceCartWithOrderItems($order, $user);
+
+        return redirect()
+            ->route('cart.index')
+            ->with('success', 'Votre panier a été reconstitué depuis cette commande. Vous pouvez finaliser le paiement.');
+    }
+
+    /**
+     * Lien email signé: UX douce (connexion + mauvais compte) sans 403 brutal.
+     */
+    public function restoreCartFromSignedEmailLink(Request $request, Order $order)
+    {
+        if (! $request->hasValidSignature()) {
+            return response()
+                ->view('orders.restore-link-expired', [], 410);
+        }
+
+        if (! Auth::check()) {
+            $request->session()->put('url.intended', $request->fullUrl());
+
+            return redirect()->route('login')->with('warning', 'Connectez-vous au compte ayant passe cette commande pour reprendre le paiement.');
+        }
+
+        if ((int) $order->user_id !== (int) Auth::id()) {
+            return redirect()->route('orders.index')->with(
+                'error',
+                'Cette commande est liee a un autre compte. Connectez-vous avec le bon compte pour reprendre le paiement.'
+            );
+        }
+
+        $this->replaceCartWithOrderItems($order, Auth::user());
+
+        return redirect()
+            ->route('cart.index')
+            ->with('success', 'Votre panier a ete reconstitue depuis votre commande. Vous pouvez finaliser le paiement.');
+    }
+
+    private function replaceCartWithOrderItems(Order $order, User $user): void
+    {
+        $order->loadMissing('orderItems');
+
+        $user->cartItems()->delete();
+        $user->cartPackages()->delete();
+
+        $packageIds = [];
+        $contentIds = [];
+
+        foreach ($order->orderItems as $item) {
+            $packageId = (int) ($item->content_package_id ?? 0);
+            if ($packageId > 0) {
+                $packageIds[$packageId] = true;
+
+                continue;
+            }
+
+            $contentId = (int) ($item->content_id ?? 0);
+            if ($contentId > 0) {
+                $contentIds[$contentId] = true;
+            }
+        }
+
+        foreach (array_keys($packageIds) as $packageId) {
+            CartPackage::create([
+                'user_id' => $user->id,
+                'content_package_id' => $packageId,
+            ]);
+        }
+
+        foreach (array_keys($contentIds) as $contentId) {
+            CartItem::create([
+                'user_id' => $user->id,
+                'content_id' => $contentId,
+            ]);
+        }
     }
 
     /**

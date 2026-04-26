@@ -119,6 +119,13 @@ QUEUE_CONNECTION=database
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 
+# Relance commande en attente (minutes)
+ORDER_PENDING_REMINDER_DELAY_MIN=10
+# Annulation automatique commande en attente (minutes)
+ORDER_PENDING_AUTO_CANCEL_DELAY_MIN=20
+# Duree de validite du lien signe dans l'email de relance (minutes)
+ORDER_PENDING_REMINDER_LINK_TTL_MIN=1440
+
 # Mail Configuration
 MAIL_MAILER=smtp
 MAIL_HOST=smtp.o2switch.net

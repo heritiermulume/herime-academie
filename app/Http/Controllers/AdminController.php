@@ -260,6 +260,48 @@ class AdminController extends Controller
             ->whereRaw("TRIM(city) <> ''");
     }
 
+    private function normalizeGeoLabel(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        return preg_replace('/\s+/u', ' ', $value) ?: $value;
+    }
+
+    private function normalizeCountryName(?string $country): ?string
+    {
+        $normalized = $this->normalizeGeoLabel($country);
+        if ($normalized === null) {
+            return null;
+        }
+
+        $key = mb_strtolower($normalized, 'UTF-8');
+        $map = [
+            'congo, the democratic republic of the' => 'République démocratique du Congo',
+            'democratic republic of the congo' => 'République démocratique du Congo',
+            'dr congo' => 'République démocratique du Congo',
+            'drc' => 'République démocratique du Congo',
+            'congo-kinshasa' => 'République démocratique du Congo',
+            'rd congo' => 'République démocratique du Congo',
+            'république démocratique du congo' => 'République démocratique du Congo',
+            'congo' => 'Congo',
+            'congo-brazzaville' => 'Congo',
+            'ivory coast' => "Côte d'Ivoire",
+            "cote d'ivoire" => "Côte d'Ivoire",
+            'côte d’ivoire' => "Côte d'Ivoire",
+            'usa' => 'États-Unis',
+            'united states' => 'États-Unis',
+            'united states of america' => 'États-Unis',
+            'uk' => 'Royaume-Uni',
+            'u.k.' => 'Royaume-Uni',
+            'united kingdom' => 'Royaume-Uni',
+        ];
+
+        return $map[$key] ?? $normalized;
+    }
+
     public function analytics()
     {
         // Calculer les revenus des contenus internes
@@ -628,6 +670,52 @@ class AdminController extends Controller
             ->groupBy('payment_method')
             ->get();
 
+        $countryRows = $this->visitorsWithKnownCountryQuery()
+            ->selectRaw('TRIM(country) as country, COUNT(*) as count')
+            ->groupByRaw('TRIM(country)')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'country' => $this->normalizeCountryName($row->country),
+                    'count' => (int) ($row->count ?? 0),
+                ];
+            })
+            ->filter(fn ($row) => ! empty($row['country']) && $row['count'] > 0)
+            ->groupBy('country')
+            ->map(fn ($items, $country) => [
+                'country' => $country,
+                'count' => $items->sum('count'),
+            ])
+            ->values()
+            ->sortByDesc('count')
+            ->values();
+
+        $cityRows = $this->visitorsWithKnownCityQuery()
+            ->selectRaw('TRIM(city) as city, TRIM(country) as country, COUNT(*) as count')
+            ->groupByRaw('TRIM(city), TRIM(country)')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'city' => $this->normalizeGeoLabel($row->city),
+                    'country' => $this->normalizeCountryName($row->country),
+                    'count' => (int) ($row->count ?? 0),
+                ];
+            })
+            ->filter(fn ($row) => ! empty($row['city']) && ! empty($row['country']) && $row['count'] > 0)
+            ->groupBy(fn ($row) => $row['city'].'|'.$row['country'])
+            ->map(function ($items) {
+                $first = $items->first();
+
+                return [
+                    'city' => $first['city'],
+                    'country' => $first['country'],
+                    'count' => $items->sum('count'),
+                ];
+            })
+            ->values()
+            ->sortByDesc('count')
+            ->values();
+
         // Statistiques des visiteurs
         $visitorStats = [
             'by_device' => Visitor::select('device_type')
@@ -670,18 +758,10 @@ class AdminController extends Controller
 
                     return $item;
                 }),
-            'by_country' => $this->visitorsWithKnownCountryQuery()
-                ->selectRaw('TRIM(country) as country, COUNT(*) as count')
-                ->groupByRaw('TRIM(country)')
-                ->orderByDesc('count')
-                ->limit(10)
-                ->get(),
-            'by_city' => $this->visitorsWithKnownCityQuery()
-                ->selectRaw('TRIM(city) as city, TRIM(country) as country, COUNT(*) as count')
-                ->groupByRaw('TRIM(city), TRIM(country)')
-                ->orderByDesc('count')
-                ->limit(10)
-                ->get(),
+            'by_country' => $countryRows->take(10)->values(),
+            'by_country_all' => $countryRows->values(),
+            'by_city' => $cityRows->take(10)->values(),
+            'by_city_all' => $cityRows->values(),
         ];
 
         $baseCurrency = Setting::getBaseCurrency();

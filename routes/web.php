@@ -138,7 +138,12 @@ Route::middleware('auth')->group(function () {
     // Customer order routes (moved under /customers/ordres)
     Route::get('/customers/ordres', [App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
     Route::get('/customers/ordres/{order}', [App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
+    Route::get('/customers/ordres/{order}/reprendre-paiement', [App\Http\Controllers\OrderController::class, 'restoreCartAndRedirectToCart'])
+        ->name('orders.restore-cart');
 });
+
+Route::get('/customers/ordres/{order}/reprendre-paiement-email', [App\Http\Controllers\OrderController::class, 'restoreCartFromSignedEmailLink'])
+    ->name('orders.restore-cart.signed');
 
 // SSO routes (must be before auth routes)
 Route::get('/sso/callback', [SSOCallbackController::class, 'handle'])->name('sso.callback');
