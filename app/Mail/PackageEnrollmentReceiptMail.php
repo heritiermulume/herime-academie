@@ -19,7 +19,8 @@ class PackageEnrollmentReceiptMail extends Mailable
     public function __construct(
         public ContentPackage $package,
         private string $pdfContent,
-        public ?Order $order = null
+        public ?Order $order = null,
+        public string $recipientName = ''
     ) {}
 
     public function envelope(): Envelope
@@ -37,6 +38,7 @@ class PackageEnrollmentReceiptMail extends Mailable
             with: [
                 'package' => $this->package,
                 'packUrl' => route('customer.pack', $this->package),
+                'recipientName' => $this->recipientName,
             ],
         );
     }

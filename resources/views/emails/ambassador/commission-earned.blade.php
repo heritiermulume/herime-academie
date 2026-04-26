@@ -17,6 +17,12 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             <h1>🎉 Nouvelle Commission Gagnée !</h1>
@@ -24,7 +30,7 @@
         </div>
         
         <div class="content">
-            <p>Bonjour <strong>{{ $ambassador->user->name }}</strong>,</p>
+            <p>{{ $timeGreeting }} <strong>{{ $ambassador->user->name }}</strong>,</p>
             
             <p>Félicitations ! Vous avez gagné une nouvelle commission grâce à votre code promo.</p>
             

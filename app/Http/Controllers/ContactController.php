@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use App\Mail\ContactMessageMail;
+use App\Support\RecipientDisplayName;
 use Illuminate\Support\Facades\Log;
 
 class ContactController extends Controller
@@ -43,9 +44,25 @@ class ContactController extends Controller
                 'status' => 'unread',
             ]);
 
-            // Envoyer un email à academie@herime.com
+            // Envoyer un email aux admins avec leur nom réel
             try {
-                Mail::to('academie@herime.com')->send(new ContactMessageMail($contactMessage));
+                $admins = User::admins()->get();
+
+                if ($admins->isNotEmpty()) {
+                    foreach ($admins as $admin) {
+                        if (! empty($admin->email) && filter_var($admin->email, FILTER_VALIDATE_EMAIL)) {
+                            Mail::to($admin->email)->send(new ContactMessageMail(
+                                $contactMessage,
+                                RecipientDisplayName::resolve($admin->name ?? null, $admin->email ?? null)
+                            ));
+                        }
+                    }
+                } else {
+                    Mail::to('academie@herime.com')->send(new ContactMessageMail(
+                        $contactMessage,
+                        RecipientDisplayName::resolve(null, 'academie@herime.com')
+                    ));
+                }
             } catch (\Exception $e) {
                 // Log l'erreur mais ne pas faire échouer la sauvegarde
                 Log::error('Erreur envoi email contact: ' . $e->getMessage());
@@ -53,7 +70,7 @@ class ContactController extends Controller
 
             // Notifier les administrateurs et super_user (notification en base pour la navbar)
             try {
-                $admins = User::admins()->get();
+                $admins = $admins ?? User::admins()->get();
                 if ($admins->isNotEmpty()) {
                     Notification::sendNow($admins, new ContactMessageReceived($contactMessage));
                 }

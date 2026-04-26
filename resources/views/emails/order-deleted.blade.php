@@ -163,6 +163,12 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             @if(isset($logoUrl))
@@ -176,7 +182,7 @@
         </div>
 
         <div class="content">
-            <h2>Bonjour {{ $order->user->name }},</h2>
+            <h2>{{ $timeGreeting }} {{ $order->user->name }},</h2>
             <p>Nous vous informons que votre commande <strong>#{{ $order->order_number }}</strong> a été supprimée par un administrateur.</p>
         </div>
 

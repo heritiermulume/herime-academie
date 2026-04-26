@@ -238,6 +238,11 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
     <div class="container">
         <div class="header">
             @if(isset($logoUrl))
@@ -318,7 +323,7 @@
         @endif
 
         <div class="message">
-            <p><strong>Merci pour votre achat !</strong> Votre paiement a été traité avec succès. Cette facture fait foi de votre transaction.</p>
+            <p><strong>{{ $timeGreeting }} {{ $user->name }},</strong><br><br><strong>Merci pour votre achat !</strong> Votre paiement a été traité avec succès. Cette facture fait foi de votre transaction.</p>
         </div>
 
         <table class="items-table">

@@ -18,7 +18,7 @@ class CourseAccessRevokedMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(Course $course)
+    public function __construct(Course $course, public string $recipientName)
     {
         $this->course = $course;
     }
@@ -48,6 +48,7 @@ class CourseAccessRevokedMail extends Mailable
                 'course' => $this->course,
                 'courseUrl' => route('contents.show', $this->course->slug),
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
+                'recipientName' => $this->recipientName,
             ],
         );
     }

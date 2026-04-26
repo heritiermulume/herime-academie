@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\UserSubscription;
 use App\Support\EmailBranding;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -32,7 +33,7 @@ class AdminSubscriptionAutoRenewResumed extends Notification
             ->view('emails.admin-subscription-event', [
                 'logoUrl' => EmailBranding::logoUrl(),
                 'title' => 'Auto-renouvellement réactivé',
-                'adminName' => $notifiable->name ?? null,
+                'adminName' => RecipientDisplayName::resolve($notifiable->name ?? null, $notifiable->email ?? null),
                 'intro' => 'Un client a réactivé le renouvellement automatique de son abonnement.',
                 'detailsTitle' => 'Détails de l’abonnement',
                 'detailLines' => array_filter([

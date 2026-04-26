@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\UserSubscription;
 use App\Support\EmailBranding;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -31,7 +32,7 @@ class AdminSubscriptionAccessEnded extends Notification
             ->view('emails.admin-subscription-event', [
                 'logoUrl' => EmailBranding::logoUrl(),
                 'title' => 'Abonnement expiré',
-                'adminName' => $notifiable->name ?? null,
+                'adminName' => RecipientDisplayName::resolve($notifiable->name ?? null, $notifiable->email ?? null),
                 'intro' => 'Un abonnement est passé en statut expiré (fin de période atteinte).',
                 'detailsTitle' => 'Détails de l’expiration',
                 'detailLines' => array_filter([

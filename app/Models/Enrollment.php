@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\CourseEnrolled;
+use App\Support\RecipientDisplayName;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Mail;
@@ -245,7 +246,11 @@ class Enrollment extends Model
                     if ($pdfContent === '' || strlen($pdfContent) < 100) {
                         throw new \RuntimeException('Le contenu du PDF généré est vide ou invalide (taille: '.strlen($pdfContent).' octets).');
                     }
-                    $receiptMail = new \App\Mail\EnrollmentReceiptMail($course, $pdfContent);
+                    $receiptMail = new \App\Mail\EnrollmentReceiptMail(
+                        $course,
+                        $pdfContent,
+                        RecipientDisplayName::resolve($user->name ?? null, $user->email ?? null)
+                    );
                     if ($communicationService) {
                         $communicationService->sendEmailAndWhatsApp($user, $receiptMail, null, false);
                     } else {

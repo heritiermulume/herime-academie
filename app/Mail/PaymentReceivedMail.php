@@ -42,6 +42,13 @@ class PaymentReceivedMail extends Mailable
         $this->order->load(array_merge(['user'], Order::eagerLoadOrderItemsWithPackages()));
 
         $copy = Order::paymentConfirmationCopy($this->order->orderItems);
+        $purchasedTitles = Order::previewTitlesForOrderItems($this->order->orderItems);
+        $purchasedSummary = match ($purchasedTitles->count()) {
+            0 => 'contenu(x)',
+            1 => $purchasedTitles->first(),
+            2 => $purchasedTitles->join(' et '),
+            default => $purchasedTitles->take(2)->implode(', ') . ' et ' . ($purchasedTitles->count() - 2) . ' autre(s) contenu(s)',
+        };
 
         // Sécuriser le formatage de la date au cas où paid_at serait null ou mal formaté
         $paidAtText = null;
@@ -65,6 +72,7 @@ class PaymentReceivedMail extends Mailable
                 'actionText' => $copy['action_text'],
                 'paidAtText' => $paidAtText,
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
+                'purchasedSummary' => $purchasedSummary,
             ],
         );
     }

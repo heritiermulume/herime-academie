@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\User;
 use App\Models\SentEmail;
 use App\Mail\CustomAnnouncementMail;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -54,7 +55,8 @@ class SendEmailJob implements ShouldQueue
             $mailable = new CustomAnnouncementMail(
                 $this->subject,
                 $this->content,
-                $this->attachmentPaths
+                $this->attachmentPaths,
+                RecipientDisplayName::resolve($this->user->name ?? null, $this->user->email ?? null)
             );
             $communicationService = app(\App\Services\CommunicationService::class);
             $results = $communicationService->sendEmailAndWhatsApp($this->user, $mailable, null, false);

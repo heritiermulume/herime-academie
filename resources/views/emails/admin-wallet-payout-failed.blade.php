@@ -19,6 +19,12 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             @if(!empty($logoUrl))
@@ -28,7 +34,7 @@
             <p class="muted">{{ config('app.name') }} - Notification admin</p>
         </div>
 
-        <p>Bonjour{{ !empty($adminName) ? ' ' . $adminName : '' }},</p>
+        <p>{{ $timeGreeting }} {{ $adminName }},</p>
         <p>Un retrait (payout) depuis le portefeuille admin a échoué. Le montant a été ou sera remboursé sur le portefeuille concerné.</p>
 
         <div class="box">

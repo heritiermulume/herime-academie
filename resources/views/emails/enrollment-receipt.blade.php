@@ -16,13 +16,19 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             <h1>Votre reçu d'inscription</h1>
             <p>Herime Académie – {{ $course->title }}</p>
         </div>
         <div class="message">
-            <p>Bonjour,</p>
+            <p>{{ $timeGreeting }} {{ $recipientName }},</p>
             <p>Veuillez trouver en pièce jointe votre reçu d'inscription au {{ $course->getContentLabel() }} <strong>{{ $course->title }}</strong>.</p>
             <p>
                 <a href="{{ $courseUrl }}" class="btn">Accéder au {{ $course->getContentLabel() }}</a>

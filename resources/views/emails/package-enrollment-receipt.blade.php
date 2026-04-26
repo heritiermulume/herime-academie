@@ -16,13 +16,19 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             <h1>Votre reçu d'achat (pack)</h1>
             <p>Herime Académie — {{ $package->title }}</p>
         </div>
         <div class="message">
-            <p>Bonjour,</p>
+            <p>{{ $timeGreeting }} {{ $recipientName }},</p>
             <p>Veuillez trouver en pièce jointe le reçu PDF relatif au pack <strong>{{ $package->title }}</strong> et à l'ensemble des contenus inclus.</p>
             <p>
                 <a href="{{ $packUrl }}" class="btn">Accéder à mon pack</a>

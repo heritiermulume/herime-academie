@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\CustomAnnouncementMail;
+use App\Support\RecipientDisplayName;
 
 class TestEmail extends Command
 {
@@ -68,7 +69,8 @@ class TestEmail extends Command
             $mailable = new CustomAnnouncementMail(
                 'Test d\'envoi d\'email - Herime Académie',
                 '<p>Ceci est un email de test pour vérifier la configuration SMTP.</p><p>Si vous recevez cet email, la configuration est correcte.</p>',
-                []
+                [],
+                RecipientDisplayName::resolve(null, $email)
             );
             
             Mail::to($email)->send($mailable);

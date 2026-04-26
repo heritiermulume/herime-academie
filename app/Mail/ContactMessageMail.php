@@ -18,7 +18,7 @@ class ContactMessageMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(ContactMessage $contactMessage)
+    public function __construct(ContactMessage $contactMessage, public string $recipientName)
     {
         $this->contactMessage = $contactMessage;
     }
@@ -65,6 +65,7 @@ class ContactMessageMail extends Mailable
                 'contactMessage' => $this->contactMessage,
                 'subjectLabel' => $subjectLabels[$this->contactMessage->subject] ?? ucfirst($this->contactMessage->subject),
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
+                'recipientName' => $this->recipientName,
             ],
         );
     }

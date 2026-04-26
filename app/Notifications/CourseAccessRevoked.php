@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Course;
 use App\Mail\CourseAccessRevokedMail;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -39,7 +40,10 @@ class CourseAccessRevoked extends Notification
     public function toMail(object $notifiable)
     {
         // Utiliser le Mailable personnalisé pour l'email HTML avec la charte graphique
-        return new CourseAccessRevokedMail($this->course);
+        return new CourseAccessRevokedMail(
+            $this->course,
+            RecipientDisplayName::resolve($notifiable->name ?? null, $notifiable->email ?? null)
+        );
     }
 
     /**

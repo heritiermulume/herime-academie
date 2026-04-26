@@ -10,6 +10,7 @@ use App\Models\SentEmail;
 use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\PackageEnrolled;
+use App\Support\RecipientDisplayName;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -40,7 +41,11 @@ class PackageEnrollmentNotifier
                 ]);
             }
 
-            $mailable = new PackageEnrolledMail($package, $order);
+            $mailable = new PackageEnrolledMail(
+                $package,
+                $order,
+                RecipientDisplayName::resolve($user->name ?? null, $user->email ?? null)
+            );
 
             try {
                 if ($communicationService) {
@@ -135,7 +140,12 @@ class PackageEnrollmentNotifier
                 throw new \RuntimeException('PDF pack vide ou invalide (taille: ' . strlen($pdfContent) . ' octets).');
             }
 
-            $receiptMail = new PackageEnrollmentReceiptMail($package, $pdfContent, $order);
+            $receiptMail = new PackageEnrollmentReceiptMail(
+                $package,
+                $pdfContent,
+                $order,
+                RecipientDisplayName::resolve($user->name ?? null, $user->email ?? null)
+            );
 
             try {
                 $communicationService = app(CommunicationService::class);

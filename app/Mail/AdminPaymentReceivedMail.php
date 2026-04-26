@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\Order;
 use App\Models\User;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,7 +17,7 @@ class AdminPaymentReceivedMail extends Mailable
 
     public function __construct(
         public Order $order,
-        public ?User $admin = null
+        public User $admin
     ) {
         //
     }
@@ -48,7 +49,7 @@ class AdminPaymentReceivedMail extends Mailable
             with: [
                 'order' => $this->order,
                 'adminUrl' => $adminUrl,
-                'adminName' => $this->admin?->name,
+                'adminName' => RecipientDisplayName::resolve($this->admin->name ?? null, $this->admin->email ?? null),
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],
         );

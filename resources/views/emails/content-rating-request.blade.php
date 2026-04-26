@@ -135,6 +135,12 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             @if(isset($logoUrl))
@@ -147,7 +153,7 @@
         </div>
 
         <div class="content">
-            <h2>Bonjour {{ $greetingName }},</h2>
+            <h2>{{ $timeGreeting }} {{ $greetingName }},</h2>
 
             @if($usePurchaseWording ?? true)
             <p>Nous espérons que vous profitez pleinement de votre achat <strong>«&nbsp;{{ $course->title }}&nbsp;»</strong>.</p>

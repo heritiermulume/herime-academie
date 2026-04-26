@@ -168,6 +168,11 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
     <div class="container">
         <div class="header">
             @if(isset($logoUrl))
@@ -215,6 +220,7 @@
 
         <div class="message">
             <p>
+                <strong>{{ $timeGreeting }} {{ $recipientName }},</strong><br><br>
                 <strong>Accès retiré</strong><br>
                 Votre accès au cours <strong>"{{ $course->title }}"</strong> a été retiré par l'administration. Vous ne pouvez plus accéder au contenu de ce cours pour le moment.
             </p>

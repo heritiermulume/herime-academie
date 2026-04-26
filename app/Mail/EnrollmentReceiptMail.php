@@ -22,7 +22,8 @@ class EnrollmentReceiptMail extends Mailable
      */
     public function __construct(
         Course $course,
-        private string $pdfContent
+        private string $pdfContent,
+        public string $recipientName
     ) {
         $this->course = $course;
     }
@@ -44,6 +45,7 @@ class EnrollmentReceiptMail extends Mailable
                 'courseUrl' => ($this->course->is_downloadable || ($this->course->is_in_person_program ?? false) || $this->course->isEnrollmentReceiptOnly())
                     ? route('contents.show', $this->course->slug)
                     : route('learning.course', $this->course->slug),
+                'recipientName' => $this->recipientName,
             ],
         );
     }

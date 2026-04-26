@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Helpers\CurrencyHelper;
 use App\Models\SubscriptionInvoice;
 use App\Support\EmailBranding;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -31,7 +32,7 @@ class AdminSubscriptionInvoiceFailed extends Notification
             ->view('emails.admin-subscription-event', [
                 'logoUrl' => EmailBranding::logoUrl(),
                 'title' => 'Échec de paiement abonnement',
-                'adminName' => $notifiable->name ?? null,
+                'adminName' => RecipientDisplayName::resolve($notifiable->name ?? null, $notifiable->email ?? null),
                 'intro' => 'Une facture d’abonnement est en échec ou a échoué côté paiement.',
                 'detailsTitle' => 'Détails de la facture',
                 'detailLines' => [

@@ -150,6 +150,12 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             @if(isset($logoUrl))
@@ -164,7 +170,7 @@
         <div class="content">
             <div class="error-badge">✗ Paiement échoué</div>
             
-            <h2>Bonjour {{ $order->user->name }} !</h2>
+            <h2>{{ $timeGreeting }} {{ $order->user->name }} !</h2>
             
             <p>Nous vous informons que votre paiement n'a pas pu être traité avec succès.</p>
 

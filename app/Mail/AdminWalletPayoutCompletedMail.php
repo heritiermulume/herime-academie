@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\User;
 use App\Models\WalletPayout;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -16,7 +17,7 @@ class AdminWalletPayoutCompletedMail extends Mailable
 
     public function __construct(
         public WalletPayout $payout,
-        public ?User $admin = null
+        public User $admin
     ) {
         $this->payout->load(['wallet.user']);
     }
@@ -48,7 +49,7 @@ class AdminWalletPayoutCompletedMail extends Mailable
             with: [
                 'payout' => $this->payout,
                 'adminUrl' => $adminUrl,
-                'adminName' => $this->admin?->name,
+                'adminName' => RecipientDisplayName::resolve($this->admin->name ?? null, $this->admin->email ?? null),
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
             ],
         );

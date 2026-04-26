@@ -312,6 +312,11 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
     <div class="container">
         <div class="header">
             @if(isset($logoUrl))
@@ -373,6 +378,7 @@
 
         <div class="message">
             <p>
+                <strong>{{ $timeGreeting }} {{ $recipientName }},</strong><br><br>
                 <strong>{{ $messageTitle ?? 'Bienvenue dans ce cours !' }}</strong><br>
                 {{ $messageText ?? 'Votre inscription a été confirmée avec succès. Vous pouvez maintenant accéder à tous les contenus du cours et commencer votre apprentissage immédiatement.' }}
             </p>

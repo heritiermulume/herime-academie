@@ -23,7 +23,7 @@ class CustomAnnouncementMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(string $subject, string $content, array $attachments = [])
+    public function __construct(string $subject, string $content, array $attachments = [], public string $recipientName = '')
     {
         $this->subject = $subject;
         $this->content = $content;
@@ -69,6 +69,7 @@ class CustomAnnouncementMail extends Mailable
                 'content' => $this->content,
                 'processedContent' => $processedContent,
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
+                'recipientName' => $this->recipientName,
             ],
         );
     }

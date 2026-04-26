@@ -16,7 +16,8 @@ class PackageEnrolledMail extends Mailable
 
     public function __construct(
         public ContentPackage $package,
-        public ?Order $order = null
+        public ?Order $order = null,
+        public string $recipientName = ''
     ) {}
 
     public function envelope(): Envelope
@@ -44,6 +45,7 @@ class PackageEnrolledMail extends Mailable
                 'packUrl' => $packUrl,
                 'courseCount' => $courseCount,
                 'logoUrl' => config('app.url') . '/images/logo-herime-academie.png',
+                'recipientName' => $this->recipientName,
             ],
         );
     }

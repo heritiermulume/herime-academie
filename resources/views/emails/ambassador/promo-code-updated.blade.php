@@ -173,6 +173,12 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             <div class="logo-container">
@@ -183,7 +189,7 @@
         </div>
         
         <div class="content">
-            <p class="greeting">Bonjour <strong>{{ $ambassador->user->name }}</strong>,</p>
+            <p class="greeting">{{ $timeGreeting }} <strong>{{ $ambassador->user->name }}</strong>,</p>
             
             @if($isNewCode && $oldPromoCode)
                 <p>Nous vous informons qu'un <strong>nouveau code promo</strong> vous a été généré.</p>

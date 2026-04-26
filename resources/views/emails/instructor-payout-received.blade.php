@@ -131,6 +131,12 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             @if(isset($logoUrl))
@@ -145,7 +151,7 @@
         <div class="content">
             <div class="success-badge">✓ Paiement effectué</div>
             
-            <h2>Bonjour {{ $payout->provider->name }} !</h2>
+            <h2>{{ $timeGreeting }} {{ $payout->provider->name }} !</h2>
             
             <p>Nous sommes heureux de vous informer que votre paiement a été effectué avec succès.</p>
 

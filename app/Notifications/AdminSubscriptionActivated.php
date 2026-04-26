@@ -7,6 +7,7 @@ use App\Models\ContentPackage;
 use App\Models\SubscriptionInvoice;
 use App\Models\UserSubscription;
 use App\Support\EmailBranding;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -70,7 +71,7 @@ class AdminSubscriptionActivated extends Notification
             ->view('emails.admin-subscription-event', [
                 'logoUrl' => EmailBranding::logoUrl(),
                 'title' => $this->isPaidCycleRenewal ? 'Paiement d\'abonnement reçu' : ($this->isRenewal ? 'Réabonnement client' : 'Nouvel abonnement client'),
-                'adminName' => $notifiable->name ?? null,
+                'adminName' => RecipientDisplayName::resolve($notifiable->name ?? null, $notifiable->email ?? null),
                 'intro' => $lead,
                 'detailsTitle' => 'Détails de l’abonnement',
                 'detailLines' => $detailLines,

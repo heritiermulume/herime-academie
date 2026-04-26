@@ -25,6 +25,12 @@
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             @if(!empty($logoUrl))
@@ -38,7 +44,7 @@
 
         <div class="message">
             <p>
-                Bonjour,<br><br>
+                {{ $timeGreeting }} {{ $recipientName }},<br><br>
                 Votre accès au pack <strong>{{ $package->title }}</strong> est actif.
                 Tous les contenus inclus sont disponibles depuis la page dédiée au pack — vous ne recevrez pas d’e-mails séparés pour chaque cours.
             </p>

@@ -26,9 +26,16 @@
         .footer { text-align: center; padding-top: 30px; border-top: 1px solid #e9ecef; color: #6c757d; font-size: 14px; }
         .footer p { margin-bottom: 10px; }
         .footer a { color: #003366; text-decoration: none; }
+        .footer-disclaimer { margin-top: 24px; padding-top: 20px; border-top: 1px solid #e9ecef; font-size: 13px; color: #6c757d; line-height: 1.5; text-align: left; }
     </style>
 </head>
 <body>
+    @php
+        $emailHour = now()->timezone(config('app.timezone'))->hour;
+        $timeGreeting = $emailHour < 12 ? 'Bonjour' : ($emailHour < 18 ? 'Bon après-midi' : 'Bonsoir');
+    @endphp
+
+
     <div class="container">
         <div class="header">
             @if(isset($logoUrl))
@@ -43,7 +50,7 @@
         <div class="content">
             <div class="success-badge">✓ Paiement reçu</div>
 
-            <h2>Bonjour {{ $userName }} !</h2>
+            <h2>{{ $timeGreeting }} {{ $userName }} !</h2>
 
             <p>Nous sommes heureux de vous confirmer que votre paiement d’abonnement a bien été reçu.</p>
 
@@ -74,6 +81,10 @@
                 <a href="{{ config('app.url') }}">Visiter le site</a> |
                 <a href="{{ config('app.url') }}/contact">Nous contacter</a>
             </p>
+            <div class="footer-disclaimer">
+                Vous recevez cet email suite à votre achat.
+                Si vous n'êtes pas à l'origine de cet achat, veuillez contacter notre service client.
+            </div>
         </div>
     </div>
 </body>

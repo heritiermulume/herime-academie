@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Helpers\CurrencyHelper;
 use App\Models\SubscriptionInvoice;
 use App\Support\EmailBranding;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -34,7 +35,7 @@ class AdminSubscriptionInvoiceIssued extends Notification
             ->view('emails.admin-subscription-event', [
                 'logoUrl' => EmailBranding::logoUrl(),
                 'title' => 'Facture d’abonnement émise',
-                'adminName' => $notifiable->name ?? null,
+                'adminName' => RecipientDisplayName::resolve($notifiable->name ?? null, $notifiable->email ?? null),
                 'intro' => 'Une facture d’abonnement a été émise (renouvellement ou relance).',
                 'detailsTitle' => 'Détails de la facture',
                 'detailLines' => [

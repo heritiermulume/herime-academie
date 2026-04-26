@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Mail\CourseEnrolledMail;
 use App\Models\Course;
+use App\Support\RecipientDisplayName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -48,7 +49,10 @@ class CourseEnrolled extends Notification
             }
 
             // Utiliser le Mailable personnalisé pour l'email HTML avec la charte graphique
-            $mailable = new CourseEnrolledMail($this->course);
+            $mailable = new CourseEnrolledMail(
+                $this->course,
+                RecipientDisplayName::resolve($notifiable->name ?? null, $notifiable->email ?? null)
+            );
 
             \Log::info('CourseEnrolled::toMail() appelé', [
                 'user_id' => $notifiable->id,

@@ -15,6 +15,7 @@ use App\Notifications\PaymentReceived;
 use App\Services\OrderEnrollmentService;
 use App\Services\SubscriptionCheckoutOrderService;
 use App\Services\SubscriptionService;
+use App\Support\RecipientDisplayName;
 use App\Traits\HandlesBulkActions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -492,7 +493,10 @@ class OrderController extends Controller
                 try {
                     if ($enrollment->course && $enrollment->user) {
                         // Envoyer l'email de notification
-                        $mailable = new CourseAccessRevokedMail($enrollment->course);
+                        $mailable = new CourseAccessRevokedMail(
+                            $enrollment->course,
+                            RecipientDisplayName::resolve($enrollment->user->name ?? null, $enrollment->user->email ?? null)
+                        );
                         $communicationService = app(\App\Services\CommunicationService::class);
                         $communicationService->sendEmailAndWhatsApp($enrollment->user, $mailable);
                         // Envoyer la notification
