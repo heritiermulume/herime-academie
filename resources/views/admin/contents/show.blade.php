@@ -71,6 +71,7 @@
 
     // Calculer le nombre de leçons totales pour le cours (pourcentage de complétion global)
     $totalLessonsCount = $lessonsCollection->count();
+    $showLessonProgressBar = !$course->is_downloadable && $totalLessonsCount > 0;
 
     $videoPreviewUrl = $course->video_preview_url ?: null;
     if (!$videoPreviewUrl && !empty($course->video_preview_youtube_id)) {
@@ -112,9 +113,6 @@
                             <dt class="col-sm-4">Sous-titre</dt>
                             <dd class="col-sm-8">{{ $course->subtitle }}</dd>
                         @endif
-
-                        <dt class="col-sm-4">Description</dt>
-                        <dd class="col-sm-8">{{ $course->description ?? 'N/A' }}</dd>
 
                         <dt class="col-sm-4">Statut</dt>
                         <dd class="col-sm-8">
@@ -177,7 +175,7 @@
                     </div>
                     <div class="admin-panel__body">
                         @if($course->description)
-                            <div class="mb-3">{!! nl2br(e($course->description)) !!}</div>
+                            <div class="mb-3 course-description">{!! \App\Support\RichText::toHtml($course->description) !!}</div>
                         @endif
 
                         @if(!empty($tagsList))
@@ -416,14 +414,14 @@
                             <span class="badge bg-primary">
                                 {{ $enrollmentsCollection->count() }} inscrit{{ $enrollmentsCollection->count() > 1 ? 's' : '' }}
                             </span>
-                            <a href="{{ route('admin.contents.enrollments', $course) }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ route('admin.contents.enrollments', $course) }}" class="btn btn-sm btn-outline-light text-white border-white">
                                 <i class="fas fa-list me-1"></i>Voir tout
                             </a>
                         </div>
                     </div>
                     <div class="admin-panel__body">
                         <p class="text-muted small mb-3">
-                            Liste des clients inscrits à ce contenu, avec leur progression, leurs téléchargements et l’état de complétion de la formation.
+                            Liste des clients inscrits à ce contenu, avec leur progression, leurs téléchargements et l’état de complétion du contenu.
                         </p>
                         <div class="admin-table">
                             <div class="table-responsive">
@@ -433,7 +431,7 @@
                                             <th>Utilisateur</th>
                                             <th>Inscription</th>
                                             <th>Progression</th>
-                                            <th>Formation terminée</th>
+                                            <th>Contenu terminé</th>
                                             @if($course->is_downloadable)
                                                 <th>Téléchargements</th>
                                             @endif
@@ -478,7 +476,7 @@
                                                     <div class="text-muted small">
                                                         <div>
                                                             <i class="far fa-calendar-alt me-1"></i>
-                                                            Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y') ?? 'N/A' }}
+                                                            Inscrit le {{ optional($enrollment->created_at)->format('d/m/Y à H:i') ?? 'N/A' }}
                                                         </div>
                                                         @if($enrollment->order_id)
                                                             <div>
@@ -494,15 +492,17 @@
                                                             <span class="small text-muted">Progression</span>
                                                             <span class="fw-semibold">{{ number_format($progress, 0) }}%</span>
                                                         </div>
-                                                        <div class="progress" style="height: 6px;">
-                                                            <div class="progress-bar {{ $progress >= 100 ? 'bg-success' : 'bg-info' }}"
-                                                                 role="progressbar"
-                                                                 style="width: {{ min(100, max(0, (int) $progress)) }}%;"
-                                                                 aria-valuenow="{{ (int) $progress }}"
-                                                                 aria-valuemin="0"
-                                                                 aria-valuemax="100">
+                                                        @if($showLessonProgressBar)
+                                                            <div class="progress" style="height: 6px;">
+                                                                <div class="progress-bar {{ $progress >= 100 ? 'bg-success' : 'bg-info' }}"
+                                                                     role="progressbar"
+                                                                     style="width: {{ min(100, max(0, (int) $progress)) }}%;"
+                                                                     aria-valuenow="{{ (int) $progress }}"
+                                                                     aria-valuemin="0"
+                                                                     aria-valuemax="100">
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        @endif
                                                         @if($totalLessonsCount > 0)
                                                             <div class="small text-muted">
                                                                 {{ $completedLessonsCount }} / {{ $totalLessonsCount }} leçon{{ $totalLessonsCount > 1 ? 's' : '' }} complétée{{ $completedLessonsCount > 1 ? 's' : '' }}

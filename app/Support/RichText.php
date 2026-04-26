@@ -11,6 +11,15 @@ use Illuminate\Support\Str;
 class RichText
 {
     /**
+     * Enveloppe un fragment HTML pour loadHTML : sans déclaration UTF-8 explicite,
+     * libxml interprète souvent les octets en ISO-8859-1 et corrompt les accents (mojibake).
+     */
+    private static function wrapFragmentForLibxml(string $innerHtml): string
+    {
+        return '<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body><div id="rich-text-root">'.$innerHtml.'</div></body></html>';
+    }
+
+    /**
      * Convertit un contenu texte/HTML en HTML affichable et sécurisé.
      */
     public static function toHtml(?string $value): string
@@ -41,7 +50,7 @@ class RichText
         libxml_use_internal_errors(true);
         $document = new DOMDocument('1.0', 'UTF-8');
         $document->loadHTML(
-            '<!DOCTYPE html><html><body><div id="rich-text-root">'.$html.'</div></body></html>',
+            self::wrapFragmentForLibxml($html),
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
 
@@ -80,7 +89,7 @@ class RichText
         libxml_use_internal_errors(true);
         $document = new DOMDocument('1.0', 'UTF-8');
         $document->loadHTML(
-            '<!DOCTYPE html><html><body><div id="rich-text-root">'.$html.'</div></body></html>',
+            self::wrapFragmentForLibxml($html),
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
 
@@ -131,6 +140,7 @@ class RichText
             if ($child instanceof DOMElement) {
                 if (! self::isAllowedTag($child->tagName)) {
                     self::unwrapElement($child);
+
                     continue;
                 }
                 self::sanitizeElementAttributes($child);
@@ -171,6 +181,7 @@ class RichText
             $name = strtolower($attr->name);
             if (! in_array($name, $allowed, true)) {
                 $element->removeAttribute($attr->name);
+
                 continue;
             }
 

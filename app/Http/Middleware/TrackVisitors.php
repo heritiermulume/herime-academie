@@ -2,14 +2,14 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Visitor;
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
-use App\Models\Visitor;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
+use Symfony\Component\HttpFoundation\Response;
 
 class TrackVisitors
 {
@@ -21,8 +21,8 @@ class TrackVisitors
     public function handle(Request $request, Closure $next): Response
     {
         // Ignorer les requêtes AJAX, les assets statiques, et les routes admin
-        if ($request->ajax() || 
-            $request->expectsJson() || 
+        if ($request->ajax() ||
+            $request->expectsJson() ||
             $request->is('admin/*') ||
             $request->is('api/*') ||
             $request->is('_debugbar/*') ||
@@ -45,11 +45,11 @@ class TrackVisitors
         try {
             // Obtenir ou créer un session_id unique pour ce visiteur
             $sessionId = Session::getId();
-            
+
             // Vérifier si on a déjà enregistré cette visite dans cette session (éviter les doublons)
-            $lastVisitKey = 'last_visit_tracked_' . $request->path();
+            $lastVisitKey = 'last_visit_tracked_'.$request->path();
             $lastVisitTime = Session::get($lastVisitKey);
-            
+
             // Enregistrer une visite toutes les 5 minutes maximum pour la même page
             if ($lastVisitTime && (now()->timestamp - $lastVisitTime) < 300) {
                 return $next($request);
@@ -60,13 +60,13 @@ class TrackVisitors
             $userAgent = $request->userAgent();
             $url = $request->fullUrl();
             $referer = $request->header('referer');
-            
+
             // Détecter le type d'appareil et le navigateur
             $deviceInfo = $this->detectDevice($userAgent);
-            
+
             // Obtenir la géolocalisation (pays et ville)
             $location = $this->getLocation($ipAddress);
-            
+
             // Enregistrer la visite de manière asynchrone pour ne pas ralentir la réponse
             $this->trackVisit([
                 'ip_address' => $ipAddress,
@@ -87,7 +87,7 @@ class TrackVisitors
             Session::put($lastVisitKey, now()->timestamp);
         } catch (\Exception $e) {
             // Logger l'erreur mais ne pas bloquer la requête
-            Log::error('Error tracking visitor: ' . $e->getMessage());
+            Log::error('Error tracking visitor: '.$e->getMessage());
         }
 
         return $next($request);
@@ -108,7 +108,7 @@ class TrackVisitors
      */
     protected function detectDevice(?string $userAgent): array
     {
-        if (!$userAgent) {
+        if (! $userAgent) {
             return [
                 'device_type' => 'unknown',
                 'browser' => 'unknown',
@@ -176,30 +176,33 @@ class TrackVisitors
         }
 
         // Utiliser le cache pour éviter les requêtes répétées pour la même IP
-        $cacheKey = 'visitor_location_' . md5($ipAddress);
-        
+        $cacheKey = 'visitor_location_'.md5($ipAddress);
+
         return Cache::remember($cacheKey, now()->addDays(30), function () use ($ipAddress) {
             try {
                 // Utiliser ip-api.com (gratuit, sans API key, 45 req/min)
                 $response = Http::timeout(3)
                     ->get("http://ip-api.com/json/{$ipAddress}", [
-                        'fields' => 'status,country,countryCode,city,query'
+                        'fields' => 'status,country,countryCode,city,query',
                     ]);
 
                 if ($response->successful()) {
                     $data = $response->json();
-                    
+
                     if (isset($data['status']) && $data['status'] === 'success') {
+                        $country = isset($data['country']) ? trim((string) $data['country']) : '';
+                        $city = isset($data['city']) ? trim((string) $data['city']) : '';
+
                         return [
-                            'country' => $data['country'] ?? null,
-                            'city' => $data['city'] ?? null,
+                            'country' => $country !== '' ? $country : null,
+                            'city' => $city !== '' ? $city : null,
                         ];
                     }
                 }
             } catch (\Exception $e) {
                 // Logger l'erreur mais ne pas bloquer le tracking
-                Log::debug('Geolocation API error: ' . $e->getMessage(), [
-                    'ip' => $ipAddress
+                Log::debug('Geolocation API error: '.$e->getMessage(), [
+                    'ip' => $ipAddress,
                 ]);
             }
 
@@ -219,7 +222,7 @@ class TrackVisitors
 
         // IPv4 privées
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            return !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+            return ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
         }
 
         // IPv6 localhost

@@ -99,6 +99,30 @@ Analyses & Statistiques
                         </div>
                     </div>
                 </div>
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-primary-subtle text-primary-emphasis">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Clients (ayant acheté)</p>
+                            <h3 class="insight-card__value">{{ number_format($stats['users_with_purchase'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">Utilisateurs connectés avec au moins une commande payée ou complétée</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6 col-xl-6">
+                    <div class="insight-card shadow-sm">
+                        <div class="insight-card__icon bg-success-subtle text-success-emphasis">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <div class="insight-card__content">
+                            <p class="insight-card__label">Accès aux contenus</p>
+                            <h3 class="insight-card__value">{{ number_format($stats['users_with_content_access'] ?? 0) }}</h3>
+                            <p class="insight-card__supplement">Utilisateurs distincts avec inscription active ou terminée</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -458,8 +482,12 @@ Analyses & Statistiques
                     <div class="admin-card shadow-sm h-100">
                         <div class="admin-card__header">
                             <h5 class="admin-card__title">
-                                <i class="fas fa-flag me-2"></i>Visiteurs par pays
+                                <i class="fas fa-flag me-2"></i>Visites par pays
                             </h5>
+                            <p class="text-muted small mb-0 mt-1">
+                                Nombre d’enregistrements de visite avec pays connu ({{ number_format($stats['visits_with_country_geo'] ?? 0) }} au total).
+                                Les lignes sans géolocalisation pays ne sont pas incluses.
+                            </p>
                         </div>
                         <div class="admin-card__body">
                             <div class="chart-container">
@@ -472,8 +500,12 @@ Analyses & Statistiques
                     <div class="admin-card shadow-sm h-100">
                         <div class="admin-card__header">
                             <h5 class="admin-card__title">
-                                <i class="fas fa-map-marker-alt me-2"></i>Visiteurs par ville
+                                <i class="fas fa-map-marker-alt me-2"></i>Visites par ville
                             </h5>
+                            <p class="text-muted small mb-0 mt-1">
+                                Uniquement les visites avec <strong>ville et pays</strong> renseignés ({{ number_format($stats['visits_with_city_geo'] ?? 0) }} au total), groupées par couple ville + pays — cohérent avec l’API de géolocalisation.
+                                Le total par pays ci-dessus peut être plus élevé (visites sans ville précise).
+                            </p>
                         </div>
                         <div class="admin-card__body">
                             <div class="chart-container">
@@ -565,6 +597,36 @@ Analyses & Statistiques
                                     </td>
                                     <td>
                                         <i class="fas fa-arrow-up text-success"></i>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-shopping-cart text-primary me-2"></i>
+                                        Clients (utilisateurs ayant acheté)
+                                    </td>
+                                    <td><strong>{{ number_format($stats['users_with_purchase'] ?? 0) }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary-emphasis">
+                                            Commandes payées ou complétées avec au moins une ligne
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-user-check text-primary"></i>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-key text-success me-2"></i>
+                                        Utilisateurs avec accès aux contenus
+                                    </td>
+                                    <td><strong>{{ number_format($stats['users_with_content_access'] ?? 0) }}</strong></td>
+                                    <td>
+                                        <span class="badge bg-success-subtle text-success-emphasis">
+                                            Inscriptions actives ou terminées ({{ number_format($stats['total_enrollments'] ?? 0) }} lignes d’inscription)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-door-open text-success"></i>
                                     </td>
                                 </tr>
                                 <tr>
@@ -1612,14 +1674,14 @@ new Chart(visitorsCtx, {
     data: {
         labels: visitorLabels,
         datasets: [{
-            label: 'Visiteurs totaux',
+            label: 'Nombre de visites',
             data: sortedDates.map(date => visitorsMap[date].total),
             borderColor: '#003366',
             backgroundColor: 'rgba(0, 51, 102, 0.1)',
             tension: 0.4,
             fill: true
         }, {
-            label: 'Visiteurs uniques',
+            label: 'Visiteurs uniques (IP)',
             data: sortedDates.map(date => visitorsMap[date].unique),
             borderColor: '#28a745',
             backgroundColor: 'rgba(40, 167, 69, 0.1)',
@@ -1728,9 +1790,9 @@ if (countryCtx) {
         type: 'bar',
         data: {
             labels: visitorsByCountry.map(item => item.country || 'Inconnu'),
-            datasets: [{
-                label: 'Visiteurs',
-                data: visitorsByCountry.map(item => item.count),
+        datasets: [{
+            label: 'Visites',
+            data: visitorsByCountry.map(item => item.count),
                 backgroundColor: '#003366',
                 borderColor: '#003366',
                 borderWidth: 1
@@ -1774,7 +1836,7 @@ if (cityCtx) {
         data: {
             labels: visitorsByCity.map(item => (item.city || 'Inconnu') + (item.country ? ' (' + item.country + ')' : '')),
             datasets: [{
-                label: 'Visiteurs',
+                label: 'Visites',
                 data: visitorsByCity.map(item => item.count),
                 backgroundColor: '#ffcc33',
                 borderColor: '#ffcc33',

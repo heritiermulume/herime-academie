@@ -6,7 +6,6 @@ use App\Helpers\FileHelper;
 use App\Jobs\EncodeCommunityHomeVideoToHls;
 use App\Jobs\SendEmailJob;
 use App\Jobs\SendWhatsAppJob;
-use App\Mail\CustomAnnouncementMail;
 use App\Models\Announcement;
 use App\Models\Category;
 use App\Models\Certificate;
@@ -41,7 +40,6 @@ use App\Notifications\AnnouncementPublished;
 use App\Notifications\CategoryCreatedNotification;
 use App\Notifications\CourseModerationNotification;
 use App\Notifications\CoursePublishedNotification;
-use App\Notifications\EmailSentNotification;
 use App\Notifications\ProviderApplicationStatusUpdated;
 use App\Services\FileUploadService;
 use App\Services\HlsEncodingService;
@@ -56,7 +54,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -243,6 +240,26 @@ class AdminController extends Controller
         ));
     }
 
+    /**
+     * Visites dont le pays est renseigné (hors chaînes vides / espaces).
+     */
+    private function visitorsWithKnownCountryQuery()
+    {
+        return Visitor::query()
+            ->whereNotNull('country')
+            ->whereRaw("TRIM(country) <> ''");
+    }
+
+    /**
+     * Visites dont le pays et la ville sont renseignés — même périmètre que le graphique « par ville ».
+     */
+    private function visitorsWithKnownCityQuery()
+    {
+        return $this->visitorsWithKnownCountryQuery()
+            ->whereNotNull('city')
+            ->whereRaw("TRIM(city) <> ''");
+    }
+
     public function analytics()
     {
         // Calculer les revenus des contenus internes
@@ -305,9 +322,22 @@ class AdminController extends Controller
             'commissions_revenue' => $commissionsRevenue, // Commissions retenues sur les revenus externes
             'external_payouts' => $externalProviderPayouts, // Montants payés aux prestataires externes
             'total_enrollments' => Enrollment::count(),
-            'total_visits' => Visitor::count(), // Total de toutes les visites
-            'total_visitors' => Visitor::count(), // Alias pour compatibilité (total des visites)
+            'users_with_purchase' => (int) Order::withTrashed()
+                ->whereIn('status', ['paid', 'completed'])
+                ->whereNotNull('user_id')
+                ->has('orderItems')
+                ->distinct('user_id')
+                ->count('user_id'),
+            'users_with_content_access' => (int) Enrollment::query()
+                ->whereIn('status', ['active', 'completed'])
+                ->whereNotNull('user_id')
+                ->distinct('user_id')
+                ->count('user_id'),
+            'total_visits' => Visitor::count(), // Lignes en base = événements de visite
+            'total_visitors' => (int) (Visitor::query()->selectRaw('COUNT(DISTINCT ip_address) as c')->value('c') ?? 0), // Alias sémantique : IPs distinctes (comme unique_visitors)
             'unique_visitors' => (int) Visitor::selectRaw('COUNT(DISTINCT ip_address) as count')->value('count') ?? 0, // Visiteurs uniques par IP
+            'visits_with_country_geo' => (int) $this->visitorsWithKnownCountryQuery()->count(),
+            'visits_with_city_geo' => (int) $this->visitorsWithKnownCityQuery()->count(),
             'visitors_today' => Visitor::today()->count(), // Total des visites aujourd'hui
             'unique_visitors_today' => (int) Visitor::today()->selectRaw('COUNT(DISTINCT ip_address) as count')->value('count') ?? 0, // Visiteurs uniques aujourd'hui
             'visitors_this_week' => Visitor::thisWeek()->count(),
@@ -572,11 +602,10 @@ class AdminController extends Controller
             ->get();
 
         $providerStats = User::providers()
+            ->select('users.*')
+            ->selectRaw('(SELECT COUNT(*) FROM enrollments INNER JOIN contents ON contents.id = enrollments.content_id WHERE contents.provider_id = users.id) as enrollments_count')
             ->withCount('contents')
-            ->withCount(['contents as total_customers' => function ($query) {
-                $query->withCount('enrollments');
-            }])
-            ->orderBy('contents_count', 'desc')
+            ->orderByDesc('contents_count')
             ->limit(10)
             ->get();
 
@@ -641,17 +670,15 @@ class AdminController extends Controller
 
                     return $item;
                 }),
-            'by_country' => Visitor::select('country')
-                ->selectRaw('COUNT(*) as count')
-                ->whereNotNull('country')
-                ->groupBy('country')
+            'by_country' => $this->visitorsWithKnownCountryQuery()
+                ->selectRaw('TRIM(country) as country, COUNT(*) as count')
+                ->groupByRaw('TRIM(country)')
                 ->orderByDesc('count')
                 ->limit(10)
                 ->get(),
-            'by_city' => Visitor::select('city', 'country')
-                ->selectRaw('COUNT(*) as count')
-                ->whereNotNull('city')
-                ->groupBy('city', 'country')
+            'by_city' => $this->visitorsWithKnownCityQuery()
+                ->selectRaw('TRIM(city) as city, TRIM(country) as country, COUNT(*) as count')
+                ->groupByRaw('TRIM(city), TRIM(country)')
                 ->orderByDesc('count')
                 ->limit(10)
                 ->get(),
@@ -694,8 +721,8 @@ class AdminController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        // Utilise le même calcul que /admin/orders pour uniformiser
-        $query = Order::whereIn('status', ['paid', 'completed']);
+        // Même périmètre que le tableau de bord admin : commandes supprimées (soft) incluses
+        $query = Order::withTrashed()->whereIn('status', ['paid', 'completed']);
 
         if ($startDate) {
             $query->where('created_at', '>=', $startDate);
@@ -814,7 +841,7 @@ class AdminController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    public function getRevenueByInstructor(Request $request)
+    public function getRevenueByProvider(Request $request)
     {
         $days = $request->input('days', 'all');
 
@@ -7908,7 +7935,7 @@ class AdminController extends Controller
             'appName' => config('app.name', 'Herime Academie'),
         ])->render();
 
-        $options = new \Dompdf\Options();
+        $options = new \Dompdf\Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
         $dompdf = new \Dompdf\Dompdf($options);
@@ -7975,7 +8002,7 @@ class AdminController extends Controller
             'appName' => config('app.name', 'Herime Academie'),
         ])->render();
 
-        $options = new \Dompdf\Options();
+        $options = new \Dompdf\Options;
         $options->set('isHtml5ParserEnabled', true);
         $options->set('isRemoteEnabled', true);
         $dompdf = new \Dompdf\Dompdf($options);
