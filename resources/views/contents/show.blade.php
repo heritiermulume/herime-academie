@@ -547,13 +547,17 @@ body.has-global-announcement:has(.course-details-page) {
 
 /* Course Description */
 .course-description {
-    line-height: 1.7;
+    line-height: 1.5;
     color: var(--text-color);
     font-size: 0.9375rem;
 }
 
 .course-description p {
-    margin-bottom: 1rem;
+    margin-bottom: 0.55rem;
+}
+
+.course-description p + p {
+    margin-top: 0;
 }
 
 /* What You'll Learn */
